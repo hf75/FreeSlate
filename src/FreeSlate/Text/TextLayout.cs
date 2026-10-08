@@ -19,7 +19,8 @@ public sealed record TextStyle(
     System.Xml.Linq.XElement? Effects = null,
     TextLink? Link = null,
     Fill? Paint = null,
-    Outline? Line = null);
+    Outline? Line = null,
+    bool? RightToLeft = null);
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
 public sealed record TextLink(string? Href, string? Action, string? Tooltip);
@@ -69,6 +70,9 @@ public sealed class ParagraphInput
 
     /// <summary>How runs of different sizes line up (a:pPr/@fontAlgn): base (and auto), t, ctr or b.</summary>
     public string FontAlign { get; init; } = "auto";
+
+    /// <summary>A right-to-left paragraph (a:pPr/@rtl): its margins, indent and bullet start on the right.</summary>
+    public bool RightToLeft { get; init; }
 }
 
 /// <summary>A run placed on a line: X from the left edge of the text area, in points.</summary>
@@ -84,6 +88,9 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
 
     /// <summary>How far the run is raised above the line's baseline (points): fontAlgn t, ctr and b.</summary>
     public double Lift { get; init; }
+
+    /// <summary>Text at an odd bidi level, shaped and drawn right to left.</summary>
+    public bool RightToLeft { get; init; }
 }
 
 public sealed class LaidOutLine
@@ -192,6 +199,8 @@ public static class TextLayout
         }
         var all = chars.ToString();
         var breaks = LineBreaker.Opportunities(all);
+        // Bidi levels of the paragraph (catalog: text.rtl); neutrals the rules leave open follow their run's language.
+        var levels = Bidi.Levels(all, paragraph.RightToLeft, i => i < styles.Count ? styles[i].RightToLeft : null);
 
         // Segments end at break opportunities, line breaks and tabs.
         var segments = new List<Segment>();
@@ -238,7 +247,7 @@ public static class TextLayout
 
         void Finish(bool lastOfParagraph)
         {
-            lines.Add(BuildLine(paragraph, all, styles, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth));
+            lines.Add(BuildLine(paragraph, all, styles, levels, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth));
             current = [];
             first = false;
             x = lineStart = lastContentEnd = marginLeft;
@@ -292,7 +301,7 @@ public static class TextLayout
         return lines;
     }
 
-    static LaidOutLine BuildLine(ParagraphInput paragraph, string all, List<TextStyle> styles,
+    static LaidOutLine BuildLine(ParagraphInput paragraph, string all, List<TextStyle> styles, byte[] levels,
         List<(int Start, int End, double X)> pieces, double lineStart, double contentEnd, double width,
         bool first, bool last, double bulletWidth)
     {
@@ -308,6 +317,9 @@ public static class TextLayout
             ascent = Math.Max(ascent, a);
             descent = Math.Max(descent, d);
         }
+
+        if (paragraph.RightToLeft || pieces.Any(p => Enumerable.Range(p.Start, p.End - p.Start).Any(i => i < levels.Length && levels[i] > 0)))
+            return BuildBidiLine(paragraph, all, styles, levels, pieces, lineStart, width, first, last, bulletWidth, ascent, descent);
 
         var lineWidth = contentEnd - lineStart;
         var available = width - paragraph.MarginRight - lineStart;
@@ -354,6 +366,106 @@ public static class TextLayout
         }
         return line;
     }
+
+    /// <summary>
+    /// A line with right-to-left text (catalog: text.rtl): the pieces split where the style or the bidi level
+    /// changes, put in visual order (L2) and placed from the left. A right-to-left paragraph starts on the right: its
+    /// left margin, indent and bullet are measured from the right edge, alignment r is its start and l its end
+    /// (measured); tabs count as their width only.
+    /// </summary>
+    static LaidOutLine BuildBidiLine(ParagraphInput paragraph, string all, List<TextStyle> styles, byte[] levels,
+        List<(int Start, int End, double X)> pieces, double lineStart, double width, bool first, bool last, double bulletWidth,
+        double ascent, double descent)
+    {
+        var justify = (paragraph.Align is "just" or "justLow" && !last) || paragraph.Align is "dist" or "thaiDist";
+        // Logical items without the line's trailing spaces.
+        var lastVisible = -1;
+        foreach (var (start, end, _) in pieces)
+        {
+            for (var i = start; i < end; i++)
+            {
+                if (all[i] is not (' ' or '\n'))
+                    lastVisible = Math.Max(lastVisible, i);
+            }
+        }
+        var items = new List<(int Start, int End)>();
+        foreach (var (start, end, _) in pieces)
+        {
+            var stop = Math.Min(end, lastVisible + 1);
+            var runStart = start;
+            for (var i = start + 1; i <= stop; i++)
+            {
+                var split = i == stop || !ReferenceEquals(styles[i], styles[runStart]) || levels[i] != levels[runStart]
+                            || justify && (all[i] == ' ' || all[i - 1] == ' ');
+                if (!split)
+                    continue;
+                if (i > runStart)
+                    items.Add((runStart, i));
+                runStart = i;
+            }
+        }
+        var widths = items.Select(item => Measure(all, styles, item.Start, item.End)).ToList();
+        var lineWidth = widths.Sum();
+        var available = width - paragraph.MarginRight - lineStart;
+        var spaces = justify ? items.Count(item => all[item.Start] == ' ') : 0;
+        var spaceExtra = spaces > 0 && available > lineWidth ? (available - lineWidth) / spaces : 0;
+        var used = lineWidth + spaceExtra * spaces;
+        double x;
+        if (paragraph.RightToLeft)
+        {
+            var (left, right) = (paragraph.MarginRight, width - lineStart);
+            x = paragraph.Align switch
+            {
+                "l" => left,
+                "ctr" => left + (right - left - used) / 2,
+                _ when spaceExtra > 0 => left,
+                _ => right - used,
+            };
+        }
+        else
+        {
+            x = lineStart + paragraph.Align switch { "ctr" => (available - used) / 2, "r" => available - used, _ => 0 };
+        }
+
+        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = used, Align = paragraph.Align, Start = lineStart };
+        if (first && paragraph.Bullet is { } bullet)
+        {
+            var bulletAt = EffectiveMargin(paragraph) + paragraph.Indent;
+            var bulletX = paragraph.RightToLeft ? width - bulletAt - bulletWidth : bulletAt + (x - lineStart);
+            // A bullet of a right-to-left paragraph reads right to left too ("1." shows as ".1", measured).
+            var text = paragraph.RightToLeft ? Visual(bullet.Text) : bullet.Text;
+            line.Runs.Add(new PlacedRun(text, bullet.Style, bulletX, bulletWidth)
+            {
+                Picture = bullet.Picture,
+                PictureHeight = bullet.Picture != null ? bullet.PictureHeight : 0,
+            });
+        }
+        foreach (var k in Bidi.Reorder(items.Select(item => levels[item.Start]).ToList()))
+        {
+            var (start, end) = items[k];
+            line.Runs.Add(new PlacedRun(all[start..end], styles[start], x, widths[k])
+            {
+                Lift = Lift(styles[start], paragraph, ascent, descent),
+                RightToLeft = levels[start] % 2 == 1,
+            });
+            x += widths[k] + (justify && all[start] == ' ' ? spaceExtra : 0);
+        }
+        return line;
+    }
+
+    /// <summary>A short right-to-left text (a bullet) in visual order, its brackets mirrored.</summary>
+    static string Visual(string text)
+    {
+        var levels = Bidi.Levels(text, true);
+        var order = Bidi.Reorder(levels);
+        return string.Concat(order.Select(i => levels[i] % 2 == 1 ? Mirror(text[i]) : text[i]));
+    }
+
+    static char Mirror(char c) => c switch
+    {
+        '(' => ')', ')' => '(', '[' => ']', ']' => '[', '{' => '}', '}' => '{', '<' => '>', '>' => '<',
+        '\u00AB' => '\u00BB', '\u00BB' => '\u00AB', '\u2039' => '\u203A', '\u203A' => '\u2039', _ => c,
+    };
 
     /// <summary>
     /// How far fontAlgn raises a run above the baseline: t lines up the tops of the runs with the line's, b their

@@ -547,7 +547,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var style = run.Style;
         var data = style.Font.Data;
         var text = run.Style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
-        var glyphs = data.Glyphs(text, style.Kerning);
+        var glyphs = data.Glyphs(text, style.Kerning, run.RightToLeft);
         var start = origin ?? x;
         var startPx = start * PxPerPt;
 
@@ -646,7 +646,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             slide.Presentation.UsedFonts.Add(family);
         }
 
-        sb.Append($"<text{(outlined ? " class=\"sel\"" : "")} x=\"{xs}\" y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\'"))}'\" font-size=\"{Px(style.Size)}\"");
+        // Right-to-left text goes to the browser whole, from its right end, so that it is shaped and reads in order.
+        var placement = run.RightToLeft
+            ? $" x=\"{Units.Css(x * PxPerPt + run.Width * PxPerPt)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\""
+            : $" x=\"{xs}\"";
+        sb.Append($"<text{(outlined ? " class=\"sel\"" : "")}{placement} y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\'"))}'\" font-size=\"{Px(style.Size)}\"");
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         if (!outlined)
@@ -835,6 +839,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             Runs = runs,
             EndStyle = endStyle,
             Align = P("algn") ?? "l",
+            RightToLeft = P("rtl") is "1" or "true",
             MarginLeft = Points(P("marL")),
             MarginRight = Points(P("marR")),
             Indent = Points(P("indent")),
@@ -1036,7 +1041,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             RunElement(rPr, sources, level, "effectLst"),
             link,
             paint,
-            line);
+            line,
+            // The run's own direction (a:rtl), else its language's.
+            RunElement(rPr, sources, level, "rtl") is { } rtl ? rtl.Bool("val") ?? true : RightToLeftLanguage(R("lang")));
+    }
+
+    /// <summary>Whether a language is written right to left; null without a language.</summary>
+    static bool? RightToLeftLanguage(string? language)
+    {
+        if (string.IsNullOrEmpty(language))
+            return null;
+        var primary = language.Split('-')[0].ToLowerInvariant();
+        return primary is "ar" or "he" or "iw" or "fa" or "ur" or "yi" or "ji" or "ps" or "sd" or "ug" or "dv" or "syr" or "ckb" or "ks" or "pa-arab"
+               || language.Contains("-Arab", StringComparison.OrdinalIgnoreCase) || language.Contains("-Hebr", StringComparison.OrdinalIgnoreCase);
     }
 
     RgbColor RunColor(XElement? rPr, List<Source> sources, int level)

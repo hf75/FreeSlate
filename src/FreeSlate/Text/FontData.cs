@@ -194,8 +194,12 @@ public sealed class FontData : IDisposable
     /// different scripts are shaped separately in logical order, so right-to-left pieces keep their own order
     /// inside a left-to-right line.
     /// </summary>
-    public ShapedGlyph[] Glyphs(string text, bool kerning)
+    public ShapedGlyph[] Glyphs(string text, bool kerning, bool rightToLeft = false)
     {
+        // A right-to-left run (an odd bidi level) is shaped as one piece right to left: glyphs in visual order,
+        // brackets mirrored.
+        if (rightToLeft)
+            return ShapePiece(text, kerning, rightToLeft: true);
         var pieces = Scripts.Split(text);
         if (pieces.Count <= 1)
             return ShapePiece(text, kerning);
@@ -209,13 +213,15 @@ public sealed class FontData : IDisposable
         return result.ToArray();
     }
 
-    ShapedGlyph[] ShapePiece(string text, bool kerning)
+    ShapedGlyph[] ShapePiece(string text, bool kerning, bool rightToLeft = false)
     {
         if (text.Length == 0)
             return [];
         using var buffer = new Buffer();
         buffer.AddUtf16(text);
         buffer.GuessSegmentProperties();
+        if (rightToLeft)
+            buffer.Direction = Direction.RightToLeft;
         font.Shape(buffer, NoLigaturesNoKerning);
         var infos = buffer.GlyphInfos;
         var positions = buffer.GlyphPositions;
