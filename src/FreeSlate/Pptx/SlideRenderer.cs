@@ -178,7 +178,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin)}{crisp}/>");
         }
 
-        html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+        // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
+        // shape's unturned box (the player animates it), an inner div projects it with the camera.
+        var camera = Camera.Read(Scene3D(chain, style));
+        if (camera is { Flat: false })
+        {
+            var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
+            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
+            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}\">");
+        }
+        else
+        {
+            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+        }
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
@@ -234,7 +246,45 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
             html.Append(Media(shape, part));
-        html.Append("</div>");
+        html.Append(camera is { Flat: false } ? "</div></div>" : "</div>");
+    }
+
+    /// <summary>
+    /// The CSS transform of a shape's drawing under a 3D camera, in the shape's own pixels: the shape's rotation and
+    /// flips in its plane, then the camera's turn and projection about its center.
+    /// </summary>
+    static string Projection(Camera camera, double w, double h, double rotation, bool flipH, bool flipV)
+    {
+        var plane = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
+        // Column-major 4×4 of the plane's 2D transform.
+        double[] local = [plane.A, plane.B, 0, 0, plane.C, plane.D, 0, 0, 0, 0, 1, 0, plane.E, plane.F, 0, 1];
+        var projection = camera.Matrix3D();
+        double[] center = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, w / 2, h / 2, 0, 1];
+        var m = Multiply(center, Multiply(projection, local));
+        return "matrix3d(" + string.Join(",", m.Select(v => Units.Css4(v))) + ")";
+
+        static double[] Multiply(double[] a, double[] b)
+        {
+            // Column-major: (a·b)[c * 4 + r] = Σ a[k * 4 + r] · b[c * 4 + k].
+            var result = new double[16];
+            for (var c = 0; c < 4; c++)
+                for (var r = 0; r < 4; r++)
+                    for (var k = 0; k < 4; k++)
+                        result[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+            return result;
+        }
+    }
+
+    /// <summary>The 3D scene of a shape: its own a:scene3d, else the one of the theme effect style it refers to.</summary>
+    XElement? Scene3D(List<PartElement> chain, XElement? style)
+    {
+        foreach (var s in chain)
+        {
+            if (SpPr(s.Element)?.Element(Ns.A + "scene3d") is { } own)
+                return own;
+        }
+        var index = style?.Element(Ns.A + "effectRef").Int("idx") ?? 0;
+        return index >= 1 && index <= slide.Theme.EffectStyles.Count ? slide.Theme.EffectStyles[index - 1].Element(Ns.A + "scene3d") : null;
     }
 
     static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
