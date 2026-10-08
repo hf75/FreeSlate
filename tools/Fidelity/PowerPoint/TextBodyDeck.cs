@@ -93,6 +93,18 @@ static class TextBodyDeck
             box.TextFrame.TextRange.Paragraphs(1).ParagraphFormat.SpaceBefore = 30f;
             box.TextFrame.TextRange.Paragraphs(2).ParagraphFormat.SpaceAfter = 30f;
         }
+
+        // Fonts that are not installed, with and without panose and pitch family hints (patched): PowerPoint draws
+        // them all in Calibri.
+        var missing = Slide(presentation);
+        for (var i = 0; i < 6; i++)
+        {
+            var box = missing.Shapes.AddTextbox(1, 40 + (i % 2) * 460, 40 + (i / 2) * 160, 440, 100);
+            box.TextFrame.TextRange.Text = "Hamburgefonts Quick 0123 iiiWWW";
+            box.TextFrame.TextRange.Font.Size = 28;
+            box.TextFrame.TextRange.Font.Name = "Arial";
+            box.Name = $"missing-font-{i}";
+        }
     }
 
     /// <summary>The properties of the last two slides PowerPoint's object model cannot set.</summary>
@@ -106,6 +118,26 @@ static class TextBodyDeck
             ["spcFirstLast-t"] = shape => ShapePatch.BodyPr(shape).SetAttributeValue("spcFirstLastPara", "1"),
             ["spcFirstLast-b"] = shape => ShapePatch.BodyPr(shape).SetAttributeValue("spcFirstLastPara", "1"),
         };
+        string[] missingFonts =
+        [
+            "typeface=\"Zzz Serif Missing\" panose=\"02020603050405020304\" pitchFamily=\"18\" charset=\"0\"",
+            "typeface=\"Zzz Mono Missing\" panose=\"02070309020205020404\" pitchFamily=\"49\" charset=\"0\"",
+            "typeface=\"Zzz Sans Missing\" panose=\"020B0604020202020204\" pitchFamily=\"34\" charset=\"0\"",
+            "typeface=\"Zzz Plain Missing\"",
+            "typeface=\"Zzz Script Missing\" panose=\"03010101010101010101\" pitchFamily=\"66\"",
+            "typeface=\"Zzz Decor Missing\" panose=\"04020705040A02060702\" pitchFamily=\"82\"",
+        ];
+        for (var i = 0; i < missingFonts.Length; i++)
+        {
+            var attributes = missingFonts[i];
+            changes[$"missing-font-{i}"] = shape =>
+            {
+                foreach (var latin in shape.Descendants(ShapePatch.A + "latin").ToList())
+                    latin.ReplaceWith(System.Xml.Linq.XElement.Parse($"<a:latin xmlns:a=\"{ShapePatch.A}\" {attributes}/>"));
+                foreach (var cs in shape.Descendants(ShapePatch.A + "cs").ToList())
+                    cs.Remove();
+            };
+        }
         foreach (var mode in new[] { "t", "ctr", "b", "base" })
             changes["fontAlgn-" + mode] = shape => ShapePatch.Paragraphs(shape, "fontAlgn", mode);
         foreach (var name in new[] { "arch-wordart", "arch" })
