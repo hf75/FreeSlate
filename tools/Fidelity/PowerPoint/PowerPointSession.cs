@@ -33,7 +33,17 @@ public sealed class PowerPointSession : IDisposable
     public dynamic Open(string path) =>
         app.Presentations.Open(Path.GetFullPath(path), MsoTrue, MsoFalse, MsoFalse);
 
-    public dynamic Create() => app.Presentations.Add(MsoFalse);
+    /// <summary>A new presentation; some galleries (SmartArt, charts) need a document window, which is then minimized.</summary>
+    public dynamic Create(bool window = false)
+    {
+        var presentation = app.Presentations.Add(window ? MsoTrue : MsoFalse);
+        if (window)
+        {
+            const int PpWindowMinimized = 2;
+            try { app.WindowState = PpWindowMinimized; } catch (COMException) { }
+        }
+        return presentation;
+    }
 
     public static void SaveAndClose(dynamic presentation, string path)
     {

@@ -48,9 +48,40 @@ public static class CorpusGenerator
         Generate(session, Path.Combine(outputDir, "transforms.pptx"), Transforms);
         Generate(session, Path.Combine(outputDir, "text-metrics.pptx"), TextMetrics);
         Generate(session, Path.Combine(outputDir, "objects.pptx"), Objects);
+        Generate(session, Path.Combine(outputDir, "diagrams.pptx"), Diagrams, window: true);
     }
 
-    /// <summary>Pictures (PNG with transparency, JPEG, SVG, crop, outline, rotation), tables, SmartArt and effects.</summary>
+    /// <summary>SmartArt and charts. Both galleries only work with a document window, which is kept minimized.</summary>
+    static void Diagrams(dynamic presentation)
+    {
+        var smartArt = AddSlide(presentation, LayoutTitleOnly);
+        smartArt.Shapes.Placeholders[1].TextFrame.TextRange.Text = "SmartArt";
+        var layouts = presentation.Application.SmartArtLayouts;
+        foreach (var (urn, left, top) in new[]
+                 {
+                     ("urn:microsoft.com/office/officeart/2005/8/layout/default", 40f, 130f),
+                     ("urn:microsoft.com/office/officeart/2005/8/layout/process1", 500f, 130f),
+                     ("urn:microsoft.com/office/officeart/2005/8/layout/cycle2", 40f, 320f),
+                     ("urn:microsoft.com/office/officeart/2005/8/layout/hierarchy1", 500f, 320f),
+                 })
+        {
+            var diagram = smartArt.Shapes.AddSmartArt(layouts.Item(urn), left, top, 420, 180);
+            var nodes = diagram.SmartArt.AllNodes;
+            for (var i = 1; i <= nodes.Count; i++)
+                nodes[i].TextFrame2.TextRange.Text = $"Item {i}";
+        }
+
+        // xlColumnClustered 51, xlLine 4, xlPie 5, xlBarStacked 58
+        foreach (var (type, title) in new[] { (51, "Column chart"), (4, "Line chart"), (5, "Pie chart"), (58, "Stacked bar chart") })
+        {
+            var slide = AddSlide(presentation, LayoutTitleOnly);
+            slide.Shapes.Placeholders[1].TextFrame.TextRange.Text = title;
+            var chart = slide.Shapes.AddChart2(-1, type, 80, 120, 800, 400).Chart;
+            chart.ChartData.Workbook.Close();
+        }
+    }
+
+    /// <summary>Pictures (PNG with transparency, JPEG, SVG, crop, outline, rotation), tables and effects.</summary>
     static void Objects(dynamic presentation)
     {
         const int MsoFalse = PowerPointSession.MsoFalse, MsoTrue = PowerPointSession.MsoTrue;
@@ -86,24 +117,6 @@ public static class CorpusGenerator
         second.Cell(3, 3).Merge(second.Cell(4, 3));
         second.Cell(2, 1).Shape.Fill.ForeColor.RGB = Rgb(255, 230, 153);
 
-        var smartArt = AddSlide(presentation, LayoutTitleOnly);
-        smartArt.Shapes.Placeholders[1].TextFrame.TextRange.Text = "SmartArt";
-        // The SmartArt gallery is only loaded once a document window exists, so this slide is built in a window.
-        dynamic? layout = null;
-        try { layout = presentation.Application.SmartArtLayouts.Item("urn:microsoft.com/office/officeart/2005/8/layout/default"); }
-        catch (System.Runtime.InteropServices.COMException) { }
-        if (layout != null)
-        {
-            var diagram = smartArt.Shapes.AddSmartArt(layout, 60, 130, 840, 360);
-            var nodes = diagram.SmartArt.AllNodes;
-            for (var i = 1; i <= nodes.Count; i++)
-                nodes[i].TextFrame2.TextRange.Text = $"Step {i}";
-        }
-        else
-        {
-            Console.WriteLine("    SmartArt gallery not available without a window; SmartArt slide left empty");
-        }
-
         var effects = AddSlide(presentation, LayoutBlank);
         var shadow = effects.Shapes.AddShape(RoundedRectangle, 60, 60, 220, 140);
         shadow.Shadow.Visible = MsoTrue;
@@ -126,9 +139,9 @@ public static class CorpusGenerator
         text.TextFrame2.TextRange.Font.Shadow.Visible = MsoTrue;
     }
 
-    static void Generate(PowerPointSession session, string path, Action<dynamic> build)
+    static void Generate(PowerPointSession session, string path, Action<dynamic> build, bool window = false)
     {
-        var presentation = session.Create();
+        var presentation = session.Create(window);
         presentation.PageSetup.SlideWidth = SlideWidth;
         presentation.PageSetup.SlideHeight = SlideHeight;
         build(presentation);

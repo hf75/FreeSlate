@@ -63,7 +63,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     break;
                 case "graphicFrame":
                     if (isSlide || Placeholders.Ph(element) == null)
-                        RenderGraphicFrame(element, html, placement);
+                        RenderGraphicFrame(element, part, html, placement);
                     break;
                 // contentPart (ink): not rendered yet.
             }
@@ -101,6 +101,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         var (definition, adjustments) = Geometry(chain);
         var geometry = GeometryEvaluator.Evaluate(definition, bw, bh, adjustments);
+        if (shape.Element(Ns.P + "txXfrm") is { } txXfrm && txXfrm.Element(Ns.A + "ext") != null)
+        {
+            // SmartArt shapes carry their own text rectangle, in the same coordinates as the shape.
+            var (tx, ty, tw, th, _, _, _) = ReadTransform(txXfrm);
+            var (tbx, tby, tbw, tbh) = placement.Map(tx, ty, tw, th);
+            geometry = geometry with
+            {
+                TextLeft = Units.ToPx(tbx - bx),
+                TextTop = Units.ToPx(tby - by),
+                TextRight = Units.ToPx(tbx - bx + tbw),
+                TextBottom = Units.ToPx(tby - by + tbh),
+            };
+        }
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
         var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part) : ResolveFill(chain, style, placement.GroupFill);
@@ -147,12 +160,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     /// <summary>Graphic frames: tables for now (charts, SmartArt and OLE objects follow).</summary>
-    void RenderGraphicFrame(XElement frame, StringBuilder html, Placement placement)
+    void RenderGraphicFrame(XElement frame, string part, StringBuilder html, Placement placement)
     {
         var xfrm = frame.Element(Ns.P + "xfrm");
         var data = frame.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
         if (xfrm?.Element(Ns.A + "ext") == null || data == null)
             return;
+
+        if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "relIds") is { } relIds)
+        {
+            RenderDiagram(relIds, frame, part, html, placement);
+            return;
+        }
 
         if (data.Element(Ns.A + "tbl") is { } table)
         {
@@ -164,6 +183,38 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
     }
+
+    static readonly XNamespace Dsp = "http://schemas.microsoft.com/office/drawing/2008/diagram";
+
+    /// <summary>
+    /// SmartArt (catalog: smartart.drawing): PowerPoint saves the laid-out shapes in a drawing part, linked from
+    /// the data model's dsp:dataModelExt. Its shapes are drawn like slide shapes in the frame's coordinates.
+    /// </summary>
+    void RenderDiagram(XElement relIds, XElement frame, string part, StringBuilder html, Placement placement)
+    {
+        var package = slide.Presentation.Package;
+        var dataPart = relIds.Attribute(Ns.R + "dm") is { } dm ? package.Relationship(part, dm.Value)?.Target : null;
+        if (dataPart == null || !package.Exists(dataPart))
+            return;
+        var drawingId = slide.Presentation.Load(dataPart).Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
+        var drawingPart = drawingId != null ? package.Relationship(part, drawingId)?.Target : null;
+        if (drawingPart == null || !package.Exists(drawingPart))
+            return;
+
+        var tree = slide.Presentation.Load(drawingPart).Root?.Element(Dsp + "spTree");
+        if (tree == null)
+            return;
+        var xfrm = frame.Element(Ns.P + "xfrm");
+        var (x, y, _, _, _, _, _) = ReadTransform(xfrm!);
+        var (bx, by, _, _) = placement.Map(x, y, 0, 0);
+        RenderTree(ToPresentationMl(tree), drawingPart, html, placement with { OffX = bx, OffY = by, ScaleX = 1, ScaleY = 1, ChildX = 0, ChildY = 0 }, isSlide: false);
+    }
+
+    /// <summary>The diagram drawing uses its own namespace for sp, spPr, style and txBody; map it to PresentationML.</summary>
+    static XElement ToPresentationMl(XElement element) =>
+        new(element.Name.Namespace == Dsp ? Ns.P + element.Name.LocalName : element.Name,
+            element.Attributes(),
+            element.Nodes().Select(n => n is XElement e ? ToPresentationMl(e) : n));
 
     void RenderGroup(XElement group, string part, StringBuilder html, Placement placement, bool isSlide)
     {
