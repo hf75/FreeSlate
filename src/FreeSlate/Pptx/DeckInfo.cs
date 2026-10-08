@@ -11,10 +11,10 @@ public sealed record SectionInfo(string Name, List<int> Slides);
 /// <summary>An alternative slide sequence (catalog: presentation.customShows).</summary>
 public sealed record CustomShowInfo(int Id, string Name, List<int> Slides);
 
-/// <summary>Slide show settings from presProps.xml (catalog: presentation.showSettings).</summary>
+/// <summary>Slide show settings from presProps.xml (catalog: presentation.showSettings, animation.laser).</summary>
 public sealed record ShowSettings(
     bool Loop, bool ShowNarration, bool ShowAnimation, bool UseTimings, string Mode,
-    int? FirstSlide, int? LastSlide, int? CustomShow, string? PenColor);
+    int? FirstSlide, int? LastSlide, int? CustomShow, string? PenColor, string? LaserColor = null);
 
 /// <summary>Document properties from docProps/core.xml and app.xml (catalog: package.properties).</summary>
 public sealed record DocumentProperties(
@@ -84,16 +84,20 @@ public sealed class DeckInfo
         var showPr = part != null && context.Package.Exists(part) ? context.Load(part).Root?.Element(Ns.P + "showPr") : null;
         var range = showPr?.Element(Ns.P + "sldRg");
         var mode = showPr?.Element(Ns.P + "kiosk") != null ? "kiosk" : showPr?.Element(Ns.P + "browse") != null ? "browse" : "present";
-        var pen = showPr?.Element(Ns.P + "penClr")?.Elements().FirstOrDefault();
+        // Pen and laser pointer colors stand outside any slide: no theme or color map applies.
+        var colors = new Drawing.ColorContext(Drawing.Theme.Load(null), new Dictionary<string, string>());
+        string? Color(XElement? parent) => colors.ResolveChild(parent) is { } color ? "#" + color.ToHex().TrimStart('#') : null;
         return new ShowSettings(
             showPr.Bool("loop") ?? false,
-            showPr.Bool("showNarration") ?? false,
+            // Without show settings PowerPoint plays narrations (measured); showPr without the attribute does not.
+            showPr == null || (showPr.Bool("showNarration") ?? false),
             showPr.Bool("showAnimation") ?? true,
             showPr.Bool("useTimings") ?? true,
             mode,
             range.Int("st"), range.Int("end"),
             showPr?.Element(Ns.P + "custShow").Int("id"),
-            pen?.Name.LocalName == "srgbClr" ? "#" + pen.Str("val") : null);
+            Color(showPr?.Element(Ns.P + "penClr")),
+            Color(showPr?.Element(Ns.P + "extLst")?.Descendants(P14 + "laserClr").FirstOrDefault()));
     }
 
     static DocumentProperties ReadProperties(PresentationContext context)
@@ -186,6 +190,7 @@ public sealed class DeckInfo
         if (show.LastSlide is { } last) sb.Append($",\"last\":{last}");
         if (show.CustomShow is { } custom) sb.Append($",\"customShow\":{custom}");
         if (show.PenColor is { } pen) sb.Append($",\"pen\":{Quote(pen)}");
+        if (show.LaserColor is { } laser) sb.Append($",\"laser\":{Quote(laser)}");
         sb.Append("}}");
         return sb.ToString();
     }

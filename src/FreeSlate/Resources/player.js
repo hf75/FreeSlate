@@ -1035,6 +1035,7 @@
 
   function stop() {
     if (!show) return;
+    stopLaser();
     clearTimeout(show.timer);
     clearInterval(show.clock);
     if (show.presenter && !show.presenter.closed) show.presenter.close();
@@ -1082,6 +1083,7 @@
     const previous = show.current;
     if (previous === slide) return;
     show.busy = true;
+    stopLaser();
     if (show.animation) show.animation.stop();
     mount(slide);
     const animation = new SlideAnimation(slide, index);
@@ -1100,7 +1102,57 @@
     show.animation = animation;
     show.busy = false;
     if (options.atEnd) idle(); else animation.start(idle);
+    startLaser(index);
     updatePresenter();
+  }
+
+  /* ---------------------------------------------------------------- recorded laser pointer */
+
+  /**
+   * Replays the laser pointer recorded with the slide (catalog: animation.laser) when narrations play
+   * (showPr showNarration): the pointer follows every trace from its first to its last point, timed from the start
+   * of the slide's timeline after the transition, moving in straight lines between the recorded points.
+   */
+  function startLaser(index) {
+    stopLaser();
+    const traces = info(index).laser;
+    if (!traces || !deck.show || !deck.show.narration) return;
+    const color = deck.show.laser || '#ff0000';
+    const dot = document.createElement('div');
+    dot.className = 'fs-laser';
+    dot.style.cssText = `position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;pointer-events:none;z-index:2147483646;display:none;` +
+      `background:radial-gradient(closest-side,#fff 0 16%,${color} 30% 55%,color-mix(in srgb,${color} 35%,transparent) 75%,transparent)`;
+    show.stage.appendChild(dot);
+    const end = Math.max(...traces.map(trace => trace[trace.length - 1][0]));
+    const start = performance.now();
+    const laser = { dot, frame: 0 };
+    const frame = now => {
+      if (!show || show.laser !== laser) return;
+      const t = now - start;
+      let position = null;
+      for (const trace of traces) {
+        if (t < trace[0][0] || t > trace[trace.length - 1][0]) continue;
+        let k = 1;
+        while (k < trace.length - 1 && trace[k][0] < t) k++;
+        const a = trace[k - 1] || trace[0], b = trace[k] || a;
+        const f = b[0] > a[0] ? Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0]))) : 1;
+        position = [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+        break;
+      }
+      dot.style.display = position ? 'block' : 'none';
+      if (position) dot.style.transform = `translate(${position[0]}px,${position[1]}px)`;
+      if (t <= end) laser.frame = requestAnimationFrame(frame);
+      else dot.remove();
+    };
+    show.laser = laser;
+    laser.frame = requestAnimationFrame(frame);
+  }
+
+  function stopLaser() {
+    if (!show || !show.laser) return;
+    cancelAnimationFrame(show.laser.frame);
+    show.laser.dot.remove();
+    show.laser = null;
   }
 
   function playSound(spec) {

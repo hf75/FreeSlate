@@ -29,12 +29,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 12 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
-| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 1 |
+| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **49** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **50** |
 
 <a id="package"></a>
 
@@ -2083,7 +2083,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | [Effect presets](#animation.presets) | P1 | ●●●○○ | done | 0 | 0 |
 | [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | partial | 12 | 3 |
 | [Animated pictures](#animation.pictures) | P3 | ●●○○○ | todo | 1 | 0 |
-| [Recorded laser pointer](#animation.laser) | P3 | ●●●○○ | todo | 4 | 0 |
+| [Recorded laser pointer](#animation.laser) | P3 | ●●●○○ | done | 4 | 0 |
 
 <a id="animation.timing"></a>
 
@@ -2181,9 +2181,11 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Recorded laser pointer
 
-`animation.laser` · P3 · difficulty 3 · todo
+`animation.laser` · P3 · difficulty 3 · done
 
 **Rendering:** Replay recorded laser pointer movements with the narration.
+
+**Office behaviour:** A recorded laser pointer (p14:laserTraceLst in the slide's extLst) replays in the slide show when narrations play (showPr showNarration; without showPr PowerPoint plays them, measured): the pointer, in p14:laserClr of the show settings (red by default), follows every trace (p14:tracePtLst) from its first to its last point, at the points' times (ST_UniversalTimeOffset, milliseconds without a unit) from the start of the slide's timeline after the transition, moving straight between the recorded points (x, y in EMU from the slide's top left corner). PowerPoint draws nothing of it on the slide itself. Checked with generated/laser (slide unchanged; replay positions checked in the browser).
 
 **Elements (4):** [`p14:laserClr`](../format/namespaces/p14.md#p14laserclr), [`p14:laserTraceLst`](../format/namespaces/p14.md#p14lasertracelst), [`p14:tracePt`](../format/namespaces/p14.md#p14tracept), [`p14:tracePtLst`](../format/namespaces/p14.md#p14traceptlst)
 

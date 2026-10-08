@@ -14,6 +14,52 @@ public static class SlideShow
 {
     static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
 
+    /// <summary>
+    /// Recorded laser pointer traces of a slide (p14:laserTraceLst, catalog: animation.laser): every trace as its
+    /// points [time in ms from the start of the slide's timeline, after the transition; x; y in px]; the pointer
+    /// shows from a trace's first point to its last. Null without traces.
+    /// </summary>
+    public static JsonArray? Laser(SlideContext slide)
+    {
+        var list = slide.Slide.Root?.Element(Ns.P + "extLst")?.Descendants(P14 + "laserTraceLst").FirstOrDefault();
+        var traces = new JsonArray();
+        foreach (var trace in list?.Elements(P14 + "tracePtLst") ?? [])
+        {
+            var points = new JsonArray();
+            foreach (var point in trace.Elements(P14 + "tracePt"))
+            {
+                if (TimeOffset(point.Str("t")) is { } t)
+                    points.Add(new JsonArray(Math.Round(t, 1), Math.Round(Units.ToPx(point.Long("x") ?? 0), 2), Math.Round(Units.ToPx(point.Long("y") ?? 0), 2)));
+            }
+            if (points.Count > 0)
+                traces.Add(points);
+        }
+        return traces.Count > 0 ? traces : null;
+    }
+
+    /// <summary>A time offset ("1.5s", "250ms", "2min"; milliseconds without a unit, [MS-PPTX] 2.3.4.6) in milliseconds.</summary>
+    public static double? TimeOffset(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        var text = value.Trim();
+        var end = 0;
+        while (end < text.Length && (char.IsDigit(text[end]) || text[end] == '.'))
+            end++;
+        if (!double.TryParse(text[..end], NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            return null;
+        return text[end..].Trim() switch
+        {
+            "h" => number * 3600000,
+            "min" => number * 60000,
+            "s" => number * 1000,
+            "" or "ms" => number,
+            "\u00B5s" or "\u03BCs" or "us" => number / 1000,
+            "ns" => number / 1000000,
+            _ => null,
+        };
+    }
+
     /// <summary>The slide's transition, or null when it has none.</summary>
     public static JsonObject? Transition(SlideContext slide)
     {

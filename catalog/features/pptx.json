@@ -14557,8 +14557,9 @@
       "title": "Recorded laser pointer",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Replay recorded laser pointer movements with the narration.",
+      "office": "A recorded laser pointer (p14:laserTraceLst in the slide's extLst) replays in the slide show when narrations play (showPr showNarration; without showPr PowerPoint plays them, measured): the pointer, in p14:laserClr of the show settings (red by default), follows every trace (p14:tracePtLst) from its first to its last point, at the points' times (ST_UniversalTimeOffset, milliseconds without a unit) from the start of the slide's timeline after the transition, moving straight between the recorded points (x, y in EMU from the slide's top left corner). PowerPoint draws nothing of it on the slide itself. Checked with generated/laser (slide unchanged; replay positions checked in the browser).",
       "elements": [
         "p14:laserClr",
         "p14:laserTraceLst",
