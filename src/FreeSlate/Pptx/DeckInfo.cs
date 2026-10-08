@@ -130,9 +130,17 @@ public sealed class DeckInfo
         var paragraphs = body?.Element(Ns.P + "txBody")?.Elements(Ns.A + "p").ToList();
         if (paragraphs == null || paragraphs.All(p => string.Concat(p.Descendants(Ns.A + "t").Select(t => t.Value)).Trim().Length == 0))
             return null;
+        return ParagraphsHtml(body!.Element(Ns.P + "txBody"), part, package);
+    }
 
+    /// <summary>
+    /// The paragraphs (a:p) of a text body as simple HTML: indent levels, line breaks, bold, italic, underline and
+    /// external links (resolved through the relationships of <paramref name="part"/>).
+    /// </summary>
+    public static string ParagraphsHtml(XElement? body, string? part, Opc.OpcPackage package)
+    {
         var html = new StringBuilder();
-        foreach (var p in paragraphs)
+        foreach (var p in body?.Elements(Ns.A + "p") ?? [])
         {
             var level = p.Element(Ns.A + "pPr").Int("lvl") ?? 0;
             html.Append(level > 0 ? $"<p style=\"margin-left:{level * 1.5}em\">" : "<p>");
@@ -156,7 +164,7 @@ public sealed class DeckInfo
                 if (rPr.Bool("b") == true) text = $"<b>{text}</b>";
                 if (rPr.Bool("i") == true) text = $"<i>{text}</i>";
                 if (rPr.Str("u") is { } u && u != "none") text = $"<u>{text}</u>";
-                if (rPr?.Element(Ns.A + "hlinkClick")?.Attribute(Ns.R + "id") is { } link && package.Relationship(part, link.Value) is { External: true } target)
+                if (part != null && rPr?.Element(Ns.A + "hlinkClick")?.Attribute(Ns.R + "id") is { } link && package.Relationship(part, link.Value) is { External: true } target)
                     text = $"<a href=\"{WebUtility.HtmlEncode(target.Target)}\">{text}</a>";
                 html.Append(text);
             }

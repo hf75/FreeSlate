@@ -31,10 +31,10 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 1 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
-| [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
+| [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **46** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **48** |
 
 <a id="package"></a>
 
@@ -2241,16 +2241,18 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Comments (classic)](#review.comments) | P3 | ●●○○○ | todo | 9 | 2 |
-| [Modern comments, reactions and tasks](#review.modernComments) | P3 | ●●○○○ | todo | 30 | 0 |
+| [Comments (classic)](#review.comments) | P3 | ●●○○○ | done | 9 | 2 |
+| [Modern comments, reactions and tasks](#review.modernComments) | P3 | ●●○○○ | done | 30 | 0 |
 
 <a id="review.comments"></a>
 
 ### Comments (classic)
 
-`review.comments` · P3 · difficulty 2 · todo
+`review.comments` · P3 · difficulty 2 · done
 
 **Rendering:** Optional comment markers and a side panel.
+
+**Office behaviour:** Classic comments (p:cmLst, authors from commentAuthors.xml with their color index, replies joined to their thread through p15:threadingInfo/p15:parentCm) are never drawn by PowerPoint, neither on slides nor in the slide show. The document lists the threads below each slide on request (the player's comment button or C) with markers labelled with the author's initials and index at p:pos, which counts 1/576 inch from the slide's top left corner (PowerPoint's master units). Times are shown as stored. Checked with generated/comments.
 
 **Elements (9):** [`p15:parentCm`](../format/namespaces/p15.md#p15parentcm), [`p15:presenceInfo`](../format/namespaces/p15.md#p15presenceinfo), [`p15:threadingInfo`](../format/namespaces/p15.md#p15threadinginfo), [`p:cm`](../format/namespaces/p.md#pcm), [`p:cmAuthor`](../format/namespaces/p.md#pcmauthor), [`p:cmAuthorLst`](../format/namespaces/p.md#pcmauthorlst), [`p:cmLst`](../format/namespaces/p.md#pcmlst), [`p:pos`](../format/namespaces/p.md#ppos), [`p:text`](../format/namespaces/p.md#ptext)
 
@@ -2262,9 +2264,11 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Modern comments, reactions and tasks
 
-`review.modernComments` · P3 · difficulty 2 · todo
+`review.modernComments` · P3 · difficulty 2 · done
 
 **Rendering:** Optional threaded comments in a side panel.
+
+**Office behaviour:** Modern comments (p188:cmLst, authors from authors.xml, linked from the slide by p188:commentRel) are listed with their replies, status (resolved, closed), reactions (p223: the emoji with the reacting authors) and tasks (assignees, start and due date, progress and title from the comment's attributes, or replayed from the p228 history without undone events). Markers sit at p188:pos in EMU from the top left corner of the anchor: the slide, or the shape that ac:deMkLst or ac:txMkLst names by id or creationId. Created times are UTC and shown in the viewer's time zone. Checked with generated/comments; PowerPoint draws none of it on slides.
 
 **Elements (30):** [`p188:author`](../format/namespaces/p188.md#p188author), [`p188:authorLst`](../format/namespaces/p188.md#p188authorlst), [`p188:cm`](../format/namespaces/p188.md#p188cm), [`p188:cmLst`](../format/namespaces/p188.md#p188cmlst), [`p188:commentRel`](../format/namespaces/p188.md#p188commentrel), [`p188:extLst`](../format/namespaces/p188.md#p188extlst), [`p188:pos`](../format/namespaces/p188.md#p188pos), [`p188:reply`](../format/namespaces/p188.md#p188reply), [`p188:replyLst`](../format/namespaces/p188.md#p188replylst), [`p188:txBody`](../format/namespaces/p188.md#p188txbody), [`p188:unknownAnchor`](../format/namespaces/p188.md#p188unknownanchor), [`p223:extLst`](../format/namespaces/p223.md#p223extlst), [`p223:instance`](../format/namespaces/p223.md#p223instance), [`p223:reactions`](../format/namespaces/p223.md#p223reactions), [`p223:rxn`](../format/namespaces/p223.md#p223rxn), [`p228:add`](../format/namespaces/p228.md#p228add), [`p228:anchr`](../format/namespaces/p228.md#p228anchr), [`p228:asgn`](../format/namespaces/p228.md#p228asgn), [`p228:atrbtn`](../format/namespaces/p228.md#p228atrbtn), [`p228:comment`](../format/namespaces/p228.md#p228comment), [`p228:date`](../format/namespaces/p228.md#p228date), [`p228:event`](../format/namespaces/p228.md#p228event), [`p228:extLst`](../format/namespaces/p228.md#p228extlst), [`p228:history`](../format/namespaces/p228.md#p228history), [`p228:pcntCmplt`](../format/namespaces/p228.md#p228pcntcmplt), [`p228:taskDetails`](../format/namespaces/p228.md#p228taskdetails), [`p228:title`](../format/namespaces/p228.md#p228title), [`p228:unasgnAll`](../format/namespaces/p228.md#p228unasgnall), [`p228:undo`](../format/namespaces/p228.md#p228undo), [`p228:unknown`](../format/namespaces/p228.md#p228unknown)
 

@@ -1347,5 +1347,33 @@
   button.addEventListener('click', e => { e.stopPropagation(); start(e.shiftKey ? visibleSlide() : order()[0]); });
   document.body.appendChild(button);
 
-  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter };
+  /* ---------------------------------------------------------------- review comments */
+
+  // Comments (catalog: review.comments, review.modernComments) stay hidden like in PowerPoint's slide show; the
+  // button (or C outside the show) shows the markers on the slides and the threads below them.
+  const threads = document.querySelectorAll('.comments .cm').length;
+  function toggleComments(on) {
+    const visible = on === undefined ? !document.body.classList.contains('fs-comments') : on;
+    document.body.classList.toggle('fs-comments', visible);
+    // Modern comments carry UTC times; show them in the viewer's time zone.
+    document.querySelectorAll('.comments time[datetime$="Z"]').forEach(t => {
+      const date = new Date(t.getAttribute('datetime'));
+      if (!isNaN(date)) t.textContent = date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    });
+  }
+  if (threads > 0) {
+    const toggle = document.createElement('button');
+    toggle.className = 'fs-comments-toggle';
+    toggle.type = 'button';
+    toggle.title = 'Show or hide comments (C)';
+    toggle.textContent = String.fromCodePoint(0x1F4AC) + ' ' + threads;
+    toggle.addEventListener('click', e => { e.stopPropagation(); toggleComments(); });
+    document.body.appendChild(toggle);
+    document.addEventListener('keydown', e => {
+      if (!show && (e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) toggleComments();
+    });
+    if (/^#cm-/.test(location.hash)) toggleComments(true);
+  }
+
+  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments };
 })();

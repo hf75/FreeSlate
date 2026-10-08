@@ -14758,8 +14758,9 @@
       "title": "Comments (classic)",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Optional comment markers and a side panel.",
+      "office": "Classic comments (p:cmLst, authors from commentAuthors.xml with their color index, replies joined to their thread through p15:threadingInfo/p15:parentCm) are never drawn by PowerPoint, neither on slides nor in the slide show. The document lists the threads below each slide on request (the player's comment button or C) with markers labelled with the author's initials and index at p:pos, which counts 1/576 inch from the slide's top left corner (PowerPoint's master units). Times are shown as stored. Checked with generated/comments.",
       "elements": [
         "p15:parentCm",
         "p15:presenceInfo",
@@ -14844,8 +14845,9 @@
       "title": "Modern comments, reactions and tasks",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Optional threaded comments in a side panel.",
+      "office": "Modern comments (p188:cmLst, authors from authors.xml, linked from the slide by p188:commentRel) are listed with their replies, status (resolved, closed), reactions (p223: the emoji with the reacting authors) and tasks (assignees, start and due date, progress and title from the comment's attributes, or replayed from the p228 history without undone events). Markers sit at p188:pos in EMU from the top left corner of the anchor: the slide, or the shape that ac:deMkLst or ac:txMkLst names by id or creationId. Created times are UTC and shown in the viewer's time zone. Checked with generated/comments; PowerPoint draws none of it on slides.",
       "elements": [
         "p188:author",
         "p188:authorLst",

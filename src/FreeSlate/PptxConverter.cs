@@ -41,7 +41,27 @@ public static class PptxConverter
         .fs-stage>.slide{position:absolute!important;left:0;top:0;margin:0!important;display:block!important;opacity:1;outline:none!important}
         .fs-cover{position:absolute;inset:0;opacity:0;pointer-events:none;background:#000}
         .fs-end{display:none;position:absolute;left:0;right:0;top:12px;color:#fff;font:16px system-ui,sans-serif;text-align:center}
-        @media print{.fs-play{display:none}}
+        .cm-marker{display:none;position:absolute;z-index:5;min-width:22px;height:22px;padding:0 5px;border-radius:11px 11px 11px 2px;color:#fff;font:600 11px/22px system-ui,sans-serif;text-align:center;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+        .comments{display:none;margin:-8px auto 16px;font:14px/1.4 system-ui,sans-serif;color:#222}
+        body.fs-comments .deck .cm-marker{display:block}
+        body.fs-comments .comments{display:block}
+        body:has(.slide:target) .comments{display:none}
+        .cm{background:#fff;border-radius:6px;padding:10px 12px;margin:8px 0;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+        .cm:target{outline:2px solid #2b6cb0}
+        .cm[data-status=resolved]>header,.cm[data-status=resolved]>.cm-text,.cm[data-status=closed]>header,.cm[data-status=closed]>.cm-text{opacity:.6}
+        .cm header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .cm-avatar{display:inline-block;width:24px;height:24px;border-radius:50%;color:#fff;font-size:11px;font-weight:600;line-height:24px;text-align:center}
+        .cm time{color:#666;font-size:12px}
+        .cm-status{font-size:11px;padding:1px 6px;border-radius:8px;background:#e6f4ea;color:#1e6b34}
+        .cm-text p{margin:4px 0 0}
+        .cm-reply{margin:8px 0 0 32px;padding-top:8px;border-top:1px solid #e5e5e5}
+        .cm-task{margin-top:6px;font-size:12px;color:#333;background:#eef3fb;padding:4px 8px;border-radius:4px}
+        .cm-reactions{margin-top:6px;display:flex;gap:6px}
+        .cm-reactions span{font-size:12px;background:#f1f1f1;border-radius:10px;padding:1px 8px}
+        .fs-comments-toggle{position:fixed;right:72px;bottom:16px;height:44px;padding:0 14px;border:0;border-radius:22px;background:#fff;color:#222;font:600 14px system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
+        body.fs-comments .fs-comments-toggle{background:#2b6cb0;color:#fff}
+        body:has(.slide:target) .fs-comments-toggle{display:none}
+        @media print{.fs-play,.fs-comments-toggle{display:none}}
         """;
 
     /// <summary>The slide show player (catalog: interactivity.player), embedded in every document.</summary>
@@ -76,7 +96,9 @@ public static class PptxConverter
             if (hidden) attributes.Append(" data-hidden");
             if (slideSection != null) attributes.Append($" data-section=\"{WebUtility.HtmlEncode(slideSection)}\"");
             var notes = deck.NotesHtml(part) is { } n ? $"<aside class=\"notes\">{n}</aside>" : "";
-            slides.Append(new SlideRenderer(new SlideContext(context, part, number), paint).Render(attributes.ToString(), notes)).Append('\n');
+            var comments = Comments.Read(context, part);
+            slides.Append(new SlideRenderer(new SlideContext(context, part, number), paint).Render(attributes.ToString(), notes + Comments.Markers(comments, number)))
+                .Append(Comments.Panel(comments, number, width)).Append('\n');
             var slideData = new SlideData { Number = number, Hidden = hidden, Section = slideSection };
             var slideContext = new SlideContext(context, part, number);
             if (SlideShow.Transition(slideContext) is { } transition)
