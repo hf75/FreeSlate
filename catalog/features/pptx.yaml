@@ -984,10 +984,11 @@ areas:
         namespaces: [m]
         priority: P2
         difficulty: 4
+        status: partial
         strategy: Show the picture from mc:Fallback first; later convert OMML to MathML, which browsers render.
         office: >-
-          PowerPoint saves equations as mc:AlternateContent: OMML in mc:Choice (Requires a14) and a picture of the
-          equation in mc:Fallback.
+          Equations are drawn from the mc:Fallback picture (a14 is not a supported Choice namespace, so the
+          picture wins). Native OMML layout is not implemented yet.
 
       - id: text.rtl
         title: Right-to-left and complex scripts
@@ -1295,9 +1296,14 @@ areas:
         namespaces: [cx]
         priority: P2
         difficulty: 4
+        status: partial
         strategy: >-
           Each type needs its own layout (treemap squarify, sunburst rings, histogram binning, box plot statistics);
           region maps use the geography data cached in the file. Check whether mc:Fallback contains a usable picture.
+        office: >-
+          PowerPoint saves Office 2016 charts as mc:AlternateContent (Requires cx1/cx2) with a picture of the
+          chart in mc:Fallback, which is drawn (generated/charts-more slides 6 and 7: 98.5 %). Native layouts
+          for files without the picture are not implemented yet.
 
   - id: smartart
     title: SmartArt
@@ -1500,8 +1506,11 @@ areas:
         namespaces: [psez, pslz, psuz, p166]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Draw the zoom's picture and link it to the target slide or section; the zoom animation comes later.
-        office: Zoom objects are saved as mc:AlternateContent with a picture in mc:Fallback.
+        office: >-
+          Zoom objects are drawn from mc:Fallback: a picture with a link to the target slide, so clicking it
+          jumps there. The zoom transition and the return to the zoom slide are not implemented yet.
 
   - id: review
     title: Comments and review
