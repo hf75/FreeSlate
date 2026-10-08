@@ -6,40 +6,38 @@ namespace FreeSlate.Pptx.SmartArt;
 
 /// <summary>
 /// Fits the text of a laid-out SmartArt diagram (catalog: smartart.layout): a node whose text does not fit its box
-/// (inside its margins, without breaking words) applies its rules in order, its own before those of its ancestors:
-/// a font size rule lowers the font size (whole points) to the rule's value, a size rule lets the node grow to the
-/// rule's limit (a factor of its size, or INF). Nodes of the same name then take the smallest font size, nodes made
-/// equal by an equ constraint the largest height, and the diagram is laid out again until nothing changes.
+/// (inside its geometry's text rectangle and its margins, without breaking words) applies its rules in order, its own
+/// before those of its ancestors: a font size rule lowers the font size (whole points) to the rule's value, a size rule
+/// lets the node grow in sixteenths of its height to the rule's limit (a factor of its size, or INF: as far as its
+/// parent has room). Nodes of the same name then take the smallest font size, nodes made equal by an equ constraint
+/// the largest height. The values found are pinned and the diagram laid out again (by the engine) until nothing
+/// changes.
 /// </summary>
 static class Fitting
 {
     const double DefaultFontSize = 65;
 
-    public static void Fit(LayoutNode root, Func<XElement, double, LaidOutText> measure, Action relayout)
+    /// <summary>One round of fitting; whether it pinned anything new.</summary>
+    public static bool Fit(LayoutNode root, Func<XElement, double, LaidOutText> measure, Pins pins)
     {
-        for (var round = 0; round < 4; round++)
+        var nodes = root.Descendants().Prepend(root).Where(n => n.Text.Count > 0 && n.AlgorithmType == "tx").ToList();
+        var changed = false;
+        foreach (var node in nodes)
+            changed |= FitNode(node, measure, pins);
+        foreach (var group in nodes.GroupBy(n => n.Name))
         {
-            var nodes = root.Descendants().Where(n => n.Text.Count > 0 && n.AlgorithmType == "tx").ToList();
-            var changed = false;
-            foreach (var node in nodes)
-                changed |= FitNode(node, measure);
-            foreach (var group in nodes.GroupBy(n => n.Name))
+            var smallest = group.Min(Font);
+            foreach (var node in group)
             {
-                var smallest = group.Min(Font);
-                foreach (var node in group)
+                if (Font(node) > smallest + 1e-6)
                 {
-                    if (Font(node) > smallest + 1e-6)
-                    {
-                        SetFont(node, smallest);
-                        changed = true;
-                    }
+                    PinFont(node, smallest, pins);
+                    changed = true;
                 }
             }
-            changed |= Equalize(root);
-            if (!changed)
-                break;
-            relayout();
         }
+        changed |= Equalize(root, pins);
+        return changed;
     }
 
     public static double Font(LayoutNode node) => node.Values.TryGetValue("primFontSz", out var v) && double.IsFinite(v) ? v : DefaultFontSize;
@@ -47,11 +45,11 @@ static class Fitting
     public static double SecondaryFont(LayoutNode node) =>
         node.Values.TryGetValue("secFontSz", out var s) && double.IsFinite(s) ? s : Font(node) * 0.78;
 
+    /// <summary>Sets a node's font size for a trial: margins given in font sizes follow it.</summary>
     static void SetFont(LayoutNode node, double size)
     {
         var old = Font(node);
         node.Values["primFontSz"] = size;
-        // Margins given in font sizes follow the font size.
         foreach (var side in new[] { "lMarg", "rMarg", "tMarg", "bMarg" })
         {
             if (MarginFromFont(node, side) is { } factor)
@@ -59,6 +57,15 @@ static class Fitting
         }
         if (node.Values.TryGetValue("secFontSz", out var secondary) && old > 0)
             node.Values["secFontSz"] = secondary * size / old;
+    }
+
+    static void PinFont(LayoutNode node, double size, Pins pins)
+    {
+        var old = Font(node);
+        SetFont(node, size);
+        pins.Set(node, "primFontSz", size);
+        if (node.Values.TryGetValue("secFontSz", out var secondary) && old > 0)
+            pins.Set(node, "secFontSz", secondary);
     }
 
     /// <summary>The factor of a margin constraint on the primary font size, if the node's margin is one.</summary>
@@ -173,13 +180,55 @@ static class Fitting
         return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && !double.IsNaN(v) ? v : null;
     }
 
-    static bool FitNode(LayoutNode node, Func<XElement, double, LaidOutText> measure)
+    /// <summary>The room a placed subtree takes (its drawing nodes' boxes).</summary>
+    static (double X, double Y, double W, double H) Taken(LayoutNode node)
+    {
+        double minY = double.MaxValue, maxY = double.MinValue, minX = double.MaxValue, maxX = double.MinValue;
+        foreach (var n in node.Descendants().Prepend(node))
+        {
+            if ((string?)n.Shape?.Attribute("type") is null or "none")
+                continue;
+            minX = Math.Min(minX, n.X);
+            minY = Math.Min(minY, n.Y);
+            maxX = Math.Max(maxX, n.X + n.W);
+            maxY = Math.Max(maxY, n.Y + n.H);
+        }
+        return minY == double.MaxValue ? (node.X, node.Y, node.W, node.H) : (minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>
+    /// How high a node may grow without its diagram having to shrink (mm): by the room left in the nearest lin or snake
+    /// ancestor along a vertical line (or across a horizontal one), else in the diagram.
+    /// </summary>
+    static double Room(LayoutNode node)
+    {
+        var child = node;
+        for (var ancestor = node.Parent; ancestor != null; child = ancestor, ancestor = ancestor.Parent)
+        {
+            if (ancestor.AlgorithmType is not ("lin" or "snake"))
+                continue;
+            var vertical = ancestor.AlgorithmType == "lin" && (ancestor.Param("linDir") ?? "fromL") is "fromT" or "fromB";
+            if (vertical)
+            {
+                var used = ancestor.Children.Where(c => c.AlgorithmType != "conn").Sum(c => Taken(c).H);
+                return node.H + Math.Max(0, ancestor.H - used);
+            }
+            return node.H + Math.Max(0, ancestor.H - Taken(child).H);
+        }
+        var root = node;
+        while (root.Parent != null)
+            root = root.Parent;
+        return node.H + Math.Max(0, root.H - Taken(root).H);
+    }
+
+    static bool FitNode(LayoutNode node, Func<XElement, double, LaidOutText> measure, Pins pins)
     {
         if (Check(node, measure).Fits)
             return false;
         var changed = false;
         var startFont = Font(node);
-        var startHeight = node.H;
+        if (!pins.StartHeight.TryGetValue(node, out var startHeight))
+            pins.StartHeight[node] = startHeight = node.H;
         foreach (var rule in Rules(node))
         {
             var type = (string?)rule.Attribute("type");
@@ -193,6 +242,7 @@ static class Fitting
                 SetFont(node, low);
                 if (!Check(node, measure).Fits)
                 {
+                    PinFont(node, low, pins);
                     changed = true;
                     continue;
                 }
@@ -205,21 +255,26 @@ static class Fitting
                     else
                         high = middle - 1;
                 }
-                SetFont(node, low);
+                PinFont(node, low, pins);
                 return true;
             }
             if (type is "h")
             {
-                // The node grows in steps of a sixteenth of its height until the text fits (measured: 21/16, 39/16 …).
+                // The node grows in steps of a sixteenth of its height until the text fits (measured: 21/16, 39/16 …), as
+                // far as the rule and its parent's room allow.
                 var limit = Number(rule, "val") is { } v ? v : Number(rule, "fact") is { } f ? f * startHeight : startHeight;
+                limit = Math.Min(limit, Room(node));
                 var wanted = Check(node, measure).Needed / Engine.PtPerMm;
                 if (startHeight > 0)
                     wanted = Math.Ceiling(wanted / startHeight * 16 - 1e-9) / 16 * startHeight;
-                var height = Math.Min(wanted, limit);
+                var height = wanted;
+                if (wanted > limit + 1e-6)
+                    height = startHeight > 0 ? Math.Floor(limit / startHeight * 16 + 1e-9) / 16 * startHeight : limit;
                 if (height > node.H + 1e-6)
                 {
-                    node.Values["h"] = height;
+                    pins.Set(node, "h", height / Math.Max(node.Scale, 1e-9));
                     node.H = height;
+                    node.Values["h"] = height;
                     changed = true;
                 }
                 if (wanted <= limit + 1e-6)
@@ -230,7 +285,7 @@ static class Fitting
     }
 
     /// <summary>Makes sizes equal (the largest) where an equ constraint without a value asks for it.</summary>
-    static bool Equalize(LayoutNode root)
+    static bool Equalize(LayoutNode root, Pins pins)
     {
         var changed = false;
         foreach (var node in root.Descendants().Prepend(root))
@@ -245,12 +300,13 @@ static class Fitting
                 var targets = Constraints.Targets(node, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType"));
                 if (targets.Count < 2)
                     continue;
-                var largest = targets.Max(t => t.Values.TryGetValue(type, out var v) ? v : 0);
+                double Size(LayoutNode n) => type == "h" ? n.H : n.W;
+                var largest = targets.Max(Size);
                 foreach (var target in targets)
                 {
-                    if (!target.Values.TryGetValue(type, out var v) || v < largest - 1e-6)
+                    if (Size(target) < largest - 1e-6)
                     {
-                        target.Values[type] = largest;
+                        pins.Set(target, type, largest / Math.Max(target.Scale, 1e-9));
                         changed = true;
                     }
                 }

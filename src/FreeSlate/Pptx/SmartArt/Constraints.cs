@@ -4,14 +4,38 @@ using System.Xml.Linq;
 namespace FreeSlate.Pptx.SmartArt;
 
 /// <summary>
+/// Values the text fitting fixes for the next layout (font sizes, grown or equalized heights), which the constraints
+/// then no longer set; lengths in the units of the constraints (before the parent's algorithm scales the node).
+/// </summary>
+public sealed class Pins
+{
+    readonly Dictionary<(LayoutNode Node, string Type), double> values = [];
+
+    /// <summary>The height a node had when its text was first fitted (points), the unit of its growth steps.</summary>
+    public Dictionary<LayoutNode, double> StartHeight { get; } = [];
+
+    public bool TryGet(LayoutNode node, string type, out double value) => values.TryGetValue((node, type), out value);
+
+    public void Set(LayoutNode node, string type, double value) => values[(node, type)] = value;
+
+    public IEnumerable<(string Type, double Value)> Of(LayoutNode node) =>
+        values.Where(v => v.Key.Node == node).Select(v => (v.Key.Type, v.Value));
+}
+
+/// <summary>
 /// Evaluates the constraints of a layout tree (dgm:constr, catalog: smartart.layout): every node's list in document
 /// order, the nodes in tree order, each constraint setting a value of its targets (the declaring node, its children or
 /// its descendants of a name or point type) to an absolute value or to a value of a reference node times a factor;
-/// gte and lte only raise or lower a value already set, and equ without a value makes the targets' values equal.
-/// Sizes and positions are in millimeters, font sizes in points.
+/// gte and lte only raise or lower a value already set, equ without a value makes the targets' values equal, and a
+/// constraint without a value or reference gives 0 where nothing else sets the value. When a node has its box, its list
+/// is evaluated again: its children's values follow its actual size (the composite's ar works that way, ECMA-376
+/// §21.4.7.49). Sizes and positions are in millimeters, font sizes in points.
 /// </summary>
 public static class Constraints
 {
+    /// <summary>The value types that make up a node's own box, which its parent's algorithm gives it.</summary>
+    static readonly HashSet<string> Box = ["w", "h", "l", "t", "r", "b", "ctrX", "ctrY"];
+
     static double? Number(XElement element, string attribute)
     {
         var text = (string?)element.Attribute(attribute);
@@ -44,16 +68,24 @@ public static class Constraints
     /// Evaluates all constraints of the tree under <paramref name="root"/>, again until no value changes: a constraint
     /// may refer to a value a later one sets (h from primFontSz before primFontSz is given).
     /// </summary>
-    public static void Evaluate(LayoutNode root)
+    public static void Evaluate(LayoutNode root, Pins? pins = null)
     {
         var nodes = root.Descendants().Prepend(root).ToList();
+        if (pins != null)
+        {
+            foreach (var node in nodes)
+            {
+                foreach (var (type, value) in pins.Of(node))
+                    node.Values[type] = value;
+            }
+        }
         for (var pass = 0; pass < 8; pass++)
         {
             var before = nodes.Select(n => n.Values.Count + n.Values.Values.Sum(v => double.IsFinite(v) ? v : 0)).ToList();
             foreach (var node in nodes)
             {
                 foreach (var constraint in node.Constraints)
-                    Apply(node, constraint);
+                    Apply(node, constraint, pins, null);
             }
             var after = nodes.Select(n => n.Values.Count + n.Values.Values.Sum(v => double.IsFinite(v) ? v : 0)).ToList();
             if (before.SequenceEqual(after))
@@ -61,7 +93,20 @@ public static class Constraints
         }
     }
 
-    static void Apply(LayoutNode owner, XElement constraint)
+    /// <summary>
+    /// Evaluates a node's list again once it has its box: the values of its children and descendants follow its size,
+    /// its own box stays as given.
+    /// </summary>
+    public static void EvaluateList(LayoutNode node, Pins? pins)
+    {
+        for (var pass = 0; pass < 2; pass++)
+        {
+            foreach (var constraint in node.Constraints)
+                Apply(node, constraint, pins, node);
+        }
+    }
+
+    static void Apply(LayoutNode owner, XElement constraint, Pins? pins, LayoutNode? keep)
     {
         var type = (string?)constraint.Attribute("type") ?? "";
         if (type is "" or "none")
@@ -77,6 +122,13 @@ public static class Constraints
 
         foreach (var target in targets)
         {
+            if (target == keep && Box.Contains(type))
+                continue;
+            if (pins != null && pins.TryGet(target, type, out var pinned))
+            {
+                target.Values[type] = pinned;
+                continue;
+            }
             double? value;
             if (!string.IsNullOrEmpty(refType) && refType != "none")
             {
@@ -86,9 +138,17 @@ public static class Constraints
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
                 value = reference != null && Get(reference, refType) is { } referenced ? referenced * fact : null;
             }
+            else if (constraint.Attribute("val") == null)
+            {
+                // A constraint without a value or reference only gives a value nothing else sets: 0 (measured: process3's
+                // text node keeps the height its grandparent gives it; list1's text node has no top margin).
+                if (op == "equ" || target.Values.ContainsKey(type))
+                    continue;
+                value = 0;
+            }
             else
             {
-                value = Number(constraint, "val") ?? (op == "equ" && constraint.Attribute("val") == null ? null : 0);
+                value = Number(constraint, "val");
             }
             if (value is not { } v || double.IsNaN(v))
                 continue;
