@@ -75,7 +75,7 @@ static class Charts
         Add(small, Pie, 640, 140, 280, 200);
     }
 
-    static dynamic Slide(object deck, string title)
+    internal static dynamic Slide(object deck, string title)
     {
         dynamic presentation = deck;
         var slide = CorpusGenerator.AddSlide(presentation, CorpusGenerator.LayoutTitleOnly);
@@ -84,13 +84,13 @@ static class Charts
     }
 
     /// <summary>One chart per slide, below the title.</summary>
-    static void Chart(object presentation, string title, int type, Action<dynamic>? format = null, Action<dynamic>? data = null)
+    internal static void Chart(object presentation, string title, int type, Action<dynamic>? format = null, Action<dynamic>? data = null)
     {
         var chart = Add((object)Slide(presentation, title), type, 80, 120, 800, 400, data);
         format?.Invoke(chart);
     }
 
-    static dynamic Add(object target, int type, float left, float top, float width, float height, Action<dynamic>? data = null)
+    internal static dynamic Add(object target, int type, float left, float top, float width, float height, Action<dynamic>? data = null)
     {
         dynamic slide = target;
         var chart = slide.Shapes.AddChart2(-1, type, left, top, width, height).Chart;

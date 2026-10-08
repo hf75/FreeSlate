@@ -46,7 +46,8 @@ public readonly record struct AxisScale(double Min, double Max, double MajorUnit
 /// </summary>
 public static class AxisScaling
 {
-    public static AxisScale Compute(double dataMin, double dataMax, ChartAxis axis, int maxIntervals, bool percent = false)
+    /// <param name="headroom">Whether the maximum gets 5 % headroom (flat charts; 3D charts do without).</param>
+    public static AxisScale Compute(double dataMin, double dataMax, ChartAxis axis, int maxIntervals, bool percent = false, bool headroom = true)
     {
         if (axis.LogBase is { } logBase and > 1)
             return Logarithmic(dataMin, dataMax, axis, logBase);
@@ -77,8 +78,8 @@ public static class AxisScaling
 
         // Headroom of 5 % of the range on the open ends.
         var range = Math.Max(hi - lo, Math.Abs(hi) * 1e-9 + 1e-300);
-        var top = axis.Max == null && hi > 0 ? hi + 0.05 * range : hi;
-        var bottom = axis.Min == null && lo < 0 && dataMin < 0 ? lo - 0.05 * range : lo;
+        var top = axis.Max == null && hi > 0 && headroom ? hi + 0.05 * range : hi;
+        var bottom = axis.Min == null && lo < 0 && dataMin < 0 && headroom ? lo - 0.05 * range : lo;
 
         var major = axis.MajorUnit is { } fixedMajor and > 0 ? fixedMajor : NiceUnit(top - bottom, Math.Max(1, maxIntervals));
         var min = axis.Min ?? Math.Floor(AxisScale.Clean(bottom / major)) * major;

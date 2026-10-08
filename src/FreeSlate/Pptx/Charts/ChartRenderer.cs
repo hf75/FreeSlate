@@ -13,7 +13,7 @@ namespace FreeSlate.Pptx.Charts;
 /// titles were colored and compared with the positions PowerPoint reports through COM. Lengths are points in the
 /// frame's coordinates (s = font size, L = line height of the element's font); the SVG is written in pixels.
 /// </summary>
-public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRenderer text, string chartPart)
+public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, TextRenderer text, string chartPart)
 {
     const double PxPerPt = 96.0 / 72;
 
@@ -195,11 +195,17 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         var pies = model.Groups.Where(g => g.IsPie).ToList();
         var radars = model.Groups.Where(g => g.IsRadar).ToList();
         var axisGroups = model.Groups.Where(g => !g.IsPie && !g.IsRadar && !g.IsSurface).ToList();
+        var surfaces = model.Groups.Where(g => g.IsSurface).ToList();
+        if (Chart3D(model.Groups, outer) is { } threeD)
+        {
+            body.Append(threeD);
+            (axisGroups, radars, pies, surfaces) = ([], [], [], []);
+        }
         if (axisGroups.Count > 0)
             body.Append(AxisChart(axisGroups, outer, legend, title));
         if (radars.Count > 0)
             body.Append(Radar(radars, outer));
-        foreach (var surface in model.Groups.Where(g => g.IsSurface))
+        foreach (var surface in surfaces)
             body.Append(Surface(surface, outer));
         foreach (var pie in pies)
             body.Append(Pie(pie, PlotBox(outer, square: true)));

@@ -1363,7 +1363,24 @@ areas:
                    c:sideWall, c:backWall, c:thickness, c:gapDepth]
         priority: P2
         difficulty: 5
+        status: partial
         strategy: Projected 3D geometry with simple shading.
+        office: >-
+          3D bar charts with right-angle axes (c:rAngAx, the default of 3D columns and bars) are drawn as
+          boxes in an oblique projection: front faces stay rectangles and the depth runs along (sin rotY, sin
+          rotX) at full length. Clustered and stacked bars stand in one row depthPercent × (1 + gapDepth) bar
+          widths deep, each bar depthPercent × its width deep and centered; standard charts give every series
+          a row of depthPercent × the category width. Without hPercent the box is as tall as the plot area's
+          height/width ratio times its width (times floor((categories + series)/2) category widths for
+          standard charts). The projected box is scaled to fit the plot area less the axis labels and centered
+          (measured on single boxes with colored walls at 20 rotations and 22 category/series combinations).
+          Tops and the floor are shaded 0.757, sides and the side wall 0.639 of the color; cylinders and cones
+          get a gradient across their silhouette (1.07 − 0.47 t², 1.13 − 0.48 t²), pyramids flat faces; cones
+          and pyramids taper to the bar's end, the stack's end or the axis maximum (…ToMax). Value gridlines
+          run over the back and side walls; value axes get no headroom (5 stays 5). Labels sit at the front
+          edges, category labels turn by 45° when they do not fit, series labels thin out. Checked with
+          generated/charts-3d (columns, bars, stacked, standard, shapes). Not yet: perspective views (rAngAx
+          0: 3D pie, area, line, surface and perspective columns), data labels on 3D bars, wall thickness.
 
       - id: chart.analysis
         title: Trendlines and error bars

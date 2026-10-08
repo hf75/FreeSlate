@@ -26,7 +26,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 4 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 12 | 7 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **50** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **50** |
 
 <a id="package"></a>
 
@@ -1617,7 +1617,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 | [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | partial | 18 | 15 |
 | [Data tables](#chart.dataTable) | P3 | ●●●○○ | done | 5 | 0 |
 | [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | partial | 56 | 5 |
-| [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
+| [3D charts](#chart.threeD) | P2 | ●●●●● | partial | 12 | 10 |
 | [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
 | [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | done | 30 | 15 |
 | [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | done | 12 | 3 |
@@ -1851,9 +1851,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### 3D charts
 
-`chart.threeD` · P2 · difficulty 5 · todo
+`chart.threeD` · P2 · difficulty 5 · partial
 
 **Rendering:** Projected 3D geometry with simple shading.
+
+**Office behaviour:** 3D bar charts with right-angle axes (c:rAngAx, the default of 3D columns and bars) are drawn as boxes in an oblique projection: front faces stay rectangles and the depth runs along (sin rotY, sin rotX) at full length. Clustered and stacked bars stand in one row depthPercent × (1 + gapDepth) bar widths deep, each bar depthPercent × its width deep and centered; standard charts give every series a row of depthPercent × the category width. Without hPercent the box is as tall as the plot area's height/width ratio times its width (times floor((categories + series)/2) category widths for standard charts). The projected box is scaled to fit the plot area less the axis labels and centered (measured on single boxes with colored walls at 20 rotations and 22 category/series combinations). Tops and the floor are shaded 0.757, sides and the side wall 0.639 of the color; cylinders and cones get a gradient across their silhouette (1.07 − 0.47 t², 1.13 − 0.48 t²), pyramids flat faces; cones and pyramids taper to the bar's end, the stack's end or the axis maximum (…ToMax). Value gridlines run over the back and side walls; value axes get no headroom (5 stays 5). Labels sit at the front edges, category labels turn by 45° when they do not fit, series labels thin out. Checked with generated/charts-3d (columns, bars, stacked, standard, shapes). Not yet: perspective views (rAngAx 0: 3D pie, area, line, surface and perspective columns), data labels on 3D bars, wall thickness.
 
 **Elements (12):** [`c:backWall`](../format/namespaces/c.md#cbackwall), [`c:depthPercent`](../format/namespaces/c.md#cdepthpercent), [`c:floor`](../format/namespaces/c.md#cfloor), [`c:gapDepth`](../format/namespaces/c.md#cgapdepth), [`c:hPercent`](../format/namespaces/c.md#chpercent), [`c:perspective`](../format/namespaces/c.md#cperspective), [`c:rAngAx`](../format/namespaces/c.md#crangax), [`c:rotX`](../format/namespaces/c.md#crotx), [`c:rotY`](../format/namespaces/c.md#croty), [`c:sideWall`](../format/namespaces/c.md#csidewall), [`c:thickness`](../format/namespaces/c.md#cthickness), [`c:view3D`](../format/namespaces/c.md#cview3d)
 
