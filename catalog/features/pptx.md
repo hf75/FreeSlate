@@ -22,7 +22,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 7 | 1 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 2 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 2 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **41** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **42** |
 
 <a id="package"></a>
 
@@ -862,8 +862,8 @@ gradFill and pattFill inside a:ln.
 | [Reflection](#effect.reflection) | P2 | ●●●●○ | partial | 1 | 1 |
 | [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | done | 2 | 1 |
 | [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
-| [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | todo | 8 | 6 |
-| [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | todo | 6 | 5 |
+| [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | partial | 8 | 6 |
+| [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | done | 6 | 5 |
 
 <a id="effect.list"></a>
 
@@ -993,9 +993,11 @@ gradFill and pattFill inside a:ln.
 
 ### 3D scene (camera and light)
 
-`effect.scene3d` · P2 · difficulty 5 · todo
+`effect.scene3d` · P2 · difficulty 5 · partial
 
-**Rendering:** Camera presets can be approximated with CSS 3D transforms; lighting needs a shading model.
+**Rendering:** The camera turns and projects the shape: a CSS matrix3d for the front face with its text, SVG polygons for the body. The light rig lights every face with Lambert diffuse and Phong highlights, fitted per rig.
+
+**Office behaviour:** Measured on generated/three-d: the presets' angles and fields of view (30 cameras, corners within 0.4 pt; the eye stands 907.5 pt / 2 / tan(fov / 2) in front of the shape); oblique presets shear by 0.3 of the depth (legacy ones 0.5), legacy perspective presets by 0.133 per axis. All 27 light rigs were fitted on extruded cubes, cylinders and tilted bevels rendered in two base colors (rms below 0.03, brightRoom 0.05); dir turns a rig in 45° steps clockwise, a:rot turns it further. sp3d z moves the shape along its own axis (perspective enlarges it, turned cameras shift it). Shadows and glow of 3D shapes come from the body's back as the camera sees it (the glow half as wide), soft edges do not apply. Not implemented: a:backdrop, the plane PowerPoint then casts shadows on (unused in the corpus).
 
 **Elements (8):** [`a:anchor`](../format/namespaces/a.md#aanchor), [`a:backdrop`](../format/namespaces/a.md#abackdrop), [`a:camera`](../format/namespaces/a.md#acamera), [`a:lightRig`](../format/namespaces/a.md#alightrig), [`a:norm`](../format/namespaces/a.md#anorm), [`a:rot`](../format/namespaces/a.md#arot), [`a:scene3d`](../format/namespaces/a.md#ascene3d), [`a:up`](../format/namespaces/a.md#aup)
 
@@ -1007,9 +1009,11 @@ gradFill and pattFill inside a:ln.
 
 ### 3D shape (bevel, extrusion, material)
 
-`effect.shape3d` · P2 · difficulty 5 · todo
+`effect.shape3d` · P2 · difficulty 5 · done
 
-**Rendering:** Real bevels and extrusion need 3D rendering (WebGL) or pre-rendering; simple bevels can be faked with gradients.
+**Rendering:** Bevels (top and bottom, measured profiles), extrusion, back face and contour are built as SVG polygons, sorted back to front and lit with the rig and the material; the front face is drawn by the camera.
+
+**Office behaviour:** Measured on generated/three-d: bevel profiles from edge-on silhouettes (they scale with width and height independently; a bevel is at most half the smaller side wide); the front face lies in the shape's plane, the top bevel's outline its height behind it, then the extrusion and the bottom bevel. The shape's line is part of the body: the body reaches to the line's outer edge, the sides take the line's color unless extrusionClr is set, and so do the outer band of the bevels and of the back. The contour is an unlit tube of contourW (black by default) around the rims, creases and silhouettes; a face coming towards the eye covers all but r·cos α of its inner half, and the body moves back so that the tube does not reach in front of the shape's plane. Materials were fitted against threePt: matte without highlights, plastic and metal with stronger and tighter ones, metals partly tinted; powders, dkEdge and softEdge fade towards the silhouette, powders whiten there; flat ignores the light's direction; legacyWireframe draws every mesh edge, hidden ones included. Pictures and gradients keep their texture on the bevel. clear is approximated by its fitted shading without transparency.
 
 **Elements (6):** [`a:bevel`](../format/namespaces/a.md#abevel), [`a:bevelB`](../format/namespaces/a.md#abevelb), [`a:bevelT`](../format/namespaces/a.md#abevelt), [`a:contourClr`](../format/namespaces/a.md#acontourclr), [`a:extrusionClr`](../format/namespaces/a.md#aextrusionclr), [`a:sp3d`](../format/namespaces/a.md#asp3d)
 

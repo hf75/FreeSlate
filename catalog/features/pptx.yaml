@@ -653,14 +653,44 @@ areas:
         elements: [a:scene3d, a:camera, a:lightRig, a:rot, a:backdrop, a:anchor, a:norm, a:up]
         priority: P2
         difficulty: 5
-        strategy: Camera presets can be approximated with CSS 3D transforms; lighting needs a shading model.
+        status: partial
+        strategy: >-
+          The camera turns and projects the shape: a CSS matrix3d for the front face with its text, SVG polygons for
+          the body. The light rig lights every face with Lambert diffuse and Phong highlights, fitted per rig.
+        office: >-
+          Measured on generated/three-d: the presets' angles and fields of view (30 cameras, corners within
+          0.4 pt; the eye stands 907.5 pt / 2 / tan(fov / 2) in front of the shape); oblique presets shear by
+          0.3 of the depth (legacy ones 0.5), legacy perspective presets by 0.133 per axis. All 27 light rigs
+          were fitted on extruded cubes, cylinders and tilted bevels rendered in two base colors (rms below
+          0.03, brightRoom 0.05); dir turns a rig in 45° steps clockwise, a:rot turns it further. sp3d z moves
+          the shape along its own axis (perspective enlarges it, turned cameras shift it). Shadows and glow of
+          3D shapes come from the body's back as the camera sees it (the glow half as wide), soft edges do not
+          apply. Not implemented: a:backdrop, the plane PowerPoint then casts shadows on (unused in the
+          corpus).
 
       - id: effect.shape3d
         title: 3D shape (bevel, extrusion, material)
         elements: [a:sp3d, a:bevelT, a:bevelB, a:bevel, a:extrusionClr, a:contourClr]
         priority: P2
         difficulty: 5
-        strategy: Real bevels and extrusion need 3D rendering (WebGL) or pre-rendering; simple bevels can be faked with gradients.
+        status: done
+        strategy: >-
+          Bevels (top and bottom, measured profiles), extrusion, back face and contour are built as SVG polygons,
+          sorted back to front and lit with the rig and the material; the front face is drawn by the camera.
+        office: >-
+          Measured on generated/three-d: bevel profiles from edge-on silhouettes (they scale with width and
+          height independently; a bevel is at most half the smaller side wide); the front face lies in the
+          shape's plane, the top bevel's outline its height behind it, then the extrusion and the bottom
+          bevel. The shape's line is part of the body: the body reaches to the line's outer edge, the sides
+          take the line's color unless extrusionClr is set, and so do the outer band of the bevels and of the
+          back. The contour is an unlit tube of contourW (black by default) around the rims, creases and
+          silhouettes; a face coming towards the eye covers all but r·cos α of its inner half, and the body
+          moves back so that the tube does not reach in front of the shape's plane. Materials were fitted
+          against threePt: matte without highlights, plastic and metal with stronger and tighter ones, metals
+          partly tinted; powders, dkEdge and softEdge fade towards the silhouette, powders whiten there; flat
+          ignores the light's direction; legacyWireframe draws every mesh edge, hidden ones included. Pictures
+          and gradients keep their texture on the bevel. clear is approximated by its fitted shading without
+          transparency.
 
   - id: picture
     title: Pictures and media
