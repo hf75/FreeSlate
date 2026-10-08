@@ -1036,6 +1036,8 @@
   function stop() {
     if (!show) return;
     clearTimeout(show.timer);
+    clearInterval(show.clock);
+    if (show.presenter && !show.presenter.closed) show.presenter.close();
     if (show.animation) show.animation.reset();
     for (const [slide, placeholder] of show.placeholders) {
       slide.style.transform = slide.style.opacity = slide.style.clipPath = slide.style.zIndex = '';
@@ -1098,6 +1100,7 @@
     show.animation = animation;
     show.busy = false;
     if (options.atEnd) idle(); else animation.start(idle);
+    updatePresenter();
   }
 
   function playSound(spec) {
@@ -1121,7 +1124,7 @@
   function next() {
     if (!show || show.busy) return;
     if (show.end.style.display === 'block') { stop(); return; }
-    if (show.animation && show.animation.next()) return;
+    if (show.animation && show.animation.next()) { setTimeout(updatePresenter, 0); return; }
     if (show.position < show.sequence.length - 1) {
       show.history.push(show.position);
       goTo(show.sequence[++show.position]);
@@ -1167,13 +1170,97 @@
     return true;
   }
 
+  /* ---------------------------------------------------------------- presenter view */
+
+  /**
+   * A second window with the current and the next slide, the speaker notes, a timer and navigation (Alt+F5 or
+   * V during the show). It is filled from this document: styles and glyph outlines are copied once, the slides
+   * are cloned whenever the show moves on.
+   */
+  function openPresenter() {
+    if (!show) return;
+    if (show.presenter && !show.presenter.closed) { show.presenter.focus(); return; }
+    const w = window.open('', 'freeslate-presenter', 'width=1100,height=720');
+    if (!w) return;
+    show.presenter = w;
+    show.started = show.started || Date.now();
+    const styles = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+    const glyphs = document.querySelector('svg.glyphs');
+    w.document.open();
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Presenter view</title><style>${styles}
+      body{margin:0;background:#1f1f1f;color:#eee;font:15px system-ui,sans-serif;display:grid;grid-template-columns:62% 38%;grid-template-rows:1fr auto;height:100vh;overflow:hidden}
+      .pv-current,.pv-next{position:relative;overflow:hidden;margin:16px;background:#000}
+      .pv-side{display:grid;grid-template-rows:auto 1fr;min-height:0}
+      .pv-next{height:38vh;margin-bottom:8px}
+      .pv-notes{margin:8px 16px 16px;overflow:auto;font-size:20px;line-height:1.4;background:#2b2b2b;padding:12px;border-radius:6px}
+      .pv-bar{grid-column:1/3;display:flex;gap:16px;align-items:center;padding:8px 16px;background:#111}
+      .pv-bar button{background:#444;color:#fff;border:0;border-radius:4px;padding:6px 14px;font-size:15px;cursor:pointer}
+      .pv-label{position:absolute;left:8px;top:6px;z-index:5;font-size:12px;color:#aaa}
+      .pv-frame{position:absolute;left:0;top:0;transform-origin:0 0}
+      .pv-frame>.slide{margin:0!important;display:block!important;opacity:1!important;outline:none!important}
+      .pv-frame .fs-media{display:none}
+      .pv-timer{font-size:22px;font-variant-numeric:tabular-nums}
+    </style></head><body>
+      <div class="pv-current"><div class="pv-frame"></div></div>
+      <div class="pv-side"><div class="pv-next"><span class="pv-label">Next</span><div class="pv-frame"></div></div><div class="pv-notes"></div></div>
+      <div class="pv-bar"><button data-do="previous">\u25C0</button><button data-do="next">\u25B6</button>
+        <span class="pv-count"></span><span class="pv-timer">0:00:00</span><button data-do="stop">End show</button></div>
+      ${glyphs ? glyphs.outerHTML : ''}</body></html>`);
+    w.document.close();
+    w.document.addEventListener('click', e => {
+      const action = e.target.closest('[data-do]');
+      if (action) ({ next, previous, stop })[action.getAttribute('data-do')]();
+    });
+    w.document.addEventListener('keydown', e => onKey(e));
+    w.addEventListener('resize', updatePresenter);
+    clearInterval(show.clock);
+    show.clock = setInterval(() => {
+      if (!show || !show.presenter || show.presenter.closed) return;
+      const s = Math.floor((Date.now() - show.started) / 1000);
+      const timer = show.presenter.document.querySelector('.pv-timer');
+      if (timer) timer.textContent = `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }, 1000);
+    updatePresenter();
+  }
+
+  /** Shows the current state in the presenter window. */
+  function updatePresenter() {
+    const w = show && show.presenter;
+    if (!w || w.closed) return;
+    const d = w.document;
+    const place = (box, slide) => {
+      const frame = box.querySelector('.pv-frame');
+      frame.innerHTML = '';
+      if (!slide) return;
+      const copy = slide.cloneNode(true);
+      copy.removeAttribute('id');
+      copy.style.transform = copy.style.opacity = copy.style.clipPath = copy.style.zIndex = '';
+      frame.appendChild(copy);
+      const s = Math.min(box.clientWidth / W, box.clientHeight / H);
+      frame.style.transform = `translate(${(box.clientWidth - W * s) / 2}px,${(box.clientHeight - H * s) / 2}px) scale(${s})`;
+    };
+    place(d.querySelector('.pv-current'), show.current);
+    const nextIndex = show.sequence[show.position + 1];
+    place(d.querySelector('.pv-next'), nextIndex !== undefined ? slides[nextIndex] : null);
+    const notes = show.current && show.current.querySelector('.notes');
+    d.querySelector('.pv-notes').innerHTML = notes ? notes.innerHTML : '<i>No notes</i>';
+    d.querySelector('.pv-count').textContent = `Slide ${show.index + 1} of ${slides.length}`;
+  }
+
   /* ---------------------------------------------------------------- input */
 
-  document.addEventListener('keydown', e => {
+  document.addEventListener('keydown', e => onKey(e));
+
+  function onKey(e) {
     if (!show) {
-      if (e.key === 'F5') { e.preventDefault(); start(e.shiftKey ? visibleSlide() : order()[0]); }
+      if (e.key === 'F5') {
+        e.preventDefault();
+        start(e.shiftKey ? visibleSlide() : order()[0]);
+        if (e.altKey) openPresenter();
+      }
       return;
     }
+    if (e.key === 'v' || e.key === 'V') { openPresenter(); return; }
     const key = e.key;
     if (/^[0-9]$/.test(key)) { show.digits += key; return; }
     if (key === 'Enter' && show.digits) { const n = parseInt(show.digits, 10) - 1; show.digits = ''; if (n >= 0 && n < slides.length) jump(n, false); return; }
@@ -1186,7 +1273,7 @@
     else if (key === 'End') jump(show.sequence[show.sequence.length - 1], false);
     else if (key === 'b' || key === 'B' || key === '.') blank('#000');
     else if (key === 'w' || key === 'W' || key === ',') blank('#fff');
-  });
+  }
 
   function blank(color) {
     const c = show.cover;
@@ -1241,5 +1328,5 @@
   button.addEventListener('click', e => { e.stopPropagation(); start(e.shiftKey ? visibleSlide() : order()[0]); });
   document.body.appendChild(button);
 
-  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous };
+  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter };
 })();
