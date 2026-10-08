@@ -67,7 +67,12 @@ public sealed class SvgPaint
             _ => $" stroke-linejoin=\"miter\" stroke-miterlimit=\"{Units.Css(Math.Max(1, outline.MiterLimit))}\"",
         });
         if (Dash(outline.Dash) is { } dash)
-            sb.Append($" stroke-dasharray=\"{string.Join(' ', dash.Select(d => Units.Css(d * width)))}\"");
+        {
+            // PowerPoint's dash lengths include round and square caps; SVG adds the caps to every dash.
+            var capped = outline.Cap is "rnd" or "sq";
+            var lengths = dash.Select((d, i) => i % 2 == 0 ? (capped ? Math.Max(0, d - 1) : d) : (capped ? d + 1 : d));
+            sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css(d * width)))}\"");
+        }
         return sb.ToString();
     }
 
@@ -104,14 +109,7 @@ public sealed class SvgPaint
     string Gradient(GradientFill g, double w, double h, StringBuilder defs, double shapeRotation)
     {
         var id = NewId("g");
-        var stops = new StringBuilder();
-        foreach (var s in LinearLightStops(g.Stops))
-        {
-            stops.Append($"<stop offset=\"{Units.Css4(s.Position)}\" stop-color=\"{s.Color.ToHex()}\"");
-            if (s.Color.A < 0.999)
-                stops.Append($" stop-opacity=\"{Units.Css4(s.Color.A)}\"");
-            stops.Append("/>");
-        }
+        var stops = StopMarkup(PowerPointStops(g.Stops, g.Bell));
 
         var counterRotation = g.RotateWithShape ? "" : $" rotate({Units.Css(-shapeRotation)} {Units.Css(w / 2)} {Units.Css(h / 2)})";
         if (g.Angle is { } angle)
@@ -132,46 +130,137 @@ public sealed class SvgPaint
                          (counterRotation.Length > 0 ? $" gradientTransform=\"{counterRotation.Trim()}\"" : "");
             }
             defs.Append($"<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" {coords}>{stops}</linearGradient>");
+            return id;
         }
-        else
-        {
-            // Path gradient: from the focus rectangle (offset 0) to the edge of the tile rectangle (offset 1).
-            var (fl, ft, fr, fb) = g.FocusRect;
-            var (tl, tt, tr, tb) = g.TileRect;
-            var cx = w * (fl + (1 - fr)) / 2;
-            var cy = h * (ft + (1 - fb)) / 2;
-            double[] xs = [w * tl, w * (1 - tr)];
-            double[] ys = [h * tt, h * (1 - tb)];
-            var r = xs.SelectMany(x => ys.Select(y => Math.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)))).Max();
-            defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(cx)}\" cy=\"{Units.Css(cy)}\" r=\"{Units.Css(Math.Max(r, 1))}\">{stops}</radialGradient>");
-        }
+
+        var (fl, ft, fr, fb) = g.FocusRect;
+        var (tl, tt, tr, tb) = g.TileRect;
+        if (g.Path is "rect" or "shape")
+            return RectGradient(g, id, w, h, defs);
+
+        // Circle: from the focus rectangle (offset 0) to the edge of the tile rectangle (offset 1).
+        var cx = w * (fl + (1 - fr)) / 2;
+        var cy = h * (ft + (1 - fb)) / 2;
+        double[] xs = [w * tl, w * (1 - tr)];
+        double[] ys = [h * tt, h * (1 - tb)];
+        var r = xs.SelectMany(x => ys.Select(y => Math.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)))).Max();
+        defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(cx)}\" cy=\"{Units.Css(cy)}\" r=\"{Units.Css(Math.Max(r, 1))}\">{stops}</radialGradient>");
         return id;
     }
 
     /// <summary>
-    /// PowerPoint blends gradient colors in linear light, browsers in sRGB; intermediate stops computed in linear
-    /// light make the browser's interpolation follow PowerPoint's curve.
+    /// A rectangular path gradient (path="rect"; "shape" uses the same construction): concentric rectangles from
+    /// the focus rectangle (offset 0) to the tile rectangle (offset 1), drawn exactly as four trapezoids with linear
+    /// gradients perpendicular to their side, inside a pattern the size of the shape.
     /// </summary>
-    static IEnumerable<GradientStop> LinearLightStops(List<GradientStop> stops)
+    string RectGradient(GradientFill g, string id, double w, double h, StringBuilder defs)
     {
-        const int Steps = 8;
-        static double ToLinear(double c) => c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-        static double ToSrgb(double c) => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.Pow(c, 1 / 2.4) - 0.055;
-
-        for (var i = 0; i < stops.Count; i++)
+        var (fl, ft, fr, fb) = g.FocusRect;
+        var (tl, tt, tr, tb) = g.TileRect;
+        var focus = (L: w * fl, T: h * ft, R: w * (1 - fr), B: h * (1 - fb));
+        var tile = (L: w * tl, T: h * tt, R: w * (1 - tr), B: h * (1 - tb));
+        var stops = PowerPointStops(g.Stops, g.Bell);
+        var markup = StopMarkup(stops);
+        var outer = stops[^1].Color;
+        var inner = stops[0].Color;
+        var sb = new StringBuilder();
+        sb.Append($"<rect x=\"-1\" y=\"-1\" width=\"{Units.Css(w + 2)}\" height=\"{Units.Css(h + 2)}\"{Color("fill", outer)}/>");
+        void Side(string sideId, (double X1, double Y1, double X2, double Y2) vector, params (double X, double Y)[] points)
         {
-            yield return stops[i];
-            if (i + 1 == stops.Count)
-                break;
-            var (a, b) = (stops[i], stops[i + 1]);
-            for (var k = 1; k < Steps; k++)
+            if (Math.Abs(vector.X2 - vector.X1) + Math.Abs(vector.Y2 - vector.Y1) < 1e-6)
+                return;
+            defs.Append($"<linearGradient id=\"{sideId}\" gradientUnits=\"userSpaceOnUse\" x1=\"{Units.Css(vector.X1)}\" y1=\"{Units.Css(vector.Y1)}\" x2=\"{Units.Css(vector.X2)}\" y2=\"{Units.Css(vector.Y2)}\">{markup}</linearGradient>");
+            sb.Append($"<path d=\"M{string.Join("L", points.Select(p => $"{Units.Css(p.X)} {Units.Css(p.Y)}"))}Z\" fill=\"url(#{sideId})\"/>");
+        }
+        Side(NewId("g"), (0, focus.T, 0, tile.T), (tile.L, tile.T), (tile.R, tile.T), (focus.R, focus.T), (focus.L, focus.T));
+        Side(NewId("g"), (focus.R, 0, tile.R, 0), (tile.R, tile.T), (tile.R, tile.B), (focus.R, focus.B), (focus.R, focus.T));
+        Side(NewId("g"), (0, focus.B, 0, tile.B), (tile.R, tile.B), (tile.L, tile.B), (focus.L, focus.B), (focus.R, focus.B));
+        Side(NewId("g"), (focus.L, 0, tile.L, 0), (tile.L, tile.B), (tile.L, tile.T), (focus.L, focus.T), (focus.L, focus.B));
+        if (focus.R - focus.L > 1e-6 && focus.B - focus.T > 1e-6)
+            sb.Append($"<rect x=\"{Units.Css(focus.L)}\" y=\"{Units.Css(focus.T)}\" width=\"{Units.Css(focus.R - focus.L)}\" height=\"{Units.Css(focus.B - focus.T)}\"{Color("fill", inner)}/>");
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
+        return id;
+    }
+
+    static string StopMarkup(IEnumerable<GradientStop> stops)
+    {
+        var sb = new StringBuilder();
+        foreach (var s in stops)
+        {
+            sb.Append($"<stop offset=\"{Units.Css4(s.Position)}\" stop-color=\"{s.Color.ToHex()}\"");
+            if (s.Color.A < 0.999)
+                sb.Append($" stop-opacity=\"{Units.Css4(s.Color.A)}\"");
+            sb.Append("/>");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// The stops as the browser should interpolate them to look like PowerPoint (measured with gradient strips and
+    /// PowerPoint's own EMF export, catalog: fill.gradient). A two-color gradient (stops at 0 and 1) and a symmetric
+    /// three-color one (A, B, A) are drawn like a GDI+ gradient with a sigma bell blend (normal distribution,
+    /// σ = 0.25, normalized to 0…1) mixed in linear light; every other gradient is interpolated linearly in sRGB,
+    /// which is what browsers do anyway.
+    /// </summary>
+    public static List<GradientStop> PowerPointStops(List<GradientStop> stops, bool bell)
+    {
+        if (stops.Count == 0 || !bell)
+            return stops;
+        var twoColor = stops.Count == 2;
+        var symmetric = stops.Count == 3;
+        if (!twoColor && !symmetric)
+            return stops;
+
+        // A to B over [start, end] with the bell; the second half of a symmetric gradient runs back from B to A.
+        const int Steps = 32;
+        var result = new List<GradientStop>();
+        void Segment(RgbColor a, RgbColor b, double start, double end, bool back)
+        {
+            for (var k = 0; k <= Steps; k++)
             {
-                var t = (double)k / Steps;
-                double Mix(double x, double y) => ToSrgb(ToLinear(x) + (ToLinear(y) - ToLinear(x)) * t);
-                var color = new RgbColor(Mix(a.Color.R, b.Color.R), Mix(a.Color.G, b.Color.G), Mix(a.Color.B, b.Color.B), a.Color.A + (b.Color.A - a.Color.A) * t);
-                yield return new GradientStop(a.Position + (b.Position - a.Position) * t, color);
+                var u = (double)k / Steps;
+                var position = start + (end - start) * u;
+                result.Add(new GradientStop(position, Mix(a, b, Bell(back ? 1 - u : u))));
             }
         }
+        if (twoColor)
+        {
+            Segment(stops[0].Color, stops[1].Color, 0, 1, back: false);
+        }
+        else
+        {
+            var focus = stops[1].Position;
+            Segment(stops[0].Color, stops[1].Color, 0, focus, back: false);
+            Segment(stops[2].Color, stops[1].Color, focus, 1, back: true);
+        }
+        return result;
+    }
+
+    /// <summary>GDI+ sigma bell blend: the normal distribution's CDF with σ = 0.25 around 0.5, scaled to 0…1.</summary>
+    static double Bell(double t)
+    {
+        static double Cdf(double z) => 0.5 * (1 + Erf(z / Math.Sqrt(2)));
+        var low = Cdf(-2);
+        return Math.Clamp((Cdf((t - 0.5) / 0.25) - low) / (1 - 2 * low), 0, 1);
+    }
+
+    /// <summary>The error function (Abramowitz and Stegun 7.1.26, error below 1.5e-7).</summary>
+    static double Erf(double x)
+    {
+        var sign = Math.Sign(x);
+        x = Math.Abs(x);
+        var t = 1 / (1 + 0.3275911 * x);
+        var y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.Exp(-x * x);
+        return sign * y;
+    }
+
+    /// <summary>Mixes two colors in linear light.</summary>
+    static RgbColor Mix(RgbColor a, RgbColor b, double t)
+    {
+        static double ToLinear(double c) => c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        static double ToSrgb(double c) => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.Pow(Math.Max(c, 0), 1 / 2.4) - 0.055;
+        double M(double x, double y) => ToSrgb(ToLinear(x) + (ToLinear(y) - ToLinear(x)) * t);
+        return new RgbColor(M(a.R, b.R), M(a.G, b.G), M(a.B, b.B), a.A + (b.A - a.A) * t);
     }
 
     string Picture(PictureFill p, double w, double h, StringBuilder defs)

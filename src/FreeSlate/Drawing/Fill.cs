@@ -22,7 +22,14 @@ public sealed record GradientFill(
     string? Path,
     (double L, double T, double R, double B) FocusRect,
     (double L, double T, double R, double B) TileRect,
-    bool RotateWithShape) : Fill;
+    bool RotateWithShape) : Fill
+{
+    /// <summary>
+    /// PowerPoint draws this gradient with a bell-shaped blend in linear light: two stops at 0 and 1, or three
+    /// stops A, B, A at 0, f, 1 (measured; other gradients interpolate linearly in sRGB).
+    /// </summary>
+    public bool Bell { get; init; }
+}
 
 public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill;
 
@@ -63,10 +70,13 @@ public static class FillReader
             case "solidFill":
                 return colors.ResolveChild(fill) is { } c ? new SolidFill(c) : Fill.None;
             case "gradFill":
-                var stops = fill.Element(Ns.A + "gsLst")?.Elements(Ns.A + "gs")
+                var fileOrder = fill.Element(Ns.A + "gsLst")?.Elements(Ns.A + "gs")
                     .Select(gs => new GradientStop((gs.Long("pos") ?? 0) / 100000.0, colors.ResolveChild(gs) ?? RgbColor.Black))
-                    .OrderBy(s => s.Position)
                     .ToList() ?? [];
+                var stops = fileOrder.OrderBy(s => s.Position).ToList();
+                var bell = (stops.Count == 2 && stops[0].Position <= 1e-6 && stops[1].Position >= 1 - 1e-6)
+                           || (stops.Count == 3 && stops[0].Position <= 1e-6 && stops[2].Position >= 1 - 1e-6
+                               && stops[1].Position > 1e-6 && stops[1].Position < 1 - 1e-6 && stops[0].Color == stops[2].Color);
                 if (stops.Count == 0)
                     return Fill.None;
                 var lin = fill.Element(Ns.A + "lin");
@@ -78,7 +88,7 @@ public static class FillReader
                     path?.Str("path"),
                     Rect(path?.Element(Ns.A + "fillToRect")),
                     Rect(fill.Element(Ns.A + "tileRect")),
-                    fill.Bool("rotWithShape") ?? true);
+                    fill.Bool("rotWithShape") ?? true) { Bell = bell };
             case "pattFill":
                 return new PatternFill(
                     fill.Str("prst") ?? "pct5",

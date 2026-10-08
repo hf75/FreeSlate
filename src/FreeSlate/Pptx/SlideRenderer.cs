@@ -139,19 +139,27 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
         // A picture can have a fill of its own behind it, visible through its transparent parts.
         var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, style, placement.GroupFill) : Fill.None;
+        var axisAligned = IsAxisAligned(ToPx(matrix));
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
             var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
+            // PowerPoint draws axis-aligned rectangles and lines without antialiasing: every edge goes to the
+            // nearest pixel, which is what crispEdges does (measured on fills and outlines at fractional positions).
+            var crisp = axisAligned && IsRectilinear(path) ? " shape-rendering=\"crispEdges\"" : "";
             if (background is not NoFill && path.Fill != "none")
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"/>");
-            var stroke = path.Stroke && !outsetBorder ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"";
-            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}/>");
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+            var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
+            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"";
+            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}{crisp}/>");
+            if (compound)
+                paths.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs)));
         }
         if (outsetBorder)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
-            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs)}/>");
+            var crisp = axisAligned ? " shape-rendering=\"crispEdges\"" : "";
+            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs)}{crisp}/>");
         }
 
         html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
@@ -225,6 +233,36 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
+    }
+
+    /// <summary>The transform keeps horizontal and vertical lines horizontal and vertical (rotations by multiples of 90°).</summary>
+    static bool IsAxisAligned(Matrix m) =>
+        (Math.Abs(m.B) < 1e-9 && Math.Abs(m.C) < 1e-9) || (Math.Abs(m.A) < 1e-9 && Math.Abs(m.D) < 1e-9);
+
+    /// <summary>The path consists of horizontal and vertical straight segments only.</summary>
+    static bool IsRectilinear(EvaluatedPath path)
+    {
+        (double X, double Y)? last = null;
+        foreach (var segment in path.Segments)
+        {
+            switch (segment.Command)
+            {
+                case 'M':
+                    last = (segment.Values[0], segment.Values[1]);
+                    break;
+                case 'L':
+                    var point = (X: segment.Values[0], Y: segment.Values[1]);
+                    if (last is { } p && Math.Abs(p.X - point.X) > 1e-6 && Math.Abs(p.Y - point.Y) > 1e-6)
+                        return false;
+                    last = point;
+                    break;
+                case 'Z':
+                    break;
+                default:
+                    return false;
+            }
+        }
+        return path.Segments.Count > 1;
     }
 
     /// <summary>A picture that takes the frame's position when it has none of its own (OLE and control previews).</summary>

@@ -21,7 +21,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
-| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 0 |
+| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 1 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 6 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **66** | **27** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **66** | **28** |
 
 <a id="package"></a>
 
@@ -528,6 +528,8 @@ p:sld/@show="0".
 
 **Rendering:** Each shape is an absolutely positioned element with an SVG for geometry, fill, line and effects plus a text layer.
 
+**Office behaviour:** Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces.
+
 **Elements (8):** [`a:cNvSpPr`](../format/namespaces/a.md#acnvsppr), [`a:nvSpPr`](../format/namespaces/a.md#anvsppr), [`a:sp`](../format/namespaces/a.md#asp), [`a:spPr`](../format/namespaces/a.md#asppr), [`p:cNvSpPr`](../format/namespaces/p.md#pcnvsppr), [`p:nvSpPr`](../format/namespaces/p.md#pnvsppr), [`p:sp`](../format/namespaces/p.md#psp), [`p:spPr`](../format/namespaces/p.md#psppr)
 
 **Specification:** §19.3.1.13 Non-Visual Drawing Properties for a Shape (p.2581); §19.3.1.34 Non-Visual Properties for a Shape (p.2593); §19.3.1.43 Shape (p.2598); §19.3.1.44 Shape Properties (p.2598); §20.1.2.2.9 Non-Visual Shape Drawing Properties (p.2744); §20.1.2.2.29 Non-Visual Properties for a Shape (p.2757) and 2 more
@@ -708,7 +710,7 @@ p:sld/@show="0".
 
 **Rendering:** SVG linear and radial gradients in the shape's box (lin angle with scaled, rotWithShape); circle and rect paths map to radial gradients and transforms, path="shape" needs an approximation. Browsers interpolate in sRGB, so the engine adds intermediate stops computed in linear light.
 
-**Office behaviour:** Measured with the fidelity tests: PowerPoint blends gradient colors in linear light (blue to white passes through a pale lavender, not a saturated light blue).
+**Office behaviour:** Measured with gradient strips and PowerPoint's own EMF export: a two-color gradient (stops at 0 and 1) and a symmetric three-color gradient (A, B, A) use a GDI+ sigma bell blend (normal distribution CDF, sigma 0.25, normalized to 0 to 1) mixed in linear light; all other gradients interpolate linearly in sRGB. Rectangular path gradients are concentric rectangles from fillToRect to tileRect.
 
 **Elements (7):** [`a:fillToRect`](../format/namespaces/a.md#afilltorect), [`a:gradFill`](../format/namespaces/a.md#agradfill), [`a:gs`](../format/namespaces/a.md#ags), [`a:gsLst`](../format/namespaces/a.md#agslst), [`a:lin`](../format/namespaces/a.md#alin), [`a:path`](../format/namespaces/a.md#apath), [`a:tileRect`](../format/namespaces/a.md#atilerect)
 
@@ -766,7 +768,7 @@ p:sld/@show="0".
 | [Dash styles](#line.dash) | P1 | ●●○○○ | partial | 3 | 1 |
 | [Joins and caps](#line.joinCap) | P1 | ●○○○○ | partial | 3 | 2 |
 | [Arrowheads](#line.ends) | P1 | ●●●○○ | partial | 2 | 0 |
-| [Compound lines](#line.compound) | P2 | ●●●○○ | todo | 0 | 0 |
+| [Compound lines](#line.compound) | P2 | ●●●○○ | done | 0 | 0 |
 | [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | todo | 0 | 0 |
 
 <a id="line.basic"></a>
@@ -827,7 +829,7 @@ p:sld/@show="0".
 
 ### Compound lines
 
-`line.compound` · P2 · difficulty 3 · todo
+`line.compound` · P2 · difficulty 3 · done
 
 a:ln/@cmpd (double, thick-thin, thin-thick, triple).
 

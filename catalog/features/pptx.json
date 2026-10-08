@@ -3037,6 +3037,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Each shape is an absolutely positioned element with an SVG for geometry, fill, line and effects plus a text layer.",
+      "office": "Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces.",
       "elements": [
         "a:cNvSpPr",
         "a:nvSpPr",
@@ -3912,7 +3913,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "SVG linear and radial gradients in the shape's box (lin angle with scaled, rotWithShape); circle and rect paths map to radial gradients and transforms, path=\"shape\" needs an approximation. Browsers interpolate in sRGB, so the engine adds intermediate stops computed in linear light.",
-      "office": "Measured with the fidelity tests: PowerPoint blends gradient colors in linear light (blue to white passes through a pale lavender, not a saturated light blue).",
+      "office": "Measured with gradient strips and PowerPoint's own EMF export: a two-color gradient (stops at 0 and 1) and a symmetric three-color gradient (A, B, A) use a GDI+ sigma bell blend (normal distribution CDF, sigma 0.25, normalized to 0 to 1) mixed in linear light; all other gradients interpolate linearly in sRGB. Rectangular path gradients are concentric rectangles from fillToRect to tileRect.",
       "elements": [
         "a:fillToRect",
         "a:gradFill",
@@ -4290,7 +4291,7 @@
       "description": "a:ln/@cmpd (double, thick-thin, thin-thick, triple).",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Several parallel strokes or a stroke with a mask.",
       "elements": [],
       "spec": [],
