@@ -1058,7 +1058,18 @@ areas:
         elements: [a:rtl]
         priority: P2
         difficulty: 4
+        status: done
         strategy: Bidi algorithm (UAX 9) in our layout engine, complex-script fonts, rtl paragraphs and columns.
+        office: >-
+          Measured with generated/text-rtl: paragraph levels follow pPr rtl, not the text (UAX #9 weak,
+          neutral and implicit rules); a neutral between text of two directions takes the direction of its
+          run's language (a:rtl, else lang) — PowerPoint keeps the space of a de-DE run 'PowerPoint ' with it
+          in an Arabic paragraph and mirrors a bracket of a Hebrew run. Right-to-left paragraphs start on the
+          right: left margin, indent and bullet are measured from the right edge, the bullet reads right to
+          left ('1.' shows as '.1'), alignment l and r stay absolute; justified lines stretch their spaces.
+          Right-to-left runs are shaped right to left (HarfBuzz mirrors brackets) and drawn whole by the
+          browser below 30 pixels per em. Tabs in lines with right-to-left text count their width only; right-
+          to-left tables and columns see table.structure and text.columns.
 
       - id: text.eastAsian
         title: East Asian typography

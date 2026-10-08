@@ -24,7 +24,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 2 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 2 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 3 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 12 | 6 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **43** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **44** |
 
 <a id="package"></a>
 
@@ -1229,7 +1229,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [WordArt transforms](#text.warp) | P2 | ●●●●● | partial | 1 | 0 |
 | [3D text](#text.threeD) | P3 | ●●●●● | todo | 1 | 1 |
 | [Equations](#text.math) | P2 | ●●●●○ | partial | 125 | 69 |
-| [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | todo | 1 | 0 |
+| [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | done | 1 | 0 |
 | [East Asian typography](#text.eastAsian) | P2 | ●●●●○ | todo | 1 | 1 |
 
 <a id="text.body"></a>
@@ -1506,9 +1506,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 ### Right-to-left and complex scripts
 
-`text.rtl` · P2 · difficulty 4 · todo
+`text.rtl` · P2 · difficulty 4 · done
 
 **Rendering:** Bidi algorithm (UAX 9) in our layout engine, complex-script fonts, rtl paragraphs and columns.
+
+**Office behaviour:** Measured with generated/text-rtl: paragraph levels follow pPr rtl, not the text (UAX #9 weak, neutral and implicit rules); a neutral between text of two directions takes the direction of its run's language (a:rtl, else lang) — PowerPoint keeps the space of a de-DE run 'PowerPoint ' with it in an Arabic paragraph and mirrors a bracket of a Hebrew run. Right-to-left paragraphs start on the right: left margin, indent and bullet are measured from the right edge, the bullet reads right to left ('1.' shows as '.1'), alignment l and r stay absolute; justified lines stretch their spaces. Right-to-left runs are shaped right to left (HarfBuzz mirrors brackets) and drawn whole by the browser below 30 pixels per em. Tabs in lines with right-to-left text count their width only; right- to-left tables and columns see table.structure and text.columns.
 
 **Elements (1):** [`a:rtl`](../format/namespaces/a.md#artl)
 
