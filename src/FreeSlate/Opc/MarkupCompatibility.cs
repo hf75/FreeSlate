@@ -47,10 +47,14 @@ public static class MarkupCompatibility
         }
     }
 
+    /// <summary>
+    /// Office 2010 markup the engine handles in place of its fallback: transitions and timing for the player, and ink
+    /// (p:contentPart), drawn from its InkML instead of the fallback's picture.
+    /// </summary>
     static bool IsSlideShow(XElement choice)
     {
         var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return choice.Elements().Any() && choice.Elements().All(e => e.Name.LocalName is "transition" or "timing")
+        return choice.Elements().Any() && choice.Elements().All(e => e.Name.LocalName is "transition" or "timing" or "contentPart")
                && requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns && (Supported.Contains(ns.NamespaceName) || SlideShow.Contains(ns.NamespaceName)));
     }
 

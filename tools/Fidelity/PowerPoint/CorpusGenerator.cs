@@ -63,6 +63,7 @@ public static class CorpusGenerator
         ("colormap", ColorMapDeck.Build, true),
         ("text-rtl", RtlDeck.Build, false),
         ("text-eastasian", EastAsianDeck.Build, false),
+        ("ink", InkDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -75,6 +76,7 @@ public static class CorpusGenerator
         ["tables"] = TablesDeck.Patch,
         ["effects"] = EffectsDeck.Patch,
         ["text-eastasian"] = EastAsianDeck.Patch,
+        ["ink"] = InkDeck.Patch,
     };
 
     /// <summary>Generates the named decks, or all of them.</summary>

@@ -75,7 +75,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     if (isSlide || Placeholders.Ph(element) == null)
                         RenderGraphicFrame(element, part, html, placement);
                     break;
-                // contentPart (ink): not rendered yet.
+                case "contentPart":
+                    RenderContentPart(element, part, html, placement);
+                    break;
             }
         }
     }
@@ -602,6 +604,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     /// <summary>The diagram drawing uses its own namespace for sp, spPr, style and txBody; map it to PresentationML.</summary>
+    /// <summary>Ink (p:contentPart with an InkML part, catalog: picture.ink) drawn into the part's box.</summary>
+    void RenderContentPart(XElement element, string part, StringBuilder html, Placement placement)
+    {
+        var xfrm = element.Element(P14 + "xfrm") ?? element.Element(Ns.P + "xfrm");
+        if (xfrm?.Element(Ns.A + "ext") == null || element.Attribute(Ns.R + "id") is not { } id)
+            return;
+        var package = slide.Presentation.Package;
+        if (package.Relationship(part, id.Value) is not { External: false } rel || !package.Exists(rel.Target))
+            return;
+        var ink = slide.Presentation.Load(rel.Target);
+        if (!Ink.IsInk(ink))
+            return;
+        var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
+        var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+        var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV));
+        var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
+        var markup = Ink.Render(ink, pw, ph);
+        if (markup.Length == 0)
+            return;
+        html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+        html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{markup}</svg></div>");
+    }
+
     static readonly XNamespace Cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing";
 
     /// <summary>Text defaults of the shapes being drawn (a chart's for its user shapes).</summary>
