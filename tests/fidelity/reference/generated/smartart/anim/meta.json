@@ -1,0 +1,22 @@
+{
+  "sha256": "7affeb76b3b20d436f24d648525b680d1d3c4871f15ca517bfe20db969893180",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "slides": [
+    {
+      "slide": 3,
+      "frames": 47,
+      "samples": [
+        0,
+        8,
+        16,
+        24,
+        32,
+        40,
+        46
+      ]
+    }
+  ]
+}

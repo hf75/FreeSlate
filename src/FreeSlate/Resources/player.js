@@ -113,7 +113,11 @@
         const [cx, cy] = apply(this.shapeMatrix, box.x + box.width / 2, box.y + box.height / 2);
         this.base = { x: cx / W, y: cy / H, w: box.width / W, h: box.height / H };
       } else {
-        this.matrix = parseMatrix(element.style.transform);
+        // A shape inside a SmartArt frame is placed in the frame's coordinates.
+        const host = element.parentElement && element.parentElement.closest('.sp');
+        this.host = host ? parseMatrix(host.style.transform) : null;
+        const own = parseMatrix(element.style.transform);
+        this.matrix = this.host ? multiply(this.host, own) : own;
         this.originalTransform = element.style.transform;
         const w = parseFloat(element.style.width) || element.offsetWidth || 0;
         const h = parseFloat(element.style.height) || element.offsetHeight || 0;
@@ -160,7 +164,8 @@
           const [cx, cy] = apply(this.matrix, w / 2, h / 2);
           const kx = (b.w > 0 ? s.w / b.w : 1) * s.sx, ky = (b.h > 0 ? s.h / b.h : 1) * s.sy;
           const change = multiply(translate((s.x + s.mx) * W, (s.y + s.my) * H), multiply(rotate(s.rot), multiply(scale(kx, ky), translate(-cx, -cy))));
-          el.style.transform = css(multiply(change, this.matrix));
+          const placed = multiply(change, this.matrix);
+          el.style.transform = css(this.host ? multiply(invert(this.host), placed) : placed);
         } else {
           el.style.transform = this.originalTransform;
         }
@@ -228,6 +233,14 @@
     const keys = [];
     if (target.pRg) {
       for (let p = target.pRg[0]; p <= target.pRg[1]; p++) keys.push([`${target.spid}:p${p}`, () => shape.querySelector(`g[data-p="${p}"]`), true]);
+    } else if (target.graphic && target.graphic.kind === 'dgm') {
+      // A shape of a SmartArt by its model id, or the diagram's background and outline (bldStep bg).
+      if (target.graphic.bldStep === 'bg') {
+        shape.querySelectorAll(':scope > [data-dgm-bg]').forEach((el, i) => keys.push([`${target.spid}:bg${i}`, () => el, false]));
+      } else {
+        const id = String(target.graphic.id);
+        keys.push([`${target.spid}:${id}`, () => Array.from(shape.querySelectorAll('[data-mid]')).find(e => e.dataset.mid === id), false]);
+      }
     } else if (target.bg) {
       keys.push([`${target.spid}:bg`, () => shape.querySelector('g[data-bg]'), true]);
     } else {
@@ -1427,5 +1440,39 @@
     if (/^#cm-/.test(location.hash)) toggleComments(true);
   }
 
-  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments };
+  /**
+   * Draws slide index (in the document, outside the show) with its first `steps` main steps played and, at t ms,
+   * the following one; returns the end times of the main steps (ms from their start). For comparisons with
+   * PowerPoint's rendering of the animations.
+   */
+  const frames = new Map();
+  function frame(index, steps, t) {
+    if (!slides[index]) return null;
+    let animation = frames.get(index);
+    if (!animation) frames.set(index, animation = new SlideAnimation(slides[index], index));
+    const main = animation.timeline.steps;
+    animation.done = main.slice(0, Math.min(steps, main.length));
+    animation.render(t !== undefined && steps < main.length ? main[steps] : null, t || 0);
+    return main.map(step => step.end);
+  }
+
+  // ?frame=ms&fps=n#slide-N draws slide N as PowerPoint's video of the slide (n frames per second) shows it ms after
+  // the slide began: the main steps play one after another without waiting for clicks, with one frame between the
+  // first step and the second (measured; tools/Fidelity animate).
+  const frameParams = new URLSearchParams(location.search);
+  const frameSlide = /^#slide-(\d+)$/.exec(location.hash);
+  if (frameParams.get('frame') !== null && frameSlide) {
+    const index = +frameSlide[1] - 1;
+    const ends = frame(index, 0) || [];
+    const pause = 1000 / (+frameParams.get('fps') || 30);
+    let time = +frameParams.get('frame'), steps = 0;
+    // Frame times are thirds of milliseconds: a step that ends on a frame counts as ended there.
+    while (steps < ends.length && time >= ends[steps] - 0.01) {
+      time = Math.max(0, time - ends[steps++]);
+      if (steps === 1 && ends.length > 1) time = Math.max(0, time - pause);
+    }
+    frame(index, steps, time);
+  }
+
+  window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments, frame };
 })();

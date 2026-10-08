@@ -27,14 +27,14 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 4 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
-| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
+| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 2 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **51** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **52** |
 
 <a id="package"></a>
 
@@ -1938,7 +1938,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | done | 17 | 0 |
-| [SmartArt data model](#smartart.data) | P2 | ●●●○○ | todo | 27 | 5 |
+| [SmartArt data model](#smartart.data) | P2 | ●●●○○ | done | 27 | 5 |
 | [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | todo | 24 | 7 |
 | [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | todo | 13 | 9 |
 
@@ -1960,9 +1960,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt data model
 
-`smartart.data` · P2 · difficulty 3 · todo
+`smartart.data` · P2 · difficulty 3 · done
 
 **Rendering:** The text and structure of the nodes; needed for editing and for files without a drawing part.
+
+**Office behaviour:** PowerPoint keeps the laid-out shapes in the drawing part (smartart.drawing); the data model adds the diagram's own formatting: dgm:bg (fill and effects, e.g. a shadow) is drawn as a rectangle over the frame behind the shapes and dgm:whole (line and effects) on top of them (measured with generated/smartart: 99.2 %). The diagram is an element of its own sized like its frame, which animations of the whole diagram change; every shape carries the model id of its presentation point, which per-shape animations target (p:graphicEl/a:dgm with the drawing shape's model id; ids of data nodes or transitions animate nothing in PowerPoint, measured with its video export), and a:dgm bldStep=bg targets the background and outline. Checked against PowerPoint's video of generated/smartart slide 3 (background, a node fading, a node and its connector flying in, the rest appearing): 96.8 % (tools/Fidelity animate). The node structure (points, connections, presentation variables) only serves the layout engine for files without a drawing part (smartart.layout).
 
 **Elements (27):** [`dgm14:cNvPr`](../format/namespaces/dgm14.md#dgm14cnvpr), [`dgm14:recolorImg`](../format/namespaces/dgm14.md#dgm14recolorimg), [`dgm1611:autoBuNodeInfo`](../format/namespaces/dgm1611.md#dgm1611autobunodeinfo), [`dgm1611:autoBuNodeInfoLst`](../format/namespaces/dgm1611.md#dgm1611autobunodeinfolst), [`dgm1611:buPr`](../format/namespaces/dgm1611.md#dgm1611bupr), [`dgm1612:lstStyle`](../format/namespaces/dgm1612.md#dgm1612lststyle), [`dgm1612:spPr`](../format/namespaces/dgm1612.md#dgm1612sppr), [`dgm:animLvl`](../format/namespaces/dgm.md#dgmanimlvl), [`dgm:animOne`](../format/namespaces/dgm.md#dgmanimone), [`dgm:bg`](../format/namespaces/dgm.md#dgmbg), [`dgm:bulletEnabled`](../format/namespaces/dgm.md#dgmbulletenabled), [`dgm:chMax`](../format/namespaces/dgm.md#dgmchmax), [`dgm:chPref`](../format/namespaces/dgm.md#dgmchpref), [`dgm:cxn`](../format/namespaces/dgm.md#dgmcxn), [`dgm:cxnLst`](../format/namespaces/dgm.md#dgmcxnlst), [`dgm:dataModel`](../format/namespaces/dgm.md#dgmdatamodel), [`dgm:dir`](../format/namespaces/dgm.md#dgmdir), [`dgm:hierBranch`](../format/namespaces/dgm.md#dgmhierbranch), [`dgm:orgChart`](../format/namespaces/dgm.md#dgmorgchart), [`dgm:prSet`](../format/namespaces/dgm.md#dgmprset), [`dgm:presLayoutVars`](../format/namespaces/dgm.md#dgmpreslayoutvars), [`dgm:pt`](../format/namespaces/dgm.md#dgmpt), [`dgm:ptLst`](../format/namespaces/dgm.md#dgmptlst), [`dgm:resizeHandles`](../format/namespaces/dgm.md#dgmresizehandles), [`dgm:spPr`](../format/namespaces/dgm.md#dgmsppr), [`dgm:t`](../format/namespaces/dgm.md#dgmt), [`dgm:whole`](../format/namespaces/dgm.md#dgmwhole)
 
@@ -2140,6 +2142,8 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 `animation.build` · P1 · difficulty 3 · partial
 
 **Rendering:** Build text by paragraph and level, charts by series or category, SmartArt by node.
+
+**Office behaviour:** SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape (p:graphicEl with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the player animates each shape of the diagram on its own (checked with tools/Fidelity animate on generated/smartart). Charts by series or category (a:chart in p:graphicEl) still animate the whole chart.
 
 **Elements (11):** [`a:bldChart`](../format/namespaces/a.md#abldchart), [`a:bldDgm`](../format/namespaces/a.md#ablddgm), [`p:bldAsOne`](../format/namespaces/p.md#pbldasone), [`p:bldDgm`](../format/namespaces/p.md#pblddgm), [`p:bldGraphic`](../format/namespaces/p.md#pbldgraphic), [`p:bldLst`](../format/namespaces/p.md#pbldlst), [`p:bldOleChart`](../format/namespaces/p.md#pbldolechart), [`p:bldP`](../format/namespaces/p.md#pbldp), [`p:bldSub`](../format/namespaces/p.md#pbldsub), [`p:tmpl`](../format/namespaces/p.md#ptmpl), [`p:tmplLst`](../format/namespaces/p.md#ptmpllst)
 

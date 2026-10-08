@@ -24,6 +24,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         public (double X, double Y, double W, double H) Map(double x, double y, double w, double h) =>
             (OffX + (x - ChildX) * ScaleX, OffY + (y - ChildY) * ScaleY, w * ScaleX, h * ScaleY);
+
+        /// <summary>The slide transform of the element the shapes are drawn into (a SmartArt frame); null for the slide.</summary>
+        public Matrix? Container { get; init; }
+
+        /// <summary>A shape transform <paramref name="local"/> in this placement as a slide transform.</summary>
+        public Matrix OnSlide(Matrix local) => Container is { } container ? container.Then(local) : local;
     }
 
     /// <summary>The slide as a section element; <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.</summary>
@@ -73,7 +79,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     break;
                 case "graphicFrame":
                     if (isSlide || Placeholders.Ph(element) == null)
-                        RenderGraphicFrame(element, part, html, placement);
+                        RenderGraphicFrame(element, part, html, placement, isSlide);
                     break;
                 case "contentPart":
                     RenderContentPart(element, part, html, placement);
@@ -139,7 +145,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // A shape filled with the slide's background shows the part of the background behind it.
         if (shape.Name.LocalName == "sp" && shape.Bool("useBgFill") == true)
         {
-            var toShape = ToPx(matrix).Invert();
+            var toShape = ToPx(placement.OnSlide(matrix)).Invert();
             fill = new SlideFill(SlideBackground(), Units.ToPx(slide.Presentation.SlideWidth), Units.ToPx(slide.Presentation.SlideHeight),
                 (toShape.A, toShape.B, toShape.C, toShape.D, toShape.E, toShape.F));
         }
@@ -148,7 +154,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         var defs = new StringBuilder();
         var paths = new StringBuilder();
-        var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
+        var slideMatrix = placement.OnSlide(matrix);
+        var origin = (Units.ToPx(slideMatrix.E), Units.ToPx(slideMatrix.F));
         var ends = outline is { Visible: true }
             ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin))
             : "";
@@ -493,7 +500,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     /// <summary>Graphic frames: SmartArt, charts and tables (OLE objects follow).</summary>
-    void RenderGraphicFrame(XElement frame, string part, StringBuilder html, Placement placement)
+    void RenderGraphicFrame(XElement frame, string part, StringBuilder html, Placement placement, bool isSlide)
     {
         var xfrm = frame.Element(Ns.P + "xfrm");
         var data = frame.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
@@ -502,7 +509,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "relIds") is { } relIds)
         {
-            RenderDiagram(relIds, frame, part, html, placement);
+            RenderDiagram(relIds, frame, part, html, placement, isSlide);
             return;
         }
 
@@ -522,7 +529,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, 0, false, false));
             var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
             var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, true, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
             // Shapes drawn on the chart (c:userShapes, catalog: chart.userShapes), placed by their anchors.
             var package = slide.Presentation.Package;
@@ -547,7 +554,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
             var (svg, width, height) = Tables.Render(table);
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, true, part)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
     }
@@ -603,29 +610,65 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     /// <summary>
     /// SmartArt (catalog: smartart.drawing): PowerPoint saves the laid-out shapes in a drawing part, linked from
-    /// the data model's dsp:dataModelExt. Its shapes are drawn like slide shapes in the frame's coordinates.
+    /// the data model's dsp:dataModelExt. Its shapes are drawn like slide shapes into the frame, an element of its
+    /// own that animations of the whole diagram change; each shape carries its model id, which animations of single
+    /// shapes target (catalog: smartart.data). The data model's background (dgm:bg: fill and effects) lies behind
+    /// the shapes, its outline (dgm:whole: line and effects) on top of them (measured).
     /// </summary>
-    void RenderDiagram(XElement relIds, XElement frame, string part, StringBuilder html, Placement placement)
+    void RenderDiagram(XElement relIds, XElement frame, string part, StringBuilder html, Placement placement, bool isSlide)
     {
         var package = slide.Presentation.Package;
         var dataPart = relIds.Attribute(Ns.R + "dm") is { } dm ? package.Relationship(part, dm.Value)?.Target : null;
         if (dataPart == null || !package.Exists(dataPart))
             return;
-        var drawingId = slide.Presentation.Load(dataPart).Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
+        var dataModel = slide.Presentation.Load(dataPart).Root;
+        var drawingId = dataModel?.Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
         var drawingPart = drawingId != null ? package.Relationship(part, drawingId)?.Target : null;
-        if (drawingPart == null || !package.Exists(drawingPart))
+        if (dataModel == null || drawingPart == null || !package.Exists(drawingPart))
             return;
 
         var tree = slide.Presentation.Load(drawingPart).Root?.Element(Dsp + "spTree");
         if (tree == null)
             return;
-        var xfrm = frame.Element(Ns.P + "xfrm");
-        var (x, y, _, _, _, _, _) = ReadTransform(xfrm!);
-        var (bx, by, _, _) = placement.Map(x, y, 0, 0);
-        RenderTree(ToPresentationMl(tree), drawingPart, html, placement with { OffX = bx, OffY = by, ScaleX = 1, ScaleY = 1, ChildX = 0, ChildY = 0 }, isSlide: false);
+        var (x, y, w, h, _, _, _) = ReadTransform(frame.Element(Ns.P + "xfrm")!);
+        var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+        var box = placement.Transform.Then(Matrix.Translate(bx, by));
+        var inner = new Placement(Matrix.Identity, 0, 0, 1, 1, 0, 0, placement.GroupFill) { Container = placement.OnSlide(box) };
+        html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px;transform:{ToPx(box).Css()}\">");
+
+        // The diagram's own background and outline: a rectangle over the frame, each an element of its own, which
+        // the animation of the diagram's background targets (a:dgm bldStep="bg").
+        void Whole(XElement? formatting, bool outline)
+        {
+            if (formatting == null || !formatting.HasElements)
+                return;
+            var spPr = new XElement(Ns.P + "spPr",
+                new XElement(Ns.A + "xfrm", new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)),
+                    new XElement(Ns.A + "ext", new XAttribute("cx", (long)Math.Round(bw)), new XAttribute("cy", (long)Math.Round(bh)))),
+                new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                outline ? new XElement(Ns.A + "noFill") : formatting.Elements().Where(e => e.Name.LocalName.EndsWith("Fill", StringComparison.Ordinal)),
+                outline ? formatting.Element(Ns.A + "ln") : new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill")),
+                formatting.Element(Ns.A + "effectLst"), formatting.Element(Ns.A + "effectDag"));
+            var shape = new XElement(Ns.P + "sp",
+                new XElement(Ns.P + "nvSpPr", new XElement(Ns.P + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")),
+                    new XElement(Ns.P + "cNvSpPr"), new XElement(Ns.P + "nvPr")), spPr);
+            html.Append($"<div class=\"sp\" data-dgm-bg=\"\" style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px\">");
+            RenderShape(shape, dataPart, html, inner, isSlide: false);
+            html.Append("</div>");
+        }
+        var dgm = dataModel.Name.Namespace;
+        Whole(dataModel.Element(dgm + "bg"), outline: false);
+        RenderTree(ToPresentationMl(tree), drawingPart, html, inner, isSlide: false);
+        Whole(dataModel.Element(dgm + "whole"), outline: true);
+        html.Append("</div>");
     }
 
     /// <summary>The diagram drawing uses its own namespace for sp, spPr, style and txBody; map it to PresentationML.</summary>
+    static XElement ToPresentationMl(XElement element) =>
+        new(element.Name.Namespace == Dsp ? Ns.P + element.Name.LocalName : element.Name,
+            element.Attributes(),
+            element.Nodes().Select(n => n is XElement e ? ToPresentationMl(e) : n));
+
     /// <summary>Ink (p:contentPart with an InkML part, catalog: picture.ink) drawn into the part's box.</summary>
     void RenderContentPart(XElement element, string part, StringBuilder html, Placement placement)
     {
@@ -711,11 +754,6 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             element.Attributes(),
             element.Nodes().Select(n => n is XElement e ? FromChartDrawing(e) : n));
 
-    static XElement ToPresentationMl(XElement element) =>
-        new(element.Name.Namespace == Dsp ? Ns.P + element.Name.LocalName : element.Name,
-            element.Attributes(),
-            element.Nodes().Select(n => n is XElement e ? ToPresentationMl(e) : n));
-
     void RenderGroup(XElement group, string part, StringBuilder html, Placement placement, bool isSlide)
     {
         var spPr = group.Element(Ns.P + "grpSpPr");
@@ -770,10 +808,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// </summary>
     string Accessibility(XElement shape, bool isSlide, string part)
     {
+        // SmartArt shapes carry their model id, which animations of single diagram shapes target (catalog: smartart.data).
+        var model = shape.Str("modelId") is { } modelId ? $" data-mid=\"{System.Net.WebUtility.HtmlEncode(modelId)}\"" : "";
         var c = NonVisual(shape);
         if (c == null)
-            return "";
-        var sb = new StringBuilder();
+            return model;
+        var sb = new StringBuilder(model);
         if (isSlide && c.Str("id") is { } id)
             sb.Append($" data-id=\"{System.Net.WebUtility.HtmlEncode(id)}\"");
         // Mouse-over actions (a:hlinkHover, catalog: interactivity.hyperlinks): the player runs them when the pointer

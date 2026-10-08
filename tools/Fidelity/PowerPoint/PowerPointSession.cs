@@ -89,6 +89,65 @@ public sealed class PowerPointSession : IDisposable
         }
     }
 
+    /// <summary>The numbers of the slides whose main animation sequence has effects.</summary>
+    public List<int> AnimatedSlides(string pptxPath, string? password = null)
+    {
+        var presentation = Open(pptxPath, password);
+        try
+        {
+            var result = new List<int>();
+            int count = presentation.Slides.Count;
+            for (var i = 1; i <= count; i++)
+            {
+                if ((int)presentation.Slides[i].TimeLine.MainSequence.Count > 0)
+                    result.Add(i);
+            }
+            return result;
+        }
+        finally
+        {
+            Close(presentation);
+        }
+    }
+
+    /// <summary>
+    /// PowerPoint's video of one slide (the others deleted, its transition removed): the main sequence's steps play
+    /// one after another from the slide's start. Waits until the video is written.
+    /// </summary>
+    public void ExportSlideVideo(string pptxPath, int slide, string mp4Path, int height, int fps, string? password = null)
+    {
+        const int PpMediaTaskStatusInProgress = 1, PpMediaTaskStatusQueued = 2, PpMediaTaskStatusDone = 3, PpEffectNone = 0;
+        var presentation = Open(pptxPath, password);
+        try
+        {
+            int count = presentation.Slides.Count;
+            for (var i = count; i >= 1; i--)
+            {
+                if (i != slide)
+                    presentation.Slides[i].Delete();
+            }
+            presentation.Slides[1].SlideShowTransition.EntryEffect = PpEffectNone;
+            presentation.Slides[1].SlideShowTransition.Duration = 0f;
+            if (File.Exists(mp4Path))
+                File.Delete(mp4Path);
+            presentation.CreateVideo(Path.GetFullPath(mp4Path), false, 1, height, fps, 100);
+            var watch = Stopwatch.StartNew();
+            int status;
+            do
+            {
+                Thread.Sleep(200);
+                status = presentation.CreateVideoStatus;
+            } while (status is PpMediaTaskStatusInProgress or PpMediaTaskStatusQueued && watch.Elapsed < TimeSpan.FromMinutes(5));
+            if (status != PpMediaTaskStatusDone)
+                throw new InvalidOperationException($"PowerPoint did not export the video of slide {slide} (status {status}).");
+        }
+        finally
+        {
+            presentation.Saved = MsoTrue;
+            Close(presentation);
+        }
+    }
+
     public void Dispose()
     {
         try

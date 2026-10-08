@@ -24,7 +24,10 @@ switch (command)
             Calibration.Render();
         Console.WriteLine($"{Calibration.Measure().Count} boxes measured: {Path.Combine(Calibration.Dir, "measurements.json")}");
         break;
-    case "generate" or "reference" or "calibrate":
+    case "animate-reference" when OperatingSystem.IsWindows():
+        Animations.Reference(decks, force);
+        break;
+    case "generate" or "reference" or "calibrate" or "animate-reference":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
         return 1;
     case "harvest-patterns":
@@ -40,6 +43,11 @@ switch (command)
         Pipeline.Render(decks);
         Summarize(Pipeline.Compare(decks));
         break;
+    case "animate":
+        var animated = Animations.Run(decks);
+        foreach (var r in animated)
+            Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} frames)");
+        break;
     default:
         Console.WriteLine("""
             Fidelity: compares our HTML rendering with PowerPoint, slide by slide.
@@ -49,6 +57,8 @@ switch (command)
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
               generate [deck…]     create the generated test decks with PowerPoint (Windows)
               reference [deck…]    render reference images with PowerPoint (Windows); --force re-renders
+              animate [deck…]      compare the player's animation frames with PowerPoint's videos
+              animate-reference [deck…]  sample PowerPoint's videos of animated slides (Windows, ffmpeg); --force
             """);
         break;
 }

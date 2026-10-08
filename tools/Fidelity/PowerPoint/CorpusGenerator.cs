@@ -70,6 +70,7 @@ public static class CorpusGenerator
         ("laser", LaserDeck.Build, false),
         ("charts-3d", Charts3DDeck.Build, true),
         ("sketched", SketchedDeck.Build, false),
+        ("smartart", SmartArtDeck.Build, true),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -87,6 +88,7 @@ public static class CorpusGenerator
         ["encrypted-standard"] = EncryptedDecks.EncryptStandard,
         ["laser"] = LaserDeck.Patch,
         ["sketched"] = SketchedDeck.Patch,
+        ["smartart"] = SmartArtDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>

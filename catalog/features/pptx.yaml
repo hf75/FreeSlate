@@ -1493,7 +1493,20 @@ areas:
         namespaces: [dgm14, dgm1611, dgm1612]
         priority: P2
         difficulty: 3
+        status: done
         strategy: The text and structure of the nodes; needed for editing and for files without a drawing part.
+        office: >-
+          PowerPoint keeps the laid-out shapes in the drawing part (smartart.drawing); the data model adds the
+          diagram's own formatting: dgm:bg (fill and effects, e.g. a shadow) is drawn as a rectangle over the
+          frame behind the shapes and dgm:whole (line and effects) on top of them (measured with
+          generated/smartart: 99.2 %). The diagram is an element of its own sized like its frame, which
+          animations of the whole diagram change; every shape carries the model id of its presentation point,
+          which per-shape animations target (p:graphicEl/a:dgm with the drawing shape's model id; ids of data
+          nodes or transitions animate nothing in PowerPoint, measured with its video export), and a:dgm
+          bldStep=bg targets the background and outline. Checked against PowerPoint's video of
+          generated/smartart slide 3 (background, a node fading, a node and its connector flying in, the rest
+          appearing): 96.8 % (tools/Fidelity animate). The node structure (points, connections, presentation
+          variables) only serves the layout engine for files without a drawing part (smartart.layout).
 
       - id: smartart.layout
         title: SmartArt layout engine
@@ -1613,6 +1626,11 @@ areas:
         difficulty: 3
         status: partial
         strategy: Build text by paragraph and level, charts by series or category, SmartArt by node.
+        office: >-
+          SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape (p:graphicEl
+          with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the player animates each
+          shape of the diagram on its own (checked with tools/Fidelity animate on generated/smartart). Charts by
+          series or category (a:chart in p:graphicEl) still animate the whole chart.
 
       - id: animation.presets
         title: Effect presets

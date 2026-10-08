@@ -39,6 +39,10 @@ PowerPoint's reference rendering. The report (`artifacts/fidelity/report.html`) 
 difference image for every slide. The score is the share of content pixels that match the reference within a small
 tolerance. On Windows with Office installed, `generate` rebuilds the test decks and `reference` re-renders the references.
 
+`animate` compares animations the same way: `animate-reference` (Windows, Office and ffmpeg) exports PowerPoint's
+video of every animated slide and keeps every eighth frame in `tests/fidelity/reference/<deck>/anim/`; `animate` draws
+the same moments with the player (`deck.html?frame=<ms>&fps=30#slide-3`) and scores them.
+
 ## Regenerating the catalogs
 
 ```sh
