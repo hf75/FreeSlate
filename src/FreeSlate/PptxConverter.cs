@@ -30,6 +30,8 @@ public static class PptxConverter
         .grp{position:absolute;left:0;top:0}
         .sp>svg{position:absolute;left:0;top:0;overflow:visible}
         .sp text{white-space:pre;font-variant-ligatures:none}
+        .sp text.sel{fill-opacity:0}
+        .glyphs{position:absolute;left:0;top:0}
         """;
 
     public static string ToHtml(string pptxPath, FontLocator? fonts = null)
@@ -77,6 +79,7 @@ public static class PptxConverter
                 html.Append($"<meta name=\"{name}\" content=\"{WebUtility.HtmlEncode(value)}\">\n");
         }
         html.Append("<style>\n").Append(FontFaces(context.UsedFonts, fonts ?? FontLocator.Default)).Append(Css).Append("\n</style>\n</head>\n<body>\n");
+        html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"deck\">\n").Append(slides).Append("</main>\n");
         html.Append("<script type=\"application/json\" id=\"freeslate-data\">").Append(deck.Json(data)).Append("</script>\n");
         html.Append("</body>\n</html>\n");

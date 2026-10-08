@@ -179,42 +179,138 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     static double Snap(double points) => Math.Floor(points * PxPerPt + 0.5) / PxPerPt;
 
     /// <summary>
-    /// SVG text for a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph
-    /// origins rounded to whole pixels from the run's start (<paramref name="origin"/>, exact), using advances in
-    /// master units (measured with the text-snap deck); a run continuing a format run passes the format run's start.
+    /// SVG for a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph origins
+    /// rounded to whole pixels from the run's start (<paramref name="origin"/>, exact), using advances in master
+    /// units (measured with the text-snap deck); a run continuing a format run passes the format run's start.
+    /// Glyphs are drawn as outlines, unhinted and at their exact position like PowerPoint draws them, with the
+    /// text itself transparent on top for selection, search and accessibility; color fonts, synthesized styles
+    /// and glyphs missing from the font are left to the browser.
     /// </summary>
     string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null)
     {
         var style = run.Style;
-        var family = style.Font.Data.Family;
-        slide.Presentation.UsedFonts.Add(family);
-
+        var data = style.Font.Data;
         var text = run.Style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
-        var advances = style.Font.Data.LayoutAdvances(text, style.Size, style.Kerning, style.LetterSpacing);
+        var glyphs = data.Glyphs(text, style.Kerning);
         var start = origin ?? x;
-        var xs = new StringBuilder();
+        var startPx = start * PxPerPt;
+
+        // Glyph positions in whole pixels from the format run's start; characters take their cluster's position.
+        var glyphX = new double[glyphs.Length];
+        var clusterX = new double?[text.Length];
+        var spacing = FontData.MasterUnits(style.LetterSpacing);
         var position = x - start;
+        for (var i = 0; i < glyphs.Length; i++)
+        {
+            var glyph = glyphs[i];
+            glyphX[i] = Math.Floor(position * PxPerPt + 0.5);
+            var firstOfCluster = glyph.Cluster < text.Length && clusterX[glyph.Cluster] == null;
+            if (firstOfCluster)
+                clusterX[glyph.Cluster] = glyphX[i];
+            position += FontData.MasterUnits(glyph.Advance * style.Size) + FontData.MasterUnits(glyph.Kerning * style.Size) + (firstOfCluster ? spacing : 0);
+        }
+        var xs = new StringBuilder();
+        double current = 0;
         for (var i = 0; i < text.Length; i++)
         {
+            current = clusterX[i] ?? current;
             if (char.IsLowSurrogate(text[i]))
                 continue;
             if (xs.Length > 0) xs.Append(' ');
-            xs.Append(Units.Css(start * PxPerPt + Math.Floor(position * PxPerPt + 0.5)));
-            position += advances[i];
+            xs.Append(Units.Css(startPx + current));
         }
 
-        var sb = new StringBuilder($"<text x=\"{xs}\" y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"");
+        var outlined = !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
+                       && glyphs.All(g => g.Id != 0 || g.Cluster < text.Length && char.IsWhiteSpace(text[g.Cluster]));
+        var family = data.Family;
+        var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
+        var sb = new StringBuilder();
+        if (outlined)
+        {
+            var scale = style.Size * PxPerPt / data.UnitsPerEm;
+            var units = new StringBuilder();
+            for (var i = 0; i < glyphs.Length; i++)
+            {
+                if (slide.Presentation.Glyphs.Id(data, glyphs[i].Id) is not { } id)
+                    continue;
+                var gx = glyphX[i] / scale + glyphs[i].OffsetX * data.UnitsPerEm;
+                var gy = -glyphs[i].OffsetY * data.UnitsPerEm;
+                units.Append($"<use href=\"#{id}\"");
+                if (Math.Abs(gx) > 0.05) units.Append($" x=\"{Units.Css1(gx)}\"");
+                if (Math.Abs(gy) > 0.05) units.Append($" y=\"{Units.Css1(gy)}\"");
+                units.Append("/>");
+            }
+            var decorations = Decorations(run, style, data, x, y);
+            if (filter != null || decorations.Length > 0)
+                sb.Append($"<g{fill}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}>");
+            sb.Append($"<g transform=\"translate({Units.Css(startPx)} {Px(y)}) scale({Units.Scale(scale)})\"{(filter != null || decorations.Length > 0 ? "" : fill)}>{units}</g>");
+            if (filter != null || decorations.Length > 0)
+                sb.Append(decorations).Append("</g>");
+        }
+        else
+        {
+            slide.Presentation.UsedFonts.Add(family);
+        }
+
+        sb.Append($"<text{(outlined ? " class=\"sel\"" : "")} x=\"{xs}\" y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\'"))}'\" font-size=\"{Px(style.Size)}\"");
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
-        sb.Append($" fill=\"{style.Color.ToHex()}\"");
-        if (style.Color.A < 0.999) sb.Append($" fill-opacity=\"{Units.Css4(style.Color.A)}\"");
-        var decorations = new List<string>();
-        if (style.Underline != null) decorations.Add("underline");
-        if (style.Strike != null) decorations.Add("line-through");
-        if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
-        if (!style.Kerning) sb.Append(" style=\"font-kerning:none\"");
-        if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
+        if (!outlined)
+        {
+            sb.Append(fill);
+            var decorations = new List<string>();
+            if (style.Underline != null) decorations.Add("underline");
+            if (style.Strike != null) decorations.Add("line-through");
+            if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
+            if (!style.Kerning) sb.Append(" style=\"font-kerning:none\"");
+            if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
+        }
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Underline and strikethrough of a run as filled rectangles (pixels), from the font's post and OS/2 metrics,
+    /// placed on whole pixels; dbl and heavy underlines and double strikethrough draw two lines or a thicker one.
+    /// </summary>
+    static string Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
+    {
+        if (style.Underline == null && style.Strike == null)
+            return "";
+        var sb = new StringBuilder();
+        var left = x * PxPerPt;
+        var width = run.Width * PxPerPt;
+        var size = style.Size * PxPerPt;
+        var baseline = y * PxPerPt;
+        void Line(double offset, double thickness)
+        {
+            var height = Math.Max(1, Math.Round(thickness));
+            var top = Math.Round(baseline + offset - height / 2);
+            sb.Append($"<rect x=\"{Units.Css(left)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"/>");
+        }
+        if (style.Underline is { } underline)
+        {
+            var thickness = data.UnderlineThickness * size * (underline is "heavy" or "dottedHeavy" or "dashHeavy" or "dashLongHeavy" or "dotDashHeavy" or "dotDotDashHeavy" or "wavyHeavy" ? 2 : 1);
+            var offset = data.UnderlinePosition * size;
+            Line(offset, thickness);
+            if (underline is "dbl" or "wavyDbl")
+                Line(offset + 2 * Math.Max(1, Math.Round(thickness)), thickness);
+        }
+        if (style.Strike is { } strike)
+        {
+            var thickness = data.StrikeoutThickness * size;
+            var offset = -data.StrikeoutPosition * size;
+            if (strike == "dblStrike")
+            {
+                var gap = Math.Max(1, Math.Round(thickness));
+                Line(offset - gap, thickness);
+                Line(offset + gap, thickness);
+            }
+            else
+            {
+                Line(offset, thickness);
+            }
+        }
         return sb.ToString();
     }
 

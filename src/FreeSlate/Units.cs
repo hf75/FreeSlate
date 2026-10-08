@@ -20,4 +20,12 @@ public static class Units
     /// <summary>Like <see cref="Css"/> with four decimals, for factors such as matrix coefficients.</summary>
     public static string Css4(double value) =>
         Math.Round(value, 4).ToString("0.####", CultureInfo.InvariantCulture);
+
+    /// <summary>Like <see cref="Css"/> with one decimal, for font units.</summary>
+    public static string Css1(double value) =>
+        Math.Round(value, 1).ToString("0.#", CultureInfo.InvariantCulture);
+
+    /// <summary>A scale factor with six significant digits (glyph outlines in font units scaled to pixels).</summary>
+    public static string Scale(double value) =>
+        value.ToString("G6", CultureInfo.InvariantCulture);
 }

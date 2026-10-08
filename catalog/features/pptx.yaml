@@ -1451,8 +1451,9 @@ areas:
           Within a format run the glyph origins are rounded to whole pixels (half up) from the run's exact start;
           a new format run starts exactly. Baselines sit on whole pixels counted from the top of the text area
           (box top plus inset, anchor offset included). Glyphs are drawn unhinted with 8×4 samples per pixel.
-          Chromium rounds glyph baselines to whole device pixels, so text on fractional text-area tops differs by
-          up to a quarter-coverage row.
+          Text is therefore drawn as glyph outlines (paths defined once per document, placed with use) at the
+          exact positions, with the text transparent on top for selection and search; browser text would sit on
+          whole-pixel baselines and be hinted.
 
       - id: engine.fonts
         title: Font resolution and fallback
@@ -1464,9 +1465,10 @@ areas:
           Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser
           draws with exactly the font we measured.
         office: >-
-          PowerPoint renders text unhinted (cap height and x-height exactly as designed). Embedded fonts get a gasp
-          table without grid fitting, which makes Chromium on Windows render them unhinted as well; installed fonts
-          stay hinted by the browser.
+          PowerPoint renders text unhinted (cap height and x-height exactly as designed). Glyphs are emitted as
+          outlines, so the viewer needs no fonts; fonts are only embedded for runs left to the browser (color
+          fonts, synthesized bold or italic, glyphs missing from the font), with a gasp table without grid fitting
+          so that Chromium on Windows renders them unhinted as well.
 
       - id: engine.fidelity
         title: Fidelity measurement

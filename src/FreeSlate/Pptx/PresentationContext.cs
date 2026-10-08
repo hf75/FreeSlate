@@ -39,8 +39,11 @@ public sealed class PresentationContext : IDisposable
     public XElement? DefaultTextStyle { get; }
     public List<string> SlideParts { get; } = [];
 
-    /// <summary>Font families used by the rendered text, for font embedding.</summary>
+    /// <summary>Font families of text the browser draws itself (not as glyph outlines), for font embedding.</summary>
     public HashSet<string> UsedFonts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Glyph outlines of the rendered text.</summary>
+    public Html.GlyphCache Glyphs { get; } = new();
 
     public XDocument Load(string part)
     {

@@ -5,6 +5,9 @@ using Buffer = HarfBuzzSharp.Buffer;
 
 namespace FreeSlate.Text;
 
+/// <summary>A shaped glyph: id, UTF-16 index of its cluster, advance and kerning to the next glyph, offsets (em).</summary>
+public readonly record struct ShapedGlyph(uint Id, int Cluster, double Advance, double Kerning, double OffsetX, double OffsetY);
+
 /// <summary>
 /// A loaded font file: the vertical metrics PowerPoint's line model needs and a HarfBuzz font for shaping.
 /// Advances are measured unhinted in font units. Kerning comes from the legacy 'kern' table only, as in
@@ -20,6 +23,7 @@ public sealed class FontData : IDisposable
     readonly ConcurrentDictionary<(string, bool), double> widths = new();
     readonly ConcurrentDictionary<(string, double, bool, double), double> layoutWidths = new();
     readonly Dictionary<uint, short>? kerningPairs;
+    readonly ConcurrentDictionary<uint, string> outlines = new();
 
     public FontData(string path, string family)
     {
@@ -72,6 +76,19 @@ public sealed class FontData : IDisposable
         WinDescent = winDescent / UnitsPerEm;
 
         kerningPairs = tables.TryGetValue("kern", out var kernOffset) ? ReadKerning(data, kernOffset) : null;
+        IsColor = tables.ContainsKey("COLR") || tables.ContainsKey("CBDT") || tables.ContainsKey("sbix") || tables.ContainsKey("SVG ");
+        if (tables.TryGetValue("post", out var post) && post + 12 <= data.Length)
+        {
+            UnderlinePosition = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 8)) / (double)UnitsPerEm;
+            UnderlineThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 10)) / (double)UnitsPerEm;
+        }
+        if (tables.TryGetValue("OS/2", out var os2Table) && os2Table + 30 <= data.Length)
+        {
+            StrikeoutThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 26)) / (double)UnitsPerEm;
+            StrikeoutPosition = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 28)) / (double)UnitsPerEm;
+        }
+        if (UnderlineThickness <= 0) (UnderlinePosition, UnderlineThickness) = (0.1, 0.05);
+        if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
 
         blob = Blob.FromFile(path);
         face = new Face(blob, 0);
@@ -96,6 +113,19 @@ public sealed class FontData : IDisposable
     public double Ascent { get; }
 
     public double Descent { get; }
+
+    /// <summary>Color fonts (COLR, CBDT, sbix, SVG): their glyphs are left to the browser.</summary>
+    public bool IsColor { get; }
+
+    /// <summary>Underline offset below the baseline and thickness (post table), in em.</summary>
+    public double UnderlinePosition { get; }
+
+    public double UnderlineThickness { get; }
+
+    /// <summary>Strikeout offset above the baseline and thickness (OS/2 table), in em.</summary>
+    public double StrikeoutPosition { get; }
+
+    public double StrikeoutThickness { get; }
 
     /// <summary>GDI's ascent and descent (OS/2 usWinAscent/usWinDescent) in em; metafile text is placed with them.</summary>
     public double WinAscent { get; }
@@ -142,26 +172,43 @@ public sealed class FontData : IDisposable
     (double Advance, double Kerning)[] Shape(string text, bool kerning)
     {
         var result = new (double Advance, double Kerning)[text.Length];
+        foreach (var glyph in Glyphs(text, kerning))
+        {
+            if (glyph.Cluster < result.Length)
+            {
+                result[glyph.Cluster].Advance += glyph.Advance;
+                result[glyph.Cluster].Kerning += glyph.Kerning;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table.</summary>
+    public ShapedGlyph[] Glyphs(string text, bool kerning)
+    {
         if (text.Length == 0)
-            return result;
+            return [];
         using var buffer = new Buffer();
         buffer.AddUtf16(text);
         buffer.GuessSegmentProperties();
         font.Shape(buffer, NoLigaturesNoKerning);
         var infos = buffer.GlyphInfos;
         var positions = buffer.GlyphPositions;
+        var result = new ShapedGlyph[infos.Length];
         for (var i = 0; i < infos.Length; i++)
         {
-            var cluster = (int)infos[i].Cluster;
-            if (cluster >= result.Length)
-                continue;
-            result[cluster].Advance += (double)positions[i].XAdvance / UnitsPerEm;
+            var kern = 0.0;
             if (kerning && kerningPairs != null && i + 1 < infos.Length
                 && kerningPairs.TryGetValue(infos[i].Codepoint << 16 | infos[i + 1].Codepoint & 0xFFFF, out var value))
-                result[cluster].Kerning += (double)value / UnitsPerEm;
+                kern = (double)value / UnitsPerEm;
+            result[i] = new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster, (double)positions[i].XAdvance / UnitsPerEm, kern,
+                (double)positions[i].XOffset / UnitsPerEm, (double)positions[i].YOffset / UnitsPerEm);
         }
         return result;
     }
+
+    /// <summary>The outline of a glyph as SVG path data in font units, y down; "" for glyphs without contours.</summary>
+    public string Outline(uint glyph) => outlines.GetOrAdd(glyph, g => GlyphOutlines.Draw(font, g));
 
     /// <summary>
     /// Horizontal format 0 pairs of a version 0 'kern' table. Subtable lengths are not trusted (large tables
