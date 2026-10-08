@@ -63,6 +63,8 @@ public sealed partial class ChartRenderer
         var view = View3D.Read(model.Chart, group.IsPie);
         if (group.IsBar && view.RightAngleAxes)
             return Bars3D(group, outer, view);
+        if (group.Type == "pie3DChart")
+            return Pie3D(group, outer, view);
         return null;
     }
 
