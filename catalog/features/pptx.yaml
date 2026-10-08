@@ -182,6 +182,7 @@ areas:
         elements: [p:hf]
         priority: P1
         difficulty: 2
+        status: partial
         strategy: p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.
         office: >-
           Only footer placeholders that exist on the slide itself are drawn; their slide number and date fields are
@@ -410,6 +411,7 @@ areas:
                    a:cNvGraphicFramePr, a:graphic, a:graphicData]
         priority: P0
         difficulty: 1
+        status: partial
         strategy: Container for tables, charts, SmartArt and OLE objects; dispatch on graphicData/@uri.
 
       - id: shape.locks
@@ -638,6 +640,7 @@ areas:
         description: The content type behind a:blip/@r:embed.
         priority: P1
         difficulty: 3
+        status: partial
         strategy: PNG, JPEG, GIF and BMP natively; TIFF and JPEG XR (wdp) are converted to PNG.
 
       - id: picture.metafiles
@@ -785,6 +788,7 @@ areas:
         elements: [a:tabLst, a:tab]
         priority: P1
         difficulty: 2
+        status: partial
         strategy: Left, center, right and decimal tabs, default tab size from defTabSz.
 
       - id: text.bullets

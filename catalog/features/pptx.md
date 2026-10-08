@@ -16,15 +16,15 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 0 |
-| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 4 | 1 |
+| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 5 | 1 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 1 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
-| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 5 | 1 |
+| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 1 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 0 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
-| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 2 | 0 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 0 |
+| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 3 | 0 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 11 | 0 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 0 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **57** | **6** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **61** | **6** |
 
 <a id="package"></a>
 
@@ -160,7 +160,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 | [Placeholders and inheritance](#presentation.placeholders) | P0 | ●●●●○ | partial | 2 | 2 |
 | [Color mapping](#presentation.colorMap) | P0 | ●●○○○ | partial | 4 | 0 |
 | [Slide background](#presentation.background) | P0 | ●●○○○ | partial | 4 | 2 |
-| [Header, footer, date and slide number](#presentation.headerFooter) | P1 | ●●○○○ | todo | 1 | 0 |
+| [Header, footer, date and slide number](#presentation.headerFooter) | P1 | ●●○○○ | partial | 1 | 0 |
 | [Sections](#presentation.sections) | P2 | ●○○○○ | todo | 4 | 0 |
 | [Custom shows](#presentation.customShows) | P3 | ●●○○○ | todo | 3 | 2 |
 | [Notes pages and speaker notes](#presentation.notes) | P2 | ●●○○○ | todo | 3 | 2 |
@@ -256,7 +256,7 @@ p:sld/@show="0".
 
 ### Header, footer, date and slide number
 
-`presentation.headerFooter` · P1 · difficulty 2 · todo
+`presentation.headerFooter` · P1 · difficulty 2 · partial
 
 **Rendering:** p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.
 
@@ -515,7 +515,7 @@ p:sld/@show="0".
 | [Preset geometries](#shape.presetGeometry) | P0 | ●●●○○ | partial | 3 | 1 |
 | [Custom geometry (freeforms)](#shape.customGeometry) | P0 | ●●●○○ | partial | 18 | 6 |
 | [Connectors](#shape.connectors) | P1 | ●●○○○ | partial | 8 | 3 |
-| [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | todo | 8 | 2 |
+| [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | partial | 8 | 2 |
 | [Locks](#shape.locks) | P3 | ●○○○○ | todo | 6 | 5 |
 | [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | todo | 8 | 0 |
 | [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | todo | 2 | 0 |
@@ -628,7 +628,7 @@ p:sld/@show="0".
 
 ### Graphic frames
 
-`shape.graphicFrame` · P0 · difficulty 1 · todo
+`shape.graphicFrame` · P0 · difficulty 1 · partial
 
 **Rendering:** Container for tables, charts, SmartArt and OLE objects; dispatch on graphicData/@uri.
 
@@ -1016,7 +1016,7 @@ gradFill and pattFill inside a:ln.
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Pictures](#picture.basic) | P0 | ●●○○○ | partial | 11 | 1 |
-| [Raster image formats](#picture.formats) | P1 | ●●●○○ | todo | 0 | 0 |
+| [Raster image formats](#picture.formats) | P1 | ●●●○○ | partial | 0 | 0 |
 | [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | todo | 0 | 0 |
 | [SVG pictures](#picture.svg) | P0 | ●○○○○ | partial | 1 | 0 |
 | [Picture color effects](#picture.effects) | P1 | ●●●○○ | todo | 18 | 11 |
@@ -1046,7 +1046,7 @@ gradFill and pattFill inside a:ln.
 
 ### Raster image formats
 
-`picture.formats` · P1 · difficulty 3 · todo
+`picture.formats` · P1 · difficulty 3 · partial
 
 The content type behind a:blip/@r:embed.
 
@@ -1192,7 +1192,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Autofit](#text.autofit) | P0 | ●●●●○ | partial | 3 | 3 |
 | [Paragraphs](#text.paragraph) | P0 | ●●●○○ | partial | 3 | 3 |
 | [Line and paragraph spacing](#text.spacing) | P0 | ●●●○○ | partial | 5 | 4 |
-| [Tab stops](#text.tabs) | P1 | ●●○○○ | todo | 2 | 0 |
+| [Tab stops](#text.tabs) | P1 | ●●○○○ | partial | 2 | 0 |
 | [Bullets and numbering](#text.bullets) | P0 | ●●●○○ | partial | 11 | 3 |
 | [List styles and the text style cascade](#text.styles) | P0 | ●●●●○ | partial | 17 | 11 |
 | [Runs and character formatting](#text.runs) | P0 | ●●○○○ | partial | 5 | 2 |
@@ -1274,7 +1274,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 ### Tab stops
 
-`text.tabs` · P1 · difficulty 2 · todo
+`text.tabs` · P1 · difficulty 2 · partial
 
 **Rendering:** Left, center, right and decimal tabs, default tab size from defTabSz.
 

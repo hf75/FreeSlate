@@ -1532,7 +1532,7 @@
       "title": "Header, footer, date and slide number",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.",
       "office": "Only footer placeholders that exist on the slide itself are drawn; their slide number and date fields are recomputed when the slide is shown.",
       "elements": [
@@ -3658,7 +3658,7 @@
       "title": "Graphic frames",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Container for tables, charts, SmartArt and OLE objects; dispatch on graphicData/@uri.",
       "elements": [
         "a:cNvGraphicFramePr",
@@ -4882,7 +4882,7 @@
       "description": "The content type behind a:blip/@r:embed.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "PNG, JPEG, GIF and BMP natively; TIFF and JPEG XR (wdp) are converted to PNG.",
       "elements": [],
       "spec": [],
@@ -6233,7 +6233,7 @@
       "title": "Tab stops",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Left, center, right and decimal tabs, default tab size from defTabSz.",
       "elements": [
         "a:tab",
