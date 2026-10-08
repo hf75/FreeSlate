@@ -27,14 +27,14 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 5 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
-| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 2 |
+| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 1 | 2 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **55** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **88** | **55** |
 
 <a id="package"></a>
 
@@ -1944,7 +1944,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | done | 17 | 0 |
 | [SmartArt data model](#smartart.data) | P2 | ●●●○○ | done | 27 | 5 |
 | [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | todo | 24 | 7 |
-| [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | todo | 13 | 9 |
+| [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | partial | 13 | 9 |
 
 <a id="smartart.drawing"></a>
 
@@ -1954,7 +1954,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 **Rendering:** Draw the shapes from the diagram's drawing part like normal shapes.
 
-**Office behaviour:** PowerPoint stores the laid-out shapes of every SmartArt in a drawing part (dsp:drawing), so files saved by PowerPoint need no SmartArt layout engine.
+**Office behaviour:** PowerPoint stores the laid-out shapes of every SmartArt in a drawing part (dsp:drawing), so files saved by PowerPoint need no SmartArt layout engine. The drawing is not complete, though: PowerPoint draws the text in the color the color definition gives the shape's style label (txFillClrLst, by the presentation point's presStyleIdx/presStyleCnt) where the drawing keeps the quick style's fontRef color (white text on the white boxes of the outline color schemes otherwise); it formats text by the layout's list style (Office 2016 extension dgm1612:lstStyle, by the depth of the text's data point, which the drawing loses: the layout tree tells which points each shape shows); and a 3D quick style's scene (styleDef/scene3d: camera with zoom and light rig) turns the whole diagram about its center, which the drawing does not keep either (Camera.Pivot, Camera.Zoom). A text rectangle (dsp:txXfrm) stands where the shape stands, turned by the shape's rotation plus its own (rot 90 with a text rot of -90 keeps the text of a turned chevron upright). Measured with all 159 layouts (98.8 %) and all 38 color definitions and 14 quick styles on a process (98.6 %, the rest 3D materials).
 
 **Elements (17):** [`dgm:relIds`](../format/namespaces/dgm.md#dgmrelids), [`dsp:cNvGrpSpPr`](../format/namespaces/dsp.md#dspcnvgrpsppr), [`dsp:cNvPr`](../format/namespaces/dsp.md#dspcnvpr), [`dsp:cNvSpPr`](../format/namespaces/dsp.md#dspcnvsppr), [`dsp:dataModelExt`](../format/namespaces/dsp.md#dspdatamodelext), [`dsp:drawing`](../format/namespaces/dsp.md#dspdrawing), [`dsp:extLst`](../format/namespaces/dsp.md#dspextlst), [`dsp:grpSp`](../format/namespaces/dsp.md#dspgrpsp), [`dsp:grpSpPr`](../format/namespaces/dsp.md#dspgrpsppr), [`dsp:nvGrpSpPr`](../format/namespaces/dsp.md#dspnvgrpsppr), [`dsp:nvSpPr`](../format/namespaces/dsp.md#dspnvsppr), [`dsp:sp`](../format/namespaces/dsp.md#dspsp), [`dsp:spPr`](../format/namespaces/dsp.md#dspsppr), [`dsp:spTree`](../format/namespaces/dsp.md#dspsptree), [`dsp:style`](../format/namespaces/dsp.md#dspstyle), [`dsp:txBody`](../format/namespaces/dsp.md#dsptxbody), [`dsp:txXfrm`](../format/namespaces/dsp.md#dsptxxfrm)
 
@@ -1994,9 +1994,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt styles and color definitions
 
-`smartart.styles` · P3 · difficulty 3 · todo
+`smartart.styles` · P3 · difficulty 3 · partial
 
 **Rendering:** Part of the layout engine path.
+
+**Office behaviour:** Color definitions: each style label lists fill, line, effect and text colors applied in turn (repeat), spread from the first to the last color (span: shape i of n at i/(n-1)) or there and back (cycle: 2i/n up to the middle, then back), spread colors written as the first with the HSL and alpha differences added (hueOff, satOff, lumOff, alphaOff; hue clockwise unless hueDir=ccw); PowerPoint's offsets match HSL differences computed with the sRGB transfer function for tint and shade. The index is the presentation point's presStyleIdx of presStyleCnt: shapes showing the same data points share one, decorations count each. Text color from txFillClrLst, else the quick style's fontRef. The quick style's scene3d turns the whole diagram (3d5 to 3d9 styles); its labels give style references, sp3d and light rigs, which the drawing keeps. Done for diagrams with a saved drawing (smartart.drawing); diagrams laid out by the engine (smartart.layout) do not apply them yet.
 
 **Elements (13):** [`dgm:colorsDef`](../format/namespaces/dgm.md#dgmcolorsdef), [`dgm:effectClrLst`](../format/namespaces/dgm.md#dgmeffectclrlst), [`dgm:fillClrLst`](../format/namespaces/dgm.md#dgmfillclrlst), [`dgm:linClrLst`](../format/namespaces/dgm.md#dgmlinclrlst), [`dgm:scene3d`](../format/namespaces/dgm.md#dgmscene3d), [`dgm:sp3d`](../format/namespaces/dgm.md#dgmsp3d), [`dgm:style`](../format/namespaces/dgm.md#dgmstyle), [`dgm:styleDef`](../format/namespaces/dgm.md#dgmstyledef), [`dgm:styleLbl`](../format/namespaces/dgm.md#dgmstylelbl), [`dgm:txEffectClrLst`](../format/namespaces/dgm.md#dgmtxeffectclrlst), [`dgm:txFillClrLst`](../format/namespaces/dgm.md#dgmtxfillclrlst), [`dgm:txLinClrLst`](../format/namespaces/dgm.md#dgmtxlinclrlst), [`dgm:txPr`](../format/namespaces/dgm.md#dgmtxpr)
 

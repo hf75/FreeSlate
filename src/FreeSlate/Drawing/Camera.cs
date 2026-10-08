@@ -26,6 +26,16 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// </summary>
     public double Offset { get; init; }
 
+    /// <summary>
+    /// The center of the scene relative to the shape's center (pixels, in the plane): the scene of a SmartArt diagram
+    /// turns all its shapes about the diagram's center, and perspective cameras look at that center (catalog:
+    /// smartart.styles).
+    /// </summary>
+    public (double X, double Y) Pivot { get; init; }
+
+    /// <summary>The camera's zoom (a:camera/@zoom): the picture scaled about the scene's center.</summary>
+    public double Zoom { get; init; } = 1;
+
     const double ViewSize = 907.5;   // points
 
     static readonly Dictionary<string, (double X, double Y, double Z, double Fov)> Presets = new()
@@ -87,6 +97,7 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         }
         if (camera.Long("fov") is { } f)
             fov = f / 60000.0;
+        var zoom = (camera.Long("zoom") ?? 100000) / 100000.0;
         var shear = (0.0, 0.0);
         if (oblique || preset.StartsWith("legacyPerspective", StringComparison.Ordinal))
         {
@@ -100,11 +111,12 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
             perspective = false;
             oblique = true;
         }
-        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique) { Shear = shear };
+        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique) { Shear = shear, Zoom = zoom > 0 ? zoom : 1 };
     }
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
-    public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9);
+    public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9)
+                        && Math.Abs(Zoom - 1) < 1e-9;
 
     static double Normalized(double degrees) => Math.Abs(Math.IEEERemainder(degrees, 360)) < 1e-9 ? 0 : degrees;
 
@@ -139,19 +151,20 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         return (r[0] * p.X + r[1] * p.Y + r[2] * p.Z, r[3] * p.X + r[4] * p.Y + r[5] * p.Z, r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
     }
 
-    /// <summary>A point of the scene (relative to the shape's center) turned into the view, standing at the shape's offset.</summary>
-    public (double X, double Y, double Z) Place((double X, double Y, double Z) p) => Turn((p.X, p.Y, p.Z + Offset));
+    /// <summary>
+    /// A point of the scene (relative to the shape's center) turned into the view about the scene's center, standing
+    /// at the shape's offset; the result is relative to the scene's center.
+    /// </summary>
+    public (double X, double Y, double Z) Place((double X, double Y, double Z) p) => Turn((p.X - Pivot.X, p.Y - Pivot.Y, p.Z + Offset));
 
-    /// <summary>How much a turned point is enlarged on the picture plane (perspective cameras).</summary>
-    public double Scale((double X, double Y, double Z) q) => Perspective ? Distance / Math.Max(1e-6, Distance - q.Z) : 1;
+    /// <summary>How much a turned point is enlarged on the picture plane (perspective cameras and zoom).</summary>
+    public double Scale((double X, double Y, double Z) q) => (Perspective ? Distance / Math.Max(1e-6, Distance - q.Z) : 1) * Zoom;
 
-    /// <summary>A turned point on the picture plane (relative to the shape's center).</summary>
+    /// <summary>A turned point (relative to the scene's center) on the picture plane, relative to the shape's center.</summary>
     public (double X, double Y) Flatten((double X, double Y, double Z) q)
     {
-        if (!Perspective)
-            return (q.X, q.Y);
-        var f = Distance / Math.Max(1e-6, Distance - q.Z);
-        return (q.X * f, q.Y * f);
+        var f = Scale(q);
+        return (Pivot.X + q.X * f, Pivot.Y + q.Y * f);
     }
 
     /// <summary>A point relative to the shape's center (pixels, z towards the viewer) on the picture plane.</summary>
@@ -173,7 +186,7 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         // The eye sits at (0, 0, d) in view coordinates; turned back into the scene with the transpose.
         var (ex, ey, ez) = Perspective ? (0.0, 0.0, Distance) : (0.0, 0.0, 1.0);
         var eye = (X: r[0] * ex + r[3] * ey + r[6] * ez, Y: r[1] * ex + r[4] * ey + r[7] * ez, Z: r[2] * ex + r[5] * ey + r[8] * ez);
-        return Perspective ? (eye.X - scenePoint.X, eye.Y - scenePoint.Y, eye.Z - scenePoint.Z - Offset) : eye;
+        return Perspective ? (eye.X + Pivot.X - scenePoint.X, eye.Y + Pivot.Y - scenePoint.Y, eye.Z - scenePoint.Z - Offset) : eye;
     }
 
     /// <summary>
@@ -183,19 +196,40 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     public double[] Matrix3D()
     {
         var o = Offset;
+        double[] about;
         if (Oblique)
-            return [1, 0, 0, 0, 0, 1, 0, 0, -Shear.X, -Shear.Y, 1, 0, -o * Shear.X, -o * Shear.Y, 0, 1];
-        var r = Rotation();
-        // Rows of the 4×4 matrix: x' = r0 x + r1 y + r2 (z + o), y' = r3 x + r4 y + r5 (z + o), z' = r8 z (the
-        // plane keeps z = 0; the turned z axis tells the browser which side faces the eye),
-        // w = 1 - (r6 x + r7 y + r8 (z + o)) / d.
-        var w = Perspective ? 1 / Distance : 0;
-        return
-        [
-            r[0], r[3], r[6], -r[6] * w,
-            r[1], r[4], r[7], -r[7] * w,
-            r[2], r[5], r[8], -r[8] * w,
-            r[2] * o, r[5] * o, 0, 1 - r[8] * o * w,
-        ];
+            about = [1, 0, 0, 0, 0, 1, 0, 0, -Shear.X, -Shear.Y, 1, 0, -o * Shear.X, -o * Shear.Y, 0, 1];
+        else
+        {
+            var r = Rotation();
+            // Rows of the 4×4 matrix: x' = r0 x + r1 y + r2 (z + o), y' = r3 x + r4 y + r5 (z + o), z' = r8 z (the
+            // plane keeps z = 0; the turned z axis tells the browser which side faces the eye),
+            // w = 1 - (r6 x + r7 y + r8 (z + o)) / d.
+            var w = Perspective ? 1 / Distance : 0;
+            about =
+            [
+                r[0], r[3], r[6], -r[6] * w,
+                r[1], r[4], r[7], -r[7] * w,
+                r[2], r[5], r[8], -r[8] * w,
+                r[2] * o, r[5] * o, 0, 1 - r[8] * o * w,
+            ];
+        }
+        if (Pivot == (0, 0) && Zoom == 1)
+            return about;
+        // About the scene's center, zoomed: T(pivot) · zoom · M · T(−pivot).
+        double[] from = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -Pivot.X, -Pivot.Y, 0, 1];
+        double[] to = [Zoom, 0, 0, 0, 0, Zoom, 0, 0, 0, 0, 1, 0, Pivot.X, Pivot.Y, 0, 1];
+        return Multiply(to, Multiply(about, from));
+    }
+
+    /// <summary>The product a · b of column-major 4×4 matrices.</summary>
+    public static double[] Multiply(double[] a, double[] b)
+    {
+        var result = new double[16];
+        for (var c = 0; c < 4; c++)
+            for (var r = 0; r < 4; r++)
+                for (var k = 0; k < 4; k++)
+                    result[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+        return result;
     }
 }

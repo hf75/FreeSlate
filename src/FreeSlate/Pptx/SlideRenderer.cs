@@ -30,6 +30,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         /// <summary>A shape transform <paramref name="local"/> in this placement as a slide transform.</summary>
         public Matrix OnSlide(Matrix local) => Container is { } container ? container.Then(local) : local;
+
+        /// <summary>
+        /// The 3D scene the shapes stand in (a SmartArt diagram's): its a:scene3d and its center (EMU, in the shapes'
+        /// coordinates); shapes without a scene of their own are turned with its camera about its center.
+        /// </summary>
+        public (XElement Scene3d, double X, double Y)? Scene { get; init; }
     }
 
     /// <summary>The slide as a section element; <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.</summary>
@@ -129,18 +135,26 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var text = GeometryEvaluator.Evaluate(original, bw, bh, originalAdjustments);
             geometry = geometry with { TextLeft = text.TextLeft, TextTop = text.TextTop, TextRight = text.TextRight, TextBottom = text.TextBottom };
         }
+        // The text's own turn within the shape (SmartArt text rectangles), about the text rectangle's center.
+        var (textTurn, textCenter) = (0.0, (X: 0.0, Y: 0.0));
         if (shape.Element(Ns.P + "txXfrm") is { } txXfrm && txXfrm.Element(Ns.A + "ext") != null)
         {
-            // SmartArt shapes carry their own text rectangle, in the same coordinates as the shape.
-            var (tx, ty, tw, th, _, _, _) = ReadTransform(txXfrm);
+            // SmartArt shapes carry their own text rectangle: placed like the shape (its center where it stands, in
+            // the same coordinates), turned by the shape's rotation and its own, which PowerPoint uses to keep the
+            // text of turned shapes upright (measured: rot 90° with a text rot of −90°).
+            var (tx, ty, tw, th, turn, _, _) = ReadTransform(txXfrm);
             var (tbx, tby, tbw, tbh) = placement.Map(tx, ty, tw, th);
-            geometry = geometry with
-            {
-                TextLeft = Units.ToPx(tbx - bx),
-                TextTop = Units.ToPx(tby - by),
-                TextRight = Units.ToPx(tbx - bx + tbw),
-                TextBottom = Units.ToPx(tby - by + tbh),
-            };
+            var (dx, dy) = (tbx + tbw / 2 - (bx + bw / 2), tby + tbh / 2 - (by + bh / 2));
+            var angle = -rotation * Math.PI / 180;
+            var (lx, ly) = (dx * Math.Cos(angle) - dy * Math.Sin(angle), dx * Math.Sin(angle) + dy * Math.Cos(angle));
+            if (flipH)
+                lx = -lx;
+            if (flipV)
+                ly = -ly;
+            var (cx, cy) = (Units.ToPx(bw / 2 + lx), Units.ToPx(bh / 2 + ly));
+            var (halfWidth, halfHeight) = (Units.ToPx(tbw) / 2, Units.ToPx(tbh) / 2);
+            geometry = geometry with { TextLeft = cx - halfWidth, TextTop = cy - halfHeight, TextRight = cx + halfWidth, TextBottom = cy + halfHeight };
+            (textTurn, textCenter) = (turn, (cx, cy));
         }
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
@@ -229,6 +243,14 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // front face with the camera.
         var scene3d = Scene3D(chain, style);
         var camera = Camera.Read(scene3d);
+        // A diagram's 3D scene turns the shape with the diagram's camera about the diagram's center, lit by the
+        // shape's own light rig if it has one (catalog: smartart.styles).
+        if (placement.Scene is { } diagramScene && camera is null or { Flat: true })
+        {
+            var light = scene3d?.Element(Ns.A + "lightRig");
+            scene3d = light == null ? diagramScene.Scene3d : new XElement(Ns.A + "scene3d", diagramScene.Scene3d.Element(Ns.A + "camera"), light);
+            camera = Camera.Read(scene3d)! with { Pivot = (Units.ToPx(diagramScene.X - bx - bw / 2), Units.ToPx(diagramScene.Y - by - bh / 2)) };
+        }
         var shape3d = camera != null ? Shape3D(chain, style) : null;
         if (camera != null && shape3d.Long("z") is { } offset)
             camera = camera with { Offset = Units.ToPx(offset) };
@@ -372,6 +394,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             text.Outlines = null;
             if (upright && turn != 0 && textMarkup.Length > 0)
                 textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
+            if (Math.Abs(textTurn) > 1e-9 && textMarkup.Length > 0)
+                textMarkup = $"<g transform=\"rotate({Units.Css(textTurn)} {Units.Css(textCenter.X)} {Units.Css(textCenter.Y)})\">{textMarkup}</g>";
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
             if (textCamera != null && glyphOutlines is { Count: > 0 })
@@ -776,7 +800,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var (x, y, w, h, _, _, _) = ReadTransform(frame.Element(Ns.P + "xfrm")!);
         var (bx, by, bw, bh) = placement.Map(x, y, w, h);
         var box = placement.Transform.Then(Matrix.Translate(bx, by));
-        var inner = new Placement(Matrix.Identity, 0, 0, 1, 1, 0, 0, placement.GroupFill) { Container = placement.OnSlide(box) };
+        var flat = new Placement(Matrix.Identity, 0, 0, 1, 1, 0, 0, placement.GroupFill) { Container = placement.OnSlide(box) };
         html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px;transform:{ToPx(box).Css()}\">");
 
         // The diagram's own background and outline: a rectangle over the frame, each an element of its own, which
@@ -796,12 +820,51 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 new XElement(Ns.P + "nvSpPr", new XElement(Ns.P + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")),
                     new XElement(Ns.P + "cNvSpPr"), new XElement(Ns.P + "nvPr")), spPr);
             html.Append($"<div class=\"sp\" data-dgm-bg=\"\" style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px\">");
-            RenderShape(shape, dataPart, html, inner, isSlide: false);
+            RenderShape(shape, dataPart, html, flat, isSlide: false);
             html.Append("</div>");
         }
         var dgm = dataModel.Name.Namespace;
         Whole(dataModel.Element(dgm + "bg"), outline: false);
-        RenderTree(ToPresentationMl(tree), drawingPart, html, inner, isSlide: false);
+        var shapes = ToPresentationMl(tree);
+        // The drawing keeps the style's text color in fontRef; PowerPoint draws the text in the color the color
+        // definition gives the shape's style label (txFillClrLst), when it gives one (catalog: smartart.styles).
+        XElement? DiagramPart(string attribute) =>
+            relIds.Attribute(Ns.R + attribute) is { } id && package.Relationship(part, id.Value)?.Target is { } target && package.Exists(target)
+                ? slide.Presentation.Load(target).Root
+                : null;
+        var styling = new SmartArt.Styling(DiagramPart("cs"), DiagramPart("qs"), slide.Colors);
+        // The quick style's 3D scene holds the whole diagram (measured: 3D styles turn the diagram as one).
+        var inner = styling.DiagramScene is { } diagramScene && Camera.Read(diagramScene) is { Flat: false }
+            ? flat with { Scene = (diagramScene, bw / 2, bh / 2) }
+            : flat;
+        var model = new SmartArt.DataModel(dataModel);
+        foreach (var sp in shapes.Descendants(Ns.P + "sp"))
+        {
+            if (sp.Attribute("modelId") is not { } modelId || !model.Points.TryGetValue(modelId.Value, out var pres)
+                || sp.Element(Ns.P + "style")?.Element(Ns.A + "fontRef") is not { } fontRef)
+                continue;
+            var (index, count) = (int.TryParse(pres.Prop("presStyleIdx"), out var i) ? i : 0, int.TryParse(pres.Prop("presStyleCnt"), out var c) ? c : 1);
+            if (styling.Color(pres.Prop("presStyleLbl"), "txFillClrLst", index, count) is { } textColor)
+            {
+                fontRef.RemoveNodes();
+                fontRef.Add(textColor);
+            }
+        }
+        // The layout's list style formats the text by the depth of its data points, which the drawing does not keep:
+        // the layout tree tells which points each shape shows.
+        if (DiagramPart("lo") is { } layoutDef && SmartArt.Styling.ListStyle(layoutDef) is { } listStyle)
+        {
+            var layoutTree = new SmartArt.LayoutTree(layoutDef, model);
+            var bySaved = layoutTree.Root.Descendants().Prepend(layoutTree.Root).Where(n => n.Saved != null)
+                .GroupBy(n => n.Saved!.Id).ToDictionary(g => g.Key, g => g.First());
+            foreach (var sp in shapes.Descendants(Ns.P + "sp"))
+            {
+                if (sp.Attribute("modelId") is { } modelId && bySaved.TryGetValue(modelId.Value, out var node) && node.Text.Count > 0
+                    && sp.Element(Ns.P + "txBody") is { } body)
+                    SmartArt.Styling.ApplyListStyle(body, node.Text, listStyle);
+            }
+        }
+        RenderTree(shapes, drawingPart, html, inner, isSlide: false);
         Whole(dataModel.Element(dgm + "whole"), outline: true);
         html.Append("</div>");
     }
