@@ -77,6 +77,7 @@ public static class CorpusGenerator
         ("text-tabs", TabsDeck.Build, false),
         ("text-underline", UnderlineDeck.Build, false),
         ("lines-dash", DashDeck.Build, false),
+        ("charts-details", ChartsDetailsDeck.Build, true),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -100,6 +101,7 @@ public static class CorpusGenerator
         ["text-3d"] = Text3DDeck.Patch,
         ["text-underline"] = UnderlineDeck.Patch,
         ["lines-dash"] = DashDeck.Patch,
+        ["charts-details"] = ChartsDetailsDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>

@@ -207,8 +207,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             body.Append(Radar(radars, outer));
         foreach (var surface in surfaces)
             body.Append(Surface(surface, outer));
+        // A pie of pie or bar of pie lays its two plots out across the whole plot area.
         foreach (var pie in pies)
-            body.Append(Pie(pie, PlotBox(outer, square: true)));
+            body.Append(Pie(pie, PlotBox(outer, square: pie.Type != "ofPieChart")));
 
         svg.Append(body);
         svg.Append(dataLabels);
@@ -759,6 +760,25 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return new SolidFill(AutoColor(series.Index));
     }
 
+    /// <summary>
+    /// The fill and line of a negative bar of a series that inverts them (c:invertIfNegative, catalog: chart.barColumn):
+    /// the fill of c14:invertSolidFillFmt, else white, and a black hairline where the series draws no line (measured:
+    /// white bars with black outlines); null where the point has a fill of its own or the series does not invert.
+    /// </summary>
+    (Fill Fill, Outline? Line)? Inverted(ChartSeries series, int point)
+    {
+        if (series.Element.Element(Ns.C + "invertIfNegative")?.Attribute("val")?.Value is not ("1" or "true"))
+            return null;
+        if (series.Points.TryGetValue(point, out var dPt) && FillReader.FindFill(dPt.Element(Ns.C + "spPr")) != null)
+            return null;
+        var format = series.Element.Descendants().FirstOrDefault(e => e.Name.LocalName == "invertSolidFillFmt")?.Elements().FirstOrDefault();
+        var fill = FillReader.FindFill(format) is { } own ? FillReader.Read(own, colors) : new SolidFill(RgbColor.White);
+        var line = PointOutline(series, point) is { Visible: true } visible
+            ? visible
+            : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "miter", 8, "sng");
+        return (fill, line);
+    }
+
     Outline? PointOutline(ChartSeries series, int point)
     {
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && dPt.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } own)
@@ -824,9 +844,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             layout.Between = crossing?.Axis.CrossBetween != "midCat";
             var series = layout.Groups.SelectMany(g => g.Series).ToList();
             layout.Categories = series.Count == 0 ? 0 : series.Max(s => Math.Max(s.Values.Count, s.Categories.Count));
-            var names = series.Select(s => s.Categories).FirstOrDefault(c => c.Count > 0) ?? [];
+            var withNames = series.FirstOrDefault(s => s.Categories.Count > 0);
+            var names = withNames?.Categories ?? [];
+            // Numeric categories (dates on a date axis) take the axis's number format, else their own (catalog:
+            // chart.axes; measured: serial dates with mmm yy read "Jan 23").
+            var categoryFormat = layout.Axis.FormatCode is { } own && own != "General" && !layout.Axis.SourceLinked ? own
+                : withNames?.CategoryFormatCode is { } cached && cached != "General" ? cached : null;
             layout.Labels = Enumerable.Range(0, layout.Categories)
-                .Select(i => i < names.Count ? names[i] : (i + 1).ToString(culture)).ToList();
+                .Select(i => i < names.Count
+                    ? categoryFormat != null && double.TryParse(names[i], System.Globalization.NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+                        ? NumberFormat.Format(number, categoryFormat, culture)
+                        : names[i]
+                    : (i + 1).ToString(culture)).ToList();
             layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, layout.Style));
         }
 
@@ -1044,7 +1073,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <summary>The plot area inside the axis labels (PowerPoint's inner plot area) for an automatic layout.</summary>
-    static Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous, DataTableLayout? table)
+    Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous, DataTableLayout? table)
     {
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
         var edges = new HashSet<string>();
@@ -1065,6 +1094,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             edges.Add(layout.Axis.Position);
             var extent = LabelExtent(layout);
             var bleed = layout.Titled ? -TitlePaddingY : LabelBleed;
+            // A category axis's labels keep their distance in percent of the default (c:lblOffset); a value axis with a
+            // display unit label gives it a column of its own beside its labels.
+            var gapScale = layout.Axis.IsValue ? 1 : (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100;
+            if (UnitLabel(layout.Axis) is { } unit)
+                extent += LineHeight(unit.Style) + ValueLabelGap * unit.Style.Size;
             switch (layout.Axis.Position)
             {
                 case "l":
@@ -1074,10 +1108,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     right = Math.Min(right, outer.Right + bleed - extent - ValueLabelGap * s);
                     break;
                 case "b":
-                    bottom = Math.Min(bottom, outer.Bottom + bleed - extent - CategoryLabelGap * s);
+                    bottom = Math.Min(bottom, outer.Bottom + bleed - extent - CategoryLabelGap * s * gapScale);
                     break;
                 case "t":
-                    top = Math.Max(top, outer.Y - bleed + extent + CategoryLabelGap * s);
+                    top = Math.Max(top, outer.Y - bleed + extent + CategoryLabelGap * s * gapScale);
                     break;
             }
         }
@@ -1203,8 +1237,79 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 break;
             layout.Scale = next;
         }
-        layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v, Format(layout), culture)).ToList();
+        var unit = DisplayUnit(layout.Axis);
+        layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v / unit, Format(layout), culture)).ToList();
         layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, style));
+    }
+
+    /// <summary>
+    /// A value axis's display unit label (c:dispUnitsLbl): its own text (c:tx) or the unit's name in the chart's
+    /// language, in its text properties; null where the axis shows none.
+    /// </summary>
+    (string Text, TextStyle Style)? UnitLabel(ChartAxis axis)
+    {
+        if (!axis.IsValue || axis.Element.Element(Ns.C + "dispUnits")?.Element(Ns.C + "dispUnitsLbl") is not { } label)
+            return null;
+        var own = string.Concat(label.Element(Ns.C + "tx")?.Descendants(Ns.A + "t").Select(t => t.Value) ?? []);
+        var text = own.Length > 0 ? own : DisplayUnitText(axis);
+        return text.Length == 0 ? null : (text, Style(label.Element(Ns.C + "txPr"), "valueAxis", 10));
+    }
+
+    /// <summary>
+    /// The display unit label of a value axis on the left or right: turned a quarter (reading upwards), beside the
+    /// labels, its end at the top of the plot area (measured: "Millionen" beside 0 to 5).
+    /// </summary>
+    string UnitLabelMarkup(AxisLayout layout, double edge)
+    {
+        if (UnitLabel(layout.Axis) is not { } unit || layout.Axis.Position is not ("l" or "r"))
+            return "";
+        var (label, style) = unit;
+        var w = Width(label, style);
+        var s = layout.Style.Size;
+        var lineHeight = LineHeight(style);
+        var x = layout.Axis.Position == "l"
+            ? edge - ValueLabelGap * s - layout.MaxLabelWidth - ValueLabelGap * style.Size - lineHeight / 2
+            : edge + ValueLabelGap * s + layout.MaxLabelWidth + ValueLabelGap * style.Size + lineHeight / 2;
+        var top = layout.Scale.Ticks().Select(layout.Map).DefaultIfEmpty(0).Min();
+        return $"<g transform=\"translate({Px(x)} {Px(top + w)}) rotate(-90)\">{text.Label(label, style, 0, CenteredBaseline(style, 0))}</g>";
+    }
+
+    static readonly Dictionary<string, double> DisplayUnits = new()
+    {
+        ["hundreds"] = 1e2, ["thousands"] = 1e3, ["tenThousands"] = 1e4, ["hundredThousands"] = 1e5, ["millions"] = 1e6,
+        ["tenMillions"] = 1e7, ["hundredMillions"] = 1e8, ["billions"] = 1e9, ["trillions"] = 1e12,
+    };
+
+    /// <summary>The value an axis's labels are divided by (c:dispUnits: a built-in or custom unit), else 1.</summary>
+    static double DisplayUnit(ChartAxis axis)
+    {
+        var units = axis.Element.Element(Ns.C + "dispUnits");
+        if (units?.Element(Ns.C + "custUnit")?.Attribute("val")?.Value is { } custom
+            && double.TryParse(custom, System.Globalization.NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0)
+            return value;
+        return units?.Element(Ns.C + "builtInUnit")?.Attribute("val")?.Value is { } name && DisplayUnits.TryGetValue(name, out var builtIn) ? builtIn : 1;
+    }
+
+    /// <summary>
+    /// The default text of a display unit label in the chart's language (Office writes none: PowerPoint shows its own
+    /// words, measured with a German Office: "Millionen", "x 10000").
+    /// </summary>
+    string DisplayUnitText(ChartAxis axis)
+    {
+        var units = axis.Element.Element(Ns.C + "dispUnits");
+        var name = units?.Element(Ns.C + "builtInUnit")?.Attribute("val")?.Value;
+        if (name == null)
+            return units?.Element(Ns.C + "custUnit")?.Attribute("val")?.Value is { } custom ? "x " + custom : "";
+        var german = culture.TwoLetterISOLanguageName == "de";
+        return name switch
+        {
+            "hundreds" => german ? "Hunderte" : "Hundreds",
+            "thousands" => german ? "Tausende" : "Thousands",
+            "millions" => german ? "Millionen" : "Millions",
+            "billions" => german ? "Milliarden" : "Billions",
+            "trillions" => german ? "Billionen" : "Trillions",
+            _ => "x " + DisplayUnits[name].ToString("0", CultureInfo.InvariantCulture),
+        };
     }
 
     string Format(AxisLayout layout)
@@ -1353,11 +1458,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             if (mark is not ("out" or "in" or "cross") || minor && layout.Axis.IsValue == false)
                 continue;
+            // A category axis may mark only every n-th category (c:tickMarkSkip).
+            var markSkip = layout.Axis.IsValue ? 1 : Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickMarkSkip") ?? 1));
             var ticks = layout.Axis.IsValue
                 ? (minor ? layout.Scale.MinorTicks() : layout.Scale.Ticks()).Select(layout.Map)
                 : layout.Between
-                    ? Enumerable.Range(0, layout.Categories + 1).Select(i => layout.Boundary(i))
-                    : Enumerable.Range(0, layout.Categories).Select(layout.Center);
+                    ? Enumerable.Range(0, layout.Categories + 1).Where(i => i % markSkip == 0).Select(i => layout.Boundary(i))
+                    : Enumerable.Range(0, layout.Categories).Where(i => i % markSkip == 0).Select(layout.Center);
             var outward = layout.Axis.Position is "b" or "r" ? 1 : -1;
             var length = TickLength * (minor ? 0.5 : 1);
             var (from, to) = mark switch { "out" => (0.0, length), "in" => (-length, 0.0), _ => (-length, length) };
@@ -1390,8 +1497,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
 
         var angle = Math.Abs(layout.Rotation) * Math.PI / 180;
+        // A category axis may label only every n-th category (c:tickLblSkip), and its labels keep their distance in
+        // percent of the default (c:lblOffset).
+        var skip = layout.Axis.IsValue ? 1 : Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
+        var gapScale = layout.Axis.IsValue ? 1 : (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100;
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
         {
+            if (i % skip != 0)
+                continue;
             var label = layout.Labels[i];
             var w = Width(label, style);
             var p = positions[i];
@@ -1409,15 +1522,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             {
                 case "l":
                     svg.Append(text.Label(label, style, left - ValueLabelGap * s - w, CenteredBaseline(style, p)));
+                    if (i == 0)
+                        svg.Append(UnitLabelMarkup(layout, left));
                     break;
                 case "r":
                     svg.Append(text.Label(label, style, right + ValueLabelGap * s, CenteredBaseline(style, p)));
+                    if (i == 0)
+                        svg.Append(UnitLabelMarkup(layout, right));
                     break;
                 case "b":
-                    svg.Append(text.Label(label, style, p - w / 2, bottom + CategoryLabelGap * s + Ascent(style)));
+                    svg.Append(text.Label(label, style, p - w / 2, bottom + CategoryLabelGap * s * gapScale + Ascent(style)));
                     break;
                 case "t":
-                    svg.Append(text.Label(label, style, p - w / 2, top - CategoryLabelGap * s - Descent(style)));
+                    svg.Append(text.Label(label, style, p - w / 2, top - CategoryLabelGap * s * gapScale - Descent(style)));
                     break;
             }
         }
@@ -1470,7 +1587,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 var box = group.Horizontal
                     ? new Box(Math.Min(v0, v1), Math.Min(c0, c1), Math.Abs(v1 - v0), Math.Abs(c1 - c0))
                     : new Box(Math.Min(c0, c1), Math.Min(v0, v1), Math.Abs(c1 - c0), Math.Abs(v1 - v0));
-                svg.Append(Rect(box, PointFill(group, series, i), PointOutline(series, i), snap: true));
+                var (barFill, barOutline) = (PointFill(group, series, i), PointOutline(series, i));
+                if (v < 0 && Inverted(series, i) is { } inverted)
+                    (barFill, barOutline) = inverted;
+                svg.Append(Rect(box, barFill, barOutline, snap: true));
 
                 if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw)
                 {
@@ -2541,6 +2661,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     string Pie(ChartGroup group, Box plot)
     {
+        if (group.Type == "ofPieChart")
+            return OfPie(group, plot);
         var svg = new StringBuilder();
         var doughnut = group.Type == "doughnutChart";
         var rings = doughnut ? group.Series : group.Series.Take(1).ToList();
@@ -2592,6 +2714,121 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     DrawLabel(spec, label, cx + ox + dx * distance - w / 2, cy + oy + dy * distance - h / 2);
                 }
                 angle += sweep;
+            }
+        }
+        return svg.ToString();
+    }
+
+    /// <summary>
+    /// Pie of pie and bar of pie (c:ofPieChart, catalog: chart.pie): the points the split puts aside (splitType pos:
+    /// the last splitPos, 2 by default; val and percent: those below splitPos; cust: c:secondPiePt) are drawn as a second
+    /// pie or a stacked bar beside the main pie, which shows them as one slice (formatted by the extra data point)
+    /// centered towards it; the second plot is secondPieSize % of the main pie high, a bar half as wide as high, the gap
+    /// between them gapWidth % of a constant share of the main pie, the second pie's slices start where the combined
+    /// slice starts, the bar's first point on top; series lines join them (measured with generated/charts-details).
+    /// </summary>
+    string OfPie(ChartGroup group, Box plot)
+    {
+        var svg = new StringBuilder();
+        if (group.Series.FirstOrDefault() is not { } series)
+            return "";
+        var values = series.Values.Select(v => Math.Abs(v ?? 0)).ToList();
+        var n = values.Count;
+        var bar = (group.Element.Element(Ns.C + "ofPieType")?.Attribute("val")?.Value ?? "pie") == "bar";
+        var splitType = group.Element.Element(Ns.C + "splitType")?.Attribute("val")?.Value ?? "auto";
+        var splitPos = ChartModel.Number(group.Element, "splitPos");
+        var total = values.Sum();
+        var second = new HashSet<int>();
+        switch (splitType)
+        {
+            case "cust":
+                foreach (var point in group.Element.Element(Ns.C + "custSplit")?.Elements(Ns.C + "secondPiePt") ?? [])
+                {
+                    if (int.TryParse(point.Attribute("val")?.Value, out var index) && index >= 0 && index < n)
+                        second.Add(index);
+                }
+                break;
+            case "val":
+                for (var i = 0; i < n; i++)
+                    if (values[i] < (splitPos ?? 0)) second.Add(i);
+                break;
+            case "percent":
+                for (var i = 0; i < n; i++)
+                    if (total > 0 && values[i] / total * 100 < (splitPos ?? 0)) second.Add(i);
+                break;
+            default:
+                var count = (int)Math.Clamp(splitPos ?? 2, 0, n);
+                for (var i = n - count; i < n; i++)
+                    second.Add(i);
+                break;
+        }
+        var other = second.Sum(i => values[i]);
+        if (total <= 0)
+            return "";
+
+        // Sizes relative to the main pie's diameter, fitted to the plot area and centered.
+        var size = Math.Clamp(ChartModel.Number(group.Element, "secondPieSize") ?? 75, 5, 200) / 100;
+        var gapWidth = (ChartModel.Number(group.Element, "gapWidth") ?? 100) / 100;
+        var (secondWidth, gap) = bar ? (size / 2, 0.259 * gapWidth) : (size, 0.514 * gapWidth);
+        var diameter = Math.Max(1, Math.Min(plot.W / (1 + gap + secondWidth), plot.H));
+        var left = plot.X + (plot.W - diameter * (1 + gap + secondWidth)) / 2;
+        var cy = plot.Y + plot.H / 2;
+        var (cx, r) = (left + diameter / 2, diameter / 2);
+
+        // The main pie: the combined slice centered towards the second plot (90°, clockwise from the top).
+        var otherSweep = other / total * 360;
+        var angle = 90 + otherSweep / 2;
+        for (var i = 0; i < n; i++)
+        {
+            if (second.Contains(i) || values[i] <= 0)
+                continue;
+            var sweep = values[i] / total * 360;
+            svg.Append($"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+            angle += sweep;
+        }
+        if (other > 0)
+            svg.Append($"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{paint.Fill(PointFill(group, series, n), 0, 0, defs)}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>");
+
+        // The second plot.
+        var secondLeft = left + diameter * (1 + gap);
+        var height = size * diameter;
+        (double X, double Y) top, bottom;
+        if (bar)
+        {
+            var w = secondWidth * diameter;
+            var y = cy - height / 2;
+            foreach (var i in second.OrderBy(i => i))
+            {
+                var h = other > 0 ? values[i] / other * height : 0;
+                svg.Append(Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true));
+                y += h;
+            }
+            (top, bottom) = ((secondLeft, cy - height / 2), (secondLeft, cy + height / 2));
+        }
+        else
+        {
+            var (cx2, r2) = (secondLeft + height / 2, height / 2);
+            var a = 90 - otherSweep / 2;
+            foreach (var i in second.OrderBy(i => i))
+            {
+                var sweep = other > 0 ? values[i] / other * 360 : 0;
+                svg.Append($"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+                a += sweep;
+            }
+            (top, bottom) = ((cx2, cy - r2), (cx2, cy + r2));
+        }
+
+        // Series lines from the combined slice's edges to the second plot's top and bottom.
+        if (other > 0 && group.Element.Element(Ns.C + "serLines") is { } lines)
+        {
+            var outline = lines.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
+                ? OutlineReader.Merge([(ln, colors)])
+                : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "round", 8, "sng");
+            if (outline is { Visible: true })
+            {
+                (double X, double Y) Edge(double degrees) => (cx + Math.Sin(degrees * Math.PI / 180) * r, cy - Math.Cos(degrees * Math.PI / 180) * r);
+                var (e0, e1) = (Edge(90 - otherSweep / 2), Edge(90 + otherSweep / 2));
+                svg.Append($"<path d=\"M{Px(e0.X)} {Px(e0.Y)}L{Px(top.X)} {Px(top.Y)}M{Px(e1.X)} {Px(e1.Y)}L{Px(bottom.X)} {Px(bottom.Y)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
             }
         }
         return svg.ToString();

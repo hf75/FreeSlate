@@ -250,6 +250,18 @@ public static class NumberFormat
         return text + "E" + (exponent < 0 ? "-" : sign == '+' ? "+" : "") + exp;
     }
 
+    /// <summary>
+    /// A month's abbreviation (mmm) as Office writes it: Windows' own abbreviations, which differ from .NET's for
+    /// German (Mrz, Jun, Sep; measured with a German Office: "Mrz 23").
+    /// </summary>
+    static string AbbreviatedMonth(int month, CultureInfo culture) => culture.TwoLetterISOLanguageName switch
+    {
+        "de" => GermanMonths[month - 1],
+        _ => culture.DateTimeFormat.GetAbbreviatedMonthName(month).TrimEnd('.'),
+    };
+
+    static readonly string[] GermanMonths = ["Jan", "Feb", "Mrz", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
     static string Date(double serial, string section, CultureInfo culture)
     {
         DateTime date;
@@ -284,7 +296,7 @@ public static class NumberFormat
                         {
                             1 => date.Month.ToString(culture),
                             2 => date.Month.ToString("00", culture),
-                            3 => culture.DateTimeFormat.GetAbbreviatedMonthName(date.Month).TrimEnd('.'),
+                            3 => AbbreviatedMonth(date.Month, culture),
                             5 => culture.DateTimeFormat.GetMonthName(date.Month)[..1],
                             _ => culture.DateTimeFormat.GetMonthName(date.Month),
                         });
