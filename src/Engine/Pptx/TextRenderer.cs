@@ -109,6 +109,50 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
     }
 
+    /// <summary>
+    /// Character formatting of chart text from a:defRPr-like elements, highest priority first (catalog: chart.text);
+    /// the last layer should carry the chart's default size.
+    /// </summary>
+    public TextStyle ChartStyle(IEnumerable<XElement?> layers) => Style(null, ChartSources(layers), 0, 1, null);
+
+    /// <summary>Lays out chart rich text (c:rich): the paragraph's own a:defRPr, the body's list style, then <paramref name="layers"/>.</summary>
+    public LaidOutText ChartRich(XElement rich, IEnumerable<XElement?> layers, double width, bool wrap)
+    {
+        var shared = new List<Source>();
+        if (rich.Element(Ns.A + "lstStyle") is { } own) shared.Add(new ListStyleSource(own));
+        shared.AddRange(ChartSources(layers));
+        var counters = new int[9];
+        var paragraphs = rich.Elements(Ns.A + "p").Select(p =>
+        {
+            var sources = ChartSources([p.Element(Ns.A + "pPr")?.Element(Ns.A + "defRPr")]);
+            sources.AddRange(shared);
+            return Paragraph(p, sources, 1, 0, counters);
+        }).ToList();
+        return TextLayout.Layout(paragraphs, Math.Max(0, width), wrap);
+    }
+
+    static List<Source> ChartSources(IEnumerable<XElement?> layers) =>
+        layers.Where(l => l != null)
+            .Select(l => (Source)new ListStyleSource(new XElement(Ns.A + "lstStyle",
+                new XElement(Ns.A + "lvl1pPr", new XElement(Ns.A + "defRPr", l!.Attributes(), l.Elements())))))
+            .ToList();
+
+    /// <summary>A single-style label with its baseline origin at (x, baseline) in points.</summary>
+    public string Label(string value, TextStyle style, double x, double baseline) =>
+        string.IsNullOrWhiteSpace(value) ? "" : Text(new PlacedRun(value, style, x, 0), x, baseline);
+
+    /// <summary>The runs of a laid-out line with the line's left edge at <paramref name="left"/> and its baseline at <paramref name="baseline"/>.</summary>
+    public string EmitLine(LaidOutLine line, double left, double baseline)
+    {
+        var svg = new StringBuilder();
+        foreach (var run in line.Runs)
+        {
+            if (!string.IsNullOrWhiteSpace(run.Text))
+                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+        }
+        return svg.ToString();
+    }
+
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction)
     {
         var counters = new int[9];

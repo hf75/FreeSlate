@@ -10,6 +10,8 @@ public static class Ns
     public static readonly XNamespace P = "http://schemas.openxmlformats.org/presentationml/2006/main";
     public static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
     public static readonly XNamespace Asvg = "http://schemas.microsoft.com/office/drawing/2016/SVG/main";
+    public static readonly XNamespace C = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+    public static readonly XNamespace Cs = "http://schemas.microsoft.com/office/drawing/2012/chartStyle";
 
     public static long? Long(this XElement? element, string attribute) =>
         element?.Attribute(attribute) is { } a && long.TryParse(a.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;

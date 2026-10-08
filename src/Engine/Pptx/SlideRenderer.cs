@@ -159,7 +159,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append("</div>");
     }
 
-    /// <summary>Graphic frames: tables for now (charts, SmartArt and OLE objects follow).</summary>
+    /// <summary>Graphic frames: SmartArt, charts and tables (OLE objects follow).</summary>
     void RenderGraphicFrame(XElement frame, string part, StringBuilder html, Placement placement)
     {
         var xfrm = frame.Element(Ns.P + "xfrm");
@@ -170,6 +170,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "relIds") is { } relIds)
         {
             RenderDiagram(relIds, frame, part, html, placement);
+            return;
+        }
+
+        if (data.Element(Ns.C + "chart")?.Attribute(Ns.R + "id") is { } chartId
+            && slide.Presentation.Package.Relationship(part, chartId.Value) is { External: false } chartRel)
+        {
+            var (x, y, w, h, _, _, _) = ReadTransform(xfrm);
+            var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+            var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, 0, false, false));
+            var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
+            var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
+            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
             return;
         }
 

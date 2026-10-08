@@ -51,6 +51,9 @@ public sealed class FontData : IDisposable
             descent = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(tables["hhea"] + 6));
         }
         AscentRatio = ascent + descent > 0 ? ascent / (ascent + descent) : 0.8;
+        UnitsPerEm = UnitsPerEm == 0 ? 1000 : UnitsPerEm;
+        Ascent = ascent / UnitsPerEm;
+        Descent = descent / UnitsPerEm;
 
         blob = Blob.FromFile(path);
         face = new Face(blob, 0);
@@ -70,6 +73,11 @@ public sealed class FontData : IDisposable
     /// metrics if the font sets USE_TYPO_METRICS, else the Windows metrics (measured against PowerPoint).
     /// </summary>
     public double AscentRatio { get; }
+
+    /// <summary>Ascent and descent in em from the same metrics as <see cref="AscentRatio"/> (chart text boxes use them).</summary>
+    public double Ascent { get; }
+
+    public double Descent { get; }
 
     /// <summary>Advance width of <paramref name="text"/> in em (multiply by the font size).</summary>
     public double Width(string text, bool kerning)
