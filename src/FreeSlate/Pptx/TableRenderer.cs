@@ -68,6 +68,13 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         var fills = new StringBuilder();
         var borders = new StringBuilder();
         var texts = new StringBuilder();
+
+        // The table background behind all cells: the table's own fill, else the style's tblBg (a fill or a
+        // theme fill reference), visible through cells without a fill or with transparent ones.
+        var background = TableBackground(tblPr, style);
+        if (background is not NoFill)
+            fills.Append($"<rect width=\"{Px(xs[^1])}\" height=\"{Px(ys[^1])}\"{paint.Fill(background, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs)}/>");
+
         foreach (var cell in cells)
         {
             var parts = Parts(cell, rows.Count, columns.Count, tblPr).Select(p => style?.Element(Ns.A + p)).Where(p => p != null).Cast<XElement>().ToList();
@@ -81,14 +88,20 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             if (fill is not NoFill)
                 fills.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\"{paint.Fill(fill, w * PxPerPt, h * PxPerPt, defs)}/>");
 
+            // A style part's borders refer to its own region (a row, a column, a corner cell or the whole table):
+            // an edge on the region's outline takes top/bottom/left/right, an edge inside it insideH/insideV.
             var lastRow = cell.Row + cell.RowSpan >= rows.Count;
             var lastColumn = cell.Column + cell.ColumnSpan >= columns.Count;
-            Border(borders, defs, tcPr, parts, "lnL", cell.Column == 0 ? "left" : "insideV", x, y, x, y + h);
-            Border(borders, defs, tcPr, parts, "lnR", lastColumn ? "right" : "insideV", x + w, y, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnT", cell.Row == 0 ? "top" : "insideH", x, y, x + w, y);
-            Border(borders, defs, tcPr, parts, "lnB", lastRow ? "bottom" : "insideH", x, y + h, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnTlToBr", "tl2br", x, y, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnBlToTr", "tr2bl", x, y + h, x + w, y);
+            static bool RowRegion(string part) => part is "band1H" or "band2H" or "firstRow" or "lastRow" || part.EndsWith("Cell", StringComparison.Ordinal);
+            static bool ColumnRegion(string part) => part is "band1V" or "band2V" or "firstCol" or "lastCol" || part.EndsWith("Cell", StringComparison.Ordinal);
+            string Side(string part, string outer, bool onTableEdge, bool horizontalEdge) =>
+                (horizontalEdge ? RowRegion(part) : ColumnRegion(part)) || onTableEdge ? outer : horizontalEdge ? "insideH" : "insideV";
+            Border(borders, defs, tcPr, parts, "lnL", part => Side(part, "left", cell.Column == 0, false), x, y, x, y + h);
+            Border(borders, defs, tcPr, parts, "lnR", part => Side(part, "right", lastColumn, false), x + w, y, x + w, y + h);
+            Border(borders, defs, tcPr, parts, "lnT", part => Side(part, "top", cell.Row == 0, true), x, y, x + w, y);
+            Border(borders, defs, tcPr, parts, "lnB", part => Side(part, "bottom", lastRow, true), x, y + h, x + w, y + h);
+            Border(borders, defs, tcPr, parts, "lnTlToBr", _ => "tl2br", x, y, x + w, y + h);
+            Border(borders, defs, tcPr, parts, "lnBlToTr", _ => "tr2bl", x, y + h, x + w, y);
 
             var (marL, marR, marT, marB) = Margins(cell.Element);
             texts.Append(text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
@@ -96,6 +109,18 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
 
         var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + fills + borders + texts;
         return (svg, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
+    }
+
+    Fill TableBackground(XElement? tblPr, XElement? style)
+    {
+        if (tblPr?.Elements().FirstOrDefault(e => e.Name.LocalName is "solidFill" or "gradFill" or "pattFill" or "blipFill" or "noFill") is { } own)
+            return FillReader.Read(own, slide.Colors);
+        var tblBg = style?.Element(Ns.A + "tblBg");
+        if (tblBg?.Element(Ns.A + "fillRef") is { } fillRef && slide.Theme.FillStyle(fillRef.Int("idx") ?? 0) is { } themed)
+            return FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
+        if (tblBg?.Element(Ns.A + "fill")?.Elements().FirstOrDefault() is { } fill)
+            return FillReader.Read(fill, slide.Colors);
+        return Fill.None;
     }
 
     static double Span(double[] xs, int start, int count) => xs[Math.Min(xs.Length - 1, start + count)] - xs[start];
@@ -169,14 +194,14 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     }
 
     /// <summary>A cell border: the cell's own a:lnX, else the highest style part defining the side.</summary>
-    void Border(StringBuilder svg, StringBuilder defs, XElement? tcPr, List<XElement> parts, string own, string side, double x1, double y1, double x2, double y2)
+    void Border(StringBuilder svg, StringBuilder defs, XElement? tcPr, List<XElement> parts, string own, Func<string, string> side, double x1, double y1, double x2, double y2)
     {
         XElement? line = tcPr?.Element(Ns.A + own);
         if (line == null)
         {
             for (var i = parts.Count - 1; i >= 0 && line == null; i--)
             {
-                var border = parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "tcBdr")?.Element(Ns.A + side);
+                var border = parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "tcBdr")?.Element(Ns.A + side(parts[i].Name.LocalName));
                 line = border?.Element(Ns.A + "ln");
                 if (line == null && border?.Element(Ns.A + "lnRef") is { } lnRef && slide.Theme.LineStyle(lnRef.Int("idx") ?? 0) is { } themed)
                 {
@@ -195,6 +220,15 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     {
         if (outline is not { Visible: true })
             return;
-        svg.Append($"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(outline with { Cap = "flat" }, 0, 0, defs)}/>");
+        var flat = outline with { Cap = "flat" };
+        if (CompoundLines.Parts(outline.Compound) != null)
+        {
+            // Double, thick-thin and triple borders (catalog: line.compound) as parallel strokes.
+            var path = new Drawing.Geometry.EvaluatedPath(
+                [new Drawing.Geometry.PathSegment('M', [x1 * PxPerPt, y1 * PxPerPt]), new Drawing.Geometry.PathSegment('L', [x2 * PxPerPt, y2 * PxPerPt])], "none", true);
+            svg.Append(CompoundLines.Strokes(path, flat, width => paint.Stroke(flat with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, 0, 0, defs)));
+            return;
+        }
+        svg.Append($"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(flat, 0, 0, defs)}/>");
     }
 }
