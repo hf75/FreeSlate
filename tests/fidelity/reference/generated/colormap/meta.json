@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/colormap.pptx",
+  "sha256": "066e027e5a8aa04c6b85690421677b13234cce81382626d20d0b11c8bacbc9dd",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 4
+}

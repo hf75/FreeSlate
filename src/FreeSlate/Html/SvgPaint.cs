@@ -18,8 +18,22 @@ public sealed class SvgPaint
         GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation)})\"",
         PatternFill p => $" fill=\"url(#{Pattern(p, defs, origin)})\"",
         PictureFill p => $" fill=\"url(#{Picture(p, w, h, defs)})\"",
+        SlideFill { Fill: SolidFill s } => Color("fill", s.Color),
+        SlideFill s => $" fill=\"url(#{SlidePattern(s, defs)})\"",
         _ => " fill=\"none\"",
     };
+
+    /// <summary>The slide background as one pattern tile covering the slide, mapped into the shape's coordinates.</summary>
+    string SlidePattern(SlideFill s, StringBuilder defs)
+    {
+        var id = NewId("sb");
+        var paint = Fill(s.Fill, s.Width, s.Height, defs);
+        var (a, b, c, d, e, f) = s.ToShape;
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(s.Width)}\" height=\"{Units.Css(s.Height)}\" " +
+                    $"patternTransform=\"matrix({Units.Css4(a)} {Units.Css4(b)} {Units.Css4(c)} {Units.Css4(d)} {Units.Css(e)} {Units.Css(f)})\">" +
+                    $"<rect width=\"{Units.Css(s.Width)}\" height=\"{Units.Css(s.Height)}\"{paint}/></pattern>");
+        return id;
+    }
 
     /// <summary>
     /// A preset pattern as an 8×8 pixel tile. PowerPoint aligns the tiles to the slide, so the pattern is shifted

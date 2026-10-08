@@ -13,6 +13,7 @@ public abstract record Fill
         SolidFill solid => solid.Color,
         GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
         PatternFill pattern => pattern.Foreground,
+        SlideFill slide => MainColor(slide.Fill),
         _ => null,
     };
 }
@@ -41,6 +42,12 @@ public sealed record GradientFill(
 }
 
 public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill;
+
+/// <summary>
+/// The slide's background fill on a shape (p:sp/@useBgFill): painted over the whole slide (width × height pixels) and
+/// mapped into the shape's coordinates, so the shape shows the background behind it.
+/// </summary>
+public sealed record SlideFill(Fill Fill, double Width, double Height, (double A, double B, double C, double D, double E, double F) ToShape) : Fill;
 
 /// <summary>A picture fill; Image is a data URI, SourceRect the crop in fractions (negative values pad).</summary>
 public sealed record PictureFill(string Image, (double L, double T, double R, double B) SourceRect, (double L, double T, double R, double B) FillRect, bool Tile) : Fill

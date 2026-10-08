@@ -60,6 +60,7 @@ public static class CorpusGenerator
         ("outlines", OutlinesDeck.Build, false),
         ("text-vertical", TextVerticalDeck.Build, false),
         ("three-d", ThreeDDeck.Build, false),
+        ("colormap", ColorMapDeck.Build, true),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -67,6 +68,7 @@ public static class CorpusGenerator
     {
         ["outlines"] = OutlinesDeck.Patch,
         ["text-vertical"] = TextVerticalDeck.Patch,
+        ["colormap"] = ColorMapDeck.Patch,
     };
 
     /// <summary>Generates the named decks, or all of them.</summary>

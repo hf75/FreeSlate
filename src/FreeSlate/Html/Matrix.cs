@@ -28,6 +28,15 @@ public readonly record struct Matrix(double A, double B, double C, double D, dou
 
     public bool IsIdentity => this == Identity;
 
+    /// <summary>The inverse transform (the identity for a singular one).</summary>
+    public Matrix Invert()
+    {
+        var det = A * D - B * C;
+        if (Math.Abs(det) < 1e-12)
+            return Identity;
+        return new Matrix(D / det, -B / det, -C / det, A / det, (C * F - D * E) / det, (B * E - A * F) / det);
+    }
+
     public string Css() =>
         $"matrix({Units.Css4(A)},{Units.Css4(B)},{Units.Css4(C)},{Units.Css4(D)},{Units.Css(E)},{Units.Css(F)})";
 }

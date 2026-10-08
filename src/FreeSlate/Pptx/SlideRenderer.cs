@@ -127,6 +127,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
         var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part, Units.ToPx(bw)) : ResolveFill(chain, style, placement.GroupFill);
+        // A shape filled with the slide's background shows the part of the background behind it.
+        if (shape.Name.LocalName == "sp" && shape.Bool("useBgFill") == true)
+        {
+            var toShape = ToPx(matrix).Invert();
+            fill = new SlideFill(SlideBackground(), Units.ToPx(slide.Presentation.SlideWidth), Units.ToPx(slide.Presentation.SlideHeight),
+                (toShape.A, toShape.B, toShape.C, toShape.D, toShape.E, toShape.F));
+        }
         var outline = ResolveOutline(chain, style);
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
 
@@ -763,6 +770,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     string Background(double width, double height)
     {
+        var fill = SlideBackground();
+        var defs = new StringBuilder();
+        var paintAttributes = paint.Fill(fill, width, height, defs);
+        return $"<svg class=\"bg\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\">" +
+               (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") +
+               $"<rect width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{paintAttributes}/></svg>";
+    }
+
+    /// <summary>The slide's background fill: its own, else the layout's, else the master's; white without any.</summary>
+    Fill SlideBackground()
+    {
         var fill = Fill.None as Fill;
         foreach (var (document, part) in new[] { (slide.Slide, slide.SlidePart), (slide.Layout, slide.LayoutPart), (slide.Master, slide.MasterPart) })
         {
@@ -775,13 +793,6 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 fill = FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(bgRef)));
             break;
         }
-        if (fill is NoFill)
-            fill = new SolidFill(RgbColor.White);
-
-        var defs = new StringBuilder();
-        var paintAttributes = paint.Fill(fill, width, height, defs);
-        return $"<svg class=\"bg\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\">" +
-               (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") +
-               $"<rect width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{paintAttributes}/></svg>";
+        return fill is NoFill ? new SolidFill(RgbColor.White) : fill;
     }
 }

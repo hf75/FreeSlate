@@ -135,6 +135,19 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// <summary>SVG content (frame-local pixels) for a chart frame of the given size in points placed at the given slide pixel origin.</summary>
     public string Render(double widthPt, double heightPt, double originXPx, double originYPx)
     {
+        var previous = text.ColorOverride;
+        try
+        {
+            return Draw(widthPt, heightPt, originXPx, originYPx);
+        }
+        finally
+        {
+            text.ColorOverride = previous;
+        }
+    }
+
+    string Draw(double widthPt, double heightPt, double originXPx, double originYPx)
+    {
         if (!slide.Presentation.Package.Exists(chartPart) || ChartModel.Read(slide.Presentation.Load(chartPart)) is not { } read)
             return "";
         model = read;
@@ -146,6 +159,10 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
         colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
+        // A chart can keep its own color mapping (measured: PowerPoint honors c:clrMapOvr against the slide's).
+        if (model.ChartSpace.Element(Ns.C + "clrMapOvr") is { } mapping)
+            colors = colors.WithColorMap(mapping.Attributes().Where(a => !a.IsNamespaceDeclaration).Select(a => KeyValuePair.Create(a.Name.LocalName, a.Value)));
+        text.ColorOverride = colors;
 
         var svg = new StringBuilder();
         svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false));

@@ -34,6 +34,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>The document's paint servers (gradients, patterns and pictures share their ids).</summary>
     public SvgPaint Paint { get; init; } = new();
 
+    /// <summary>The colors the text resolves against: the slide's, or <see cref="ColorOverride"/>.</summary>
+    ColorContext Colors => ColorOverride ?? slide.Colors;
+
+    /// <summary>A chart's own color mapping while the chart is drawn.</summary>
+    public ColorContext? ColorOverride { get; set; }
+
     int nextClip;
 
     static readonly XNamespace HyperlinkColor = "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor";
@@ -406,7 +412,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 if (string.IsNullOrWhiteSpace(run.Text))
                     continue;
                 var filter = run.Style.Effects is { } effects
-                    ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, slide.Colors, 0, 0, defs, boundingBox: true)
+                    ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true)
                     : null;
                 var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
@@ -914,7 +920,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         };
 
         var colorElement = ParagraphElement(pPr, sources, level, "buClrTx", "buClr");
-        var color = colorElement?.Name.LocalName == "buClr" ? slide.Colors.ResolveChild(colorElement) ?? textStyle.Color : textStyle.Color;
+        var color = colorElement?.Name.LocalName == "buClr" ? Colors.ResolveChild(colorElement) ?? textStyle.Color : textStyle.Color;
         return new Bullet(text, new TextStyle(resolved, size, color, Kerning: false));
     }
 
@@ -962,15 +968,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var fillElement = RunElement(rPr, sources, level, FillNames);
         var part = linkPart ?? slide.SlidePart;
         Fill? paint = fillElement?.Name.LocalName is "gradFill" or "pattFill" or "blipFill"
-            ? FillReader.Read(fillElement, slide.Colors, slide.Images(part), slide.ImageSizes(part))
+            ? FillReader.Read(fillElement, Colors, slide.Images(part), slide.ImageSizes(part))
             : null;
         var lineElement = RunElement(rPr, sources, level, "ln");
-        var line = lineElement != null ? OutlineReader.Merge([(lineElement, slide.Colors)]) : null;
+        var line = lineElement != null ? OutlineReader.Merge([(lineElement, Colors)]) : null;
         if (line is { Visible: false }) line = null;
         if (link != null)
         {
             if (hlink!.Descendants(HyperlinkColor + "hlinkClr").FirstOrDefault()?.Str("val") != "tx")
-                color = slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "hlink")));
+                color = Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "hlink")));
             if (rPr!.Attribute("u") == null) underline = "sng";
             paint = null;
         }
@@ -989,7 +995,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             underline,
             R("strike") is "sngStrike" or "dblStrike" ? R("strike") : null,
             baseline * size / drawn,
-            RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
+            RunElement(rPr, sources, level, "highlight") is { } h ? Colors.ResolveChild(h) : null,
             R("cap") == "all",
             RunElement(rPr, sources, level, "effectLst"),
             link,
@@ -1002,10 +1008,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var fill = RunElement(rPr, sources, level, FillNames);
         return fill?.Name.LocalName switch
         {
-            "solidFill" => slide.Colors.ResolveChild(fill) ?? RgbColor.Black,
+            "solidFill" => Colors.ResolveChild(fill) ?? RgbColor.Black,
             "noFill" => RgbColor.Black.WithAlpha(0),
-            "gradFill" => slide.Colors.ResolveChild(fill.Element(Ns.A + "gsLst")?.Element(Ns.A + "gs")) ?? RgbColor.Black,
-            _ => slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "tx1"))),
+            "gradFill" => Colors.ResolveChild(fill.Element(Ns.A + "gsLst")?.Element(Ns.A + "gs")) ?? RgbColor.Black,
+            _ => Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "tx1"))),
         };
     }
 

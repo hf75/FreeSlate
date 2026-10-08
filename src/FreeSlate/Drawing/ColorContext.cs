@@ -17,6 +17,15 @@ public sealed class ColorContext(Theme theme, IReadOnlyDictionary<string, string
     /// <summary>The same color map with another theme (theme overrides of slides and charts).</summary>
     public ColorContext WithTheme(Theme theme) => new(theme, colorMap, placeholder);
 
+    /// <summary>The context with a color map override (a chart's c:clrMapOvr): its mappings replace the current ones.</summary>
+    public ColorContext WithColorMap(IEnumerable<KeyValuePair<string, string>> overrides)
+    {
+        var map = new Dictionary<string, string>(colorMap, StringComparer.Ordinal);
+        foreach (var (name, target) in overrides)
+            map[name] = target;
+        return new ColorContext(Theme, map, placeholder);
+    }
+
     /// <summary>The color of the first color child of <paramref name="parent"/>, if any.</summary>
     public RgbColor? ResolveChild(XElement? parent)
     {
