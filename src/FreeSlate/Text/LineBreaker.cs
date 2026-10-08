@@ -19,10 +19,10 @@ public static class LineBreaker
     /// The East Asian line breaking rules (pPr eaLnBrk): without them a line may break between any two East Asian
     /// characters, punctuation included (measured).
     /// </param>
-    /// <param name="custom">Characters that may not start and not end a line (p:kinsoku), replacing the defaults.</param>
-    public static bool[] Opportunities(string text, bool kinsoku = true, (string NotFirst, string NotLast)? custom = null)
+    /// <remarks>PowerPoint ignores the presentation's own kinsoku characters (p:kinsoku, measured).</remarks>
+    public static bool[] Opportunities(string text, bool kinsoku = true)
     {
-        var (notFirst, notLast) = custom ?? (NoBreakBefore, NoBreakAfter);
+        var (notFirst, notLast) = (NoBreakBefore, NoBreakAfter);
         var result = new bool[text.Length];
         for (var i = 0; i < text.Length; i++)
         {

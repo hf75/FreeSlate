@@ -83,9 +83,6 @@ public sealed class ParagraphInput
 
     /// <summary>Commas and full stops may hang past the end of a line (a:pPr/@hangingPunct, with the kinsoku rules).</summary>
     public bool HangingPunctuation { get; init; }
-
-    /// <summary>The presentation's own kinsoku characters (p:kinsoku): may not start, may not end a line.</summary>
-    public (string NotFirst, string NotLast)? KinsokuCharacters { get; init; }
 }
 
 /// <summary>A run placed on a line: X from the left edge of the text area, in points.</summary>
@@ -211,7 +208,7 @@ public static class TextLayout
             styles.AddRange(Enumerable.Repeat(run.Style, text.Length));
         }
         var all = chars.ToString();
-        var breaks = LineBreaker.Opportunities(all, paragraph.Kinsoku, paragraph.KinsokuCharacters);
+        var breaks = LineBreaker.Opportunities(all, paragraph.Kinsoku);
         // Bidi levels of the paragraph (catalog: text.rtl); neutrals the rules leave open follow their run's language.
         var levels = Bidi.Levels(all, paragraph.RightToLeft, i => i < styles.Count ? styles[i].RightToLeft : null);
 

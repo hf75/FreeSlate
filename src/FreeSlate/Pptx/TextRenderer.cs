@@ -843,7 +843,6 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             Kinsoku = P("eaLnBrk") is not ("0" or "false"),
             LatinBreak = P("latinLnBrk") is "1" or "true",
             HangingPunctuation = P("hangingPunct") is "1" or "true",
-            KinsokuCharacters = slide.Presentation.Kinsoku(runs.FirstOrDefault(r => r.Text.Trim().Length > 0)?.Style.Language),
             MarginLeft = Points(P("marL")),
             MarginRight = Points(P("marR")),
             Indent = Points(P("indent")),

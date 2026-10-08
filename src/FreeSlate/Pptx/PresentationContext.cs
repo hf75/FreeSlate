@@ -45,23 +45,6 @@ public sealed class PresentationContext : IDisposable
     /// <summary>Glyph outlines of the rendered text.</summary>
     public Html.GlyphCache Glyphs { get; } = new();
 
-    /// <summary>
-    /// The presentation's own kinsoku characters (p:kinsoku: may not start, may not end a line) for a language, or
-    /// for any language when none names it; null for the defaults.
-    /// </summary>
-    public (string NotFirst, string NotLast)? Kinsoku(string? language)
-    {
-        kinsoku ??= Presentation.Root?.Elements(Ns.P + "kinsoku").ToList() ?? [];
-        if (kinsoku.Count == 0)
-            return null;
-        var match = kinsoku.FirstOrDefault(k => language != null && string.Equals(k.Str("lang"), language, StringComparison.OrdinalIgnoreCase))
-                    ?? kinsoku.FirstOrDefault(k => language != null && k.Str("lang") is { } lang && lang.Split('-')[0].Equals(language.Split('-')[0], StringComparison.OrdinalIgnoreCase))
-                    ?? kinsoku[0];
-        return (match.Str("invalStChars") ?? "", match.Str("invalEndChars") ?? "");
-    }
-
-    List<XElement>? kinsoku;
-
     public XDocument Load(string part)
     {
         if (!documents.TryGetValue(part, out var document))
