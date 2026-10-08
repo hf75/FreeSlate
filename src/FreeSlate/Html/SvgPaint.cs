@@ -75,19 +75,32 @@ public sealed class SvgPaint
             _ => " stroke=\"#000\"",
         });
         sb.Append($" stroke-width=\"{Units.Css(width)}\"");
-        sb.Append(outline.Cap switch { "rnd" => " stroke-linecap=\"round\"", "sq" => " stroke-linecap=\"square\"", _ => "" });
+        var dash = outline.Dash == "custom" ? outline.CustomDash?.ToArray() : Dash(outline.Dash);
+        // Square caps lie within PowerPoint's dashes, except at the line's ends; dashes shorter than the line is wide
+        // cannot hold them and are drawn with butt caps (measured with generated/lines-dash).
+        var butt = outline.Cap == "sq" && dash is { Length: > 0 } && dash.Where((_, i) => i % 2 == 0).Any(d => d < 1);
+        sb.Append(outline.Cap switch { "rnd" => " stroke-linecap=\"round\"", "sq" when !butt => " stroke-linecap=\"square\"", _ => "" });
         sb.Append(outline.Join switch
         {
             "round" => " stroke-linejoin=\"round\"",
             "bevel" => " stroke-linejoin=\"bevel\"",
             _ => $" stroke-linejoin=\"miter\" stroke-miterlimit=\"{Units.Css(Math.Max(1, outline.MiterLimit))}\"",
         });
-        if (Dash(outline.Dash) is { } dash)
+        if (dash is { Length: > 0 })
         {
-            // PowerPoint's dash lengths include round and square caps; SVG adds the caps to every dash.
-            var capped = outline.Cap is "rnd" or "sq";
-            var lengths = dash.Select((d, i) => i % 2 == 0 ? (capped ? Math.Max(0, d - 1) : d) : (capped ? d + 1 : d));
-            sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css(d * width)))}\"");
+            // PowerPoint's dash lengths include round and square caps; SVG adds the caps to every dash, so the dashes
+            // shrink by the cap and the spaces take what they lose (the pattern keeps its period). The pattern's unit
+            // is the line's width in whole pixels (measured: a 4 pt line repeats a 3:1 pattern every 20 px, not 21.3).
+            var capped = outline.Cap is "rnd" || outline.Cap == "sq" && !butt;
+            var unit = Math.Max(1, Math.Round(width));
+            var lengths = new double[dash.Length + dash.Length % 2];
+            for (var i = 0; i < dash.Length; i += 2)
+            {
+                var (d, space) = (dash[i], i + 1 < dash.Length ? dash[i + 1] : 0);
+                var drawn = capped ? Math.Max(0, d - 1) : d;
+                (lengths[i], lengths[i + 1]) = (drawn, space + d - drawn);
+            }
+            sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css(d * unit)))}\"");
         }
         return sb.ToString();
     }

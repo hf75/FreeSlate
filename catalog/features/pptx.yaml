@@ -566,8 +566,18 @@ areas:
         elements: [a:prstDash, a:custDash, a:ds]
         priority: P1
         difficulty: 2
-        status: partial
+        status: done
         strategy: stroke-dasharray in multiples of the line width.
+        office: >-
+          Preset dashes and custom patterns (a:custDash, a:ds: dash and space in thousandths of a percent of
+          the line width) repeat in units of the line's width in whole pixels (measured: a 4 pt line, 5.33 px,
+          repeats a 3:1 pattern every 20 px; a 1.5 pt line every 8 px). Round and square caps lie within
+          PowerPoint's dashes (the dashes shrink by the cap, the spaces take what they lose), except at the
+          line's ends, where square caps reach past them; patterns with dashes shorter than the line is wide
+          are drawn with butt caps, as PowerPoint draws them as thin bars. Measured with generated/lines-dash
+          (five custom patterns at 1.5, 4 and 8 pt on lines, rectangles and ellipses with flat, round and
+          square caps): 68.7 %, the rest the phase at a closed shape's corners, which PowerPoint shifts for
+          some patterns.
 
       - id: line.joinCap
         title: Joins and caps

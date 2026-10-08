@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/lines-dash.pptx",
+  "sha256": "7e21720a842ede739e26c0e07f3733cf43a55112333c5e33bd5c513e34dfeb37",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 2
+}

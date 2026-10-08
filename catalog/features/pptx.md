@@ -21,7 +21,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 5 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
-| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
+| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 3 | 3 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 3 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 6 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **88** | **56** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **57** |
 
 <a id="package"></a>
 
@@ -775,7 +775,7 @@ p:sld/@show="0".
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Outline width and color](#line.basic) | P0 | ●●○○○ | partial | 1 | 1 |
-| [Dash styles](#line.dash) | P1 | ●●○○○ | partial | 3 | 1 |
+| [Dash styles](#line.dash) | P1 | ●●○○○ | done | 3 | 1 |
 | [Joins and caps](#line.joinCap) | P1 | ●○○○○ | partial | 3 | 2 |
 | [Arrowheads](#line.ends) | P1 | ●●●○○ | partial | 2 | 0 |
 | [Compound lines](#line.compound) | P2 | ●●●○○ | done | 0 | 0 |
@@ -799,9 +799,11 @@ p:sld/@show="0".
 
 ### Dash styles
 
-`line.dash` · P1 · difficulty 2 · partial
+`line.dash` · P1 · difficulty 2 · done
 
 **Rendering:** stroke-dasharray in multiples of the line width.
+
+**Office behaviour:** Preset dashes and custom patterns (a:custDash, a:ds: dash and space in thousandths of a percent of the line width) repeat in units of the line's width in whole pixels (measured: a 4 pt line, 5.33 px, repeats a 3:1 pattern every 20 px; a 1.5 pt line every 8 px). Round and square caps lie within PowerPoint's dashes (the dashes shrink by the cap, the spaces take what they lose), except at the line's ends, where square caps reach past them; patterns with dashes shorter than the line is wide are drawn with butt caps, as PowerPoint draws them as thin bars. Measured with generated/lines-dash (five custom patterns at 1.5, 4 and 8 pt on lines, rectangles and ellipses with flat, round and square caps): 68.7 %, the rest the phase at a closed shape's corners, which PowerPoint shifts for some patterns.
 
 **Elements (3):** [`a:custDash`](../format/namespaces/a.md#acustdash), [`a:ds`](../format/namespaces/a.md#ads), [`a:prstDash`](../format/namespaces/a.md#aprstdash)
 

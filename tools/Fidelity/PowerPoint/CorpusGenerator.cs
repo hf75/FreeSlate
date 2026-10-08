@@ -75,6 +75,8 @@ public static class CorpusGenerator
         ("legacy-vml", LegacyVmlDeck.Build, true),
         ("text-3d", Text3DDeck.Build, false),
         ("text-tabs", TabsDeck.Build, false),
+        ("text-underline", UnderlineDeck.Build, false),
+        ("lines-dash", DashDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -96,6 +98,8 @@ public static class CorpusGenerator
         ["effects-dag"] = EffectDagDeck.Patch,
         ["legacy-vml"] = LegacyVmlDeck.Patch,
         ["text-3d"] = Text3DDeck.Patch,
+        ["text-underline"] = UnderlineDeck.Patch,
+        ["lines-dash"] = DashDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>
