@@ -175,6 +175,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
+    /// <summary>Offsets (pixels) that align Chromium's anti-aliasing samples with PowerPoint's (see Text).</summary>
+    const double SampleShiftX = 1.0 / 16, SampleShiftY = 1.0 / 8;
+
     /// <summary>A length in points rounded to whole pixels (half up), as PowerPoint places baselines and glyphs.</summary>
     static double Snap(double points) => Math.Floor(points * PxPerPt + 0.5) / PxPerPt;
 
@@ -243,7 +246,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var decorations = Decorations(run, style, data, x, y);
             if (filter != null || decorations.Length > 0)
                 sb.Append($"<g{fill}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}>");
-            sb.Append($"<g transform=\"translate({Units.Css(startPx)} {Px(y)}) scale({Units.Scale(scale)})\"{(filter != null || decorations.Length > 0 ? "" : fill)}>{units}</g>");
+            // PowerPoint samples coverage at the top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 rows:
+            // shifting the glyphs by half a sub-pixel makes both see the same edges.
+            sb.Append($"<g transform=\"translate({Units.Css4(startPx + SampleShiftX)} {Units.Css4(y * PxPerPt + SampleShiftY)}) scale({Units.Scale(scale)})\"{(filter != null || decorations.Length > 0 ? "" : fill)}>{units}</g>");
             if (filter != null || decorations.Length > 0)
                 sb.Append(decorations).Append("</g>");
         }
