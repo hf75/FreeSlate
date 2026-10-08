@@ -24,7 +24,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 3 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 5 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 6 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 2 | 2 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **89** | **55** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **88** | **56** |
 
 <a id="package"></a>
 
@@ -1224,7 +1224,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Autofit](#text.autofit) | P0 | ●●●●○ | partial | 3 | 3 |
 | [Paragraphs](#text.paragraph) | P0 | ●●●○○ | partial | 3 | 3 |
 | [Line and paragraph spacing](#text.spacing) | P0 | ●●●○○ | partial | 5 | 4 |
-| [Tab stops](#text.tabs) | P1 | ●●○○○ | partial | 2 | 0 |
+| [Tab stops](#text.tabs) | P1 | ●●○○○ | done | 2 | 0 |
 | [Bullets and numbering](#text.bullets) | P0 | ●●●○○ | partial | 11 | 3 |
 | [List styles and the text style cascade](#text.styles) | P0 | ●●●●○ | partial | 17 | 11 |
 | [Runs and character formatting](#text.runs) | P0 | ●●○○○ | partial | 5 | 2 |
@@ -1310,9 +1310,11 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 ### Tab stops
 
-`text.tabs` · P1 · difficulty 2 · partial
+`text.tabs` · P1 · difficulty 2 · done
 
 **Rendering:** Left, center, right and decimal tabs, default tab size from defTabSz.
+
+**Office behaviour:** Tab stops (a:tabLst, inherited through the list styles like the other paragraph properties) are measured from the text area's left edge, the origin of marL: left stops put the text there, center stops center it, right stops end it there and decimal stops put its decimal point there (text without one ends at the stop); text never moves left of where it already is; past the last custom stop the default stops continue at multiples of defTabSz; a hanging first line (negative indent) stops at the margin first. Measured with generated/text-tabs (default spacings, every stop kind, margins and indents, bullets, centered and right-aligned paragraphs): 90.1 %. PowerPoint moves a tab whose following word does not fit after its stop to the next line, leaving an empty line; not reproduced.
 
 **Elements (2):** [`a:tab`](../format/namespaces/a.md#atab), [`a:tabLst`](../format/namespaces/a.md#atablst)
 

@@ -6251,8 +6251,9 @@
       "title": "Tab stops",
       "priority": "P1",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "Left, center, right and decimal tabs, default tab size from defTabSz.",
+      "office": "Tab stops (a:tabLst, inherited through the list styles like the other paragraph properties) are measured from the text area's left edge, the origin of marL: left stops put the text there, center stops center it, right stops end it there and decimal stops put its decimal point there (text without one ends at the stop); text never moves left of where it already is; past the last custom stop the default stops continue at multiples of defTabSz; a hanging first line (negative indent) stops at the margin first. Measured with generated/text-tabs (default spacings, every stop kind, margins and indents, bullets, centered and right-aligned paragraphs): 90.1 %. PowerPoint moves a tab whose following word does not fit after its stop to the next line, leaving an empty line; not reproduced.",
       "elements": [
         "a:tab",
         "a:tabLst"

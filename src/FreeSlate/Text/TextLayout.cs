@@ -69,6 +69,12 @@ public sealed class ParagraphInput
     public Bullet? Bullet { get; init; }
     public double DefaultTabSize { get; init; } = 72;
 
+    /// <summary>
+    /// The paragraph's tab stops (a:tabLst): positions in points from the text area's left edge with their alignment
+    /// (l, ctr, r, dec), in ascending order; past the last one the default stops continue.
+    /// </summary>
+    public IReadOnlyList<(double Position, string Align)> TabStops { get; init; } = [];
+
     /// <summary>How runs of different sizes line up (a:pPr/@fontAlgn): base (and auto), t, ctr or b.</summary>
     public string FontAlign { get; init; } = "auto";
 
@@ -275,8 +281,7 @@ public static class TextLayout
             }
             if (segment.IsTab)
             {
-                var tab = paragraph.DefaultTabSize <= 0 ? 72 : paragraph.DefaultTabSize;
-                x = (Math.Floor(x / tab + 1e-9) + 1) * tab;
+                x = TabStop(paragraph, all, styles, segment.End, x);
                 continue;
             }
 
@@ -585,6 +590,42 @@ public static class TextLayout
     }
 
     /// <summary>Width in points of all[start..end], measured run by run.</summary>
+    /// <summary>
+    /// Where the text after a tab starts (catalog: text.tabs): at the next custom stop past the current position,
+    /// left-aligned there, centered on it, ending at it (r) or with its decimal point at it (dec; text without one ends
+    /// at the stop), never before the current position; past the last custom stop at the next default stop
+    /// (multiples of defTabSz from the text area's left edge; measured with generated/text-tabs). A hanging first line
+    /// stops at the paragraph's margin first.
+    /// </summary>
+    static double TabStop(ParagraphInput paragraph, string all, List<TextStyle> styles, int after, double x)
+    {
+        // A hanging first line has a stop at the paragraph's margin (measured: marL 60 pt, indent -40 pt).
+        var margin = EffectiveMargin(paragraph);
+        if (paragraph.Indent < 0 && x < margin - 1e-6)
+            return margin;
+        foreach (var (position, align) in paragraph.TabStops)
+        {
+            if (position <= x + 1e-6)
+                continue;
+            if (align == "l")
+                return position;
+            // The text the stop aligns: up to the next tab or line break.
+            var end = after;
+            while (end < all.Length && all[end] is not ('\t' or '\n'))
+                end++;
+            var width = Measure(all, styles, after, end);
+            var start = align switch
+            {
+                "ctr" => position - width / 2,
+                "dec" => all.IndexOf('.', after, end - after) is var point and >= 0 ? position - Measure(all, styles, after, point) : position - width,
+                _ => position - width,
+            };
+            return Math.Max(x, start);
+        }
+        var tab = paragraph.DefaultTabSize <= 0 ? 72 : paragraph.DefaultTabSize;
+        return (Math.Floor(x / tab + 1e-9) + 1) * tab;
+    }
+
     static double Measure(string all, List<TextStyle> styles, int start, int end)
     {
         double width = 0;

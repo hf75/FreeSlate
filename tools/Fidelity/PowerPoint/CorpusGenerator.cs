@@ -74,6 +74,7 @@ public static class CorpusGenerator
         ("effects-dag", EffectDagDeck.Build, false),
         ("legacy-vml", LegacyVmlDeck.Build, true),
         ("text-3d", Text3DDeck.Build, false),
+        ("text-tabs", TabsDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>

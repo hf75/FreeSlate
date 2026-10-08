@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-tabs.pptx",
+  "sha256": "f935ddf5f43b55f5517bbdfe9aeec9ec4b27f6c4abbc7cb61f513d3c6d6b5752",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 4
+}

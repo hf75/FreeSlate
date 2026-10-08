@@ -864,6 +864,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             SpaceBefore = Space(ParagraphElement(pPr, sources, level, "spcBef")),
             SpaceAfter = Space(ParagraphElement(pPr, sources, level, "spcAft")),
             DefaultTabSize = long.TryParse(P("defTabSz"), out var tab) ? tab / Units.EmuPerPoint : 72,
+            TabStops = (ParagraphElement(pPr, sources, level, "tabLst")?.Elements(Ns.A + "tab") ?? [])
+                .Select(t => (Position: (t.Long("pos") ?? 0) / Units.EmuPerPoint, Align: t.Str("algn") ?? "l"))
+                .OrderBy(t => t.Position).ToList(),
             FontAlign = P("fontAlgn") ?? "auto",
             Bullet = hasText
                 ? Bullet(pPr, sources, level, runs.FirstOrDefault(r => r.Text != "\n")?.Style ?? endStyle, counters)
