@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/legacy-vml.pptx",
+  "sha256": "8f563d8ff8887cbd991f81eb23e2db17ee314d0b3ef804a754774c2ef8a3b0ae",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 1
+}

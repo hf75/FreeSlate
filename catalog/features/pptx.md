@@ -32,9 +32,9 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
-| [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
+| [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **53** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **54** |
 
 <a id="package"></a>
 
@@ -2300,15 +2300,17 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [VML drawings](#legacy.vml) | P3 | ●●●●○ | todo | 57 | 51 |
+| [VML drawings](#legacy.vml) | P3 | ●●●●○ | done | 57 | 51 |
 
 <a id="legacy.vml"></a>
 
 ### VML drawings
 
-`legacy.vml` · P3 · difficulty 4 · todo
+`legacy.vml` · P3 · difficulty 4 · done
 
 **Rendering:** Only for very old converted files and controls: prefer the DrawingML fallback (the picture of an OLE object or control); a VML renderer is a separate project.
+
+**Office behaviour:** PowerPoint 2007 saved the pictures of OLE objects and ActiveX controls only in a VML drawing part of the slide: p:oleObj and p:control name their VML shape (spid), whose v:imagedata (o:relid or r:id, croptop/bottom/left/right as fractions or 1/65536ths) holds the picture; later versions add a DrawingML picture in p:pic and write the VML choice without any picture (mc:Choice Requires=v, so the fallback is taken). Without a DrawingML picture the document draws the VML one in the object's frame, a control at the place its VML shape's style gives (PowerPoint does the same: measured with a VML picture differing from the object, generated/legacy-vml 99.8 %). HTML-like VML (unclosed br) is closed before parsing. Slides hold no other VML content.
 
 **Elements (57):** [`o:FieldCodes`](../format/namespaces/o.md#ofieldcodes), [`o:LinkType`](../format/namespaces/o.md#olinktype), [`o:LockedField`](../format/namespaces/o.md#olockedfield), [`o:OLEObject`](../format/namespaces/o.md#ooleobject), [`o:bottom`](../format/namespaces/o.md#obottom), [`o:callout`](../format/namespaces/o.md#ocallout), [`o:clippath`](../format/namespaces/o.md#oclippath), [`o:colormenu`](../format/namespaces/o.md#ocolormenu), [`o:colormru`](../format/namespaces/o.md#ocolormru), [`o:column`](../format/namespaces/o.md#ocolumn), [`o:complex`](../format/namespaces/o.md#ocomplex), [`o:diagram`](../format/namespaces/o.md#odiagram), [`o:entry`](../format/namespaces/o.md#oentry), [`o:equationxml`](../format/namespaces/o.md#oequationxml), [`o:extrusion`](../format/namespaces/o.md#oextrusion), [`o:fill`](../format/namespaces/o.md#ofill), [`o:idmap`](../format/namespaces/o.md#oidmap), [`o:ink`](../format/namespaces/o.md#oink), [`o:left`](../format/namespaces/o.md#oleft), [`o:lock`](../format/namespaces/o.md#olock), [`o:proxy`](../format/namespaces/o.md#oproxy), [`o:r`](../format/namespaces/o.md#or), [`o:regrouptable`](../format/namespaces/o.md#oregrouptable), [`o:rel`](../format/namespaces/o.md#orel), [`o:relationtable`](../format/namespaces/o.md#orelationtable), [`o:right`](../format/namespaces/o.md#oright), [`o:rules`](../format/namespaces/o.md#orules), [`o:shapedefaults`](../format/namespaces/o.md#oshapedefaults), [`o:shapelayout`](../format/namespaces/o.md#oshapelayout), [`o:signatureline`](../format/namespaces/o.md#osignatureline), [`o:skew`](../format/namespaces/o.md#oskew), [`o:top`](../format/namespaces/o.md#otop), [`pvml:iscomment`](../format/namespaces/pvml.md#pvmliscomment), [`pvml:textdata`](../format/namespaces/pvml.md#pvmltextdata), [`v:arc`](../format/namespaces/v.md#varc), [`v:background`](../format/namespaces/v.md#vbackground), [`v:curve`](../format/namespaces/v.md#vcurve), [`v:f`](../format/namespaces/v.md#vf), [`v:fill`](../format/namespaces/v.md#vfill), [`v:formulas`](../format/namespaces/v.md#vformulas), [`v:group`](../format/namespaces/v.md#vgroup), [`v:h`](../format/namespaces/v.md#vh), [`v:handles`](../format/namespaces/v.md#vhandles), [`v:image`](../format/namespaces/v.md#vimage), [`v:imagedata`](../format/namespaces/v.md#vimagedata), [`v:line`](../format/namespaces/v.md#vline), [`v:oval`](../format/namespaces/v.md#voval), [`v:path`](../format/namespaces/v.md#vpath), [`v:polyline`](../format/namespaces/v.md#vpolyline), [`v:rect`](../format/namespaces/v.md#vrect), [`v:roundrect`](../format/namespaces/v.md#vroundrect), [`v:shadow`](../format/namespaces/v.md#vshadow), [`v:shape`](../format/namespaces/v.md#vshape), [`v:shapetype`](../format/namespaces/v.md#vshapetype), [`v:stroke`](../format/namespaces/v.md#vstroke), [`v:textbox`](../format/namespaces/v.md#vtextbox), [`v:textpath`](../format/namespaces/v.md#vtextpath)
 

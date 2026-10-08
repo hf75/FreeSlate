@@ -53,6 +53,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             if (control.Element(Ns.P + "pic") is { } preview)
                 RenderShape(preview, slide.SlidePart, html, Placement.Root, isSlide: true);
+            // PowerPoint 2007 kept the control's picture and place in the slide's VML drawing only (catalog: legacy.vml).
+            else if (LegacyDrawing.Find(slide.Presentation, slide.SlidePart, control.Str("spid")) is { Box: { } box } legacy)
+                RenderShape(LegacyDrawing.Element(legacy, "0", control.Str("name") ?? "", box), legacy.Part, html, Placement.Root, isSlide: true);
         }
 
         html.Append(appendix).Append("</section>");
@@ -535,11 +538,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
         }
 
-        // OLE objects (catalog: picture.ole): PowerPoint stores a picture of the object, usually an EMF.
+        // OLE objects (catalog: picture.ole): PowerPoint stores a picture of the object, usually an EMF; PowerPoint 2007
+        // only in the slide's VML drawing (catalog: legacy.vml).
         if (data.Element(Ns.P + "oleObj") is { } ole)
         {
             if (ole.Element(Ns.P + "pic") is { } preview)
                 RenderShape(WithFrameTransform(preview, xfrm), part, html, placement, isSlide: true);
+            else if (LegacyDrawing.Find(slide.Presentation, part, ole.Str("spid")) is { } legacy)
+            {
+                var (x, y, w, h, _, _, _) = ReadTransform(xfrm);
+                var frameId = NonVisual(frame)?.Str("id") ?? "0";
+                RenderShape(LegacyDrawing.Element(legacy, frameId, NonVisual(frame)?.Str("name") ?? "", (x, y, w, h)), legacy.Part, html, placement, isSlide);
+            }
             return;
         }
 
