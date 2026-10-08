@@ -58,6 +58,71 @@ static class EffectsDeck
         metal.ThreeD.BevelTopType = 7;   // msoBevelSoftRound
         metal.ThreeD.PresetMaterial = 3;   // msoMaterialMetal
         metal.ThreeD.PresetLighting = 13;   // msoLightRigThreePoint
+
+        // Perspective shadows (scaled, skewed and flipped about their alignment point) and shadows of turned shapes
+        // that keep their direction on the slide or turn with the shape (patched, see Patch).
+        foreach (var (prefix, rotations) in new[] { ("perspective", new[] { 0f, 0, 0, 0, 0, 0, 0, 0 }), ("turned", new[] { 30f, 90, 30, 90, 30, 0, 200, 30 }) })
+        {
+            var slide = Slide(presentation);
+            for (var i = 0; i < 8; i++)
+            {
+                var shape = slide.Shapes.AddShape(Rectangle, 60 + (i % 4) * 230, 80 + (i / 4) * 260, 130, 100);
+                shape.Fill.ForeColor.RGB = CorpusGenerator.Rgb(68, 114, 196);
+                shape.Line.Visible = PowerPointSession.MsoFalse;
+                shape.Shadow.Visible = PowerPointSession.MsoTrue;
+                shape.Rotation = rotations[i];
+                shape.Name = $"{prefix}-{i}";
+                if (prefix == "turned" && i == 5)
+                    shape.Flip(0);   // msoFlipHorizontal
+            }
+        }
+    }
+
+    /// <summary>The outer shadows of the last two slides: transforms PowerPoint's object model cannot set.</summary>
+    public static void Patch(string path)
+    {
+        string[] perspective =
+        [
+            "dist=\"0\" sx=\"100000\" sy=\"-50000\" algn=\"b\"",
+            "dist=\"12700\" dir=\"8100000\" sy=\"-23000\" kx=\"800400\" algn=\"br\"",
+            "dist=\"0\" sx=\"50000\" sy=\"50000\" algn=\"tl\"",
+            "dist=\"0\" kx=\"1800000\" algn=\"b\"",
+            "dist=\"0\" ky=\"1200000\" algn=\"l\"",
+            "dist=\"0\" sx=\"150000\" sy=\"150000\" algn=\"ctr\"",
+            "blurRad=\"76200\" dist=\"12700\" dir=\"8100000\" sy=\"-23000\" kx=\"800400\" algn=\"br\"",
+            "blurRad=\"76200\" dist=\"317500\" dir=\"5400000\" sx=\"90000\" sy=\"-19000\"",
+        ];
+        string[] turned =
+        [
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"0\"",
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"0\"",
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"1\"",
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"1\"",
+            "dist=\"12700\" dir=\"8100000\" sy=\"-23000\" kx=\"800400\" algn=\"br\" rotWithShape=\"0\"",
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"0\"",
+            "dist=\"190500\" dir=\"2700000\" rotWithShape=\"0\"",
+            "dist=\"12700\" dir=\"8100000\" sy=\"-23000\" kx=\"800400\" algn=\"br\" rotWithShape=\"1\"",
+        ];
+        var changes = new Dictionary<string, Action<System.Xml.Linq.XElement>>();
+        foreach (var (prefix, list) in new[] { ("perspective", perspective), ("turned", turned) })
+        {
+            for (var i = 0; i < list.Length; i++)
+            {
+                var attributes = list[i];
+                changes[$"{prefix}-{i}"] = shape =>
+                {
+                    var spPr = shape.Element(ShapePatch.P + "spPr")!;
+                    spPr.Element(ShapePatch.A + "effectLst")?.Remove();
+                    var effects = System.Xml.Linq.XElement.Parse(
+                        $"<a:effectLst xmlns:a=\"{ShapePatch.A}\"><a:outerShdw {attributes}><a:srgbClr val=\"000000\"><a:alpha val=\"50000\"/></a:srgbClr></a:outerShdw></a:effectLst>");
+                    // a:effectLst follows the fill and the line in spPr.
+                    var line = spPr.Element(ShapePatch.A + "ln");
+                    if (line != null) line.AddAfterSelf(effects);
+                    else spPr.Add(effects);
+                };
+            }
+        }
+        ShapePatch.Apply(path, changes);
     }
 
     static dynamic Slide(object deck) => CorpusGenerator.AddSlide((dynamic)deck, CorpusGenerator.LayoutBlank);

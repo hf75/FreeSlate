@@ -271,7 +271,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
         var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
-            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All);
+            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = wireframe && solidBody ? "" : paths.ToString() + ends;
@@ -287,6 +287,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
         if (hasText && shapeMarkup.Length > 0)
             shapeMarkup = $"<g data-bg=\"\">{shapeMarkup}</g>";
+        // A scaled, skewed or flipped shadow is a transformed copy of the shape behind it.
+        if (!solidBody && opaque && shapeMarkup.Length > 0 && SvgEffects.Shadow(effects, slide.Colors, pw, ph, defs, matrix) is { } shadowCopy)
+            body.Append($"<g filter=\"url(#{shadowCopy.Filter})\"><g transform=\"{shadowCopy.Transform.Css()}\">{shapeMarkup}</g></g>");
         body.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
         if (shape.Name.LocalName == "sp")
         {

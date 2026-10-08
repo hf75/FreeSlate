@@ -71,6 +71,7 @@ public static class CorpusGenerator
         ["colormap"] = ColorMapDeck.Patch,
         ["text-body"] = TextBodyDeck.Patch,
         ["tables"] = TablesDeck.Patch,
+        ["effects"] = EffectsDeck.Patch,
     };
 
     /// <summary>Generates the named decks, or all of them.</summary>
