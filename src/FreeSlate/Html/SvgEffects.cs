@@ -8,14 +8,16 @@ namespace FreeSlate.Html;
 /// Builds SVG filters for DrawingML effect lists (catalog: effect.outerShadow, effect.innerShadow,
 /// effect.presetShadow, effect.glow, effect.softEdge) and reflections (catalog: effect.reflection).
 /// The constants come from radial profiles measured in PowerPoint renderings (generated/objects, slide 4):
-/// shadow σ = 0.35 × blurRad; glow = dilate r/2 then σ = r/6; soft edge = erode 0.85 r then σ = r/3.
+/// shadow σ = 0.35 × blurRad; glow = dilate r/2 then σ = r/6; soft edge = erode 0.85 r then σ = r/3; blur σ = r/3
+/// (generated/outlines).
 /// </summary>
 public static class SvgEffects
 {
     static int nextId;
 
     /// <summary>Appends a filter for the effects of <paramref name="effectLst"/> to <paramref name="defs"/> and returns its id, or null.</summary>
-    public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false)
+    /// <param name="stroke">The outline width in pixels: a blur that does not grow stays within the outline's outer edge.</param>
+    public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0)
     {
         if (effectLst == null)
             return null;
@@ -25,7 +27,8 @@ public static class SvgEffects
         var glow = effectLst.Element(Ns.A + "glow");
         var soft = effectLst.Element(Ns.A + "softEdge");
         var inner = effectLst.Element(Ns.A + "innerShdw");
-        if (shadow == null && glow == null && soft == null && inner == null)
+        var blurEffect = effectLst.Element(Ns.A + "blur");
+        if (shadow == null && glow == null && soft == null && inner == null && blurEffect == null)
             return null;
 
         var id = $"e{Interlocked.Increment(ref nextId)}";
@@ -34,12 +37,21 @@ public static class SvgEffects
         var extent = 0.0;
         var source = "SourceGraphic";
 
+        if (blurEffect != null)
+        {
+            // Blur (a:blur, catalog: effect.blur): without grow the result is cut at the shape's outer edge.
+            var r = Units.ToPx(blurEffect.Long("rad") ?? 0);
+            steps.Append($"<feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"{Units.Css(r / 3)}\" result=\"blur\"/>");
+            source = "blur";
+            extent = blurEffect.Bool("grow") ?? true ? r * 1.5 : stroke / 2;
+        }
+
         if (soft != null)
         {
             var r = Units.ToPx(soft.Long("rad") ?? 0);
             steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"erode\" radius=\"{Units.Css(r * 0.85)}\" result=\"se\"/>");
             steps.Append($"<feGaussianBlur in=\"se\" stdDeviation=\"{Units.Css(r / 3)}\" result=\"sb\"/>");
-            steps.Append("<feComposite in=\"SourceGraphic\" in2=\"sb\" operator=\"in\" result=\"soft\"/>");
+            steps.Append($"<feComposite in=\"{source}\" in2=\"sb\" operator=\"in\" result=\"soft\"/>");
             source = "soft";
         }
         if (glow != null)

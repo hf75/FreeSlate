@@ -21,8 +21,8 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
-| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 1 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 7 | 0 |
+| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 7 | 1 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 1 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **83** | **37** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **83** | **39** |
 
 <a id="package"></a>
 
@@ -769,7 +769,7 @@ p:sld/@show="0".
 | [Joins and caps](#line.joinCap) | P1 | ●○○○○ | partial | 3 | 2 |
 | [Arrowheads](#line.ends) | P1 | ●●●○○ | partial | 2 | 0 |
 | [Compound lines](#line.compound) | P2 | ●●●○○ | done | 0 | 0 |
-| [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | todo | 0 | 0 |
+| [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | done | 0 | 0 |
 
 <a id="line.basic"></a>
 
@@ -839,11 +839,13 @@ a:ln/@cmpd (double, thick-thin, thin-thick, triple).
 
 ### Gradient and pattern outlines
 
-`line.fill` · P2 · difficulty 3 · todo
+`line.fill` · P2 · difficulty 3 · done
 
 gradFill and pattFill inside a:ln.
 
 **Rendering:** SVG gradient or pattern as stroke paint.
+
+**Office behaviour:** Gradient outlines take the gradient over the shape's box like fills (arrowheads too); pattern outlines draw the pattern itself, its 8 px tiles aligned to the slide like pattern fills (generated/outlines).
 
 <a id="effect"></a>
 
@@ -858,7 +860,7 @@ gradFill and pattFill inside a:ln.
 | [Glow](#effect.glow) | P2 | ●●●○○ | partial | 1 | 0 |
 | [Soft edges](#effect.softEdge) | P2 | ●●●○○ | partial | 1 | 1 |
 | [Reflection](#effect.reflection) | P2 | ●●●●○ | partial | 1 | 1 |
-| [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | todo | 2 | 1 |
+| [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | done | 2 | 1 |
 | [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
 | [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | todo | 8 | 6 |
 | [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | todo | 6 | 5 |
@@ -961,9 +963,11 @@ gradFill and pattFill inside a:ln.
 
 ### Blur and fill overlay
 
-`effect.blur` · P3 · difficulty 2 · todo
+`effect.blur` · P3 · difficulty 2 · done
 
 **Rendering:** SVG Gaussian blur; fill overlay blends a fill over the shape.
+
+**Office behaviour:** Blur: a Gaussian blur with sigma = rad / 3 (measured); without grow the result is cut at the outline's outer edge, with grow it spreads beyond. Fill overlay: the overlay fill is blended over the shape's fill only, not its outline (over, mult, screen, darken, lighten as CSS blend modes in an isolated group).
 
 **Elements (2):** [`a:blur`](../format/namespaces/a.md#ablur), [`a:fillOverlay`](../format/namespaces/a.md#afilloverlay)
 

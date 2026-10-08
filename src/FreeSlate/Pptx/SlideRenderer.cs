@@ -132,9 +132,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         var defs = new StringBuilder();
         var paths = new StringBuilder();
+        var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
         var ends = outline is { Visible: true }
-            ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs))
+            ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin))
             : "";
+        // A fill overlay blends a second fill over the shape's fill, not its outline (catalog: effect.blur).
+        var effects = Effects(chain, style);
+        var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
+            ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
+            : ((Fill Fill, string Blend)?)null;
         // Picture borders lie outside the picture (measured: a 6 pt border ends where the picture begins).
         var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
         // A picture can have a fill of its own behind it, visible through its transparent parts.
@@ -143,23 +149,33 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
-            var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
             // PowerPoint draws axis-aligned rectangles and lines without antialiasing: every edge goes to the
             // nearest pixel, which is what crispEdges does (measured on fills and outlines at fractional positions).
             var crisp = axisAligned && IsRectilinear(path) ? " shape-rendering=\"crispEdges\"" : "";
             if (background is not NoFill && path.Fill != "none")
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
-            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"";
-            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}{crisp}/>");
+            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin) : " stroke=\"none\"";
+            if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
+            {
+                var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
+                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
+                if (stroke != " stroke=\"none\"")
+                    paths.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
+            }
+            else
+            {
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}{crisp}/>");
+            }
             if (compound)
-                paths.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs)));
+                paths.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
         }
         if (outsetBorder)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
             var crisp = axisAligned ? " shape-rendering=\"crispEdges\"" : "";
-            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs)}{crisp}/>");
+            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin)}{crisp}/>");
         }
 
         html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
@@ -172,8 +188,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
-        var effects = Effects(chain, style);
-        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs);
+        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = paths.ToString() + ends;

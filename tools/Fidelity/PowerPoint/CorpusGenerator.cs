@@ -57,7 +57,14 @@ public static class CorpusGenerator
         ("tables", TablesDeck.Build, false),
         ("text-body", TextBodyDeck.Build, false),
         ("charts-more", ChartsMoreDeck.Build, true),
+        ("outlines", OutlinesDeck.Build, false),
     ];
+
+    /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
+    static readonly Dictionary<string, Action<string>> Patches = new()
+    {
+        ["outlines"] = OutlinesDeck.Patch,
+    };
 
     /// <summary>Generates the named decks, or all of them.</summary>
     public static void Run(string outputDir, IReadOnlyCollection<string> only)
@@ -67,7 +74,12 @@ public static class CorpusGenerator
         foreach (var (name, build, window) in Decks)
         {
             if (only.Count == 0 || only.Contains(name))
-                Generate(session, Path.Combine(outputDir, name + ".pptx"), build, window);
+            {
+                var path = Path.Combine(outputDir, name + ".pptx");
+                Generate(session, path, build, window);
+                if (Patches.TryGetValue(name, out var patch))
+                    patch(path);
+            }
         }
     }
 

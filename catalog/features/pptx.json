@@ -4304,8 +4304,9 @@
       "description": "gradFill and pattFill inside a:ln.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "SVG gradient or pattern as stroke paint.",
+      "office": "Gradient outlines take the gradient over the shape's box like fills (arrowheads too); pattern outlines draw the pattern itself, its 8 px tiles aligned to the slide like pattern fills (generated/outlines).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -4484,8 +4485,9 @@
       "title": "Blur and fill overlay",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "SVG Gaussian blur; fill overlay blends a fill over the shape.",
+      "office": "Blur: a Gaussian blur with sigma = rad / 3 (measured); without grow the result is cut at the outline's outer edge, with grow it spreads beyond. Fill overlay: the overlay fill is blended over the shape's fill only, not its outline (over, mult, screen, darken, lighten as CSS blend modes in an isolated group).",
       "elements": [
         "a:blur",
         "a:fillOverlay"

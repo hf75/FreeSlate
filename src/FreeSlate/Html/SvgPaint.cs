@@ -46,7 +46,7 @@ public sealed class SvgPaint
         return id;
     }
 
-    public string Stroke(Outline? outline, double w, double h, StringBuilder defs)
+    public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default)
     {
         if (outline is not { Visible: true })
             return " stroke=\"none\"";
@@ -56,7 +56,8 @@ public sealed class SvgPaint
         {
             SolidFill s => Color("stroke", s.Color),
             GradientFill g => $" stroke=\"url(#{Gradient(g, w, h, defs, 0)})\"",
-            PatternFill p => Color("stroke", RgbColor.Mix(p.Background, p.Foreground, PatternDensity(p.Preset))),
+            // Pattern outlines show the pattern itself, aligned to the slide like pattern fills (catalog: line.fill).
+            PatternFill p => $" stroke=\"url(#{Pattern(p, defs, origin)})\"",
             _ => " stroke=\"#000\"",
         });
         sb.Append($" stroke-width=\"{Units.Css(width)}\"");
