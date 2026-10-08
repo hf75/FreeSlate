@@ -1383,7 +1383,12 @@ areas:
           Reproduce Office's automatic minimum, maximum and major unit; number formats need an Excel number-format
           engine; date axes, logarithmic and reversed scales.
         office: >-
-          Display units (c:dispUnits: built-in or custom) divide the value labels, and their label
+          Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets
+          5 % headroom; the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least
+          1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
+          shows the locale's short date. Category labels that do not fit rotate by -45 degrees, with the end
+          of their middle line at the category; labels of an axis crossing inside the plot area stay at the
+          axis. Display units (c:dispUnits: built-in or custom) divide the value labels, and their label
           (c:dispUnitsLbl) shows its own text or the unit's name in the chart's language (German Office:
           Millionen, x 10000), turned a quarter beside the labels with its end at the top of the plot area, in
           a column of its own. Category axes label every tickLblSkip-th category and mark every tickMarkSkip-
