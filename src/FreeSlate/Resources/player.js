@@ -19,7 +19,7 @@
     if (typeof text === 'number') return () => text;
     let compiled = formulaCache.get(text);
     if (compiled) return compiled;
-    const tokens = String(text).match(/#ppt_[xywh]|\$|[0-9]*\.?[0-9]+(?:e[-+]?[0-9]+)?|[a-z]+|[-+*/^(),]/gi) || [];
+    const tokens = String(text).match(/#?ppt_[xywh]|\$|[0-9]*\.?[0-9]+(?:e[-+]?[0-9]+)?|[a-z]+|[-+*/^(),]/gi) || [];
     let i = 0;
     const peek = () => tokens[i], next = () => tokens[i++];
     const functions = {
@@ -34,7 +34,9 @@
       if (t === '-') { const v = power(); return s => -v(s); }
       if (t === '+') return power();
       if (t === '$') return s => s.$;
-      if (t && t[0] === '#') { const key = t.slice(5); return s => s[key]; }
+      // #ppt_x is the value before the animation, ppt_x the current one (exit effects start from it).
+      if (t && t[0] === '#') { const key = t.slice(5).toLowerCase(); return s => s[key]; }
+      if (t && /^ppt_[xywh]$/i.test(t)) { const key = t.toLowerCase(); return s => (s[key] !== undefined ? s[key] : s[key.slice(4)]); }
       if (t === 'pi') return () => Math.PI;
       if (t === 'e') return () => Math.E;
       if (t && functions[t.toLowerCase()]) {
@@ -169,7 +171,9 @@
         } else {
           el.style.transform = this.originalTransform;
         }
-        el.style.clipPath = s.clip ? s.clip.css : '';
+        const soft = s.clip && s.clip.soft;
+        el.style.clipPath = s.clip && !soft ? s.clip.css : '';
+        el.style.maskImage = soft ? softGradient(soft) : '';
       }
       this.renderPaint(s);
     }
@@ -177,6 +181,28 @@
     /** SVG targets get an SVG clip path in their own coordinates. */
     renderClip(clip) {
       const el = this.el;
+      if (clip && clip.soft) {
+        el.removeAttribute('clip-path');
+        if (!this.mask) {
+          const ns = 'http://www.w3.org/2000/svg';
+          const id = 'fs-mask-' + Math.random().toString(36).slice(2);
+          this.mask = document.createElementNS(ns, 'mask');
+          this.mask.id = id;
+          this.mask.setAttribute('maskContentUnits', 'objectBoundingBox');
+          this.gradient = document.createElementNS(ns, 'linearGradient');
+          this.gradient.id = id + '-g';
+          const fill = document.createElementNS(ns, 'rect');
+          for (const [k, v] of [['width', 1], ['height', 1], ['fill', `url(#${id}-g)`]]) fill.setAttribute(k, v);
+          this.mask.append(this.gradient, fill);
+          el.ownerSVGElement.appendChild(this.mask);
+        }
+        const [x1, y1, x2, y2] = { right: [0, 0, 1, 0], left: [1, 0, 0, 0], down: [0, 0, 0, 1], up: [0, 1, 0, 0] }[clip.soft.dir];
+        for (const [k, v] of [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2]]) this.gradient.setAttribute(k, v);
+        this.gradient.innerHTML = clip.soft.stops.map(([o, a]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a}"/>`).join('');
+        el.setAttribute('mask', `url(#${this.mask.id})`);
+        return;
+      }
+      el.removeAttribute('mask');
       if (!clip) { el.removeAttribute('clip-path'); return; }
       if (!this.clipPath) {
         const svg = el.ownerSVGElement;
@@ -213,10 +239,16 @@
     reset() {
       const el = this.el;
       el.style.visibility = el.style.opacity = '';
-      if (this.svg) { el.removeAttribute('transform'); el.removeAttribute('clip-path'); }
-      else { el.style.transform = this.originalTransform; el.style.clipPath = ''; }
+      if (this.svg) { el.removeAttribute('transform'); el.removeAttribute('clip-path'); el.removeAttribute('mask'); }
+      else { el.style.transform = this.originalTransform; el.style.clipPath = el.style.maskImage = ''; }
       this.renderPaint({ fill: null, stroke: null, color: null });
     }
+  }
+
+  /** A soft edge ({ dir, stops: [[offset, alpha]] }) as a CSS mask image. */
+  function softGradient(soft) {
+    const direction = { right: 'right', left: 'left', down: 'bottom', up: 'top' }[soft.dir];
+    return `linear-gradient(to ${direction},${soft.stops.map(([o, a]) => `rgba(0,0,0,${+a.toFixed(4)}) ${+(o * 100).toFixed(3)}%`).join(',')})`;
   }
 
   function invert(m) {
@@ -274,7 +306,8 @@
    * node's end. par children start with the par, seq children one after another.
    */
   function schedule(node, start, out, context) {
-    const begin = start + delayOf(node);
+    // PowerPoint's video starts time nodes on its frames only (context.tick, ms; measured).
+    const begin = context.tick ? Math.ceil((start + delayOf(node)) / context.tick - 1e-6) * context.tick : start + delayOf(node);
     const speed = node.spd ? node.spd / 100000 : 1;
     const children = node.children || [];
     let end = begin;
@@ -295,22 +328,22 @@
     return end;
   }
   function inherit(node, context) {
-    const result = {};
+    const result = context.tick ? { tick: context.tick } : {};
     if (node.presetClass) result.presetClass = node.presetClass;
     if (node.presetID !== undefined) result.presetID = node.presetID;
     if (node.accel || node.decel) result.ease = { accel: (node.accel || 0) / 100000, decel: (node.decel || 0) / 100000 };
     return result;
   }
 
-  /** Steps of the main sequence and of the interactive sequences (triggers) of a slide. */
-  function buildTimeline(slide, timing) {
+  /** Steps of the main sequence and of the interactive sequences (triggers) of a slide; tick: see schedule. */
+  function buildTimeline(slide, timing, tick) {
     const result = { steps: [], triggers: new Map(), hidden: new Set(), targets: new Map() };
     if (!timing || !timing.root) return result;
     for (const sequence of timing.root.children || []) {
       if (sequence.t !== 'seq') continue;
       const steps = (sequence.children || []).map(stepNode => {
         const behaviors = [];
-        const end = schedule(Object.assign({}, stepNode, { begin: [] }), 0, behaviors, {});
+        const end = schedule(Object.assign({}, stepNode, { begin: [] }), 0, behaviors, tick ? { tick } : {});
         for (const b of behaviors) b.targets = resolveTargets(slide, b.node.target, result.targets);
         return { behaviors, end, auto: !isIndefinite(stepNode) || isAuto(stepNode) };
       });
@@ -340,14 +373,20 @@
 
   /* ---------------------------------------------------------------- behaviour evaluation */
 
+  /**
+   * Acceleration and deceleration (accel, decel: fractions of the duration) as PowerPoint plays them: the speed rises
+   * from 0 along a smoothstep curve, cruises, and falls along one again (not linearly as in SMIL; measured with its
+   * video: under 1.5 px off along 640 px for six combinations).
+   */
   function ease(p, e) {
     if (!e) return p;
     const a = Math.min(e.accel, 1), d = Math.min(e.decel, 1 - a);
     if (a + d <= 0) return p;
-    const v = 2 / (2 - a - d);
-    if (p < a) return v * p * p / (2 * a);
-    if (p <= 1 - d) return v * (p - a / 2);
-    return 1 - v * (1 - p) * (1 - p) / (2 * d);
+    const v = 1 / (1 - (a + d) / 2);
+    const rise = x => x * x * x - x * x * x * x / 2;   // the distance covered while the speed follows smoothstep
+    if (p < a) return v * a * rise(p / a);
+    if (p <= 1 - d) return v * (a / 2 + p - a);
+    return 1 - v * d * rise((1 - p) / d);
   }
 
   /** Progress (0…1) of a behaviour at time t (ms in its step), or null before its start or after a removed end. */
@@ -356,8 +395,9 @@
     const node = b.node;
     const local = t - b.start;
     if (local >= b.total) {
-      // Without fill (or fill="remove") a behaviour's effect ends with it; set behaviours hold their value.
-      if ((node.fill === undefined || node.fill === 'remove') && node.t !== 'set') return null;
+      // Without fill (or fill="remove") a behaviour's effect ends with it, a set's too when it has a duration of
+      // its own (Transparency); a set without one holds its value (SMIL: fill auto freezes elements without dur).
+      if ((node.fill === undefined || node.fill === 'remove') && (node.t !== 'set' || typeof node.dur === 'number')) return null;
       return ease(node.autoRev ? 0 : 1, b.context.ease);
     }
     let cycle = local / b.dur;
@@ -395,7 +435,7 @@
   function evaluate(b, p, target, state) {
     const node = b.node;
     const base = target.base;
-    const vars = { x: base.x, y: base.y, w: base.w, h: base.h, $: p };
+    const vars = { x: base.x, y: base.y, w: base.w, h: base.h, ppt_x: state.x, ppt_y: state.y, ppt_w: state.w, ppt_h: state.h, $: p };
     switch (node.t) {
       case 'set': {
         for (const attribute of node.attrs || []) assign(state, attribute, node.to, vars);
@@ -511,9 +551,11 @@
     const points = [];
     let i = 0, x = 0, y = 0, sx = 0, sy = 0, command = 'M';
     const num = () => parseFloat(tokens[i++]);
+    // PowerPoint moves along the path at a speed even in the path's own units (fractions of the slide's width and
+    // height), not on the screen (measured with its video).
     const add = (px, py) => {
       const last = points[points.length - 1];
-      const length = last ? last[2] + Math.hypot(px * W - last[0] * W, py * H - last[1] * H) : 0;
+      const length = last ? last[2] + Math.hypot(px - last[0], py - last[1]) : 0;
       points.push([px, py, length]);
     };
     while (i < tokens.length) {
@@ -556,22 +598,27 @@
       }
       return polygon(pts);
     };
+    // PowerPoint softens the moving edge of wipes and splits: a linear ramp 0.14 of the distance the edge travels,
+    // which runs from just before the shape at the start to just past it at the end (measured with its video).
+    const SOFT = 0.14;
+    const [opaque, clear] = [(1 + SOFT) * s - SOFT, (1 + SOFT) * s];
+    const softly = (dir, stops) => ({ soft: { dir, stops } });
     switch (name) {
       case 'wipe':
         // wipe(left) starts at the left edge ("From Left"), wipe(up) at the top.
-        if (option === 'left') return rect(0, 0, s, 1);
-        if (option === 'right') return rect(1 - s, 0, 1, 1);
-        if (option === 'down') return rect(0, 1 - s, 1, 1);
-        return rect(0, 0, 1, s);
+        return softly({ left: 'right', right: 'left', down: 'up' }[option] || 'down', [[opaque, 1], [clear, 0]]);
       case 'slide':
         return rect(0, 0, 1, 1);
       case 'barn': {
-        const vertical = option.includes('Vertical'), out = option.startsWith('out');
-        const h = s / 2;
-        if (out) return vertical ? rect(0.5 - h, 0, 0.5 + h, 1) : rect(0, 0.5 - h, 1, 0.5 + h);
-        return vertical
-          ? polygon([[0, 0], [h, 0], [h, 1], [0, 1], [0, 0], [1, 0], [1, 1], [1 - h, 1], [1 - h, 0], [1, 0]])
-          : polygon([[0, 0], [1, 0], [1, h], [0, h], [0, 0], [0, 1], [1, 1], [1, 1 - h], [0, 1 - h], [0, 1]]);
+        // Two edges, each travelling half the shape: from the sides to the middle (in) or from the middle out.
+        const dir = option.includes('Vertical') ? 'right' : 'down';
+        const ramp = u => Math.min(1, Math.max(0, (clear - u) / SOFT));   // u: 0 where an edge starts, 1 at its end
+        if (option.startsWith('out')) {
+          if (opaque < 0) return softly(dir, [[0.5 - clear / 2, 0], [0.5, ramp(0)], [0.5 + clear / 2, 0]]);
+          return softly(dir, [[0.5 - clear / 2, 0], [0.5 - opaque / 2, 1], [0.5 + opaque / 2, 1], [0.5 + clear / 2, 0]]);
+        }
+        if (clear > 1) return softly(dir, [[opaque / 2, 1], [0.5, ramp(1)], [1 - opaque / 2, 1]]);
+        return softly(dir, [[opaque / 2, 1], [clear / 2, 0], [1 - clear / 2, 0], [1 - opaque / 2, 1]]);
       }
       case 'blinds': return bands(6, option === 'horizontal');
       case 'randombar': return bands(12, option === 'horizontal');
@@ -690,9 +737,9 @@
   /* ---------------------------------------------------------------- the animation player of one slide */
 
   class SlideAnimation {
-    constructor(slide, index) {
+    constructor(slide, index, tick) {
       this.slide = slide;
-      this.timeline = buildTimeline(slide, info(index).timing);
+      this.timeline = buildTimeline(slide, info(index).timing, tick);
       this.volumes = mediaVolumes(info(index).timing);
       this.done = [];         // completed steps (main and triggered), in play order
       this.position = 0;      // next main step
@@ -1446,32 +1493,35 @@
    * PowerPoint's rendering of the animations.
    */
   const frames = new Map();
-  function frame(index, steps, t) {
+  function frame(index, steps, t, tick) {
     if (!slides[index]) return null;
     let animation = frames.get(index);
-    if (!animation) frames.set(index, animation = new SlideAnimation(slides[index], index));
+    if (!animation) frames.set(index, animation = new SlideAnimation(slides[index], index, tick));
     const main = animation.timeline.steps;
     animation.done = main.slice(0, Math.min(steps, main.length));
     animation.render(t !== undefined && steps < main.length ? main[steps] : null, t || 0);
-    return main.map(step => step.end);
+    return main.map(step => ({ end: step.end, auto: step.auto }));
   }
 
   // ?frame=ms&fps=n#slide-N draws slide N as PowerPoint's video of the slide (n frames per second) shows it ms after
-  // the slide began: the main steps play one after another without waiting for clicks, with one frame between the
-  // first step and the second (measured; tools/Fidelity animate).
+  // the slide began: the main steps play one after another without waiting for clicks, each starting on the first
+  // frame after the previous one ended and the second one frame later still; time nodes start on frames as well
+  // (measured; tools/Fidelity animate).
   const frameParams = new URLSearchParams(location.search);
   const frameSlide = /^#slide-(\d+)$/.exec(location.hash);
   if (frameParams.get('frame') !== null && frameSlide) {
     const index = +frameSlide[1] - 1;
-    const ends = frame(index, 0) || [];
-    const pause = 1000 / (+frameParams.get('fps') || 30);
-    let time = +frameParams.get('frame'), steps = 0;
-    // Frame times are thirds of milliseconds: a step that ends on a frame counts as ended there.
-    while (steps < ends.length && time >= ends[steps] - 0.01) {
-      time = Math.max(0, time - ends[steps++]);
-      if (steps === 1 && ends.length > 1) time = Math.max(0, time - pause);
+    const tick = 1000 / (+frameParams.get('fps') || 30);
+    const main = frame(index, 0, 0, tick) || [];
+    const time = +frameParams.get('frame');
+    let steps = 0, start = 0;
+    while (steps < main.length) {
+      const next = Math.ceil((start + main[steps].end) / tick - 1e-6) * tick + (steps === 0 ? tick : 0);
+      if (time < next - 0.01) break;
+      start = next;
+      steps++;
     }
-    frame(index, steps, time);
+    frame(index, steps, Math.max(0, time - start), tick);
   }
 
   window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments, frame };

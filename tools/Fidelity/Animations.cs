@@ -125,7 +125,12 @@ public static class Animations
                     var ours = Path.Combine(dir, name);
                     var time = (sample.Frame * 1000.0 / info.Fps).ToString("0.###", CultureInfo.InvariantCulture);
                     browser.Screenshot($"{url}?frame={time}&fps={info.Fps}#slide-{sample.Slide}", ours, info.Width, info.Height, profile!);
-                    var score = ImageCompare.Compare(Path.Combine(Dir(deck), name), ours, Path.Combine(dir, "diff-" + name));
+                    // PowerPoint draws the video's text differently from its exported slides and compresses the
+                    // frames: both images are blurred a little, so that positions, sizes and opacity count.
+                    var (blurredReference, blurredOurs) = (Path.Combine(dir, "ref-" + name), Path.Combine(dir, "blur-" + name));
+                    Blur(Path.Combine(Dir(deck), name), blurredReference);
+                    Blur(ours, blurredOurs);
+                    var score = ImageCompare.Compare(blurredReference, blurredOurs, Path.Combine(dir, "diff-" + name));
                     // Samples are numbered slide * 100000 + frame.
                     scores.Add(new SlideResult(sample.Slide * 100000 + sample.Frame, score));
                 }
@@ -146,15 +151,32 @@ public static class Animations
         return results;
     }
 
+    static void Blur(string source, string target)
+    {
+        using var bitmap = SkiaSharp.SKBitmap.Decode(source);
+        using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(bitmap.Width, bitmap.Height));
+        using var paint = new SkiaSharp.SKPaint { ImageFilter = SkiaSharp.SKImageFilter.CreateBlur(1, 1) };
+        surface.Canvas.Clear(SkiaSharp.SKColors.White);
+        surface.Canvas.DrawBitmap(bitmap, 0, 0, paint);
+        using var image = surface.Snapshot();
+        using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        using var file = File.Create(target);
+        data.SaveTo(file);
+    }
+
     static double VideoDuration(string video)
     {
         var output = Tool("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video]);
         return double.Parse(output.Trim(), CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Frame <paramref name="frame"/> (counted from 0) of the video.</summary>
+    /// <summary>
+    /// Frame <paramref name="frame"/> (counted from 0) of the video. PowerPoint encodes with the BT.709 matrix without
+    /// saying so, which ffmpeg would decode as BT.601 (measured: the colors of the exported slides only come back with 709).
+    /// </summary>
     static void ExtractFrame(string video, int frame, string png) =>
-        Tool("ffmpeg", ["-v", "error", "-y", "-i", video, "-vf", $"select=eq(n\\,{frame})", "-vsync", "vfr", "-frames:v", "1", png]);
+        Tool("ffmpeg", ["-v", "error", "-y", "-i", video, "-vf", $"select=eq(n\\,{frame}),scale=in_color_matrix=bt709:in_range=tv:out_range=pc",
+            "-vsync", "vfr", "-frames:v", "1", png]);
 
     static string Tool(string name, IEnumerable<string> arguments)
     {
