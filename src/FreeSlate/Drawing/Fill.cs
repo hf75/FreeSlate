@@ -77,7 +77,8 @@ public static class FillReader
         container?.Elements().FirstOrDefault(e => FillElements.Contains(e.Name.LocalName) && e.Name.Namespace == Ns.A);
 
     /// <param name="images">Resolves an r:embed id to a data URI.</param>
-    public static Fill Read(XElement fill, ColorContext colors, Func<string, string?>? images = null, Func<string, (double W, double H)>? sizes = null)
+    /// <param name="sizes">A picture's size in pixels by relationship id, at its own resolution or the given dpi (when positive).</param>
+    public static Fill Read(XElement fill, ColorContext colors, Func<string, string?>? images = null, Func<string, double, (double W, double H)>? sizes = null)
     {
         switch (fill.Name.LocalName)
         {
@@ -126,7 +127,8 @@ public static class FillReader
                         (tile.Long("tx") ?? 0) / Units.EmuPerPoint, (tile.Long("ty") ?? 0) / Units.EmuPerPoint,
                         (tile.Long("sx") ?? 100000) / 100000.0, (tile.Long("sy") ?? 100000) / 100000.0,
                         tile.Str("flip") ?? "none", tile.Str("algn") ?? "tl"),
-                    NaturalSize = blip?.Attribute(Ns.R + "embed") is { } embed && sizes != null ? sizes(embed.Value) : default,
+                    // Tiles are sized from the picture's own resolution; PowerPoint ignores blipFill dpi (measured).
+                    NaturalSize = blip?.Attribute(Ns.R + "embed") is { } embed && sizes != null ? sizes(embed.Value, 0) : default,
                 };
             case "grpFill":
                 return new GroupFill();

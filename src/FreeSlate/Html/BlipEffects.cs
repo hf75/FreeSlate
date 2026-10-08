@@ -100,14 +100,18 @@ public static class BlipEffects
                 }
                 case "clrChange":
                 {
-                    // Pixels of the "from" color take the "to" color (usually transparent), with a small tolerance.
+                    // Pixels of the "from" color take the "to" color (usually transparent), with a small tolerance; with
+                    // useA (the default) their alpha has to match as well.
                     var from = colors.ResolveChild(e.Element(Ns.A + "clrFrom"));
                     var to = colors.ResolveChild(e.Element(Ns.A + "clrTo"));
                     if (from is not { } f || to is not { } t) break;
+                    var useAlpha = e.Bool("useA") ?? true;
                     var source = input;
                     var mask = Next();
-                    sb.Append($"<feComponentTransfer in=\"{source}\" result=\"{mask}m\">{Near("R", f.R)}{Near("G", f.G)}{Near("B", f.B)}<feFuncA type=\"linear\" slope=\"0\" intercept=\"1\"/></feComponentTransfer>");
-                    sb.Append($"<feColorMatrix in=\"{mask}m\" type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3334 0.3333 0.3333 0 0\" result=\"{mask}s\"/>");
+                    var alpha = useAlpha ? Near("A", f.A) : "<feFuncA type=\"linear\" slope=\"0\" intercept=\"1\"/>";
+                    var weights = useAlpha ? "0.25 0.25 0.25 0.25" : "0.3334 0.3333 0.3333 0";
+                    sb.Append($"<feComponentTransfer in=\"{source}\" result=\"{mask}m\">{Near("R", f.R)}{Near("G", f.G)}{Near("B", f.B)}{alpha}</feComponentTransfer>");
+                    sb.Append($"<feColorMatrix in=\"{mask}m\" type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 {weights} 0\" result=\"{mask}s\"/>");
                     sb.Append($"<feComponentTransfer in=\"{mask}s\" result=\"{mask}\"><feFuncA type=\"discrete\" tableValues=\"0 0 0 0 0 0 0 0 0 1\"/></feComponentTransfer>");
                     var kept = Next();
                     sb.Append($"<feComposite in=\"{source}\" in2=\"{mask}\" operator=\"out\" result=\"{kept}\"/>");

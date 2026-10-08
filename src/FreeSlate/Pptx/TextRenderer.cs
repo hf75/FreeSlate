@@ -912,7 +912,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             {
                 // A picture bullet (catalog: text.bullets).
                 counters[level] = 0;
-                var (w, h) = slide.ImageSizes(linkPart ?? slide.SlidePart)(embed);
+                var (w, h) = slide.ImageSizes(linkPart ?? slide.SlidePart)(embed, 0);
                 var pictureSize = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
                 var factor = pictureSize?.Name.LocalName == "buSzPct" ? (pictureSize.Long("val") ?? 100000) / 100000.0 : 1;
                 return new Bullet("", textStyle with { Size = textStyle.Size * factor }, picture, w > 0 && h > 0 ? w / h : 1);

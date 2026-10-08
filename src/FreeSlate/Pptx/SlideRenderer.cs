@@ -318,7 +318,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
             body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
-        var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs);
+        var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs, matrix);
         if (camera != null && content.Length > 0)
         {
             // The front face is lit like the rest of the 3D shape (its normal faces the front).

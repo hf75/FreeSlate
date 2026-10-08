@@ -148,8 +148,8 @@ public static class SvgEffects
 
     /// <summary>
     /// An outer shadow that scales, skews or flips the shape (outerShdw sx, sy, kx, ky, the perspective shadows), or
-    /// null: about its alignment point (algn, bottom center by default) the shape is skewed, then scaled, then moved
-    /// by dist in direction dir; the blur comes last (measured, generated/effects).
+    /// null: about its alignment point (algn, bottom center by default) the shape is scaled and skewed, then moved by
+    /// dist in direction dir; the blur comes last (measured, generated/effects).
     /// </summary>
     public static ShadowCopy? Shadow(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, Matrix? frame = null)
     {
@@ -172,9 +172,9 @@ public static class SvgEffects
         (ax, ay) = (ax * boxWidth, ay * boxHeight);
         var distance = Units.ToPx(shadow.Long("dist") ?? 0);
         var direction = (shadow.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
-        // About the box's center on the slide: p' = A + S·K·(p − A) + offset with K the skew and S the scale; then back
-        // into the shape's own coordinates.
-        var m = new Matrix(sx, sy * ky, sx * kx, sy, 0, 0);
+        // About the box's center on the slide: p' = A + M·(p − A) + offset with M = [sx, tan kx; tan ky, sy], the skew
+        // not scaled (measured: a flipped shadow keeps its skew's direction); then back into the shape's coordinates.
+        var m = new Matrix(sx, ky, kx, sy, 0, 0);
         var onSlide = Matrix.Translate(ax + distance * Math.Cos(direction), ay + distance * Math.Sin(direction)).Then(m).Then(Matrix.Translate(-ax, -ay));
         var transform = Matrix.Translate(width / 2, height / 2).Then(turn.Invert()).Then(onSlide).Then(turn).Then(Matrix.Translate(-width / 2, -height / 2));
         var blur = Units.ToPx(shadow.Long("blurRad") ?? 0);
@@ -194,52 +194,64 @@ public static class SvgEffects
     }
 
     /// <summary>
-    /// The markup with its reflection (a:reflection): a copy scaled by sx/sy about the alignment point of
-    /// <paramref name="box"/> (bl with sy = -100 % mirrors it about the bottom edge), moved by dist in direction dir,
-    /// faded from stA at stPos to endA at endPos (fractions of the box height, from the mirrored edge) and blurred by
-    /// blurRad. Without a reflection the markup is returned unchanged.
+    /// The markup with its reflection (a:reflection): a copy scaled by sx/sy and skewed by kx/ky about the alignment
+    /// point of <paramref name="box"/> (bl with sy = -100 % mirrors it about the bottom edge), moved by dist in
+    /// direction dir, faded along fadeDir (90° by default, top to bottom of the copy) from stA at stPos to endA at
+    /// endPos (fractions of the copy's extent) and blurred by blurRad. A reflection that does not rotate with its
+    /// shape (rotWithShape 0, given the shape's turn in <paramref name="frame"/>) mirrors the turned shape on the
+    /// slide (measured). Without a reflection the markup is returned unchanged.
     /// </summary>
-    public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs)
+    public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs, Matrix? frame = null)
     {
         var reflection = effectLst?.Element(Ns.A + "reflection");
         if (reflection == null || markup.Length == 0)
             return markup;
         var n = Interlocked.Increment(ref nextId);
         double Fraction(string name, double fallback) => (reflection.Long(name) ?? fallback * 100000) / 100000.0;
-        var sx = Fraction("sx", 1);
-        var sy = Fraction("sy", 1);
+        double Angle(string name, double fallback) => (reflection.Long(name) ?? fallback * 60000) / 60000.0 * Math.PI / 180;
+        var (sx, sy) = (Fraction("sx", 1), Fraction("sy", 1));
+        var (kx, ky) = (Math.Tan(Angle("kx", 0)), Math.Tan(Angle("ky", 0)));
         var distance = Units.ToPx(reflection.Long("dist") ?? 0);
-        var direction = (reflection.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
+        var direction = Angle("dir", 0);
         var blur = Units.ToPx(reflection.Long("blurRad") ?? 0);
-        var (left, top, right, bottom) = (box.X, box.Y, box.X + box.W, box.Y + box.H);
-        var center = (box.X + box.W / 2, box.Y + box.H / 2);
+
+        // On the slide for reflections that keep still (about the box around the turned shape), else in the shape.
+        var turn = frame is { } f && reflection.Bool("rotWithShape") == false ? f with { E = 0, F = 0 } : Matrix.Identity;
+        var center = (X: box.X + box.W / 2, Y: box.Y + box.H / 2);
+        var (width, height) = (Math.Abs(turn.A) * box.W + Math.Abs(turn.C) * box.H, Math.Abs(turn.B) * box.W + Math.Abs(turn.D) * box.H);
         var (ax, ay) = (reflection.Str("algn") ?? "b") switch
         {
-            "tl" => (left, top), "t" => (center.Item1, top), "tr" => (right, top),
-            "l" => (left, center.Item2), "ctr" => center, "r" => (right, center.Item2),
-            "bl" => (left, bottom), "br" => (right, bottom), _ => (center.Item1, bottom),
+            "tl" => (-0.5, -0.5), "t" => (0, -0.5), "tr" => (0.5, -0.5),
+            "l" => (-0.5, 0.0), "ctr" => (0, 0), "r" => (0.5, 0),
+            "bl" => (-0.5, 0.5), "br" => (0.5, 0.5), _ => (0, 0.5),
         };
-        var dx = distance * Math.Cos(direction);
-        var dy = distance * Math.Sin(direction);
-        var matrix = $"matrix({Units.Css4(sx)} 0 0 {Units.Css4(sy)} {Units.Css(ax - sx * ax + dx)} {Units.Css(ay - sy * ay + dy)})";
+        (ax, ay) = (ax * width, ay * height);
+        var m = new Matrix(sx, ky, kx, sy, 0, 0);
+        var onSlide = Matrix.Translate(ax + distance * Math.Cos(direction), ay + distance * Math.Sin(direction)).Then(m).Then(Matrix.Translate(-ax, -ay));
+        var transform = Matrix.Translate(center.X, center.Y).Then(turn.Invert()).Then(onSlide).Then(turn).Then(Matrix.Translate(-center.X, -center.Y));
 
-        // The fade runs from the edge the copy is mirrored at into the object.
-        var edge = sy < 0 ? bottom : top;
-        var inward = sy < 0 ? -1 : 1;
-        var start = edge + inward * Fraction("stPos", 0) * box.H;
-        var end = edge + inward * Fraction("endPos", 1) * box.H;
+        // The fade runs along fadeDir across the copy (on the slide when the reflection keeps still).
+        var fade = Angle("fadeDir", 90);
+        var back = turn.Invert();
+        var (fx, fy) = (back.A * Math.Cos(fade) + back.C * Math.Sin(fade), back.B * Math.Cos(fade) + back.D * Math.Sin(fade));
+        var length = Math.Sqrt(fx * fx + fy * fy);
+        (fx, fy) = length > 1e-9 ? (fx / length, fy / length) : (0, 1);
+        (double X, double Y)[] corners = [(box.X, box.Y), (box.X + box.W, box.Y), (box.X, box.Y + box.H), (box.X + box.W, box.Y + box.H)];
+        var along = corners.Select(c => (transform.A * c.X + transform.C * c.Y + transform.E) * fx + (transform.B * c.X + transform.D * c.Y + transform.F) * fy).ToList();
+        var (low, span) = (along.Min(), Math.Max(1e-6, along.Max() - along.Min()));
+        var (start, end) = (low + Fraction("stPos", 0) * span, low + Fraction("endPos", 1) * span);
         var (stA, endA) = (Fraction("stA", 1), Fraction("endA", 0));
-        var margin = box.W + box.H + blur * 3;
-        defs.Append($"<linearGradient id=\"rg{n}\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"{Units.Css(start)}\" x2=\"0\" y2=\"{Units.Css(end)}\">" +
+        var margin = box.W + box.H + blur * 3 + distance;
+        defs.Append($"<linearGradient id=\"rg{n}\" gradientUnits=\"userSpaceOnUse\" x1=\"{Units.Css(fx * start)}\" y1=\"{Units.Css(fy * start)}\" x2=\"{Units.Css(fx * end)}\" y2=\"{Units.Css(fy * end)}\">" +
                     $"<stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\"{Units.Css4(stA)}\"/><stop offset=\"1\" stop-color=\"#fff\" stop-opacity=\"{Units.Css4(endA)}\"/></linearGradient>");
-        defs.Append($"<mask id=\"rm{n}\" maskUnits=\"userSpaceOnUse\" x=\"{Units.Css(left - margin)}\" y=\"{Units.Css(top - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\">" +
-                    $"<rect x=\"{Units.Css(left - margin)}\" y=\"{Units.Css(top - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\" fill=\"url(#rg{n})\"/></mask>");
+        defs.Append($"<mask id=\"rm{n}\" maskUnits=\"userSpaceOnUse\" x=\"{Units.Css(box.X - margin)}\" y=\"{Units.Css(box.Y - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\">" +
+                    $"<rect x=\"{Units.Css(box.X - margin)}\" y=\"{Units.Css(box.Y - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\" fill=\"url(#rg{n})\"/></mask>");
         var filter = "";
         if (blur > 0)
         {
             defs.Append($"<filter id=\"rb{n}\" x=\"-0.2\" y=\"-0.2\" width=\"1.4\" height=\"1.4\"><feGaussianBlur stdDeviation=\"{Units.Css(blur * 0.35)}\"/></filter>");
             filter = $" filter=\"url(#rb{n})\"";
         }
-        return $"<g id=\"rf{n}\">{markup}</g><g transform=\"{matrix}\"><use href=\"#rf{n}\" mask=\"url(#rm{n})\"{filter}/></g>";
+        return $"<g id=\"rf{n}\">{markup}</g><g mask=\"url(#rm{n})\"><g{filter}><g transform=\"{transform.Css()}\"><use href=\"#rf{n}\"/></g></g></g>";
     }
 }

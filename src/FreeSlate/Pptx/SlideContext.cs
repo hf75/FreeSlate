@@ -53,5 +53,5 @@ public sealed class SlideContext
     public Func<string, string?> Images(string part) => id => Presentation.Image(part, id);
 
     /// <summary>Picture sizes for tiled fills of the given part.</summary>
-    public Func<string, (double W, double H)> ImageSizes(string part) => id => Presentation.ImageSize(part, id);
+    public Func<string, double, (double W, double H)> ImageSizes(string part) => (id, dpi) => Presentation.ImageSize(part, id, dpi);
 }

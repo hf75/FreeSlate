@@ -5,12 +5,17 @@ namespace FreeSlate.Html;
 /// <summary>Reads the pixel size and resolution of PNG, JPEG, GIF and BMP files.</summary>
 public static class ImageInfo
 {
-    /// <summary>The size in CSS pixels (96 dpi) taking the image's own resolution into account; (0, 0) when unknown.</summary>
-    public static (double W, double H) Size(byte[] data)
+    /// <summary>
+    /// The size in CSS pixels (96 dpi) taking the image's own resolution into account, or <paramref name="dpi"/> when
+    /// positive (blipFill dpi); (0, 0) when unknown.
+    /// </summary>
+    public static (double W, double H) Size(byte[] data, double dpi = 0)
     {
         var (w, h, dpiX, dpiY) = Read(data);
         if (w <= 0 || h <= 0)
             return default;
+        if (dpi > 0)
+            (dpiX, dpiY) = (dpi, dpi);
         return (w * 96 / (dpiX > 0 ? dpiX : 96), h * 96 / (dpiY > 0 ? dpiY : 96));
     }
 

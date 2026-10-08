@@ -61,15 +61,19 @@ static class EffectsDeck
 
         // Perspective shadows (scaled, skewed and flipped about their alignment point) and shadows of turned shapes
         // that keep their direction on the slide or turn with the shape (patched, see Patch).
-        foreach (var (prefix, rotations) in new[] { ("perspective", new[] { 0f, 0, 0, 0, 0, 0, 0, 0 }), ("turned", new[] { 30f, 90, 30, 90, 30, 0, 200, 30 }) })
+        foreach (var (prefix, rotations) in new[] { ("perspective", new[] { 0f, 0, 0, 0, 0, 0, 0, 0 }), ("turned", new[] { 30f, 90, 30, 90, 30, 0, 200, 30 }),
+                     ("reflection", new[] { 0f, 0, 0, 0, 30, 30, 0, 0 }) })
         {
             var slide = Slide(presentation);
             for (var i = 0; i < 8; i++)
             {
-                var shape = slide.Shapes.AddShape(Rectangle, 60 + (i % 4) * 230, 80 + (i / 4) * 260, 130, 100);
+                var shape = slide.Shapes.AddShape(Rectangle, 60 + (i % 4) * 230, (prefix == "reflection" ? 40 : 80) + (i / 4) * 260, 130, 100);
                 shape.Fill.ForeColor.RGB = CorpusGenerator.Rgb(68, 114, 196);
                 shape.Line.Visible = PowerPointSession.MsoFalse;
-                shape.Shadow.Visible = PowerPointSession.MsoTrue;
+                if (prefix == "reflection")
+                    shape.Reflection.Type = 1;
+                else
+                    shape.Shadow.Visible = PowerPointSession.MsoTrue;
                 shape.Rotation = rotations[i];
                 shape.Name = $"{prefix}-{i}";
                 if (prefix == "turned" && i == 5)
@@ -103,7 +107,28 @@ static class EffectsDeck
             "dist=\"190500\" dir=\"2700000\" rotWithShape=\"0\"",
             "dist=\"12700\" dir=\"8100000\" sy=\"-23000\" kx=\"800400\" algn=\"br\" rotWithShape=\"1\"",
         ];
+        string[] reflections =
+        [
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" dir=\"5400000\" sy=\"-100000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" dir=\"5400000\" sy=\"-100000\" kx=\"1200000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" fadeDir=\"0\" dir=\"5400000\" sy=\"-100000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" dist=\"76200\" dir=\"5400000\" sy=\"-60000\" ky=\"600000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" dir=\"5400000\" sy=\"-100000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" dir=\"5400000\" sy=\"-100000\" algn=\"bl\" rotWithShape=\"1\"",
+            "stA=\"50000\" endA=\"300\" endPos=\"90000\" fadeDir=\"2700000\" dir=\"5400000\" sy=\"-100000\" algn=\"bl\" rotWithShape=\"0\"",
+            "stA=\"80000\" endA=\"0\" stPos=\"20000\" endPos=\"60000\" dir=\"0\" sx=\"-100000\" algn=\"r\" rotWithShape=\"0\"",
+        ];
         var changes = new Dictionary<string, Action<System.Xml.Linq.XElement>>();
+        for (var i = 0; i < reflections.Length; i++)
+        {
+            var attributes = reflections[i];
+            changes[$"reflection-{i}"] = shape =>
+            {
+                var effects = shape.Element(ShapePatch.P + "spPr")!.Element(ShapePatch.A + "effectLst")!;
+                effects.Element(ShapePatch.A + "reflection")?.Remove();
+                effects.Add(System.Xml.Linq.XElement.Parse($"<a:reflection xmlns:a=\"{ShapePatch.A}\" {attributes}/>"));
+            };
+        }
         foreach (var (prefix, list) in new[] { ("perspective", perspective), ("turned", turned) })
         {
             for (var i = 0; i < list.Length; i++)

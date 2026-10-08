@@ -95,12 +95,12 @@ public sealed class PresentationContext : IDisposable
     /// The size of an embedded picture in pixels at 96 dpi from its own resolution (PNG pHYs, JPEG density), as
     /// PowerPoint sizes tiles; (0, 0) when unknown.
     /// </summary>
-    public (double W, double H) ImageSize(string sourcePart, string relationshipId)
+    public (double W, double H) ImageSize(string sourcePart, string relationshipId, double dpi = 0)
     {
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
             return default;
-        return Html.ImageInfo.Size(Package.ReadBytes(rel.Target));
+        return Html.ImageInfo.Size(Package.ReadBytes(rel.Target), dpi);
     }
 
     public void Dispose() => Package.Dispose();
