@@ -14,6 +14,14 @@ public static class NumberFormat
         culture ??= CultureInfo.InvariantCulture;
         if (double.IsNaN(value) || double.IsInfinity(value))
             return "";
+
+        // Built-in formats 14 and 22 show the short date of the user's locale ("m/d/yyyy" is only their name).
+        if (code is "m/d/yyyy" or "m/d/yyyy h:mm" && value is > -657435 and < 2958466)
+        {
+            var date = DateTime.FromOADate(value);
+            var pattern = culture.DateTimeFormat.ShortDatePattern + (code.EndsWith("h:mm", StringComparison.Ordinal) ? " " + culture.DateTimeFormat.ShortTimePattern : "");
+            return date.ToString(pattern, culture);
+        }
         var sections = Sections(string.IsNullOrWhiteSpace(code) ? "General" : code);
 
         // Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus.

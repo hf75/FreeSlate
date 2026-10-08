@@ -23,7 +23,7 @@ public static class MetricsDeck
 public static class CorpusGenerator
 {
     // PpSlideLayout
-    const int LayoutTitle = 1, LayoutText = 2, LayoutTitleOnly = 11, LayoutBlank = 12;
+    internal const int LayoutTitle = 1, LayoutText = 2, LayoutTitleOnly = 11, LayoutBlank = 12;
     // MsoTextOrientation, PpParagraphAlignment, MsoVerticalAnchor
     const int Horizontal = 1;
     const int AlignLeft = 1, AlignCenter = 2, AlignRight = 3, AlignJustify = 4;
@@ -33,22 +33,30 @@ public static class CorpusGenerator
 
     const float SlideWidth = 960, SlideHeight = 540;   // points, 16:9
 
-    public static readonly string[] Decks = ["geometry-presets", "fills", "lines", "text-basic", "transforms", "text-metrics", "objects"];
+    /// <summary>The decks by name; SmartArt and chart galleries only work with a document window, which is kept minimized.</summary>
+    static readonly (string Name, Action<dynamic> Build, bool Window)[] Decks =
+    [
+        ("geometry-presets", GeometryPresets, false),
+        ("fills", Fills, false),
+        ("lines", Lines, false),
+        ("text-basic", TextBasic, false),
+        ("transforms", Transforms, false),
+        ("text-metrics", TextMetrics, false),
+        ("objects", Objects, false),
+        ("diagrams", Diagrams, true),
+        ("charts", Charts.Build, true),
+    ];
 
-
-
-    public static void Run(string outputDir)
+    /// <summary>Generates the named decks, or all of them.</summary>
+    public static void Run(string outputDir, IReadOnlyCollection<string> only)
     {
         using var session = new PowerPointSession();
         Console.WriteLine($"PowerPoint {session.Version}");
-        Generate(session, Path.Combine(outputDir, "geometry-presets.pptx"), GeometryPresets);
-        Generate(session, Path.Combine(outputDir, "fills.pptx"), Fills);
-        Generate(session, Path.Combine(outputDir, "lines.pptx"), Lines);
-        Generate(session, Path.Combine(outputDir, "text-basic.pptx"), TextBasic);
-        Generate(session, Path.Combine(outputDir, "transforms.pptx"), Transforms);
-        Generate(session, Path.Combine(outputDir, "text-metrics.pptx"), TextMetrics);
-        Generate(session, Path.Combine(outputDir, "objects.pptx"), Objects);
-        Generate(session, Path.Combine(outputDir, "diagrams.pptx"), Diagrams, window: true);
+        foreach (var (name, build, window) in Decks)
+        {
+            if (only.Count == 0 || only.Contains(name))
+                Generate(session, Path.Combine(outputDir, name + ".pptx"), build, window);
+        }
     }
 
     /// <summary>SmartArt and charts. Both galleries only work with a document window, which is kept minimized.</summary>
@@ -167,10 +175,10 @@ public static class CorpusGenerator
         core.Save(output);
     }
 
-    static dynamic AddSlide(dynamic presentation, int layout) =>
+    internal static dynamic AddSlide(dynamic presentation, int layout) =>
         presentation.Slides.Add(presentation.Slides.Count + 1, layout);
 
-    static int Rgb(int r, int g, int b) => r | (g << 8) | (b << 16);
+    internal static int Rgb(int r, int g, int b) => r | (g << 8) | (b << 16);
 
     /// <summary>Lays out cells of a grid on consecutive blank slides.</summary>
     sealed class Grid(dynamic presentation, int columns, int rows)

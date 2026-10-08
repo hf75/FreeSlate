@@ -14,7 +14,7 @@ var decks = rest.Count > 0 ? rest : Repo.Decks();
 switch (command)
 {
     case "generate" when OperatingSystem.IsWindows():
-        CorpusGenerator.Run(Path.Combine(Repo.Corpus, "generated"));
+        CorpusGenerator.Run(Path.Combine(Repo.Corpus, "generated"), rest);
         break;
     case "reference" when OperatingSystem.IsWindows():
         References.Render(decks, force);
@@ -47,7 +47,7 @@ switch (command)
               run [deck…]          render and compare (default)
               render [deck…]       convert with the engine and take screenshots with a headless browser
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
-              generate             create the generated test decks with PowerPoint (Windows)
+              generate [deck…]     create the generated test decks with PowerPoint (Windows)
               reference [deck…]    render reference images with PowerPoint (Windows); --force re-renders
             """);
         break;

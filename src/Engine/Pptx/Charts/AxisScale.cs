@@ -53,8 +53,11 @@ public static class AxisScaling
 
         if (percent)
         {
-            dataMin = Math.Min(0, dataMin);
-            dataMax = Math.Max(0, dataMax);
+            // 100 % stacked: exactly 0 … 100 % (or −100 %), without headroom.
+            var pMin = axis.Min ?? (dataMin < -1e-12 ? -1 : 0);
+            var pMax = axis.Max ?? (dataMax > 1e-12 || pMin == 0 ? 1 : 0);
+            var pMajor = axis.MajorUnit is { } m and > 0 ? m : NiceUnit(pMax - pMin, Math.Max(1, maxIntervals));
+            return new AxisScale(pMin, pMax, pMajor, axis.MinorUnit is { } n and > 0 ? n : pMajor / 5);
         }
         if (double.IsInfinity(dataMin) || double.IsInfinity(dataMax) || double.IsNaN(dataMin) || double.IsNaN(dataMax))
             (dataMin, dataMax) = (0, 1);

@@ -25,18 +25,21 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     const double CategoryLabelGap = 0.624;    // × s between the axis and horizontal labels
     const double LabelCenterShift = 0.054;    // × s: labels sit this much higher than their centered line box
     const double LegendRowPadding = 5.85;     // added to L per legend row
-    const double LegendKey = 0.549;           // × s, square legend keys
-    const double LegendTextOffset = 0.791;    // × s from a square key to its text
-    const double LegendLineKeyText = 1.825;   // × s from a line key to its text
-    const double LegendSpacing = 0.757;       // × s + 9.85 % of the text width between horizontal entries
-    const double LegendTextExtra = 0.0985;
-    const double LegendLeft = 0.78, LegendRight = 0.415;          // × s (+ text extra), horizontal legends
-    const double VerticalLegendLeft = 0.454, VerticalLegendRight = 0.348;
+    const double LegendKey = 0.45;            // × L, square legend keys
+    const double LegendLineKey = 0.8214;      // × L, the key box of line series
+    const double LegendKeyLeft = 0.275;       // × L from the entry to a square key
+    const double LegendText = 0.923;          // × L from the entry to the text after a square key
+    const double LegendLineCenter = 0.875, LegendLineHalf = 0.654, LegendLineText = 1.664;   // × L, line keys
+    const double VerticalLegendPadding = 1.5, VerticalLegendExtra = 3;
     const double TitlePaddingX = 3, TitlePaddingY = 1.5;
+    const double TickLength = 3.75;           // 5 px
+    const double LabelOffset = 3;             // data labels from the end of a bar or a point
+    const double PieLabelMargin = 1.785;      // × s: pies shrink by this on every side when they show data labels
 
     static readonly string[] MarkerCycle = ["diamond", "square", "triangle", "x", "star", "circle", "plus", "dot", "dash"];
 
     readonly StringBuilder defs = new();
+    readonly StringBuilder dataLabels = new();
     ChartModel model = null!;
     XElement? chartStyle;
     XElement? colorStyle;
@@ -92,6 +95,15 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         public bool Between { get; set; } = true;
         public double Start { get; set; }
         public double End { get; set; }
+
+        /// <summary>Label rotation in degrees; negative values rise to the right.</summary>
+        public double Rotation { get; set; }
+
+        /// <summary>The labels sit next to an axis line inside the plot area (negative values).</summary>
+        public bool Inside { get; set; }
+
+        /// <summary>The axis has a title; its labels keep 1.5 pt from it instead of reaching into the margin.</summary>
+        public bool Titled { get; set; }
 
         public double Map(double value) => Start + Scale.Fraction(value) * (End - Start);
 
@@ -149,6 +161,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             body.Append(Pie(pie, PlotBox(outer, square: true)));
 
         svg.Append(body);
+        svg.Append(dataLabels);
         if (legend != null)
             svg.Append(DrawLegend(legend));
         if (title != null)
@@ -338,6 +351,138 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return svg.ToString();
     }
 
+    // ---------------------------------------------------------------- data labels
+
+    /// <summary>What a data label shows and where (c:dLbl of the point, else c:dLbls of the series, else of the group).</summary>
+    sealed record LabelSpec(bool Value, bool Category, bool Series, bool Percent, string Separator, string? Position,
+        string? FormatCode, TextStyle Style, XElement? SpPr, (double L, double T, double R, double B) Insets);
+
+    LabelSpec? DataLabel(ChartGroup group, ChartSeries series, int point)
+    {
+        var seriesLabels = series.Element.Element(Ns.C + "dLbls");
+        var pointLabel = seriesLabels?.Elements(Ns.C + "dLbl").FirstOrDefault(d => d.Element(Ns.C + "idx").Int("val") == point);
+        var layers = new[] { pointLabel, seriesLabels, group.Element.Element(Ns.C + "dLbls") }.Where(l => l != null).Cast<XElement>().ToList();
+        if (layers.Count == 0 || ChartModel.Flag(layers[0], "delete", false))
+            return null;
+        bool Show(string name) => layers.FirstOrDefault(l => l.Element(Ns.C + name) != null) is { } owner && ChartModel.Flag(owner, name, false);
+        var spec = (Value: Show("showVal"), Category: Show("showCatName"), Series: Show("showSerName"), Percent: Show("showPercent"));
+        if (!spec.Value && !spec.Category && !spec.Series && !spec.Percent)
+            return null;
+
+        XElement? Child(string name) => layers.Select(l => l.Element(Ns.C + name)).FirstOrDefault(e => e != null);
+        var txPr = Child("txPr");
+        var body = txPr?.Element(Ns.A + "bodyPr");
+        double Inset(string name, long fallback) => (body.Long(name) ?? fallback) / Units.EmuPerPoint;
+        var numFmt = Child("numFmt");
+        var separator = Child("separator")?.Value ?? (group.IsPie ? "\n" : ", ");
+        return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, separator, Child("dLblPos").Str("val"),
+            numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), Style(txPr, "dataLabel"), Child("spPr"),
+            (Inset("lIns", 38100), Inset("tIns", 19050), Inset("rIns", 38100), Inset("bIns", 19050)));
+    }
+
+    string LabelText(LabelSpec spec, ChartSeries series, int point, double value, double total)
+    {
+        var parts = new List<string>();
+        if (spec.Series) parts.Add(series.Name);
+        if (spec.Category) parts.Add(series.Categories.ElementAtOrDefault(point) ?? (point + 1).ToString(culture));
+        if (spec.Value) parts.Add(NumberFormat.Format(value, spec.FormatCode ?? series.FormatCode, culture));
+        if (spec.Percent) parts.Add(NumberFormat.Format(total == 0 ? 0 : Math.Abs(value) / total, spec.FormatCode is { } f && f.Contains('%') ? f : "0%", culture));
+        return string.Join(spec.Separator, parts);
+    }
+
+    /// <summary>The size of a data label's box: its lines plus the text insets.</summary>
+    static (double W, double H) LabelSize(LabelSpec spec, string value)
+    {
+        var lines = value.Split('\n');
+        return (lines.Max(l => Width(l, spec.Style)) + spec.Insets.L + spec.Insets.R,
+            lines.Length * LineHeight(spec.Style) + spec.Insets.T + spec.Insets.B);
+    }
+
+    /// <summary>Draws a data label whose box has its top-left corner at (x, y); lines are centered.</summary>
+    void DrawLabel(LabelSpec spec, string value, double x, double y)
+    {
+        var (w, h) = LabelSize(spec, value);
+        dataLabels.Append(Area(spec.SpPr, new Box(x, y, w, h), snap: false));
+        var lineHeight = LineHeight(spec.Style);
+        var baseline = y + spec.Insets.T + Ascent(spec.Style);
+        foreach (var line in value.Split('\n'))
+        {
+            var lw = Width(line, spec.Style);
+            dataLabels.Append(text.Label(line, spec.Style, x + spec.Insets.L + (w - spec.Insets.L - spec.Insets.R - lw) / 2, baseline));
+            baseline += lineHeight;
+        }
+    }
+
+    /// <summary>Places a label at a point: centered, or 3 pt off it to one side (r, l, t, b).</summary>
+    void LabelAtPoint(LabelSpec spec, string value, double x, double y, string position)
+    {
+        var (w, h) = LabelSize(spec, value);
+        var (lx, ly) = position switch
+        {
+            "l" => (x - LabelOffset - w, y - h / 2),
+            "t" => (x - w / 2, y - LabelOffset - h),
+            "b" => (x - w / 2, y + LabelOffset),
+            "ctr" => (x - w / 2, y - h / 2),
+            _ => (x + LabelOffset, y - h / 2),
+        };
+        DrawLabel(spec, value, lx, ly);
+    }
+
+    // ---------------------------------------------------------------- axis titles
+
+    sealed class AxisTitle
+    {
+        public required TextBlock Text { get; init; }
+        public required double Rotation { get; init; }
+        public required Box Box { get; set; }
+        public XElement? SpPr { get; init; }
+    }
+
+    AxisTitle? BuildAxisTitle(ChartAxis axis)
+    {
+        if (axis.Deleted || axis.Title is not { } element)
+            return null;
+        var layers = new List<XElement?> { DefRPr(element.Element(Ns.C + "txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("axisTitle"),
+            new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1")) };
+        var rich = element.Element(Ns.C + "tx")?.Element(Ns.C + "rich")
+                   ?? new XElement(Ns.C + "rich", new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t",
+                       culture.TwoLetterISOLanguageName == "de" ? "Achsentitel" : "Axis Title"))));
+        var layout = text.ChartRich(rich, layers, width * 0.8, wrap: true);
+        var style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
+        var rot = rich.Element(Ns.A + "bodyPr").Long("rot") ?? element.Element(Ns.C + "txPr")?.Element(Ns.A + "bodyPr").Long("rot");
+        var rotation = rot is { } r && r != -60000000 ? r / 60000.0 : axis.Horizontal ? 0 : -90;
+        var block = new TextBlock { Layout = layout, Style = style };
+        var along = block.Width + 2 * TitlePaddingX;
+        var across = Math.Max(1, layout.Lines.Count) * LineHeight(style) + 2 * TitlePaddingY;
+        var vertical = Math.Abs(Math.Abs(rotation) - 90) < 1;
+        return new AxisTitle
+        {
+            Text = block,
+            Rotation = vertical ? rotation : 0,
+            Box = vertical ? new Box(0, 0, across, along) : new Box(0, 0, along, across),
+            SpPr = element.Element(Ns.C + "spPr"),
+        };
+    }
+
+    string DrawAxisTitle(AxisTitle title)
+    {
+        var svg = new StringBuilder(Area(title.SpPr, title.Box, snap: false));
+        var style = title.Text.Style;
+        var lineHeight = LineHeight(style);
+        var (cx, cy) = (title.Box.X + title.Box.W / 2, title.Box.Y + title.Box.H / 2);
+        var lines = title.Text.Layout.Lines;
+        var blockHeight = Math.Max(1, lines.Count) * lineHeight;
+        svg.Append($"<g transform=\"translate({Px(cx)} {Px(cy)})" + (title.Rotation != 0 ? $" rotate({Units.Css(title.Rotation)})" : "") + "\">");
+        var baseline = -blockHeight / 2 + Ascent(style);
+        foreach (var line in lines)
+        {
+            svg.Append(text.EmitLine(line, -line.Width / 2, baseline));
+            baseline += lineHeight;
+        }
+        svg.Append("</g>");
+        return svg.ToString();
+    }
+
     /// <summary>A manually positioned element (c:layout/c:manualLayout with edge positions).</summary>
     Box? ManualPosition(XElement? element, double w, double h)
     {
@@ -392,8 +537,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             return null;
 
         var position = ChartModel.Val(element, "legendPos") ?? "r";
-        var s = style.Size;
-        var rowHeight = LineHeight(style) + LegendRowPadding;
+        var lineHeight = LineHeight(style);
+        var rowHeight = lineHeight + LegendRowPadding;
         var layout = new LegendLayout
         {
             Position = position,
@@ -403,37 +548,53 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             Overlay = ChartModel.Flag(element, "overlay", false),
             SpPr = element.Element(Ns.C + "spPr"),
         };
-        double TextOffset(LegendEntry e) => (e.LineKey ? LegendLineKeyText : LegendTextOffset) * s;
+
+        // An entry is [key/2][key][key/2][text]; square keys are 0.45 L wide, line keys 0.82 L.
+        double Key(LegendEntry e) => (e.LineKey ? LegendLineKey : LegendKey) * lineHeight;
+        var widths = entries.Select(e => 2 * Key(e) + Width(e.Text, style)).ToList();
 
         Box box;
         if (position is "t" or "b")
         {
-            // One row; entries are spaced by a constant plus a share of their text width.
-            var widths = entries.Select(e => Width(e.Text, style)).ToList();
-            double Extra(int i) => LegendTextExtra * widths[i];
-            var total = LegendLeft * s + Extra(0) + LegendRight * s + Extra(entries.Count - 1);
-            for (var i = 0; i < entries.Count; i++)
-                total += TextOffset(entries[i]) + widths[i] + (i > 0 ? LegendSpacing * s + Extra(i - 1) : 0);
-            var maxWidth = width - 30;
-            var squeeze = total > maxWidth ? (total - maxWidth) : 0;
-            var spacingCount = entries.Count + 1;
-            var w = total - squeeze;
-            var x = LegendLeft * s + Extra(0) - squeeze / spacingCount;
+            // One row 1.2 times as wide as the entries, which share the extra space in equal gaps; a row that
+            // does not fit is squeezed to the maximum width, and wraps into balanced rows when even that fails.
+            var sum = widths.Sum();
+            var maxWidth = Math.Max(1, width - 30);
+            int columns;
+            double w, gap;
+            if (sum * 1.2 <= maxWidth || sum <= maxWidth)
+            {
+                columns = entries.Count;
+                w = Math.Min(sum * 1.2, maxWidth);
+                gap = (w - sum) / (entries.Count + 1);
+            }
+            else
+            {
+                var column = widths.Max();
+                var maxColumns = Math.Max(1, (int)Math.Floor(maxWidth / column));
+                var rowCount = (int)Math.Ceiling(entries.Count / (double)maxColumns);
+                columns = (int)Math.Ceiling(entries.Count / (double)rowCount);
+                w = columns * column;
+                gap = 0;
+                widths = widths.Select(_ => column).ToList();
+            }
+            var rows = (int)Math.Ceiling(entries.Count / (double)columns);
             for (var i = 0; i < entries.Count; i++)
             {
-                if (i > 0) x += LegendSpacing * s + Extra(i - 1) - squeeze / spacingCount;
-                layout.Placed.Add((entries[i], x, rowHeight / 2));
-                x += TextOffset(entries[i]) + widths[i];
+                var (row, col) = Math.DivRem(i, columns);
+                var x = gap + Enumerable.Range(row * columns, col).Sum(j => widths[j] + gap);
+                layout.Placed.Add((entries[i], x, rowHeight * (row + 0.5)));
             }
-            var y = position == "b" ? height - EdgeGap - rowHeight : (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
-            box = new Box((width - w) / 2, y, w, rowHeight);
+            var h = rows * rowHeight;
+            var y = position == "b" ? height - EdgeGap - h : (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
+            box = new Box((width - w) / 2, y, w, h);
         }
         else
         {
-            var w = VerticalLegendLeft * s + entries.Max(e => TextOffset(e) + Width(e.Text, style)) + VerticalLegendRight * s;
+            var w = widths.Max() + 2 * VerticalLegendPadding + VerticalLegendExtra;
             var h = rowHeight * entries.Count;
             for (var i = 0; i < entries.Count; i++)
-                layout.Placed.Add((entries[i], VerticalLegendLeft * s, rowHeight * (i + 0.5)));
+                layout.Placed.Add((entries[i], VerticalLegendPadding, rowHeight * (i + 0.5)));
             var areaTop = (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
             var areaBottom = height - EdgeGap;
             var x = position == "l" ? EdgeGap : width - EdgeGap - w;
@@ -447,28 +608,32 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     string DrawLegend(LegendLayout legend)
     {
         var svg = new StringBuilder(Area(legend.SpPr, legend.Box, snap: false));
-        var s = legend.Style.Size;
+        var style = legend.Style;
+        var lineHeight = LineHeight(style);
         foreach (var (entry, x, rowCenter) in legend.Placed)
         {
             var left = legend.Box.X + x;
             var center = legend.Box.Y + rowCenter;
+            var baseline = CenteredBaseline(style, center);
             if (entry.LineKey)
             {
-                var (x1, x2) = (left + 0.063 * s, left + 1.66 * s);
+                var keyCenter = left + LegendLineCenter * lineHeight;
+                var half = LegendLineHalf * lineHeight;
                 if (entry.Outline is { Visible: true } line)
                 {
-                    var (a, b) = (SnapPoint((x1, center), line), SnapPoint((x2, center), line));
+                    var (a, b) = (SnapPoint((keyCenter - half, center), line), SnapPoint((keyCenter + half, center), line));
                     svg.Append($"<path d=\"M{Px(a.X)} {Px(a.Y)}L{Px(b.X)} {Px(b.Y)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                 }
                 if (entry.Marker != null)
-                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, (x1 + x2) / 2, center, entry.Fill, entry.Outline));
-                svg.Append(text.Label(entry.Text, legend.Style, left + LegendLineKeyText * s, CenteredBaseline(legend.Style, center)));
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, keyCenter, center, entry.Fill, entry.Outline));
+                svg.Append(text.Label(entry.Text, style, left + LegendLineText * lineHeight, baseline));
             }
             else
             {
-                var key = LegendKey * s;
-                svg.Append(Rect(new Box(left, center - key / 2, key, key), entry.Fill, entry.Outline is { Visible: true } o ? o with { WidthEmu = Math.Min(o.WidthEmu, 19050) } : null, snap: false));
-                svg.Append(text.Label(entry.Text, legend.Style, left + LegendTextOffset * s, CenteredBaseline(legend.Style, center)));
+                var key = LegendKey * lineHeight;
+                var outline = entry.Outline is { Visible: true } o ? o with { WidthEmu = Math.Min(o.WidthEmu, 19050) } : null;
+                svg.Append(Rect(new Box(left + LegendKeyLeft * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
+                svg.Append(text.Label(entry.Text, style, left + LegendText * lineHeight, baseline));
             }
         }
         return svg.ToString();
@@ -574,6 +739,24 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, layout.Style));
         }
 
+        // Axis titles take their room from the outer plot area, at the edge of their axis.
+        var titles = new List<(AxisLayout Axis, AxisTitle Title)>();
+        foreach (var layout in axes)
+        {
+            if (BuildAxisTitle(layout.Axis) is not { } axisTitle)
+                continue;
+            layout.Titled = true;
+            var b = axisTitle.Box;
+            switch (layout.Axis.Position)
+            {
+                case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + b.W, W = Math.Max(1, outer.W - b.W) }; break;
+                case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - b.W) }; break;
+                case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + b.H, H = Math.Max(1, outer.H - b.H) }; break;
+                default: axisTitle.Box = b with { Y = outer.Bottom - b.H }; outer = outer with { H = Math.Max(1, outer.H - b.H) }; break;
+            }
+            titles.Add((layout, axisTitle));
+        }
+
         var inner = ManualPlot();
         var plot = inner ?? outer;
         for (var pass = 0; pass < 3; pass++)
@@ -582,7 +765,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H);
             if (inner != null)
                 break;
-            var next = InnerPlot(outer, axes);
+            var next = InnerPlot(outer, axes, plot);
             if (Math.Abs(next.W - plot.W) < 0.01 && Math.Abs(next.H - plot.H) < 0.01)
             {
                 plot = next;
@@ -629,43 +812,119 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         foreach (var layout in axes.Where(a => a.Visible))
             svg.Append(AxisLine(layout, axes, plot));
         foreach (var layout in axes.Where(a => a.HasLabels))
-            svg.Append(AxisLabels(layout, plot));
+            svg.Append(AxisLabels(layout, axes, plot));
+        foreach (var (layout, axisTitle) in titles)
+        {
+            var b = axisTitle.Box;
+            axisTitle.Box = layout.Axis.Horizontal ? b with { X = plot.X + (plot.W - b.W) / 2 } : b with { Y = plot.Y + (plot.H - b.H) / 2 };
+            svg.Append(DrawAxisTitle(axisTitle));
+        }
         return svg.ToString();
     }
 
     /// <summary>The plot area inside the axis labels (PowerPoint's inner plot area) for an automatic layout.</summary>
-    static Box InnerPlot(Box outer, List<AxisLayout> axes)
+    static Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous)
     {
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
+        var edges = new HashSet<string>();
         foreach (var layout in axes.Where(a => a.HasLabels))
         {
             var s = layout.Style.Size;
-            var lineHeight = LineHeight(layout.Style);
+            layout.Rotation = Rotation(layout, layout.Axis.Horizontal ? previous.W : previous.H);
+            layout.Inside = LabelsInside(layout, axes);
+            if (layout.Inside)
+                continue;
+            edges.Add(layout.Axis.Position);
+            var extent = LabelExtent(layout);
+            var bleed = layout.Titled ? -TitlePaddingY : LabelBleed;
             switch (layout.Axis.Position)
             {
                 case "l":
-                    left = Math.Max(left, outer.X - LabelBleed + layout.MaxLabelWidth + ValueLabelGap * s);
+                    left = Math.Max(left, outer.X - bleed + extent + ValueLabelGap * s);
                     break;
                 case "r":
-                    right = Math.Min(right, outer.Right + LabelBleed - layout.MaxLabelWidth - ValueLabelGap * s);
+                    right = Math.Min(right, outer.Right + bleed - extent - ValueLabelGap * s);
                     break;
                 case "b":
-                    bottom = Math.Min(bottom, outer.Bottom + LabelBleed - lineHeight - CategoryLabelGap * s);
+                    bottom = Math.Min(bottom, outer.Bottom + bleed - extent - CategoryLabelGap * s);
                     break;
                 case "t":
-                    top = Math.Max(top, outer.Y - LabelBleed + lineHeight + CategoryLabelGap * s);
+                    top = Math.Max(top, outer.Y - bleed + extent + CategoryLabelGap * s);
                     break;
             }
         }
-        // Value labels centered on the outermost ticks may reach a little past the outer edge.
+
+        // Value labels centered on the outermost ticks may reach past the outer edge: half a line minus 6 pt
+        // vertically, half a label horizontally.
         foreach (var layout in axes.Where(a => a.HasLabels && a.Axis.IsValue && a.Labels.Count > 0))
         {
+            var half = LineHeight(layout.Style) / 2;
             if (layout.Axis.Horizontal)
-                right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
+            {
+                if (!edges.Contains("r")) right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
+            }
             else
-                top = Math.Max(top, outer.Y - 6 + LineHeight(layout.Style) / 2);
+            {
+                if (!edges.Contains("t")) top = Math.Max(top, outer.Y - 6 + half);
+                if (!edges.Contains("b")) bottom = Math.Min(bottom, outer.Bottom + 6 - half);
+            }
+        }
+
+        // Horizontal labels centered on the plot edges (midCat categories, dates) stay within the outer edges.
+        foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation == 0 && a.Axis.Horizontal && !a.Axis.IsValue && !a.Between && a.Labels.Count > 0))
+        {
+            left = Math.Max(left, outer.X + Width(layout.Labels[0], layout.Style) / 2);
+            right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
+        }
+
+        // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge.
+        foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation < 0 && a.Axis.Horizontal && a.Labels.Count > 0))
+        {
+            var angle = -layout.Rotation * Math.PI / 180;
+            var reach = Width(layout.Labels[0], layout.Style) * Math.Cos(angle) + LineHeight(layout.Style) / 2 * Math.Sin(angle);
+            var limit = outer.X - 9 + reach;
+            var n = Math.Max(1, layout.Categories);
+            var needed = layout.Between ? (limit - right / (2 * n)) / (1 - 1.0 / (2 * n)) : limit;
+            left = Math.Max(left, needed);
         }
         return new Box(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
+    }
+
+    /// <summary>Label rotation in degrees (negative rises to the right): the text body's own, else −45° when category labels do not fit.</summary>
+    static double Rotation(AxisLayout layout, double length)
+    {
+        var rot = layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot");
+        if (rot is { } r && r != -60000000)
+            return r / 60000.0;
+        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Categories == 0)
+            return 0;
+        return layout.MaxLabelWidth > length / layout.Categories ? -45 : 0;
+    }
+
+    /// <summary>The labels' extent away from the axis.</summary>
+    static double LabelExtent(AxisLayout layout)
+    {
+        var lineHeight = LineHeight(layout.Style);
+        var horizontal = layout.Axis.Horizontal;
+        if (layout.Rotation == 0)
+            return horizontal ? lineHeight : layout.MaxLabelWidth;
+        var a = Math.Abs(layout.Rotation) * Math.PI / 180;
+        return horizontal
+            ? layout.MaxLabelWidth * Math.Sin(a) + lineHeight * Math.Cos(a)
+            : layout.MaxLabelWidth * Math.Cos(a) + lineHeight * Math.Sin(a);
+    }
+
+    /// <summary>Labels "next to" an axis that crosses inside the plot area are drawn there and take no room at the edge.</summary>
+    static bool LabelsInside(AxisLayout layout, List<AxisLayout> axes)
+    {
+        if (layout.Axis.TickLabelPosition != "nextTo" || layout.Axis.IsValue)
+            return false;
+        var cross = axes.FirstOrDefault(a => a.Axis.Id == layout.Axis.CrossAxisId && a.Axis.IsValue);
+        if (cross == null || cross.Scale.Max <= cross.Scale.Min)
+            return false;
+        var value = CrossValue(cross, layout.Axis);
+        var atStart = cross.Axis.Reversed ? value >= cross.Scale.Max : value <= cross.Scale.Min;
+        return layout.Axis.Position is "b" or "l" ? !atStart && value < cross.Scale.Max : false;
     }
 
     void ScaleValueAxis(AxisLayout layout, double length)
@@ -684,10 +943,11 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         if (double.IsInfinity(min)) (min, max) = (0, 1);
 
         var style = layout.Style;
+        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus a gap.
         var extent = layout.Axis.Horizontal
             ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + style.Size
-            : LineHeight(style);
-        var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent * 1.5)), 1, 10);
+            : LineHeight(style) * 1.1;
+        var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent);
         layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v, Format(layout), culture)).ToList();
         layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, style));
@@ -807,37 +1067,80 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             position = layout.Axis.Crosses == "max" ? cross.End : cross.Start;
         else
             position = layout.Axis.Horizontal ? plot.Bottom : plot.X;
-        return layout.Axis.Horizontal
+        var svg = new StringBuilder(layout.Axis.Horizontal
             ? GridLine(outline, plot.X, position, plot.Right, position)
-            : GridLine(outline, position, plot.Y, position, plot.Bottom);
+            : GridLine(outline, position, plot.Y, position, plot.Bottom));
+
+        // Tick marks: out, in or cross, 5 px long, at the major ticks (category boundaries, or the points of midCat axes).
+        foreach (var (mark, minor) in new[] { (layout.Axis.MajorTickMark, false), (layout.Axis.MinorTickMark, true) })
+        {
+            if (mark is not ("out" or "in" or "cross") || minor && layout.Axis.IsValue == false)
+                continue;
+            var ticks = layout.Axis.IsValue
+                ? (minor ? layout.Scale.MinorTicks() : layout.Scale.Ticks()).Select(layout.Map)
+                : layout.Between
+                    ? Enumerable.Range(0, layout.Categories + 1).Select(i => layout.Boundary(i))
+                    : Enumerable.Range(0, layout.Categories).Select(layout.Center);
+            var outward = layout.Axis.Position is "b" or "r" ? 1 : -1;
+            var length = TickLength * (minor ? 0.5 : 1);
+            var (from, to) = mark switch { "out" => (0.0, length), "in" => (-length, 0.0), _ => (-length, length) };
+            foreach (var t in ticks)
+            {
+                svg.Append(layout.Axis.Horizontal
+                    ? GridLine(outline, t, position + outward * from, t, position + outward * to)
+                    : GridLine(outline, position + outward * from, t, position + outward * to, t));
+            }
+        }
+        return svg.ToString();
     }
 
-    string AxisLabels(AxisLayout layout, Box plot)
+    string AxisLabels(AxisLayout layout, List<AxisLayout> axes, Box plot)
     {
         var svg = new StringBuilder();
         var style = layout.Style;
         var s = style.Size;
+        var lineHeight = LineHeight(style);
         var positions = layout.Axis.IsValue
             ? layout.Scale.Ticks().Select(layout.Map).ToList()
             : Enumerable.Range(0, layout.Categories).Select(layout.Center).ToList();
+
+        // The line the labels hang from: the plot edge, or the axis line for labels inside the plot area.
+        double left = plot.X, right = plot.Right, top = plot.Y, bottom = plot.Bottom;
+        if (layout.Inside && axes.FirstOrDefault(a => a.Axis.Id == layout.Axis.CrossAxisId) is { } cross)
+        {
+            var position = cross.Map(CrossValue(cross, layout.Axis));
+            (left, bottom) = (position, position);
+        }
+
+        var angle = Math.Abs(layout.Rotation) * Math.PI / 180;
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
         {
             var label = layout.Labels[i];
             var w = Width(label, style);
             var p = positions[i];
+            if (layout.Rotation != 0 && layout.Axis.Position is "b")
+            {
+                // Rotated labels: the end (rising) or start (falling) of the text's middle line at the category,
+                // with the rotated box keeping the usual gap below the axis.
+                var anchorY = bottom + CategoryLabelGap * s + lineHeight / 2 * Math.Cos(angle);
+                svg.Append($"<g transform=\"translate({Px(p)} {Px(anchorY)}) rotate({Units.Css(layout.Rotation)})\">");
+                svg.Append(text.Label(label, style, layout.Rotation < 0 ? -w : 0, CenteredBaseline(style, 0)));
+                svg.Append("</g>");
+                continue;
+            }
             switch (layout.Axis.Position)
             {
                 case "l":
-                    svg.Append(text.Label(label, style, plot.X - ValueLabelGap * s - w, CenteredBaseline(style, p)));
+                    svg.Append(text.Label(label, style, left - ValueLabelGap * s - w, CenteredBaseline(style, p)));
                     break;
                 case "r":
-                    svg.Append(text.Label(label, style, plot.Right + ValueLabelGap * s, CenteredBaseline(style, p)));
+                    svg.Append(text.Label(label, style, right + ValueLabelGap * s, CenteredBaseline(style, p)));
                     break;
                 case "b":
-                    svg.Append(text.Label(label, style, p - w / 2, plot.Bottom + CategoryLabelGap * s + Ascent(style)));
+                    svg.Append(text.Label(label, style, p - w / 2, bottom + CategoryLabelGap * s + Ascent(style)));
                     break;
                 case "t":
-                    svg.Append(text.Label(label, style, p - w / 2, plot.Y - CategoryLabelGap * s - Descent(style)));
+                    svg.Append(text.Label(label, style, p - w / 2, top - CategoryLabelGap * s - Descent(style)));
                     break;
             }
         }
@@ -891,6 +1194,28 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                     ? new Box(Math.Min(v0, v1), Math.Min(c0, c1), Math.Abs(v1 - v0), Math.Abs(c1 - c0))
                     : new Box(Math.Min(c0, c1), Math.Min(v0, v1), Math.Abs(c1 - c0), Math.Abs(v1 - v0));
                 svg.Append(Rect(box, PointFill(group, series, i), PointOutline(series, i), snap: true));
+
+                if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw)
+                {
+                    var label = LabelText(spec, series, i, raw, total);
+                    var (w, h) = LabelSize(spec, label);
+                    var position = spec.Position ?? (group.Stacked ? "ctr" : "outEnd");
+                    var across = (c0 + c1) / 2;
+                    var grows = Math.Sign(v1 - v0) is var sign && sign != 0 ? sign : group.Horizontal ? 1 : -1;
+                    var extent = group.Horizontal ? w : h;
+                    // Start of the label box along the value direction (smaller coordinate).
+                    var along = position switch
+                    {
+                        "ctr" => (v0 + v1) / 2 - extent / 2,
+                        "inEnd" => grows > 0 ? v1 - LabelOffset - extent : v1 + LabelOffset,
+                        "inBase" => grows > 0 ? v0 + LabelOffset : v0 - LabelOffset - extent,
+                        _ => grows > 0 ? v1 + LabelOffset : v1 - LabelOffset - extent,
+                    };
+                    if (group.Horizontal)
+                        DrawLabel(spec, label, along, across - h / 2);
+                    else
+                        DrawLabel(spec, label, across - w / 2, along);
+                }
             }
         }
         return svg.ToString();
@@ -943,6 +1268,11 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                     if (points[i] is { } p)
                         svg.Append(DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline));
                 }
+            }
+            for (var i = 0; i < points.Count; i++)
+            {
+                if (points[i] is { } p && series.Values.ElementAtOrDefault(i) is { } raw && DataLabel(group, series, i) is { } spec)
+                    LabelAtPoint(spec, LabelText(spec, series, i, raw, 0), p.X, p.Y, spec.Position ?? "r");
             }
         }
         return svg.ToString();
@@ -1107,7 +1437,10 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             return "";
         var maxExplosion = rings.SelectMany(s => s.Points.Values.Select(p => ChartModel.Number(p, "explosion") ?? 0)
             .Append(ChartModel.Number(s.Element, "explosion") ?? 0)).DefaultIfEmpty(0).Max() / 100;
-        var radius = Math.Min(plot.W, plot.H) / 2 / (1 + maxExplosion);
+        // With data labels PowerPoint keeps a margin around the pie for them.
+        var labelled = rings.SelectMany(r => Enumerable.Range(0, r.Values.Count).Select(i => DataLabel(group, r, i))).FirstOrDefault(l => l != null);
+        var margin = labelled != null && ManualPlot() == null ? PieLabelMargin * labelled.Style.Size : 0;
+        var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + maxExplosion);
         var (cx, cy) = (plot.X + plot.W / 2, plot.Y + plot.H / 2);
         var hole = doughnut ? Math.Clamp(group.HoleSize, 10, 90) / 100 : 0;
         var ringWidth = (radius - radius * hole) / rings.Count;
@@ -1132,6 +1465,21 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 var mid = (angle + sweep / 2) * Math.PI / 180;
                 var (ox, oy) = (Math.Sin(mid) * outer * explosion / 100, -Math.Cos(mid) * outer * explosion / 100);
                 svg.Append($"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+                if (DataLabel(group, series, i) is { } spec)
+                {
+                    // Doughnut labels sit in the middle of the ring; pie labels at half the radius (ctr), near the
+                    // edge inside (inEnd, bestFit) or outside it (outEnd).
+                    var label = LabelText(spec, series, i, series.Values[i] ?? 0, total);
+                    var (w, h) = LabelSize(spec, label);
+                    var (dx, dy) = (Math.Sin(mid), -Math.Cos(mid));
+                    var distance = doughnut ? (outer + inner) / 2 : (spec.Position ?? "bestFit") switch
+                    {
+                        "ctr" => outer * 0.5,
+                        "outEnd" => outer + LabelOffset + Math.Abs(dx) * w / 2 + Math.Abs(dy) * h / 2,
+                        _ => outer * 0.8,
+                    };
+                    DrawLabel(spec, label, cx + ox + dx * distance - w / 2, cy + oy + dy * distance - h / 2);
+                }
                 angle += sweep;
             }
         }
