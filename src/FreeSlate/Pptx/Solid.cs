@@ -30,10 +30,14 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     public static List<List<(double X, double Y)>> Outlines(EvaluatedGeometry geometry, double grow = 0)
     {
         var result = new List<List<(double X, double Y)>>();
-        foreach (var path in geometry.Paths.Where(p => p.Fill != "none"))
+        // The extrusion follows the paths that allow it (extrusionOk), filled or not: presets keep their shading and
+        // decorations flat and extrude their outline path, and those without one (can, cube) stay flat (measured).
+        foreach (var path in geometry.Paths.Where(p => p.ExtrusionOk))
         {
-            foreach (var (points, _) in CompoundLines.Flatten(path.Segments))
+            foreach (var (points, closed) in CompoundLines.Flatten(path.Segments))
             {
+                if (!closed && path.Fill == "none")
+                    continue;
                 var outline = points.ToList();
                 if (outline.Count > 1 && Distance(outline[0], outline[^1]) < 0.01)
                     outline.RemoveAt(outline.Count - 1);

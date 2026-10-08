@@ -11,7 +11,7 @@ public sealed record PathSegment(char Command, double[] Values)
 }
 
 /// <summary>A path of an evaluated geometry in pixels.</summary>
-public sealed record EvaluatedPath(List<PathSegment> Segments, string Fill, bool Stroke)
+public sealed record EvaluatedPath(List<PathSegment> Segments, string Fill, bool Stroke, bool ExtrusionOk = true)
 {
     public string Data => Serialize(Segments);
 
@@ -58,7 +58,7 @@ public static class GeometryEvaluator
         foreach (var gd in definition.Guides)
             vars[gd.Name] = Eval(gd.Formula, vars);
 
-        var paths = definition.Paths.Select(p => new EvaluatedPath(Path(p, widthEmu, heightEmu, vars), p.Fill, p.Stroke)).ToList();
+        var paths = definition.Paths.Select(p => new EvaluatedPath(Path(p, widthEmu, heightEmu, vars), p.Fill, p.Stroke, p.ExtrusionOk)).ToList();
 
         double Px(string arg) => Units.ToPx(Value(arg, vars));
         var rect = definition.TextRect;

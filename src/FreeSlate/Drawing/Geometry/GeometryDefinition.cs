@@ -9,7 +9,8 @@ public sealed record Guide(string Name, string Formula);
 public sealed record PathCommand(string Kind, string[] Args);
 
 /// <summary>A path of a shape geometry; W/H give its own coordinate space if set.</summary>
-public sealed record PathDefinition(double? W, double? H, string Fill, bool Stroke, List<PathCommand> Commands);
+/// <summary>A path of a geometry; ExtrusionOk is false for paths a 3D extrusion leaves flat (a:path/@extrusionOk).</summary>
+public sealed record PathDefinition(double? W, double? H, string Fill, bool Stroke, List<PathCommand> Commands, bool ExtrusionOk = true);
 
 /// <summary>
 /// A shape geometry in the DrawingML formula language (ECMA-376 Part 1, §20.1.9): adjust values, guides,
@@ -53,7 +54,8 @@ public sealed class GeometryDefinition
                 Number(path.Str("h")),
                 path.Str("fill") ?? "norm",
                 path.Bool("stroke") ?? true,
-                commands));
+                commands,
+                path.Bool("extrusionOk") ?? true));
         }
         return def;
     }
