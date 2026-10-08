@@ -13,7 +13,7 @@ namespace FreeSlate.Pptx;
 /// </summary>
 public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 {
-    readonly TextRenderer text = new(slide, FreeSlate.Text.FontResolver.Default);
+    readonly TextRenderer text = new(slide, FreeSlate.Text.FontResolver.Default) { Paint = paint };
     TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
     TableRenderer? tables;
 
@@ -172,17 +172,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
-        var effectFilter = SvgEffects.Filter(Effects(chain, style), slide.Colors, pw, ph, defs);
+        var effects = Effects(chain, style);
+        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs);
         var opaque = fill is not NoFill || outline is { Visible: true };
-        if (defs.Length > 0)
-            html.Append("<defs>").Append(defs).Append("</defs>");
+        var body = new StringBuilder();
         var shapeMarkup = paths.ToString() + ends;
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
         if (hasText && shapeMarkup.Length > 0)
             shapeMarkup = $"<g data-bg=\"\">{shapeMarkup}</g>";
-        html.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
+        body.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
         if (shape.Name.LocalName == "sp")
         {
             var placeholder = Placeholders.Ph(shape);
@@ -194,8 +194,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }, geometry, pw, flipH ^ flipV);
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
-            html.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
+            body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
+        var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs);
+        if (defs.Length > 0)
+            html.Append("<defs>").Append(defs).Append("</defs>");
+        html.Append(content);
         if (shapeLink != null)
             html.Append("</a>");
         html.Append("</svg>");

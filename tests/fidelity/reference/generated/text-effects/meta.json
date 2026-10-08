@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-effects.pptx",
+  "sha256": "c04bc7f1e997c32deabd205876fdf1382680327a9897109753964278ded3a3ab",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 3
+}

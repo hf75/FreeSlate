@@ -617,6 +617,7 @@ areas:
         elements: [a:reflection]
         priority: P2
         difficulty: 4
+        status: partial
         strategy: Mirrored copy with distance, blur and a gradient alpha mask.
 
       - id: effect.blur
@@ -877,7 +878,11 @@ areas:
         description: gradFill, blipFill, pattFill and a:ln inside run properties.
         priority: P1
         difficulty: 3
+        status: partial
         strategy: SVG text paint or glyph outlines from our layout engine for gradient, picture and outlined text.
+        office: >-
+          Gradient and pattern fills span each line separately (from the line's start to its end and from its
+          ascent to its descent); the outline is centered on the glyph edge and drawn over the fill.
 
       - id: text.underline
         title: Underlines
@@ -892,6 +897,7 @@ areas:
         description: effectLst on runs (shadow, glow, reflection, soft edges).
         priority: P2
         difficulty: 4
+        status: partial
         strategy: The shape effect filters applied to the glyph layer.
 
       - id: text.fields

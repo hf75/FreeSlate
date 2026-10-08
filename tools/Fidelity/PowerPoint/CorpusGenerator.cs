@@ -50,6 +50,7 @@ public static class CorpusGenerator
         ("pictures", PicturesDeck.Build, true),
         ("text-snap", TextSnapDeck.Build, false),
         ("slideshow", SlideshowDeck.Build, true),
+        ("text-effects", TextEffectsDeck.Build, false),
     ];
 
     /// <summary>Generates the named decks, or all of them.</summary>

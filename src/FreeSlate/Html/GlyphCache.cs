@@ -18,7 +18,7 @@ public sealed class GlyphCache
         if (ids.TryGetValue((font.Path, glyph), out var id))
             return id;
         var outline = font.Outline(glyph);
-        id = outline.Length == 0 ? null : "g" + ids.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        id = outline.Length == 0 ? null : "_g" + ids.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
         ids[(font.Path, glyph)] = id;
         if (id != null)
             defs.Append($"<path id=\"{id}\" d=\"{outline}\"/>");

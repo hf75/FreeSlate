@@ -31,6 +31,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>The part whose relationships the runs' hyperlinks refer to.</summary>
     string? linkPart;
 
+    /// <summary>The document's paint servers (gradients, patterns and pictures share their ids).</summary>
+    public SvgPaint Paint { get; init; } = new();
+
+    int nextClip;
+
     static readonly XNamespace HyperlinkColor = "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor";
 
     const double PxPerPt = 96.0 / 72;
@@ -127,7 +132,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, slide.Colors, 0, 0, defs, boundingBox: true)
                     : null;
                 var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline - run.Style.BaselineShift * run.Style.Size);
-                svg.Append(Text(run, left + run.X, shifted, filter, left + formatOrigin));
+                // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
+                // gradient anew, from the line's start to its end and from its ascent to its descent).
+                var box = (left + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
+                svg.Append(Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs));
             }
         }
         if (paragraph >= 0) svg.Append("</g>");
@@ -211,7 +219,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// text itself transparent on top for selection, search and accessibility; color fonts, synthesized styles
     /// and glyphs missing from the font are left to the browser.
     /// </summary>
-    string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null)
+    string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null,
+        (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null)
     {
         var style = run.Style;
         var data = style.Font.Data;
@@ -245,7 +254,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             xs.Append(Units.Css(startPx + current));
         }
 
-        var outlined = style.Size * PxPerPt >= HintedBelow && !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
+        var painted = style.Paint is not null and not NoFill || style.Line != null;
+        var outlined = (style.Size * PxPerPt >= HintedBelow || painted) && !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
                        && glyphs.All(g => g.Id != 0 || g.Cluster < text.Length && char.IsWhiteSpace(text[g.Cluster]));
         var family = data.Family;
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
@@ -270,9 +280,44 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 sb.Append($"<g{fill}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}>");
             // PowerPoint samples coverage at the top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 rows:
             // shifting the glyphs by half a sub-pixel makes both see the same edges.
-            sb.Append($"<g transform=\"translate({Units.Css4(startPx + SampleShiftX)} {Units.Css4(y * PxPerPt + SampleShiftY)}) scale({Units.Scale(scale)})\"{(filter != null || decorations.Length > 0 ? "" : fill)}>{units}</g>");
+            var (tx, ty) = (startPx + SampleShiftX, y * PxPerPt + SampleShiftY);
+            var transform = $"translate({Units.Css4(tx)} {Units.Css4(ty)}) scale({Units.Scale(scale)})";
+            var local = defs ?? new StringBuilder();
+            var stroke = style.Line is { } outline ? StrokeInFontUnits(Paint.Stroke(outline, 0, 0, local), scale) : "";
+            if (style.Paint is { } textPaint and not NoFill and not SolidFill)
+            {
+                // The paint fills the line box, clipped to the glyphs: gradients, patterns and pictures keep their
+                // geometry in pixels while the glyphs are placed in font units.
+                var box = lineBox ?? (x, y - style.Size, run.Width, style.Size * 1.2);
+                var (bx, by, bw, bh) = (box.X * PxPerPt, box.Y * PxPerPt, Math.Max(1, box.W * PxPerPt), Math.Max(1, box.H * PxPerPt));
+                // A mask rather than a clip path: Chromium unites the children of a clip path with path operations
+                // that fill some counters (the eye of Aptos Bold's e), a mask is rendered as an image.
+                var maskId = $"tm{slide.Number}-{++nextClip}";
+                var maskTransform = $"translate({Units.Css4(tx - bx)} {Units.Css4(ty - by)}) scale({Units.Scale(scale)})";
+                var (rx, ry, rw, rh) = (Units.Css(-bw), Units.Css(-bh), Units.Css(3 * bw), Units.Css(3 * bh));
+                local.Append($"<mask id=\"{maskId}\" maskUnits=\"userSpaceOnUse\" x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"><g transform=\"{maskTransform}\" fill=\"#fff\">{units}</g></mask>");
+                sb.Append($"<g transform=\"translate({Units.Css4(bx)} {Units.Css4(by)})\"><rect x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"{Paint.Fill(textPaint, bw, bh, local, 0, (bx, by))} mask=\"url(#{maskId})\"/></g>");
+                if (stroke.Length > 0)
+                    sb.Append($"<g transform=\"{transform}\" fill=\"none\"{stroke}>{units}</g>");
+            }
+            else
+            {
+                sb.Append($"<g transform=\"{transform}\"{(filter != null || decorations.Length > 0 ? "" : fill)}{stroke}>{units}</g>");
+            }
             if (filter != null || decorations.Length > 0)
                 sb.Append(decorations).Append("</g>");
+            if (style.Effects?.Element(Ns.A + "reflection") != null)
+            {
+                // The reflection mirrors the text about a line slightly below the baseline (measured: 0.055 em
+                // below the bottom of the glyphs of a 60 pt line).
+                var size = style.Size * PxPerPt;
+                var bottom = y * PxPerPt + 0.055 * size;
+                var height = size * data.Ascent + 0.055 * size;
+                var mirrored = SvgEffects.Reflection(style.Effects, sb.ToString(), (x * PxPerPt, bottom - height, run.Width * PxPerPt, height), local);
+                sb.Clear().Append(mirrored);
+            }
+            if (defs == null && local.Length > 0)
+                sb.Insert(0, $"<defs>{local}</defs>");
         }
         else
         {
@@ -295,6 +340,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
         return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
     }
+
+    /// <summary>Stroke attributes in pixels converted to the font units of a glyph group (width and dashes).</summary>
+    static string StrokeInFontUnits(string attributes, double scale) =>
+        System.Text.RegularExpressions.Regex.Replace(attributes, "(stroke-width|stroke-dasharray)=\"([^\"]+)\"", m =>
+            $"{m.Groups[1].Value}=\"{string.Join(' ', m.Groups[2].Value.Split(' ').Select(v => Units.Css1(double.Parse(v, CultureInfo.InvariantCulture) / scale)))}\"");
 
     /// <summary>
     /// Underline and strikethrough of a run as filled rectangles (pixels), from the font's post and OS/2 metrics,
@@ -585,11 +635,21 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var link = hlink != null && linkPart != null ? Links.Resolve(hlink, linkPart, slide.Presentation) : null;
         var color = RunColor(rPr, sources, level);
         var underline = R("u") is { } u && u != "none" ? u : null;
+        // Gradient, pattern and picture fills and the text outline (catalog: text.fillOutline).
+        var fillElement = RunElement(rPr, sources, level, FillNames);
+        var part = linkPart ?? slide.SlidePart;
+        Fill? paint = fillElement?.Name.LocalName is "gradFill" or "pattFill" or "blipFill"
+            ? FillReader.Read(fillElement, slide.Colors, slide.Images(part), slide.ImageSizes(part))
+            : null;
+        var lineElement = RunElement(rPr, sources, level, "ln");
+        var line = lineElement != null ? OutlineReader.Merge([(lineElement, slide.Colors)]) : null;
+        if (line is { Visible: false }) line = null;
         if (link != null)
         {
             if (hlink!.Descendants(HyperlinkColor + "hlinkClr").FirstOrDefault()?.Str("val") != "tx")
                 color = slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "hlink")));
             if (rPr!.Attribute("u") == null) underline = "sng";
+            paint = null;
         }
         return new TextStyle(
             fonts.Resolve(family, bold, italic),
@@ -605,7 +665,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
             R("cap") == "all",
             RunElement(rPr, sources, level, "effectLst"),
-            link);
+            link,
+            paint,
+            line);
     }
 
     RgbColor RunColor(XElement? rPr, List<Source> sources, int level)

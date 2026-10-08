@@ -17,7 +17,9 @@ public sealed record TextStyle(
     RgbColor? Highlight = null,
     bool AllCaps = false,
     System.Xml.Linq.XElement? Effects = null,
-    TextLink? Link = null);
+    TextLink? Link = null,
+    Fill? Paint = null,
+    Outline? Line = null);
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
 public sealed record TextLink(string? Href, string? Action, string? Tooltip);
