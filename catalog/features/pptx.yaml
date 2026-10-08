@@ -1445,6 +1445,14 @@ areas:
         strategy: >-
           Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's
           rules), justify and position every line ourselves; the browser only draws the positioned runs.
+        office: >-
+          Measured with the text-snap calibration deck: glyph advances, kerning and letter spacing are each rounded
+          to master units (1/8 pt, half up); kerning uses only the legacy 'kern' table (GDI pairs), never GPOS.
+          Within a format run the glyph origins are rounded to whole pixels (half up) from the run's exact start;
+          a new format run starts exactly. Baselines sit on whole pixels counted from the top of the text area
+          (box top plus inset, anchor offset included). Glyphs are drawn unhinted with 8×4 samples per pixel.
+          Chromium rounds glyph baselines to whole device pixels, so text on fractional text-area tops differs by
+          up to a quarter-coverage row.
 
       - id: engine.fonts
         title: Font resolution and fallback
@@ -1455,6 +1463,10 @@ areas:
           Find installed and embedded fonts, metric-compatible substitutes (Carlito for Calibri, Liberation for
           Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser
           draws with exactly the font we measured.
+        office: >-
+          PowerPoint renders text unhinted (cap height and x-height exactly as designed). Embedded fonts get a gasp
+          table without grid fitting, which makes Chromium on Windows render them unhinted as well; installed fonts
+          stay hinted by the browser.
 
       - id: engine.fidelity
         title: Fidelity measurement

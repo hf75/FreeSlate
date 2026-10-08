@@ -216,7 +216,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             new XElement(Ns.A + "defRPr", new XAttribute("sz", (int)(defaultSize * 100)))]);
 
     static double Width(string value, TextStyle style) =>
-        style.Font.Data.Width(value, style.Kerning) * style.Size + style.LetterSpacing * value.Length;
+        style.Font.Data.LayoutWidth(value, style.Size, style.Kerning, style.LetterSpacing);
 
     static double LineHeight(TextStyle style) => (style.Font.Data.Ascent + style.Font.Data.Descent) * style.Size;
 

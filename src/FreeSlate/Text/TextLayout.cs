@@ -87,6 +87,8 @@ public sealed class LaidOutText
 /// H × min(0.75, ascent ratio); below, at max(S × ratio − (S − H), H × min(0.75, ratio)).</item>
 /// <item>Each line takes the largest ascent and descent of its runs; bullets do not count.</item>
 /// <item>Space before is ignored for the first paragraph; percentages refer to 1.2 × font size.</item>
+/// <item>Widths add up glyph advances rounded to PowerPoint's master units (1/8 point), see
+/// <see cref="FontData.LayoutAdvances"/>.</item>
 /// </list>
 /// </summary>
 public static class TextLayout
@@ -179,7 +181,7 @@ public static class TextLayout
         }
 
         var lines = new List<LaidOutLine>();
-        var bulletWidth = paragraph.Bullet is { } b ? b.Style.Font.Data.Width(b.Text, b.Style.Kerning) * b.Style.Size : 0;
+        var bulletWidth = paragraph.Bullet is { } b ? b.Style.Font.Data.LayoutWidth(b.Text, b.Style.Size, b.Style.Kerning) : 0;
         var limit = width - paragraph.MarginRight;
         var firstStart = paragraph.MarginLeft + paragraph.Indent;
         var textStart = paragraph.Bullet != null ? Math.Max(paragraph.MarginLeft, firstStart + bulletWidth) : firstStart;
@@ -324,7 +326,7 @@ public static class TextLayout
                 continue;
             var style = styles[runStart];
             var text = all[runStart..i];
-            width += style.Font.Data.Width(text, style.Kerning) * style.Size + style.LetterSpacing * text.Length;
+            width += style.Font.Data.LayoutWidth(text, style.Size, style.Kerning, style.LetterSpacing);
             runStart = i;
         }
         return width;

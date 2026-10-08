@@ -97,7 +97,7 @@ public static class PptxConverter
         {
             foreach (var face in fonts.Embeddable(family).DistinctBy(f => (f.Bold, f.Italic)))
             {
-                var data = Convert.ToBase64String(File.ReadAllBytes(face.Path));
+                var data = Convert.ToBase64String(FontPatcher.WithoutGridFitting(File.ReadAllBytes(face.Path)));
                 var format = Path.GetExtension(face.Path).Equals(".otf", StringComparison.OrdinalIgnoreCase) ? "opentype" : "truetype";
                 css.Append($"@font-face{{font-family:'{family.Replace("'", "\\'")}';src:url(data:font/{format};base64,{data}) format('{format}');" +
                            $"font-weight:{(face.Bold ? 700 : 400)};font-style:{(face.Italic ? "italic" : "normal")}}}\n");

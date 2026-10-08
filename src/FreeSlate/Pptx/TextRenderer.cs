@@ -90,9 +90,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         svg.Append(unflipWidth is { } w ? $"<g transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g>");
         foreach (var line in layout.Lines)
         {
-            var baseline = top + offset + line.Baseline;
+            // Baselines and glyphs sit on whole pixels counted from the top of the text area and from the start of
+            // each format run (measured with the text-snap deck; see Snap and Text).
+            var baseline = top + Snap(offset + line.Baseline);
+            TextStyle? formatStyle = null;
+            double formatOrigin = 0, formatEnd = double.NaN;
             foreach (var run in line.Runs)
             {
+                if (!ReferenceEquals(run.Style, formatStyle) || Math.Abs(run.X - formatEnd) > 1e-6)
+                {
+                    formatStyle = run.Style;
+                    formatOrigin = run.X;
+                }
+                formatEnd = run.X + run.Width;
                 if (run.Style.Highlight is { } highlight)
                 {
                     svg.Append($"<rect x=\"{Px(left + run.X)}\" y=\"{Px(baseline - line.Ascent)}\" width=\"{Px(run.Width)}\" height=\"{Px(line.Ascent + line.Descent)}\" fill=\"{highlight.ToHex()}\"/>");
@@ -102,7 +112,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var filter = run.Style.Effects is { } effects
                     ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, slide.Colors, 0, 0, defs, boundingBox: true)
                     : null;
-                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size, filter));
+                var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline - run.Style.BaselineShift * run.Style.Size);
+                svg.Append(Text(run, left + run.X, shifted, filter, left + formatOrigin));
             }
         }
         svg.Append("</g>");
@@ -164,24 +175,32 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
-    string Text(PlacedRun run, double x, double y, string? filter = null)
+    /// <summary>A length in points rounded to whole pixels (half up), as PowerPoint places baselines and glyphs.</summary>
+    static double Snap(double points) => Math.Floor(points * PxPerPt + 0.5) / PxPerPt;
+
+    /// <summary>
+    /// SVG text for a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph
+    /// origins rounded to whole pixels from the run's start (<paramref name="origin"/>, exact), using advances in
+    /// master units (measured with the text-snap deck); a run continuing a format run passes the format run's start.
+    /// </summary>
+    string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null)
     {
         var style = run.Style;
         var family = style.Font.Data.Family;
         slide.Presentation.UsedFonts.Add(family);
 
-        // PowerPoint snaps every glyph origin to whole device pixels (measured with the calibration deck).
         var text = run.Style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
-        var advances = style.Font.Data.Advances(text, style.Kerning);
+        var advances = style.Font.Data.LayoutAdvances(text, style.Size, style.Kerning, style.LetterSpacing);
+        var start = origin ?? x;
         var xs = new StringBuilder();
-        var position = x;
+        var position = x - start;
         for (var i = 0; i < text.Length; i++)
         {
             if (char.IsLowSurrogate(text[i]))
                 continue;
             if (xs.Length > 0) xs.Append(' ');
-            xs.Append(Units.Css(position * PxPerPt));
-            position += advances[i] * style.Size + style.LetterSpacing;
+            xs.Append(Units.Css(start * PxPerPt + Math.Floor(position * PxPerPt + 0.5)));
+            position += advances[i];
         }
 
         var sb = new StringBuilder($"<text x=\"{xs}\" y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"");
