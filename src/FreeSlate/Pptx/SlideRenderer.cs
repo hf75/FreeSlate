@@ -182,26 +182,34 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // shape's unturned box (the player animates it) and holds the extruded body, an inner div projects the
         // front face with the camera.
         var camera = Camera.Read(Scene3D(chain, style));
-        var shape3d = Shape3D(chain, style);
-        if (camera is { Flat: false })
+        var shape3d = camera != null ? Shape3D(chain, style) : null;
+        // A top bevel is at most half the shape's smaller side wide (measured).
+        var bevel = shape3d?.Element(Ns.A + "bevelT");
+        var bevelWidth = bevel != null ? Math.Min(Units.ToPx(bevel.Long("w") ?? 76200), Math.Min(pw, ph) / 2) : 0;
+        var bevelHeight = bevel != null ? Units.ToPx(bevel.Long("h") ?? 76200) : 0;
+        var beveled = bevelWidth > 0.01 && bevelHeight > 0.01;
+        List<List<(double X, double Y)>>? solidOutlines = null;
+        if (camera is { Flat: false } || camera != null && beveled)
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
             html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
-            var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
-            if (depth > 0.01)
+            var faceColor = fill switch
             {
-                var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
-                var bodyColor = extrusionColor ?? fill switch
-                {
-                    SolidFill solid => solid.Color,
-                    GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
-                    _ => RgbColor.FromHex("808080"),
-                };
-                var outlines = Solid.Outlines(geometry, pw, ph, rotation, flipH, flipV);
-                var solidBody = Solid.Body(camera, outlines, pw, ph, 0, -depth, bodyColor);
-                if (solidBody.Length > 0)
-                    html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidBody}</svg>");
-            }
+                SolidFill solidFill => solidFill.Color,
+                GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
+                _ => RgbColor.FromHex("808080"),
+            };
+            var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
+            var solid = new Solid(camera, pw, ph, rotation, flipH, flipV);
+            solidOutlines = Solid.Outlines(geometry);
+            var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
+            if (depth > 0.01 && !camera.Flat)
+                solid.Extrusion(solidOutlines, -bevelHeight, -bevelHeight - depth, extrusionColor ?? faceColor);
+            if (beveled)
+                solid.Bevel(solidOutlines, bevelWidth, bevelHeight, BevelProfiles.Get(bevel!.Str("prst")), faceColor);
+            var solidMarkup = solid.Markup();
+            if (solidMarkup.Length > 0)
+                html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidMarkup}</svg>");
             html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}\">");
         }
         else
@@ -221,6 +229,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = paths.ToString() + ends;
+        if (beveled && solidOutlines != null && shapeMarkup.Length > 0)
+        {
+            // The fill shows on the front face inside the bevel; the outline stays at the edge.
+            var clip = $"bf{++litFilters}";
+            defs.Append($"<clipPath id=\"{clip}\"><path d=\"{Solid.PathData(solidOutlines.Select(o => Solid.Inset(o, bevelWidth)))}\"/></clipPath>");
+            var strokes = new StringBuilder();
+            if (outline is { Visible: true })
+            {
+                foreach (var path in geometry.Paths.Where(p => p.Stroke))
+                    strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin)}/>");
+            }
+            shapeMarkup = $"<g clip-path=\"url(#{clip})\">{shapeMarkup}</g>{strokes}";
+        }
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
@@ -272,7 +293,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
             html.Append(Media(shape, part));
-        html.Append(camera is { Flat: false } ? "</div></div>" : "</div>");
+        html.Append(camera is { Flat: false } || camera != null && beveled ? "</div></div>" : "</div>");
     }
 
     /// <summary>

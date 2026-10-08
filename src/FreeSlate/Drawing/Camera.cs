@@ -13,6 +13,13 @@ namespace FreeSlate.Drawing;
 /// </summary>
 public sealed record Camera(double X, double Y, double Z, double Fov, bool Perspective, bool Oblique)
 {
+    /// <summary>
+    /// For oblique cameras: where a point one pixel behind the front plane appears, relative to the point (measured on
+    /// extruded squares: legacy oblique presets shift by half the depth, oblique ones by 0.3, both along their
+    /// direction; legacy perspective presets about 0.133 per axis).
+    /// </summary>
+    public (double X, double Y) Shear { get; init; }
+
     const double ViewSize = 907.5;   // points
 
     static readonly Dictionary<string, (double X, double Y, double Z, double Fov)> Presets = new()
@@ -74,11 +81,24 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         }
         if (camera.Long("fov") is { } f)
             fov = f / 60000.0;
-        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique);
+        var shear = (0.0, 0.0);
+        if (oblique || preset.StartsWith("legacyPerspective", StringComparison.Ordinal))
+        {
+            var dx = preset.Contains("Left", StringComparison.Ordinal) ? -1 : preset.Contains("Right", StringComparison.Ordinal) ? 1 : 0;
+            var dy = preset.Contains("Top", StringComparison.Ordinal) ? -1 : preset.Contains("Bottom", StringComparison.Ordinal) ? 1 : 0;
+            var length = preset.StartsWith("legacyOblique", StringComparison.Ordinal) ? 0.5 : 0.3;
+            shear = preset.StartsWith("legacyPerspective", StringComparison.Ordinal)
+                ? (dx * 0.1333, dy * 0.1333)
+                : dx != 0 && dy != 0 ? (dx * length / Math.Sqrt(2), dy * length / Math.Sqrt(2)) : (dx * length, dy * length);
+            // Legacy perspective presets are drawn as their oblique shift; the shift replaces the perspective.
+            perspective = false;
+            oblique = true;
+        }
+        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique) { Shear = shear };
     }
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
-    public bool Flat => Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0;
+    public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0;
 
     static double Normalized(double degrees) => Math.Abs(Math.IEEERemainder(degrees, 360)) < 1e-9 ? 0 : degrees;
 
@@ -107,6 +127,8 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// <summary>A point or direction of the scene turned into the view (x right, y down, z towards the eye).</summary>
     public (double X, double Y, double Z) Turn((double X, double Y, double Z) p)
     {
+        if (Oblique)
+            return (p.X - p.Z * Shear.X, p.Y - p.Z * Shear.Y, p.Z);
         var r = Rotation();
         return (r[0] * p.X + r[1] * p.Y + r[2] * p.Z, r[3] * p.X + r[4] * p.Y + r[5] * p.Z, r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
     }
@@ -129,6 +151,12 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// </summary>
     public (double X, double Y, double Z) View((double X, double Y, double Z) scenePoint)
     {
+        if (Oblique)
+        {
+            // Oblique projections look along the shear.
+            var length = Math.Sqrt(Shear.X * Shear.X + Shear.Y * Shear.Y + 1);
+            return (Shear.X / length, Shear.Y / length, 1 / length);
+        }
         var r = Rotation();
         // The eye sits at (0, 0, d) in view coordinates; turned back into the scene with the transpose.
         var (ex, ey, ez) = Perspective ? (0.0, 0.0, Distance) : (0.0, 0.0, 1.0);
