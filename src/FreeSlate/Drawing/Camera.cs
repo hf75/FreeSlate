@@ -3,18 +3,19 @@ using System.Xml.Linq;
 namespace FreeSlate.Drawing;
 
 /// <summary>
-/// The camera of a 3D scene (a:scene3d/a:camera, catalog: effect.scene3d): the shape is turned about its center by
-/// lon (about the vertical axis), then lat (about the horizontal axis), then rev (in the picture plane), and seen
-/// from the front, in perspective for the perspective presets. Fitted to corner positions PowerPoint renders for
-/// 30 cameras (errors below 0.4 pt): the eye stands 907.5 pt / 2 / tan(fov / 2) in front of the shape's center, and
-/// points in the shape's plane keep their size. The presets' angles and fields of view come from PowerPoint
-/// (ThreeD.SetPresetCamera, then RotationX/Y/Z and FieldOfView).
+/// The camera of a 3D scene (a:scene3d/a:camera, catalog: effect.scene3d) with PowerPoint's X, Y and Z rotation in
+/// degrees (X = −lon, Y = lat, Z = −rev of a:rot): the shape is turned about its center by X (about the vertical
+/// axis), then Y (about the horizontal axis), then Z (in the picture plane), and seen from the front, in perspective
+/// for the perspective presets. Fitted to corner positions PowerPoint renders for 30 cameras (errors below 0.4 pt):
+/// the eye stands 907.5 pt / 2 / tan(fov / 2) in front of the shape's center, and points in the shape's plane keep
+/// their size. The presets' angles and fields of view come from PowerPoint (ThreeD.SetPresetCamera, then
+/// RotationX/Y/Z and FieldOfView).
 /// </summary>
-public sealed record Camera(double Lat, double Lon, double Rev, double Fov, bool Perspective, bool Oblique)
+public sealed record Camera(double X, double Y, double Z, double Fov, bool Perspective, bool Oblique)
 {
     const double ViewSize = 907.5;   // points
 
-    static readonly Dictionary<string, (double Lon, double Lat, double Rev, double Fov)> Presets = new()
+    static readonly Dictionary<string, (double X, double Y, double Z, double Fov)> Presets = new()
     {
         ["orthographicFront"] = (0, 0, 0, 45),
         ["isometricTopUp"] = (45.2809, -35.39627, -60.16242, 45),
@@ -63,21 +64,21 @@ public sealed record Camera(double Lat, double Lon, double Rev, double Fov, bool
         var preset = camera.Str("prst") ?? "orthographicFront";
         var perspective = preset.StartsWith("perspective", StringComparison.Ordinal) || preset.StartsWith("legacyPerspective", StringComparison.Ordinal);
         var oblique = preset.StartsWith("oblique", StringComparison.Ordinal) || preset.StartsWith("legacyOblique", StringComparison.Ordinal);
-        var (lon, lat, rev, fov) = Presets.TryGetValue(preset, out var p) ? p : (0, 0, 0, preset.StartsWith("legacyPerspective", StringComparison.Ordinal) ? 65 : 45);
+        var (x, y, z, fov) = Presets.TryGetValue(preset, out var p) ? p : (0, 0, 0, preset.StartsWith("legacyPerspective", StringComparison.Ordinal) ? 65 : 45);
         if (camera.Element(Ns.A + "rot") is { } rot)
         {
-            // An explicit rotation replaces the preset's (60000ths of a degree).
-            lat = (rot.Long("lat") ?? 0) / 60000.0;
-            lon = (rot.Long("lon") ?? 0) / 60000.0;
-            rev = (rot.Long("rev") ?? 0) / 60000.0;
+            // An explicit rotation replaces the preset's (60000ths of a degree; lon and rev turn the other way).
+            x = -(rot.Long("lon") ?? 0) / 60000.0;
+            y = (rot.Long("lat") ?? 0) / 60000.0;
+            z = -(rot.Long("rev") ?? 0) / 60000.0;
         }
         if (camera.Long("fov") is { } f)
             fov = f / 60000.0;
-        return new Camera(lat, lon, rev, Math.Clamp(fov, 1, 179), perspective, oblique);
+        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique);
     }
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
-    public bool Flat => Normalized(Lat) == 0 && Normalized(Lon) == 0 && Normalized(Rev) == 0;
+    public bool Flat => Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0;
 
     static double Normalized(double degrees) => Math.Abs(Math.IEEERemainder(degrees, 360)) < 1e-9 ? 0 : degrees;
 
@@ -95,22 +96,44 @@ public sealed record Camera(double Lat, double Lon, double Rev, double Fov, bool
                     m[r * 3 + c] = a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c];
             return m;
         }
-        var (lat, lon, rev) = (-Lat * Math.PI / 180, Lon * Math.PI / 180, Rev * Math.PI / 180);
-        double[] x = [1, 0, 0, 0, Math.Cos(lat), -Math.Sin(lat), 0, Math.Sin(lat), Math.Cos(lat)];
-        double[] y = [Math.Cos(lon), 0, Math.Sin(lon), 0, 1, 0, -Math.Sin(lon), 0, Math.Cos(lon)];
-        double[] z = [Math.Cos(rev), -Math.Sin(rev), 0, Math.Sin(rev), Math.Cos(rev), 0, 0, 0, 1];
-        return Multiply(z, Multiply(x, y));
+        // About the vertical axis by X, then the horizontal axis by −Y, then the view axis by Z.
+        var (ax, ay, az) = (-Y * Math.PI / 180, X * Math.PI / 180, Z * Math.PI / 180);
+        double[] rx = [1, 0, 0, 0, Math.Cos(ax), -Math.Sin(ax), 0, Math.Sin(ax), Math.Cos(ax)];
+        double[] ry = [Math.Cos(ay), 0, Math.Sin(ay), 0, 1, 0, -Math.Sin(ay), 0, Math.Cos(ay)];
+        double[] rz = [Math.Cos(az), -Math.Sin(az), 0, Math.Sin(az), Math.Cos(az), 0, 0, 0, 1];
+        return Multiply(rz, Multiply(rx, ry));
+    }
+
+    /// <summary>A point or direction of the scene turned into the view (x right, y down, z towards the eye).</summary>
+    public (double X, double Y, double Z) Turn((double X, double Y, double Z) p)
+    {
+        var r = Rotation();
+        return (r[0] * p.X + r[1] * p.Y + r[2] * p.Z, r[3] * p.X + r[4] * p.Y + r[5] * p.Z, r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
+    }
+
+    /// <summary>A turned point on the picture plane (relative to the shape's center).</summary>
+    public (double X, double Y) Flatten((double X, double Y, double Z) q)
+    {
+        if (!Perspective)
+            return (q.X, q.Y);
+        var f = Distance / Math.Max(1e-6, Distance - q.Z);
+        return (q.X * f, q.Y * f);
     }
 
     /// <summary>A point relative to the shape's center (pixels, z towards the viewer) on the picture plane.</summary>
-    public (double X, double Y) Project(double x, double y, double z)
+    public (double X, double Y) Project(double x, double y, double z) => Flatten(Turn((x, y, z)));
+
+    /// <summary>
+    /// The direction towards the eye in the scene seen from a scene point: straight ahead for parallel projections,
+    /// from the point to the eye for perspective ones.
+    /// </summary>
+    public (double X, double Y, double Z) View((double X, double Y, double Z) scenePoint)
     {
         var r = Rotation();
-        var (px, py, pz) = (r[0] * x + r[1] * y + r[2] * z, r[3] * x + r[4] * y + r[5] * z, r[6] * x + r[7] * y + r[8] * z);
-        if (!Perspective)
-            return (px, py);
-        var f = Distance / (Distance - pz);
-        return (px * f, py * f);
+        // The eye sits at (0, 0, d) in view coordinates; turned back into the scene with the transpose.
+        var (ex, ey, ez) = Perspective ? (0.0, 0.0, Distance) : (0.0, 0.0, 1.0);
+        var eye = (X: r[0] * ex + r[3] * ey + r[6] * ez, Y: r[1] * ex + r[4] * ey + r[7] * ez, Z: r[2] * ex + r[5] * ey + r[8] * ez);
+        return Perspective ? (eye.X - scenePoint.X, eye.Y - scenePoint.Y, eye.Z - scenePoint.Z) : eye;
     }
 
     /// <summary>

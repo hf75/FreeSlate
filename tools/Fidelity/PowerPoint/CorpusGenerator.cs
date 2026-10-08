@@ -59,6 +59,7 @@ public static class CorpusGenerator
         ("charts-more", ChartsMoreDeck.Build, true),
         ("outlines", OutlinesDeck.Build, false),
         ("text-vertical", TextVerticalDeck.Build, false),
+        ("three-d", ThreeDDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>

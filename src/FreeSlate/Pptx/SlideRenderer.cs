@@ -179,12 +179,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
 
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
-        // shape's unturned box (the player animates it), an inner div projects it with the camera.
+        // shape's unturned box (the player animates it) and holds the extruded body, an inner div projects the
+        // front face with the camera.
         var camera = Camera.Read(Scene3D(chain, style));
+        var shape3d = Shape3D(chain, style);
         if (camera is { Flat: false })
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
             html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
+            var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
+            if (depth > 0.01)
+            {
+                var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
+                var bodyColor = extrusionColor ?? fill switch
+                {
+                    SolidFill solid => solid.Color,
+                    GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
+                    _ => RgbColor.FromHex("808080"),
+                };
+                var outlines = Solid.Outlines(geometry, pw, ph, rotation, flipH, flipV);
+                var solidBody = Solid.Body(camera, outlines, pw, ph, 0, -depth, bodyColor);
+                if (solidBody.Length > 0)
+                    html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidBody}</svg>");
+            }
             html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}\">");
         }
         else
@@ -238,6 +255,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
         var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs);
+        if (camera != null && content.Length > 0)
+        {
+            // The front face is lit like the rest of the 3D shape (its normal faces the front).
+            var (diffuse, specular) = Lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
+            var lit = $"l{++litFilters}";
+            defs.Append($"<filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
+                        $"{Units.Css4(diffuse)} 0 0 0 {Units.Css4(specular)} 0 {Units.Css4(diffuse)} 0 0 {Units.Css4(specular)} 0 0 {Units.Css4(diffuse)} 0 {Units.Css4(specular)} 0 0 0 1 0\"/></filter>");
+            content = $"<g filter=\"url(#{lit})\">{content}</g>";
+        }
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
         html.Append(content);
@@ -273,6 +299,20 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                         result[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
             return result;
         }
+    }
+
+    static int litFilters;
+
+    /// <summary>The 3D shape properties: its own a:sp3d, else the ones of the theme effect style it refers to.</summary>
+    XElement? Shape3D(List<PartElement> chain, XElement? style)
+    {
+        foreach (var s in chain)
+        {
+            if (SpPr(s.Element)?.Element(Ns.A + "sp3d") is { } own)
+                return own;
+        }
+        var index = style?.Element(Ns.A + "effectRef").Int("idx") ?? 0;
+        return index >= 1 && index <= slide.Theme.EffectStyles.Count ? slide.Theme.EffectStyles[index - 1].Element(Ns.A + "sp3d") : null;
     }
 
     /// <summary>The 3D scene of a shape: its own a:scene3d, else the one of the theme effect style it refers to.</summary>
