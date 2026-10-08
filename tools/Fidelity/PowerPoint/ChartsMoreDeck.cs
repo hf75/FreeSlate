@@ -57,6 +57,19 @@ static class ChartsMoreDeck
         Add(hierarchies, Treemap, 20, 120, 300, 390);
         Add(hierarchies, Sunburst, 330, 120, 300, 390);
         Add(hierarchies, BoxWhisker, 640, 120, 300, 390);
+
+        // Shapes drawn on a chart (c:userShapes): a shape with text in the chart's default size, an oval, a text
+        // box with its own size and a line.
+        object annotated = Slide(presentation, "Shapes on a chart");
+        Add(annotated, 51, 80, 110, 700, 400, c =>
+        {
+            var rectangle = c.Shapes.AddShape(1, 300, 40, 150, 50);
+            rectangle.TextFrame2.TextRange.Text = "In the chart";
+            c.Shapes.AddShape(9, 500, 150, 80, 80);
+            var note = c.Shapes.AddTextbox(1, 40, 340, 200, 30);
+            note.TextFrame2.TextRange.Text = "A note";
+            c.Shapes.AddLine(100, 100, 250, 200);
+        });
     }
 
     static dynamic Slide(object deck, string title)

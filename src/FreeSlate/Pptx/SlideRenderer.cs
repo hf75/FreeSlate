@@ -310,6 +310,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             {
                 Shapes = chain,
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
+                Defaults = textDefaults,
                 FontRef = style?.Element(Ns.A + "fontRef"),
             }, textGeometry, pw, flipH ^ flipV);
             if (upright && turn != 0 && textMarkup.Length > 0)
@@ -499,6 +500,20 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
             html.Append($"<div class=\"sp\"{Accessibility(frame, true, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
+            // Shapes drawn on the chart (c:userShapes, catalog: chart.userShapes), placed by their anchors.
+            var package = slide.Presentation.Package;
+            if (package.FirstRelationship(chartRel.Target, "chartUserShapes")?.Target is { } shapesPart && package.Exists(shapesPart))
+            {
+                // Their text defaults to the chart's text: its c:txPr, else 10 pt (measured).
+                var chartText = slide.Presentation.Load(chartRel.Target).Root?.Element(Ns.C + "txPr")?.Descendants(Ns.A + "defRPr").FirstOrDefault();
+                var defaults = new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"));
+                foreach (var attribute in chartText?.Attributes() ?? [])
+                    defaults.SetAttributeValue(attribute.Name, attribute.Value);
+                defaults.Add(chartText?.Elements());
+                textDefaults = new XElement(Ns.A + "lstStyle", Enumerable.Range(1, 9).Select(level => new XElement(Ns.A + $"lvl{level}pPr", new XElement(defaults))));
+                RenderUserShapes(slide.Presentation.Load(shapesPart).Root, shapesPart, html, placement, (x, y, w, h));
+                textDefaults = null;
+            }
             return;
         }
 
@@ -587,6 +602,68 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     /// <summary>The diagram drawing uses its own namespace for sp, spPr, style and txBody; map it to PresentationML.</summary>
+    static readonly XNamespace Cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing";
+
+    /// <summary>Text defaults of the shapes being drawn (a chart's for its user shapes).</summary>
+    XElement? textDefaults;
+
+    /// <summary>
+    /// The shapes of a chart's drawing part: each anchor (relSizeAnchor: corners as fractions of the chart frame,
+    /// absSizeAnchor: a corner and a size in EMU) puts its shape into the frame <paramref name="frame"/> (slide EMU);
+    /// the shapes are drawn like slide shapes.
+    /// </summary>
+    void RenderUserShapes(XElement? root, string part, StringBuilder html, Placement placement, (double X, double Y, double W, double H) frame)
+    {
+        var tree = new XElement(Ns.P + "spTree");
+        foreach (var anchor in root?.Elements() ?? [])
+        {
+            double Fraction(XElement? corner, string axis) => double.TryParse(corner?.Element(Cdr + axis)?.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+            var from = anchor.Element(Cdr + "from");
+            var (x, y) = (frame.X + Fraction(from, "x") * frame.W, frame.Y + Fraction(from, "y") * frame.H);
+            double w, h;
+            if (anchor.Name == Cdr + "relSizeAnchor")
+            {
+                var to = anchor.Element(Cdr + "to");
+                (w, h) = (frame.X + Fraction(to, "x") * frame.W - x, frame.Y + Fraction(to, "y") * frame.H - y);
+            }
+            else if (anchor.Name == Cdr + "absSizeAnchor")
+            {
+                var ext = anchor.Element(Cdr + "ext");
+                (w, h) = (ext.Long("cx") ?? 0, ext.Long("cy") ?? 0);
+            }
+            else
+            {
+                continue;
+            }
+            var shape = anchor.Elements().FirstOrDefault(e => e.Name.Namespace == Cdr && e.Name.LocalName is "sp" or "grpSp" or "pic" or "cxnSp" or "graphicFrame");
+            if (shape == null)
+                continue;
+            var converted = FromChartDrawing(shape);
+            // The anchor places the shape; its own xfrm only keeps the turn, the flips and a group's child space.
+            var properties = converted.Element(Ns.P + "spPr") ?? converted.Element(Ns.P + "grpSpPr");
+            var xfrm = properties?.Element(Ns.A + "xfrm") ?? converted.Element(Ns.P + "xfrm");
+            if (xfrm == null && properties != null)
+            {
+                xfrm = new XElement(Ns.A + "xfrm");
+                properties.AddFirst(xfrm);
+            }
+            if (xfrm == null)
+                continue;
+            xfrm.Element(Ns.A + "off")?.Remove();
+            xfrm.Element(Ns.A + "ext")?.Remove();
+            xfrm.AddFirst(new XElement(Ns.A + "off", new XAttribute("x", (long)Math.Round(x)), new XAttribute("y", (long)Math.Round(y))),
+                new XElement(Ns.A + "ext", new XAttribute("cx", (long)Math.Round(w)), new XAttribute("cy", (long)Math.Round(h))));
+            tree.Add(converted);
+        }
+        RenderTree(tree, part, html, placement, isSlide: false);
+    }
+
+    /// <summary>A shape of a chart drawing (cdr:) in PresentationML (p:) names.</summary>
+    static XElement FromChartDrawing(XElement element) =>
+        new(element.Name.Namespace == Cdr ? Ns.P + element.Name.LocalName : element.Name,
+            element.Attributes(),
+            element.Nodes().Select(n => n is XElement e ? FromChartDrawing(e) : n));
+
     static XElement ToPresentationMl(XElement element) =>
         new(element.Name.Namespace == Dsp ? Ns.P + element.Name.LocalName : element.Name,
             element.Attributes(),

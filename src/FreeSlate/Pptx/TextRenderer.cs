@@ -18,6 +18,9 @@ public sealed class TextChain
     /// <summary>"title", "body" or "other": which master text style applies.</summary>
     public required string StyleKind { get; init; }
 
+    /// <summary>Text defaults ahead of the master's styles: a chart's for the shapes drawn on it.</summary>
+    public XElement? Defaults { get; init; }
+
     /// <summary>The shape's p:style/a:fontRef (default text color and theme font).</summary>
     public XElement? FontRef { get; init; }
 }
@@ -729,6 +732,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             sources.Add(new FontRefSource(chain.FontRef));
         foreach (var inherited in chain.Shapes.Skip(1))
             AddList(TxBody(inherited.Element)?.Element(Ns.A + "lstStyle"));
+        AddList(chain.Defaults);
 
         var txStyles = slide.Master?.Root?.Element(Ns.P + "txStyles");
         AddList(txStyles?.Element(Ns.P + chain.StyleKind + "Style"));
