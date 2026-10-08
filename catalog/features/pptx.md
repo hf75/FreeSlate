@@ -26,7 +26,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 4 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 12 | 6 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 12 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **45** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **46** |
 
 <a id="package"></a>
 
@@ -1615,7 +1615,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 | [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | partial | 56 | 5 |
 | [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
 | [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
-| [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | todo | 30 | 15 |
+| [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | done | 30 | 15 |
 | [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | done | 12 | 3 |
 | [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | partial | 118 | 0 |
 
@@ -1877,9 +1877,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Shapes drawn on charts
 
-`chart.userShapes` · P3 · difficulty 2 · todo
+`chart.userShapes` · P3 · difficulty 2 · done
 
 **Rendering:** Shapes anchored in relative or absolute chart coordinates; drawn with the normal shape code.
+
+**Office behaviour:** A chart's drawing part (c:userShapes) anchors shapes by fractions of the chart frame (relSizeAnchor from/to) or by a corner and a size (absSizeAnchor); the shapes are DrawingML shapes, groups, pictures and connectors like on slides, their text without a size takes the chart's text properties, else 10 pt (measured with generated/charts-more).
 
 **Elements (30):** [`c:userShapes`](../format/namespaces/c.md#cusershapes), [`cdr:absSizeAnchor`](../format/namespaces/cdr.md#cdrabssizeanchor), [`cdr:blipFill`](../format/namespaces/cdr.md#cdrblipfill), [`cdr:cNvCxnSpPr`](../format/namespaces/cdr.md#cdrcnvcxnsppr), [`cdr:cNvGraphicFramePr`](../format/namespaces/cdr.md#cdrcnvgraphicframepr), [`cdr:cNvGrpSpPr`](../format/namespaces/cdr.md#cdrcnvgrpsppr), [`cdr:cNvPicPr`](../format/namespaces/cdr.md#cdrcnvpicpr), [`cdr:cNvPr`](../format/namespaces/cdr.md#cdrcnvpr), [`cdr:cNvSpPr`](../format/namespaces/cdr.md#cdrcnvsppr), [`cdr:cxnSp`](../format/namespaces/cdr.md#cdrcxnsp), [`cdr:ext`](../format/namespaces/cdr.md#cdrext), [`cdr:from`](../format/namespaces/cdr.md#cdrfrom), [`cdr:graphicFrame`](../format/namespaces/cdr.md#cdrgraphicframe), [`cdr:grpSp`](../format/namespaces/cdr.md#cdrgrpsp), [`cdr:grpSpPr`](../format/namespaces/cdr.md#cdrgrpsppr), [`cdr:nvCxnSpPr`](../format/namespaces/cdr.md#cdrnvcxnsppr), [`cdr:nvGraphicFramePr`](../format/namespaces/cdr.md#cdrnvgraphicframepr), [`cdr:nvGrpSpPr`](../format/namespaces/cdr.md#cdrnvgrpsppr), [`cdr:nvPicPr`](../format/namespaces/cdr.md#cdrnvpicpr), [`cdr:nvSpPr`](../format/namespaces/cdr.md#cdrnvsppr), [`cdr:pic`](../format/namespaces/cdr.md#cdrpic), [`cdr:relSizeAnchor`](../format/namespaces/cdr.md#cdrrelsizeanchor), [`cdr:sp`](../format/namespaces/cdr.md#cdrsp), [`cdr:spPr`](../format/namespaces/cdr.md#cdrsppr), [`cdr:style`](../format/namespaces/cdr.md#cdrstyle), [`cdr:to`](../format/namespaces/cdr.md#cdrto), [`cdr:txBody`](../format/namespaces/cdr.md#cdrtxbody), [`cdr:x`](../format/namespaces/cdr.md#cdrx), [`cdr:xfrm`](../format/namespaces/cdr.md#cdrxfrm), [`cdr:y`](../format/namespaces/cdr.md#cdry)
 

@@ -11462,8 +11462,9 @@
       "title": "Shapes drawn on charts",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shapes anchored in relative or absolute chart coordinates; drawn with the normal shape code.",
+      "office": "A chart's drawing part (c:userShapes) anchors shapes by fractions of the chart frame (relSizeAnchor from/to) or by a corner and a size (absSizeAnchor); the shapes are DrawingML shapes, groups, pictures and connectors like on slides, their text without a size takes the chart's text properties, else 10 pt (measured with generated/charts-more).",
       "elements": [
         "c:userShapes",
         "cdr:absSizeAnchor",
