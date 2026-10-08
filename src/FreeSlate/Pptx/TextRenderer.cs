@@ -71,7 +71,78 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
         var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
         var layout = Layout(txBody, sources, Math.Max(0, width), Body("wrap") != "none", fontScale, spacingReduction);
+        // WordArt transforms bend the glyph outlines into the preset's paths in the shape's text rectangle.
+        var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
+        if (warp?.Str("prst") is { } preset && TextWarp.Definition(preset) is { } definition)
+        {
+            var box = (geometry.TextLeft, geometry.TextTop, geometry.TextRight - geometry.TextLeft, geometry.TextBottom - geometry.TextTop);
+            return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box);
+        }
         return Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+    }
+
+    /// <summary>
+    /// Text with a WordArt transform (catalog: text.warp): the glyph outlines in pixels, warped by
+    /// <see cref="TextWarp"/>, one path per run style; the text stays transparent on top for selection.
+    /// </summary>
+    string EmitWarped(LaidOutText layout, double left, double top, double height, string anchor, XElement warp,
+        Drawing.Geometry.GeometryDefinition definition, (double L, double T, double W, double H) box)
+    {
+        var offset = anchor switch { "ctr" => (height - layout.Height) / 2, "b" => height - layout.Height, _ => 0 };
+        var glyphs = new List<TextWarp.Glyph>();
+        var owners = new List<TextStyle>();
+        var selection = new StringBuilder();
+        for (var lineIndex = 0; lineIndex < layout.Lines.Count; lineIndex++)
+        {
+            var line = layout.Lines[lineIndex];
+            var baseline = top + Snap(offset + line.Baseline);
+            foreach (var run in line.Runs)
+            {
+                if (string.IsNullOrWhiteSpace(run.Text))
+                    continue;
+                var style = run.Style;
+                var data = style.Font.Data;
+                var text = style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
+                var scale = style.Size * PxPerPt / data.UnitsPerEm;
+                var position = (left + run.X) * PxPerPt;
+                var spacing = FontData.MasterUnits(style.LetterSpacing) * PxPerPt;
+                foreach (var g in data.Glyphs(text, style.Kerning))
+                {
+                    var outline = data.Outline(g.Id);
+                    if (outline.Length > 0)
+                    {
+                        var x = position + g.OffsetX * style.Size * PxPerPt;
+                        var y = baseline * PxPerPt - g.OffsetY * style.Size * PxPerPt;
+                        glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale), lineIndex, baseline * PxPerPt));
+                        owners.Add(style);
+                    }
+                    position += (FontData.MasterUnits(g.Advance * style.Size) + FontData.MasterUnits(g.Kerning * style.Size)) * PxPerPt + spacing;
+                }
+                selection.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\">{WebUtility.HtmlEncode(text)}</text>");
+            }
+        }
+        var adjustments = warp.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
+            .Select(gd => new Drawing.Geometry.Guide(gd.Str("name") ?? "", gd.Str("fmla") ?? "val 0")).ToList() ?? [];
+        var warped = TextWarp.Apply(definition, adjustments, box, glyphs);
+
+        var svg = new StringBuilder("<g data-tx=\"\">");
+        var defs = new StringBuilder();
+        for (var i = 0; i < warped.Count;)
+        {
+            var style = owners[i];
+            var contours = new List<List<(double X, double Y)>>();
+            var j = i;
+            for (; j < warped.Count && ReferenceEquals(owners[j], style); j++)
+                contours.AddRange(warped[j]);
+            var fill = style.Paint is { } paint and not NoFill and not SolidFill
+                ? Paint.Fill(paint, box.W, box.H, defs, 0, (box.L, box.T))
+                : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
+            var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
+            svg.Append($"<path d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}/>");
+            i = j;
+        }
+        svg.Append(selection).Append("</g>");
+        return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
     }
 
     /// <summary>Lays out the text of a table cell; <paramref name="tableStyles"/> are the cell's a:tcTxStyle elements, highest priority first.</summary>

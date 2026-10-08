@@ -928,7 +928,12 @@ areas:
         elements: [a:prstTxWarp]
         priority: P2
         difficulty: 5
+        status: partial
         strategy: Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.
+        office: >-
+          The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path,
+          baselines on the lower one), over the whole text rectangle of the shape; presets with one or three
+          paths keep the glyph height and run the baseline along the path.
 
       - id: text.threeD
         title: 3D text
