@@ -8,7 +8,8 @@ public sealed class SvgPaint
 {
     int nextId;
 
-    string NewId(string prefix) => $"{prefix}{++nextId}";
+    /// <summary>A document-unique id for defs (gradients, patterns, clip paths).</summary>
+    public string NewId(string prefix) => $"{prefix}{++nextId}";
 
     /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
     public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0, (double X, double Y) origin = default) => fill switch

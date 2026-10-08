@@ -40,6 +40,7 @@ public sealed class ChartGroup
     public bool IsPie => Type is "pieChart" or "pie3DChart" or "doughnutChart" or "ofPieChart";
     public bool IsScatter => Type is "scatterChart" or "bubbleChart";
     public bool IsBubble => Type == "bubbleChart";
+    public bool IsSurface => Type is "surfaceChart" or "surface3DChart";
     public bool IsRadar => Type == "radarChart";
 
     /// <summary>A radar chart of filled polygons (c:radarStyle val="filled").</summary>
@@ -272,7 +273,8 @@ public sealed class ChartModel
             ? NumberFormat.Format(d, format, culture) : v).ToList();
     }
 
-    static (List<double?> Values, string Format) Numbers(XElement? data)
+    /// <summary>The cached numbers of c:val, c:xVal, c:plus … (c:numRef or c:numLit) with their format code.</summary>
+    public static (List<double?> Values, string Format) Numbers(XElement? data)
     {
         var cache = Cache(data);
         if (cache == null)

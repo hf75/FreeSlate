@@ -811,9 +811,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (rPr!.Attribute("u") == null) underline = "sng";
             paint = null;
         }
+        // Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the percentage of
+        // the full size (measured).
+        var baseline = int.TryParse(R("baseline"), out var b) ? b / 100000.0 : 0;
+        var drawn = baseline != 0 ? size * 2 / 3 : size;
         return new TextStyle(
             resolved,
-            size,
+            drawn,
             color,
             bold,
             italic,
@@ -821,7 +825,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             int.TryParse(R("spc"), out var spc) ? spc / 100.0 : 0,
             underline,
             R("strike") is "sngStrike" or "dblStrike" ? R("strike") : null,
-            int.TryParse(R("baseline"), out var b) ? b / 100000.0 : 0,
+            baseline * size / drawn,
             RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
             R("cap") == "all",
             RunElement(rPr, sources, level, "effectLst"),

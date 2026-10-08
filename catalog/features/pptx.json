@@ -1298,7 +1298,7 @@
       "description": "p:sld/@show=\"0\".",
       "priority": "P1",
       "difficulty": 1,
-      "status": "partial",
+      "status": "done",
       "strategy": "Skipped in the slide show, shown dimmed in the overview.",
       "elements": [],
       "spec": [],
@@ -1717,7 +1717,7 @@
       "title": "Slide show settings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "partial",
+      "status": "done",
       "strategy": "Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.",
       "elements": [
         "p14:browseMode",
@@ -4363,8 +4363,9 @@
       "title": "Inner shadow",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "SVG filter inside the shape's alpha.",
+      "office": "The shadow lies along the inner edges the direction points to (at 45° the right and bottom edges).",
       "elements": [
         "a:innerShdw"
       ],
@@ -4389,7 +4390,7 @@
       "title": "Preset shadows",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "The 20 preset shadows as parameter sets of the shadow filters.",
       "elements": [
         "a:prstShdw"
@@ -4457,7 +4458,7 @@
       "title": "Reflection",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Mirrored copy with distance, blur and a gradient alpha mask.",
       "elements": [
         "a:reflection"
@@ -5371,7 +5372,7 @@
       "title": "Audio and video",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks as WebVTT.",
       "elements": [
         "a:audioCd",
@@ -6264,6 +6265,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "Bullet glyph in its own font (Wingdings and Symbol mapped to Unicode or embedded), color and size; automatic numbering in 40 schemes (arabic, roman, alphabetic, circled, East Asian, Hebrew, Arabic, Thai …) with startAt; picture bullets.",
+      "office": "A hanging indent reaching left of the text area moves the paragraph right (marL 0, indent -27 pt: bullet at 0, text at 27 pt). Latin letters repeat after z (aa, bb); Arabic schemes count in hijā'ī (arabic1) and abjad (arabic2) order followed by a hyphen-minus; Thai letters skip ฃ ฅ ฆ. Picture bullets are as high as the capitals and sit on the baseline.",
       "elements": [
         "a:buAutoNum",
         "a:buBlip",
@@ -6546,6 +6548,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Size (hundredths of a point), bold, italic, all caps and small caps, single and double strikethrough, superscript and subscript (baseline %), character spacing, kerning threshold, highlight.",
+      "office": "Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline percentage of the full size (measured).",
       "elements": [
         "a:br",
         "a:highlight",
@@ -6734,8 +6737,9 @@
       "description": "gradFill, blipFill, pattFill and a:ln inside run properties.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "SVG text paint or glyph outlines from our layout engine for gradient, picture and outlined text.",
+      "office": "Gradient and pattern fills span each line separately (from the line's start to its end and from its ascent to its descent); the outline is centered on the glyph edge and drawn over the fill.",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -6798,7 +6802,7 @@
       "description": "effectLst on runs (shadow, glow, reflection, soft edges).",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "The shape effect filters applied to the glyph layer.",
       "elements": [],
       "spec": [],
@@ -6837,8 +6841,9 @@
       "description": "a:bodyPr/@numCol and @spcCol.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Our layout engine fills the columns in order.",
+      "office": "Lines are shared out evenly over the columns (33 lines in three columns become 11, 11, 11, also when they overflow).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -6862,8 +6867,9 @@
       "title": "WordArt transforms",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.",
+      "office": "The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape; presets with one or three paths keep the glyph height and run the baseline along the path.",
       "elements": [
         "a:prstTxWarp"
       ],
@@ -9886,8 +9892,9 @@
       "title": "Scatter and bubble charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "Value axes on both sides; bubble size by area or width.",
+      "office": "The largest bubble measures 0.2307 m + 2.65 pt (m = the smaller side of the plot area before the axis labels; measured through COM) times bubbleScale; sizes by area or width. The value axes grow until every bubble fits (data plus radius in axis units, then the usual 5 % headroom), which reproduces PowerPoint's scales; bubble legend keys are round. bubble3D is drawn flat.",
       "elements": [
         "c15:bubble3D",
         "c16:bubble3D",
@@ -9970,8 +9977,9 @@
       "title": "Radar charts",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Polar axes as SVG.",
+      "office": "One spoke per category clockwise from 12 o'clock; the value gridlines are polygons, the value axis line is drawn as every spoke and its labels stand along the first spoke (1.14 s - 1.25 pt left of it); the category axis draws neither line nor gridlines. The radar is centered in the plot area with radius min(W/2 - (widest label + 0.3056 s - 3.005), H/2 - (L + 0.3127 s - 5.248)), measured through COM with 25 layouts. Category labels stand 6 pt beyond their spoke, left- or right-aligned at the sides and centered above and below.",
       "elements": [
         "c:radarChart",
         "c:radarStyle"
@@ -10007,8 +10015,9 @@
       "title": "Stock charts",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "High-low lines and up/down bars over line series.",
+      "office": "High-low lines join each category's lowest and highest point, up/down bars run from the first to the last series (category width / (1 + gap width)) and cover the lines; the series lines are usually invisible. A dot marker is a circle half the marker size. Legend entries of series without a line keep the narrow square-key width and show only their marker.",
       "elements": [
         "c:stockChart"
       ],
@@ -10028,8 +10037,9 @@
       "title": "Surface charts",
       "priority": "P3",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Contour bands in 2D; 3D surfaces with chart.threeD.",
+      "office": "Contour (top view) charts: the band scale is the value axis without headroom; the surface is a top view of a 3D box whose sides are proportional to the category and series counts, 97.3 % of the inner plot area. Each grid cell splits along the diagonal with the larger value sum; facets are lit with ambient 0.52 + diffuse 0.595 (light from the upper right at 31 degrees) plus a specular highlight (fitted to PowerPoint's rendering); the height scale is an approximation. 3D surfaces and wireframes are not drawn yet.",
       "elements": [
         "c:bandFmt",
         "c:bandFmts",
@@ -10852,8 +10862,9 @@
       "title": "Data tables",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Table of the series values below the plot area.",
+      "office": "The table reaches 6 pt past the plot area's left and bottom edges; rows are L + 0.0925 s + 2.4 pt high and the name column holds the widest series name plus 1.0975 s + 2.89 pt (key 0.45 L at 0.26 L, text at 0.958 L); the plot area's left edge is the larger of the name column and the value labels, its bottom the table's top. Category labels move into the header row. Long series names that wrap are not handled yet.",
       "elements": [
         "c:dTable",
         "c:showHorzBorder",
@@ -11246,8 +11257,9 @@
       "title": "Trendlines and error bars",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Regression fits (linear, exponential, logarithmic, polynomial, power, moving average) and error bars.",
+      "office": "Trendlines: linear, exponential, logarithmic, polynomial (order 2-6), power and moving average, with forward/backward forecast and fixed intercepts, drawn 1.5 pt dotted in the series color by default and clipped to the plot area. Equation and R squared labels show coefficients rounded to 4 decimals; the block is vertically centered on the trendline's end, its right edge 8.8 pt left of it (measured). Legend entries follow the series; legends with trendlines give every entry a 2.156 L key. Error bars: fixed value, percentage, standard error, custom values and standard deviation (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis.",
       "elements": [
         "c:backward",
         "c:dispEq",
@@ -13231,7 +13243,7 @@
       "title": "Transition timing and sound",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Duration from spd or p14:dur; advance on click and/or after advTm; optional sound.",
       "elements": [
         "p:endSnd",
@@ -13280,7 +13292,7 @@
       "title": "Classic transitions",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Web Animations on two stacked slide layers (clip-path, transforms, opacity).",
       "elements": [
         "p:blinds",
@@ -13446,7 +13458,7 @@
       "title": "Office 2010 transitions",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "3D transitions with CSS 3D transforms; particle-like ones (vortex, shred, honeycomb, glitter) with WebGL.",
       "office": "Written as mc:AlternateContent with a p:fade fallback.",
       "elements": [
@@ -13594,7 +13606,7 @@
       "title": "Office 2013 transitions",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Curtains, wind, prestige, fracture, crush, peel off, page curl, airplane, origami in WebGL.",
       "elements": [
         "p15:prstTrans"
@@ -13615,7 +13627,7 @@
       "title": "Morph",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Match objects between the two slides (same name, names starting with !!, similar content), then interpolate position, size, rotation, fill and geometry; words or characters for text.",
       "office": "Written as mc:AlternateContent with p:fade in mc:Fallback.",
       "elements": [
@@ -13637,7 +13649,7 @@
       "title": "Timing tree",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous, triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.",
       "elements": [
         "p:cTn",
@@ -13825,7 +13837,7 @@
       "title": "Animation targets",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must keep those addressable.",
       "elements": [
         "a:chart",
@@ -13967,7 +13979,7 @@
       "title": "Animation behaviours",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …) map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become masks or clip paths; motion paths are relative path strings.",
       "elements": [
         "p:anim",
@@ -14268,7 +14280,7 @@
       "title": "Build lists",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Build text by paragraph and level, charts by series or category, SmartArt by node.",
       "elements": [
         "a:bldChart",
@@ -14397,7 +14409,7 @@
       "description": "presetClass, presetID and presetSubtype on p:cTn.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "The timing tree already contains the behaviours; presets only name PowerPoint's effects (Fade, Fly In, Wipe …) for the editor.",
       "elements": [],
       "spec": [],
@@ -14409,7 +14421,7 @@
       "title": "Media control and bookmarks",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Play, pause and stop commands and media bookmarks as timing events.",
       "elements": [
         "p14:bmkTgt",
@@ -14565,7 +14577,7 @@
       "title": "Slide show player",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Navigation by click, keys and swipe; advance timings; loop and kiosk mode; full screen; presenter view with notes.",
       "elements": [],
       "spec": [],
@@ -14577,7 +14589,7 @@
       "title": "Hyperlinks and action settings",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.",
       "office": "Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color.",
       "elements": [
@@ -15619,6 +15631,7 @@
       "difficulty": 5,
       "status": "partial",
       "strategy": "Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's rules), justify and position every line ourselves; the browser only draws the positioned runs.",
+      "office": "Measured with the text-snap calibration deck: glyph advances, kerning and letter spacing are each rounded to master units (1/8 pt, half up); kerning uses only the legacy 'kern' table (GDI pairs), never GPOS. Within a format run the glyph origins are rounded to whole pixels (half up) from the run's exact start; a new format run starts exactly. Baselines sit on whole pixels counted from the top of the text area (box top plus inset, anchor offset included). Glyphs are drawn unhinted with 8×4 samples per pixel. From 30 pixels per em text is therefore drawn as glyph outlines (paths defined once per document, placed with use) at the exact positions, with the text transparent on top for selection and search; browser text would sit on whole-pixel baselines and be hinted. PowerPoint samples coverage at the top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 sub-rows: outlines are shifted by 1/16 and 1/8 pixel to see the same edges.",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -15631,6 +15644,7 @@
       "difficulty": 4,
       "status": "partial",
       "strategy": "Find installed and embedded fonts, metric-compatible substitutes (Carlito for Calibri, Liberation for Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser draws with exactly the font we measured.",
+      "office": "PowerPoint renders text from 30 pixels per em on unhinted (cap height and x-height exactly as designed), below that hinted with crisp horizontal edges on whole-pixel baselines (22 pt hinted, 23 pt smooth at 96 dpi). Large text is emitted as glyph outlines, so the viewer needs no fonts for it; small text, color fonts, synthesized bold or italic and glyphs missing from the font are left to the browser, whose hinted rendering matches PowerPoint's small text closely (Arial exactly); fonts the browser cannot find by name are embedded for these runs.",
       "elements": [],
       "spec": [],
       "officeNotes": []

@@ -30,6 +30,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     const double LegendKeyLeft = 0.275;       // × L from the entry to a square key
     const double LegendText = 0.923;          // × L from the entry to the text after a square key
     const double LegendLineCenter = 0.875, LegendLineHalf = 0.654, LegendLineText = 1.664;   // × L, line keys
+    const double LongKeyLineFrom = 0.209, LongKeyLineTo = 2.006, LongKeyMarker = 1.174, LongKeyText = 2.156;   // × L, with trendlines
     const double VerticalLegendPadding = 1.5, VerticalLegendExtra = 3;
     const double TitlePaddingX = 3, TitlePaddingY = 1.5;
     const double TickLength = 3.75;           // 5 px
@@ -76,7 +77,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// A legend entry. Series with a visible line get a wide line key; line-type series without a line (markers only,
     /// stock series) keep the square key's width and show just their marker there (measured).
     /// </summary>
-    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false);
+    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false,
+        bool Trendline = false);
 
     sealed class LegendLayout
     {
@@ -87,6 +89,9 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         public bool Overlay { get; init; }
         public XElement? SpPr { get; init; }
         public List<(LegendEntry Entry, double X, double RowCenter)> Placed { get; } = [];
+
+        /// <summary>Legends with trendline entries give every entry a longer key (2.156 L, measured).</summary>
+        public bool LongKeys { get; init; }
     }
 
     sealed class AxisLayout
@@ -172,11 +177,13 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         var body = new StringBuilder();
         var pies = model.Groups.Where(g => g.IsPie).ToList();
         var radars = model.Groups.Where(g => g.IsRadar).ToList();
-        var axisGroups = model.Groups.Where(g => !g.IsPie && !g.IsRadar).ToList();
+        var axisGroups = model.Groups.Where(g => !g.IsPie && !g.IsRadar && !g.IsSurface).ToList();
         if (axisGroups.Count > 0)
             body.Append(AxisChart(axisGroups, outer, legend, title));
         if (radars.Count > 0)
             body.Append(Radar(radars, outer));
+        foreach (var surface in model.Groups.Where(g => g.IsSurface))
+            body.Append(Surface(surface, outer));
         foreach (var pie in pies)
             body.Append(Pie(pie, PlotBox(outer, square: true)));
 
@@ -524,6 +531,18 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         var index = 0;
         foreach (var group in model.Groups)
         {
+            if (group.IsSurface)
+            {
+                // Surface charts list their value bands.
+                var scale = SurfaceScale(group);
+                var bands = Bands(scale);
+                for (var b = 0; b < bands.Count; b++, index++)
+                {
+                    if (!deleted.Contains(index))
+                        entries.Add(new LegendEntry(BandName(group, bands[b]), BandFill(group, b), null, false, null, 0));
+                }
+                continue;
+            }
             if (group.VaryColors && group.Series.Count == 1 && (group.IsPie || group.IsBar))
             {
                 var series = group.Series[0];
@@ -549,6 +568,18 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             }
             index += group.Series.Count;
         }
+        // Trendlines follow the series.
+        foreach (var group in model.Groups)
+        {
+            foreach (var series in group.Series)
+            {
+                foreach (var trendline in series.Element.Elements(Ns.C + "trendline"))
+                {
+                    if (!deleted.Contains(index++))
+                        entries.Add(new LegendEntry(TrendName(trendline, series), Fill.None, TrendOutline(trendline, group, series), true, null, series.Index, Trendline: true));
+                }
+            }
+        }
         if (entries.Count == 0)
             return null;
 
@@ -563,10 +594,11 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             Box = new Box(0, 0, 0, 0),
             Overlay = ChartModel.Flag(element, "overlay", false),
             SpPr = element.Element(Ns.C + "spPr"),
+            LongKeys = entries.Any(e => e.Trendline),
         };
 
         // An entry is [key/2][key][key/2][text]; square keys are 0.45 L wide, line keys 0.82 L.
-        double Key(LegendEntry e) => (e.LineKey ? LegendLineKey : LegendKey) * lineHeight;
+        double Key(LegendEntry e) => (layout.LongKeys ? LongKeyText / 2 : e.LineKey ? LegendLineKey : LegendKey) * lineHeight;
         var widths = entries.Select(e => 2 * Key(e) + Width(e.Text, style)).ToList();
 
         Box box;
@@ -631,24 +663,29 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             var left = legend.Box.X + x;
             var center = legend.Box.Y + rowCenter;
             var baseline = CenteredBaseline(style, center);
+            // Key geometry in line heights from the entry's left edge: line keys, square keys, or the longer keys
+            // of legends with trendlines.
+            double lineFrom = LegendLineCenter - LegendLineHalf, lineTo = LegendLineCenter + LegendLineHalf, markerAt, squareAt, textAt;
+            if (legend.LongKeys)
+                (lineFrom, lineTo, markerAt, squareAt, textAt) = (LongKeyLineFrom, LongKeyLineTo, entry.LineKey ? (LongKeyLineFrom + LongKeyLineTo) / 2 : LongKeyMarker, LongKeyText / 2 - LegendKey / 2, LongKeyText);
+            else if (entry.LineKey)
+                (markerAt, squareAt, textAt) = (LegendLineCenter, LegendKeyLeft, LegendLineText);
+            else
+                (markerAt, squareAt, textAt) = (LegendKeyLeft + LegendKey / 2, LegendKeyLeft, LegendText);
             if (entry.LineKey)
             {
-                var keyCenter = left + LegendLineCenter * lineHeight;
-                var half = LegendLineHalf * lineHeight;
                 if (entry.Outline is { Visible: true } line)
                 {
-                    var (a, b) = (SnapPoint((keyCenter - half, center), line), SnapPoint((keyCenter + half, center), line));
+                    var (a, b) = (SnapPoint((left + lineFrom * lineHeight, center), line), SnapPoint((left + lineTo * lineHeight, center), line));
                     svg.Append($"<path d=\"M{Px(a.X)} {Px(a.Y)}L{Px(b.X)} {Px(b.Y)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                 }
                 if (entry.Marker != null)
-                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, keyCenter, center, entry.Fill, entry.Outline));
-                svg.Append(text.Label(entry.Text, style, left + LegendLineText * lineHeight, baseline));
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt * lineHeight, center, entry.Fill, entry.Outline));
             }
             else if (entry.MarkerOnly)
             {
                 if (entry.Marker != null)
-                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + (LegendKeyLeft + LegendKey / 2) * lineHeight, center, entry.Fill, entry.Outline));
-                svg.Append(text.Label(entry.Text, style, left + LegendText * lineHeight, baseline));
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt * lineHeight, center, entry.Fill, entry.Outline));
             }
             else
             {
@@ -657,15 +694,15 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 if (entry.Circle)
                 {
                     // Bubble series show a round key.
-                    var (kx, r) = (left + LegendKeyLeft * lineHeight + key / 2, key / 2);
+                    var (kx, r) = (left + squareAt * lineHeight + key / 2, key / 2);
                     svg.Append($"<circle cx=\"{Px(kx)}\" cy=\"{Px(center)}\" r=\"{Px(r)}\"{paint.Fill(entry.Fill, key, key, defs)}{paint.Stroke(outline, key, key, defs)}/>");
                 }
                 else
                 {
-                    svg.Append(Rect(new Box(left + LegendKeyLeft * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
+                    svg.Append(Rect(new Box(left + squareAt * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
                 }
-                svg.Append(text.Label(entry.Text, style, left + LegendText * lineHeight, baseline));
             }
+            svg.Append(text.Label(entry.Text, style, left + textAt * lineHeight, baseline));
         }
         return svg.ToString();
     }
@@ -829,19 +866,32 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             var valueAxis = axes.FirstOrDefault(a => a.Axis.IsValue && group.AxisIds.Contains(a.Axis.Id) && a != categoryAxis);
             if (valueAxis == null)
                 continue;
+            SeriesFrame frame;
             if (group.IsScatter)
             {
                 var xAxis = axes.FirstOrDefault(a => a.Axis.IsValue && group.AxisIds.Contains(a.Axis.Id) && a.Axis.Horizontal);
                 var yAxis = axes.FirstOrDefault(a => a.Axis.IsValue && group.AxisIds.Contains(a.Axis.Id) && !a.Axis.Horizontal);
-                if (xAxis != null && yAxis != null)
-                    svg.Append(Scatter(group, xAxis, yAxis));
-                continue;
+                if (xAxis == null || yAxis == null)
+                    continue;
+                frame = ScatterFrame(xAxis, yAxis);
+                svg.Append(string.Concat(group.Series.Select(s => ErrorBarLines(group, s, frame))));
+                svg.Append(Scatter(group, xAxis, yAxis));
             }
-            if (categoryAxis == null)
-                continue;
-            if (group.IsBar) svg.Append(Bars(group, categoryAxis, valueAxis));
-            else if (group.IsArea) svg.Append(Areas(group, categoryAxis, valueAxis));
-            else if (group.IsLine) svg.Append(Lines(group, categoryAxis, valueAxis));
+            else
+            {
+                if (categoryAxis == null)
+                    continue;
+                frame = CategoryFrame(categoryAxis, valueAxis);
+                // Error bars lie under lines and markers but over bars and areas.
+                var errorBars = string.Concat(group.Series.Select(s => ErrorBarLines(group, s, frame)));
+                if (group.IsLine) svg.Append(errorBars);
+                if (group.IsBar) svg.Append(Bars(group, categoryAxis, valueAxis));
+                else if (group.IsArea) svg.Append(Areas(group, categoryAxis, valueAxis));
+                else if (group.IsLine) svg.Append(Lines(group, categoryAxis, valueAxis));
+                if (!group.IsLine) svg.Append(errorBars);
+            }
+            foreach (var series in group.Series)
+                svg.Append(Trendlines(group, series, frame, plot));
         }
 
         foreach (var layout in axes.Where(a => a.Visible))
@@ -1146,13 +1196,26 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// <summary>The value ranges a group contributes to an axis (stacked groups contribute their sums).</summary>
     static IEnumerable<(double Min, double Max)> Ranges(ChartGroup group, ChartAxis axis)
     {
+        // Error bars count towards the range.
+        IEnumerable<(double, double)> Errors(ChartSeries s, List<double?> values, bool alongX)
+        {
+            if (ErrorBars(group, s, alongX) is not { } bars)
+                yield break;
+            for (var i = 0; i < values.Count; i++)
+            {
+                if (ErrorRange(bars, values, i) is var (low, high))
+                    yield return (low, high);
+            }
+        }
         if (group.IsScatter)
         {
             foreach (var s in group.Series)
             {
-                var values = (axis.Horizontal ? (s.XValues.Count > 0 ? s.XValues : Enumerable.Range(1, s.Values.Count).Select(i => (double?)i).ToList()) : s.Values)
-                    .Where(v => v.HasValue).Select(v => v!.Value).ToList();
+                var all = axis.Horizontal ? (s.XValues.Count > 0 ? s.XValues : Enumerable.Range(1, s.Values.Count).Select(i => (double?)i).ToList()) : s.Values;
+                var values = all.Where(v => v.HasValue).Select(v => v!.Value).ToList();
                 if (values.Count > 0) yield return (values.Min(), values.Max());
+                foreach (var range in Errors(s, all, axis.Horizontal))
+                    yield return range;
             }
             yield break;
         }
@@ -1162,6 +1225,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             {
                 var values = s.Values.Where(v => v.HasValue).Select(v => v!.Value).ToList();
                 if (values.Count > 0) yield return (values.Min(), values.Max());
+                foreach (var range in Errors(s, s.Values, false))
+                    yield return range;
             }
             yield break;
         }
@@ -1720,6 +1785,557 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return open
             ? $"<path d=\"{d}\" fill=\"none\"{paint.Stroke(line ?? new Outline(9525, fill, "solid", "flat", "round", 8, "sng"), 0, 0, defs)}/>"
             : $"<path d=\"{d}\"{paint.Fill(fill, 0, 0, defs)}{paint.Stroke(line, 0, 0, defs)}/>";
+    }
+
+    // ---------------------------------------------------------------- trendlines and error bars
+
+    /// <summary>Maps a series' data coordinates (x: the category number from 1, or the scatter x value) to the plot.</summary>
+    sealed record SeriesFrame(Func<double, double, (double X, double Y)> Point, bool ValueVertical);
+
+    static SeriesFrame CategoryFrame(AxisLayout category, AxisLayout value)
+    {
+        var step = category.Categories > 1 ? category.Center(1) - category.Center(0) : 0;
+        return new SeriesFrame((x, y) =>
+        {
+            var c = category.Center(0) + (x - 1) * step;
+            var v = value.Map(y);
+            return category.Axis.Horizontal ? (c, v) : (v, c);
+        }, category.Axis.Horizontal);
+    }
+
+    static SeriesFrame ScatterFrame(AxisLayout xAxis, AxisLayout yAxis) => new((x, y) => (xAxis.Map(x), yAxis.Map(y)), true);
+
+    /// <summary>The points of a series with values: x is the category number (from 1) or the scatter x value.</summary>
+    static List<(int Index, double X, double Y)> DataPoints(ChartGroup group, ChartSeries series)
+    {
+        var points = new List<(int, double, double)>();
+        for (var i = 0; i < series.Values.Count; i++)
+        {
+            var x = group.IsScatter && series.XValues.Count > 0 ? series.XValues.ElementAtOrDefault(i) : i + 1;
+            if (x is { } xv && series.Values[i] is { } yv)
+                points.Add((i, xv, yv));
+        }
+        return points;
+    }
+
+    /// <summary>
+    /// A fitted trendline (catalog: chart.analysis): a function of x, or the points of a moving average; the
+    /// equation as text runs (superscript runs flagged) and R².
+    /// </summary>
+    sealed record Trend(Func<double, double?>? At, List<(double X, double Y)>? Points, List<(string Text, bool Superscript)> Equation, double? RSquared);
+
+    /// <summary>Least squares w = a·u + b, or w = a·u + b₀ with a fixed intercept; R² in the fitted space.</summary>
+    static (double A, double B, double R2) LeastSquares(List<(double U, double W)> p, double? fixedB)
+    {
+        if (fixedB is { } b0)
+        {
+            var suu = p.Sum(q => q.U * q.U);
+            var a0 = suu == 0 ? 0 : p.Sum(q => q.U * (q.W - b0)) / suu;
+            var residual = p.Sum(q => Math.Pow(q.W - (a0 * q.U + b0), 2));
+            var total = p.Sum(q => Math.Pow(q.W - b0, 2));
+            return (a0, b0, total == 0 ? 1 : 1 - residual / total);
+        }
+        var mu = p.Average(q => q.U);
+        var mw = p.Average(q => q.W);
+        var su = p.Sum(q => (q.U - mu) * (q.U - mu));
+        var a = su == 0 ? 0 : p.Sum(q => (q.U - mu) * (q.W - mw)) / su;
+        var b = mw - a * mu;
+        var res = p.Sum(q => Math.Pow(q.W - (a * q.U + b), 2));
+        var tot = p.Sum(q => Math.Pow(q.W - mw, 2));
+        return (a, b, tot == 0 ? 1 : 1 - res / tot);
+    }
+
+    /// <summary>Polynomial least squares of the given order through normal equations (c[0] fixed when given).</summary>
+    static double[]? Polynomial(List<(int Index, double X, double Y)> data, int order, double? intercept)
+    {
+        var first = intercept != null ? 1 : 0;
+        var n = order + 1 - first;
+        var m = new double[n, n + 1];
+        foreach (var (_, x, y) in data)
+        {
+            var target = y - (intercept ?? 0);
+            for (var r = 0; r < n; r++)
+            {
+                for (var c = 0; c < n; c++)
+                    m[r, c] += Math.Pow(x, r + first + c + first);
+                m[r, n] += Math.Pow(x, r + first) * target;
+            }
+        }
+        for (var col = 0; col < n; col++)
+        {
+            var pivot = Enumerable.Range(col, n - col).MaxBy(r => Math.Abs(m[r, col]));
+            if (Math.Abs(m[pivot, col]) < 1e-300)
+                return null;
+            for (var c = 0; c <= n; c++) (m[col, c], m[pivot, c]) = (m[pivot, c], m[col, c]);
+            for (var r = 0; r < n; r++)
+            {
+                if (r == col) continue;
+                var f = m[r, col] / m[col, col];
+                for (var c = col; c <= n; c++) m[r, c] -= f * m[col, c];
+            }
+        }
+        var coefficients = new double[order + 1];
+        coefficients[0] = intercept ?? 0;
+        for (var r = 0; r < n; r++)
+            coefficients[r + first] = m[r, n] / m[r, r];
+        return coefficients;
+    }
+
+    Trend? Fit(XElement trendline, List<(int Index, double X, double Y)> data, Func<double, string> number)
+    {
+        var type = ChartModel.Val(trendline, "trendlineType") ?? "linear";
+        var intercept = ChartModel.Number(trendline, "intercept");
+        if (data.Count < 2)
+            return null;
+        string Signed(double v) => v < 0 ? " - " + number(-v) : " + " + number(v);
+        switch (type)
+        {
+            case "movingAvg":
+            {
+                var period = Math.Max(2, (int)(ChartModel.Number(trendline, "period") ?? 2));
+                var points = new List<(double X, double Y)>();
+                for (var i = period - 1; i < data.Count; i++)
+                    points.Add((data[i].X, data.Skip(i - period + 1).Take(period).Average(p => p.Y)));
+                return points.Count < 2 ? null : new Trend(null, points, [], null);
+            }
+            case "poly":
+            {
+                var order = Math.Clamp((int)(ChartModel.Number(trendline, "order") ?? 2), 2, 6);
+                if (Polynomial(data, order, intercept) is not { } c)
+                    return null;
+                double Value(double x) => Enumerable.Range(0, c.Length).Sum(k => c[k] * Math.Pow(x, k));
+                var mean = data.Average(p => p.Y);
+                var res = data.Sum(p => Math.Pow(p.Y - Value(p.X), 2));
+                var tot = data.Sum(p => Math.Pow(p.Y - (intercept ?? mean), 2));
+                var terms = new List<(string, bool)> { ("y = ", false) };
+                for (var k = order; k >= 0; k--)
+                {
+                    if (k < order && c[k] == 0 && k == 0 && intercept == 0)
+                        continue;
+                    terms.Add((k == order ? number(c[k]) : Signed(c[k]), false));
+                    if (k >= 1) terms.Add(("x", false));
+                    if (k >= 2) terms.Add((k.ToString(CultureInfo.InvariantCulture), true));
+                }
+                return new Trend(x => Value(x), null, terms, tot == 0 ? 1 : 1 - res / tot);
+            }
+            case "exp":
+            {
+                var p = data.Where(d => d.Y > 0).Select(d => (d.X, Math.Log(d.Y))).ToList();
+                if (p.Count < 2) return null;
+                var (b, lnC, r2) = LeastSquares(p, intercept is > 0 ? Math.Log(intercept.Value) : null);
+                var c = Math.Exp(lnC);
+                return new Trend(x => c * Math.Exp(b * x), null, [("y = " + number(c) + "e", false), (number(b) + "x", true)], r2);
+            }
+            case "log":
+            {
+                var p = data.Where(d => d.X > 0).Select(d => (Math.Log(d.X), d.Y)).ToList();
+                if (p.Count < 2) return null;
+                var (a, b, r2) = LeastSquares(p, null);
+                return new Trend(x => x > 0 ? a * Math.Log(x) + b : null, null, [("y = " + number(a) + "ln(x)" + Signed(b), false)], r2);
+            }
+            case "power":
+            {
+                var p = data.Where(d => d.X > 0 && d.Y > 0).Select(d => (Math.Log(d.X), Math.Log(d.Y))).ToList();
+                if (p.Count < 2) return null;
+                var (b, lnC, r2) = LeastSquares(p, null);
+                var c = Math.Exp(lnC);
+                return new Trend(x => x > 0 ? c * Math.Pow(x, b) : null, null, [("y = " + number(c) + "x", false), (number(b), true)], r2);
+            }
+            default:
+            {
+                var (a, b, r2) = LeastSquares(data.Select(d => (d.X, d.Y)).ToList(), intercept);
+                var text = "y = " + number(a) + "x" + (intercept == 0 ? "" : Signed(b));
+                return new Trend(x => a * x + b, null, [(text, false)], r2);
+            }
+        }
+    }
+
+    /// <summary>The legend name of a trendline: c:name, else the type and the series name like Office.</summary>
+    string TrendName(XElement trendline, ChartSeries series)
+    {
+        if (trendline.Element(Ns.C + "name")?.Value is { Length: > 0 } name)
+            return name;
+        var german = culture.TwoLetterISOLanguageName == "de";
+        var type = (ChartModel.Val(trendline, "trendlineType") ?? "linear") switch
+        {
+            "exp" => german ? "Exponentiell" : "Expon.",
+            "log" => german ? "Logarithmisch" : "Log.",
+            "poly" => german ? "Polynomisch" : "Poly.",
+            "power" => german ? "Potenziell" : "Power",
+            "movingAvg" => german
+                ? $"Gleitender Durchschnitt mit {ChartModel.Number(trendline, "period") ?? 2} Perioden"
+                : $"{ChartModel.Number(trendline, "period") ?? 2} per. Mov. Avg.",
+            _ => "Linear",
+        };
+        return $"{type} ({series.Name})";
+    }
+
+    /// <summary>The line of a trendline: its own a:ln over the series color, 1.5 pt, round dots.</summary>
+    Outline TrendOutline(XElement trendline, ChartGroup group, ChartSeries series)
+    {
+        var color = SeriesOutline(group, series) is { Visible: true, Fill: SolidFill line } ? line.Color
+            : PointFill(group, series, -1) is SolidFill fill ? fill.Color : AutoColor(series.Index);
+        var automatic = new XElement(Ns.A + "ln", new XAttribute("w", "19050"), new XAttribute("cap", "rnd"),
+            new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", color.ToHex().TrimStart('#')))),
+            new XElement(Ns.A + "prstDash", new XAttribute("val", "sysDot")));
+        var layers = new List<(XElement, ColorContext)> { (automatic, colors) };
+        if (trendline.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } own)
+            layers.Add((own, colors));
+        return OutlineReader.Merge(layers);
+    }
+
+    /// <summary>
+    /// The trendlines of a series, clipped to the plot area, with their equation and R² labels: the label block is
+    /// vertically centered on the trendline's end, its right edge 8.8 pt left of it (measured), unless moved.
+    /// </summary>
+    string Trendlines(ChartGroup group, ChartSeries series, SeriesFrame frame, Box plot)
+    {
+        var svg = new StringBuilder();
+        var data = DataPoints(group, series);
+        foreach (var trendline in series.Element.Elements(Ns.C + "trendline"))
+        {
+            var label = trendline.Element(Ns.C + "trendlineLbl");
+            var numFmt = label?.Element(Ns.C + "numFmt").Str("formatCode") ?? "General";
+            string Number(double v) => NumberFormat.Format(numFmt == "General" ? Math.Round(v, 4) : v, numFmt, culture);
+            if (Fit(trendline, data, Number) is not { } trend)
+                continue;
+            var outline = TrendOutline(trendline, group, series);
+            List<(double X, double Y)> curve;
+            if (trend.Points != null)
+            {
+                curve = trend.Points.Select(p => frame.Point(p.X, p.Y)).ToList();
+            }
+            else
+            {
+                var from = data.Min(p => p.X) - (ChartModel.Number(trendline, "backward") ?? 0);
+                var to = data.Max(p => p.X) + (ChartModel.Number(trendline, "forward") ?? 0);
+                var linear = (ChartModel.Val(trendline, "trendlineType") ?? "linear") == "linear";
+                var steps = linear ? 1 : 100;
+                curve = [];
+                for (var k = 0; k <= steps; k++)
+                {
+                    var x = from + (to - from) * k / steps;
+                    if (trend.At!(x) is { } y && double.IsFinite(y))
+                        curve.Add(frame.Point(x, y));
+                }
+            }
+            if (curve.Count < 2)
+                continue;
+            var clip = paint.NewId("c");
+            defs.Append($"<clipPath id=\"{clip}\"><rect x=\"{Px(plot.X)}\" y=\"{Px(plot.Y)}\" width=\"{Px(plot.W)}\" height=\"{Px(plot.H)}\"/></clipPath>");
+            svg.Append($"<g clip-path=\"url(#{clip})\">{Polyline(curve, outline, closed: false)}</g>");
+
+            var showEquation = ChartModel.Flag(trendline, "dispEq", false) && trend.Equation.Count > 0;
+            var showR2 = ChartModel.Flag(trendline, "dispRSqr", false) && trend.RSquared != null;
+            if (!showEquation && !showR2)
+                continue;
+            var paragraphs = new List<XElement>();
+            XElement Run(string value, bool superscript) => new(Ns.A + "r",
+                superscript ? new XElement(Ns.A + "rPr", new XAttribute("baseline", "30000")) : null, new XElement(Ns.A + "t", value));
+            if (showEquation)
+                paragraphs.Add(new XElement(Ns.A + "p", trend.Equation.Select(t => Run(t.Text, t.Superscript))));
+            if (showR2)
+                paragraphs.Add(new XElement(Ns.A + "p", Run("R", false), Run("2", true), Run(" = " + Number(trend.RSquared!.Value), false)));
+            var layers = new List<XElement?> { DefRPr(label?.Element(Ns.C + "txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("trendlineLabel"),
+                new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000")) };
+            var layout = text.ChartRich(new XElement(Ns.C + "rich", paragraphs), layers, width, wrap: false);
+            var style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
+            var lineHeight = LineHeight(style);
+            var w = layout.Lines.Count == 0 ? 0 : layout.Lines.Max(l => l.Width);
+            var h = layout.Lines.Count * lineHeight;
+            var end = curve[^1];
+            var (left, top) = (end.X - 8.8 - w, end.Y - h / 2);
+            if (label?.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } manual)
+            {
+                var edge = ChartModel.Val(manual, "xMode") == "edge";
+                if (ChartModel.Number(manual, "x") is { } mx) left = edge ? mx * width : left + mx * width;
+                if (ChartModel.Number(manual, "y") is { } my) top = edge ? my * height : top + my * height;
+            }
+            dataLabels.Append(Area(label?.Element(Ns.C + "spPr"), new Box(left, top, w, h), snap: false));
+            var baseline = top + Ascent(style);
+            foreach (var line in layout.Lines)
+            {
+                dataLabels.Append(text.EmitLine(line, left + (w - line.Width) / 2, baseline));
+                baseline += lineHeight;
+            }
+        }
+        return svg.ToString();
+    }
+
+    /// <summary>The error bars of a series in a direction: x or y for scatter charts, else the value direction.</summary>
+    static XElement? ErrorBars(ChartGroup group, ChartSeries series, bool alongX) =>
+        series.Element.Elements(Ns.C + "errBars").FirstOrDefault(e => !group.IsScatter || (ChartModel.Val(e, "errDir") ?? "y") == (alongX ? "x" : "y"));
+
+    /// <summary>
+    /// The extent of point i's error bar in value units (catalog: chart.analysis): a fixed value, a percentage of
+    /// the value, the standard error, custom values, or n standard deviations around the mean of all values (as
+    /// Office draws them).
+    /// </summary>
+    static (double Low, double High)? ErrorRange(XElement errBars, List<double?> values, int i)
+    {
+        if (values.ElementAtOrDefault(i) is not { } v)
+            return null;
+        var kind = ChartModel.Val(errBars, "errValType") ?? "fixedVal";
+        var amount = ChartModel.Number(errBars, "val") ?? (kind == "percentage" ? 5 : 1);
+        var all = values.Where(x => x.HasValue).Select(x => x!.Value).ToList();
+        double Deviation()
+        {
+            if (all.Count < 2) return 0;
+            var mean = all.Average();
+            return Math.Sqrt(all.Sum(x => (x - mean) * (x - mean)) / (all.Count - 1));
+        }
+        double center = v, plus, minus;
+        switch (kind)
+        {
+            case "percentage": plus = minus = Math.Abs(v) * amount / 100; break;
+            case "stdDev": center = all.Average(); plus = minus = amount * Deviation(); break;
+            case "stdErr": plus = minus = Deviation() / Math.Sqrt(all.Count); break;
+            case "cust":
+                plus = ChartModel.Numbers(errBars.Element(Ns.C + "plus")).Values.ElementAtOrDefault(i) ?? 0;
+                minus = ChartModel.Numbers(errBars.Element(Ns.C + "minus")).Values.ElementAtOrDefault(i) ?? 0;
+                break;
+            default: plus = minus = amount; break;
+        }
+        var type = ChartModel.Val(errBars, "errBarType") ?? "both";
+        return (type is "both" or "minus" ? center - minus : center, type is "both" or "plus" ? center + plus : center);
+    }
+
+    /// <summary>Error bars with 4.5 pt end caps (measured), drawn under the series lines and markers.</summary>
+    string ErrorBarLines(ChartGroup group, ChartSeries series, SeriesFrame frame)
+    {
+        var svg = new StringBuilder();
+        foreach (var alongX in group.IsScatter ? new[] { false, true } : [false])
+        {
+            if (ErrorBars(group, series, alongX) is not { } bars)
+                continue;
+            var outline = bars.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)])
+                : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "round", 8, "sng");
+            var caps = !ChartModel.Flag(bars, "noEndCap", false);
+            var type = ChartModel.Val(bars, "errBarType") ?? "both";
+            var xValues = group.IsScatter && series.XValues.Count > 0 ? series.XValues : null;
+            foreach (var (i, x, y) in DataPoints(group, series))
+            {
+                if (ErrorRange(bars, alongX ? xValues ?? [] : series.Values, i) is not var (low, high))
+                    continue;
+                var (a, b) = alongX ? (frame.Point(low, y), frame.Point(high, y)) : (frame.Point(x, low), frame.Point(x, high));
+                svg.Append(Polyline([a, b], outline, closed: false));
+                if (!caps)
+                    continue;
+                // The bar runs along the value direction; its caps across it.
+                var vertical = Math.Abs(b.X - a.X) < Math.Abs(b.Y - a.Y) || a == b && frame.ValueVertical != alongX;
+                foreach (var (end, show) in new[] { (a, type is "both" or "minus"), (b, type is "both" or "plus") })
+                {
+                    if (show)
+                        svg.Append(vertical
+                            ? Polyline([(end.X - 2.25, end.Y), (end.X + 2.25, end.Y)], outline, closed: false)
+                            : Polyline([(end.X, end.Y - 2.25), (end.X, end.Y + 2.25)], outline, closed: false));
+                }
+            }
+        }
+        return svg.ToString();
+    }
+
+    // ---------------------------------------------------------------- surface (contour)
+
+    /// <summary>The value axis of a surface chart's bands: zero-based like value axes, but without headroom (measured).</summary>
+    AxisScale SurfaceScale(ChartGroup group)
+    {
+        var axis = model.Axes.FirstOrDefault(a => a.IsValue && group.AxisIds.Contains(a.Id));
+        var values = group.Series.SelectMany(s => s.Values).Select(v => v ?? 0).ToList();
+        var (dataMin, dataMax) = values.Count == 0 ? (0.0, 1.0) : (values.Min(), values.Max());
+        var lo = axis?.Min ?? (dataMin >= 0 && dataMax - dataMin > dataMax / 6 ? 0 : dataMin);
+        var hi = axis?.Max ?? dataMax;
+        var unit = axis?.MajorUnit is { } fixedUnit and > 0 ? fixedUnit : AxisScaling.NiceUnit(Math.Max(hi - lo, 1e-9), 6);
+        var min = axis?.Min ?? Math.Floor(AxisScale.Clean(lo / unit)) * unit;
+        var max = axis?.Max ?? Math.Ceiling(AxisScale.Clean(hi / unit)) * unit;
+        if (max <= min) max = min + unit;
+        return new AxisScale(AxisScale.Clean(min), AxisScale.Clean(max), unit, unit / 5);
+    }
+
+    static List<(double Low, double High)> Bands(AxisScale scale)
+    {
+        var ticks = scale.Ticks().ToList();
+        return ticks.Zip(ticks.Skip(1)).ToList();
+    }
+
+    string BandName(ChartGroup group, (double Low, double High) band)
+    {
+        var axis = model.Axes.FirstOrDefault(a => a.IsValue && group.AxisIds.Contains(a.Id));
+        var format = axis is { SourceLinked: false } ? axis.FormatCode : group.Series.FirstOrDefault()?.FormatCode ?? "General";
+        return NumberFormat.Format(band.Low, format, culture) + "-" + NumberFormat.Format(band.High, format, culture);
+    }
+
+    /// <summary>The fill of band <paramref name="index"/>: its c:bandFmt, else the automatic series colors.</summary>
+    Fill BandFill(ChartGroup group, int index)
+    {
+        var bandFmt = group.Element.Element(Ns.C + "bandFmts")?.Elements(Ns.C + "bandFmt").FirstOrDefault(b => b.Element(Ns.C + "idx").Int("val") == index);
+        return FillReader.FindFill(bandFmt?.Element(Ns.C + "spPr")) is { } fill ? FillReader.Read(fill, colors) : new SolidFill(AutoColor(index));
+    }
+
+    /// <summary>
+    /// Surface charts as contour charts (catalog: chart.surface): the grid of categories (left to right) and series
+    /// (bottom to top) is cut into triangles along each cell's diagonal with the larger sum (measured), and every
+    /// triangle into the value bands by linear interpolation. The series axis is labelled on the right.
+    /// </summary>
+    string Surface(ChartGroup group, Box outer)
+    {
+        var series = group.Series;
+        var columns = series.Count == 0 ? 0 : series.Max(s => Math.Max(s.Values.Count, s.Categories.Count));
+        var rows = series.Count;
+        if (columns == 0 || rows == 0)
+            return "";
+        var categoryAxis = model.Axes.FirstOrDefault(a => a.Kind is "catAx" or "dateAx" && group.AxisIds.Contains(a.Id));
+        var seriesAxis = model.Axes.FirstOrDefault(a => a.Kind == "serAx" && group.AxisIds.Contains(a.Id));
+        var categoryStyle = Style(categoryAxis?.TxPr, "categoryAxis");
+        var seriesStyle = Style(seriesAxis?.TxPr, "seriesAxis");
+        var names = series.Select(s => s.Categories).FirstOrDefault(c => c.Count > 0) ?? [];
+        var categoryLabels = Enumerable.Range(0, columns).Select(i => i < names.Count ? names[i] : (i + 1).ToString(culture)).ToList();
+        var showCategories = categoryAxis is { Deleted: false, TickLabelPosition: not "none" };
+        var showSeries = seriesAxis is { Deleted: false, TickLabelPosition: not "none" };
+
+        // Measured layout: the first category label overhangs the left edge, the series labels stand 0.624 s right
+        // of the surface and the category labels 0.624 s below it, both reaching 4.5 pt past the plot area. The
+        // surface is a top view of a 3D box: categories by series in equal steps, 97.3 % of the inner plot area.
+        var inner = ManualPlot() ?? new Func<Box>(() =>
+        {
+            double left = outer.X, right = outer.Right, bottom = outer.Bottom;
+            if (showCategories)
+            {
+                left += Math.Max(6.6, Width(categoryLabels[0], categoryStyle) / 2 - 1.6);
+                bottom -= LineHeight(categoryStyle) + CategoryLabelGap * categoryStyle.Size - LabelBleed;
+            }
+            if (showSeries)
+                right -= series.Max(s => Width(s.Name, seriesStyle)) + CategoryLabelGap * seriesStyle.Size - LabelBleed;
+            return new Box(left, outer.Y, Math.Max(1, right - left), Math.Max(1, bottom - outer.Y));
+        })();
+        var unit = Math.Min(inner.W / columns, inner.H / rows) * 0.973;
+        var plot = new Box(inner.X + (inner.W - unit * columns) / 2, inner.Y + (inner.H - unit * rows) / 2, unit * columns, unit * rows);
+        double X(int i) => columns > 1 ? plot.X + i * plot.W / (columns - 1) : plot.X + plot.W / 2;
+        double Y(int k) => rows > 1 ? plot.Bottom - k * plot.H / (rows - 1) : plot.Y + plot.H / 2;
+        double Value(int k, int i) => series[k].Values.ElementAtOrDefault(i) ?? 0;
+
+        var scale = SurfaceScale(group);
+        var bands = Bands(scale);
+        var fills = Enumerable.Range(0, bands.Count).Select(b => BandFill(group, b)).ToList();
+        var svg = new StringBuilder();
+
+        // Facets are lit like PowerPoint's 3D surface (fitted to its rendering): ambient 0.52, diffuse 0.595 from
+        // the upper right at 31.1° elevation, and a specular highlight; heights rise 0.6 × the surface height
+        // over the value range (an approximation).
+        var height = 0.6 * plot.H / Math.Max(1e-9, scale.Max - scale.Min);
+        var elevation = 31.1 * Math.PI / 180;
+        var light = (X: Math.Cos(elevation) * Math.Sqrt(0.5), Y: Math.Cos(elevation) * Math.Sqrt(0.5), Z: Math.Sin(elevation));
+        var halfLength = Math.Sqrt(light.X * light.X + light.Y * light.Y + (light.Z + 1) * (light.Z + 1));
+        var half = (X: light.X / halfLength, Y: light.Y / halfLength, Z: (light.Z + 1) / halfLength);
+        void Triangle((double X, double Y, double V) a, (double X, double Y, double V) b, (double X, double Y, double V) c)
+        {
+            // The value's gradient over the facet (y up) gives its normal.
+            double ux = b.X - a.X, uy = a.Y - b.Y, wx = c.X - a.X, wy = a.Y - c.Y;
+            var det = ux * wy - wx * uy;
+            if (Math.Abs(det) < 1e-12)
+                return;
+            var gx = ((b.V - a.V) * wy - (c.V - a.V) * uy) / det;
+            var gy = ((c.V - a.V) * ux - (b.V - a.V) * wx) / det;
+            var (nx, ny) = (-height * gx, -height * gy);
+            var length = Math.Sqrt(nx * nx + ny * ny + 1);
+            var diffuse = 0.52 + 0.595 * Math.Max(0, (nx * light.X + ny * light.Y + light.Z) / length);
+            var specular = Math.Min(0.15, 0.278 * Math.Pow(Math.Max(0, (nx * half.X + ny * half.Y + half.Z) / length), 26.8));
+            List<(double X, double Y, double V)> triangle = [a, b, c];
+            for (var band = 0; band < bands.Count; band++)
+            {
+                var (low, high) = bands[band];
+                // The lowest and highest bands also take values beyond the scale.
+                var part = band == 0 ? triangle : Clip(triangle, low, above: true);
+                if (band < bands.Count - 1) part = Clip(part, high, above: false);
+                if (part.Count < 3)
+                    continue;
+                var d = new StringBuilder();
+                for (var p = 0; p < part.Count; p++)
+                    d.Append(p == 0 ? 'M' : 'L').Append(Px(part[p].X)).Append(' ').Append(Px(part[p].Y));
+                if (fills[band] is SolidFill solid)
+                {
+                    static double Channel(double v, double diffuse, double specular) => Math.Clamp(v * diffuse + specular, 0, 1);
+                    var lit = new RgbColor(Channel(solid.Color.R, diffuse, specular), Channel(solid.Color.G, diffuse, specular), Channel(solid.Color.B, diffuse, specular), solid.Color.A);
+                    // A hairline in the facet's color closes the seams between neighbouring pieces.
+                    svg.Append($"<path d=\"{d}Z\"{paint.Fill(new SolidFill(lit), 0, 0, defs)} stroke=\"{lit.ToHex()}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>");
+                }
+                else
+                {
+                    svg.Append($"<path d=\"{d}Z\"{paint.Fill(fills[band], plot.W * PxPerPt, plot.H * PxPerPt, defs)}/>");
+                }
+            }
+        }
+        for (var k = 0; k + 1 < rows; k++)
+        {
+            for (var i = 0; i + 1 < columns; i++)
+            {
+                var bl = (X(i), Y(k), Value(k, i));
+                var br = (X(i + 1), Y(k), Value(k, i + 1));
+                var tl = (X(i), Y(k + 1), Value(k + 1, i));
+                var tr = (X(i + 1), Y(k + 1), Value(k + 1, i + 1));
+                if (bl.Item3 + tr.Item3 >= tl.Item3 + br.Item3)
+                {
+                    Triangle(bl, br, tr);
+                    Triangle(bl, tr, tl);
+                }
+                else
+                {
+                    Triangle(tl, bl, br);
+                    Triangle(tl, br, tr);
+                }
+            }
+        }
+
+        // Axis lines with their tick marks along the bottom (categories) and the right edge (series), then labels.
+        if (categoryAxis is { Deleted: false } && AxisOutline(categoryAxis) is { Visible: true } categoryLine)
+        {
+            svg.Append(GridLine(categoryLine, plot.X, plot.Bottom, plot.Right, plot.Bottom));
+            if (categoryAxis.MajorTickMark is "out" or "cross")
+                for (var i = 0; i < columns; i++)
+                    svg.Append(GridLine(categoryLine, X(i), plot.Bottom, X(i), plot.Bottom + TickLength));
+        }
+        if (seriesAxis is { Deleted: false } && AxisOutline(seriesAxis) is { Visible: true } seriesLine)
+        {
+            svg.Append(GridLine(seriesLine, plot.Right, plot.Y, plot.Right, plot.Bottom));
+            if (seriesAxis.MajorTickMark is "out" or "cross")
+                for (var k = 0; k < rows; k++)
+                    svg.Append(GridLine(seriesLine, plot.Right, Y(k), plot.Right + TickLength, Y(k)));
+        }
+        if (showCategories)
+        {
+            for (var i = 0; i < columns; i++)
+            {
+                var w = Width(categoryLabels[i], categoryStyle);
+                svg.Append(text.Label(categoryLabels[i], categoryStyle, X(i) - w / 2, plot.Bottom + CategoryLabelGap * categoryStyle.Size + Ascent(categoryStyle)));
+            }
+        }
+        if (showSeries)
+        {
+            for (var k = 0; k < rows; k++)
+                svg.Append(text.Label(series[k].Name, seriesStyle, plot.Right + CategoryLabelGap * seriesStyle.Size, CenteredBaseline(seriesStyle, Y(k))));
+        }
+        return svg.ToString();
+    }
+
+    /// <summary>Clips a polygon with values at its corners to where the (linearly interpolated) value is above or below a level.</summary>
+    static List<(double X, double Y, double V)> Clip(List<(double X, double Y, double V)> polygon, double level, bool above)
+    {
+        var result = new List<(double X, double Y, double V)>();
+        for (var i = 0; i < polygon.Count; i++)
+        {
+            var current = polygon[i];
+            var next = polygon[(i + 1) % polygon.Count];
+            var currentIn = above ? current.V >= level : current.V <= level;
+            var nextIn = above ? next.V >= level : next.V <= level;
+            if (currentIn)
+                result.Add(current);
+            if (currentIn != nextIn && next.V != current.V)
+            {
+                var f = (level - current.V) / (next.V - current.V);
+                result.Add((current.X + f * (next.X - current.X), current.Y + f * (next.Y - current.Y), level));
+            }
+        }
+        return result;
     }
 
     // ---------------------------------------------------------------- radar

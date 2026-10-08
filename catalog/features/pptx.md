@@ -16,25 +16,25 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 4 |
-| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 8 | 7 |
+| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 6 | 9 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 3 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 1 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
-| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 6 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 1 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 7 | 0 |
+| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 1 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 0 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 5 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
-| [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 0 | 0 |
-| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 0 | 0 |
-| [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 0 | 0 |
+| [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
+| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 1 |
+| [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 2 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **66** | **28** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **83** | **37** |
 
 <a id="package"></a>
 
@@ -155,7 +155,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Slide list and slide size](#presentation.slides) | P0 | ●○○○○ | done | 11 | 3 |
-| [Hidden slides](#presentation.hiddenSlides) | P1 | ●○○○○ | partial | 0 | 0 |
+| [Hidden slides](#presentation.hiddenSlides) | P1 | ●○○○○ | done | 0 | 0 |
 | [Slide masters, layouts and slides](#presentation.masters) | P0 | ●●●○○ | partial | 7 | 2 |
 | [Placeholders and inheritance](#presentation.placeholders) | P0 | ●●●●○ | partial | 2 | 2 |
 | [Color mapping](#presentation.colorMap) | P0 | ●●○○○ | partial | 4 | 0 |
@@ -165,7 +165,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 | [Custom shows](#presentation.customShows) | P3 | ●●○○○ | partial | 3 | 2 |
 | [Notes pages and speaker notes](#presentation.notes) | P2 | ●●○○○ | partial | 3 | 2 |
 | [Handout master](#presentation.handouts) | P3 | ●●○○○ | done | 1 | 0 |
-| [Slide show settings](#presentation.showSettings) | P3 | ●○○○○ | partial | 16 | 2 |
+| [Slide show settings](#presentation.showSettings) | P3 | ●○○○○ | done | 16 | 2 |
 | [Editor view settings](#presentation.viewSettings) | P3 | ●○○○○ | done | 23 | 6 |
 | [Tags and customer data](#presentation.tags) | P3 | ●○○○○ | done | 6 | 3 |
 | [Photo album, slide library and Designer metadata](#presentation.misc) | P3 | ●○○○○ | done | 7 | 1 |
@@ -188,7 +188,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 
 ### Hidden slides
 
-`presentation.hiddenSlides` · P1 · difficulty 1 · partial
+`presentation.hiddenSlides` · P1 · difficulty 1 · done
 
 p:sld/@show="0".
 
@@ -322,7 +322,7 @@ p:sld/@show="0".
 
 ### Slide show settings
 
-`presentation.showSettings` · P3 · difficulty 1 · partial
+`presentation.showSettings` · P3 · difficulty 1 · done
 
 **Rendering:** Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.
 
@@ -853,11 +853,11 @@ gradFill and pattFill inside a:ln.
 |---|---|---|---|---:|---:|
 | [Effect lists](#effect.list) | P1 | ●●○○○ | partial | 1 | 0 |
 | [Outer shadow](#effect.outerShadow) | P1 | ●●●○○ | partial | 1 | 1 |
-| [Inner shadow](#effect.innerShadow) | P2 | ●●●○○ | todo | 1 | 1 |
-| [Preset shadows](#effect.presetShadow) | P3 | ●●●○○ | todo | 1 | 0 |
+| [Inner shadow](#effect.innerShadow) | P2 | ●●●○○ | partial | 1 | 1 |
+| [Preset shadows](#effect.presetShadow) | P3 | ●●●○○ | partial | 1 | 0 |
 | [Glow](#effect.glow) | P2 | ●●●○○ | partial | 1 | 0 |
 | [Soft edges](#effect.softEdge) | P2 | ●●●○○ | partial | 1 | 1 |
-| [Reflection](#effect.reflection) | P2 | ●●●●○ | todo | 1 | 1 |
+| [Reflection](#effect.reflection) | P2 | ●●●●○ | partial | 1 | 1 |
 | [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | todo | 2 | 1 |
 | [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
 | [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | todo | 8 | 6 |
@@ -893,9 +893,11 @@ gradFill and pattFill inside a:ln.
 
 ### Inner shadow
 
-`effect.innerShadow` · P2 · difficulty 3 · todo
+`effect.innerShadow` · P2 · difficulty 3 · partial
 
 **Rendering:** SVG filter inside the shape's alpha.
+
+**Office behaviour:** The shadow lies along the inner edges the direction points to (at 45° the right and bottom edges).
 
 **Elements (1):** [`a:innerShdw`](../format/namespaces/a.md#ainnershdw)
 
@@ -907,7 +909,7 @@ gradFill and pattFill inside a:ln.
 
 ### Preset shadows
 
-`effect.presetShadow` · P3 · difficulty 3 · todo
+`effect.presetShadow` · P3 · difficulty 3 · partial
 
 **Rendering:** The 20 preset shadows as parameter sets of the shadow filters.
 
@@ -945,7 +947,7 @@ gradFill and pattFill inside a:ln.
 
 ### Reflection
 
-`effect.reflection` · P2 · difficulty 4 · todo
+`effect.reflection` · P2 · difficulty 4 · partial
 
 **Rendering:** Mirrored copy with distance, blur and a gradient alpha mask.
 
@@ -1023,7 +1025,7 @@ gradFill and pattFill inside a:ln.
 | [SVG pictures](#picture.svg) | P0 | ●○○○○ | partial | 1 | 0 |
 | [Picture color effects](#picture.effects) | P1 | ●●●○○ | partial | 18 | 11 |
 | [Artistic effects and picture corrections](#picture.artistic) | P1 | ●○○○○ | done | 32 | 0 |
-| [Audio and video](#picture.media) | P1 | ●●●○○ | todo | 16 | 4 |
+| [Audio and video](#picture.media) | P1 | ●●●○○ | partial | 16 | 4 |
 | [OLE objects, ActiveX controls and signature lines](#picture.ole) | P1 | ●○○○○ | done | 7 | 4 |
 | [Ink](#picture.ink) | P2 | ●●●○○ | partial | 28 | 0 |
 | [3D models](#picture.model3d) | P2 | ●○○○○ | done | 35 | 0 |
@@ -1108,7 +1110,7 @@ The content type behind a:blip/@r:embed.
 
 ### Audio and video
 
-`picture.media` · P1 · difficulty 3 · todo
+`picture.media` · P1 · difficulty 3 · partial
 
 **Rendering:** HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks as WebVTT.
 
@@ -1200,13 +1202,13 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Runs and character formatting](#text.runs) | P0 | ●●○○○ | partial | 5 | 2 |
 | [Fonts per script](#text.fonts) | P0 | ●●●●○ | partial | 4 | 4 |
 | [Embedded fonts](#text.embeddedFonts) | P1 | ●●●●○ | todo | 7 | 2 |
-| [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | todo | 0 | 0 |
+| [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | partial | 0 | 0 |
 | [Underlines](#text.underline) | P1 | ●●○○○ | partial | 4 | 2 |
-| [Text effects](#text.effects) | P2 | ●●●●○ | todo | 0 | 0 |
+| [Text effects](#text.effects) | P2 | ●●●●○ | partial | 0 | 0 |
 | [Fields](#text.fields) | P1 | ●●○○○ | done | 1 | 1 |
-| [Text columns](#text.columns) | P2 | ●●●○○ | todo | 0 | 0 |
+| [Text columns](#text.columns) | P2 | ●●●○○ | partial | 0 | 0 |
 | [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | todo | 0 | 0 |
-| [WordArt transforms](#text.warp) | P2 | ●●●●● | todo | 1 | 0 |
+| [WordArt transforms](#text.warp) | P2 | ●●●●● | partial | 1 | 0 |
 | [3D text](#text.threeD) | P3 | ●●●●● | todo | 1 | 1 |
 | [Equations](#text.math) | P2 | ●●●●○ | todo | 125 | 69 |
 | [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | todo | 1 | 0 |
@@ -1292,6 +1294,8 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** Bullet glyph in its own font (Wingdings and Symbol mapped to Unicode or embedded), color and size; automatic numbering in 40 schemes (arabic, roman, alphabetic, circled, East Asian, Hebrew, Arabic, Thai …) with startAt; picture bullets.
 
+**Office behaviour:** A hanging indent reaching left of the text area moves the paragraph right (marL 0, indent -27 pt: bullet at 0, text at 27 pt). Latin letters repeat after z (aa, bb); Arabic schemes count in hijā'ī (arabic1) and abjad (arabic2) order followed by a hyphen-minus; Thai letters skip ฃ ฅ ฆ. Picture bullets are as high as the capitals and sit on the baseline.
+
 **Elements (11):** [`a:buAutoNum`](../format/namespaces/a.md#abuautonum), [`a:buBlip`](../format/namespaces/a.md#abublip), [`a:buChar`](../format/namespaces/a.md#abuchar), [`a:buClr`](../format/namespaces/a.md#abuclr), [`a:buClrTx`](../format/namespaces/a.md#abuclrtx), [`a:buFont`](../format/namespaces/a.md#abufont), [`a:buFontTx`](../format/namespaces/a.md#abufonttx), [`a:buNone`](../format/namespaces/a.md#abunone), [`a:buSzPct`](../format/namespaces/a.md#abuszpct), [`a:buSzPts`](../format/namespaces/a.md#abuszpts), [`a:buSzTx`](../format/namespaces/a.md#abusztx)
 
 **Specification:** §21.1.2.4.1 Auto-Numbered Bullet (p.3268); §21.1.2.4.2 Picture Bullet (p.3269); §21.1.2.4.3 Character Bullet (p.3271); §21.1.2.4.4 Color Specified (p.3272); §21.1.2.4.5 Follow Text (p.3273); §21.1.2.4.6 Specified (p.3274) and 5 more
@@ -1319,6 +1323,8 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 `text.runs` · P0 · difficulty 2 · partial
 
 **Rendering:** Size (hundredths of a point), bold, italic, all caps and small caps, single and double strikethrough, superscript and subscript (baseline %), character spacing, kerning threshold, highlight.
+
+**Office behaviour:** Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline percentage of the full size (measured).
 
 **Elements (5):** [`a:br`](../format/namespaces/a.md#abr), [`a:highlight`](../format/namespaces/a.md#ahighlight), [`a:r`](../format/namespaces/a.md#ar), [`a:rPr`](../format/namespaces/a.md#arpr), [`a:t`](../format/namespaces/a.md#at)
 
@@ -1358,11 +1364,13 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 ### Text fill and outline
 
-`text.fillOutline` · P1 · difficulty 3 · todo
+`text.fillOutline` · P1 · difficulty 3 · partial
 
 gradFill, blipFill, pattFill and a:ln inside run properties.
 
 **Rendering:** SVG text paint or glyph outlines from our layout engine for gradient, picture and outlined text.
+
+**Office behaviour:** Gradient and pattern fills span each line separately (from the line's start to its end and from its ascent to its descent); the outline is centered on the glyph edge and drawn over the fill.
 
 <a id="text.underline"></a>
 
@@ -1382,7 +1390,7 @@ gradFill, blipFill, pattFill and a:ln inside run properties.
 
 ### Text effects
 
-`text.effects` · P2 · difficulty 4 · todo
+`text.effects` · P2 · difficulty 4 · partial
 
 effectLst on runs (shadow, glow, reflection, soft edges).
 
@@ -1406,11 +1414,13 @@ effectLst on runs (shadow, glow, reflection, soft edges).
 
 ### Text columns
 
-`text.columns` · P2 · difficulty 3 · todo
+`text.columns` · P2 · difficulty 3 · partial
 
 a:bodyPr/@numCol and @spcCol.
 
 **Rendering:** Our layout engine fills the columns in order.
+
+**Office behaviour:** Lines are shared out evenly over the columns (33 lines in three columns become 11, 11, 11, also when they overflow).
 
 <a id="text.vertical"></a>
 
@@ -1426,9 +1436,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 ### WordArt transforms
 
-`text.warp` · P2 · difficulty 5 · todo
+`text.warp` · P2 · difficulty 5 · partial
 
 **Rendering:** Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.
+
+**Office behaviour:** The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape; presets with one or three paths keep the glyph height and run the baseline along the path.
 
 **Elements (1):** [`a:prstTxWarp`](../format/namespaces/a.md#aprsttxwarp)
 
@@ -1560,17 +1572,17 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 | [Line charts](#chart.line) | P1 | ●●●○○ | partial | 13 | 4 |
 | [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | partial | 16 | 11 |
 | [Area charts](#chart.area) | P1 | ●●●○○ | partial | 2 | 1 |
-| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | partial | 9 | 3 |
-| [Radar charts](#chart.radar) | P2 | ●●●○○ | todo | 2 | 2 |
-| [Stock charts](#chart.stock) | P2 | ●●●○○ | todo | 1 | 0 |
-| [Surface charts](#chart.surface) | P3 | ●●●●○ | todo | 5 | 3 |
+| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | done | 9 | 3 |
+| [Radar charts](#chart.radar) | P2 | ●●●○○ | done | 2 | 2 |
+| [Stock charts](#chart.stock) | P2 | ●●●○○ | done | 1 | 0 |
+| [Surface charts](#chart.surface) | P3 | ●●●●○ | partial | 5 | 3 |
 | [Axes, gridlines and number formats](#chart.axes) | P1 | ●●●●○ | partial | 38 | 19 |
 | [Data labels](#chart.labels) | P1 | ●●●●○ | partial | 25 | 9 |
 | [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | partial | 18 | 15 |
-| [Data tables](#chart.dataTable) | P3 | ●●●○○ | todo | 5 | 0 |
+| [Data tables](#chart.dataTable) | P3 | ●●●○○ | done | 5 | 0 |
 | [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | partial | 56 | 5 |
 | [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
-| [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | todo | 16 | 15 |
+| [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
 | [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | todo | 30 | 15 |
 | [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | todo | 12 | 3 |
 | [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | todo | 118 | 0 |
@@ -1663,9 +1675,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Scatter and bubble charts
 
-`chart.scatterBubble` · P1 · difficulty 3 · partial
+`chart.scatterBubble` · P1 · difficulty 3 · done
 
 **Rendering:** Value axes on both sides; bubble size by area or width.
+
+**Office behaviour:** The largest bubble measures 0.2307 m + 2.65 pt (m = the smaller side of the plot area before the axis labels; measured through COM) times bubbleScale; sizes by area or width. The value axes grow until every bubble fits (data plus radius in axis units, then the usual 5 % headroom), which reproduces PowerPoint's scales; bubble legend keys are round. bubble3D is drawn flat.
 
 **Elements (9):** [`c15:bubble3D`](../format/namespaces/c15.md#c15bubble3d), [`c16:bubble3D`](../format/namespaces/c16.md#c16bubble3d), [`c:bubble3D`](../format/namespaces/c.md#cbubble3d), [`c:bubbleChart`](../format/namespaces/c.md#cbubblechart), [`c:bubbleScale`](../format/namespaces/c.md#cbubblescale), [`c:scatterChart`](../format/namespaces/c.md#cscatterchart), [`c:scatterStyle`](../format/namespaces/c.md#cscatterstyle), [`c:showNegBubbles`](../format/namespaces/c.md#cshownegbubbles), [`c:sizeRepresents`](../format/namespaces/c.md#csizerepresents)
 
@@ -1677,9 +1691,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Radar charts
 
-`chart.radar` · P2 · difficulty 3 · todo
+`chart.radar` · P2 · difficulty 3 · done
 
 **Rendering:** Polar axes as SVG.
+
+**Office behaviour:** One spoke per category clockwise from 12 o'clock; the value gridlines are polygons, the value axis line is drawn as every spoke and its labels stand along the first spoke (1.14 s - 1.25 pt left of it); the category axis draws neither line nor gridlines. The radar is centered in the plot area with radius min(W/2 - (widest label + 0.3056 s - 3.005), H/2 - (L + 0.3127 s - 5.248)), measured through COM with 25 layouts. Category labels stand 6 pt beyond their spoke, left- or right-aligned at the sides and centered above and below.
 
 **Elements (2):** [`c:radarChart`](../format/namespaces/c.md#cradarchart), [`c:radarStyle`](../format/namespaces/c.md#cradarstyle)
 
@@ -1691,9 +1707,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Stock charts
 
-`chart.stock` · P2 · difficulty 3 · todo
+`chart.stock` · P2 · difficulty 3 · done
 
 **Rendering:** High-low lines and up/down bars over line series.
+
+**Office behaviour:** High-low lines join each category's lowest and highest point, up/down bars run from the first to the last series (category width / (1 + gap width)) and cover the lines; the series lines are usually invisible. A dot marker is a circle half the marker size. Legend entries of series without a line keep the narrow square-key width and show only their marker.
 
 **Elements (1):** [`c:stockChart`](../format/namespaces/c.md#cstockchart)
 
@@ -1703,9 +1721,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Surface charts
 
-`chart.surface` · P3 · difficulty 4 · todo
+`chart.surface` · P3 · difficulty 4 · partial
 
 **Rendering:** Contour bands in 2D; 3D surfaces with chart.threeD.
+
+**Office behaviour:** Contour (top view) charts: the band scale is the value axis without headroom; the surface is a top view of a 3D box whose sides are proportional to the category and series counts, 97.3 % of the inner plot area. Each grid cell splits along the diagonal with the larger value sum; facets are lit with ambient 0.52 + diffuse 0.595 (light from the upper right at 31 degrees) plus a specular highlight (fitted to PowerPoint's rendering); the height scale is an approximation. 3D surfaces and wireframes are not drawn yet.
 
 **Elements (5):** [`c:bandFmt`](../format/namespaces/c.md#cbandfmt), [`c:bandFmts`](../format/namespaces/c.md#cbandfmts), [`c:surface3DChart`](../format/namespaces/c.md#csurface3dchart), [`c:surfaceChart`](../format/namespaces/c.md#csurfacechart), [`c:wireframe`](../format/namespaces/c.md#cwireframe)
 
@@ -1763,9 +1783,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Data tables
 
-`chart.dataTable` · P3 · difficulty 3 · todo
+`chart.dataTable` · P3 · difficulty 3 · done
 
 **Rendering:** Table of the series values below the plot area.
+
+**Office behaviour:** The table reaches 6 pt past the plot area's left and bottom edges; rows are L + 0.0925 s + 2.4 pt high and the name column holds the widest series name plus 1.0975 s + 2.89 pt (key 0.45 L at 0.26 L, text at 0.958 L); the plot area's left edge is the larger of the name column and the value labels, its bottom the table's top. Category labels move into the header row. Long series names that wrap are not handled yet.
 
 **Elements (5):** [`c:dTable`](../format/namespaces/c.md#cdtable), [`c:showHorzBorder`](../format/namespaces/c.md#cshowhorzborder), [`c:showKeys`](../format/namespaces/c.md#cshowkeys), [`c:showOutline`](../format/namespaces/c.md#cshowoutline), [`c:showVertBorder`](../format/namespaces/c.md#cshowvertborder)
 
@@ -1805,9 +1827,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Trendlines and error bars
 
-`chart.analysis` · P2 · difficulty 3 · todo
+`chart.analysis` · P2 · difficulty 3 · done
 
 **Rendering:** Regression fits (linear, exponential, logarithmic, polynomial, power, moving average) and error bars.
+
+**Office behaviour:** Trendlines: linear, exponential, logarithmic, polynomial (order 2-6), power and moving average, with forward/backward forecast and fixed intercepts, drawn 1.5 pt dotted in the series color by default and clipped to the plot area. Equation and R squared labels show coefficients rounded to 4 decimals; the block is vertically centered on the trendline's end, its right edge 8.8 pt left of it (measured). Legend entries follow the series; legends with trendlines give every entry a 2.156 L key. Error bars: fixed value, percentage, standard error, custom values and standard deviation (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis.
 
 **Elements (16):** [`c:backward`](../format/namespaces/c.md#cbackward), [`c:dispEq`](../format/namespaces/c.md#cdispeq), [`c:dispRSqr`](../format/namespaces/c.md#cdisprsqr), [`c:errBarType`](../format/namespaces/c.md#cerrbartype), [`c:errBars`](../format/namespaces/c.md#cerrbars), [`c:errDir`](../format/namespaces/c.md#cerrdir), [`c:errValType`](../format/namespaces/c.md#cerrvaltype), [`c:forward`](../format/namespaces/c.md#cforward), [`c:intercept`](../format/namespaces/c.md#cintercept), [`c:minus`](../format/namespaces/c.md#cminus), [`c:noEndCap`](../format/namespaces/c.md#cnoendcap), [`c:period`](../format/namespaces/c.md#cperiod), [`c:plus`](../format/namespaces/c.md#cplus), [`c:trendline`](../format/namespaces/c.md#ctrendline), [`c:trendlineLbl`](../format/namespaces/c.md#ctrendlinelbl), [`c:trendlineType`](../format/namespaces/c.md#ctrendlinetype)
 
@@ -1930,17 +1954,17 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Transition timing and sound](#transition.settings) | P1 | ●●○○○ | todo | 5 | 0 |
-| [Classic transitions](#transition.classic) | P1 | ●●●○○ | todo | 21 | 1 |
-| [Office 2010 transitions](#transition.office2010) | P2 | ●●●●○ | todo | 19 | 0 |
-| [Office 2013 transitions](#transition.office2013) | P2 | ●●●●● | todo | 1 | 0 |
-| [Morph](#transition.morph) | P2 | ●●●●● | todo | 1 | 0 |
+| [Transition timing and sound](#transition.settings) | P1 | ●●○○○ | done | 5 | 0 |
+| [Classic transitions](#transition.classic) | P1 | ●●●○○ | partial | 21 | 1 |
+| [Office 2010 transitions](#transition.office2010) | P2 | ●●●●○ | partial | 19 | 0 |
+| [Office 2013 transitions](#transition.office2013) | P2 | ●●●●● | partial | 1 | 0 |
+| [Morph](#transition.morph) | P2 | ●●●●● | partial | 1 | 0 |
 
 <a id="transition.settings"></a>
 
 ### Transition timing and sound
 
-`transition.settings` · P1 · difficulty 2 · todo
+`transition.settings` · P1 · difficulty 2 · done
 
 **Rendering:** Duration from spd or p14:dur; advance on click and/or after advTm; optional sound.
 
@@ -1952,7 +1976,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Classic transitions
 
-`transition.classic` · P1 · difficulty 3 · todo
+`transition.classic` · P1 · difficulty 3 · partial
 
 **Rendering:** Web Animations on two stacked slide layers (clip-path, transforms, opacity).
 
@@ -1966,7 +1990,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Office 2010 transitions
 
-`transition.office2010` · P2 · difficulty 4 · todo
+`transition.office2010` · P2 · difficulty 4 · partial
 
 **Rendering:** 3D transitions with CSS 3D transforms; particle-like ones (vortex, shred, honeycomb, glitter) with WebGL.
 
@@ -1980,7 +2004,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Office 2013 transitions
 
-`transition.office2013` · P2 · difficulty 5 · todo
+`transition.office2013` · P2 · difficulty 5 · partial
 
 **Rendering:** Curtains, wind, prestige, fracture, crush, peel off, page curl, airplane, origami in WebGL.
 
@@ -1992,7 +2016,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Morph
 
-`transition.morph` · P2 · difficulty 5 · todo
+`transition.morph` · P2 · difficulty 5 · partial
 
 **Rendering:** Match objects between the two slides (same name, names starting with !!, similar content), then interpolate position, size, rotation, fill and geometry; words or characters for text.
 
@@ -2008,12 +2032,12 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Timing tree](#animation.timing) | P1 | ●●●●○ | todo | 19 | 10 |
-| [Animation targets](#animation.targets) | P1 | ●●●○○ | todo | 13 | 9 |
-| [Animation behaviours](#animation.behaviors) | P1 | ●●●●○ | todo | 26 | 20 |
-| [Build lists](#animation.build) | P1 | ●●●○○ | todo | 11 | 9 |
-| [Effect presets](#animation.presets) | P1 | ●●●○○ | todo | 0 | 0 |
-| [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | todo | 12 | 3 |
+| [Timing tree](#animation.timing) | P1 | ●●●●○ | partial | 19 | 10 |
+| [Animation targets](#animation.targets) | P1 | ●●●○○ | partial | 13 | 9 |
+| [Animation behaviours](#animation.behaviors) | P1 | ●●●●○ | partial | 26 | 20 |
+| [Build lists](#animation.build) | P1 | ●●●○○ | partial | 11 | 9 |
+| [Effect presets](#animation.presets) | P1 | ●●●○○ | done | 0 | 0 |
+| [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | partial | 12 | 3 |
 | [Animated pictures](#animation.pictures) | P3 | ●●○○○ | todo | 1 | 0 |
 | [Recorded laser pointer](#animation.laser) | P3 | ●●●○○ | todo | 4 | 0 |
 
@@ -2021,7 +2045,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Timing tree
 
-`animation.timing` · P1 · difficulty 4 · todo
+`animation.timing` · P1 · difficulty 4 · partial
 
 **Rendering:** A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous, triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.
 
@@ -2035,7 +2059,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Animation targets
 
-`animation.targets` · P1 · difficulty 3 · todo
+`animation.targets` · P1 · difficulty 3 · partial
 
 **Rendering:** Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must keep those addressable.
 
@@ -2049,7 +2073,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Animation behaviours
 
-`animation.behaviors` · P1 · difficulty 4 · todo
+`animation.behaviors` · P1 · difficulty 4 · partial
 
 **Rendering:** Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …) map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become masks or clip paths; motion paths are relative path strings.
 
@@ -2063,7 +2087,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Build lists
 
-`animation.build` · P1 · difficulty 3 · todo
+`animation.build` · P1 · difficulty 3 · partial
 
 **Rendering:** Build text by paragraph and level, charts by series or category, SmartArt by node.
 
@@ -2077,7 +2101,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Effect presets
 
-`animation.presets` · P1 · difficulty 3 · todo
+`animation.presets` · P1 · difficulty 3 · done
 
 presetClass, presetID and presetSubtype on p:cTn.
 
@@ -2087,7 +2111,7 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Media control and bookmarks
 
-`animation.media` · P2 · difficulty 3 · todo
+`animation.media` · P2 · difficulty 3 · partial
 
 **Rendering:** Play, pause and stop commands and media bookmarks as timing events.
 
@@ -2127,15 +2151,15 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Slide show player](#interactivity.player) | P1 | ●●○○○ | todo | 0 | 0 |
-| [Hyperlinks and action settings](#interactivity.hyperlinks) | P1 | ●●○○○ | todo | 5 | 3 |
+| [Slide show player](#interactivity.player) | P1 | ●●○○○ | partial | 0 | 0 |
+| [Hyperlinks and action settings](#interactivity.hyperlinks) | P1 | ●●○○○ | partial | 5 | 3 |
 | [Summary, section and slide zoom](#interactivity.zoom) | P2 | ●●●○○ | todo | 16 | 0 |
 
 <a id="interactivity.player"></a>
 
 ### Slide show player
 
-`interactivity.player` · P1 · difficulty 2 · todo
+`interactivity.player` · P1 · difficulty 2 · partial
 
 **Rendering:** Navigation by click, keys and swipe; advance timings; loop and kiosk mode; full screen; presenter view with notes.
 
@@ -2143,7 +2167,7 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Hyperlinks and action settings
 
-`interactivity.hyperlinks` · P1 · difficulty 2 · todo
+`interactivity.hyperlinks` · P1 · difficulty 2 · partial
 
 **Rendering:** Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.
 
@@ -2255,6 +2279,8 @@ Features without elements of their own that decide the fidelity of everything el
 
 **Rendering:** Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's rules), justify and position every line ourselves; the browser only draws the positioned runs.
 
+**Office behaviour:** Measured with the text-snap calibration deck: glyph advances, kerning and letter spacing are each rounded to master units (1/8 pt, half up); kerning uses only the legacy 'kern' table (GDI pairs), never GPOS. Within a format run the glyph origins are rounded to whole pixels (half up) from the run's exact start; a new format run starts exactly. Baselines sit on whole pixels counted from the top of the text area (box top plus inset, anchor offset included). Glyphs are drawn unhinted with 8×4 samples per pixel. From 30 pixels per em text is therefore drawn as glyph outlines (paths defined once per document, placed with use) at the exact positions, with the text transparent on top for selection and search; browser text would sit on whole-pixel baselines and be hinted. PowerPoint samples coverage at the top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 sub-rows: outlines are shifted by 1/16 and 1/8 pixel to see the same edges.
+
 <a id="engine.fonts"></a>
 
 ### Font resolution and fallback
@@ -2262,6 +2288,8 @@ Features without elements of their own that decide the fidelity of everything el
 `engine.fonts` · P0 · difficulty 4 · partial
 
 **Rendering:** Find installed and embedded fonts, metric-compatible substitutes (Carlito for Calibri, Liberation for Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser draws with exactly the font we measured.
+
+**Office behaviour:** PowerPoint renders text from 30 pixels per em on unhinted (cap height and x-height exactly as designed), below that hinted with crisp horizontal edges on whole-pixel baselines (22 pt hinted, 23 pt smooth at 96 dpi). Large text is emitted as glyph outlines, so the viewer needs no fonts for it; small text, color fonts, synthesized bold or italic and glyphs missing from the font are left to the browser, whose hinted rendering matches PowerPoint's small text closely (Arial exactly); fonts the browser cannot find by name are embedded for these runs.
 
 <a id="engine.fidelity"></a>
 

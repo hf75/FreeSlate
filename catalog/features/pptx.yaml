@@ -866,6 +866,9 @@ areas:
         strategy: >-
           Size (hundredths of a point), bold, italic, all caps and small caps, single and double strikethrough,
           superscript and subscript (baseline %), character spacing, kerning threshold, highlight.
+        office: >-
+          Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline
+          percentage of the full size (measured).
 
       - id: text.fonts
         title: Fonts per script
@@ -1089,29 +1092,56 @@ areas:
                    c:sizeRepresents, c15:bubble3D, c16:bubble3D]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: Value axes on both sides; bubble size by area or width.
+        office: >-
+          The largest bubble measures 0.2307 m + 2.65 pt (m = the smaller side of the plot area before the
+          axis labels; measured through COM) times bubbleScale; sizes by area or width. The value axes grow
+          until every bubble fits (data plus radius in axis units, then the usual 5 % headroom), which
+          reproduces PowerPoint's scales; bubble legend keys are round. bubble3D is drawn flat.
 
       - id: chart.radar
         title: Radar charts
         elements: [c:radarChart, c:radarStyle]
         priority: P2
         difficulty: 3
+        status: done
         strategy: Polar axes as SVG.
+        office: >-
+          One spoke per category clockwise from 12 o'clock; the value gridlines are polygons, the value axis
+          line is drawn as every spoke and its labels stand along the first spoke (1.14 s - 1.25 pt left of
+          it); the category axis draws neither line nor gridlines. The radar is centered in the plot area with
+          radius min(W/2 - (widest label + 0.3056 s - 3.005), H/2 - (L + 0.3127 s - 5.248)), measured through
+          COM with 25 layouts. Category labels stand 6 pt beyond their spoke, left- or right-aligned at the
+          sides and centered above and below.
 
       - id: chart.stock
         title: Stock charts
         elements: [c:stockChart]
         priority: P2
         difficulty: 3
+        status: done
         strategy: High-low lines and up/down bars over line series.
+        office: >-
+          High-low lines join each category's lowest and highest point, up/down bars run from the first to the
+          last series (category width / (1 + gap width)) and cover the lines; the series lines are usually
+          invisible. A dot marker is a circle half the marker size. Legend entries of series without a line
+          keep the narrow square-key width and show only their marker.
 
       - id: chart.surface
         title: Surface charts
         elements: [c:surfaceChart, c:surface3DChart, c:wireframe, c:bandFmts, c:bandFmt]
         priority: P3
         difficulty: 4
+        status: partial
         strategy: Contour bands in 2D; 3D surfaces with chart.threeD.
+        office: >-
+          Contour (top view) charts: the band scale is the value axis without headroom; the surface is a top
+          view of a 3D box whose sides are proportional to the category and series counts, 97.3 % of the inner
+          plot area. Each grid cell splits along the diagonal with the larger value sum; facets are lit with
+          ambient 0.52 + diffuse 0.595 (light from the upper right at 31 degrees) plus a specular highlight
+          (fitted to PowerPoint's rendering); the height scale is an approximation. 3D surfaces and wireframes
+          are not drawn yet.
 
       - id: chart.axes
         title: Axes, gridlines and number formats
@@ -1166,7 +1196,14 @@ areas:
         elements: [c:dTable, c:showHorzBorder, c:showVertBorder, c:showOutline, c:showKeys]
         priority: P3
         difficulty: 3
+        status: done
         strategy: Table of the series values below the plot area.
+        office: >-
+          The table reaches 6 pt past the plot area's left and bottom edges; rows are L + 0.0925 s + 2.4 pt
+          high and the name column holds the widest series name plus 1.0975 s + 2.89 pt (key 0.45 L at 0.26 L,
+          text at 0.958 L); the plot area's left edge is the larger of the name column and the value labels,
+          its bottom the table's top. Category labels move into the header row. Long series names that wrap
+          are not handled yet.
 
       - id: chart.formatting
         title: Chart formatting, chart styles and colors
@@ -1197,7 +1234,16 @@ areas:
                    c:trendlineLbl, c:errBars, c:errDir, c:errBarType, c:errValType, c:noEndCap, c:plus, c:minus]
         priority: P2
         difficulty: 3
+        status: done
         strategy: Regression fits (linear, exponential, logarithmic, polynomial, power, moving average) and error bars.
+        office: >-
+          Trendlines: linear, exponential, logarithmic, polynomial (order 2-6), power and moving average, with
+          forward/backward forecast and fixed intercepts, drawn 1.5 pt dotted in the series color by default
+          and clipped to the plot area. Equation and R squared labels show coefficients rounded to 4 decimals;
+          the block is vertically centered on the trendline's end, its right edge 8.8 pt left of it
+          (measured). Legend entries follow the series; legends with trendlines give every entry a 2.156 L
+          key. Error bars: fixed value, percentage, standard error, custom values and standard deviation
+          (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis.
 
       - id: chart.userShapes
         title: Shapes drawn on charts
