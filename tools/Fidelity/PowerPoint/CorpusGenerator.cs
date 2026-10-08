@@ -71,6 +71,7 @@ public static class CorpusGenerator
         ("charts-3d", Charts3DDeck.Build, true),
         ("sketched", SketchedDeck.Build, false),
         ("smartart", SmartArtDeck.Build, true),
+        ("effects-dag", EffectDagDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -89,6 +90,7 @@ public static class CorpusGenerator
         ["laser"] = LaserDeck.Patch,
         ["sketched"] = SketchedDeck.Patch,
         ["smartart"] = SmartArtDeck.Patch,
+        ["effects-dag"] = EffectDagDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>

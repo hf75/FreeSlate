@@ -22,7 +22,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 5 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 2 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 3 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 4 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **52** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **53** |
 
 <a id="package"></a>
 
@@ -871,7 +871,7 @@ gradFill and pattFill inside a:ln.
 | [Soft edges](#effect.softEdge) | P2 | ●●●○○ | partial | 1 | 1 |
 | [Reflection](#effect.reflection) | P2 | ●●●●○ | partial | 1 | 1 |
 | [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | done | 2 | 1 |
-| [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
+| [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | done | 7 | 4 |
 | [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | partial | 8 | 6 |
 | [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | done | 6 | 5 |
 
@@ -993,9 +993,11 @@ gradFill and pattFill inside a:ln.
 
 ### Effect containers (effect DAG)
 
-`effect.dag` · P3 · difficulty 4 · todo
+`effect.dag` · P3 · difficulty 4 · done
 
 **Rendering:** Effect graphs with containers and blends; rare outside themes from Office 2007.
+
+**Office behaviour:** PowerPoint draws an effect graph instead of the shape (measured with generated/effects-dag, 97.2 %): its input is the whole shape with its text; a container of type sib draws its children's outputs over each other, type tree feeds each child the previous output; an empty container draws nothing, while a graph without any effect leaves the shape as it is. a:effect ref brings in the fill, the line, fill and line with the text (fillLine), or a named container's output. Every effect outputs only its own result: an outer shadow or glow without the shape, a reflection without the original, alphaOutset grows the alpha with black, fill paints the input's alpha (gradients through a mask), relOff and xfrm move it, the color effects work as on pictures. blend draws its container's output over the input in a blend mode, over being overlay (measured to two levels), mult multiply and so on; fillOverlay likewise with a fill. Drawn as nested SVG groups, filters, masks and mix-blend-mode.
 
 **Elements (7):** [`a:alphaOutset`](../format/namespaces/a.md#aalphaoutset), [`a:blend`](../format/namespaces/a.md#ablend), [`a:cont`](../format/namespaces/a.md#acont), [`a:effect`](../format/namespaces/a.md#aeffect), [`a:effectDag`](../format/namespaces/a.md#aeffectdag), [`a:fill`](../format/namespaces/a.md#afill), [`a:relOff`](../format/namespaces/a.md#areloff)
 

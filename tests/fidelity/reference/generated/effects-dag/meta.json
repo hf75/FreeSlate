@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/effects-dag.pptx",
+  "sha256": "563aade775ba866f2f449ca55c0028de610aff6cac0067bbb17ff2737364a292",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 2
+}

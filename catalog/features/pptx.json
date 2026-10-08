@@ -4526,8 +4526,9 @@
       "title": "Effect containers (effect DAG)",
       "priority": "P3",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Effect graphs with containers and blends; rare outside themes from Office 2007.",
+      "office": "PowerPoint draws an effect graph instead of the shape (measured with generated/effects-dag, 97.2 %): its input is the whole shape with its text; a container of type sib draws its children's outputs over each other, type tree feeds each child the previous output; an empty container draws nothing, while a graph without any effect leaves the shape as it is. a:effect ref brings in the fill, the line, fill and line with the text (fillLine), or a named container's output. Every effect outputs only its own result: an outer shadow or glow without the shape, a reflection without the original, alphaOutset grows the alpha with black, fill paints the input's alpha (gradients through a mask), relOff and xfrm move it, the color effects work as on pictures. blend draws its container's output over the input in a blend mode, over being overlay (measured to two levels), mult multiply and so on; fillOverlay likewise with a fill. Drawn as nested SVG groups, filters, masks and mix-blend-mode.",
       "elements": [
         "a:alphaOutset",
         "a:blend",

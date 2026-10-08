@@ -161,6 +161,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             : "";
         // A fill overlay blends a second fill over the shape's fill, not its outline (catalog: effect.blur).
         var effects = Effects(chain, style);
+        var dag = EffectContainer(chain, style) is { Name.LocalName: "effectDag" } effectGraph ? effectGraph : null;
+        var dagText = "";
         var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
             ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
             : ((Fill Fill, string Blend)?)null;
@@ -348,9 +350,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
-            body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
+            if (dag != null)
+                dagText = textMarkup;
+            else
+                body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
         var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs, matrix);
+        if (dag != null)
+        {
+            // An effect graph (catalog: effect.dag) draws the shape from its fill, its line and its text.
+            var fillOnly = new StringBuilder();
+            var lineOnly = new StringBuilder();
+            foreach (var path in geometry.Paths)
+            {
+                if (path.Fill != "none" && fill is not NoFill)
+                    fillOnly.Append($"<path d=\"{path.Data}\"{paint.Fill(Shade(fill, path.Fill), pw, ph, defs, rotation, origin)} stroke=\"none\"/>");
+                if (path.Stroke && outline is { Visible: true })
+                    lineOnly.Append($"<path d=\"{path.Data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin)}/>");
+            }
+            lineOnly.Append(ends);
+            var graph = new EffectDag(slide.Colors, pw, ph, defs,
+                element => paint.Fill(FillReader.Read(element, slide.Colors, slide.Images(part), slide.ImageSizes(part)), pw, ph, defs, rotation, origin), matrix);
+            content = graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), paths.ToString() + ends + dagText));
+        }
         if (camera != null && content.Length > 0)
         {
             // The front face is lit like the rest of the 3D shape (its normal faces the front).
@@ -906,15 +928,20 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         spPr.Element(Ns.A + "ln")?.Element(Ns.A + "extLst")?.Elements(Ns.A + "ext")
             .FirstOrDefault(e => e.Str("uri") == "{C807C97D-BFC1-408E-A445-0C87EB9F89A2}")?.Element(Ns.Ask + "lineSketchStyleProps");
 
-    XElement? Effects(List<PartElement> chain, XElement? style)
+    XElement? Effects(List<PartElement> chain, XElement? style) =>
+        EffectContainer(chain, style) is { Name.LocalName: "effectLst" } list ? list : null;
+
+    /// <summary>The shape's effects, a:effectLst or a:effectDag: its own, else the theme effect style's it refers to.</summary>
+    XElement? EffectContainer(List<PartElement> chain, XElement? style)
     {
+        static XElement? Of(XElement? parent) => parent?.Elements().FirstOrDefault(e => e.Name == Ns.A + "effectLst" || e.Name == Ns.A + "effectDag");
         foreach (var s in chain)
         {
-            if (SpPr(s.Element)?.Element(Ns.A + "effectLst") is { } own)
+            if (Of(SpPr(s.Element)) is { } own)
                 return own;
         }
         var index = style?.Element(Ns.A + "effectRef").Int("idx") ?? 0;
-        return index >= 1 && index <= slide.Theme.EffectStyles.Count ? slide.Theme.EffectStyles[index - 1].Element(Ns.A + "effectLst") : null;
+        return index >= 1 && index <= slide.Theme.EffectStyles.Count ? Of(slide.Theme.EffectStyles[index - 1]) : null;
     }
 
     Fill ResolveFill(List<PartElement> chain, XElement? style, Fill? groupFill)

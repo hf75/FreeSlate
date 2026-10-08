@@ -199,9 +199,11 @@ public static class SvgEffects
     /// direction dir, faded along fadeDir (90° by default, top to bottom of the copy) from stA at stPos to endA at
     /// endPos (fractions of the copy's extent) and blurred by blurRad. A reflection that does not rotate with its
     /// shape (rotWithShape 0, given the shape's turn in <paramref name="frame"/>) mirrors the turned shape on the
-    /// slide (measured). Without a reflection the markup is returned unchanged.
+    /// slide (measured). Without a reflection the markup is returned unchanged; without the original
+    /// (<paramref name="original"/> false, effect graphs) only the reflection is returned.
     /// </summary>
-    public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs, Matrix? frame = null)
+    public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs, Matrix? frame = null,
+        bool original = true)
     {
         var reflection = effectLst?.Element(Ns.A + "reflection");
         if (reflection == null || markup.Length == 0)
@@ -252,6 +254,10 @@ public static class SvgEffects
             defs.Append($"<filter id=\"rb{n}\" x=\"-0.2\" y=\"-0.2\" width=\"1.4\" height=\"1.4\"><feGaussianBlur stdDeviation=\"{Units.Css(blur * 0.35)}\"/></filter>");
             filter = $" filter=\"url(#rb{n})\"";
         }
-        return $"<g id=\"rf{n}\">{markup}</g><g mask=\"url(#rm{n})\"><g{filter}><g transform=\"{transform.Css()}\"><use href=\"#rf{n}\"/></g></g></g>";
+        var reflected = $"<g mask=\"url(#rm{n})\"><g{filter}><g transform=\"{transform.Css()}\"><use href=\"#rf{n}\"/></g></g></g>";
+        if (original)
+            return $"<g id=\"rf{n}\">{markup}</g>{reflected}";
+        defs.Append($"<g id=\"rf{n}\">{markup}</g>");
+        return reflected;
     }
 }
