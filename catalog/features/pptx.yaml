@@ -1451,9 +1451,11 @@ areas:
           Within a format run the glyph origins are rounded to whole pixels (half up) from the run's exact start;
           a new format run starts exactly. Baselines sit on whole pixels counted from the top of the text area
           (box top plus inset, anchor offset included). Glyphs are drawn unhinted with 8×4 samples per pixel.
-          Text is therefore drawn as glyph outlines (paths defined once per document, placed with use) at the
-          exact positions, with the text transparent on top for selection and search; browser text would sit on
-          whole-pixel baselines and be hinted.
+          From 30 pixels per em text is therefore drawn as glyph outlines (paths defined once per document,
+          placed with use) at the exact positions, with the text transparent on top for selection and search;
+          browser text would sit on whole-pixel baselines and be hinted. PowerPoint samples coverage at the
+          top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 sub-rows: outlines are shifted by 1/16 and
+          1/8 pixel to see the same edges.
 
       - id: engine.fonts
         title: Font resolution and fallback
@@ -1465,10 +1467,12 @@ areas:
           Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser
           draws with exactly the font we measured.
         office: >-
-          PowerPoint renders text unhinted (cap height and x-height exactly as designed). Glyphs are emitted as
-          outlines, so the viewer needs no fonts; fonts are only embedded for runs left to the browser (color
-          fonts, synthesized bold or italic, glyphs missing from the font), with a gasp table without grid fitting
-          so that Chromium on Windows renders them unhinted as well.
+          PowerPoint renders text from 30 pixels per em on unhinted (cap height and x-height exactly as
+          designed), below that hinted with crisp horizontal edges on whole-pixel baselines (22 pt hinted, 23 pt
+          smooth at 96 dpi). Large text is emitted as glyph outlines, so the viewer needs no fonts for it; small
+          text, color fonts, synthesized bold or italic and glyphs missing from the font are left to the
+          browser, whose hinted rendering matches PowerPoint's small text closely (Arial exactly); fonts the
+          browser cannot find by name are embedded for these runs.
 
       - id: engine.fidelity
         title: Fidelity measurement

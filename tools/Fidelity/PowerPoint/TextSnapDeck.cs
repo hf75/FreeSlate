@@ -67,6 +67,15 @@ public static class TextSnapDeck
         // The sixth line: the second half bold.
         var mixed = details.Shapes[6].TextFrame.TextRange.Characters(9, 8);
         mixed.Font.Bold = PowerPointSession.MsoTrue;
+
+        // Sizes 12 to 24 pt: below some size PowerPoint draws text hinted.
+        var sizes = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        string[] sizeFonts = ["Aptos", "Arial", "Times New Roman"];
+        for (var column = 0; column < sizeFonts.Length; column++)
+        {
+            for (var step = 0; step <= 12; step++)
+                Box(sizes, Left + column * 310, Top + step * 39.5f, sizeFonts[column], 12 + step, "HHHH HHHH");
+        }
     }
 
     static void Box(dynamic slide, float left, float top, string font, float size, string text)

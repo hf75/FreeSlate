@@ -175,6 +175,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
+    /// <summary>
+    /// Text smaller than this (pixels per em) PowerPoint draws hinted, with crisp horizontal edges on whole-pixel
+    /// baselines (measured with the text-snap deck: hinted up to 22 pt, smooth from 23 pt); the browser's own
+    /// hinted text comes closest to that.
+    /// </summary>
+    const double HintedBelow = 30;
+
     /// <summary>Offsets (pixels) that align Chromium's anti-aliasing samples with PowerPoint's (see Text).</summary>
     const double SampleShiftX = 1.0 / 16, SampleShiftY = 1.0 / 8;
 
@@ -223,7 +230,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             xs.Append(Units.Css(startPx + current));
         }
 
-        var outlined = !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
+        var outlined = style.Size * PxPerPt >= HintedBelow && !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
                        && glyphs.All(g => g.Id != 0 || g.Cluster < text.Length && char.IsWhiteSpace(text[g.Cluster]));
         var family = data.Family;
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");

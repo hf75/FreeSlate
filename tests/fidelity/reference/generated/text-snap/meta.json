@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/text-snap.pptx",
-  "sha256": "44197732990431bb95373c504bd12bdbe9d53e8d6df7af51e1e02a90e916d162",
+  "sha256": "46cdc0e3f20013f06abc948f4133b738b09dc3a681df98c27314548be9644969",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 4
+  "slides": 5
 }
