@@ -68,6 +68,10 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         var fills = new StringBuilder();
         var borders = new StringBuilder();
         var texts = new StringBuilder();
+        // Each edge is drawn once: of the two cells sharing it, the border with the higher priority wins (own cell
+        // borders over style parts, later style parts over earlier ones); measured on a total row's double top
+        // border, which the row above does not paint over.
+        var edges = new Dictionary<(bool Horizontal, double At, double From, double To), (Outline Outline, int Priority, double X1, double Y1, double X2, double Y2)>();
 
         // The table background behind all cells: the table's own fill, else the style's tblBg (a fill or a
         // theme fill reference), visible through cells without a fill or with transparent ones.
@@ -96,17 +100,30 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             static bool ColumnRegion(string part) => part is "band1V" or "band2V" or "firstCol" or "lastCol" || part.EndsWith("Cell", StringComparison.Ordinal);
             string Side(string part, string outer, bool onTableEdge, bool horizontalEdge) =>
                 (horizontalEdge ? RowRegion(part) : ColumnRegion(part)) || onTableEdge ? outer : horizontalEdge ? "insideH" : "insideV";
-            Border(borders, defs, tcPr, parts, "lnL", part => Side(part, "left", cell.Column == 0, false), x, y, x, y + h);
-            Border(borders, defs, tcPr, parts, "lnR", part => Side(part, "right", lastColumn, false), x + w, y, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnT", part => Side(part, "top", cell.Row == 0, true), x, y, x + w, y);
-            Border(borders, defs, tcPr, parts, "lnB", part => Side(part, "bottom", lastRow, true), x, y + h, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnTlToBr", _ => "tl2br", x, y, x + w, y + h);
-            Border(borders, defs, tcPr, parts, "lnBlToTr", _ => "tr2bl", x, y + h, x + w, y);
+            void Edge(string own, Func<string, string> side, double x1, double y1, double x2, double y2)
+            {
+                if (Border(tcPr, parts, own, side) is not ({ } outline, var priority))
+                    return;
+                var horizontal = y1 == y2 && x1 != x2;
+                var key = horizontal ? (true, Math.Round(y1, 3), Math.Round(Math.Min(x1, x2), 3), Math.Round(Math.Max(x1, x2), 3))
+                    : x1 == x2 ? (false, Math.Round(x1, 3), Math.Round(Math.Min(y1, y2), 3), Math.Round(Math.Max(y1, y2), 3))
+                    : (false, double.NaN, x1 * 1000 + y1, x2 * 1000 + y2);   // diagonals are never shared
+                if (!edges.TryGetValue(key, out var existing) || priority >= existing.Priority)
+                    edges[key] = (outline, priority, x1, y1, x2, y2);
+            }
+            Edge("lnL", part => Side(part, "left", cell.Column == 0, false), x, y, x, y + h);
+            Edge("lnR", part => Side(part, "right", lastColumn, false), x + w, y, x + w, y + h);
+            Edge("lnT", part => Side(part, "top", cell.Row == 0, true), x, y, x + w, y);
+            Edge("lnB", part => Side(part, "bottom", lastRow, true), x, y + h, x + w, y + h);
+            Edge("lnTlToBr", _ => "tl2br", x, y, x + w, y + h);
+            Edge("lnBlToTr", _ => "tr2bl", x, y + h, x + w, y);
 
             var (marL, marR, marT, marB) = Margins(cell.Element);
             texts.Append(text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
         }
 
+        foreach (var edge in edges.Values)
+            Draw(borders, defs, edge.Outline, edge.X1, edge.Y1, edge.X2, edge.Y2);
         var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + fills + borders + texts;
         return (svg, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
     }
@@ -194,26 +211,21 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     }
 
     /// <summary>A cell border: the cell's own a:lnX, else the highest style part defining the side.</summary>
-    void Border(StringBuilder svg, StringBuilder defs, XElement? tcPr, List<XElement> parts, string own, Func<string, string> side, double x1, double y1, double x2, double y2)
+    /// <summary>The border of a cell edge with its priority: own properties first, then the style parts, latest first.</summary>
+    (Outline? Outline, int Priority) Border(XElement? tcPr, List<XElement> parts, string own, Func<string, string> side)
     {
-        XElement? line = tcPr?.Element(Ns.A + own);
-        if (line == null)
+        if (tcPr?.Element(Ns.A + own) is { } ownLine)
+            return (OutlineReader.Merge([(ownLine, slide.Colors)]), 1000);
+        for (var i = parts.Count - 1; i >= 0; i--)
         {
-            for (var i = parts.Count - 1; i >= 0 && line == null; i--)
-            {
-                var border = parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "tcBdr")?.Element(Ns.A + side(parts[i].Name.LocalName));
-                line = border?.Element(Ns.A + "ln");
-                if (line == null && border?.Element(Ns.A + "lnRef") is { } lnRef && slide.Theme.LineStyle(lnRef.Int("idx") ?? 0) is { } themed)
-                {
-                    var outlineFromRef = OutlineReader.Merge([(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(lnRef)))]);
-                    Draw(svg, defs, outlineFromRef, x1, y1, x2, y2);
-                    return;
-                }
-            }
+            var border = parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "tcBdr")?.Element(Ns.A + side(parts[i].Name.LocalName));
+            var priority = Array.IndexOf(PartOrder, parts[i].Name.LocalName);
+            if (border?.Element(Ns.A + "ln") is { } line)
+                return (OutlineReader.Merge([(line, slide.Colors)]), priority);
+            if (border?.Element(Ns.A + "lnRef") is { } lnRef && slide.Theme.LineStyle(lnRef.Int("idx") ?? 0) is { } themed)
+                return (OutlineReader.Merge([(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(lnRef)))]), priority);
         }
-        if (line == null)
-            return;
-        Draw(svg, defs, OutlineReader.Merge([(line, slide.Colors)]), x1, y1, x2, y2);
+        return (null, -1);
     }
 
     void Draw(StringBuilder svg, StringBuilder defs, Outline? outline, double x1, double y1, double x2, double y2)
