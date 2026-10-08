@@ -9,8 +9,8 @@ namespace FreeSlate.Pptx.SmartArt;
 /// every style label lists of fill, line, effect and text colors, applied to the label's shapes in turn (repeat),
 /// spread across them from the first color to the last (span: shape i of n at i / (n − 1)), or there and back
 /// (cycle: at 2i / n up to the middle, then back); spread colors are the first color with the HSL and alpha
-/// differences to the next added as hueOff, satOff, lumOff and alphaOff, the hue turning clockwise (increasing)
-/// unless hueDir says ccw (all measured from PowerPoint's drawings). The style definition (dgm:styleDef) gives every
+/// differences to the next added as hueOff, satOff, lumOff and alphaOff, the hue by the plain difference unless
+/// hueDir says which way round (all measured from PowerPoint's drawings). The style definition (dgm:styleDef) gives every
 /// label its theme style references, 3D properties and text properties, and the diagram its 3D scene.
 /// </summary>
 public sealed class Styling(XElement? colorsDef, XElement? styleDef, ColorContext colors)
@@ -108,8 +108,12 @@ public sealed class Styling(XElement? colorsDef, XElement? styleDef, ColorContex
         var (a, b) = (colors.Resolve(first), colors.Resolve(second));
         var (ha, sa, la) = a.ToHsl();
         var (hb, sb, lb) = b.ToHsl();
-        var hue = ((hb - ha) % 360 + 360) % 360;
-        if ((string?)colorList.Attribute("hueDir") == "ccw" && hue > 0)
+        // The hue changes by the plain difference (measured: accent 5 to accent 6 turns back by 202.5°); hueDir turns
+        // it the given way round.
+        var hue = hb - ha;
+        if ((string?)colorList.Attribute("hueDir") == "cw" && hue < 0)
+            hue += 360;
+        else if ((string?)colorList.Attribute("hueDir") == "ccw" && hue > 0)
             hue -= 360;
         static string Value(double v) => ((long)Math.Round(v)).ToString(CultureInfo.InvariantCulture);
         result.Add(

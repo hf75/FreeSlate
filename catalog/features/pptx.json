@@ -12864,8 +12864,9 @@
       "title": "SmartArt layout engine",
       "priority": "P3",
       "difficulty": 5,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Only for SmartArt without a saved drawing (files from other producers): layout algorithms (linear, snake, cycle, hierarchy, pyramid …) with constraints and rules.",
+      "office": "Only for SmartArt without a saved drawing (PowerPoint 2007 and other producers; PowerPoint itself always saves one). The layout tree is instantiated for the data model (all 159 built-in layouts match PowerPoint's presentation points), constraints are evaluated, the algorithms place the nodes (composite, lin, snake, conn so far; cycle, hierRoot/hierChild, pyra and the curved and bent connectors still missing) and the text is fitted by the rules (font sizes in whole points, heights in sixteenths, widths measured in the geometry's text rectangle). The output writes the shapes the way PowerPoint writes its drawing: text laid out by text nodes, which shapes showing the same data take (a connector's text, a Venn circle's), hidden geometry drawn as text only, shapes turned a quarter filling their box turned, text upright, zOrderOff among siblings, styles and colors by style label (default labels by point type and depth). Measured on the 159 layouts with their drawings removed: 38.5 % (the process family matches PowerPoint's drawing to 0.1 pt), all color definitions and quick styles on a process: 88.4 %.",
       "elements": [
         "dgm:adj",
         "dgm:adjLst",

@@ -80,7 +80,9 @@ static class Fitting
         var body = TextBody.Build(node, primary, SecondaryFont(node));
         var (l, r) = (TextBody.Margin(node, "lMarg", primary), TextBody.Margin(node, "rMarg", primary));
         var (t, b) = (TextBody.Margin(node, "tMarg", primary), TextBody.Margin(node, "bMarg", primary));
-        var width = node.W * Engine.PtPerMm - l - r;
+        // The text lies in the geometry's text rectangle (a rounded rectangle's inside its corners), within the margins.
+        var (areaWidth, _) = Output.TextArea(node);
+        var width = areaWidth * Engine.PtPerMm - l - r;
         if (width <= 0)
             return (false, double.PositiveInfinity);
         var layout = measure(body, width);

@@ -265,15 +265,26 @@ public static class Engine
         if (horizontal)
         {
             var left = sign > 0 ? from : from - length;
-            Place(connector, left, (ay + by) / 2 - thickness / 2, length, thickness);
+            PlaceConnector(connector, left, (ay + by) / 2 - thickness / 2, length, thickness);
             connector.Rotation = sign > 0 ? 0 : 180;
         }
         else
         {
             // Drawn as a horizontal arrow turned about its center.
             var center = (X: (ax + bx) / 2, Y: from + sign * length / 2);
-            Place(connector, center.X - length / 2, center.Y - thickness / 2, length, thickness);
+            PlaceConnector(connector, center.X - length / 2, center.Y - thickness / 2, length, thickness);
             connector.Rotation = sign > 0 ? 90 : 270;
         }
+    }
+
+    /// <summary>
+    /// Gives a connector its box and its children theirs in it, keeping the connector's values: they are the size of its
+    /// place among its siblings, which the next layout (after fitting the text) needs again.
+    /// </summary>
+    static void PlaceConnector(LayoutNode connector, double x, double y, double w, double h)
+    {
+        (connector.X, connector.Y, connector.W, connector.H) = (x, y, w, h);
+        foreach (var child in connector.Children)
+            Composite1(connector, child);
     }
 }

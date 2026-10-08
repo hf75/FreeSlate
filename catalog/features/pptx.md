@@ -27,14 +27,14 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 5 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
-| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 1 | 2 |
+| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 2 | 2 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 3 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **88** | **55** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **89** | **55** |
 
 <a id="package"></a>
 
@@ -1943,7 +1943,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 |---|---|---|---|---:|---:|
 | [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | done | 17 | 0 |
 | [SmartArt data model](#smartart.data) | P2 | ●●●○○ | done | 27 | 5 |
-| [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | todo | 24 | 7 |
+| [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | partial | 24 | 7 |
 | [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | partial | 13 | 9 |
 
 <a id="smartart.drawing"></a>
@@ -1980,9 +1980,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt layout engine
 
-`smartart.layout` · P3 · difficulty 5 · todo
+`smartart.layout` · P3 · difficulty 5 · partial
 
 **Rendering:** Only for SmartArt without a saved drawing (files from other producers): layout algorithms (linear, snake, cycle, hierarchy, pyramid …) with constraints and rules.
+
+**Office behaviour:** Only for SmartArt without a saved drawing (PowerPoint 2007 and other producers; PowerPoint itself always saves one). The layout tree is instantiated for the data model (all 159 built-in layouts match PowerPoint's presentation points), constraints are evaluated, the algorithms place the nodes (composite, lin, snake, conn so far; cycle, hierRoot/hierChild, pyra and the curved and bent connectors still missing) and the text is fitted by the rules (font sizes in whole points, heights in sixteenths, widths measured in the geometry's text rectangle). The output writes the shapes the way PowerPoint writes its drawing: text laid out by text nodes, which shapes showing the same data take (a connector's text, a Venn circle's), hidden geometry drawn as text only, shapes turned a quarter filling their box turned, text upright, zOrderOff among siblings, styles and colors by style label (default labels by point type and depth). Measured on the 159 layouts with their drawings removed: 38.5 % (the process family matches PowerPoint's drawing to 0.1 pt), all color definitions and quick styles on a process: 88.4 %.
 
 **Elements (24):** [`dgm:adj`](../format/namespaces/dgm.md#dgmadj), [`dgm:adjLst`](../format/namespaces/dgm.md#dgmadjlst), [`dgm:alg`](../format/namespaces/dgm.md#dgmalg), [`dgm:cat`](../format/namespaces/dgm.md#dgmcat), [`dgm:catLst`](../format/namespaces/dgm.md#dgmcatlst), [`dgm:choose`](../format/namespaces/dgm.md#dgmchoose), [`dgm:clrData`](../format/namespaces/dgm.md#dgmclrdata), [`dgm:constr`](../format/namespaces/dgm.md#dgmconstr), [`dgm:constrLst`](../format/namespaces/dgm.md#dgmconstrlst), [`dgm:desc`](../format/namespaces/dgm.md#dgmdesc), [`dgm:else`](../format/namespaces/dgm.md#dgmelse), [`dgm:forEach`](../format/namespaces/dgm.md#dgmforeach), [`dgm:if`](../format/namespaces/dgm.md#dgmif), [`dgm:layoutDef`](../format/namespaces/dgm.md#dgmlayoutdef), [`dgm:layoutNode`](../format/namespaces/dgm.md#dgmlayoutnode), [`dgm:param`](../format/namespaces/dgm.md#dgmparam), [`dgm:presOf`](../format/namespaces/dgm.md#dgmpresof), [`dgm:rule`](../format/namespaces/dgm.md#dgmrule), [`dgm:ruleLst`](../format/namespaces/dgm.md#dgmrulelst), [`dgm:sampData`](../format/namespaces/dgm.md#dgmsampdata), [`dgm:shape`](../format/namespaces/dgm.md#dgmshape), [`dgm:styleData`](../format/namespaces/dgm.md#dgmstyledata), [`dgm:title`](../format/namespaces/dgm.md#dgmtitle), [`dgm:varLst`](../format/namespaces/dgm.md#dgmvarlst)
 

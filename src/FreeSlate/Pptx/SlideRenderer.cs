@@ -789,13 +789,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (dataPart == null || !package.Exists(dataPart))
             return;
         var dataModel = slide.Presentation.Load(dataPart).Root;
-        var drawingId = dataModel?.Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
-        var drawingPart = drawingId != null ? package.Relationship(part, drawingId)?.Target : null;
-        if (dataModel == null || drawingPart == null || !package.Exists(drawingPart))
+        if (dataModel == null)
             return;
-
-        var tree = slide.Presentation.Load(drawingPart).Root?.Element(Dsp + "spTree");
-        if (tree == null)
+        var drawingId = dataModel.Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
+        var drawingPart = drawingId != null ? package.Relationship(part, drawingId)?.Target : null;
+        var tree = drawingPart != null && package.Exists(drawingPart) ? slide.Presentation.Load(drawingPart).Root?.Element(Dsp + "spTree") : null;
+        XElement? DiagramPart(string attribute) =>
+            relIds.Attribute(Ns.R + attribute) is { } id && package.Relationship(part, id.Value)?.Target is { } target && package.Exists(target)
+                ? slide.Presentation.Load(target).Root
+                : null;
+        var layoutDef = DiagramPart("lo");
+        // Without a saved drawing the layout engine lays the diagram out (catalog: smartart.layout).
+        if (tree == null && layoutDef == null)
             return;
         var (x, y, w, h, _, _, _) = ReadTransform(frame.Element(Ns.P + "xfrm")!);
         var (bx, by, bw, bh) = placement.Map(x, y, w, h);
@@ -825,19 +830,24 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         var dgm = dataModel.Name.Namespace;
         Whole(dataModel.Element(dgm + "bg"), outline: false);
-        var shapes = ToPresentationMl(tree);
-        // The drawing keeps the style's text color in fontRef; PowerPoint draws the text in the color the color
-        // definition gives the shape's style label (txFillClrLst), when it gives one (catalog: smartart.styles).
-        XElement? DiagramPart(string attribute) =>
-            relIds.Attribute(Ns.R + attribute) is { } id && package.Relationship(part, id.Value)?.Target is { } target && package.Exists(target)
-                ? slide.Presentation.Load(target).Root
-                : null;
         var styling = new SmartArt.Styling(DiagramPart("cs"), DiagramPart("qs"), slide.Colors);
         // The quick style's 3D scene holds the whole diagram (measured: 3D styles turn the diagram as one).
         var inner = styling.DiagramScene is { } diagramScene && Camera.Read(diagramScene) is { Flat: false }
             ? flat with { Scene = (diagramScene, bw / 2, bh / 2) }
             : flat;
         var model = new SmartArt.DataModel(dataModel);
+        var listStyle = SmartArt.Styling.ListStyle(layoutDef);
+        if (tree == null)
+        {
+            var root = SmartArt.Engine.Layout(layoutDef!, model, bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, (body, width) => text.LayoutCell(body, [], width));
+            RenderTree(SmartArt.Output.Shapes(root, styling, listStyle), dataPart, html, inner, isSlide: false);
+            Whole(dataModel.Element(dgm + "whole"), outline: true);
+            html.Append("</div>");
+            return;
+        }
+        var shapes = ToPresentationMl(tree);
+        // The drawing keeps the style's text color in fontRef; PowerPoint draws the text in the color the color
+        // definition gives the shape's style label (txFillClrLst), when it gives one (catalog: smartart.styles).
         foreach (var sp in shapes.Descendants(Ns.P + "sp"))
         {
             if (sp.Attribute("modelId") is not { } modelId || !model.Points.TryGetValue(modelId.Value, out var pres)
@@ -852,7 +862,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         // The layout's list style formats the text by the depth of its data points, which the drawing does not keep:
         // the layout tree tells which points each shape shows.
-        if (DiagramPart("lo") is { } layoutDef && SmartArt.Styling.ListStyle(layoutDef) is { } listStyle)
+        if (layoutDef != null && listStyle != null)
         {
             var layoutTree = new SmartArt.LayoutTree(layoutDef, model);
             var bySaved = layoutTree.Root.Descendants().Prepend(layoutTree.Root).Where(n => n.Saved != null)
@@ -864,7 +874,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     SmartArt.Styling.ApplyListStyle(body, node.Text, listStyle);
             }
         }
-        RenderTree(shapes, drawingPart, html, inner, isSlide: false);
+        RenderTree(shapes, drawingPart!, html, inner, isSlide: false);
         Whole(dataModel.Element(dgm + "whole"), outline: true);
         html.Append("</div>");
     }
