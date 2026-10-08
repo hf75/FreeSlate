@@ -100,6 +100,9 @@ public static class Engine
             case "hierRoot" or "hierChild":
                 Hierarchy(node, pins);
                 break;
+            case "pyra":
+                Pyramid(node, pins);
+                break;
             default:
                 Composite(node, pins);
                 break;
@@ -393,6 +396,42 @@ public static class Engine
             connector.Values["arcY"] = oy;
             connector.Values["arcR"] = radius * factor;
             connector.Values["arcDir"] = Math.Sign(span == 0 ? 1 : span);
+        }
+    }
+
+    /// <summary>
+    /// The pyramid algorithm: the children as levels of equal height, the first at the top, as wide as their place in a
+    /// triangle filling the node (linDir fromB: widening downwards; fromT: narrowing, the shapes turned upside down);
+    /// the level shape (pyraLvlNode) a trapezoid whose sides continue the triangle's (adj = half a level's widening over
+    /// its height; measured with pyramid1 and pyramid3 at 1 to 5 levels, exact).
+    /// </summary>
+    static void Pyramid(LayoutNode node, Pins pins)
+    {
+        var levels = node.Children.Where(c => !IsTransition(c) && c.AlgorithmType != "conn").ToList();
+        var n = levels.Count;
+        if (n == 0)
+            return;
+        var downwards = (node.Param("linDir") ?? "fromB") == "fromT";
+        var levelName = node.Param("pyraLvlNode");
+        var height = node.H / n;
+        var step = node.W / n;
+        for (var i = 0; i < n; i++)
+        {
+            var width = step * (downwards ? n - i : i + 1);
+            var (x, y) = (node.X + (node.W - width) / 2, node.Y + i * height);
+            var level = levels[i];
+            var shape = levelName != null ? level.Descendants().FirstOrDefault(d => d.Name == levelName) : null;
+            Place(level, x, y, width, height, pins);
+            if (level.AlgorithmType == "composite" && shape != null)
+            {
+                // The composite's children take the level's box (their placeholders are the algorithm's to set).
+                foreach (var child in level.Children)
+                    Place(child, x, y, child == shape ? width : 0, child == shape ? height : 0, pins);
+            }
+            var target = shape ?? level;
+            target.Values["pyraAdj"] = step / 2 / Math.Max(1e-9, Math.Min(width, height));
+            if (downwards)
+                target.Rotation = 180;
         }
     }
 

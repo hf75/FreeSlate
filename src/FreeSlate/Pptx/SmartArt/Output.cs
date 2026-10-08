@@ -238,6 +238,9 @@ public static class Output
                 : ((long)Math.Round(value * 100000)).ToString(CultureInfo.InvariantCulture);
             adjust.Add(new XElement(A + "gd", new XAttribute("name", names[index - 1]), new XAttribute("fmla", "val " + formula)));
         }
+        // A pyramid level's trapezoid continues the pyramid's sides (Engine.Pyramid).
+        if (node.Values.TryGetValue("pyraAdj", out var pyramid) && type == "trapezoid")
+            adjust = [new XElement(A + "gd", new XAttribute("name", "adj"), new XAttribute("fmla", "val " + ((long)Math.Round(pyramid * 100000)).ToString(CultureInfo.InvariantCulture)))];
         return new Geometry(type, adjust, x, y, w, h, turn + node.Rotation, false, false, false);
     }
 
