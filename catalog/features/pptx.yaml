@@ -1,0 +1,1391 @@
+# PowerPoint (PPTX) feature catalog, level 2.
+#
+# Curated by hand. `dotnet run --project tools/SpecTools -- features` checks every element reference against the
+# format catalog (level 1), measures coverage and writes pptx.md and pptx.json next to this file.
+#
+# Per feature:
+#   id          area id + "." + name; stable, used by code, tests and status tracking
+#   title       short name
+#   description what the feature is (optional)
+#   elements    qualified element names from the format catalog; * and ? are wildcards in the local name
+#   namespaces  namespace prefixes whose elements all belong to the feature
+#   priority    P0 needed for typical decks, P1 common, P2 occasional, P3 rare or editor-only
+#   difficulty  1 direct mapping to HTML/CSS/SVG ... 5 research project
+#   status      todo | partial | done
+#   strategy    how the engine renders it
+#   office      what PowerPoint actually does, where that matters for fidelity (only verified facts)
+
+document: pptx
+title: PowerPoint (PPTX)
+description: >-
+  Rendering target: one HTML document per presentation with fixed-size, absolutely positioned slides. Shapes with
+  their geometry, fills, lines and effects become SVG; text is measured and broken into lines by our own layout
+  engine and emitted as positioned glyph runs; slide shows (transitions, animations, media) run in a small JS player.
+
+universe:
+  roots: [p:presentation, p:sld, p:sldLayout, p:sldMaster, p:notesMaster, p:notes, p:handoutMaster,
+          p:cmLst, p:cmAuthorLst, p:tagLst, p:presentationPr, p:viewPr, p:sldSyncPr, p:oleObj,
+          a:theme, a:themeOverride, a:tblStyleLst, a:tbl, lc:lockedCanvas,
+          c:chartSpace, c:userShapes, c:chart, cx:chartSpace, cx:chart, cs:chartStyle, cs:colorStyle,
+          dgm:dataModel, dgm:layoutDef, dgm:styleDef, dgm:colorsDef, dgm:relIds, dsp:drawing,
+          p188:cmLst, p188:authorLst, m:oMathPara, m:oMath,
+          ap:Properties, op:Properties, cp:coreProperties, ct:Types, pr:Relationships, ds:datastoreItem]
+  namespaces: [p14, p15, p1510, p159, p16, p166, p1710, p173, p184, p188, p202, p223, p228, p232, pc, pc2, pc226,
+               psez, pslz, psuz, iact,
+               a14, a15, a16, a1611, a3danim, aanim, aclsh, adec, ahyp, aif, alf, am3d, ask, asl, asvg, msink, oac,
+               pic14, thm15,
+               c14, c15, c16, c16ac, c16r2, c16r3, cdr14, cs, cx, dgm14, dgm1611, dgm1612, dsp,
+               v, o, pvml]
+  exclude: [w, wp, w10, w14, w15, x, xvml, xdr]
+
+areas:
+
+  - id: package
+    title: Package and compatibility
+    description: ZIP container, relationships, markup compatibility and metadata.
+    features:
+      - id: package.opc
+        title: Package, content types and relationships
+        elements: [ct:Types, ct:Default, ct:Override, pr:Relationships, pr:Relationship]
+        priority: P0
+        difficulty: 1
+        status: partial
+        strategy: >-
+          Open XML SDK on System.IO.Packaging. Parts are found through relationships, never by path; tolerate unusual
+          part names, missing optional parts and external (linked) targets.
+
+      - id: package.mce
+        title: Markup compatibility and extension lists
+        description: mc:AlternateContent, mc:Ignorable and the extLst/ext mechanism every newer feature uses.
+        elements: [a:extLst, a:ext, p:extLst, p:ext, c:extLst, c:ext, cx:extLst, cx:ext, cs:extLst, dgm:extLst,
+                   dsp:extLst, a14:extLst, a3danim:extLst, aanim:extLst, alf:extLst, am3d:extLst, ask:extLst,
+                   asl:extLst, oac:extLst, p14:extLst, p15:extLst, p1510:extLst, p188:extLst, p202:extLst,
+                   p223:extLst, p228:extLst, pc:extLst, pc226:extLst, pic14:extLst, psez:extLst, pslz:extLst,
+                   psuz:extLst, thm15:extLst, cdr14:extLst]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Take the first mc:Choice whose Requires prefixes we implement, else mc:Fallback; honour mc:Ignorable.
+          Dispatch a:ext and p:ext on their uri (a GUID) to the handler of the extension; skip unknown ones.
+        office: >-
+          PowerPoint writes newer features twice: the new markup in mc:Choice (e.g. Requires="p14") and an older
+          equivalent in mc:Fallback, e.g. p14 transitions fall back to p:fade, 3D models and zoom objects to a picture.
+
+      - id: package.compatibility
+        title: Compatibility leftovers
+        description: Properties Office keeps for older versions or for converted VML content.
+        elements: [a14:hiddenFill, a14:hiddenLine, a14:hiddenEffects, a14:hiddenScene3d, a14:hiddenSp3d,
+                   a14:compatExt, a14:shadowObscured, a14:useLocalDpi, a14:cameraTool]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered; preserved for round-trips in the editor.
+
+      - id: package.encryption
+        title: Encrypted and write-protected files
+        elements: [p:modifyVerifier, p1710:readonlyRecommended]
+        priority: P2
+        difficulty: 3
+        strategy: >-
+          Password-protected files are OLE compound files with an EncryptedPackage stream ([MS-OFFCRYPTO], agile
+          encryption): ask for the password and decrypt before parsing. Write protection only matters to an editor.
+
+      - id: package.properties
+        title: Document properties
+        namespaces: [ap, op, cp, vt]
+        priority: P3
+        difficulty: 1
+        strategy: Metadata only; title, author and language go into the HTML head.
+
+      - id: package.customXml
+        title: Custom XML parts
+        namespaces: [ds]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered; preserved for round-trips.
+
+      - id: package.ids
+        title: Object ids and co-authoring revisions
+        elements: [a16:creationId, a16:predDERef, a16:cxnDERefs, a16:colId, a16:rowId, p14:creationId, p14:modId]
+        namespaces: [p1510, oac, pc, pc2, pc226]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered. Stable creation ids help to match objects between slides (Morph) and in the editor.
+
+  - id: presentation
+    title: Presentation and slide structure
+    description: Slides, masters and layouts, placeholders, backgrounds, settings.
+    features:
+      - id: presentation.slides
+        title: Slide list and slide size
+        elements: [p:presentation, p:sldIdLst, p:sldId, p:sldMasterIdLst, p:sldMasterId, p:notesMasterIdLst,
+                   p:notesMasterId, p:handoutMasterIdLst, p:handoutMasterId, p:sldSz, p:notesSz]
+        priority: P0
+        difficulty: 1
+        status: done
+        strategy: >-
+          Slides in p:sldIdLst order. Sizes are in EMU (914400 per inch) and are rendered at 96 dpi, so the
+          widescreen default 12192000 × 6858000 EMU becomes 1280 × 720 px; the viewer scales the slides to fit.
+
+      - id: presentation.hiddenSlides
+        title: Hidden slides
+        description: p:sld/@show="0".
+        priority: P1
+        difficulty: 1
+        strategy: Skipped in the slide show, shown dimmed in the overview.
+
+      - id: presentation.masters
+        title: Slide masters, layouts and slides
+        elements: [p:sld, p:sldLayout, p:sldMaster, p:sldLayoutIdLst, p:sldLayoutId, p:cSld, p:spTree]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          Draw the master's and the layout's non-placeholder shapes behind the slide's own shapes unless showMasterSp
+          is off on the layout or slide; then the slide's shapes in document order.
+        office: >-
+          Placeholders on layouts and masters are prompts for the editor and are never drawn on slides; only the
+          slide's own placeholders are.
+
+      - id: presentation.placeholders
+        title: Placeholders and inheritance
+        elements: [p:ph, p:nvPr]
+        priority: P0
+        difficulty: 4
+        status: partial
+        strategy: >-
+          Match a slide placeholder to the layout placeholder by idx, else by type; a layout placeholder to the master
+          placeholder by type. Position, geometry, fill, line, body properties and list styles are inherited along
+          that chain, property by property.
+        office: A placeholder without a:xfrm takes position and size from the matching layout or master placeholder.
+
+      - id: presentation.colorMap
+        title: Color mapping
+        elements: [p:clrMap, p:clrMapOvr, a:masterClrMapping, a:overrideClrMapping]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: bg1/tx1/bg2/tx2 map to dk1/lt1/dk2/lt2 through the master's clrMap or a layout or slide override.
+
+      - id: presentation.background
+        title: Slide background
+        elements: [p:bg, p:bgPr, p:bgRef, a15:backgroundPr]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          The slide's background, else the layout's, else the master's. bgRef idx 1001 and above index the theme's
+          bgFillStyleLst, lower values its fillStyleLst; the reference color replaces phClr.
+
+      - id: presentation.headerFooter
+        title: Header, footer, date and slide number
+        elements: [p:hf]
+        priority: P1
+        difficulty: 2
+        strategy: p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.
+        office: >-
+          Only footer placeholders that exist on the slide itself are drawn; their slide number and date fields are
+          recomputed when the slide is shown.
+
+      - id: presentation.sections
+        title: Sections
+        elements: [p14:sectionLst, p14:section, p14:sldIdLst, p14:sldId]
+        priority: P2
+        difficulty: 1
+        strategy: Group slides in the viewer's navigation; sections are not drawn.
+
+      - id: presentation.customShows
+        title: Custom shows
+        elements: [p:custShowLst, p:custShow, p:sldLst]
+        priority: P3
+        difficulty: 2
+        strategy: Alternative slide sequences, selectable in the player and reachable through action links.
+
+      - id: presentation.notes
+        title: Notes pages and speaker notes
+        elements: [p:notes, p:notesMaster, p:notesStyle]
+        priority: P2
+        difficulty: 2
+        strategy: Speaker notes text for the presenter view; full notes pages only for printing.
+
+      - id: presentation.handouts
+        title: Handout master
+        elements: [p:handoutMaster]
+        priority: P3
+        difficulty: 2
+        strategy: Print layout only; not rendered.
+
+      - id: presentation.showSettings
+        title: Slide show settings
+        elements: [p:presentationPr, p:showPr, p:present, p:browse, p:kiosk, p:sldAll, p:sldRg, p:penClr, p:prnPr,
+                   p:htmlPubPr, p:webPr, p:clrMru, p14:browseMode, p14:showMediaCtrls, p14:defaultImageDpi,
+                   p14:discardImageEditData]
+        priority: P3
+        difficulty: 1
+        strategy: Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.
+
+      - id: presentation.viewSettings
+        title: Editor view settings
+        elements: [p:viewPr, p:normalViewPr, p:restoredLeft, p:restoredTop, p:slideViewPr, p:cSldViewPr, p:cViewPr,
+                   p:origin, p:scale, p:guideLst, p:guide, p:outlineViewPr, p:notesTextViewPr, p:sorterViewPr,
+                   p:notesViewPr, p:gridSpacing, p15:sldGuideLst, p15:notesGuideLst, p15:guide, p15:clr,
+                   p15:chartTrackingRefBased, a:sx, a:sy]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered; zoom, guides and grid settings for the editor.
+
+      - id: presentation.tags
+        title: Tags and customer data
+        elements: [p:tags, p:tagLst, p:tag, p:custDataLst, p:custData, p:smartTags]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered; preserved for round-trips (add-ins store their data here).
+
+      - id: presentation.misc
+        title: Photo album, slide library and Designer metadata
+        elements: [p:photoAlbum, p:sldSyncPr, p16:designElem, p202:designPr, p202:designTag, p202:designTagLst,
+                   asl:scriptLink]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered.
+
+  - id: theme
+    title: Themes and styles
+    features:
+      - id: theme.colors
+        title: Theme color scheme
+        elements: [a:theme, a:themeElements, a:clrScheme, a:dk1, a:lt1, a:dk2, a:lt2, a:accent?, a:hlink, a:folHlink]
+        priority: P0
+        difficulty: 1
+        status: done
+        strategy: Twelve named colors; scheme colors in shapes resolve through the color map to these.
+
+      - id: theme.fonts
+        title: Theme fonts
+        elements: [a:fontScheme, a:majorFont, a:minorFont, a:font]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          +mj-lt, +mn-lt, +mj-ea, +mn-ea, +mj-cs and +mn-cs resolve to the major/minor fonts; the a:font entries
+          choose fonts per script (Jpan, Hans, Arab, Hebr …) when the language of the run needs them.
+
+      - id: theme.formatScheme
+        title: Theme formats (style matrix)
+        elements: [a:fmtScheme, a:fillStyleLst, a:lnStyleLst, a:effectStyleLst, a:effectStyle, a:bgFillStyleLst]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: Three fills, lines and effects (plus background fills) per theme, used through style references.
+
+      - id: theme.styleRefs
+        title: Shape style references
+        elements: [p:style, a:style, a:lnRef, a:fillRef, a:effectRef, a:fontRef, pic14:style]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Resolve idx into the theme lists; the reference's color replaces phClr in the referenced style. fontRef
+          supplies the default text color and theme font of the shape.
+        office: >-
+          Shapes inserted in PowerPoint usually carry no direct fill or line but a p:style, so without style
+          resolution they come out invisible or black.
+
+      - id: theme.override
+        title: Theme overrides
+        elements: [a:themeOverride]
+        priority: P2
+        difficulty: 1
+        strategy: A layout or slide can override parts of the theme (usually the color scheme).
+
+      - id: theme.editorData
+        title: Object defaults, extra and custom colors
+        elements: [a:objectDefaults, a:spDef, a:lnDef, a:txDef, a:extraClrSchemeLst, a:extraClrScheme, a:custClrLst,
+                   a:custClr, a:clrMap, thm15:themeFamily]
+        priority: P3
+        difficulty: 1
+        strategy: Defaults for new objects and color picker entries; only relevant to an editor.
+
+  - id: color
+    title: Colors
+    features:
+      - id: color.models
+        title: Color models
+        elements: [a:srgbClr, a:schemeClr, a:sysClr, a:prstClr, a:hslClr, a:scrgbClr]
+        priority: P0
+        difficulty: 1
+        status: partial
+        strategy: >-
+          Resolve to sRGB plus alpha. sysClr uses its lastClr, prstClr the named colors, scrgbClr is linear RGB.
+
+      - id: color.transforms
+        title: Color transforms
+        elements: [a:alpha, a:alphaMod, a:alphaOff, a:lum, a:lumMod, a:lumOff, a:tint, a:shade, a:sat, a:satMod,
+                   a:satOff, a:hue, a:hueMod, a:hueOff, a:red, a:redMod, a:redOff, a:green, a:greenMod, a:greenOff,
+                   a:blue, a:blueMod, a:blueOff, a:gray, a:inv, a:comp, a:gamma, a:invGamma]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          Apply in document order. lumMod/lumOff work in HSL, tint and shade most likely in linear RGB; every
+          transform is to be checked against PowerPoint renderings.
+
+  - id: shape
+    title: Shapes and geometry
+    features:
+      - id: shape.basic
+        title: Shapes
+        elements: [p:sp, p:nvSpPr, p:cNvSpPr, p:spPr, a:sp, a:nvSpPr, a:cNvSpPr, a:spPr]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: Each shape is an absolutely positioned element with an SVG for geometry, fill, line and effects plus a text layer.
+
+      - id: shape.accessibility
+        title: Names, alt text, hidden and decorative shapes
+        elements: [p:cNvPr, a:cNvPr, adec:decorative]
+        priority: P1
+        difficulty: 1
+        strategy: hidden="1" shapes are not drawn; descr and title become aria-label/title; decorative shapes get aria-hidden.
+
+      - id: shape.transform
+        title: Position, size, rotation and flip
+        elements: [a:xfrm, p:xfrm, a:off, a:ext, a:chOff, a:chExt]
+        priority: P0
+        difficulty: 2
+        status: done
+        strategy: One CSS/SVG matrix per shape; rotation is in 60000ths of a degree, flips mirror around the center.
+        office: flipH does not mirror the text, flipV turns it by 180°.
+
+      - id: shape.group
+        title: Groups
+        elements: [p:grpSp, p:nvGrpSpPr, p:cNvGrpSpPr, p:grpSpPr, a:grpSp, a:nvGrpSpPr, a:cNvGrpSpPr, a:grpSpPr,
+                   a15:nonVisualGroupProps, a14:isCanvas, lc:lockedCanvas]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Map child coordinates (chOff/chExt) to the group box and compose the rotations and flips of all ancestors
+          into one matrix per leaf shape.
+        office: Stretching a group stretches the child boxes but not their font sizes.
+
+      - id: shape.presetGeometry
+        title: Preset geometries
+        description: 187 preset shapes (rect, roundRect, arrows, callouts, flowchart symbols, stars …).
+        elements: [a:prstGeom, a:avLst, a:gd]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          One formula engine evaluates presetShapeDefinitions.xml (adjust values, guides, paths) into SVG paths, so
+          every preset comes from data instead of hand-written code.
+        office: >-
+          The ECMA data file has no upArrow and lists upDownArrow twice (see the format catalog); upArrow has to be
+          added and checked against PowerPoint.
+
+      - id: shape.customGeometry
+        title: Custom geometry (freeforms)
+        elements: [a:custGeom, a:gdLst, a:ahLst, a:ahXY, a:ahPolar, a:cxnLst, a:cxn, a:pos, a:rect, a:pathLst, a:path,
+                   a:moveTo, a:lnTo, a:arcTo, a:quadBezTo, a:cubicBezTo, a:close, a:pt]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          The same formula engine. arcTo angles have to be converted to SVG arcs; path fill modes darken/lighten
+          shade the fill; paths with their own w/h are scaled to the shape. Handles and connection sites are editor-only.
+
+      - id: shape.connectors
+        title: Connectors
+        elements: [p:cxnSp, p:nvCxnSpPr, p:cNvCxnSpPr, a:cxnSp, a:nvCxnSpPr, a:cNvCxnSpPr, a:stCxn, a:endCxn]
+        priority: P1
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Draw the stored geometry (straight, bent and curved connector presets with their adjust values); the
+          editor recomputes routes only when connected shapes move.
+
+      - id: shape.graphicFrame
+        title: Graphic frames
+        elements: [p:graphicFrame, p:nvGraphicFramePr, p:cNvGraphicFramePr, a:graphicFrame, a:nvGraphicFramePr,
+                   a:cNvGraphicFramePr, a:graphic, a:graphicData]
+        priority: P0
+        difficulty: 1
+        strategy: Container for tables, charts, SmartArt and OLE objects; dispatch on graphicData/@uri.
+
+      - id: shape.locks
+        title: Locks
+        elements: [a:spLocks, a:grpSpLocks, a:picLocks, a:cxnSpLocks, a:graphicFrameLocks, a14:cpLocks]
+        priority: P3
+        difficulty: 1
+        strategy: Editor-only.
+
+      - id: shape.sketched
+        title: Sketched outlines
+        namespaces: [ask]
+        priority: P2
+        difficulty: 4
+        strategy: >-
+          The hand-drawn outline styles (curved, freehand, scribble) perturb the geometry with a seeded random
+          function; matching PowerPoint needs its exact algorithm, a close look-alike is easy.
+
+      - id: shape.classification
+        title: Sensitivity label markings
+        elements: [aclsh:classification, p184:classification]
+        priority: P3
+        difficulty: 1
+        strategy: Shapes added by sensitivity labels; drawn like normal shapes, the marker itself is metadata.
+
+  - id: fill
+    title: Fills
+    features:
+      - id: fill.solid
+        title: No fill and solid fill
+        elements: [a:noFill, a:solidFill]
+        priority: P0
+        difficulty: 1
+        status: done
+        strategy: SVG fill color and opacity.
+
+      - id: fill.gradient
+        title: Gradient fills
+        elements: [a:gradFill, a:gsLst, a:gs, a:lin, a:path, a:tileRect, a:fillToRect]
+        priority: P1
+        difficulty: 3
+        status: partial
+        strategy: >-
+          SVG linear and radial gradients in the shape's box (lin angle with scaled, rotWithShape); circle and rect
+          paths map to radial gradients and transforms, path="shape" needs an approximation. Browsers interpolate in
+          sRGB, so the engine adds intermediate stops computed in linear light.
+        office: >-
+          Measured with the fidelity tests: PowerPoint blends gradient colors in linear light (blue to white passes
+          through a pale lavender, not a saturated light blue).
+
+      - id: fill.pattern
+        title: Pattern fills
+        elements: [a:pattFill, a:fgClr, a:bgClr]
+        priority: P2
+        difficulty: 2
+        status: partial
+        strategy: The preset patterns as small SVG patterns in foreground and background color.
+
+      - id: fill.picture
+        title: Picture and texture fills
+        elements: [a:blipFill, a:blip, a:srcRect, a:stretch, a:fillRect, a:tile, p:blipFill, pic:blipFill]
+        priority: P1
+        difficulty: 2
+        status: partial
+        strategy: >-
+          SVG image clipped to the geometry: stretched into the fillRect insets, or repeated through an SVG pattern
+          for tiles (offset, scale, alignment, flip).
+
+      - id: fill.group
+        title: Group fill
+        elements: [a:grpFill]
+        priority: P2
+        difficulty: 1
+        status: partial
+        strategy: Use the fill of the parent group.
+
+  - id: line
+    title: Lines and outlines
+    features:
+      - id: line.basic
+        title: Outline width and color
+        elements: [a:ln]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: SVG stroke; widths are in EMU (12700 per point); inset alignment clips a doubled stroke.
+
+      - id: line.dash
+        title: Dash styles
+        elements: [a:prstDash, a:custDash, a:ds]
+        priority: P1
+        difficulty: 2
+        status: partial
+        strategy: stroke-dasharray in multiples of the line width.
+
+      - id: line.joinCap
+        title: Joins and caps
+        elements: [a:round, a:bevel, a:miter]
+        priority: P1
+        difficulty: 1
+        status: partial
+        strategy: stroke-linejoin, stroke-miterlimit and stroke-linecap.
+
+      - id: line.ends
+        title: Arrowheads
+        elements: [a:headEnd, a:tailEnd]
+        priority: P1
+        difficulty: 3
+        strategy: >-
+          Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the
+          line shortened under the head.
+
+      - id: line.compound
+        title: Compound lines
+        description: a:ln/@cmpd (double, thick-thin, thin-thick, triple).
+        priority: P2
+        difficulty: 3
+        strategy: Several parallel strokes or a stroke with a mask.
+
+      - id: line.fill
+        title: Gradient and pattern outlines
+        description: gradFill and pattFill inside a:ln.
+        priority: P2
+        difficulty: 3
+        strategy: SVG gradient or pattern as stroke paint.
+
+  - id: effect
+    title: Effects
+    features:
+      - id: effect.list
+        title: Effect lists
+        elements: [a:effectLst]
+        priority: P1
+        difficulty: 2
+        strategy: The effects of a list are applied in a fixed order; build one SVG filter chain per shape.
+
+      - id: effect.outerShadow
+        title: Outer shadow
+        elements: [a:outerShdw]
+        priority: P1
+        difficulty: 3
+        strategy: SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.
+
+      - id: effect.innerShadow
+        title: Inner shadow
+        elements: [a:innerShdw]
+        priority: P2
+        difficulty: 3
+        strategy: SVG filter inside the shape's alpha.
+
+      - id: effect.presetShadow
+        title: Preset shadows
+        elements: [a:prstShdw]
+        priority: P3
+        difficulty: 3
+        strategy: The 20 preset shadows as parameter sets of the shadow filters.
+
+      - id: effect.glow
+        title: Glow
+        elements: [a:glow]
+        priority: P2
+        difficulty: 3
+        strategy: Dilate and blur the shape's alpha, colored.
+
+      - id: effect.softEdge
+        title: Soft edges
+        elements: [a:softEdge]
+        priority: P2
+        difficulty: 3
+        strategy: Erode and blur the alpha mask.
+
+      - id: effect.reflection
+        title: Reflection
+        elements: [a:reflection]
+        priority: P2
+        difficulty: 4
+        strategy: Mirrored copy with distance, blur and a gradient alpha mask.
+
+      - id: effect.blur
+        title: Blur and fill overlay
+        elements: [a:blur, a:fillOverlay]
+        priority: P3
+        difficulty: 2
+        strategy: SVG Gaussian blur; fill overlay blends a fill over the shape.
+
+      - id: effect.dag
+        title: Effect containers (effect DAG)
+        elements: [a:effectDag, a:cont, a:effect, a:alphaOutset, a:blend, a:relOff, a:fill]
+        priority: P3
+        difficulty: 4
+        strategy: Effect graphs with containers and blends; rare outside themes from Office 2007.
+
+      - id: effect.scene3d
+        title: 3D scene (camera and light)
+        elements: [a:scene3d, a:camera, a:lightRig, a:rot, a:backdrop, a:anchor, a:norm, a:up]
+        priority: P2
+        difficulty: 5
+        strategy: Camera presets can be approximated with CSS 3D transforms; lighting needs a shading model.
+
+      - id: effect.shape3d
+        title: 3D shape (bevel, extrusion, material)
+        elements: [a:sp3d, a:bevelT, a:bevelB, a:bevel, a:extrusionClr, a:contourClr]
+        priority: P2
+        difficulty: 5
+        strategy: Real bevels and extrusion need 3D rendering (WebGL) or pre-rendering; simple bevels can be faked with gradients.
+
+  - id: picture
+    title: Pictures and media
+    features:
+      - id: picture.basic
+        title: Pictures
+        elements: [p:pic, p:nvPicPr, p:cNvPicPr, a:pic, a:nvPicPr, a:cNvPicPr, pic:pic, pic:nvPicPr, pic:cNvPr,
+                   pic:cNvPicPr, pic:spPr]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: SVG image with crop (srcRect; negative values pad) and the shape's geometry as clip path.
+
+      - id: picture.formats
+        title: Raster image formats
+        description: The content type behind a:blip/@r:embed.
+        priority: P1
+        difficulty: 3
+        strategy: PNG, JPEG, GIF and BMP natively; TIFF and JPEG XR (wdp) are converted to PNG.
+
+      - id: picture.metafiles
+        title: EMF and WMF pictures
+        priority: P1
+        difficulty: 5
+        strategy: Our own EMF/EMF+/WMF interpreter that emits SVG ([MS-EMF], [MS-EMFPLUS], [MS-WMF]).
+        office: EMF and WMF are frequent in real decks (icons, content pasted from Excel or Visio, older charts).
+
+      - id: picture.svg
+        title: SVG pictures
+        elements: [asvg:svgBlip]
+        priority: P0
+        difficulty: 1
+        status: partial
+        strategy: Use the SVG part; the surrounding a:blip holds a PNG fallback.
+
+      - id: picture.effects
+        title: Picture color effects
+        elements: [a:alphaBiLevel, a:alphaCeiling, a:alphaFloor, a:alphaInv, a:alphaMod, a:alphaModFix, a:alphaRepl,
+                   a:biLevel, a:blur, a:clrChange, a:clrFrom, a:clrTo, a:clrRepl, a:duotone, a:grayscl, a:hsl, a:lum,
+                   a:tint]
+        priority: P1
+        difficulty: 3
+        strategy: >-
+          SVG filters (feColorMatrix, feComponentTransfer) or pre-processing in C#. Recolor presets (grayscale,
+          washout, duotone with theme colors) and transparency (alphaModFix) are the common ones.
+
+      - id: picture.artistic
+        title: Artistic effects and picture corrections
+        elements: [a14:imgProps, a14:imgLayer, a14:imgEffect, a14:artistic*, a14:brightnessContrast,
+                   a14:colorTemperature, a14:saturation, a14:sharpenSoften, a14:backgroundRemoval, a14:backgroundMark,
+                   a14:foregroundMark]
+        priority: P1
+        difficulty: 1
+        strategy: Draw the main blip.
+        office: >-
+          PowerPoint saves the processed picture as the main blip and keeps the original in a14:imgLayer, so the
+          effect is already baked in.
+
+      - id: picture.media
+        title: Audio and video
+        elements: [p14:media, p14:trim, p14:fade, p14:bmkLst, p14:bmk, a:videoFile, a:audioFile, a:wavAudioFile,
+                   a:quickTimeFile, a:audioCd, a:st, a:end, p173:tracksInfo, p173:trackLst, p173:track,
+                   p15:isNarration]
+        priority: P1
+        difficulty: 3
+        strategy: >-
+          HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks
+          as WebVTT.
+
+      - id: picture.ole
+        title: OLE objects, ActiveX controls and signature lines
+        elements: [p:oleObj, p:embed, p:link, p:controls, p:control, a15:objectPr, a15:signatureLine]
+        priority: P1
+        difficulty: 1
+        strategy: Draw the fallback picture stored with the object.
+
+      - id: picture.ink
+        title: Ink
+        elements: [p:contentPart, p14:nvContentPartPr, p14:cNvContentPartPr, p14:cNvPr, p14:nvPr,
+                   p14:xfrm, a14:contentPart, a14:nvContentPartPr, a14:cNvContentPartPr, a14:cNvPr, a14:xfrm,
+                   cdr14:contentPart, cdr14:nvContentPartPr, cdr14:cNvContentPartPr, cdr14:cNvPr, cdr14:nvPr,
+                   cdr14:xfrm]
+        namespaces: [msink, iact]
+        priority: P2
+        difficulty: 3
+        strategy: Use the mc:Fallback picture first; later draw the InkML traces as SVG paths with pressure-dependent width.
+
+      - id: picture.model3d
+        title: 3D models
+        namespaces: [am3d, a3danim]
+        priority: P2
+        difficulty: 1
+        strategy: Show the fallback picture; real 3D (glTF with WebGL) is an option for later.
+        office: PowerPoint saves a rendered picture of the model as mc:Fallback.
+
+      - id: picture.liveFeed
+        title: Cameo and live camera feeds
+        namespaces: [alf, p232]
+        priority: P3
+        difficulty: 2
+        strategy: Show the stored picture; a live camera (getUserMedia) only in the player.
+
+      - id: picture.sources
+        title: Picture sources and formulas
+        elements: [a1611:picAttrSrcUrl, aif:imageFormula]
+        priority: P3
+        difficulty: 1
+        strategy: Not rendered; the picture itself is stored as usual.
+
+  - id: text
+    title: Text
+    description: >-
+      Text decides the fidelity of most slides. The engine measures glyphs with the real fonts and breaks lines
+      itself; the browser only draws positioned runs.
+    features:
+      - id: text.body
+        title: Text body and text box
+        elements: [p:txBody, a:txBody, a:bodyPr, a:txSp, a:useSpRect, dsp:txXfrm]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          The text box is the geometry's text rectangle minus the insets (default 91440 EMU left/right, 45720
+          top/bottom); anchoring top, middle or bottom, anchorCtr, wrap or no wrap, rotation and overflow.
+
+      - id: text.autofit
+        title: Autofit
+        elements: [a:noAutofit, a:normAutofit, a:spAutoFit]
+        priority: P0
+        difficulty: 4
+        status: partial
+        strategy: Apply the stored fontScale and lnSpcReduction; with spAutoFit the stored shape size already fits the text.
+        office: >-
+          PowerPoint saves the shrink factors it computed when the slide was last edited; recomputing them yields
+          different line breaks than PowerPoint shows. Without stored factors it does not shrink at all, even when
+          normAutofit is inherited and the text overflows (verified with generated/text-basic, slide 5).
+
+      - id: text.paragraph
+        title: Paragraphs
+        elements: [a:p, a:pPr, a:endParaRPr]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: Alignment (left, center, right, justified, distributed), margins, first-line or hanging indent, levels 0–8.
+
+      - id: text.spacing
+        title: Line and paragraph spacing
+        elements: [a:lnSpc, a:spcBef, a:spcAft, a:spcPct, a:spcPts]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: Line spacing as a percentage of the line height or in points; space before and after.
+        office: >-
+          Measured with the fidelity tests: single line spacing is 1.2 × the font size (Aptos), percentages scale it;
+          the space before the first paragraph of a text body is ignored; a bullet in another font does not enlarge
+          the line.
+
+      - id: text.tabs
+        title: Tab stops
+        elements: [a:tabLst, a:tab]
+        priority: P1
+        difficulty: 2
+        strategy: Left, center, right and decimal tabs, default tab size from defTabSz.
+
+      - id: text.bullets
+        title: Bullets and numbering
+        elements: [a:buAutoNum, a:buBlip, a:buChar, a:buClr, a:buClrTx, a:buFont, a:buFontTx, a:buNone, a:buSzPct,
+                   a:buSzPts, a:buSzTx]
+        priority: P0
+        difficulty: 3
+        status: partial
+        strategy: >-
+          Bullet glyph in its own font (Wingdings and Symbol mapped to Unicode or embedded), color and size;
+          automatic numbering in 40 schemes (arabic, roman, alphabetic, circled, East Asian, Hebrew, Arabic, Thai …)
+          with startAt; picture bullets.
+
+      - id: text.styles
+        title: List styles and the text style cascade
+        elements: [a:lstStyle, a:defPPr, a:lvl?pPr, a:defRPr, p:txStyles, p:titleStyle, p:bodyStyle, p:otherStyle,
+                   p:defaultTextStyle]
+        priority: P0
+        difficulty: 4
+        status: partial
+        strategy: >-
+          Run → paragraph → the shape's lstStyle → layout placeholder → master placeholder → the master's title,
+          body or other style → the presentation's defaultTextStyle; the shape's fontRef adds color and font.
+          Which of otherStyle and defaultTextStyle wins for plain text boxes is to be verified against PowerPoint.
+
+      - id: text.runs
+        title: Runs and character formatting
+        elements: [a:r, a:rPr, a:t, a:br, a:highlight]
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Size (hundredths of a point), bold, italic, all caps and small caps, single and double strikethrough,
+          superscript and subscript (baseline %), character spacing, kerning threshold, highlight.
+
+      - id: text.fonts
+        title: Fonts per script
+        elements: [a:latin, a:ea, a:cs, a:sym]
+        priority: P0
+        difficulty: 4
+        status: partial
+        strategy: Choose the latin, East Asian or complex-script font per character; resolve theme fonts; see engine.fonts.
+
+      - id: text.embeddedFonts
+        title: Embedded fonts
+        elements: [p:embeddedFontLst, p:embeddedFont, p:font, p:regular, p:bold, p:italic, p:boldItalic]
+        priority: P1
+        difficulty: 4
+        strategy: Convert the embedded font data to WOFF2 and load it with @font-face.
+
+      - id: text.fillOutline
+        title: Text fill and outline
+        description: gradFill, blipFill, pattFill and a:ln inside run properties.
+        priority: P1
+        difficulty: 3
+        strategy: SVG text paint or glyph outlines from our layout engine for gradient, picture and outlined text.
+
+      - id: text.underline
+        title: Underlines
+        elements: [a:uLn, a:uLnTx, a:uFill, a:uFillTx]
+        priority: P1
+        difficulty: 2
+        status: partial
+        strategy: The 18 underline styles drawn by our layout engine with position and thickness from the font.
+
+      - id: text.effects
+        title: Text effects
+        description: effectLst on runs (shadow, glow, reflection, soft edges).
+        priority: P2
+        difficulty: 4
+        strategy: The shape effect filters applied to the glyph layer.
+
+      - id: text.fields
+        title: Fields
+        elements: [a:fld]
+        priority: P1
+        difficulty: 2
+        status: partial
+        strategy: slidenum and datetime1–13 are computed when rendering; other field types keep their stored text.
+
+      - id: text.columns
+        title: Text columns
+        description: a:bodyPr/@numCol and @spcCol.
+        priority: P2
+        difficulty: 3
+        strategy: Our layout engine fills the columns in order.
+
+      - id: text.vertical
+        title: Vertical and rotated text
+        description: a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
+        priority: P2
+        difficulty: 3
+        strategy: Rotate the line layout, or lay out top to bottom for East Asian and WordArt vertical text.
+
+      - id: text.warp
+        title: WordArt transforms
+        elements: [a:prstTxWarp]
+        priority: P2
+        difficulty: 5
+        strategy: Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.
+
+      - id: text.threeD
+        title: 3D text
+        elements: [a:flatTx]
+        priority: P3
+        difficulty: 5
+        strategy: scene3d/sp3d on the text body; same approach as 3D shapes.
+
+      - id: text.math
+        title: Equations
+        elements: [a14:m]
+        namespaces: [m]
+        priority: P2
+        difficulty: 4
+        strategy: Show the picture from mc:Fallback first; later convert OMML to MathML, which browsers render.
+        office: >-
+          PowerPoint saves equations as mc:AlternateContent: OMML in mc:Choice (Requires a14) and a picture of the
+          equation in mc:Fallback.
+
+      - id: text.rtl
+        title: Right-to-left and complex scripts
+        elements: [a:rtl]
+        priority: P2
+        difficulty: 4
+        strategy: Bidi algorithm (UAX 9) in our layout engine, complex-script fonts, rtl paragraphs and columns.
+
+      - id: text.eastAsian
+        title: East Asian typography
+        elements: [p:kinsoku]
+        priority: P2
+        difficulty: 4
+        strategy: Kinsoku line breaking rules, East Asian line breaking and hanging punctuation, ea fonts, vertical text.
+
+  - id: table
+    title: Tables
+    features:
+      - id: table.structure
+        title: Table grid and merged cells
+        elements: [a:tbl, a:tblPr, a:tblGrid, a:gridCol, a:tr, a:tc, a:headers, a:header]
+        priority: P0
+        difficulty: 3
+        strategy: >-
+          Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge,
+          vMerge) and position the cells absolutely; an HTML table would compute its own sizes.
+        office: Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text.
+
+      - id: table.cells
+        title: Cell formatting
+        elements: [a:tcPr, a:lnL, a:lnR, a:lnT, a:lnB, a:lnTlToBr, a:lnBlToTr, a:cell3D]
+        priority: P0
+        difficulty: 3
+        strategy: Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
+
+      - id: table.styles
+        title: Table styles
+        elements: [a:tblStyleLst, a:tblStyle, a:tableStyle, a:tableStyleId, a:tblBg, a:wholeTbl, a:band1H, a:band2H,
+                   a:band1V, a:band2V, a:firstRow, a:lastRow, a:firstCol, a:lastCol, a:neCell, a:nwCell, a:seCell,
+                   a:swCell, a:tcStyle, a:tcTxStyle, a:tcBdr, a:left, a:right, a:top, a:bottom, a:insideH, a:insideV,
+                   a:tl2br, a:tr2bl, a:fill]
+        priority: P0
+        difficulty: 4
+        strategy: >-
+          Combine whole table, banding, first/last row and column and corner cells in PowerPoint's order for the flags
+          set in tblPr. For files that reference a built-in style without defining it, we need definitions of the 74
+          built-in styles, harvested from PowerPoint itself.
+        office: Table styles are referenced by GUID; PowerPoint writes the definitions of the styles in use to ppt/tableStyles.xml.
+
+  - id: chart
+    title: Charts
+    description: >-
+      Charts are rendered from the values cached in the chart part; the embedded workbook is not needed. Axis
+      scaling, number formats and automatic layout follow Excel's algorithms.
+    features:
+      - id: chart.part
+        title: Chart part and settings
+        elements: [c:chartSpace, c:chart, c:date1904, c:lang, c:roundedCorners, c:style, c:clrMapOvr, c:protection,
+                   c:chartObject, c:data, c:formatting, c:selection, c:userInterface, c:externalData, c:autoUpdate,
+                   c:printSettings, c:headerFooter, c:oddHeader, c:oddFooter, c:evenHeader, c:evenFooter,
+                   c:firstHeader, c:firstFooter, c:pageMargins, c:pageSetup, c:legacyDrawingHF, c:plotVisOnly,
+                   c:dispBlanksAs, c:showDLblsOverMax, c:autoTitleDeleted, c:fmtId, c16r3:dataDisplayOptions16,
+                   c16r3:dispNaAsBlank]
+        priority: P1
+        difficulty: 2
+        strategy: Read chart settings and render from cached data; print settings are ignored.
+
+      - id: chart.data
+        title: Series and data caches
+        elements: [c:ser, c:idx, c:order, c:tx, c:cat, c:val, c:xVal, c:yVal, c:bubbleSize, c:numRef, c:numCache,
+                   c:numLit, c:strRef, c:strCache, c:strLit, c:multiLvlStrRef, c:multiLvlStrCache, c:lvl, c:pt,
+                   c:ptCount, c:v, c:f, c:formatCode, c:name, c16:numCache, c16:strCache, c16:multiLvlStrCache,
+                   c16ac:multiLvlStrLit, c16r2:formatcode2, c15:filtered*, c15:fullRef, c15:formulaRef, c15:levelRef,
+                   c15:sqref, c15:xForSave, c15:ser, c15:tx, c15:cat, c15:f, c15:autoCat, c15:categoryFilterException*,
+                   c16:categoryFilterException*, c16:uniqueId, c16:uniqueID, c16:ptentry, c16:ptidx,
+                   c16:datapointuniqueidmap]
+        priority: P1
+        difficulty: 2
+        strategy: Series values, categories (multi-level), number format codes; filtered series stay hidden.
+
+      - id: chart.barColumn
+        title: Bar and column charts
+        elements: [c:barChart, c:bar3DChart, c:barDir, c:grouping, c:gapWidth, c:overlap, c:shape, c:varyColors,
+                   c:invertIfNegative, c15:invertIfNegative, c16:invertIfNegative, c14:invertSolidFillFmt]
+        priority: P1
+        difficulty: 3
+        strategy: Clustered, stacked and 100 % stacked bars as SVG rectangles.
+
+      - id: chart.line
+        title: Line charts
+        elements: [c:lineChart, c:line3DChart, c:marker, c:symbol, c:size, c:smooth, c:dropLines, c:hiLowLines,
+                   c:upDownBars, c:upBars, c:downBars, c15:marker, c16:marker]
+        priority: P1
+        difficulty: 3
+        strategy: Polylines with markers; smoothed lines need Office's Bézier construction.
+
+      - id: chart.pie
+        title: Pie and doughnut charts
+        elements: [c:pieChart, c:pie3DChart, c:doughnutChart, c:ofPieChart, c:ofPieType, c:firstSliceAng, c:holeSize,
+                   c:explosion, c:splitType, c:splitPos, c:custSplit, c:secondPiePt, c:secondPieSize, c:serLines,
+                   c15:explosion, c16:explosion]
+        priority: P1
+        difficulty: 3
+        strategy: Arcs as SVG paths; pie-of-pie and bar-of-pie with series lines.
+
+      - id: chart.area
+        title: Area charts
+        elements: [c:areaChart, c:area3DChart]
+        priority: P1
+        difficulty: 3
+        strategy: Filled SVG polygons, stacked or 100 % stacked.
+
+      - id: chart.scatterBubble
+        title: Scatter and bubble charts
+        elements: [c:scatterChart, c:scatterStyle, c:bubbleChart, c:bubble3D, c:bubbleScale, c:showNegBubbles,
+                   c:sizeRepresents, c15:bubble3D, c16:bubble3D]
+        priority: P1
+        difficulty: 3
+        strategy: Value axes on both sides; bubble size by area or width.
+
+      - id: chart.radar
+        title: Radar charts
+        elements: [c:radarChart, c:radarStyle]
+        priority: P2
+        difficulty: 3
+        strategy: Polar axes as SVG.
+
+      - id: chart.stock
+        title: Stock charts
+        elements: [c:stockChart]
+        priority: P2
+        difficulty: 3
+        strategy: High-low lines and up/down bars over line series.
+
+      - id: chart.surface
+        title: Surface charts
+        elements: [c:surfaceChart, c:surface3DChart, c:wireframe, c:bandFmts, c:bandFmt]
+        priority: P3
+        difficulty: 4
+        strategy: Contour bands in 2D; 3D surfaces with chart.threeD.
+
+      - id: chart.axes
+        title: Axes, gridlines and number formats
+        elements: [c:catAx, c:valAx, c:dateAx, c:serAx, c:axId, c:axPos, c:scaling, c:orientation, c:max, c:min,
+                   c:logBase, c:delete, c:majorGridlines, c:minorGridlines, c:majorTickMark, c:minorTickMark,
+                   c:tickLblPos, c:crossAx, c:crosses, c:crossesAt, c:crossBetween, c:majorUnit, c:minorUnit,
+                   c:dispUnits, c:builtInUnit, c:custUnit, c:dispUnitsLbl, c:auto, c:lblAlgn, c:lblOffset,
+                   c:noMultiLvlLbl, c:tickLblSkip, c:tickMarkSkip, c:baseTimeUnit, c:majorTimeUnit, c:minorTimeUnit,
+                   c:numFmt, c15:numFmt]
+        priority: P1
+        difficulty: 4
+        strategy: >-
+          Reproduce Office's automatic minimum, maximum and major unit; number formats need an Excel number-format
+          engine; date axes, logarithmic and reversed scales.
+
+      - id: chart.labels
+        title: Data labels
+        elements: [c:dLbls, c:dLbl, c:dLblPos, c:showLegendKey, c:showVal, c:showCatName, c:showSerName,
+                   c:showPercent, c:showBubbleSize, c:separator, c:showLeaderLines, c:leaderLines, c15:dLbl,
+                   c15:layout, c15:dlblFieldTable, c15:dlblFieldTableCache, c15:dlblFTEntry, c15:dlblRangeCache,
+                   c15:datalabelsRange, c15:showDataLabelsRange, c15:showLeaderLines, c15:leaderLines, c15:txfldGUID,
+                   c15:spPr, c16:dLbl]
+        priority: P1
+        difficulty: 4
+        strategy: Label text from values, categories, series names, percentages or cell ranges; automatic placement and leader lines.
+
+      - id: chart.titleLegend
+        title: Titles, legend and layout
+        elements: [c:title, c:rich, c:overlay, c:layout, c:manualLayout, c:layoutTarget, c:xMode, c:yMode, c:wMode,
+                   c:hMode, c:x, c:y, c:w, c:h, c:legend, c:legendPos, c:legendEntry, c:plotArea]
+        priority: P1
+        difficulty: 3
+        strategy: Automatic layout of title, legend and plot area like Office; manual layouts are fractions of the chart area.
+
+      - id: chart.dataTable
+        title: Data tables
+        elements: [c:dTable, c:showHorzBorder, c:showVertBorder, c:showOutline, c:showKeys]
+        priority: P3
+        difficulty: 3
+        strategy: Table of the series values below the plot area.
+
+      - id: chart.formatting
+        title: Chart formatting, chart styles and colors
+        elements: [c:spPr, c:txPr, c:dPt, c:pictureOptions, c:applyToFront, c:applyToSides, c:applyToEnd,
+                   c:pictureFormat, c:pictureStackUnit, c14:spPr, c14:style, c16:spPr]
+        namespaces: [cs]
+        priority: P1
+        difficulty: 3
+        strategy: >-
+          spPr and txPr of every chart element use the shared DrawingML fill, line, effect and text code; the chart
+          style and color parts (cs) only matter where a property is not set directly.
+
+      - id: chart.threeD
+        title: 3D charts
+        elements: [c:view3D, c:rotX, c:rotY, c:depthPercent, c:rAngAx, c:perspective, c:hPercent, c:floor,
+                   c:sideWall, c:backWall, c:thickness, c:gapDepth]
+        priority: P2
+        difficulty: 5
+        strategy: Projected 3D geometry with simple shading.
+
+      - id: chart.analysis
+        title: Trendlines and error bars
+        elements: [c:trendline, c:trendlineType, c:period, c:forward, c:backward, c:intercept, c:dispRSqr, c:dispEq,
+                   c:trendlineLbl, c:errBars, c:errDir, c:errBarType, c:errValType, c:noEndCap, c:plus, c:minus]
+        priority: P2
+        difficulty: 3
+        strategy: Regression fits (linear, exponential, logarithmic, polynomial, power, moving average) and error bars.
+
+      - id: chart.userShapes
+        title: Shapes drawn on charts
+        elements: [c:userShapes]
+        namespaces: [cdr]
+        priority: P3
+        difficulty: 2
+        strategy: Shapes anchored in relative or absolute chart coordinates; drawn with the normal shape code.
+
+      - id: chart.pivot
+        title: Pivot chart settings
+        elements: [c:pivotSource, c:pivotFmts, c:pivotFmt, c15:pivotSource, c16:pivotOptions16,
+                   c16:showExpandCollapseFieldButtons, c14:dropZone*, c14:pivotOptions]
+        priority: P3
+        difficulty: 1
+        strategy: Field buttons are not shown in presentations; pivot formats apply like data point formats.
+
+      - id: chart.ex
+        title: Office 2016 charts (chartex)
+        description: Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and region map.
+        namespaces: [cx]
+        priority: P2
+        difficulty: 4
+        strategy: >-
+          Each type needs its own layout (treemap squarify, sunburst rings, histogram binning, box plot statistics);
+          region maps use the geography data cached in the file. Check whether mc:Fallback contains a usable picture.
+
+  - id: smartart
+    title: SmartArt
+    features:
+      - id: smartart.drawing
+        title: Saved SmartArt drawing
+        elements: [dgm:relIds]
+        namespaces: [dsp]
+        priority: P1
+        difficulty: 2
+        strategy: Draw the shapes from the diagram's drawing part like normal shapes.
+        office: >-
+          PowerPoint stores the laid-out shapes of every SmartArt in a drawing part (dsp:drawing), so files saved by
+          PowerPoint need no SmartArt layout engine.
+
+      - id: smartart.data
+        title: SmartArt data model
+        elements: [dgm:dataModel, dgm:ptLst, dgm:pt, dgm:prSet, dgm:presLayoutVars, dgm:orgChart, dgm:chMax,
+                   dgm:chPref, dgm:bulletEnabled, dgm:dir, dgm:hierBranch, dgm:animOne, dgm:animLvl,
+                   dgm:resizeHandles, dgm:cxnLst, dgm:cxn, dgm:t, dgm:spPr, dgm:whole, dgm:bg]
+        namespaces: [dgm14, dgm1611, dgm1612]
+        priority: P2
+        difficulty: 3
+        strategy: The text and structure of the nodes; needed for editing and for files without a drawing part.
+
+      - id: smartart.layout
+        title: SmartArt layout engine
+        elements: [dgm:layoutDef, dgm:layoutNode, dgm:alg, dgm:param,
+                   dgm:shape, dgm:adjLst, dgm:adj, dgm:presOf, dgm:constrLst, dgm:constr, dgm:ruleLst, dgm:rule,
+                   dgm:varLst, dgm:forEach, dgm:choose, dgm:if, dgm:else, dgm:sampData, dgm:styleData, dgm:clrData,
+                   dgm:catLst, dgm:cat, dgm:title, dgm:desc]
+        priority: P3
+        difficulty: 5
+        strategy: >-
+          Only for SmartArt without a saved drawing (files from other producers): layout algorithms (linear, snake,
+          cycle, hierarchy, pyramid …) with constraints and rules.
+
+      - id: smartart.styles
+        title: SmartArt styles and color definitions
+        elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,
+                   dgm:txPr, dgm:style, dgm:colorsDef, dgm:fillClrLst,
+                   dgm:linClrLst, dgm:effectClrLst, dgm:txLinClrLst, dgm:txFillClrLst, dgm:txEffectClrLst]
+        priority: P3
+        difficulty: 3
+        strategy: Part of the layout engine path.
+
+  - id: transition
+    title: Slide transitions
+    features:
+      - id: transition.settings
+        title: Transition timing and sound
+        elements: [p:transition, p:sndAc, p:stSnd, p:endSnd, p:snd]
+        priority: P1
+        difficulty: 2
+        strategy: Duration from spd or p14:dur; advance on click and/or after advTm; optional sound.
+
+      - id: transition.classic
+        title: Classic transitions
+        elements: [p:blinds, p:checker, p:circle, p:comb, p:cover, p:cut, p:diamond, p:dissolve, p:fade, p:newsflash,
+                   p:plus, p:pull, p:push, p:random, p:randomBar, p:split, p:strips, p:wedge, p:wheel, p:wipe, p:zoom]
+        priority: P1
+        difficulty: 3
+        strategy: Web Animations on two stacked slide layers (clip-path, transforms, opacity).
+
+      - id: transition.office2010
+        title: Office 2010 transitions
+        elements: [p14:conveyor, p14:doors, p14:ferris, p14:flash, p14:flip, p14:flythrough, p14:gallery,
+                   p14:glitter, p14:honeycomb, p14:pan, p14:prism, p14:reveal, p14:ripple, p14:shred, p14:switch,
+                   p14:vortex, p14:warp, p14:wheelReverse, p14:window]
+        priority: P2
+        difficulty: 4
+        strategy: 3D transitions with CSS 3D transforms; particle-like ones (vortex, shred, honeycomb, glitter) with WebGL.
+        office: Written as mc:AlternateContent with a p:fade fallback.
+
+      - id: transition.office2013
+        title: Office 2013 transitions
+        elements: [p15:prstTrans]
+        priority: P2
+        difficulty: 5
+        strategy: Curtains, wind, prestige, fracture, crush, peel off, page curl, airplane, origami in WebGL.
+
+      - id: transition.morph
+        title: Morph
+        elements: [p159:morph]
+        priority: P2
+        difficulty: 5
+        strategy: >-
+          Match objects between the two slides (same name, names starting with !!, similar content), then interpolate
+          position, size, rotation, fill and geometry; words or characters for text.
+        office: Written as mc:AlternateContent with p:fade in mc:Fallback.
+
+  - id: animation
+    title: Animations
+    features:
+      - id: animation.timing
+        title: Timing tree
+        elements: [p:timing, p:tnLst, p:par, p:seq, p:excl, p:cTn, p:childTnLst, p:subTnLst, p:stCondLst,
+                   p:endCondLst, p:endSync, p:nextCondLst, p:prevCondLst, p:cond, p:tn, p:rtn, p:iterate, p:tmAbs,
+                   p:tmPct]
+        priority: P1
+        difficulty: 4
+        strategy: >-
+          A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous,
+          triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.
+
+      - id: animation.targets
+        title: Animation targets
+        elements: [p:tgtEl, p:spTgt, p:sldTgt, p:sndTgt, p:inkTgt, p:txEl, p:charRg, p:pRg, p:graphicEl, p:oleChartEl,
+                   p:subSp, a:dgm, a:chart]
+        priority: P1
+        difficulty: 3
+        strategy: >-
+          Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must
+          keep those addressable.
+
+      - id: animation.behaviors
+        title: Animation behaviours
+        elements: [p:anim, p:animClr, p:animEffect, p:animMotion, p:animRot, p:animScale, p:set, p:cmd, p:cBhvr,
+                   p:attrNameLst, p:attrName, p:tavLst, p:tav, p:val, p:boolVal, p:intVal, p:fltVal, p:strVal,
+                   p:clrVal, p:by, p:from, p:to, p:rgb, p:hsl, p:rCtr, p:progress]
+        priority: P1
+        difficulty: 4
+        strategy: >-
+          Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …)
+          map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become
+          masks or clip paths; motion paths are relative path strings.
+
+      - id: animation.build
+        title: Build lists
+        elements: [p:bldLst, p:bldP, p:bldDgm, p:bldGraphic, p:bldOleChart, p:bldAsOne, p:bldSub, p:tmplLst, p:tmpl,
+                   a:bldChart, a:bldDgm]
+        priority: P1
+        difficulty: 3
+        strategy: Build text by paragraph and level, charts by series or category, SmartArt by node.
+
+      - id: animation.presets
+        title: Effect presets
+        description: presetClass, presetID and presetSubtype on p:cTn.
+        priority: P1
+        difficulty: 3
+        strategy: The timing tree already contains the behaviours; presets only name PowerPoint's effects (Fade, Fly In, Wipe …) for the editor.
+
+      - id: animation.media
+        title: Media control and bookmarks
+        elements: [p:audio, p:video, p:cMediaNode, p14:bmkTgt, p14:nullEvt, p14:playEvt, p14:pauseEvt, p14:resumeEvt,
+                   p14:seekEvt, p14:stopEvt, p14:triggerEvt, p14:showEvtLst]
+        priority: P2
+        difficulty: 3
+        strategy: Play, pause and stop commands and media bookmarks as timing events.
+
+      - id: animation.pictures
+        title: Animated pictures
+        elements: [aanim:animPr]
+        priority: P3
+        difficulty: 2
+        strategy: Playback settings of animated pictures.
+
+      - id: animation.laser
+        title: Recorded laser pointer
+        elements: [p14:laserClr, p14:laserTraceLst, p14:tracePtLst, p14:tracePt]
+        priority: P3
+        difficulty: 3
+        strategy: Replay recorded laser pointer movements with the narration.
+
+  - id: interactivity
+    title: Slide show and interactivity
+    features:
+      - id: interactivity.player
+        title: Slide show player
+        priority: P1
+        difficulty: 2
+        strategy: Navigation by click, keys and swipe; advance timings; loop and kiosk mode; full screen; presenter view with notes.
+
+      - id: interactivity.hyperlinks
+        title: Hyperlinks and action settings
+        elements: [a:hlinkClick, a:hlinkHover, a:hlinkMouseOver, a:snd, ahyp:hlinkClr]
+        priority: P1
+        difficulty: 2
+        strategy: >-
+          Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom
+          show) handled by the player; hover actions and sounds.
+        office: Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color.
+
+      - id: interactivity.zoom
+        title: Summary, section and slide zoom
+        namespaces: [psez, pslz, psuz, p166]
+        priority: P2
+        difficulty: 3
+        strategy: Draw the zoom's picture and link it to the target slide or section; the zoom animation comes later.
+        office: Zoom objects are saved as mc:AlternateContent with a picture in mc:Fallback.
+
+  - id: review
+    title: Comments and review
+    features:
+      - id: review.comments
+        title: Comments (classic)
+        elements: [p:cmLst, p:cm, p:cmAuthorLst, p:cmAuthor, p:pos, p:text, p15:threadingInfo, p15:parentCm,
+                   p15:presenceInfo]
+        priority: P3
+        difficulty: 2
+        strategy: Optional comment markers and a side panel.
+
+      - id: review.modernComments
+        title: Modern comments, reactions and tasks
+        namespaces: [p188, p223, p228]
+        priority: P3
+        difficulty: 2
+        strategy: Optional threaded comments in a side panel.
+
+  - id: legacy
+    title: Legacy content
+    features:
+      - id: legacy.vml
+        title: VML drawings
+        namespaces: [v, o, pvml]
+        priority: P3
+        difficulty: 4
+        strategy: >-
+          Only for very old converted files and controls: prefer the DrawingML fallback (the picture of an OLE object
+          or control); a VML renderer is a separate project.
+
+  - id: engine
+    title: Rendering engine (cross-cutting)
+    description: Features without elements of their own that decide the fidelity of everything else.
+    features:
+      - id: engine.output
+        title: HTML output
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          One self-contained HTML document (or folder) per presentation: slides as fixed-size containers at 96 dpi,
+          scaled to the viewport; images and fonts embedded or next to it; no external dependencies.
+
+      - id: engine.textLayout
+        title: Text measurement and line breaking
+        priority: P0
+        difficulty: 5
+        strategy: >-
+          Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's
+          rules), justify and position every line ourselves; the browser only draws the positioned runs.
+
+      - id: engine.fonts
+        title: Font resolution and fallback
+        priority: P0
+        difficulty: 4
+        status: partial
+        strategy: >-
+          Find installed and embedded fonts, metric-compatible substitutes (Carlito for Calibri, Liberation for
+          Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser
+          draws with exactly the font we measured.
+
+      - id: engine.fidelity
+        title: Fidelity measurement
+        priority: P0
+        difficulty: 2
+        status: partial
+        strategy: >-
+          Reference renderings from PowerPoint (COM, Windows only) against screenshots of our HTML (headless
+          Chromium), compared slide by slide; the scores show where to work next.

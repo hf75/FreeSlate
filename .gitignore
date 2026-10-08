@@ -6,3 +6,6 @@ obj/
 # Specification sources: large; restore with `dotnet run --project tools/SpecTools -- fetch`
 spec/downloads/
 spec/ecma-376/
+
+# Fidelity runs: our renderings, screenshots, report
+artifacts/

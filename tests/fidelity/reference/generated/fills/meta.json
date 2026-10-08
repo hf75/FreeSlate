@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/fills.pptx",
+  "sha256": "9b406c11b4d5550b1549850292aa355b751e3525d6a84c0e6468bd50d3ed4b55",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 4
+}
