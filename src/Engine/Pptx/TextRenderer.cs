@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Xml.Linq;
 using Engine.Drawing;
 using Engine.Drawing.Geometry;
+using Engine.Text;
 
 namespace Engine.Pptx;
 
@@ -20,28 +22,28 @@ public sealed class TextChain
 }
 
 /// <summary>
-/// Renders a text body as HTML positioned in the shape's text rectangle, resolving the text style cascade
-/// (catalog: text.styles). Line breaking is still left to the browser; our own layout engine replaces this later.
+/// Renders a text body: resolves the text style cascade (catalog: text.styles), lays the text out with our own
+/// engine (catalog: engine.textLayout) and emits every line as SVG text on its exact baseline.
 /// </summary>
-public sealed class TextRenderer(SlideContext slide)
+public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 {
-    const double LineHeight = 1.2;   // single line spacing relative to the font size
-
+    const double PxPerPt = 96.0 / 72;
     static readonly string[] FillNames = ["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"];
 
     abstract record Source;
     sealed record ListStyleSource(XElement ListStyle) : Source;
     sealed record FontRefSource(XElement FontRef) : Source;
 
-    public string Render(TextChain chain, EvaluatedGeometry geometry, bool unflip)
+    /// <summary>SVG markup for the text of a shape (shape-local pixel coordinates), or "".</summary>
+    public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
-        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(HasContent))
+        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld")))
             return "";
 
         var bodies = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")).ToList();
         string? Body(string attribute) => bodies.Select(b => b?.Attribute(attribute)?.Value).FirstOrDefault(v => v != null);
-        double Inset(string attribute, long fallback) => Units.ToPx(long.TryParse(Body(attribute), out var v) ? v : fallback);
+        double Inset(string attribute, long fallback) => (long.TryParse(Body(attribute), out var v) ? v : fallback) / Units.EmuPerPoint;
 
         var autofit = bodies.Select(b => b?.Elements().FirstOrDefault(e => e.Name.LocalName is "noAutofit" or "normAutofit" or "spAutoFit"))
             .FirstOrDefault(e => e != null);
@@ -49,32 +51,82 @@ public sealed class TextRenderer(SlideContext slide)
         var spacingReduction = autofit?.Name.LocalName == "normAutofit" ? (autofit.Long("lnSpcReduction") ?? 0) / 100000.0 : 0;
 
         var sources = BuildSources(chain);
-        var html = new StringBuilder();
         var counters = new int[9];
+        var paragraphs = txBody.Elements(Ns.A + "p")
+            .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
+            .ToList();
 
-        var first = true;
-        foreach (var p in txBody.Elements(Ns.A + "p"))
+        // Text area in points (geometry is in pixels).
+        var left = geometry.TextLeft / PxPerPt + Inset("lIns", 91440);
+        var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
+        var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
+        var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
+
+        var layout = TextLayout.Layout(paragraphs, Math.Max(0, width), Body("wrap") != "none");
+        var offset = Body("anchor") switch
         {
-            html.Append(Paragraph(p, sources, fontScale, spacingReduction, counters, first));
-            first = false;
+            "ctr" => (height - layout.Height) / 2,
+            "b" => height - layout.Height,
+            _ => 0,
+        };
+
+        var svg = new StringBuilder();
+        svg.Append(unflip ? $"<g transform=\"matrix(-1 0 0 1 {Units.Css(boxWidth)} 0)\">" : "<g>");
+        foreach (var line in layout.Lines)
+        {
+            var baseline = top + offset + line.Baseline;
+            foreach (var run in line.Runs)
+            {
+                if (run.Style.Highlight is { } highlight)
+                {
+                    svg.Append($"<rect x=\"{Px(left + run.X)}\" y=\"{Px(baseline - line.Ascent)}\" width=\"{Px(run.Width)}\" height=\"{Px(line.Ascent + line.Descent)}\" fill=\"{highlight.ToHex()}\"/>");
+                }
+                if (string.IsNullOrWhiteSpace(run.Text))
+                    continue;
+                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+            }
+        }
+        svg.Append("</g>");
+        return svg.ToString();
+    }
+
+    static string Px(double points) => Units.Css(points * PxPerPt);
+
+    string Text(PlacedRun run, double x, double y)
+    {
+        var style = run.Style;
+        var family = style.Font.Data.Family;
+        slide.Presentation.UsedFonts.Add(family);
+
+        // PowerPoint snaps every glyph origin to whole device pixels (measured with the calibration deck).
+        var text = run.Style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
+        var advances = style.Font.Data.Advances(text, style.Kerning);
+        var xs = new StringBuilder();
+        var position = x;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsLowSurrogate(text[i]))
+                continue;
+            if (xs.Length > 0) xs.Append(' ');
+            xs.Append(Units.Css(position * PxPerPt));
+            position += advances[i] * style.Size + style.LetterSpacing;
         }
 
-        var left = geometry.TextLeft + Inset("lIns", 91440);
-        var top = geometry.TextTop + Inset("tIns", 45720);
-        var width = geometry.TextRight - geometry.TextLeft - Inset("lIns", 91440) - Inset("rIns", 91440);
-        var height = geometry.TextBottom - geometry.TextTop - Inset("tIns", 45720) - Inset("bIns", 45720);
-        var justify = Body("anchor") switch { "ctr" => "center", "b" => "flex-end", _ => "flex-start" };
-
-        var style = new StringBuilder($"left:{Units.Css(left)}px;top:{Units.Css(top)}px;width:{Units.Css(Math.Max(0, width))}px;height:{Units.Css(Math.Max(0, height))}px");
-        if (justify != "flex-start") style.Append($";justify-content:{justify}");
-        if (Body("wrap") == "none") style.Append(";white-space:pre");
-        if (unflip) style.Append(";transform:scaleX(-1)");
-        return $"<div class=\"tx\" style=\"{style}\">{html}</div>";
+        var sb = new StringBuilder($"<text x=\"{xs}\" y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"");
+        if (style.Bold) sb.Append(" font-weight=\"700\"");
+        if (style.Italic) sb.Append(" font-style=\"italic\"");
+        sb.Append($" fill=\"{style.Color.ToHex()}\"");
+        if (style.Color.A < 0.999) sb.Append($" fill-opacity=\"{Units.Css4(style.Color.A)}\"");
+        var decorations = new List<string>();
+        if (style.Underline != null) decorations.Add("underline");
+        if (style.Strike != null) decorations.Add("line-through");
+        if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
+        if (!style.Kerning) sb.Append(" style=\"font-kerning:none\"");
+        sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
+        return sb.ToString();
     }
 
     static XElement? TxBody(XElement shape) => shape.Element(Ns.P + "txBody") ?? shape.Element(Ns.A + "txBody");
-
-    static bool HasContent(XElement p) => p.Elements().Any(e => e.Name.LocalName is "r" or "fld" or "br");
 
     List<Source> BuildSources(TextChain chain)
     {
@@ -129,82 +181,74 @@ public sealed class TextRenderer(SlideContext slide)
         return null;
     }
 
-    string Paragraph(XElement p, List<Source> sources, double fontScale, double spacingReduction, int[] counters, bool first)
+    ParagraphInput Paragraph(XElement p, List<Source> sources, double fontScale, double spacingReduction, int[] counters)
     {
         var pPr = p.Element(Ns.A + "pPr");
         var level = Math.Clamp(pPr.Int("lvl") ?? 0, 0, 8);
-        var runs = p.Elements().Where(e => e.Name.LocalName is "r" or "fld" or "br").ToList();
-        var firstProps = runs.FirstOrDefault(r => r.Name.LocalName != "br")?.Element(Ns.A + "rPr") ?? p.Element(Ns.A + "endParaRPr");
-        var size = RunSize(firstProps, sources, level, fontScale);
-
         string? P(string name) => ParagraphAttr(pPr, sources, level, name);
-        static double Emu(string? s) => long.TryParse(s, out var v) ? Units.ToPx(v) : 0;
+        static double Points(string? emu) => long.TryParse(emu, out var v) ? v / Units.EmuPerPoint : 0;
 
-        var style = new StringBuilder();
-        style.Append("text-align:").Append(P("algn") switch
+        var runs = new List<TextRun>();
+        foreach (var element in p.Elements())
         {
-            "ctr" => "center",
-            "r" => "right",
-            "just" or "justLow" => "justify",
-            "dist" or "thaiDist" => "justify;text-align-last:justify",
-            _ => "left",
-        }).Append(';');
-        var marL = Emu(P("marL"));
-        var indent = Emu(P("indent"));
-        if (marL != 0) style.Append($"padding-left:{Units.Css(marL)}px;");
-        if (Emu(P("marR")) is var marR and not 0) style.Append($"padding-right:{Units.Css(marR)}px;");
-        if (indent != 0) style.Append($"text-indent:{Units.Css(indent)}px;");
+            switch (element.Name.LocalName)
+            {
+                case "r":
+                    var t = element.Element(Ns.A + "t")?.Value ?? "";
+                    runs.Add(new TextRun(t, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, t)));
+                    break;
+                case "fld":
+                    var text = element.Str("type") == "slidenum"
+                        ? slide.Number.ToString(CultureInfo.InvariantCulture)
+                        : element.Element(Ns.A + "t")?.Value ?? "";
+                    runs.Add(new TextRun(text, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, text)));
+                    break;
+                case "br":
+                    runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)));
+                    break;
+            }
+        }
+        var endStyle = Style(p.Element(Ns.A + "endParaRPr"), sources, level, fontScale, null);
+        var hasText = runs.Any(r => r.Text.Length > 0 && r.Text != "\n");
 
         var lineSpacing = ParagraphElement(pPr, sources, level, "lnSpc");
-        if (lineSpacing?.Element(Ns.A + "spcPts") is { } pts)
-            style.Append($"line-height:{Units.Css((pts.Long("val") ?? 0) / 100.0)}pt;");
-        else
+        var spacing = lineSpacing?.Element(Ns.A + "spcPts") is { } pts
+            ? new LineSpacing(true, (pts.Long("val") ?? 0) / 100.0)
+            : new LineSpacing(false, Math.Max(0.01, (lineSpacing?.Element(Ns.A + "spcPct").Long("val") ?? 100000) / 100000.0 - spacingReduction));
+
+        return new ParagraphInput
         {
-            var pct = (lineSpacing?.Element(Ns.A + "spcPct").Long("val") ?? 100000) / 100000.0;
-            style.Append($"line-height:{Units.Css4(Math.Max(0.1, pct - spacingReduction) * LineHeight)};");
-        }
-        // PowerPoint ignores the space before the first paragraph of a text body.
-        if (!first && Spacing(ParagraphElement(pPr, sources, level, "spcBef"), size) is var before and > 0) style.Append($"margin-top:{Units.Css(before)}pt;");
-        if (Spacing(ParagraphElement(pPr, sources, level, "spcAft"), size) is var after and > 0) style.Append($"margin-bottom:{Units.Css(after)}pt;");
-        style.Append($"font-size:{Units.Css(size)}pt");
-
-        var content = new StringBuilder();
-        var hasText = runs.Any(r => r.Name.LocalName != "br" && (r.Element(Ns.A + "t")?.Value.Length ?? 0) > 0);
-        if (hasText)
-            content.Append(Bullet(pPr, sources, level, firstProps, size, indent, counters));
-        else
-            counters[level] = 0;
-        for (var i = level + 1; i < counters.Length; i++)
-            counters[i] = 0;
-
-        foreach (var run in runs)
-        {
-            if (run.Name.LocalName == "br")
-            {
-                content.Append("<br>");
-                continue;
-            }
-            var text = run.Name.LocalName == "fld" && run.Str("type") == "slidenum"
-                ? slide.Number.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : run.Element(Ns.A + "t")?.Value ?? "";
-            content.Append($"<span style=\"{RunStyle(run.Element(Ns.A + "rPr"), sources, level, fontScale)}\">{WebUtility.HtmlEncode(text)}</span>");
-        }
-        if (!hasText)
-            content.Append($"<span style=\"{RunStyle(p.Element(Ns.A + "endParaRPr"), sources, level, fontScale)}\">&#8203;</span>");
-
-        return $"<p style=\"{style}\">{content}</p>";
+            Runs = runs,
+            EndStyle = endStyle,
+            Align = P("algn") ?? "l",
+            MarginLeft = Points(P("marL")),
+            MarginRight = Points(P("marR")),
+            Indent = Points(P("indent")),
+            Spacing = spacing,
+            SpaceBefore = Space(ParagraphElement(pPr, sources, level, "spcBef")),
+            SpaceAfter = Space(ParagraphElement(pPr, sources, level, "spcAft")),
+            DefaultTabSize = long.TryParse(P("defTabSz"), out var tab) ? tab / Units.EmuPerPoint : 72,
+            Bullet = hasText
+                ? Bullet(pPr, sources, level, runs.FirstOrDefault(r => r.Text != "\n")?.Style ?? endStyle, counters)
+                : ResetBullet(level, counters),
+        };
     }
 
-    static double Spacing(XElement? spacing, double fontSize) =>
-        spacing?.Element(Ns.A + "spcPts") is { } pts ? (pts.Long("val") ?? 0) / 100.0
-        : spacing?.Element(Ns.A + "spcPct") is { } pct ? (pct.Long("val") ?? 0) / 100000.0 * fontSize * LineHeight
-        : 0;
-
-    static double RunSize(XElement? rPr, List<Source> sources, int level, double fontScale) =>
-        (double.TryParse(RunAttr(rPr, sources, level, "sz"), out var sz) ? sz / 100 : 18) * fontScale;
-
-    string Bullet(XElement? pPr, List<Source> sources, int level, XElement? firstRun, double size, double indent, int[] counters)
+    static Bullet? ResetBullet(int level, int[] counters)
     {
+        counters[level] = 0;
+        return null;
+    }
+
+    static ParagraphSpace Space(XElement? spacing) =>
+        spacing?.Element(Ns.A + "spcPts") is { } pts ? new ParagraphSpace(false, (pts.Long("val") ?? 0) / 100.0)
+        : spacing?.Element(Ns.A + "spcPct") is { } pct ? new ParagraphSpace(true, (pct.Long("val") ?? 0) / 100000.0)
+        : ParagraphSpace.None;
+
+    Bullet? Bullet(XElement? pPr, List<Source> sources, int level, TextStyle textStyle, int[] counters)
+    {
+        for (var i = level + 1; i < counters.Length; i++)
+            counters[i] = 0;
         var kind = ParagraphElement(pPr, sources, level, "buNone", "buChar", "buAutoNum", "buBlip");
         string text;
         switch (kind?.Name.LocalName)
@@ -219,99 +263,69 @@ public sealed class TextRenderer(SlideContext slide)
                 break;
             default:
                 counters[level] = 0;
-                return "";
+                return null;
         }
-
-        // line-height:0 keeps the bullet's font metrics out of the line box, as in PowerPoint.
-        var style = new StringBuilder("display:inline-block;text-indent:0;line-height:0;");
-        if (indent < 0) style.Append($"width:{Units.Css(-indent)}px;");
-        else style.Append("padding-right:0.3em;");
 
         var font = ParagraphElement(pPr, sources, level, "buFontTx", "buFont");
-        var family = font?.Name.LocalName == "buFont" ? slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") : null;
-        family ??= Typeface(RunElement(firstRun, sources, level, "latin"));
-        if (!string.IsNullOrEmpty(family))
-        {
-            style.Append($"font-family:{CssFamily(family)};");
-            slide.Presentation.UsedFonts.Add(family);
-        }
+        var resolved = font?.Name.LocalName == "buFont" && slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
+            ? fonts.Resolve(family, textStyle.Bold, textStyle.Italic)
+            : textStyle.Font;
 
         var sizeElement = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
-        var bulletSize = sizeElement?.Name.LocalName switch
+        var size = sizeElement?.Name.LocalName switch
         {
-            "buSzPct" => size * (sizeElement.Long("val") ?? 100000) / 100000.0,
+            "buSzPct" => textStyle.Size * (sizeElement.Long("val") ?? 100000) / 100000.0,
             "buSzPts" => (sizeElement.Long("val") ?? 1800) / 100.0,
-            _ => size,
+            _ => textStyle.Size,
         };
-        style.Append($"font-size:{Units.Css(bulletSize)}pt;");
 
-        var color = ParagraphElement(pPr, sources, level, "buClrTx", "buClr");
-        var resolved = color?.Name.LocalName == "buClr" ? slide.Colors.ResolveChild(color) : RunColor(firstRun, sources, level);
-        if (resolved is { } c) style.Append($"color:{Css(c)};");
-
-        return $"<span style=\"{style}\">{WebUtility.HtmlEncode(text)}</span>";
+        var colorElement = ParagraphElement(pPr, sources, level, "buClrTx", "buClr");
+        var color = colorElement?.Name.LocalName == "buClr" ? slide.Colors.ResolveChild(colorElement) ?? textStyle.Color : textStyle.Color;
+        return new Bullet(text, new TextStyle(resolved, size, color, Kerning: false));
     }
 
-    string RunStyle(XElement? rPr, List<Source> sources, int level, double fontScale)
+    TextStyle Style(XElement? rPr, List<Source> sources, int level, double fontScale, string? text)
     {
         string? R(string name) => RunAttr(rPr, sources, level, name);
-        var style = new StringBuilder();
+        var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale;
+        var bold = R("b") is "1" or "true";
+        var italic = R("i") is "1" or "true";
 
-        var latin = Typeface(RunElement(rPr, sources, level, "latin")) ?? slide.Theme.MinorLatin;
-        var eastAsian = Typeface(RunElement(rPr, sources, level, "ea"));
-        slide.Presentation.UsedFonts.Add(latin);
-        style.Append($"font-family:{CssFamily(latin)}");
-        if (!string.IsNullOrEmpty(eastAsian) && eastAsian != latin)
-        {
-            style.Append(',').Append(CssFamily(eastAsian));
-            slide.Presentation.UsedFonts.Add(eastAsian);
-        }
-        style.Append(",sans-serif;");
-        style.Append($"font-size:{Units.Css(RunSize(rPr, sources, level, fontScale))}pt;");
+        var family = Typeface(RunElement(rPr, sources, level, "latin")) ?? slide.Theme.MinorLatin;
+        if (text != null && text.Any(LineBreaker.IsIdeographic) && Typeface(RunElement(rPr, sources, level, "ea")) is { } eastAsian)
+            family = eastAsian;
 
-        if (R("b") is "1" or "true") style.Append("font-weight:700;");
-        if (R("i") is "1" or "true") style.Append("font-style:italic;");
-        var decorations = new List<string>();
-        if (R("u") is { } u && u != "none") decorations.Add(u.StartsWith("dbl", StringComparison.Ordinal) ? "underline double" : "underline");
-        if (R("strike") is "sngStrike" or "dblStrike") decorations.Add("line-through");
-        if (decorations.Count > 0) style.Append($"text-decoration:{string.Join(' ', decorations)};");
-        switch (R("cap"))
-        {
-            case "all": style.Append("text-transform:uppercase;"); break;
-            case "small": style.Append("font-variant:small-caps;"); break;
-        }
-        if (int.TryParse(R("baseline"), out var baseline) && baseline != 0)
-            style.Append($"vertical-align:{Units.Css4(baseline / 100000.0)}em;");
-        if (int.TryParse(R("spc"), out var spacing) && spacing != 0)
-            style.Append($"letter-spacing:{Units.Css(spacing / 100.0)}pt;");
-
-        if (RunColor(rPr, sources, level) is { } color)
-            style.Append($"color:{Css(color)};");
-        if (RunElement(rPr, sources, level, "highlight") is { } highlight && slide.Colors.ResolveChild(highlight) is { } h)
-            style.Append($"background-color:{Css(h)};");
-        return style.ToString().TrimEnd(';');
+        // kern: kerning applies from this size (hundredths of a point) up; without it PowerPoint does not kern.
+        var kern = double.TryParse(R("kern"), out var k) ? k / 100 : double.MaxValue;
+        return new TextStyle(
+            fonts.Resolve(family, bold, italic),
+            size,
+            RunColor(rPr, sources, level),
+            bold,
+            italic,
+            size >= kern,
+            int.TryParse(R("spc"), out var spc) ? spc / 100.0 : 0,
+            R("u") is { } u && u != "none" ? u : null,
+            R("strike") is "sngStrike" or "dblStrike" ? R("strike") : null,
+            int.TryParse(R("baseline"), out var b) ? b / 100000.0 : 0,
+            RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
+            R("cap") == "all");
     }
 
-    RgbColor? RunColor(XElement? rPr, List<Source> sources, int level)
+    RgbColor RunColor(XElement? rPr, List<Source> sources, int level)
     {
         var fill = RunElement(rPr, sources, level, FillNames);
         return fill?.Name.LocalName switch
         {
-            null => slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "tx1"))),
-            "solidFill" => slide.Colors.ResolveChild(fill),
+            "solidFill" => slide.Colors.ResolveChild(fill) ?? RgbColor.Black,
             "noFill" => RgbColor.Black.WithAlpha(0),
-            "gradFill" => slide.Colors.ResolveChild(fill.Element(Ns.A + "gsLst")?.Element(Ns.A + "gs")),
-            _ => null,
+            "gradFill" => slide.Colors.ResolveChild(fill.Element(Ns.A + "gsLst")?.Element(Ns.A + "gs")) ?? RgbColor.Black,
+            _ => slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "tx1"))),
         };
     }
 
     string? Typeface(XElement? font) =>
         font?.Str("typeface") is { Length: > 0 } t ? slide.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
-
-    static string CssFamily(string family) => $"'{family.Replace("'", "\\'")}'";
-
-    static string Css(RgbColor c) =>
-        c.A < 0.999 ? $"rgba({(int)Math.Round(c.R * 255)},{(int)Math.Round(c.G * 255)},{(int)Math.Round(c.B * 255)},{Units.Css4(c.A)})" : c.ToHex();
 
     static string AutoNumber(string scheme, int n)
     {
@@ -321,7 +335,7 @@ public sealed class TextRenderer(SlideContext slide)
             _ when scheme.StartsWith("alphaUc", StringComparison.Ordinal) => Alpha(n),
             _ when scheme.StartsWith("romanLc", StringComparison.Ordinal) => Roman(n).ToLowerInvariant(),
             _ when scheme.StartsWith("romanUc", StringComparison.Ordinal) => Roman(n),
-            _ => n.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _ => n.ToString(CultureInfo.InvariantCulture),
         };
         return scheme switch
         {

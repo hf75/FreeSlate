@@ -25,6 +25,10 @@ public sealed class FontLocator
 
     public bool IsInstalled(string family) => faces.Value.Any(f => f.System && f.Family.Equals(family, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>All known faces of a family, installed ones first.</summary>
+    public IEnumerable<FontFace> Faces(string family) =>
+        faces.Value.Where(f => f.Family.Equals(family, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.System ? 0 : 1);
+
     /// <summary>Faces of a family that are not installed but available as files (to be embedded).</summary>
     public IEnumerable<FontFace> Embeddable(string family) =>
         IsInstalled(family) ? [] : faces.Value.Where(f => !f.System && f.Family.Equals(family, StringComparison.OrdinalIgnoreCase));

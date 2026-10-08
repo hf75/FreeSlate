@@ -21,8 +21,7 @@ public static class PptxConverter
         .bg{position:absolute;left:0;top:0}
         .sp{position:absolute;left:0;top:0;transform-origin:0 0}
         .sp>svg{position:absolute;left:0;top:0;overflow:visible}
-        .tx{position:absolute;display:flex;flex-direction:column;white-space:pre-wrap;overflow-wrap:break-word}
-        .tx p{margin:0}
+        .sp text{white-space:pre;font-variant-ligatures:none}
         """;
 
     public static string ToHtml(string pptxPath, FontLocator? fonts = null)

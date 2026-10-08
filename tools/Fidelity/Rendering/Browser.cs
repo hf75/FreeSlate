@@ -41,7 +41,9 @@ public sealed class Browser(string executable)
         foreach (var arg in new[]
                  {
                      "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
-                     "--disable-extensions", "--force-device-scale-factor=1", "--font-render-hinting=none",
+                     "--disable-extensions", "--force-device-scale-factor=1",
+                     // PowerPoint exports with grayscale anti-aliasing; LCD (ClearType) text would add colored fringes.
+                     "--disable-lcd-text",
                      $"--user-data-dir={profileDirectory}", $"--window-size={width},{height}",
                      "--virtual-time-budget=5000", $"--screenshot={pngPath}", url,
                  })

@@ -19,7 +19,12 @@ switch (command)
     case "reference" when OperatingSystem.IsWindows():
         References.Render(decks, force);
         break;
-    case "generate" or "reference":
+    case "calibrate" when OperatingSystem.IsWindows():
+        if (!args.Contains("--measure-only"))
+            Calibration.Render();
+        Console.WriteLine($"{Calibration.Measure().Count} boxes measured: {Path.Combine(Calibration.Dir, "measurements.json")}");
+        break;
+    case "generate" or "reference" or "calibrate":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
         return 1;
     case "render":

@@ -33,8 +33,8 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 0 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
-| [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 3 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **38** | **4** |
+| [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **39** | **4** |
 
 <a id="package"></a>
 
@@ -1262,7 +1262,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** Line spacing as a percentage of the line height or in points; space before and after.
 
-**Office behaviour:** Measured with the fidelity tests: single line spacing is 1.2 × the font size (Aptos), percentages scale it; the space before the first paragraph of a text body is ignored; a bullet in another font does not enlarge the line.
+**Office behaviour:** Measured with the text-metrics calibration deck (9 fonts, multiples, exact spacing, sizes): single line height is 1.2 × the font size for every font, multiples scale it, exact spacing is rounded to whole points. At single spacing the baseline sits at 1.2 × size × ascent/(ascent+descent) (typo metrics if USE_TYPO_METRICS, else Windows metrics); above single spacing at H × min(0.75, ratio); below at max(S × ratio − (S − H), H × min(0.75, ratio)). Lines take the largest ascent and descent of their runs; bullets do not count. Space before is ignored for the first paragraph; percentages of space before/after refer to 1.2 × font size. Glyph origins are snapped to device pixels.
 
 **Elements (5):** [`a:lnSpc`](../format/namespaces/a.md#alnspc), [`a:spcAft`](../format/namespaces/a.md#aspcaft), [`a:spcBef`](../format/namespaces/a.md#aspcbef), [`a:spcPct`](../format/namespaces/a.md#aspcpct), [`a:spcPts`](../format/namespaces/a.md#aspcpts)
 
@@ -2227,7 +2227,7 @@ Features without elements of their own that decide the fidelity of everything el
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [HTML output](#engine.output) | P0 | ●●○○○ | partial | 0 | 0 |
-| [Text measurement and line breaking](#engine.textLayout) | P0 | ●●●●● | todo | 0 | 0 |
+| [Text measurement and line breaking](#engine.textLayout) | P0 | ●●●●● | partial | 0 | 0 |
 | [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | partial | 0 | 0 |
 | [Fidelity measurement](#engine.fidelity) | P0 | ●●○○○ | partial | 0 | 0 |
 
@@ -2243,7 +2243,7 @@ Features without elements of their own that decide the fidelity of everything el
 
 ### Text measurement and line breaking
 
-`engine.textLayout` · P0 · difficulty 5 · todo
+`engine.textLayout` · P0 · difficulty 5 · partial
 
 **Rendering:** Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's rules), justify and position every line ourselves; the browser only draws the positioned runs.
 

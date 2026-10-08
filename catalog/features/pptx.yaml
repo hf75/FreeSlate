@@ -768,9 +768,12 @@ areas:
         status: partial
         strategy: Line spacing as a percentage of the line height or in points; space before and after.
         office: >-
-          Measured with the fidelity tests: single line spacing is 1.2 × the font size (Aptos), percentages scale it;
-          the space before the first paragraph of a text body is ignored; a bullet in another font does not enlarge
-          the line.
+          Measured with the text-metrics calibration deck (9 fonts, multiples, exact spacing, sizes): single line height
+          is 1.2 × the font size for every font, multiples scale it, exact spacing is rounded to whole points. At single
+          spacing the baseline sits at 1.2 × size × ascent/(ascent+descent) (typo metrics if USE_TYPO_METRICS, else
+          Windows metrics); above single spacing at H × min(0.75, ratio); below at max(S × ratio − (S − H), H × min(0.75, ratio)).
+          Lines take the largest ascent and descent of their runs; bullets do not count. Space before is ignored for the
+          first paragraph; percentages of space before/after refer to 1.2 × font size. Glyph origins are snapped to device pixels.
 
       - id: text.tabs
         title: Tab stops
@@ -1367,6 +1370,7 @@ areas:
         title: Text measurement and line breaking
         priority: P0
         difficulty: 5
+        status: partial
         strategy: >-
           Shape text with HarfBuzz using the actual font files, break lines like PowerPoint (UAX 14 plus Office's
           rules), justify and position every line ourselves; the browser only draws the positioned runs.

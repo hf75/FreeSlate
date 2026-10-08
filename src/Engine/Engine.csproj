@@ -11,4 +11,8 @@
     <EmbeddedResource Include="Resources\*.xml" LogicalName="%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="HarfBuzzSharp" Version="14.2.1.301" />
+  </ItemGroup>
+
 </Project>

@@ -4,6 +4,17 @@ using System.Xml.Linq;
 
 namespace Fidelity.PowerPoint;
 
+/// <summary>Layout of the text-metrics deck, shared by the generator and the calibration measurement.</summary>
+public static class MetricsDeck
+{
+    /// <summary>Fonts of the text metrics deck; the calibration measures PowerPoint's line model for each.</summary>
+    public static readonly string[] Fonts = ["Aptos", "Calibri", "Arial", "Times New Roman", "Segoe UI", "Georgia", "Cambria", "Courier New", "Verdana"];
+
+    /// <summary>Left edges (points) of the four text boxes on every metrics slide; boxes start at <see cref="Top"/>.</summary>
+    public static readonly float[] Columns = [20, 260, 500, 740];
+    public const float Top = 40, Width = 200;
+}
+
 /// <summary>
 /// Builds the generated test decks through PowerPoint itself, so the files contain exactly the markup PowerPoint
 /// writes (style references, theme colors, autofit values …). Each deck isolates one group of features.
@@ -22,7 +33,9 @@ public static class CorpusGenerator
 
     const float SlideWidth = 960, SlideHeight = 540;   // points, 16:9
 
-    public static readonly string[] Decks = ["geometry-presets", "fills", "lines", "text-basic", "transforms"];
+    public static readonly string[] Decks = ["geometry-presets", "fills", "lines", "text-basic", "transforms", "text-metrics"];
+
+
 
     public static void Run(string outputDir)
     {
@@ -33,6 +46,7 @@ public static class CorpusGenerator
         Generate(session, Path.Combine(outputDir, "lines.pptx"), Lines);
         Generate(session, Path.Combine(outputDir, "text-basic.pptx"), TextBasic);
         Generate(session, Path.Combine(outputDir, "transforms.pptx"), Transforms);
+        Generate(session, Path.Combine(outputDir, "text-metrics.pptx"), TextMetrics);
     }
 
     static void Generate(PowerPointSession session, string path, Action<dynamic> build)
@@ -340,5 +354,107 @@ public static class CorpusGenerator
             connector.RerouteConnections();
             connector.Line.Weight = 2f;
         }
+    }
+
+    /// <summary>
+    /// Calibration deck for the text layout engine. Every box holds lines of "HHHH" (flat cap top and baseline),
+    /// so line positions can be measured exactly. Per font: slide A varies line spacing (100 %, 90 %, 150 %,
+    /// exactly 40 pt) at 24 pt; slide B varies the size (12, 24, 48 pt) and adds space before/after. The last
+    /// slides cover anchoring, insets, mixed sizes and bullets.
+    /// </summary>
+    static void TextMetrics(dynamic presentation)
+    {
+        const int MsoFalse = PowerPointSession.MsoFalse, MsoTrue = PowerPointSession.MsoTrue;
+        dynamic Box(dynamic slide, float left, float top, float height, string font, float size, int paragraphs = 6)
+        {
+            var box = slide.Shapes.AddTextbox(Horizontal, left, top, MetricsDeck.Width, height);
+            box.TextFrame.AutoSize = 0;   // ppAutoSizeNone
+            box.TextFrame.WordWrap = MsoFalse;
+            box.TextFrame.VerticalAnchor = AnchorTop;
+            box.Height = height;
+            var range = box.TextFrame.TextRange;
+            range.Text = string.Join('\r', Enumerable.Repeat("HHHH", paragraphs));
+            range.Font.Name = font;
+            range.Font.Size = size;
+            range.Font.Color.RGB = 0;
+            range.ParagraphFormat.Alignment = AlignLeft;
+            range.ParagraphFormat.SpaceBefore = 0;
+            range.ParagraphFormat.SpaceAfter = 0;
+            range.ParagraphFormat.LineRuleWithin = MsoTrue;
+            range.ParagraphFormat.SpaceWithin = 1f;
+            return box;
+        }
+
+        foreach (var font in MetricsDeck.Fonts)
+        {
+            var a = AddSlide(presentation, LayoutBlank);
+            float[] multiples = [1f, 0.9f, 1.5f];
+            for (var i = 0; i < 3; i++)
+                Box(a, MetricsDeck.Columns[i], MetricsDeck.Top, 480, font, 24).TextFrame.TextRange.ParagraphFormat.SpaceWithin = multiples[i];
+            var exact = Box(a, MetricsDeck.Columns[3], MetricsDeck.Top, 480, font, 24).TextFrame.TextRange.ParagraphFormat;
+            exact.LineRuleWithin = MsoFalse;
+            exact.SpaceWithin = 40f;
+
+            var b = AddSlide(presentation, LayoutBlank);
+            float[] sizes = [12, 24, 48];
+            for (var i = 0; i < 3; i++)
+                Box(b, MetricsDeck.Columns[i], MetricsDeck.Top, 480, font, sizes[i], i == 2 ? 4 : 6);
+            var spaced = Box(b, MetricsDeck.Columns[3], MetricsDeck.Top, 480, font, 24).TextFrame.TextRange.ParagraphFormat;
+            spaced.LineRuleBefore = MsoFalse;
+            spaced.SpaceBefore = 12f;
+            spaced.LineRuleAfter = MsoFalse;
+            spaced.SpaceAfter = 6f;
+        }
+
+        // Anchoring: top, middle, bottom in boxes of fixed height; a box without insets.
+        var anchors = AddSlide(presentation, LayoutBlank);
+        int[] anchorValues = [AnchorTop, AnchorMiddle, AnchorBottom];
+        for (var i = 0; i < 3; i++)
+            Box(anchors, MetricsDeck.Columns[i], MetricsDeck.Top, 300, "Aptos", 24, 3).TextFrame.VerticalAnchor = anchorValues[i];
+        var noInsets = Box(anchors, MetricsDeck.Columns[3], MetricsDeck.Top, 300, "Aptos", 24, 3).TextFrame;
+        noInsets.MarginTop = 0;
+        noInsets.MarginBottom = 0;
+        noInsets.MarginLeft = 0;
+        noInsets.MarginRight = 0;
+
+        // Mixed sizes in one line, and a bullet in another font.
+        var mixed = AddSlide(presentation, LayoutBlank);
+        var mixedBox = Box(mixed, MetricsDeck.Columns[0], MetricsDeck.Top, 300, "Aptos", 24, 3);
+        mixedBox.TextFrame.TextRange.Paragraphs(2).Characters(1, 2).Font.Size = 48;
+        var bulletBox = Box(mixed, MetricsDeck.Columns[1], MetricsDeck.Top, 300, "Aptos", 24, 4);
+        var bullets = bulletBox.TextFrame.TextRange.ParagraphFormat.Bullet;
+        bullets.Visible = MsoTrue;
+        bullets.Character = 8226;
+        bullets.Font.Name = "Arial";
+        var bigBullet = Box(mixed, MetricsDeck.Columns[2], MetricsDeck.Top, 300, "Aptos", 24, 4).TextFrame.TextRange.ParagraphFormat.Bullet;
+        bigBullet.Visible = MsoTrue;
+        bigBullet.Character = 8226;
+        bigBullet.RelativeSize = 2f;
+        Box(mixed, MetricsDeck.Columns[3], MetricsDeck.Top, 300, "Times New Roman", 24, 4).TextFrame.TextRange.Paragraphs(2).Font.Name = "Aptos";
+
+        // Second round: the transition around single spacing and exact spacing below and above the natural height.
+        foreach (var font in new[] { "Aptos", "Arial" })
+        {
+            var multiples = AddSlide(presentation, LayoutBlank);
+            float[] values = [1.05f, 1.1f, 1.2f, 1.3f];
+            for (var i = 0; i < 4; i++)
+                Box(multiples, MetricsDeck.Columns[i], MetricsDeck.Top, 480, font, 24).TextFrame.TextRange.ParagraphFormat.SpaceWithin = values[i];
+
+            var exactSlide = AddSlide(presentation, LayoutBlank);
+            float[] points = [20, 24, 28.8f, 34];
+            for (var i = 0; i < 4; i++)
+            {
+                var format = Box(exactSlide, MetricsDeck.Columns[i], MetricsDeck.Top, 480, font, 24).TextFrame.TextRange.ParagraphFormat;
+                format.LineRuleWithin = MsoFalse;
+                format.SpaceWithin = points[i];
+            }
+        }
+        var lowSlide = AddSlide(presentation, LayoutBlank);
+        float[] low = [0.8f, 0.7f, 0.5f];
+        for (var i = 0; i < 3; i++)
+            Box(lowSlide, MetricsDeck.Columns[i], MetricsDeck.Top, 480, "Aptos", 24).TextFrame.TextRange.ParagraphFormat.SpaceWithin = low[i];
+        var relative = Box(lowSlide, MetricsDeck.Columns[3], MetricsDeck.Top, 480, "Aptos", 24).TextFrame.TextRange.ParagraphFormat;
+        relative.LineRuleBefore = MsoTrue;
+        relative.SpaceBefore = 0.5f;
     }
 }

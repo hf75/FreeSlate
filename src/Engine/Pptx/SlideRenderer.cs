@@ -13,7 +13,7 @@ namespace Engine.Pptx;
 /// </summary>
 public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 {
-    readonly TextRenderer text = new(slide);
+    readonly TextRenderer text = new(slide, Engine.Text.FontResolver.Default);
 
     /// <summary>Maps child coordinates of a group to slide coordinates (EMU); Transform holds rotations and flips.</summary>
     readonly record struct Placement(Matrix Transform, double OffX, double OffY, double ScaleX, double ScaleY, double ChildX, double ChildY, Fill? GroupFill)
@@ -115,8 +115,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
-        html.Append(paths).Append("</svg>");
-
+        html.Append(paths);
         if (shape.Name.LocalName == "sp")
         {
             var placeholder = Placeholders.Ph(shape);
@@ -125,8 +124,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 Shapes = chain,
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 FontRef = style?.Element(Ns.A + "fontRef"),
-            }, geometry, flipH ^ flipV));
+            }, geometry, pw, flipH ^ flipV));
         }
+        html.Append("</svg>");
         html.Append("</div>");
     }
 
