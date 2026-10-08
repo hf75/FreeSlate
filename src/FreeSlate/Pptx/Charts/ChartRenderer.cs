@@ -48,6 +48,9 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     double width, height;
     double originX, originY;
 
+    /// <summary>The diameter of the largest bubble at a bubble scale of 100 %, in points.</summary>
+    double bubbleBase;
+
     sealed record Box(double X, double Y, double W, double H)
     {
         public double Right => X + W;
@@ -69,7 +72,11 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         public XElement? SpPr { get; init; }
     }
 
-    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex);
+    /// <summary>
+    /// A legend entry. Series with a visible line get a wide line key; line-type series without a line (markers only,
+    /// stock series) keep the square key's width and show just their marker there (measured).
+    /// </summary>
+    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false);
 
     sealed class LegendLayout
     {
@@ -88,7 +95,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         public required TextStyle Style { get; init; }
         public required List<ChartGroup> Groups { get; init; }
         public bool Visible => !Axis.Deleted;
-        public bool HasLabels => Visible && Axis.TickLabelPosition != "none";
+        public bool HasLabels => Visible && Axis.TickLabelPosition != "none" && !InTable;
         public AxisScale Scale { get; set; }
         public List<string> Labels { get; set; } = [];
         public double MaxLabelWidth { get; set; }
@@ -105,6 +112,9 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
 
         /// <summary>The axis has a title; its labels keep 1.5 pt from it instead of reaching into the margin.</summary>
         public bool Titled { get; set; }
+
+        /// <summary>A data table below the plot area shows the category labels instead of the axis.</summary>
+        public bool InTable { get; set; }
 
         public double Map(double value) => Start + Scale.Fraction(value) * (End - Start);
 
@@ -127,7 +137,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         height = heightPt;
         originX = originXPx;
         originY = originYPx;
-        culture = Culture(ChartModel.Val(model.ChartSpace, "lang"));
+        culture = ChartModel.Culture(ChartModel.Val(model.ChartSpace, "lang"));
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
         colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
@@ -161,9 +171,12 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
 
         var body = new StringBuilder();
         var pies = model.Groups.Where(g => g.IsPie).ToList();
-        var axisGroups = model.Groups.Where(g => !g.IsPie).ToList();
+        var radars = model.Groups.Where(g => g.IsRadar).ToList();
+        var axisGroups = model.Groups.Where(g => !g.IsPie && !g.IsRadar).ToList();
         if (axisGroups.Count > 0)
             body.Append(AxisChart(axisGroups, outer, legend, title));
+        if (radars.Count > 0)
+            body.Append(Radar(radars, outer));
         foreach (var pie in pies)
             body.Append(Pie(pie, PlotBox(outer, square: true)));
 
@@ -183,12 +196,6 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         var package = slide.Presentation.Package;
         var target = package.FirstRelationship(chartPart, kind)?.Target;
         return target != null && package.Exists(target) ? slide.Presentation.Load(target).Root : null;
-    }
-
-    static CultureInfo Culture(string? lang)
-    {
-        try { return lang != null ? CultureInfo.GetCultureInfo(lang) : CultureInfo.InvariantCulture; }
-        catch (CultureNotFoundException) { return CultureInfo.InvariantCulture; }
     }
 
     static XElement? DefRPr(XElement? txPr) => txPr?.Element(Ns.A + "p")?.Element(Ns.A + "pPr")?.Element(Ns.A + "defRPr");
@@ -534,8 +541,10 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             {
                 if (!deleted.Contains(series.Index))
                 {
-                    var lineKey = group.IsLine || group.IsScatter;
-                    entries.Add(new LegendEntry(series.Name, PointFill(group, series, -1), SeriesOutline(group, series), lineKey, lineKey ? Marker(group, series) : null, series.Index));
+                    var outline = SeriesOutline(group, series);
+                    var lineKey = group.HasLines && outline is { Visible: true } && (!group.IsScatter || ScatterLines(group, series));
+                    entries.Add(new LegendEntry(series.Name, PointFill(group, series, -1), outline, lineKey,
+                        group.HasLines ? Marker(group, series) : null, series.Index, MarkerOnly: group.HasLines && !lineKey, Circle: group.IsBubble));
                 }
             }
             index += group.Series.Count;
@@ -635,11 +644,26 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                     svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, keyCenter, center, entry.Fill, entry.Outline));
                 svg.Append(text.Label(entry.Text, style, left + LegendLineText * lineHeight, baseline));
             }
+            else if (entry.MarkerOnly)
+            {
+                if (entry.Marker != null)
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + (LegendKeyLeft + LegendKey / 2) * lineHeight, center, entry.Fill, entry.Outline));
+                svg.Append(text.Label(entry.Text, style, left + LegendText * lineHeight, baseline));
+            }
             else
             {
                 var key = LegendKey * lineHeight;
                 var outline = entry.Outline is { Visible: true } o ? o with { WidthEmu = Math.Min(o.WidthEmu, 19050) } : null;
-                svg.Append(Rect(new Box(left + LegendKeyLeft * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
+                if (entry.Circle)
+                {
+                    // Bubble series show a round key.
+                    var (kx, r) = (left + LegendKeyLeft * lineHeight + key / 2, key / 2);
+                    svg.Append($"<circle cx=\"{Px(kx)}\" cy=\"{Px(center)}\" r=\"{Px(r)}\"{paint.Fill(entry.Fill, key, key, defs)}{paint.Stroke(outline, key, key, defs)}/>");
+                }
+                else
+                {
+                    svg.Append(Rect(new Box(left + LegendKeyLeft * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
+                }
                 svg.Append(text.Label(entry.Text, style, left + LegendText * lineHeight, baseline));
             }
         }
@@ -686,7 +710,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     Outline? SeriesOutline(ChartGroup group, ChartSeries series)
     {
         var own = series.SpPr?.Element(Ns.A + "ln");
-        if (!group.IsLine && !group.IsScatter)
+        if (!group.HasLines)
             return own != null ? OutlineReader.Merge([(own, colors)]) : null;
         var automatic = new XElement(Ns.A + "ln", new XAttribute("w", "28575"), new XAttribute("cap", "rnd"),
             new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", AutoColor(series.Index).ToHex().TrimStart('#')))),
@@ -764,15 +788,19 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             titles.Add((layout, axisTitle));
         }
 
+        var table = BuildDataTable(groups, axes);
         var inner = ManualPlot();
         var plot = inner ?? outer;
+        // Measured: the largest bubble is 0.2307 m + 2.65 pt wide, m being the smaller side of the plot area
+        // before the axis labels take their room.
+        bubbleBase = 0.2307 * Math.Min(plot.W, plot.H) + 2.65;
         for (var pass = 0; pass < 3; pass++)
         {
             foreach (var layout in axes.Where(a => a.Axis.IsValue))
                 ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H);
             if (inner != null)
                 break;
-            var next = InnerPlot(outer, axes, plot);
+            var next = InnerPlot(outer, axes, plot, table);
             if (Math.Abs(next.W - plot.W) < 0.01 && Math.Abs(next.H - plot.H) < 0.01)
             {
                 plot = next;
@@ -820,6 +848,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             svg.Append(AxisLine(layout, axes, plot));
         foreach (var layout in axes.Where(a => a.HasLabels))
             svg.Append(AxisLabels(layout, axes, plot));
+        if (table != null)
+            svg.Append(DrawDataTable(table, plot));
         foreach (var (layout, axisTitle) in titles)
         {
             var b = axisTitle.Box;
@@ -829,11 +859,129 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return svg.ToString();
     }
 
+    // ---------------------------------------------------------------- data table
+
+    const double DataTableBleed = 6;   // the table reaches this far past the plot area's left and bottom edges
+
+    /// <summary>A data table below the plot area (catalog: chart.dataTable).</summary>
+    sealed class DataTableLayout
+    {
+        public required XElement Element { get; init; }
+        public required TextStyle Style { get; init; }
+        public required AxisLayout Category { get; init; }
+        public required List<(ChartGroup Group, ChartSeries Series)> Rows { get; init; }
+        public required double RowHeight { get; init; }
+        public required double NameWidth { get; init; }
+        public required bool Keys { get; init; }
+
+        /// <summary>The header row with the categories and one row per series.</summary>
+        public double Height => RowHeight * (Rows.Count + 1);
+    }
+
+    /// <summary>
+    /// The data table of c:dTable, when the categories run along the bottom. Measured: rows are L + 0.0925 s + 2.4 pt
+    /// high; the name column holds the widest series name plus 1.0975 s + 2.89 pt (key and padding).
+    /// </summary>
+    DataTableLayout? BuildDataTable(List<ChartGroup> groups, List<AxisLayout> axes)
+    {
+        if (model.PlotArea?.Element(Ns.C + "dTable") is not { } element
+            || axes.FirstOrDefault(a => !a.Axis.IsValue && a.Axis.Position == "b" && a.Visible) is not { } category)
+            return null;
+        var style = Style(element.Element(Ns.C + "txPr"), "dataTable");
+        var rows = groups.Where(g => g.AxisIds.Contains(category.Axis.Id) && !g.IsScatter).SelectMany(g => g.Series.Select(s => (g, s))).ToList();
+        var keys = ChartModel.Flag(element, "showKeys", false);
+        var lineHeight = LineHeight(style);
+        var names = rows.Count == 0 ? 0 : rows.Max(r => Width(r.s.Name, style));
+        category.InTable = true;
+        return new DataTableLayout
+        {
+            Element = element,
+            Style = style,
+            Category = category,
+            Rows = rows,
+            RowHeight = lineHeight + 0.0925 * style.Size + 2.4,
+            NameWidth = names + (keys ? 1.0975 * style.Size + 2.89 : 0.26 * lineHeight + 2),
+            Keys = keys,
+        };
+    }
+
+    string DrawDataTable(DataTableLayout table, Box plot)
+    {
+        var svg = new StringBuilder();
+        var style = table.Style;
+        var lineHeight = LineHeight(style);
+        var category = table.Category;
+        var (top, rowsTop, bottom) = (plot.Bottom, plot.Bottom + table.RowHeight, plot.Bottom + table.Height);
+        var (left, right) = (plot.X - table.NameWidth, plot.Right);
+        var line = table.Element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
+            ? OutlineReader.Merge([(ln, colors)])
+            : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
+        if (line is { Visible: true })
+        {
+            if (ChartModel.Flag(table.Element, "showOutline", false))
+            {
+                svg.Append(GridLine(line, plot.X, top, right, top));
+                svg.Append(GridLine(line, right, top, right, bottom));
+                svg.Append(GridLine(line, left, bottom, right, bottom));
+                svg.Append(GridLine(line, left, rowsTop, left, bottom));
+                svg.Append(GridLine(line, left, rowsTop, plot.X, rowsTop));
+                svg.Append(GridLine(line, plot.X, top, plot.X, rowsTop));
+            }
+            if (ChartModel.Flag(table.Element, "showHorzBorder", false))
+            {
+                for (var r = 1; r <= table.Rows.Count; r++)
+                    svg.Append(GridLine(line, left, top + r * table.RowHeight, right, top + r * table.RowHeight));
+            }
+            if (ChartModel.Flag(table.Element, "showVertBorder", false))
+            {
+                for (var i = 0; i < category.Categories; i++)
+                    svg.Append(GridLine(line, category.Boundary(i), top, category.Boundary(i), bottom));
+            }
+        }
+
+        // Category names in the header row, then a row per series: key and name, values centered under their category.
+        double RowCenter(int row) => top + (row + 0.5) * table.RowHeight;
+        for (var i = 0; i < category.Categories && i < category.Labels.Count; i++)
+        {
+            var label = category.Labels[i];
+            var center = (category.Boundary(i) + category.Boundary(i + 1)) / 2;
+            svg.Append(text.Label(label, style, center - Width(label, style) / 2, CenteredBaseline(style, RowCenter(0))));
+        }
+        for (var r = 0; r < table.Rows.Count; r++)
+        {
+            var (group, series) = table.Rows[r];
+            var center = RowCenter(r + 1);
+            if (table.Keys)
+            {
+                var key = LegendKey * lineHeight;
+                var fill = group.HasLines ? SeriesOutline(group, series)?.Fill ?? PointFill(group, series, -1) : PointFill(group, series, -1);
+                svg.Append(Rect(new Box(left + 0.26 * lineHeight, center - key / 2, key, key), fill, null, snap: false));
+            }
+            svg.Append(text.Label(series.Name, style, left + (table.Keys ? 0.958 : 0.26) * lineHeight, CenteredBaseline(style, center)));
+            for (var i = 0; i < category.Categories; i++)
+            {
+                if (series.Values.ElementAtOrDefault(i) is not { } v)
+                    continue;
+                var value = NumberFormat.Format(v, series.FormatCode, culture);
+                var middle = (category.Boundary(i) + category.Boundary(i + 1)) / 2;
+                svg.Append(text.Label(value, style, middle - Width(value, style) / 2, CenteredBaseline(style, center)));
+            }
+        }
+        return svg.ToString();
+    }
+
     /// <summary>The plot area inside the axis labels (PowerPoint's inner plot area) for an automatic layout.</summary>
-    static Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous)
+    static Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous, DataTableLayout? table)
     {
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
         var edges = new HashSet<string>();
+        if (table != null)
+        {
+            // The data table reaches 6 pt past the bottom of the plot area; its name column ends at the plot's left.
+            edges.Add("b");
+            bottom = outer.Bottom + DataTableBleed - table.Height;
+            left = outer.X + DataTableBleed + table.NameWidth;
+        }
         foreach (var layout in axes.Where(a => a.HasLabels))
         {
             var s = layout.Style.Size;
@@ -956,6 +1104,32 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent);
+
+        // Bubbles have to fit: the data range grows by each bubble's radius in axis units until the scale settles.
+        var bubbles = layout.Groups.Where(g => g.IsBubble).ToList();
+        for (var pass = 0; pass < 4 && bubbles.Count > 0; pass++)
+        {
+            var unitsPerPoint = (layout.Scale.Max - layout.Scale.Min) / Math.Max(1, length);
+            double lo = min, hi = max;
+            foreach (var group in bubbles)
+            {
+                foreach (var s in group.Series)
+                {
+                    for (var i = 0; i < s.Values.Count; i++)
+                    {
+                        var position = layout.Axis.Horizontal ? s.XValues.Count > 0 ? s.XValues.ElementAtOrDefault(i) : i + 1 : s.Values[i];
+                        if (position is not { } v || s.Values[i] == null)
+                            continue;
+                        var r = BubbleDiameter(group, BubbleSize(s, i)) / 2 * unitsPerPoint;
+                        (lo, hi) = (Math.Min(lo, v - r), Math.Max(hi, v + r));
+                    }
+                }
+            }
+            var next = AxisScaling.Compute(lo, hi, layout.Axis, maxIntervals, percent);
+            if (next == layout.Scale)
+                break;
+            layout.Scale = next;
+        }
         layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v, Format(layout), culture)).ToList();
         layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, style));
     }
@@ -1034,9 +1208,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         {
             if (element == null)
                 continue;
-            var outline = element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
-                ? OutlineReader.Merge([(ln, colors)])
-                : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
+            var outline = GridOutline(element);
             IEnumerable<double> positions;
             if (layout.Axis.IsValue)
             {
@@ -1058,11 +1230,21 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return svg.ToString();
     }
 
-    string AxisLine(AxisLayout layout, List<AxisLayout> axes, Box plot)
-    {
-        var outline = layout.Axis.SpPr?.Element(Ns.A + "ln") is { } ln
+    /// <summary>The line of c:majorGridlines or c:minorGridlines: its own, else 0.75 pt light gray.</summary>
+    Outline GridOutline(XElement gridlines) =>
+        gridlines.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
+            ? OutlineReader.Merge([(ln, colors)])
+            : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
+
+    /// <summary>The line of an axis: its own, else 0.75 pt gray.</summary>
+    Outline AxisOutline(ChartAxis axis) =>
+        axis.SpPr?.Element(Ns.A + "ln") is { } ln
             ? OutlineReader.Merge([(ln, colors)])
             : new Outline(9525, new SolidFill(RgbColor.FromHex("BFBFBF")), "solid", "flat", "round", 8, "sng");
+
+    string AxisLine(AxisLayout layout, List<AxisLayout> axes, Box plot)
+    {
+        var outline = AxisOutline(layout.Axis);
         if (outline is not { Visible: true })
             return "";
         // The axis line lies where it crosses the perpendicular axis.
@@ -1257,6 +1439,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     {
         var svg = new StringBuilder();
         var stack = new double[category.Categories];
+        var all = Enumerable.Range(0, group.Series.Count).Select(k => SeriesPoints(group, k, category, value, new double[category.Categories])).ToList();
+        svg.Append(StockElements(group, category, value, all));
         for (var k = 0; k < group.Series.Count; k++)
         {
             var series = group.Series[k];
@@ -1280,6 +1464,60 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             {
                 if (points[i] is { } p && series.Values.ElementAtOrDefault(i) is { } raw && DataLabel(group, series, i) is { } spec)
                     LabelAtPoint(spec, LabelText(spec, series, i, raw, 0), p.X, p.Y, spec.Position ?? "r");
+            }
+        }
+        return svg.ToString();
+    }
+
+    /// <summary>
+    /// Drop lines (each category's highest point down to the axis), high-low lines (its lowest to its highest
+    /// point) and up/down bars (first series to last, as wide as a category divided by 1 + gap width) of line and
+    /// stock charts (catalog: chart.line, chart.stock); the bars cover the lines and the series are drawn on top.
+    /// </summary>
+    string StockElements(ChartGroup group, AxisLayout category, AxisLayout value, List<List<(double X, double Y)?>> points)
+    {
+        var svg = new StringBuilder();
+        var horizontal = category.Axis.Horizontal;
+        double Along((double X, double Y) p) => horizontal ? p.Y : p.X;
+        string Segment(Outline outline, double c, double v0, double v1) => horizontal
+            ? Polyline([(c, v0), (c, v1)], outline, closed: false)
+            : Polyline([(v0, c), (v1, c)], outline, closed: false);
+        Outline LineOf(XElement element) => element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
+            ? OutlineReader.Merge([(ln, colors)])
+            : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "round", 8, "sng");
+
+        for (var i = 0; i < category.Categories; i++)
+        {
+            var present = points.Select(p => p.ElementAtOrDefault(i)).Where(p => p.HasValue).Select(p => Along(p!.Value)).ToList();
+            if (present.Count == 0)
+                continue;
+            var c = category.Center(i);
+            // Screen coordinates grow downwards: the highest value has the smallest y (largest x for bars).
+            var (low, high) = horizontal ? (present.Max(), present.Min()) : (present.Min(), present.Max());
+            if (group.Element.Element(Ns.C + "dropLines") is { } dropLines)
+                svg.Append(Segment(LineOf(dropLines), c, value.Map(CrossValue(value, category.Axis)), high));
+            if (group.Element.Element(Ns.C + "hiLowLines") is { } hiLowLines && present.Count > 1)
+                svg.Append(Segment(LineOf(hiLowLines), c, low, high));
+        }
+
+        if (group.Element.Element(Ns.C + "upDownBars") is { } bars && points.Count > 1)
+        {
+            var gap = (ChartModel.Number(bars, "gapWidth") ?? 150) / 100;
+            var width = Math.Abs(category.End - category.Start) / Math.Max(1, category.Categories) / (1 + gap);
+            for (var i = 0; i < category.Categories; i++)
+            {
+                if (group.Series[0].Values.ElementAtOrDefault(i) is not { } open || group.Series[^1].Values.ElementAtOrDefault(i) is not { } close
+                    || points[0].ElementAtOrDefault(i) is not { } from || points[^1].ElementAtOrDefault(i) is not { } to)
+                    continue;
+                var part = bars.Element(Ns.C + (close >= open ? "upBars" : "downBars"));
+                var spPr = part?.Element(Ns.C + "spPr");
+                var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : new SolidFill(close >= open ? RgbColor.White : RgbColor.Black);
+                var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)])
+                    : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "round", 8, "sng");
+                var c = category.Center(i);
+                var (v0, v1) = (Math.Min(Along(from), Along(to)), Math.Max(Along(from), Along(to)));
+                var box = horizontal ? new Box(c - width / 2, v0, width, v1 - v0) : new Box(v0, c - width / 2, v1 - v0, width);
+                svg.Append(Rect(box, fill, outline, snap: true));
             }
         }
         return svg.ToString();
@@ -1315,10 +1553,49 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return svg.ToString();
     }
 
-    string Scatter(ChartGroup group, AxisLayout xAxis, AxisLayout yAxis)
+    /// <summary>The size of a bubble: c:bubbleSize, else 1.</summary>
+    static double BubbleSize(ChartSeries series, int point) =>
+        series.BubbleSizes.Count == 0 ? 1 : series.BubbleSizes.ElementAtOrDefault(point) ?? 0;
+
+    /// <summary>
+    /// A bubble's diameter in points (catalog: chart.scatterBubble): the group's largest bubble is as wide as
+    /// <see cref="bubbleBase"/> times c:bubbleScale; the others scale by area (c:sizeRepresents="area") or width.
+    /// Negative sizes are not drawn.
+    /// </summary>
+    double BubbleDiameter(ChartGroup group, double size)
+    {
+        var largest = group.Series.SelectMany(s => Enumerable.Range(0, s.Values.Count).Select(i => BubbleSize(s, i))).DefaultIfEmpty(0).Max();
+        if (largest <= 0 || size <= 0)
+            return 0;
+        var full = bubbleBase * (ChartModel.Number(group.Element, "bubbleScale") ?? 100) / 100;
+        return ChartModel.Val(group.Element, "sizeRepresents") == "w" ? full * size / largest : full * Math.Sqrt(size / largest);
+    }
+
+    string Bubbles(ChartGroup group, AxisLayout xAxis, AxisLayout yAxis)
     {
         var svg = new StringBuilder();
-        var style = ChartModel.Val(group.Element, "scatterStyle") ?? "marker";
+        foreach (var series in group.Series)
+        {
+            for (var i = 0; i < series.Values.Count; i++)
+            {
+                var x = series.XValues.Count > 0 ? series.XValues.ElementAtOrDefault(i) : i + 1;
+                var d = BubbleDiameter(group, BubbleSize(series, i));
+                if (x is not { } xv || series.Values[i] is not { } yv || d <= 0)
+                    continue;
+                var (cx, cy, r) = (xAxis.Map(xv), yAxis.Map(yv), d / 2);
+                svg.Append($"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{paint.Fill(PointFill(group, series, i), d, d, defs)}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>");
+                if (DataLabel(group, series, i) is { } spec)
+                    LabelAtPoint(spec, LabelText(spec, series, i, yv, 0), cx, cy, spec.Position ?? "ctr");
+            }
+        }
+        return svg.ToString();
+    }
+
+    string Scatter(ChartGroup group, AxisLayout xAxis, AxisLayout yAxis)
+    {
+        if (group.IsBubble)
+            return Bubbles(group, xAxis, yAxis);
+        var svg = new StringBuilder();
         foreach (var series in group.Series)
         {
             var points = new List<(double X, double Y)?>();
@@ -1333,8 +1610,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 points.Add((xAxis.Map(xv), yAxis.Map(yv)));
             }
             var outline = SeriesOutline(group, series);
-            var lines = series.SpPr?.Element(Ns.A + "ln")?.Element(Ns.A + "noFill") == null && style is not ("marker" or "none") || series.SpPr?.Element(Ns.A + "ln")?.Element(Ns.A + "solidFill") != null;
-            if (lines && outline is { Visible: true })
+            if (ScatterLines(group, series) && outline is { Visible: true })
             {
                 foreach (var run in Runs(points))
                     svg.Append($"<path d=\"{PathData(run.Select(p => SnapPoint(p, outline)).ToList(), ChartModel.Flag(series.Element, "smooth", false))}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
@@ -1346,6 +1622,14 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             }
         }
         return svg.ToString();
+    }
+
+    /// <summary>Whether a scatter series draws lines: its scatter style asks for them or its a:ln has a fill.</summary>
+    static bool ScatterLines(ChartGroup group, ChartSeries series)
+    {
+        var ln = series.SpPr?.Element(Ns.A + "ln");
+        var style = ChartModel.Val(group.Element, "scatterStyle") ?? "marker";
+        return ln?.Element(Ns.A + "noFill") == null && style is not ("marker" or "none") || ln?.Element(Ns.A + "solidFill") != null;
     }
 
     static IEnumerable<List<(double X, double Y)>> Runs(List<(double X, double Y)?> points)
@@ -1390,6 +1674,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// <summary>The marker of a line or scatter series, or null when markers are off.</summary>
     static XElement? Marker(ChartGroup group, ChartSeries series)
     {
+        if (group.IsBubble)
+            return null;
         var own = series.Element.Element(Ns.C + "marker");
         var symbol = ChartModel.Val(own, "symbol");
         if (symbol == "none")
@@ -1398,7 +1684,9 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             return own;
         var groupMarkers = group.IsScatter
             ? (ChartModel.Val(group.Element, "scatterStyle") ?? "marker") is "marker" or "lineMarker" or "smoothMarker"
-            : ChartModel.Flag(group.Element, "marker", false);
+            : group.IsRadar
+                ? ChartModel.Val(group.Element, "radarStyle") == "marker"
+                : ChartModel.Flag(group.Element, "marker", false);
         return groupMarkers ? own ?? new XElement(Ns.C + "marker") : null;
     }
 
@@ -1412,7 +1700,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         var line = spPr?.Element(Ns.A + "ln") is { } ln
             ? OutlineReader.Merge([(ln, colors)])
             : seriesLine is { Visible: true } ? seriesLine with { WidthEmu = 9525, Dash = "solid" } : null;
-        var r = size / 2;
+        // A dot is a small circle half the marker size (measured).
+        var r = symbol == "dot" ? size / 4 : size / 2;
         string d = symbol switch
         {
             "circle" or "dot" => $"M{Px(x - r)} {Px(y)}a{Px(r)} {Px(r)} 0 1 0 {Px(2 * r)} 0a{Px(r)} {Px(r)} 0 1 0 {Px(-2 * r)} 0Z",
@@ -1431,6 +1720,181 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         return open
             ? $"<path d=\"{d}\" fill=\"none\"{paint.Stroke(line ?? new Outline(9525, fill, "solid", "flat", "round", 8, "sng"), 0, 0, defs)}/>"
             : $"<path d=\"{d}\"{paint.Fill(fill, 0, 0, defs)}{paint.Stroke(line, 0, 0, defs)}/>";
+    }
+
+    // ---------------------------------------------------------------- radar
+
+    /// <summary>
+    /// Radar charts (catalog: chart.radar): one spoke per category clockwise from 12 o'clock, the value gridlines as
+    /// polygons, the value axis line as all spokes and its labels along the first one (the category axis line and
+    /// gridlines are not drawn). The radar is centered in the plot area; its radius leaves room for the category
+    /// labels, measured: the widest label plus 0.3056 s − 3.005 pt on either side and a line plus 0.3127 s − 5.248 pt
+    /// above and below (s = label size), whatever the labels' positions.
+    /// </summary>
+    string Radar(List<ChartGroup> groups, Box outer)
+    {
+        var first = groups[0];
+        var valueAxis = model.Axes.FirstOrDefault(a => a.IsValue && first.AxisIds.Contains(a.Id));
+        var categoryAxis = model.Axes.FirstOrDefault(a => !a.IsValue && first.AxisIds.Contains(a.Id));
+        var all = groups.SelectMany(g => g.Series).ToList();
+        var n = all.Count == 0 ? 0 : all.Max(s => Math.Max(s.Values.Count, s.Categories.Count));
+        if (valueAxis == null || n == 0)
+            return "";
+        var names = all.Select(s => s.Categories).FirstOrDefault(c => c.Count > 0) ?? [];
+        var labels = Enumerable.Range(0, n).Select(i => i < names.Count ? names[i] : (i + 1).ToString(culture)).ToList();
+        var categoryStyle = Style(categoryAxis?.TxPr, "categoryAxis");
+        var value = new AxisLayout { Axis = valueAxis, Groups = groups, Style = Style(valueAxis.TxPr, "valueAxis") };
+        var showCategories = categoryAxis is { Deleted: false, TickLabelPosition: not "none" };
+
+        double cx, cy, radius;
+        if (ManualPlot() is { } manual)
+        {
+            (cx, cy, radius) = (manual.X + manual.W / 2, manual.Y + manual.H / 2, Math.Max(1, Math.Min(manual.W, manual.H) / 2));
+        }
+        else
+        {
+            double marginX = 0, marginY = 0;
+            if (showCategories)
+            {
+                var s = categoryStyle.Size;
+                marginX = labels.Max(l => Width(l, categoryStyle)) + 0.3056 * s - 3.005;
+                marginY = LineHeight(categoryStyle) + 0.3127 * s - 5.248;
+            }
+            // Value labels centered on the outermost polygon reach half a line minus 6 pt past the plot area.
+            if (value.HasLabels)
+                marginY = Math.Max(marginY, LineHeight(value.Style) / 2 - 6);
+            (cx, cy) = (outer.X + outer.W / 2, outer.Y + outer.H / 2);
+            radius = Math.Max(1, Math.Min(outer.W / 2 - marginX, outer.H / 2 - marginY));
+        }
+        ScaleValueAxis(value, radius);
+        (value.Start, value.End) = valueAxis.Reversed ? (radius, 0.0) : (0.0, radius);
+        var direction = categoryAxis?.Reversed == true ? -1 : 1;
+        double Angle(int i) => direction * 2 * Math.PI * i / n;
+        (double X, double Y) At(int i, double r) => (cx + r * Math.Sin(Angle(i)), cy - r * Math.Cos(Angle(i)));
+        double Radius(double v) => value.Map(Math.Clamp(v, value.Scale.Min, value.Scale.Max));
+
+        var svg = new StringBuilder();
+        svg.Append(Area(model.PlotArea?.Element(Ns.C + "spPr"), new Box(cx - radius, cy - radius, 2 * radius, 2 * radius), snap: false));
+        foreach (var (element, minor) in new[] { (valueAxis.MinorGridlines, true), (valueAxis.MajorGridlines, false) })
+        {
+            if (element == null)
+                continue;
+            var outline = GridOutline(element);
+            foreach (var tick in minor ? value.Scale.MinorTicks() : value.Scale.Ticks())
+            {
+                var r = value.Map(tick);
+                if (r > 0.01)
+                    svg.Append(Polyline(Enumerable.Range(0, n).Select(i => At(i, r)).ToList(), outline, closed: true));
+            }
+        }
+
+        foreach (var group in groups)
+        {
+            foreach (var series in group.Series)
+            {
+                var outline = SeriesOutline(group, series);
+                if (group.IsFilledRadar)
+                {
+                    // Filled radars draw blank values at the center.
+                    var corners = Enumerable.Range(0, n).Select(i => At(i, Radius(series.Values.ElementAtOrDefault(i) ?? value.Scale.Min))).ToList();
+                    var d = new StringBuilder();
+                    for (var i = 0; i < corners.Count; i++)
+                        d.Append(i == 0 ? 'M' : 'L').Append(Px(corners[i].X)).Append(' ').Append(Px(corners[i].Y));
+                    svg.Append($"<path d=\"{d}Z\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(outline, 0, 0, defs)}/>");
+                    continue;
+                }
+                var points = Enumerable.Range(0, n).Select(i => series.Values.ElementAtOrDefault(i) is { } v ? At(i, Radius(v)) : ((double X, double Y)?)null).ToList();
+                if (outline is { Visible: true })
+                {
+                    if (points.All(p => p.HasValue))
+                    {
+                        svg.Append(Polyline(points.Select(p => p!.Value).ToList(), outline, closed: true));
+                    }
+                    else
+                    {
+                        // Lines stop at blank values; the last point connects to the first.
+                        foreach (var run in Runs(points.Append(points[0]).ToList()))
+                            svg.Append(Polyline(run, outline, closed: false));
+                    }
+                }
+                if (Marker(group, series) is { } marker)
+                {
+                    for (var i = 0; i < points.Count; i++)
+                    {
+                        if (points[i] is { } p)
+                            svg.Append(DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline));
+                    }
+                }
+                for (var i = 0; i < points.Count; i++)
+                {
+                    if (points[i] is { } p && series.Values.ElementAtOrDefault(i) is { } raw && DataLabel(group, series, i) is { } spec)
+                        LabelAtPoint(spec, LabelText(spec, series, i, raw, 0), p.X, p.Y, spec.Position ?? "t");
+                }
+            }
+        }
+
+        if (!valueAxis.Deleted && AxisOutline(valueAxis) is { Visible: true } spokes)
+        {
+            for (var i = 0; i < n; i++)
+                svg.Append(Polyline([(cx, cy), At(i, radius)], spokes, closed: false));
+        }
+
+        // Value labels right-aligned left of the first spoke (measured gap: 1.14 s − 1.25 pt), centered on the ticks.
+        if (value.HasLabels)
+        {
+            var style = value.Style;
+            var gap = 1.14 * style.Size - 1.25;
+            var ticks = value.Scale.Ticks().ToList();
+            for (var i = 0; i < ticks.Count && i < value.Labels.Count; i++)
+            {
+                var label = value.Labels[i];
+                var (x, y) = At(0, value.Map(ticks[i]));
+                svg.Append(text.Label(label, style, x - gap - Width(label, style), CenteredBaseline(style, y)));
+            }
+        }
+
+        // Category labels 6 pt beyond their spoke: left- or right-aligned and vertically centered at the sides,
+        // centered above the top and below the bottom spoke.
+        if (showCategories)
+        {
+            const double Gap = 6, VerticalGap = 6.4;
+            var style = categoryStyle;
+            var shift = LabelCenterShift * style.Size;
+            for (var i = 0; i < n; i++)
+            {
+                var label = labels[i];
+                var w = Width(label, style);
+                var (sin, cos) = (Math.Sin(Angle(i)), Math.Cos(Angle(i)));
+                var (px, py) = At(i, radius + Gap);
+                if (Math.Abs(sin) < 1e-6)
+                {
+                    var (_, vy) = At(i, radius);
+                    var baseline = cos > 0 ? vy - VerticalGap - Descent(style) - shift : vy + VerticalGap + Ascent(style) - shift;
+                    svg.Append(text.Label(label, style, px - w / 2, baseline));
+                }
+                else
+                {
+                    svg.Append(text.Label(label, style, sin > 0 ? px : px - w, CenteredBaseline(style, py)));
+                }
+            }
+        }
+        return svg.ToString();
+    }
+
+    /// <summary>A polyline (or polygon) with its vertices on the pixel grid like PowerPoint's chart lines.</summary>
+    string Polyline(List<(double X, double Y)> points, Outline outline, bool closed)
+    {
+        if (points.Count < 2 || outline is not { Visible: true })
+            return "";
+        var d = new StringBuilder();
+        for (var i = 0; i < points.Count; i++)
+        {
+            var p = SnapPoint(points[i], outline);
+            d.Append(i == 0 ? 'M' : 'L').Append(Px(p.X)).Append(' ').Append(Px(p.Y));
+        }
+        if (closed)
+            d.Append('Z');
+        return $"<path d=\"{d}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>";
     }
 
     // ---------------------------------------------------------------- pie and doughnut

@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/charts-more.pptx",
+  "sha256": "102e6a7895b12015d726bdc4c2cfdf2863277a17d119c36bf03ef1753f4d3744",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 7
+}

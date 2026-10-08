@@ -13,6 +13,10 @@ public sealed class ChartSeries
     public List<string> Categories { get; init; } = [];
     public List<double?> Values { get; init; } = [];
     public List<double?> XValues { get; init; } = [];
+
+    /// <summary>The bubble sizes of a bubble chart series (c:bubbleSize).</summary>
+    public List<double?> BubbleSizes { get; init; } = [];
+
     public string FormatCode { get; init; } = "General";
     public string CategoryFormatCode { get; init; } = "General";
 
@@ -35,6 +39,14 @@ public sealed class ChartGroup
     public bool IsArea => Type is "areaChart" or "area3DChart";
     public bool IsPie => Type is "pieChart" or "pie3DChart" or "doughnutChart" or "ofPieChart";
     public bool IsScatter => Type is "scatterChart" or "bubbleChart";
+    public bool IsBubble => Type == "bubbleChart";
+    public bool IsRadar => Type == "radarChart";
+
+    /// <summary>A radar chart of filled polygons (c:radarStyle val="filled").</summary>
+    public bool IsFilledRadar => IsRadar && ChartModel.Val(Element, "radarStyle") == "filled";
+
+    /// <summary>Series drawn as lines with line keys in the legend: line, stock, scatter and unfilled radar charts.</summary>
+    public bool HasLines => IsLine || IsScatter && !IsBubble || IsRadar && !IsFilledRadar;
 
     /// <summary>Bars grow horizontally (c:barDir val="bar").</summary>
     public bool Horizontal { get; init; }
@@ -128,19 +140,27 @@ public sealed class ChartModel
             Chart = chart,
             AutoTitleDeleted = Flag(chart, "autoTitleDeleted", false),
         };
+        var culture = Culture(Val(space, "lang"));
         var plotArea = chart.Element(Ns.C + "plotArea");
         foreach (var element in plotArea?.Elements() ?? [])
         {
             var name = element.Name.LocalName;
             if (name.EndsWith("Chart", StringComparison.Ordinal))
-                model.Groups.Add(ReadGroup(element));
+                model.Groups.Add(ReadGroup(element, culture));
             else if (name is "catAx" or "valAx" or "dateAx" or "serAx")
                 model.Axes.Add(ReadAxis(element));
         }
         return model;
     }
 
-    static ChartGroup ReadGroup(XElement element)
+    /// <summary>The culture of the chart's c:lang: built-in date formats and decimal separators follow it.</summary>
+    public static CultureInfo Culture(string? lang)
+    {
+        try { return lang != null ? CultureInfo.GetCultureInfo(lang) : CultureInfo.InvariantCulture; }
+        catch (CultureNotFoundException) { return CultureInfo.InvariantCulture; }
+    }
+
+    static ChartGroup ReadGroup(XElement element, CultureInfo culture)
     {
         var type = element.Name.LocalName;
         return new ChartGroup
@@ -153,23 +173,25 @@ public sealed class ChartModel
             Overlap = Number(element, "overlap") ?? (Val(element, "grouping") is "stacked" or "percentStacked" ? 100 : 0),
             FirstSliceAngle = Number(element, "firstSliceAng") ?? 0,
             HoleSize = Number(element, "holeSize") ?? (type == "doughnutChart" ? 10 : 0),
-            Series = element.Elements(Ns.C + "ser").Select(ReadSeries).OrderBy(s => s.Order).ToList(),
+            Series = element.Elements(Ns.C + "ser").Select(s => ReadSeries(s, culture)).OrderBy(s => s.Order).ToList(),
             AxisIds = element.Elements(Ns.C + "axId").Select(a => a.Int("val") ?? 0).ToList(),
         };
     }
 
-    static ChartSeries ReadSeries(XElement ser)
+    static ChartSeries ReadSeries(XElement ser, CultureInfo culture)
     {
         var (values, format) = Numbers(ser.Element(Ns.C + "val") ?? ser.Element(Ns.C + "yVal"));
         var categories = ser.Element(Ns.C + "cat") ?? ser.Element(Ns.C + "xVal");
         var (xValues, _) = Numbers(ser.Element(Ns.C + "xVal"));
+        var (bubbleSizes, _) = Numbers(ser.Element(Ns.C + "bubbleSize"));
         return new ChartSeries
         {
+            BubbleSizes = bubbleSizes,
             Element = ser,
             Index = ser.Element(Ns.C + "idx").Int("val") ?? 0,
             Order = ser.Element(Ns.C + "order").Int("val") ?? 0,
-            Name = Strings(ser.Element(Ns.C + "tx")).FirstOrDefault() ?? "",
-            Categories = Strings(categories),
+            Name = Strings(ser.Element(Ns.C + "tx"), culture).FirstOrDefault() ?? "",
+            Categories = Strings(categories, culture),
             Values = values,
             XValues = xValues,
             FormatCode = format,
@@ -236,7 +258,7 @@ public sealed class ChartModel
     }
 
     /// <summary>Text values of c:tx or c:cat (the innermost level of multi-level categories).</summary>
-    static List<string> Strings(XElement? data)
+    static List<string> Strings(XElement? data, CultureInfo culture)
     {
         if (data?.Element(Ns.C + "v") is { } literal)
             return [literal.Value];
@@ -247,7 +269,7 @@ public sealed class ChartModel
             cache = cache.Element(Ns.C + "lvl") is { } level ? new XElement(cache.Name, cache.Element(Ns.C + "ptCount"), level.Elements()) : cache;
         var format = cache.Element(Ns.C + "formatCode")?.Value;
         return Points(cache).Select(v => v == null ? "" : format != null && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
-            ? NumberFormat.Format(d, format) : v).ToList();
+            ? NumberFormat.Format(d, format, culture) : v).ToList();
     }
 
     static (List<double?> Values, string Format) Numbers(XElement? data)
