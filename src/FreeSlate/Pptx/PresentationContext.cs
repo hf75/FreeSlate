@@ -65,18 +65,25 @@ public sealed class PresentationContext : IDisposable
     }
 
     /// <summary>An embedded image of a part as data URI, or null for missing or linked images.</summary>
-    public string? Image(string sourcePart, string relationshipId)
+    /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
+    public string? Image(string sourcePart, string relationshipId, double? displayWidth = null)
     {
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
             return null;
-        if (!images.TryGetValue(rel.Target, out var uri))
+        var type = Package.ContentType(rel.Target);
+        var metafile = type is "image/x-emf" or "image/emf" or "image/x-wmf" or "image/wmf" or "application/x-msmetafile";
+        var key = metafile && displayWidth is { } w ? $"{rel.Target}@{Math.Round(w)}" : rel.Target;
+        if (!images.TryGetValue(key, out var uri))
         {
-            var type = Package.ContentType(rel.Target);
-            uri = type is "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml" or "image/webp"
-                ? $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}"
-                : null;   // EMF, WMF, TIFF … need converters (catalog: picture.metafiles, picture.formats)
-            images[rel.Target] = uri;
+            uri = type switch
+            {
+                "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml" or "image/webp" =>
+                    $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
+                _ when metafile => Metafiles.MetafileConverter.ToDataUri(Package.ReadBytes(rel.Target), $"mf{images.Count}_", displayWidth),
+                _ => null,   // TIFF and others need converters (catalog: picture.formats)
+            };
+            images[key] = uri;
         }
         return uri;
     }

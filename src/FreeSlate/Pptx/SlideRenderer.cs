@@ -119,7 +119,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
-        var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part) : ResolveFill(chain, style, placement.GroupFill);
+        var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part, Units.ToPx(bw)) : ResolveFill(chain, style, placement.GroupFill);
         var outline = ResolveOutline(chain, style);
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
 
@@ -378,13 +378,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         return OutlineReader.Merge(layers);
     }
 
-    Fill PictureFill(XElement pic, string part)
+    Fill PictureFill(XElement pic, string part, double displayWidth)
     {
         var blipFill = pic.Element(Ns.P + "blipFill");
         var blip = blipFill?.Element(Ns.A + "blip");
         var svg = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value;
         var embed = blip?.Attribute(Ns.R + "embed")?.Value;
-        var image = (svg != null ? slide.Presentation.Image(part, svg) : null) ?? (embed != null ? slide.Presentation.Image(part, embed) : null);
+        var image = (svg != null ? slide.Presentation.Image(part, svg) : null) ?? (embed != null ? slide.Presentation.Image(part, embed, displayWidth) : null);
         if (image == null)
             return Fill.None;
         var stretch = blipFill!.Element(Ns.A + "stretch");

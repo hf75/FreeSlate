@@ -38,8 +38,20 @@ public sealed class FontData : IDisposable
 
         UnitsPerEm = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(tables["head"] + 18));
         double ascent, descent;
+        double winAscent, winDescent;
+        if (tables.TryGetValue("hhea", out var hheaOffset))
+        {
+            winAscent = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(hheaOffset + 4));
+            winDescent = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(hheaOffset + 6));
+        }
+        else
+        {
+            (winAscent, winDescent) = (0.8, 0.2);
+        }
         if (tables.TryGetValue("OS/2", out var os2))
         {
+            winAscent = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 74));
+            winDescent = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 76));
             var selection = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 62));
             var useTypo = (selection & 0x80) != 0;
             ascent = useTypo ? BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2 + 68)) : BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 74));
@@ -54,6 +66,8 @@ public sealed class FontData : IDisposable
         UnitsPerEm = UnitsPerEm == 0 ? 1000 : UnitsPerEm;
         Ascent = ascent / UnitsPerEm;
         Descent = descent / UnitsPerEm;
+        WinAscent = winAscent / UnitsPerEm;
+        WinDescent = winDescent / UnitsPerEm;
 
         blob = Blob.FromFile(path);
         face = new Face(blob, 0);
@@ -78,6 +92,11 @@ public sealed class FontData : IDisposable
     public double Ascent { get; }
 
     public double Descent { get; }
+
+    /// <summary>GDI's ascent and descent (OS/2 usWinAscent/usWinDescent) in em; metafile text is placed with them.</summary>
+    public double WinAscent { get; }
+
+    public double WinDescent { get; }
 
     /// <summary>Advance width of <paramref name="text"/> in em (multiply by the font size).</summary>
     public double Width(string text, bool kerning)
@@ -116,6 +135,23 @@ public sealed class FontData : IDisposable
                 result[cluster] += (double)positions[i].XAdvance / UnitsPerEm;
         }
         return result;
+    }
+
+    Dictionary<ushort, char>? glyphToChar;
+
+    /// <summary>A reverse character map (glyph id to the first BMP character using it), for glyph-index text in metafiles.</summary>
+    public IReadOnlyDictionary<ushort, char> GlyphToChar()
+    {
+        if (glyphToChar != null)
+            return glyphToChar;
+        var map = new Dictionary<ushort, char>();
+        for (var c = 0x20; c <= 0xFFFF; c++)
+        {
+            if (c is >= 0xD800 and <= 0xDFFF) continue;
+            if (font.TryGetGlyph((uint)c, out var glyph) && glyph != 0 && glyph <= ushort.MaxValue)
+                map.TryAdd((ushort)glyph, (char)c);
+        }
+        return glyphToChar = map;
     }
 
     static Feature[] Parse(params string[] features) =>
