@@ -21,7 +21,17 @@ public sealed record TextStyle(
     Fill? Paint = null,
     Outline? Line = null,
     bool? RightToLeft = null,
-    string? Language = null);
+    string? Language = null)
+{
+    /// <summary>The underline's own color (a:uLn's fill, else a:uFill); null follows the text.</summary>
+    public RgbColor? UnderlineColor { get; init; }
+
+    /// <summary>The underline's own width in points (a:uLn/@w); null takes the font's.</summary>
+    public double? UnderlineWidth { get; init; }
+
+    /// <summary>The underline's own dash (a:uLn/a:prstDash); null follows the underline style.</summary>
+    public string? UnderlineDash { get; init; }
+}
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
 public sealed record TextLink(string? Href, string? Action, string? Tooltip);

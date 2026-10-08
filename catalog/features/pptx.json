@@ -6769,8 +6769,9 @@
       "title": "Underlines",
       "priority": "P1",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "The 18 underline styles drawn by our layout engine with position and thickness from the font.",
+      "office": "All 18 underline styles: the post table's underline position is the line's top, the thickness its own rounded to whole pixels; dashed styles repeat in units of that thickness (dotted 1:1, dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2), heavy ones are twice as thick, reaching up from the plain line's bottom, with the same pattern; double ones are two lines of three quarters of the thickness, the second above the first; wavy ones are waves four thicknesses long. An underline line of its own (a:uLn) gives the width, color (over a:uFill) and dash; a:uFill the color; uLnTx and uFillTx follow the text. Small text drawn by the browser gets the style, color and width as CSS. Measured with generated/text-underline (every style in the text color and in a color of its own, lines of their own, runs of different sizes): 76.1 -> 90.7 %, the rest one-pixel rounding of the line's position.",
       "elements": [
         "a:uFill",
         "a:uFillTx",

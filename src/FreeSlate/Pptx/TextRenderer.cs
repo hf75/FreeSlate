@@ -673,7 +673,29 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (style.Underline != null) decorations.Add("underline");
             if (style.Strike != null) decorations.Add("line-through");
             if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
-            if (!style.Kerning) sb.Append(" style=\"font-kerning:none\"");
+            // The browser draws small text's underline: its style, color and width as CSS (catalog: text.underline).
+            var css = new List<string>();
+            if (style.Underline is { } underline)
+            {
+                var kind = underline.Replace("Heavy", "", StringComparison.Ordinal);
+                if ((style.UnderlineDash ?? kind) switch
+                    {
+                        "dotted" or "dot" or "sysDot" => "dotted",
+                        "dash" or "dashLong" or "dotDash" or "dotDotDash" or "sysDash" or "lgDash" or "dashDot" or "lgDashDot" or "lgDashDotDot" or "sysDashDot" or "sysDashDotDot" => "dashed",
+                        "wavy" or "wavyDbl" => "wavy",
+                        "dbl" => "double",
+                        _ => null,
+                    } is { } decorationStyle)
+                    css.Add($"text-decoration-style:{decorationStyle}");
+                if (style.UnderlineColor is { } underlineColor)
+                    css.Add($"text-decoration-color:{underlineColor.ToHex()}");
+                if (style.UnderlineWidth is { } underlineWidth)
+                    css.Add($"text-decoration-thickness:{Units.Css(underlineWidth * PxPerPt)}px");
+                else if (underline != kind || underline == "heavy")
+                    css.Add("text-decoration-thickness:0.15em");
+            }
+            if (!style.Kerning) css.Add("font-kerning:none");
+            if (css.Count > 0) sb.Append($" style=\"{string.Join(';', css)}\"");
             if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
         }
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
@@ -686,8 +708,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             $"{m.Groups[1].Value}=\"{string.Join(' ', m.Groups[2].Value.Split(' ').Select(v => Units.Css1(double.Parse(v, CultureInfo.InvariantCulture) / scale)))}\"");
 
     /// <summary>
-    /// Underline and strikethrough of a run as filled rectangles (pixels), from the font's post and OS/2 metrics,
-    /// placed on whole pixels; dbl and heavy underlines and double strikethrough draw two lines or a thicker one.
+    /// Underline and strikethrough of a run (pixels), from the font's post and OS/2 metrics, placed on whole pixels
+    /// (catalog: text.underline). The underline styles repeat in units of the plain line's thickness (measured with
+    /// generated/text-underline: dotted 1:1, dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2);
+    /// heavy ones are twice as thick, reaching up, with the same pattern; double ones are two lines of three quarters
+    /// of the thickness, the second above the first; wavy ones are waves four units long. An underline line of its own
+    /// (a:uLn) gives the thickness, color and dash, a:uFill the color.
     /// </summary>
     static string Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
     {
@@ -698,33 +724,95 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var width = run.Width * PxPerPt;
         var size = style.Size * PxPerPt;
         var baseline = y * PxPerPt;
-        void Line(double offset, double thickness)
+        string Line(double top, double height, string fill = "", double[]? dashes = null, double unit = 1)
         {
-            var height = Math.Max(1, Math.Round(thickness));
-            var top = Math.Round(baseline + offset - height / 2);
-            sb.Append($"<rect x=\"{Units.Css(left)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"/>");
+            if (dashes == null)
+                return $"<rect x=\"{Units.Css(left)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{fill}/>";
+            // A dashed line: one rectangle per dash, the pattern from the run's start.
+            var line = new StringBuilder();
+            var (position, i) = (0.0, 0);
+            while (position < width - 1e-6)
+            {
+                var length = dashes[i % dashes.Length] * unit;
+                if (i % 2 == 0 && length > 0)
+                    line.Append($"<rect x=\"{Units.Css(left + position)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(Math.Min(length, width - position))}\" height=\"{Units.Css(height)}\"{fill}/>");
+                position += Math.Max(length, 1e-3);
+                i++;
+            }
+            return line.ToString();
         }
         if (style.Underline is { } underline)
         {
-            var thickness = data.UnderlineThickness * size * (underline is "heavy" or "dottedHeavy" or "dashHeavy" or "dashLongHeavy" or "dotDashHeavy" or "dotDotDashHeavy" or "wavyHeavy" ? 2 : 1);
+            var exact = data.UnderlineThickness * size;
+            var unit = Math.Max(1, Math.Round(exact));
+            var thickness = style.UnderlineWidth is { } own ? Math.Max(1, Math.Round(own * PxPerPt)) : unit;
+            // The post table's underline position is the line's top (measured: 26 pt Arial, top 3.7 px below the
+            // baseline).
             var offset = data.UnderlinePosition * size;
-            Line(offset, thickness);
-            if (underline is "dbl" or "wavyDbl")
-                Line(offset + 2 * Math.Max(1, Math.Round(thickness)), thickness);
-        }
-        if (style.Strike is { } strike)
-        {
-            var thickness = data.StrikeoutThickness * size;
-            var offset = -data.StrikeoutPosition * size;
-            if (strike == "dblStrike")
+            var top = Math.Round(baseline + offset);
+            var fill = style.UnderlineColor is { } color
+                ? color.A < 0.999 ? $" fill=\"{color.ToHex()}\" fill-opacity=\"{Units.Css4(color.A)}\"" : $" fill=\"{color.ToHex()}\""
+                : "";
+            var kind = underline.Replace("Heavy", "", StringComparison.Ordinal);
+            var heavy = underline != kind || underline == "heavy";
+            double[]? pattern = (style.UnderlineDash ?? kind) switch
             {
-                var gap = Math.Max(1, Math.Round(thickness));
-                Line(offset - gap, thickness);
-                Line(offset + gap, thickness);
+                "dotted" or "dot" or "sysDot" => [1, 1],
+                "dash" or "sysDash" => [3, 2],
+                "dashLong" or "lgDash" => [7, 4],
+                "dotDash" or "dashDot" or "sysDashDot" or "lgDashDot" => [3, 2, 1, 2],
+                "dotDotDash" or "sysDashDotDot" or "lgDashDotDot" => [3, 2, 1, 2, 1, 2],
+                _ => null,
+            };
+            if (kind is "wavy" or "wavyDbl")
+            {
+                // Waves four plain thicknesses long (measured: 10 px at 26 pt Arial): a thin one swinging about three
+                // quarters of the thickness, a heavy one about half with twice the stroke, a double one two flat waves.
+                var (stroke, swing) = kind == "wavyDbl" ? (Math.Max(1, exact * 0.8), exact * 0.25)
+                    : heavy ? (Math.Max(1, exact * 0.9), exact * 0.5) : (Math.Max(1, exact * 0.45), exact * 0.75);
+                var waveColor = style.UnderlineColor is { } wc ? $" stroke=\"{wc.ToHex()}\"" : " stroke=\"currentColor\"";
+                var centers = kind == "wavyDbl" ? new[] { top + exact * 0.6, top - exact * 0.6 } : heavy ? [top] : [top + exact / 2];
+                foreach (var center in centers)
+                {
+                    var path = new StringBuilder($"M{Units.Css(left)} {Units.Css(center)}");
+                    var period = 4 * exact;
+                    for (var px = 0.0; px < width; px += period)
+                    {
+                        var (a, b) = (Math.Min(period / 2, width - px), Math.Min(period, width - px));
+                        path.Append($"Q{Units.Css(left + px + a / 2)} {Units.Css(center - 2 * swing)} {Units.Css(left + px + a)} {Units.Css(center)}");
+                        if (b > a)
+                            path.Append($"Q{Units.Css(left + px + (a + b) / 2)} {Units.Css(center + 2 * swing)} {Units.Css(left + px + b)} {Units.Css(center)}");
+                    }
+                    sb.Append($"<path d=\"{path}\" fill=\"none\"{waveColor} stroke-width=\"{Units.Css(stroke)}\"/>");
+                }
+            }
+            else if (kind == "dbl")
+            {
+                var thin = Math.Max(1, Math.Round(thickness * 0.75));
+                var lower = top + thickness - thin;
+                sb.Append(Line(lower, thin, fill));
+                sb.Append(Line(lower - 2 * thin, thin, fill));
             }
             else
             {
-                Line(offset, thickness);
+                // A heavy line reaches up from the plain one's bottom.
+                var height = heavy ? Math.Max(1, Math.Round(2 * (style.UnderlineWidth is { } w2 ? w2 * PxPerPt : exact))) : thickness;
+                sb.Append(Line(heavy ? top + thickness - height : top, height, fill, pattern, unit));
+            }
+        }
+        if (style.Strike is { } strike)
+        {
+            var thickness = Math.Max(1, Math.Round(data.StrikeoutThickness * size));
+            var offset = -data.StrikeoutPosition * size;
+            if (strike == "dblStrike")
+            {
+                var gap = thickness;
+                sb.Append(Line(Math.Round(baseline + offset - gap - thickness / 2), thickness));
+                sb.Append(Line(Math.Round(baseline + offset + gap - thickness / 2), thickness));
+            }
+            else
+            {
+                sb.Append(Line(Math.Round(baseline + offset - thickness / 2), thickness));
             }
         }
         return sb.ToString();
@@ -1025,6 +1113,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var link = hlink != null && linkPart != null ? Links.Resolve(hlink, linkPart, slide.Presentation) : null;
         var color = RunColor(rPr, sources, level);
         var underline = R("u") is { } u && u != "none" ? u : null;
+        // The underline's own line and fill (catalog: text.underline): uLn's width, dash and fill, uFill's fill where
+        // uLn has none; uLnTx and uFillTx follow the text (measured with generated/text-underline).
+        var underlineLine = RunElement(rPr, sources, level, "uLn", "uLnTx");
+        var underlineFill = RunElement(rPr, sources, level, "uFill", "uFillTx");
+        var underlineColor = underlineLine?.Name.LocalName == "uLn" && FillReader.FindFill(underlineLine) is { } lineFill
+            ? Colors.ResolveChild(lineFill)
+            : underlineFill?.Name.LocalName == "uFill" && FillReader.FindFill(underlineFill) is { } ownFill ? Colors.ResolveChild(ownFill) : null;
         // Gradient, pattern and picture fills and the text outline (catalog: text.fillOutline).
         var fillElement = RunElement(rPr, sources, level, FillNames);
         var part = linkPart ?? slide.SlidePart;
@@ -1064,7 +1159,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             line,
             // The run's own direction (a:rtl), else its language's.
             RunElement(rPr, sources, level, "rtl") is { } rtl ? rtl.Bool("val") ?? true : RightToLeftLanguage(R("lang")),
-            R("lang"));
+            R("lang"))
+        {
+            UnderlineColor = underlineColor,
+            UnderlineWidth = underlineLine?.Name.LocalName == "uLn" && underlineLine.Long("w") is { } uw ? uw / Units.EmuPerPoint : null,
+            UnderlineDash = underlineLine?.Name.LocalName == "uLn" ? underlineLine.Element(Ns.A + "prstDash")?.Str("val") : null,
+        };
     }
 
     /// <summary>Whether a language is written right to left; null without a language.</summary>

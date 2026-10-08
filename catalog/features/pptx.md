@@ -24,7 +24,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 3 | 3 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 3 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 6 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 13 | 7 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 2 | 2 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **57** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **58** |
 
 <a id="package"></a>
 
@@ -1233,7 +1233,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Fonts per script](#text.fonts) | P0 | ●●●●○ | partial | 4 | 4 |
 | [Embedded fonts](#text.embeddedFonts) | P1 | ●●●●○ | todo | 7 | 2 |
 | [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | partial | 0 | 0 |
-| [Underlines](#text.underline) | P1 | ●●○○○ | partial | 4 | 2 |
+| [Underlines](#text.underline) | P1 | ●●○○○ | done | 4 | 2 |
 | [Text effects](#text.effects) | P2 | ●●●●○ | partial | 0 | 0 |
 | [Fields](#text.fields) | P1 | ●●○○○ | done | 1 | 1 |
 | [Text columns](#text.columns) | P2 | ●●●○○ | partial | 0 | 0 |
@@ -1414,9 +1414,11 @@ gradFill, blipFill, pattFill and a:ln inside run properties.
 
 ### Underlines
 
-`text.underline` · P1 · difficulty 2 · partial
+`text.underline` · P1 · difficulty 2 · done
 
 **Rendering:** The 18 underline styles drawn by our layout engine with position and thickness from the font.
+
+**Office behaviour:** All 18 underline styles: the post table's underline position is the line's top, the thickness its own rounded to whole pixels; dashed styles repeat in units of that thickness (dotted 1:1, dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2), heavy ones are twice as thick, reaching up from the plain line's bottom, with the same pattern; double ones are two lines of three quarters of the thickness, the second above the first; wavy ones are waves four thicknesses long. An underline line of its own (a:uLn) gives the width, color (over a:uFill) and dash; a:uFill the color; uLnTx and uFillTx follow the text. Small text drawn by the browser gets the style, color and width as CSS. Measured with generated/text-underline (every style in the text color and in a color of its own, lines of their own, runs of different sizes): 76.1 -> 90.7 %, the rest one-pixel rounding of the line's position.
 
 **Elements (4):** [`a:uFill`](../format/namespaces/a.md#aufill), [`a:uFillTx`](../format/namespaces/a.md#aufilltx), [`a:uLn`](../format/namespaces/a.md#auln), [`a:uLnTx`](../format/namespaces/a.md#aulntx)
 
