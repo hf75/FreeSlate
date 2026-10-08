@@ -922,7 +922,9 @@ areas:
         description: a:bodyPr/@numCol and @spcCol.
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Our layout engine fills the columns in order.
+        office: Lines are shared out evenly over the columns (33 lines in three columns become 11, 11, 11, also when they overflow).
 
       - id: text.vertical
         title: Vertical and rotated text

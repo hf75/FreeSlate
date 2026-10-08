@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-body.pptx",
+  "sha256": "1f3bf77173bbdad69c2fc3c2ce74c3d922e0cf9698b3c29d2012b5c93c01b734",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 4
+}

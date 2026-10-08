@@ -70,7 +70,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
         var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
-        var layout = Layout(txBody, sources, Math.Max(0, width), Body("wrap") != "none", fontScale, spacingReduction);
+        // Columns (catalog: text.columns): the text is laid out at the column width and its lines are shared out
+        // evenly over the columns (measured: 33 lines in three columns become 11, 11 and 11, even when they overflow).
+        var columns = Math.Clamp(int.TryParse(Body("numCol"), out var columnCount) ? columnCount : 1, 1, 16);
+        var columnGap = (long.TryParse(Body("spcCol"), out var gap) ? gap : 0) / Units.EmuPerPoint;
+        var columnWidth = columns > 1 ? Math.Max(0, (width - (columns - 1) * columnGap) / columns) : width;
+        var layout = Layout(txBody, sources, Math.Max(0, columnWidth), Body("wrap") != "none", fontScale, spacingReduction);
+        if (columns > 1)
+            layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true");
         // WordArt transforms bend the glyph outlines into the preset's paths in the shape's text rectangle.
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
         if (warp?.Str("prst") is { } preset && TextWarp.Definition(preset) is { } definition)
@@ -79,6 +86,40 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box);
         }
         return Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+    }
+
+    /// <summary>The lines of a layout distributed over columns, each column starting at the top.</summary>
+    static LaidOutText Columns(LaidOutText layout, int columns, double columnWidth, double gap, bool rightToLeft)
+    {
+        var lines = layout.Lines;
+        if (lines.Count == 0)
+            return layout;
+        var perColumn = (int)Math.Ceiling(lines.Count / (double)columns);
+        var result = new LaidOutText();
+        double height = 0;
+        for (var c = 0; c < columns; c++)
+        {
+            var start = c * perColumn;
+            if (start >= lines.Count)
+                break;
+            var end = Math.Min(lines.Count, start + perColumn);
+            var columnTop = lines[start].Baseline - lines[start].Ascent;
+            var dx = (rightToLeft ? columns - 1 - c : c) * (columnWidth + gap);
+            for (var i = start; i < end; i++)
+            {
+                var line = lines[i];
+                var moved = new LaidOutLine
+                {
+                    Paragraph = line.Paragraph, Ascent = line.Ascent, Descent = line.Descent, Width = line.Width,
+                    Baseline = line.Baseline - columnTop,
+                };
+                moved.Runs.AddRange(line.Runs.Select(r => r with { X = r.X + dx }));
+                result.Lines.Add(moved);
+            }
+            height = Math.Max(height, lines[end - 1].Baseline + lines[end - 1].Descent - columnTop);
+        }
+        result.Height = height;
+        return result;
     }
 
     /// <summary>
