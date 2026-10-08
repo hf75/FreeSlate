@@ -465,7 +465,7 @@ areas:
         elements: [a:pattFill, a:fgClr, a:bgClr]
         priority: P2
         difficulty: 2
-        status: partial
+        status: done
         strategy: The preset patterns as small SVG patterns in foreground and background color.
 
       - id: fill.picture
@@ -518,6 +518,7 @@ areas:
         elements: [a:headEnd, a:tailEnd]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: >-
           Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the
           line shortened under the head.
@@ -544,6 +545,7 @@ areas:
         elements: [a:effectLst]
         priority: P1
         difficulty: 2
+        status: partial
         strategy: The effects of a list are applied in a fixed order; build one SVG filter chain per shape.
 
       - id: effect.outerShadow
@@ -551,6 +553,7 @@ areas:
         elements: [a:outerShdw]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.
 
       - id: effect.innerShadow
@@ -572,6 +575,7 @@ areas:
         elements: [a:glow]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Dilate and blur the shape's alpha, colored.
 
       - id: effect.softEdge
@@ -579,6 +583,7 @@ areas:
         elements: [a:softEdge]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Erode and blur the alpha mask.
 
       - id: effect.reflection
@@ -922,6 +927,7 @@ areas:
         elements: [a:tbl, a:tblPr, a:tblGrid, a:gridCol, a:tr, a:tc, a:headers, a:header]
         priority: P0
         difficulty: 3
+        status: partial
         strategy: >-
           Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge,
           vMerge) and position the cells absolutely; an HTML table would compute its own sizes.
@@ -932,6 +938,7 @@ areas:
         elements: [a:tcPr, a:lnL, a:lnR, a:lnT, a:lnB, a:lnTlToBr, a:lnBlToTr, a:cell3D]
         priority: P0
         difficulty: 3
+        status: partial
         strategy: Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
 
       - id: table.styles
@@ -942,6 +949,7 @@ areas:
                    a:tl2br, a:tr2bl, a:fill]
         priority: P0
         difficulty: 4
+        status: partial
         strategy: >-
           Combine whole table, banding, first/last row and column and corner cells in PowerPoint's order for the flags
           set in tblPr. For files that reference a built-in style without defining it, we need definitions of the 74

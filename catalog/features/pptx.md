@@ -20,12 +20,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 1 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 5 | 1 |
-| [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 4 | 1 |
-| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 3 | 0 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 0 |
+| [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
+| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 0 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 2 | 0 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 0 |
-| [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 0 | 0 |
+| [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 0 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 0 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **39** | **4** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **46** | **5** |
 
 <a id="package"></a>
 
@@ -684,7 +684,7 @@ p:sld/@show="0".
 |---|---|---|---|---:|---:|
 | [No fill and solid fill](#fill.solid) | P0 | ●○○○○ | done | 2 | 0 |
 | [Gradient fills](#fill.gradient) | P1 | ●●●○○ | partial | 7 | 4 |
-| [Pattern fills](#fill.pattern) | P2 | ●●○○○ | partial | 3 | 0 |
+| [Pattern fills](#fill.pattern) | P2 | ●●○○○ | done | 3 | 0 |
 | [Picture and texture fills](#fill.picture) | P1 | ●●○○○ | partial | 8 | 4 |
 | [Group fill](#fill.group) | P2 | ●○○○○ | partial | 1 | 1 |
 
@@ -720,7 +720,7 @@ p:sld/@show="0".
 
 ### Pattern fills
 
-`fill.pattern` · P2 · difficulty 2 · partial
+`fill.pattern` · P2 · difficulty 2 · done
 
 **Rendering:** The preset patterns as small SVG patterns in foreground and background color.
 
@@ -765,7 +765,7 @@ p:sld/@show="0".
 | [Outline width and color](#line.basic) | P0 | ●●○○○ | partial | 1 | 1 |
 | [Dash styles](#line.dash) | P1 | ●●○○○ | partial | 3 | 1 |
 | [Joins and caps](#line.joinCap) | P1 | ●○○○○ | partial | 3 | 2 |
-| [Arrowheads](#line.ends) | P1 | ●●●○○ | todo | 2 | 0 |
+| [Arrowheads](#line.ends) | P1 | ●●●○○ | partial | 2 | 0 |
 | [Compound lines](#line.compound) | P2 | ●●●○○ | todo | 0 | 0 |
 | [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | todo | 0 | 0 |
 
@@ -815,7 +815,7 @@ p:sld/@show="0".
 
 ### Arrowheads
 
-`line.ends` · P1 · difficulty 3 · todo
+`line.ends` · P1 · difficulty 3 · partial
 
 **Rendering:** Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the line shortened under the head.
 
@@ -849,12 +849,12 @@ gradFill and pattFill inside a:ln.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Effect lists](#effect.list) | P1 | ●●○○○ | todo | 1 | 0 |
-| [Outer shadow](#effect.outerShadow) | P1 | ●●●○○ | todo | 1 | 1 |
+| [Effect lists](#effect.list) | P1 | ●●○○○ | partial | 1 | 0 |
+| [Outer shadow](#effect.outerShadow) | P1 | ●●●○○ | partial | 1 | 1 |
 | [Inner shadow](#effect.innerShadow) | P2 | ●●●○○ | todo | 1 | 1 |
 | [Preset shadows](#effect.presetShadow) | P3 | ●●●○○ | todo | 1 | 0 |
-| [Glow](#effect.glow) | P2 | ●●●○○ | todo | 1 | 0 |
-| [Soft edges](#effect.softEdge) | P2 | ●●●○○ | todo | 1 | 1 |
+| [Glow](#effect.glow) | P2 | ●●●○○ | partial | 1 | 0 |
+| [Soft edges](#effect.softEdge) | P2 | ●●●○○ | partial | 1 | 1 |
 | [Reflection](#effect.reflection) | P2 | ●●●●○ | todo | 1 | 1 |
 | [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | todo | 2 | 1 |
 | [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
@@ -865,7 +865,7 @@ gradFill and pattFill inside a:ln.
 
 ### Effect lists
 
-`effect.list` · P1 · difficulty 2 · todo
+`effect.list` · P1 · difficulty 2 · partial
 
 **Rendering:** The effects of a list are applied in a fixed order; build one SVG filter chain per shape.
 
@@ -877,7 +877,7 @@ gradFill and pattFill inside a:ln.
 
 ### Outer shadow
 
-`effect.outerShadow` · P1 · difficulty 3 · todo
+`effect.outerShadow` · P1 · difficulty 3 · partial
 
 **Rendering:** SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.
 
@@ -917,7 +917,7 @@ gradFill and pattFill inside a:ln.
 
 ### Glow
 
-`effect.glow` · P2 · difficulty 3 · todo
+`effect.glow` · P2 · difficulty 3 · partial
 
 **Rendering:** Dilate and blur the shape's alpha, colored.
 
@@ -929,7 +929,7 @@ gradFill and pattFill inside a:ln.
 
 ### Soft edges
 
-`effect.softEdge` · P2 · difficulty 3 · todo
+`effect.softEdge` · P2 · difficulty 3 · partial
 
 **Rendering:** Erode and blur the alpha mask.
 
@@ -1494,15 +1494,15 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Table grid and merged cells](#table.structure) | P0 | ●●●○○ | todo | 8 | 5 |
-| [Cell formatting](#table.cells) | P0 | ●●●○○ | todo | 8 | 7 |
-| [Table styles](#table.styles) | P0 | ●●●●○ | todo | 30 | 5 |
+| [Table grid and merged cells](#table.structure) | P0 | ●●●○○ | partial | 8 | 5 |
+| [Cell formatting](#table.cells) | P0 | ●●●○○ | partial | 8 | 7 |
+| [Table styles](#table.styles) | P0 | ●●●●○ | partial | 30 | 5 |
 
 <a id="table.structure"></a>
 
 ### Table grid and merged cells
 
-`table.structure` · P0 · difficulty 3 · todo
+`table.structure` · P0 · difficulty 3 · partial
 
 **Rendering:** Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge, vMerge) and position the cells absolutely; an HTML table would compute its own sizes.
 
@@ -1518,7 +1518,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 ### Cell formatting
 
-`table.cells` · P0 · difficulty 3 · todo
+`table.cells` · P0 · difficulty 3 · partial
 
 **Rendering:** Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
 
@@ -1532,7 +1532,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 ### Table styles
 
-`table.styles` · P0 · difficulty 4 · todo
+`table.styles` · P0 · difficulty 4 · partial
 
 **Rendering:** Combine whole table, banding, first/last row and column and corner cells in PowerPoint's order for the flags set in tblPr. For files that reference a built-in style without defining it, we need definitions of the 74 built-in styles, harvested from PowerPoint itself.
 

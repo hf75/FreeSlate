@@ -4,6 +4,7 @@ using System.Text;
 using System.Xml.Linq;
 using Engine.Drawing;
 using Engine.Drawing.Geometry;
+using Engine.Html;
 using Engine.Text;
 
 namespace Engine.Pptx;
@@ -34,6 +35,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     sealed record ListStyleSource(XElement ListStyle) : Source;
     sealed record FontRefSource(XElement FontRef) : Source;
 
+    /// <summary>a:tcTxStyle of a table style part: b/i as on/off, a font or font reference and a color.</summary>
+    sealed record TableTextSource(XElement Style) : Source;
+
     /// <summary>SVG markup for the text of a shape (shape-local pixel coordinates), or "".</summary>
     public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
@@ -51,19 +55,29 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var spacingReduction = autofit?.Name.LocalName == "normAutofit" ? (autofit.Long("lnSpcReduction") ?? 0) / 100000.0 : 0;
 
         var sources = BuildSources(chain);
-        var counters = new int[9];
-        var paragraphs = txBody.Elements(Ns.A + "p")
-            .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
-            .ToList();
-
-        // Text area in points (geometry is in pixels).
         var left = geometry.TextLeft / PxPerPt + Inset("lIns", 91440);
         var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
         var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
+        var layout = Layout(txBody, sources, Math.Max(0, width), Body("wrap") != "none", fontScale, spacingReduction);
+        return Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+    }
 
-        var layout = TextLayout.Layout(paragraphs, Math.Max(0, width), Body("wrap") != "none");
-        var offset = Body("anchor") switch
+    /// <summary>Lays out the text of a table cell; <paramref name="tableStyles"/> are the cell's a:tcTxStyle elements, highest priority first.</summary>
+    public LaidOutText LayoutCell(XElement txBody, IReadOnlyList<XElement> tableStyles, double width)
+    {
+        var sources = new List<Source>();
+        if (txBody.Element(Ns.A + "lstStyle") is { } own) sources.Add(new ListStyleSource(own));
+        sources.AddRange(tableStyles.Select(t => new TableTextSource(t)));
+        if (slide.Master?.Root?.Element(Ns.P + "txStyles")?.Element(Ns.P + "otherStyle") is { } other) sources.Add(new ListStyleSource(other));
+        if (slide.Presentation.DefaultTextStyle is { } defaults) sources.Add(new ListStyleSource(defaults));
+        return Layout(txBody, sources, Math.Max(0, width), wrap: true, 1, 0);
+    }
+
+    /// <summary>SVG for a laid-out text block placed in a box (points); anchor t, ctr or b.</summary>
+    public string Emit(LaidOutText layout, double left, double top, double height, string anchor, double? unflipWidth = null)
+    {
+        var offset = anchor switch
         {
             "ctr" => (height - layout.Height) / 2,
             "b" => height - layout.Height,
@@ -71,7 +85,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         };
 
         var svg = new StringBuilder();
-        svg.Append(unflip ? $"<g transform=\"matrix(-1 0 0 1 {Units.Css(boxWidth)} 0)\">" : "<g>");
+        var defs = new StringBuilder();
+        var filters = new Dictionary<XElement, string?>();
+        svg.Append(unflipWidth is { } w ? $"<g transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g>");
         foreach (var line in layout.Lines)
         {
             var baseline = top + offset + line.Baseline;
@@ -83,16 +99,28 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 }
                 if (string.IsNullOrWhiteSpace(run.Text))
                     continue;
-                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+                var filter = run.Style.Effects is { } effects
+                    ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, slide.Colors, 0, 0, defs, boundingBox: true)
+                    : null;
+                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size, filter));
             }
         }
         svg.Append("</g>");
-        return svg.ToString();
+        return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
+    }
+
+    LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction)
+    {
+        var counters = new int[9];
+        var paragraphs = txBody.Elements(Ns.A + "p")
+            .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
+            .ToList();
+        return TextLayout.Layout(paragraphs, width, wrap);
     }
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
-    string Text(PlacedRun run, double x, double y)
+    string Text(PlacedRun run, double x, double y, string? filter = null)
     {
         var style = run.Style;
         var family = style.Font.Data.Family;
@@ -122,6 +150,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         if (style.Strike != null) decorations.Add("line-through");
         if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
         if (!style.Kerning) sb.Append(" style=\"font-kerning:none\"");
+        if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
         return sb.ToString();
     }
@@ -157,8 +186,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return Find(pPr) ?? sources.Select(s => Find(Level(s, level))).FirstOrDefault(e => e != null);
     }
 
-    static string? RunAttr(XElement? rPr, List<Source> sources, int level, string name) =>
-        rPr?.Attribute(name)?.Value ?? sources.Select(s => Level(s, level)?.Element(Ns.A + "defRPr")?.Attribute(name)?.Value).FirstOrDefault(v => v != null);
+    static string? RunAttr(XElement? rPr, List<Source> sources, int level, string name)
+    {
+        if (rPr?.Attribute(name)?.Value is { } own)
+            return own;
+        foreach (var source in sources)
+        {
+            if (source is TableTextSource table)
+            {
+                if (name is "b" or "i" && table.Style.Attribute(name)?.Value is { } flag && flag != "def")
+                    return flag == "on" ? "1" : "0";
+                continue;
+            }
+            if (Level(source, level)?.Element(Ns.A + "defRPr")?.Attribute(name)?.Value is { } inherited)
+                return inherited;
+        }
+        return null;
+    }
 
     static XElement? RunElement(XElement? rPr, List<Source> sources, int level, params string[] names)
     {
@@ -167,6 +211,21 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return own;
         foreach (var source in sources)
         {
+            if (source is TableTextSource table)
+            {
+                var color = table.Style.Elements().FirstOrDefault(e => e.Name.LocalName.EndsWith("Clr", StringComparison.Ordinal))
+                            ?? table.Style.Element(Ns.A + "fontRef")?.Elements().FirstOrDefault();
+                if (names.Contains("solidFill") && color != null)
+                    return new XElement(Ns.A + "solidFill", color);
+                if (names.Contains("latin"))
+                {
+                    if (table.Style.Element(Ns.A + "font")?.Element(Ns.A + "latin") is { } latin)
+                        return latin;
+                    if (table.Style.Element(Ns.A + "fontRef")?.Str("idx") is "minor" or "major")
+                        return new XElement(Ns.A + "latin", new XAttribute("typeface", table.Style.Element(Ns.A + "fontRef")!.Str("idx") == "major" ? "+mj-lt" : "+mn-lt"));
+                }
+                continue;
+            }
             if (source is FontRefSource fontRef)
             {
                 if (names.Contains("solidFill") && fontRef.FontRef.Elements().Any())
@@ -309,7 +368,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             R("strike") is "sngStrike" or "dblStrike" ? R("strike") : null,
             int.TryParse(R("baseline"), out var b) ? b / 100000.0 : 0,
             RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
-            R("cap") == "all");
+            R("cap") == "all",
+            RunElement(rPr, sources, level, "effectLst"));
     }
 
     RgbColor RunColor(XElement? rPr, List<Source> sources, int level)

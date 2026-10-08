@@ -3997,7 +3997,7 @@
       "title": "Pattern fills",
       "priority": "P2",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "The preset patterns as small SVG patterns in foreground and background color.",
       "elements": [
         "a:bgClr",
@@ -4261,7 +4261,7 @@
       "title": "Arrowheads",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the line shortened under the head.",
       "elements": [
         "a:headEnd",
@@ -4315,7 +4315,7 @@
       "title": "Effect lists",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "The effects of a list are applied in a fixed order; build one SVG filter chain per shape.",
       "elements": [
         "a:effectLst"
@@ -4336,7 +4336,7 @@
       "title": "Outer shadow",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.",
       "elements": [
         "a:outerShdw"
@@ -4409,7 +4409,7 @@
       "title": "Glow",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Dilate and blur the shape's alpha, colored.",
       "elements": [
         "a:glow"
@@ -4430,7 +4430,7 @@
       "title": "Soft edges",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Erode and blur the alpha mask.",
       "elements": [
         "a:softEdge"
@@ -8122,7 +8122,7 @@
       "title": "Table grid and merged cells",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge, vMerge) and position the cells absolutely; an HTML table would compute its own sizes.",
       "office": "Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text.",
       "elements": [
@@ -8214,7 +8214,7 @@
       "title": "Cell formatting",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.",
       "elements": [
         "a:cell3D",
@@ -8313,7 +8313,7 @@
       "title": "Table styles",
       "priority": "P0",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Combine whole table, banding, first/last row and column and corner cells in PowerPoint's order for the flags set in tblPr. For files that reference a built-in style without defining it, we need definitions of the 74 built-in styles, harvested from PowerPoint itself.",
       "office": "Table styles are referenced by GUID; PowerPoint writes the definitions of the styles in use to ppt/tableStyles.xml.",
       "elements": [

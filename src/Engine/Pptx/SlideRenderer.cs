@@ -14,6 +14,8 @@ namespace Engine.Pptx;
 public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 {
     readonly TextRenderer text = new(slide, Engine.Text.FontResolver.Default);
+    TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
+    TableRenderer? tables;
 
     /// <summary>Maps child coordinates of a group to slide coordinates (EMU); Transform holds rotations and flips.</summary>
     readonly record struct Placement(Matrix Transform, double OffX, double OffY, double ScaleX, double ScaleY, double ChildX, double ChildY, Fill? GroupFill)
@@ -59,7 +61,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 case "grpSp":
                     RenderGroup(element, part, html, placement, isSlide);
                     break;
-                // graphicFrame (tables, charts, SmartArt, OLE) and contentPart: not rendered yet.
+                case "graphicFrame":
+                    if (isSlide || Placeholders.Ph(element) == null)
+                        RenderGraphicFrame(element, html, placement);
+                    break;
+                // contentPart (ink): not rendered yet.
             }
         }
     }
@@ -117,21 +123,46 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
+        // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
+        // fill or outline the text casts the effect.
+        var effectFilter = SvgEffects.Filter(Effects(chain, style), slide.Colors, pw, ph, defs);
+        var opaque = fill is not NoFill || outline is { Visible: true };
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
-        html.Append(paths).Append(ends);
+        var shapeMarkup = paths.ToString() + ends;
+        html.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
         if (shape.Name.LocalName == "sp")
         {
             var placeholder = Placeholders.Ph(shape);
-            html.Append(text.Render(new TextChain
+            var textMarkup = text.Render(new TextChain
             {
                 Shapes = chain,
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 FontRef = style?.Element(Ns.A + "fontRef"),
-            }, geometry, pw, flipH ^ flipV));
+            }, geometry, pw, flipH ^ flipV);
+            html.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
         html.Append("</svg>");
         html.Append("</div>");
+    }
+
+    /// <summary>Graphic frames: tables for now (charts, SmartArt and OLE objects follow).</summary>
+    void RenderGraphicFrame(XElement frame, StringBuilder html, Placement placement)
+    {
+        var xfrm = frame.Element(Ns.P + "xfrm");
+        var data = frame.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
+        if (xfrm?.Element(Ns.A + "ext") == null || data == null)
+            return;
+
+        if (data.Element(Ns.A + "tbl") is { } table)
+        {
+            var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
+            var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+            var (svg, width, height) = Tables.Render(table);
+            var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
+            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
+        }
     }
 
     void RenderGroup(XElement group, string part, StringBuilder html, Placement placement, bool isSlide)
@@ -203,6 +234,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 return (GeometryDefinition.Parse(custom), []);
         }
         return (PresetGeometries.Get("rect")!, []);
+    }
+
+    XElement? Effects(List<PartElement> chain, XElement? style)
+    {
+        foreach (var s in chain)
+        {
+            if (SpPr(s.Element)?.Element(Ns.A + "effectLst") is { } own)
+                return own;
+        }
+        var index = style?.Element(Ns.A + "effectRef").Int("idx") ?? 0;
+        return index >= 1 && index <= slide.Theme.EffectStyles.Count ? slide.Theme.EffectStyles[index - 1].Element(Ns.A + "effectLst") : null;
     }
 
     Fill ResolveFill(List<PartElement> chain, XElement? style, Fill? groupFill)

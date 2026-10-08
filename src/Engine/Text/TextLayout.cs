@@ -15,7 +15,8 @@ public sealed record TextStyle(
     string? Strike = null,
     double BaselineShift = 0,
     RgbColor? Highlight = null,
-    bool AllCaps = false);
+    bool AllCaps = false,
+    System.Xml.Linq.XElement? Effects = null);
 
 /// <summary>A piece of text with one style; Text "\n" is a line break (a:br).</summary>
 public sealed record TextRun(string Text, TextStyle Style);
