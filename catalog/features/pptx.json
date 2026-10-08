@@ -8117,8 +8117,9 @@
       "title": "East Asian typography",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Kinsoku line breaking rules, East Asian line breaking and hanging punctuation, ea fonts, vertical text.",
+      "office": "Measured with generated/text-eastasian: with the kinsoku rules (pPr eaLnBrk, on by default) a line does not start with closing punctuation or small kana and does not end with an opening bracket; hangingPunct (on in PowerPoint's default text styles) lets 、。，． hang past the end of the line instead of pushing the character before them down; eaLnBrk 0 turns the rules off, lines then break between any East Asian characters, punctuation included, and nothing hangs; latinLnBrk breaks Latin words anywhere to fill a line. PowerPoint ignores the presentation's own kinsoku characters (p:kinsoku). Korean breaks at spaces.",
       "elements": [
         "p:kinsoku"
       ],
