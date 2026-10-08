@@ -43,6 +43,9 @@ switch (command)
         Pipeline.Render(decks);
         Summarize(Pipeline.Compare(decks));
         break;
+    case "smartart":
+        SmartArtCheck.Run(rest);
+        break;
     case "animate":
         var animated = Animations.Run(decks);
         foreach (var r in animated)
