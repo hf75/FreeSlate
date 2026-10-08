@@ -349,6 +349,9 @@ public static class Engine
                 best = (factor, count);
         }
         var k = best.Factor;
+        // Connectors between the cells shrink with them.
+        foreach (var connector in node.Children.Where(c => c.AlgorithmType == "conn"))
+            connector.Scale = k;
         // As many cells per line as fit at that size.
         var perLine = columns
             ? Math.Max(best.Count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
