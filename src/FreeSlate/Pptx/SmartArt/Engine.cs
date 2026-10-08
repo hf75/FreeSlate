@@ -94,13 +94,16 @@ public static class Engine
             case "snake":
                 Snake(node, pins);
                 break;
+            case "cycle":
+                Cycle(node, pins);
+                break;
             default:
                 Composite(node, pins);
                 break;
         }
         // Connectors are placed between the nodes their parent placed.
         foreach (var child in node.Children.Where(c => c.AlgorithmType == "conn"))
-            Connector(node, child, pins);
+            Connector(child, pins);
     }
 
     /// <summary>A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; the parent's size where none is given).</summary>
@@ -312,54 +315,246 @@ public static class Engine
     }
 
     /// <summary>
-    /// A connector between the siblings before and after it (begPad and endPad from their facing edges), as thick as
-    /// its constraints make it for its place among its siblings, centered between them.
+    /// The cycle algorithm: the children around a circle, from stAng (degrees clockwise from the top) over spanAng in
+    /// equal steps (the last at the end of the span unless it is a full circle), the first in the middle with ctrShpMap
+    /// fNode; the circle as small as keeps neighbors sibSp apart (chord = size + sibSp) and the ring sp away from the
+    /// middle one; everything then scaled uniformly to fit the node and centered (measured with cycle2 and radial1 at 1
+    /// to 7 nodes, within 0.3 pt). With rotPath alongPath the shapes turn with the circle.
     /// </summary>
-    static void Connector(LayoutNode parent, LayoutNode connector, Pins pins)
+    static void Cycle(LayoutNode node, Pins pins)
     {
-        var index = parent.Children.IndexOf(connector);
-        var before = parent.Children.Take(index).LastOrDefault(c => !IsTransition(c) && c.AlgorithmType != "conn");
-        var after = parent.Children.Skip(index + 1).FirstOrDefault(c => !IsTransition(c) && c.AlgorithmType != "conn");
-        if (before == null || after == null)
+        var cells = node.Children.Where(c => !IsTransition(c) && c.AlgorithmType != "conn").ToList();
+        if (cells.Count == 0)
             return;
-        var (a, b) = (Bounds(before), Bounds(after));
-        var (ax, ay) = (a.X + a.W / 2, a.Y + a.H / 2);
-        var (bx, by) = (b.X + b.W / 2, b.Y + b.H / 2);
-        var horizontal = Math.Abs(bx - ax) >= Math.Abs(by - ay);
-        double gapStart, gapEnd;
-        if (horizontal)
-            (gapStart, gapEnd) = bx >= ax ? (a.X + a.W, b.X) : (a.X, b.X + b.W);
-        else
-            (gapStart, gapEnd) = by >= ay ? (a.Y + a.H, b.Y) : (a.Y, b.Y + b.H);
-        var distance = Math.Abs(gapEnd - gapStart);
+        var start = Number(node.Param("stAng")) ?? 0;
+        var span = Number(node.Param("spanAng")) ?? 360;
+        var center = node.Param("ctrShpMap") == "fNode" && cells.Count > 1 ? cells[0] : null;
+        var ring = center != null ? cells.Skip(1).ToList() : cells;
+        var extents = cells.ToDictionary(c => c, Extent);
+        var size = ring.Max(c => Math.Max(extents[c].W, extents[c].H));
+        var n = ring.Count;
+        var step = Math.Abs(Math.Abs(span) - 360) < 1e-9 ? span / n : n > 1 ? span / (n - 1) : 0;
+        var radius = n > 1 && Math.Abs(step) > 1e-9 ? (size + Value(node, "sibSp")) / (2 * Math.Sin(Math.Abs(step) * Math.PI / 360)) : 0;
+        if (center != null)
+        {
+            var middle = Math.Max(extents[center].W, extents[center].H);
+            radius = Math.Max(radius, (middle + size) / 2 + Value(node, "sp"));
+        }
+        // The cells' centers about the circle's center, then the arrangement fitted to the node.
+        var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
+        if (center != null)
+            places[center] = (0, 0, 0);
+        for (var i = 0; i < n; i++)
+        {
+            var angle = start + i * step;
+            var radians = angle * Math.PI / 180;
+            places[ring[i]] = (radius * Math.Sin(radians), -radius * Math.Cos(radians), angle);
+        }
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var (cell, (px, py, _)) in places)
+        {
+            var e = extents[cell];
+            minX = Math.Min(minX, px - e.W / 2);
+            maxX = Math.Max(maxX, px + e.W / 2);
+            minY = Math.Min(minY, py - e.H / 2);
+            maxY = Math.Max(maxY, py + e.H / 2);
+        }
+        // Curved connectors run along the circle; their arcs' circle (0.65 of their thickness beyond it) takes room too.
+        var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve").ToList();
+        if (arcs.Count > 0 && radius > 0)
+        {
+            var reach = radius + 0.65 * arcs.Max(c => Value(c, "h"));
+            (minX, maxX, minY, maxY) = (Math.Min(minX, -reach), Math.Max(maxX, reach), Math.Min(minY, -reach), Math.Max(maxY, reach));
+        }
+        var (bw, bh) = (maxX - minX, maxY - minY);
+        var factor = Math.Min(bw > 0 ? node.W / bw : 1, bh > 0 ? node.H / bh : 1);
+        if (!double.IsFinite(factor) || factor <= 0)
+            factor = 1;
+        var (ox, oy) = (node.X + (node.W - bw * factor) / 2 - minX * factor, node.Y + (node.H - bh * factor) / 2 - minY * factor);
+        var alongPath = node.Param("rotPath") == "alongPath";
+        foreach (var (cell, (px, py, angle)) in places)
+        {
+            PlaceScaled(cell, extents[cell], factor, pins);
+            var b = Bounds(cell);
+            Translate(cell, ox + px * factor - (b.X + b.W / 2), oy + py * factor - (b.Y + b.H / 2));
+            if (alongPath && cell != center)
+                cell.Rotation = angle;
+        }
+        foreach (var connector in node.Children.Where(c => c.AlgorithmType == "conn"))
+        {
+            connector.Scale = factor;
+            connector.Values["arcX"] = ox;
+            connector.Values["arcY"] = oy;
+            connector.Values["arcR"] = radius * factor;
+            connector.Values["arcDir"] = Math.Sign(span == 0 ? 1 : span);
+        }
+    }
+
+    /// <summary>
+    /// The layout nodes a connector joins: those showing the transition's nodes (a sibling transition from its node to
+    /// the next, the first after the last; a parent transition from the parent to its node), by name where srcNode and
+    /// dstNode give one, else the first that draws a shape.
+    /// </summary>
+    static (LayoutNode? From, LayoutNode? To) Ends(LayoutNode connector)
+    {
+        var point = connector.Point;
+        DataPoint? from = null, to = null;
+        if (point.Type == "sibTrans" && point.Owner is { } owner)
+        {
+            from = owner;
+            var siblings = owner.Parent?.Children.Where(c => c.IsNode).ToList() ?? [];
+            var index = siblings.IndexOf(owner);
+            to = index >= 0 && index + 1 < siblings.Count ? siblings[index + 1] : siblings.FirstOrDefault();
+        }
+        else if (point.Type == "parTrans" && point.Owner is { } child)
+            (from, to) = (child.Parent, child);
+        var root = connector;
+        while (root.Parent != null)
+            root = root.Parent;
+        var all = root.Descendants().Prepend(root).Where(n => n.AlgorithmType != "conn").ToList();
+        LayoutNode? Find(DataPoint? p, string? name)
+        {
+            if (p == null)
+                return null;
+            var candidates = all.Where(n => n.Point == p).ToList();
+            if (name != null)
+                return candidates.FirstOrDefault(n => n.Name == name) ?? candidates.FirstOrDefault(Draws);
+            return candidates.FirstOrDefault(n => Draws(n) && (string?)n.Shape?.Attribute("hideGeom") is not ("1" or "true"))
+                   ?? candidates.FirstOrDefault(Draws);
+        }
+        var start = Find(from, connector.Param("srcNode"));
+        var end = Find(to, connector.Param("dstNode"));
+        if (start != null && end != null)
+            return (start, end);
+        // Without transitions: the siblings before and after the connector.
+        var parent = connector.Parent;
+        if (parent == null)
+            return (null, null);
+        var at = parent.Children.IndexOf(connector);
+        return (parent.Children.Take(at).LastOrDefault(c => !IsTransition(c) && c.AlgorithmType != "conn"),
+                parent.Children.Skip(at + 1).FirstOrDefault(c => !IsTransition(c) && c.AlgorithmType != "conn"));
+    }
+
+    static bool Draws(LayoutNode node) => (string?)node.Shape?.Attribute("type") is { } type && type != "none";
+
+    /// <summary>How far a node's outline lies from its center in direction (ux, uy): an ellipse's or its box's edge.</summary>
+    static double Edge(LayoutNode node, double ux, double uy)
+    {
+        var (a, b) = (Math.Abs(node.W) / 2, Math.Abs(node.H) / 2);
+        if (a <= 0 || b <= 0)
+            return 0;
+        if ((string?)node.Shape?.Attribute("type") is "ellipse" or "donut" or "flowChartConnector" or "pie" or "chord" or "blockArc")
+            return 1 / Math.Sqrt(ux * ux / (a * a) + uy * uy / (b * b));
+        return Math.Min(Math.Abs(ux) > 1e-12 ? a / Math.Abs(ux) : double.MaxValue, Math.Abs(uy) > 1e-12 ? b / Math.Abs(uy) : double.MaxValue);
+    }
+
+    /// <summary>
+    /// A connector between the nodes it joins, along the line between their centers: from the first's outline to the
+    /// second's (connDist), begPad and endPad short of them (2D: 0.22 and 0.25 of the distance unless constrained,
+    /// measured with cycle2; 1D: none), as thick as its place among its siblings or its constraints make it, turned
+    /// along the line.
+    /// </summary>
+    static void Connector(LayoutNode connector, Pins pins)
+    {
+        var (start, end) = Ends(connector);
+        if (start == null || end == null || start == end)
+            return;
+        if (connector.Param("connRout") is "curve" or "longCurve" && connector.Values.ContainsKey("arcR") && Value(connector, "arcR") > 0)
+        {
+            Arc(connector, start, end, pins);
+            return;
+        }
+        var (ax, ay) = (start.X + start.W / 2, start.Y + start.H / 2);
+        var (bx, by) = (end.X + end.W / 2, end.Y + end.H / 2);
+        var (dx, dy) = (bx - ax, by - ay);
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        if (length < 1e-9)
+            return;
+        var (ux, uy) = (dx / length, dy / length);
+        var (ta, tb) = (Edge(start, ux, uy), Edge(end, -ux, -uy));
+        var distance = Math.Max(0, length - ta - tb);
         connector.Values["connDist"] = distance;
+        var oneD = connector.Param("dim") == "1D";
+        var (begPad, endPad) = oneD ? (0.0, 0.0) : (0.22 * distance, 0.25 * distance);
         // The pads refer to the distance: evaluate the connector's own constraints with it.
         foreach (var constraint in connector.Constraints)
         {
             var type = (string?)constraint.Attribute("type");
-            if (type is "begPad" or "endPad" && (string?)constraint.Attribute("refType") == "connDist")
-                connector.Values[type] = distance * (Number((string?)constraint.Attribute("fact")) ?? 1);
+            if (type is "begPad" or "endPad")
+            {
+                var value = (string?)constraint.Attribute("refType") == "connDist"
+                    ? distance * (Number((string?)constraint.Attribute("fact")) ?? 1)
+                    : Number((string?)constraint.Attribute("val")) ?? 0;
+                if (type == "begPad")
+                    begPad = value;
+                else
+                    endPad = value;
+            }
         }
-        var begPad = Value(connector, "begPad");
-        var endPad = Value(connector, "endPad");
-        var length = Math.Max(0, distance - begPad - endPad);
-        // As thick as its place among its siblings, else as its own height or 0.62 of its length.
-        var thickness = connector.H > 0 ? connector.H : Finite(connector, "h") ?? length * 0.62;
-        var sign = (horizontal ? bx - ax : by - ay) >= 0 ? 1 : -1;
-        var from = gapStart + sign * begPad;
-        if (horizontal)
+        var span = Math.Max(0, distance - begPad - endPad);
+        var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
+        var from = ta + begPad + span / 2;
+        var (cx, cy) = (ax + ux * from, ay + uy * from);
+        PlaceConnector(connector, cx - span / 2, cy - thickness / 2, span, thickness, pins);
+        var angle = Math.Atan2(uy, ux) * 180 / Math.PI;
+        connector.Rotation = Math.Abs(angle) < 1e-9 ? 0 : (angle % 360 + 360) % 360;
+    }
+
+    /// <summary>The point of a circle at a DrawingML angle (degrees clockwise from the x axis).</summary>
+    static (double X, double Y) OnCircle(double cx, double cy, double r, double degrees) =>
+        (cx + r * Math.Cos(degrees * Math.PI / 180), cy + r * Math.Sin(degrees * Math.PI / 180));
+
+    static bool Inside(LayoutNode node, (double X, double Y) p)
+    {
+        var (a, b) = (node.W / 2, node.H / 2);
+        var (dx, dy) = (p.X - (node.X + a), p.Y - (node.Y + b));
+        if (a <= 0 || b <= 0)
+            return false;
+        if ((string?)node.Shape?.Attribute("type") is "ellipse" or "donut" or "flowChartConnector")
+            return dx * dx / (a * a) + dy * dy / (b * b) <= 1;
+        return Math.Abs(dx) <= a && Math.Abs(dy) <= b;
+    }
+
+    /// <summary>Where the circle leaves a node going round from its center's angle (degrees, the given way round).</summary>
+    static double Leave(LayoutNode node, double cx, double cy, double r, double from, int way)
+    {
+        var (low, high) = (0.0, 180.0);
+        if (Inside(node, OnCircle(cx, cy, r, from + way * high)))
+            return from;
+        for (var i = 0; i < 40; i++)
         {
-            var left = sign > 0 ? from : from - length;
-            PlaceConnector(connector, left, (ay + by) / 2 - thickness / 2, length, thickness, pins);
-            connector.Rotation = sign > 0 ? 0 : 180;
+            var middle = (low + high) / 2;
+            if (Inside(node, OnCircle(cx, cy, r, from + way * middle)))
+                low = middle;
+            else
+                high = middle;
         }
-        else
-        {
-            // Drawn as a horizontal arrow turned about its center.
-            var center = (X: (ax + bx) / 2, Y: from + sign * length / 2);
-            PlaceConnector(connector, center.X - length / 2, center.Y - thickness / 2, length, thickness, pins);
-            connector.Rotation = sign > 0 ? 90 : 270;
-        }
+        return from + way * low;
+    }
+
+    /// <summary>
+    /// A curved connector of a cycle (connRout curve): an arc along the cycle's circle from where it leaves its first
+    /// node to where it reaches the next (begPad, endPad), drawn as a circular arrow 0.6 of its thickness wide with a
+    /// head 1.4 of it wide and 0.5 of it long, its box the circle 0.65 of its thickness beyond the cycle's (measured with
+    /// cycle1 at 2 to 7 nodes).
+    /// </summary>
+    static void Arc(LayoutNode connector, LayoutNode start, LayoutNode end, Pins pins)
+    {
+        var (cx, cy, r) = (Value(connector, "arcX"), Value(connector, "arcY"), Value(connector, "arcR"));
+        var way = Value(connector, "arcDir") < 0 ? -1 : 1;
+        double AngleOf(LayoutNode n) => Math.Atan2(n.Y + n.H / 2 - cy, n.X + n.W / 2 - cx) * 180 / Math.PI;
+        var thickness = Value(connector, "h") * connector.Scale;
+        var begin = Leave(start, cx, cy, r, AngleOf(start), way);
+        var finish = Leave(end, cx, cy, r, AngleOf(end), -way);
+        var sweep = ((finish - begin) * way % 360 + 360) % 360;
+        var head = r > 0 ? 0.5 * thickness / r * 180 / Math.PI : 0;
+        var reach = r + 0.65 * thickness;
+        PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
+        connector.Rotation = 0;
+        connector.Values["arcStart"] = begin;
+        connector.Values["arcSweep"] = sweep;
+        connector.Values["arcHead"] = Math.Min(head, sweep);
+        connector.Values["arcThickness"] = thickness;
     }
 
     /// <summary>Gives a connector its box and its children theirs in it.</summary>
