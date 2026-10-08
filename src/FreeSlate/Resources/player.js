@@ -601,12 +601,86 @@
     }
   }
 
+  /* ---------------------------------------------------------------- media (catalog: picture.media) */
+
+  const mediaOf = (slide, spid) => slide.querySelector(`[data-id="${spid}"] .fs-media`);
+  const trimStart = el => (parseFloat(el.dataset.trimStart) || 0) / 1000;
+
+  /** Plays media from a position (seconds after the trimmed start), honouring trim end, fade in and volume. */
+  function playMedia(el, from, volume) {
+    if (!el.dataset.watched) {
+      el.dataset.watched = '1';
+      el.addEventListener('timeupdate', () => {
+        const end = (el.duration || Infinity) - (parseFloat(el.dataset.trimEnd) || 0) / 1000;
+        if (el.currentTime >= end) stopMedia(el);
+      });
+      el.addEventListener('ended', () => stopMedia(el));
+    }
+    if (volume !== undefined) el.dataset.volume = volume;
+    el.currentTime = trimStart(el) + (from || 0);
+    const target = el.dataset.volume !== undefined ? +el.dataset.volume : 1;
+    const fadeIn = parseFloat(el.dataset.fadeIn) || 0;
+    el.volume = fadeIn > 0 ? 0 : target;
+    el.classList.add('playing');
+    el.play().catch(() => {});
+    if (fadeIn > 0) {
+      const started = performance.now();
+      const step = () => {
+        const p = Math.min(1, (performance.now() - started) / fadeIn);
+        el.volume = target * p;
+        if (p < 1 && !el.paused) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+  }
+  function stopMedia(el) {
+    el.pause();
+    el.classList.remove('playing');
+    try { el.currentTime = trimStart(el); } catch { /* not loaded yet */ }
+  }
+  function toggleMedia(el) {
+    if (el.paused) {
+      if (!el.classList.contains('playing')) playMedia(el, 0);
+      else el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }
+
+  /** Runs a p:cmd behaviour (playFrom(t), togglePause, pause, resume, stop) on its target's media. */
+  function command(slide, node, volumes) {
+    const el = node.target && mediaOf(slide, node.target.spid);
+    if (!el) return;
+    const cmd = String(node.cmd || '');
+    const volume = volumes.get(String(node.target.spid));
+    const from = /^playFrom\(([-0-9.]+)\)/.exec(cmd);
+    if (from) playMedia(el, parseFloat(from[1]), volume);
+    else if (cmd === 'togglePause') toggleMedia(el);
+    else if (cmd === 'pause') el.pause();
+    else if (cmd === 'resume') el.play().catch(() => {});
+    else if (cmd === 'stop') stopMedia(el);
+  }
+
+  /** Volumes of the slide's media nodes (p:audio / p:video, cMediaNode vol in 1/100000). */
+  function mediaVolumes(timing) {
+    const result = new Map();
+    const visit = node => {
+      if (!node) return;
+      if ((node.t === 'audio' || node.t === 'video') && node.target && node.target.spid !== undefined)
+        result.set(String(node.target.spid), node.mute ? 0 : (typeof node.vol === 'number' ? node.vol / 100000 : 1));
+      (node.children || []).forEach(visit);
+    };
+    visit(timing && timing.root);
+    return result;
+  }
+
   /* ---------------------------------------------------------------- the animation player of one slide */
 
   class SlideAnimation {
     constructor(slide, index) {
       this.slide = slide;
       this.timeline = buildTimeline(slide, info(index).timing);
+      this.volumes = mediaVolumes(info(index).timing);
       this.done = [];         // completed steps (main and triggered), in play order
       this.position = 0;      // next main step
       this.current = null;    // { step, started }
@@ -680,8 +754,15 @@
       cancelAnimationFrame(this.frame);
       clearTimeout(this.timer);
       const current = this.current = { step, started: performance.now() };
+      const commands = step.behaviors.filter(b => b.node.t === 'cmd');
+      const runCommands = t => {
+        for (let i = commands.length - 1; i >= 0; i--) {
+          if (t >= commands[i].start) { command(this.slide, commands[i].node, this.volumes); commands.splice(i, 1); }
+        }
+      };
       const finish = () => {
         if (this.current !== current) return;
+        runCommands(Infinity);
         cancelAnimationFrame(this.frame);
         clearTimeout(this.timer);
         this.done.push(step);
@@ -692,6 +773,7 @@
       const tick = () => {
         if (this.current !== current) return;
         const t = performance.now() - current.started;
+        runCommands(t);
         if (t >= step.end) { finish(); return; }
         this.render(step, t);
         this.frame = requestAnimationFrame(tick);
@@ -729,6 +811,7 @@
     reset() {
       this.stop();
       for (const target of this.timeline.targets.values()) if (target) target.reset();
+      this.slide.querySelectorAll('.fs-media').forEach(stopMedia);
     }
   }
 
@@ -1113,7 +1196,13 @@
   }
 
   document.addEventListener('click', e => {
-    if (!show || !show.overlay.contains(e.target)) return;
+    if (!show) {
+      // Outside the show a click on audio or video plays or pauses it.
+      const media = e.target.closest('.sp') && e.target.closest('.sp').querySelector('.fs-media');
+      if (media) { e.preventDefault(); toggleMedia(media); }
+      return;
+    }
+    if (!show.overlay.contains(e.target)) return;
     const link = e.target.closest('[data-action]');
     if (link && action(link)) { e.preventDefault(); return; }
     const href = e.target.closest('a[href]');

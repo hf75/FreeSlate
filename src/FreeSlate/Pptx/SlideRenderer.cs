@@ -203,7 +203,64 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (shapeLink != null)
             html.Append("</a>");
         html.Append("</svg>");
+        if (shape.Name.LocalName == "pic")
+            html.Append(Media(shape, part));
         html.Append("</div>");
+    }
+
+    static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
+
+    /// <summary>
+    /// The audio or video of a picture (catalog: picture.media): an HTML media element over the poster picture,
+    /// hidden until the player plays it. The p14:media part is preferred; trimming and fades travel as data
+    /// attributes.
+    /// </summary>
+    string Media(XElement pic, string part)
+    {
+        var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");
+        if (nvPr == null)
+            return "";
+        var file = nvPr.Elements().FirstOrDefault(e => e.Name.LocalName is "videoFile" or "audioFile" or "wavAudioFile" or "quickTimeFile");
+        var media = nvPr.Descendants(P14 + "media").FirstOrDefault();
+        if (file == null && media == null)
+            return "";
+        var video = file?.Name.LocalName is "videoFile" or "quickTimeFile";
+        var package = slide.Presentation.Package;
+        string? source = null;
+        foreach (var id in new[] { media?.Attribute(Ns.R + "embed")?.Value, file?.Attribute(Ns.R + "link")?.Value, file?.Attribute(Ns.R + "embed")?.Value })
+        {
+            if (string.IsNullOrEmpty(id) || package.Relationship(part, id) is not { } rel)
+                continue;
+            if (rel.External)
+            {
+                if (Uri.TryCreate(rel.Target, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+                    source = rel.Target;
+            }
+            else if (package.Exists(rel.Target))
+            {
+                var type = package.ContentType(rel.Target);
+                if (string.IsNullOrEmpty(type) || type == "application/octet-stream")
+                    type = video ? "video/mp4" : "audio/mpeg";
+                source = $"data:{type};base64,{Convert.ToBase64String(package.ReadBytes(rel.Target))}";
+            }
+            if (source != null)
+                break;
+        }
+        if (source == null)
+            return "";
+        var attributes = new StringBuilder();
+        if (media?.Element(P14 + "trim") is { } trim)
+        {
+            if (trim.Str("st") is { } st) attributes.Append($" data-trim-start=\"{System.Net.WebUtility.HtmlEncode(st)}\"");
+            if (trim.Str("end") is { } end) attributes.Append($" data-trim-end=\"{System.Net.WebUtility.HtmlEncode(end)}\"");
+        }
+        if (media?.Element(P14 + "fade") is { } fade)
+        {
+            if (fade.Str("in") is { } fadeIn) attributes.Append($" data-fade-in=\"{System.Net.WebUtility.HtmlEncode(fadeIn)}\"");
+            if (fade.Str("out") is { } fadeOut) attributes.Append($" data-fade-out=\"{System.Net.WebUtility.HtmlEncode(fadeOut)}\"");
+        }
+        var tag = video ? "video" : "audio";
+        return $"<{tag} class=\"fs-media\" src=\"{System.Net.WebUtility.HtmlEncode(source)}\" preload=\"metadata\" playsinline{attributes}></{tag}>";
     }
 
     /// <summary>Graphic frames: SmartArt, charts and tables (OLE objects follow).</summary>

@@ -32,6 +32,8 @@ public static class PptxConverter
         .sp text{white-space:pre;font-variant-ligatures:none}
         .sp text.sel{fill-opacity:0}
         .glyphs{position:absolute;left:0;top:0}
+        .fs-media{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;visibility:hidden}
+        .fs-media.playing{visibility:visible}
         .fs-play{position:fixed;right:16px;bottom:16px;width:44px;height:44px;border:0;border-radius:50%;background:#c43e1c;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
         body:has(.slide:target) .fs-play{display:none}
         .fs-show{position:fixed;inset:0;background:#000;z-index:2147483647;overflow:hidden;user-select:none}

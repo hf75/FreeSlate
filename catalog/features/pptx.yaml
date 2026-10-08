@@ -716,6 +716,7 @@ areas:
                    p15:isNarration]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: >-
           HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks
           as WebVTT.
@@ -1367,6 +1368,7 @@ areas:
                    p14:seekEvt, p14:stopEvt, p14:triggerEvt, p14:showEvtLst]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Play, pause and stop commands and media bookmarks as timing events.
 
       - id: animation.pictures
