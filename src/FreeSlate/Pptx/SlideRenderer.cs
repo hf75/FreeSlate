@@ -236,6 +236,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 solid.Bevel(solidOutlines, topWidth, topHeight, topProfile, texturedBevel ? null : faceColor, line: lineColor, lineWidth: lineWidth);
             if (contourWidth > 0.01 && !wireframe)
                 solid.Contour(solidOutlines, front, back, contourWidth, Solid.Rise(topWidth, topHeight, topProfile), Solid.Rise(bottomWidth, bottomHeight, bottomProfile));
+            // A 3D body casts its shadow and glow from its back, the outline at the back seen by the camera (measured).
+            var (backData, backBounds) = solid.Projected(solidOutlines, back);
+            var outerDefs = new StringBuilder();
+            if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
+                html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs><path d=\"{backData}\" fill=\"#000\" filter=\"url(#{outerFilter})\"/></svg>");
             var solidMarkup = solid.Markup();
             if (solidMarkup.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidMarkup}</svg>");
@@ -258,7 +263,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
-        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0);
+        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
+            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = wireframe && solidBody ? "" : paths.ToString() + ends;

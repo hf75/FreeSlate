@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/three-d.pptx",
-  "sha256": "2e5c7eb1c33b1d4c2d6002ae48b06b30890e831b8188a8712bf8a8af0af39634",
+  "sha256": "e69ba3e4bdb8977d1a0ff78914bbae2a7a2ac119b33978c33f6a6a5c7a5906d0",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 9
+  "slides": 10
 }

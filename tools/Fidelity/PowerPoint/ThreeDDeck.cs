@@ -216,6 +216,45 @@ static class ThreeDDeck
         behind.ThreeD.RotationX = 150;
         behind.ThreeD.RotationY = 20;
         behind.ThreeD.Depth = 30;
+
+        // Effects of 3D bodies: shadow and glow come from the body's back as the camera sees it; no soft edges.
+        var effects = Slide(presentation);
+        dynamic Shadowed(dynamic shape)
+        {
+            shape.Shadow.Visible = PowerPointSession.MsoTrue;
+            shape.Shadow.OffsetX = 14;
+            shape.Shadow.OffsetY = 14;
+            shape.Shadow.Blur = 4;
+            shape.Shadow.ForeColor.RGB = CorpusGenerator.Rgb(0, 0, 0);
+            shape.Shadow.Transparency = 0.4f;
+            return shape;
+        }
+        var raised = Shadowed(Box(effects, Rectangle, 60, 60, 180, 120, "Shadow"));
+        raised.ThreeD.BevelTopType = 3;
+        raised.ThreeD.BevelTopInset = 20f;
+        raised.ThreeD.BevelTopDepth = 10f;
+        var block = Shadowed(Box(effects, Rectangle, 360, 60, 180, 120, "Shadow"));
+        block.ThreeD.SetPresetCamera(IsometricLeftDown);
+        block.ThreeD.Depth = 40;
+        var card = Shadowed(Box(effects, Rectangle, 660, 60, 180, 120, "Shadow"));
+        card.ThreeD.SetPresetCamera(PerspectiveFront);
+        card.ThreeD.RotationX = 40;
+        var glowing = Box(effects, Rectangle, 60, 300, 180, 120, "Glow");
+        glowing.ThreeD.SetPresetCamera(IsometricLeftDown);
+        glowing.ThreeD.Depth = 40;
+        glowing.Glow.Radius = 12;
+        glowing.Glow.Color.RGB = yellow;
+        var softened = Box(effects, Rectangle, 360, 300, 180, 120, "Soft edges");
+        softened.ThreeD.BevelTopType = 3;
+        softened.ThreeD.BevelTopInset = 20f;
+        softened.ThreeD.BevelTopDepth = 10f;
+        softened.SoftEdge.Radius = 10;
+        var oval = Shadowed(Box(effects, Oval, 660, 300, 180, 120, "Shadow"));
+        oval.ThreeD.SetPresetCamera(PerspectiveRelaxed);
+        oval.ThreeD.Depth = 30;
+        oval.ThreeD.BevelTopType = 3;
+        oval.ThreeD.BevelTopInset = 12f;
+        oval.ThreeD.BevelTopDepth = 8f;
     }
 
     static dynamic Slide(object deck) => CorpusGenerator.AddSlide((dynamic)deck, CorpusGenerator.LayoutBlank);

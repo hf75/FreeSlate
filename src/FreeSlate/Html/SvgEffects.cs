@@ -15,19 +15,37 @@ public static class SvgEffects
 {
     static int nextId;
 
+    /// <summary>Which effects a filter draws.</summary>
+    [Flags]
+    public enum Parts
+    {
+        /// <summary>The shadow and glow around the shape, without the shape itself.</summary>
+        Outer = 1,
+
+        /// <summary>The shape with what happens on it: blur, soft edges and inner shadow.</summary>
+        Shape = 2,
+
+        All = Outer | Shape,
+    }
+
     /// <summary>Appends a filter for the effects of <paramref name="effectLst"/> to <paramref name="defs"/> and returns its id, or null.</summary>
     /// <param name="stroke">The outline width in pixels: a blur that does not grow stays within the outline's outer edge.</param>
-    public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0)
+    /// <param name="parts">The effects drawn; a 3D body casts its shadow and glow from its back and has no soft edges.</param>
+    /// <param name="region">The area the shape covers when it is not the box (0, 0, width, height).</param>
+    public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0,
+        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null)
     {
         if (effectLst == null)
             return null;
         // Preset shadows (shdw1 … shdw20, the classic hard-edged shadows) are drawn as unblurred outer shadows
         // with their distance and direction (catalog: effect.presetShadow).
-        var shadow = effectLst.Element(Ns.A + "outerShdw") ?? effectLst.Element(Ns.A + "prstShdw");
-        var glow = effectLst.Element(Ns.A + "glow");
-        var soft = effectLst.Element(Ns.A + "softEdge");
-        var inner = effectLst.Element(Ns.A + "innerShdw");
-        var blurEffect = effectLst.Element(Ns.A + "blur");
+        var outer = parts.HasFlag(Parts.Outer);
+        var own = parts.HasFlag(Parts.Shape);
+        var shadow = outer ? effectLst.Element(Ns.A + "outerShdw") ?? effectLst.Element(Ns.A + "prstShdw") : null;
+        var glow = outer ? effectLst.Element(Ns.A + "glow") : null;
+        var soft = own && outer ? effectLst.Element(Ns.A + "softEdge") : null;
+        var inner = own ? effectLst.Element(Ns.A + "innerShdw") : null;
+        var blurEffect = own ? effectLst.Element(Ns.A + "blur") : null;
         if (shadow == null && glow == null && soft == null && inner == null && blurEffect == null)
             return null;
 
@@ -58,8 +76,10 @@ public static class SvgEffects
         {
             var r = Units.ToPx(glow.Long("rad") ?? 0);
             var color = colors.ResolveChild(glow) ?? RgbColor.Black;
-            steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"dilate\" radius=\"{Units.Css(r / 2)}\" result=\"gd\"/>");
-            steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(r / 6)}\" result=\"gb\"/>");
+            // Around a 3D body (outer effects only) the glow is half as wide: dilated by r/4, σ = r/8 (measured).
+            var (dilate, sigma) = own ? (r / 2, r / 6) : (r / 4, r / 8);
+            steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
+            steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
             steps.Append("<feComposite in2=\"gb\" operator=\"in\" result=\"glow\"/>");
             merge.Add("glow");
@@ -78,7 +98,8 @@ public static class SvgEffects
             merge.Insert(0, "shadow");
             extent = Math.Max(extent, distance + blur * 2);
         }
-        merge.Add(source);
+        if (own)
+            merge.Add(source);
         if (inner != null)
         {
             // Inner shadow: the shape's outside, blurred and moved against the direction, colored and kept inside
@@ -96,10 +117,11 @@ public static class SvgEffects
             merge.Add("inner");
         }
 
+        var (rx, ry, rw, rh) = region ?? (0, 0, width, height);
         defs.Append(boundingBox
             ? $"<filter id=\"{id}\" x=\"-0.5\" y=\"-1\" width=\"2\" height=\"3\" color-interpolation-filters=\"sRGB\">"
-            : $"<filter id=\"{id}\" filterUnits=\"userSpaceOnUse\" x=\"{Units.Css(-extent)}\" y=\"{Units.Css(-extent)}\" " +
-              $"width=\"{Units.Css(width + 2 * extent)}\" height=\"{Units.Css(height + 2 * extent)}\" color-interpolation-filters=\"sRGB\">");
+            : $"<filter id=\"{id}\" filterUnits=\"userSpaceOnUse\" x=\"{Units.Css(rx - extent)}\" y=\"{Units.Css(ry - extent)}\" " +
+              $"width=\"{Units.Css(rw + 2 * extent)}\" height=\"{Units.Css(rh + 2 * extent)}\" color-interpolation-filters=\"sRGB\">");
         defs.Append(steps);
         defs.Append("<feMerge>").Append(string.Concat(merge.Select(m => $"<feMergeNode in=\"{m}\"/>"))).Append("</feMerge></filter>");
         return id;

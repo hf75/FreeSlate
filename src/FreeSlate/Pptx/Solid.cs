@@ -588,6 +588,25 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     /// <summary>The faces collected so far as SVG, farthest first.</summary>
     public string Markup() => (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + string.Concat(faces.OrderBy(f => f.Depth).Select(f => f.Markup));
 
+    /// <summary>The outlines at z = <paramref name="z"/> on the screen as path data, with the box they cover.</summary>
+    public (string Data, (double X, double Y, double W, double H) Bounds) Projected(List<List<(double X, double Y)>> outlines, double z)
+    {
+        var d = new StringBuilder();
+        var (minX, minY, maxX, maxY) = (double.MaxValue, double.MaxValue, double.MinValue, double.MinValue);
+        foreach (var local in outlines)
+        {
+            for (var i = 0; i < local.Count; i++)
+            {
+                var p = Scene(local[i]);
+                var (x, y) = Screen((p.X, p.Y, z));
+                (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
+                d.Append(i == 0 ? 'M' : 'L').Append(Units.Css(x)).Append(' ').Append(Units.Css(y));
+            }
+            d.Append('Z');
+        }
+        return d.Length == 0 ? ("", (0, 0, 0, 0)) : (d.ToString(), (minX, minY, maxX - minX, maxY - minY));
+    }
+
     /// <summary>SVG path data of outlines (shape pixels).</summary>
     public static string PathData(IEnumerable<List<(double X, double Y)>> outlines)
     {
