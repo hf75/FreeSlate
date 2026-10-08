@@ -23,6 +23,22 @@ public sealed class FontResolver(FontLocator locator)
         Find(family, bold, italic) ?? Fallbacks.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null)
         ?? throw new InvalidOperationException("No usable font found (not even a fallback).");
 
+    /// <summary>
+    /// The font for <paramref name="text"/>: the family if it is installed and has every glyph, else the first of
+    /// <paramref name="candidates"/> that has them, else the family (or its fallback) anyway.
+    /// </summary>
+    public ResolvedFont ResolveCovering(string family, bool bold, bool italic, string text, IEnumerable<string> candidates)
+    {
+        if (Find(family, bold, italic) is { } found && found.Data.Covers(text))
+            return found;
+        foreach (var candidate in candidates)
+        {
+            if (Find(candidate, bold, italic) is { } alternative && alternative.Data.Covers(text))
+                return alternative;
+        }
+        return Resolve(family, bold, italic);
+    }
+
     ResolvedFont? Find(string family, bool bold, bool italic) => cache.GetOrAdd((family, bold, italic), key =>
     {
         var faces = locator.Faces(key.Item1).ToList();

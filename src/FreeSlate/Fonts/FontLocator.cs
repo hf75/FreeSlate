@@ -4,7 +4,14 @@ using System.Text;
 namespace FreeSlate.Fonts;
 
 /// <summary>A font file with the family and style it declares.</summary>
-public sealed record FontFace(string Family, bool Bold, bool Italic, string Path, bool System);
+public sealed record FontFace(string Family, bool Bold, bool Italic, string Path, bool System)
+{
+    /// <summary>The family's names in other languages (theme fonts are often given as 游ゴシック, 맑은 고딕 …).</summary>
+    public IReadOnlyList<string> Aliases { get; init; } = [];
+
+    public bool Matches(string family) =>
+        Family.Equals(family, StringComparison.OrdinalIgnoreCase) || Aliases.Any(a => a.Equals(family, StringComparison.OrdinalIgnoreCase));
+}
 
 /// <summary>
 /// Finds font files: installed fonts (the browser finds those by name) and Office cloud fonts such as Aptos,
@@ -23,15 +30,15 @@ public sealed class FontLocator
         faces = new Lazy<List<FontFace>>(() => Scan(system, true).Concat(Scan(cloud, false)).ToList());
     }
 
-    public bool IsInstalled(string family) => faces.Value.Any(f => f.System && f.Family.Equals(family, StringComparison.OrdinalIgnoreCase));
+    public bool IsInstalled(string family) => faces.Value.Any(f => f.System && f.Matches(family));
 
     /// <summary>All known faces of a family, installed ones first.</summary>
     public IEnumerable<FontFace> Faces(string family) =>
-        faces.Value.Where(f => f.Family.Equals(family, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.System ? 0 : 1);
+        faces.Value.Where(f => f.Matches(family)).OrderBy(f => f.System ? 0 : 1);
 
     /// <summary>Faces of a family that are not installed but available as files (to be embedded).</summary>
     public IEnumerable<FontFace> Embeddable(string family) =>
-        IsInstalled(family) ? [] : faces.Value.Where(f => !f.System && f.Family.Equals(family, StringComparison.OrdinalIgnoreCase));
+        IsInstalled(family) ? [] : faces.Value.Where(f => !f.System && f.Matches(family));
 
     static IEnumerable<string> SystemDirectories()
     {
@@ -110,7 +117,26 @@ static class OpenTypeInfo
             italic = (selection & 0x01) != 0;
             bold = (selection & 0x20) != 0;
         }
-        return new FontFace(family, bold, italic, path, system);
+        var aliases = NameStrings(data, name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
+        return new FontFace(family, bold, italic, path, system) { Aliases = aliases };
+    }
+
+    /// <summary>All values of a name record, in every language.</summary>
+    static IEnumerable<string> NameStrings(byte[] data, int table, int nameId)
+    {
+        var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 2));
+        var storage = table + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 4));
+        for (var i = 0; i < count; i++)
+        {
+            var r = table + 6 + i * 12;
+            var platform = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r));
+            var id = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 6));
+            var length = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 8));
+            var start = storage + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 10));
+            if (id != nameId || start + length > data.Length || platform is not (0 or 3))
+                continue;
+            yield return Encoding.BigEndianUnicode.GetString(data, start, length);
+        }
     }
 
     /// <summary>A name record, preferring Windows/Unicode/English (US).</summary>

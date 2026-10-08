@@ -82,6 +82,9 @@ public sealed class FontData : IDisposable
             UnderlinePosition = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 8)) / (double)UnitsPerEm;
             UnderlineThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 10)) / (double)UnitsPerEm;
         }
+        if (tables.TryGetValue("OS/2", out var capTable) && capTable + 90 <= data.Length
+            && BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(capTable)) >= 2 && BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(capTable + 88)) is > 0 and var cap)
+            CapHeight = cap / (double)UnitsPerEm;
         if (tables.TryGetValue("OS/2", out var os2Table) && os2Table + 30 <= data.Length)
         {
             StrikeoutThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 26)) / (double)UnitsPerEm;
@@ -116,6 +119,9 @@ public sealed class FontData : IDisposable
 
     /// <summary>Color fonts (COLR, CBDT, sbix, SVG): their glyphs are left to the browser.</summary>
     public bool IsColor { get; }
+
+    /// <summary>Height of the capitals (OS/2 sCapHeight) in em; 0.7 when the font does not say.</summary>
+    public double CapHeight { get; } = 0.7;
 
     /// <summary>Underline offset below the baseline and thickness (post table), in em.</summary>
     public double UnderlinePosition { get; }
@@ -183,8 +189,27 @@ public sealed class FontData : IDisposable
         return result;
     }
 
-    /// <summary>The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table.</summary>
+    /// <summary>
+    /// The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table. Pieces of
+    /// different scripts are shaped separately in logical order, so right-to-left pieces keep their own order
+    /// inside a left-to-right line.
+    /// </summary>
     public ShapedGlyph[] Glyphs(string text, bool kerning)
+    {
+        var pieces = Scripts.Split(text);
+        if (pieces.Count <= 1)
+            return ShapePiece(text, kerning);
+        var result = new List<ShapedGlyph>();
+        var offset = 0;
+        foreach (var (piece, _, _) in pieces)
+        {
+            result.AddRange(ShapePiece(piece, kerning).Select(g => g with { Cluster = g.Cluster + offset }));
+            offset += piece.Length;
+        }
+        return result.ToArray();
+    }
+
+    ShapedGlyph[] ShapePiece(string text, bool kerning)
     {
         if (text.Length == 0)
             return [];
@@ -209,6 +234,19 @@ public sealed class FontData : IDisposable
 
     /// <summary>The outline of a glyph as SVG path data in font units, y down; "" for glyphs without contours.</summary>
     public string Outline(uint glyph) => outlines.GetOrAdd(glyph, g => GlyphOutlines.Draw(font, g));
+
+    /// <summary>Whether the font has a glyph for every character of <paramref name="text"/> (controls and spaces aside).</summary>
+    public bool Covers(string text)
+    {
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (rune.Value < 0x21 || System.Text.Rune.IsWhiteSpace(rune) || System.Text.Rune.IsControl(rune) || rune.Value is 0x200E or 0x200F)
+                continue;
+            if (!font.TryGetGlyph((uint)rune.Value, out var glyph) || glyph == 0)
+                return false;
+        }
+        return true;
+    }
 
     /// <summary>
     /// Horizontal format 0 pairs of a version 0 'kern' table. Subtable lengths are not trusted (large tables

@@ -197,6 +197,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 {
                     svg.Append($"<rect x=\"{Px(left + run.X)}\" y=\"{Px(baseline - line.Ascent)}\" width=\"{Px(run.Width)}\" height=\"{Px(line.Ascent + line.Descent)}\" fill=\"{highlight.ToHex()}\"/>");
                 }
+                if (run.Picture != null)
+                {
+                    var pictureHeight = run.PictureHeight;
+                    svg.Append($"<image href=\"{run.Picture}\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline - pictureHeight)}\" width=\"{Px(run.Width)}\" height=\"{Px(pictureHeight)}\" preserveAspectRatio=\"none\"/>");
+                    continue;
+                }
                 if (string.IsNullOrWhiteSpace(run.Text))
                     continue;
                 var filter = run.Style.Effects is { } effects
@@ -559,13 +565,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             switch (element.Name.LocalName)
             {
-                case "r":
-                    var t = element.Element(Ns.A + "t")?.Value ?? "";
-                    runs.Add(new TextRun(t, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, t)));
-                    break;
-                case "fld":
-                    var text = FieldText(element);
-                    runs.Add(new TextRun(text, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, text)));
+                case "r" or "fld":
+                    // Every piece of one font slot (Latin, East Asian, complex script) gets its own font.
+                    var t = element.Name.LocalName == "fld" ? FieldText(element) : element.Element(Ns.A + "t")?.Value ?? "";
+                    var rPr = element.Element(Ns.A + "rPr");
+                    foreach (var (piece, slot, script) in Scripts.Split(t))
+                        runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)));
                     break;
                 case "br":
                     runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)));
@@ -656,13 +661,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         string text;
         switch (kind?.Name.LocalName)
         {
+            case "buBlip" when kind.Element(Ns.A + "blip")?.Attribute(Ns.R + "embed")?.Value is { } embed
+                               && slide.Images(linkPart ?? slide.SlidePart)(embed) is { } picture:
+            {
+                // A picture bullet (catalog: text.bullets).
+                counters[level] = 0;
+                var (w, h) = slide.ImageSizes(linkPart ?? slide.SlidePart)(embed);
+                var pictureSize = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
+                var factor = pictureSize?.Name.LocalName == "buSzPct" ? (pictureSize.Long("val") ?? 100000) / 100000.0 : 1;
+                return new Bullet("", textStyle with { Size = textStyle.Size * factor }, picture, w > 0 && h > 0 ? w / h : 1);
+            }
             case "buChar":
                 text = kind.Str("char") ?? "•";
                 counters[level] = 0;
                 break;
             case "buAutoNum":
                 counters[level] = counters[level] == 0 ? kind.Int("startAt") ?? 1 : counters[level] + 1;
-                text = AutoNumber(kind.Str("type") ?? "arabicPeriod", counters[level]);
+                text = AutoNumbering.Format(kind.Str("type") ?? "arabicPeriod", counters[level]);
                 break;
             default:
                 counters[level] = 0;
@@ -673,6 +688,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var resolved = font?.Name.LocalName == "buFont" && slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
             ? fonts.Resolve(family, textStyle.Bold, textStyle.Italic)
             : textStyle.Font;
+        // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them.
+        if (!resolved.Data.Covers(text) && Scripts.Split(text) is [var (_, slot, script)])
+        {
+            var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
+            var theme = slot switch
+            {
+                FontSlot.EastAsian => slide.Theme.ScriptFonts.GetValueOrDefault((false, Scripts.EastAsianScript(null, script))),
+                FontSlot.Complex when script != null => slide.Theme.ScriptFonts.GetValueOrDefault((false, script)),
+                _ => null,
+            };
+            resolved = fonts.ResolveCovering(theme ?? candidates[0], textStyle.Bold, textStyle.Italic, text, candidates);
+        }
 
         var sizeElement = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
         var size = sizeElement?.Name.LocalName switch
@@ -687,16 +714,37 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return new Bullet(text, new TextStyle(resolved, size, color, Kerning: false));
     }
 
-    TextStyle Style(XElement? rPr, List<Source> sources, int level, double fontScale, string? text)
+    TextStyle Style(XElement? rPr, List<Source> sources, int level, double fontScale, string? text,
+        FontSlot slot = FontSlot.Latin, string? script = null)
     {
         string? R(string name) => RunAttr(rPr, sources, level, name);
         var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale;
         var bold = R("b") is "1" or "true";
         var italic = R("i") is "1" or "true";
 
-        var family = Typeface(RunElement(rPr, sources, level, "latin")) ?? slide.Theme.MinorLatin;
-        if (text != null && text.Any(LineBreaker.IsIdeographic) && Typeface(RunElement(rPr, sources, level, "ea")) is { } eastAsian)
-            family = eastAsian;
+        // The font of the slot (a:latin, a:ea or a:cs); empty East Asian and complex fonts come from the theme's
+        // per-script fonts (by language for East Asian text); a font without the glyphs gives way to one that has
+        // them (catalog: text.fonts).
+        var latin = RunElement(rPr, sources, level, "latin");
+        var major = latin?.Str("typeface") is "+mj-lt";
+        var family = Typeface(latin) ?? slide.Theme.MinorLatin;
+        if (slot == FontSlot.EastAsian)
+        {
+            var themeScript = Scripts.EastAsianScript(R("lang"), script);
+            family = Typeface(RunElement(rPr, sources, level, "ea"))
+                     ?? slide.Theme.ScriptFonts.GetValueOrDefault((major, themeScript))
+                     ?? Scripts.Fallbacks(slot, themeScript)[0];
+            script = themeScript;
+        }
+        else if (slot == FontSlot.Complex)
+        {
+            family = Typeface(RunElement(rPr, sources, level, "cs"))
+                     ?? (script != null ? slide.Theme.ScriptFonts.GetValueOrDefault((major, script)) : null)
+                     ?? Scripts.Fallbacks(slot, script)[0];
+        }
+        var resolved = text != null
+            ? fonts.ResolveCovering(family, bold, italic, text, Scripts.Fallbacks(slot, script))
+            : fonts.Resolve(family, bold, italic);
 
         // kern: kerning applies from this size (hundredths of a point) up; without it PowerPoint does not kern.
         var kern = double.TryParse(R("kern"), out var k) ? k / 100 : double.MaxValue;
@@ -723,7 +771,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             paint = null;
         }
         return new TextStyle(
-            fonts.Resolve(family, bold, italic),
+            resolved,
             size,
             color,
             bold,
@@ -756,41 +804,4 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     string? Typeface(XElement? font) =>
         font?.Str("typeface") is { Length: > 0 } t ? slide.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
 
-    static string AutoNumber(string scheme, int n)
-    {
-        var value = scheme switch
-        {
-            _ when scheme.StartsWith("alphaLc", StringComparison.Ordinal) => Alpha(n).ToLowerInvariant(),
-            _ when scheme.StartsWith("alphaUc", StringComparison.Ordinal) => Alpha(n),
-            _ when scheme.StartsWith("romanLc", StringComparison.Ordinal) => Roman(n).ToLowerInvariant(),
-            _ when scheme.StartsWith("romanUc", StringComparison.Ordinal) => Roman(n),
-            _ => n.ToString(CultureInfo.InvariantCulture),
-        };
-        return scheme switch
-        {
-            _ when scheme.EndsWith("ParenBoth", StringComparison.Ordinal) => $"({value})",
-            _ when scheme.EndsWith("ParenR", StringComparison.Ordinal) => $"{value})",
-            _ when scheme.EndsWith("Plain", StringComparison.Ordinal) => value,
-            _ => $"{value}.",
-        };
-    }
-
-    static string Alpha(int n)
-    {
-        var s = "";
-        for (n = Math.Max(1, n); n > 0; n = (n - 1) / 26)
-            s = (char)('A' + (n - 1) % 26) + s;
-        return s;
-    }
-
-    static string Roman(int n)
-    {
-        (int Value, string Symbol)[] table = [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")];
-        var sb = new StringBuilder();
-        foreach (var (value, symbol) in table)
-        {
-            while (n >= value) { sb.Append(symbol); n -= value; }
-        }
-        return sb.ToString();
-    }
 }
