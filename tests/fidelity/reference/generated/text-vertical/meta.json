@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-vertical.pptx",
+  "sha256": "adf6d32b76eb27325e5bf882638c2ac5399e0019394c6d47fce5fb6d20365829",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 5
+}

@@ -201,12 +201,26 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (shape.Name.LocalName == "sp")
         {
             var placeholder = Placeholders.Ph(shape);
+            // Upright text (bodyPr upright) does not turn with its shape: it is laid out about the shape's center,
+            // with width and height swapped when the shape stands on its side (45° to 135°, 225° to 315°; measured).
+            var upright = chain.Select(s => s.Element.Element(Ns.P + "txBody")?.Element(Ns.A + "bodyPr")?.Attribute("upright")?.Value)
+                .FirstOrDefault(v => v != null) is "1" or "true";
+            var turn = ((rotation % 360) + 360) % 360;
+            var textGeometry = geometry;
+            if (upright && turn is >= 45 and < 135 or >= 225 and < 315)
+            {
+                var (cx, cy) = ((geometry.TextLeft + geometry.TextRight) / 2, (geometry.TextTop + geometry.TextBottom) / 2);
+                var (halfWidth, halfHeight) = ((geometry.TextBottom - geometry.TextTop) / 2, (geometry.TextRight - geometry.TextLeft) / 2);
+                textGeometry = geometry with { TextLeft = cx - halfWidth, TextRight = cx + halfWidth, TextTop = cy - halfHeight, TextBottom = cy + halfHeight };
+            }
             var textMarkup = text.Render(new TextChain
             {
                 Shapes = chain,
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 FontRef = style?.Element(Ns.A + "fontRef"),
-            }, geometry, pw, flipH ^ flipV);
+            }, textGeometry, pw, flipH ^ flipV);
+            if (upright && turn != 0 && textMarkup.Length > 0)
+                textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
             body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);

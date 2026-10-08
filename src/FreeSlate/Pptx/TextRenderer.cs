@@ -70,6 +70,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
         var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
+        // Vertical text (catalog: text.vertical); the insets stay with the shape's sides.
+        if (Body("vert") is "vert" or "vert270" or "eaVert" or "mongolianVert")
+            return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, Body("wrap") != "none", fontScale, spacingReduction, Body("anchor") ?? "t");
+        if (Body("vert") is "wordArtVert" or "wordArtVertRtl")
+            return RenderStacked(Layout(txBody, sources, 1e6, false, fontScale, spacingReduction), Body("vert") == "wordArtVertRtl", left, top, width, height, Body("anchor") ?? "t");
         // Columns (catalog: text.columns): the text is laid out at the column width and its lines are shared out
         // evenly over the columns (measured: 33 lines in three columns become 11, 11 and 11, even when they overflow).
         var columns = Math.Clamp(int.TryParse(Body("numCol"), out var columnCount) ? columnCount : 1, 1, 16);
@@ -86,6 +91,158 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box);
         }
         return Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+    }
+
+    /// <summary>
+    /// Text turned by 90° (vert, and East Asian vertical text) or 270° (vert270): laid out along the shape's height
+    /// and anchored across it, the text's top facing right (left for vert270). East Asian vertical text keeps its
+    /// ideographs upright; mongolianVert stacks its lines from left to right.
+    /// </summary>
+    string RenderTurned(XElement txBody, List<Source> sources, string mode, double left, double top, double width, double height,
+        bool wrap, double fontScale, double spacingReduction, string anchor) =>
+        EmitTurned(Layout(txBody, sources, Math.Max(0, height), wrap, fontScale, spacingReduction), mode, left, top, width, height, anchor);
+
+    /// <summary>Emits text laid out along <paramref name="height"/> turned into the area (see <see cref="RenderTurned"/>).</summary>
+    public string EmitTurned(LaidOutText layout, string mode, double left, double top, double width, double height, string anchor)
+    {
+        if (mode is "eaVert" or "mongolianVert")
+            layout = Upright(layout);
+        Func<LaidOutLine, double>? shift = null;
+        if (mode == "mongolianVert")
+        {
+            // The block's anchor and its lines are mirrored: the first line lies left.
+            anchor = anchor switch { "t" => "b", "b" => "t", _ => anchor };
+            var total = layout.Height;
+            shift = line => total - 2 * line.Baseline - line.Descent + line.Ascent;
+        }
+        var matrix = mode == "vert270"
+            ? $"matrix(0 -1 1 0 {Px(left)} {Px(top + height)})"
+            : $"matrix(0 1 -1 0 {Px(left + width)} {Px(top)})";
+        return $"<g transform=\"{matrix}\">{Emit(layout, 0, 0, width, anchor, lineShift: shift)}</g>";
+    }
+
+    /// <summary>Splits runs so that East Asian characters stand alone as upright runs.</summary>
+    static LaidOutText Upright(LaidOutText layout)
+    {
+        foreach (var line in layout.Lines)
+        {
+            var runs = new List<PlacedRun>();
+            foreach (var run in line.Runs)
+            {
+                if (run.Picture != null || !run.Text.Any(c => Scripts.Upright(c)))
+                {
+                    runs.Add(run);
+                    continue;
+                }
+                var style = run.Style;
+                var advances = style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
+                var x = run.X;
+                var start = 0;
+                for (var i = 0; i <= run.Text.Length; i++)
+                {
+                    var upright = i < run.Text.Length && Scripts.Upright(run.Text[i]);
+                    if (i < run.Text.Length && !upright)
+                        continue;
+                    if (i > start)
+                    {
+                        var w = advances[start..i].Sum();
+                        runs.Add(run with { Text = run.Text[start..i], X = x, Width = w });
+                        x += w;
+                    }
+                    if (upright)
+                    {
+                        runs.Add(run with { Text = run.Text[i].ToString(), X = x, Width = advances[i], Upright = true });
+                        x += advances[i];
+                    }
+                    start = i + 1;
+                }
+            }
+            line.Runs.Clear();
+            line.Runs.AddRange(runs);
+        }
+        return layout;
+    }
+
+    /// <summary>
+    /// Stacked WordArt text (wordArtVert): upright characters one below the other in columns that run left to right
+    /// (right to left for wordArtVertRtl), breaking at spaces. Measured: characters and columns are 1.41 × the size
+    /// apart and the baseline sits 1.12 × the size into a character's cell; the anchor places the columns, the
+    /// alignment the characters in their column; trailing spaces take no room.
+    /// </summary>
+    string RenderStacked(LaidOutText layout, bool rightToLeft, double left, double top, double width, double height, string anchor)
+    {
+        const double Step = 1.41, BaselineDepth = 1.12;
+        var columns = new List<(List<(string Text, TextStyle Style)> Cells, string Align)>();
+        foreach (var paragraph in layout.Lines.GroupBy(l => l.Paragraph))
+        {
+            var cells = paragraph.SelectMany(l => l.Runs).Where(r => r.Picture == null)
+                .SelectMany(r => SplitGraphemes(r.Style.AllCaps ? r.Text.ToUpperInvariant() : r.Text).Select(t => (Text: t, r.Style))).ToList();
+            var align = paragraph.First().Align;
+            var column = new List<(string Text, TextStyle Style)>();
+            double used = 0;
+            var i = 0;
+            while (i < cells.Count)
+            {
+                // The next word with its trailing spaces.
+                var end = i;
+                while (end < cells.Count && cells[end].Text != " ") end++;
+                while (end < cells.Count && cells[end].Text == " ") end++;
+                var word = cells.GetRange(i, end - i);
+                var length = word.Where(c => c.Text != " ").Sum(c => Step * c.Style.Size);
+                if (column.Count > 0 && used + length > height + 1e-6)
+                {
+                    columns.Add((column, align));
+                    (column, used) = ([], 0);
+                }
+                // A word longer than a column breaks between its characters.
+                foreach (var cell in word)
+                {
+                    var step = Step * cell.Style.Size;
+                    if (column.Count > 0 && cell.Text != " " && used + step > height + 1e-6)
+                    {
+                        columns.Add((column, align));
+                        (column, used) = ([], 0);
+                    }
+                    column.Add(cell);
+                    used += step;
+                }
+                i = end;
+            }
+            columns.Add((column, align));
+        }
+        var pitches = columns.Select(c => Step * (c.Cells.Count == 0 ? 18 : c.Cells.Max(x => x.Style.Size))).ToList();
+        var total = pitches.Sum();
+        var start = anchor switch { "ctr" => (width - total) / 2, "b" => width - total, _ => 0.0 };
+        if (rightToLeft) start = width - total - start;
+        var svg = new StringBuilder("<g data-tx=\"\">");
+        var x = left + start;
+        for (var c = 0; c < columns.Count; c++)
+        {
+            var index = rightToLeft ? columns.Count - 1 - c : c;
+            var (cells, align) = columns[index];
+            var visible = cells.ToList();
+            while (visible.Count > 0 && visible[^1].Text == " ") visible.RemoveAt(visible.Count - 1);
+            var length = visible.Sum(v => Step * v.Style.Size);
+            var y = top + align switch { "ctr" => (height - length) / 2, "r" => height - length, _ => 0.0 };
+            var center = x + pitches[index] / 2;
+            foreach (var (text, style) in visible)
+            {
+                var w = style.Font.Data.LayoutWidth(text, style.Size, false);
+                if (text != " ")
+                    svg.Append(Text(new PlacedRun(text, style, 0, w), center - w / 2, y + BaselineDepth * style.Size));
+                y += Step * style.Size;
+            }
+            x += pitches[index];
+        }
+        svg.Append("</g>");
+        return svg.ToString();
+    }
+
+    static IEnumerable<string> SplitGraphemes(string text)
+    {
+        var e = System.Globalization.StringInfo.GetTextElementEnumerator(text);
+        while (e.MoveNext())
+            yield return (string)e.Current;
     }
 
     /// <summary>The lines of a layout distributed over columns, each column starting at the top.</summary>
@@ -110,7 +267,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var line = lines[i];
                 var moved = new LaidOutLine
                 {
-                    Paragraph = line.Paragraph, Ascent = line.Ascent, Descent = line.Descent, Width = line.Width,
+                    Paragraph = line.Paragraph, Ascent = line.Ascent, Descent = line.Descent, Width = line.Width, Align = line.Align,
                     Baseline = line.Baseline - columnTop,
                 };
                 moved.Runs.AddRange(line.Runs.Select(r => r with { X = r.X + dx }));
@@ -198,7 +355,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     }
 
     /// <summary>SVG for a laid-out text block placed in a box (points); anchor t, ctr or b.</summary>
-    public string Emit(LaidOutText layout, double left, double top, double height, string anchor, double? unflipWidth = null)
+    public string Emit(LaidOutText layout, double left, double top, double height, string anchor, double? unflipWidth = null,
+        Func<LaidOutLine, double>? lineShift = null)
     {
         var offset = anchor switch
         {
@@ -223,7 +381,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             }
             // Baselines and glyphs sit on whole pixels counted from the top of the text area and from the start of
             // each format run (measured with the text-snap deck; see Snap and Text).
-            var baseline = top + Snap(offset + line.Baseline);
+            var shiftBy = lineShift?.Invoke(line) ?? 0;
+            var baseline = top + Snap(offset + line.Baseline + shiftBy);
             TextStyle? formatStyle = null;
             double formatOrigin = 0, formatEnd = double.NaN;
             foreach (var run in line.Runs)
@@ -249,11 +408,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var filter = run.Style.Effects is { } effects
                     ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, slide.Colors, 0, 0, defs, boundingBox: true)
                     : null;
-                var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline - run.Style.BaselineShift * run.Style.Size);
+                var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
                 // gradient anew, from the line's start to its end and from its ascent to its descent).
                 var box = (left + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
-                svg.Append(Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs));
+                var markup = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs);
+                // Upright characters in vertical text turn back about the middle of their em box.
+                svg.Append(run.Upright
+                    ? $"<g transform=\"rotate(-90 {Px(left + run.X + run.Width / 2)} {Px(shifted - 0.38 * run.Style.Size)})\">{markup}</g>"
+                    : markup);
             }
         }
         if (paragraph >= 0) svg.Append("</g>");

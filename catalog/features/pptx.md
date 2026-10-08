@@ -24,9 +24,9 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 7 | 1 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 1 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 14 | 2 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 5 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 6 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **83** | **39** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **83** | **41** |
 
 <a id="package"></a>
 
@@ -1211,7 +1211,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Text effects](#text.effects) | P2 | ●●●●○ | partial | 0 | 0 |
 | [Fields](#text.fields) | P1 | ●●○○○ | done | 1 | 1 |
 | [Text columns](#text.columns) | P2 | ●●●○○ | partial | 0 | 0 |
-| [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | todo | 0 | 0 |
+| [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | done | 0 | 0 |
 | [WordArt transforms](#text.warp) | P2 | ●●●●● | partial | 1 | 0 |
 | [3D text](#text.threeD) | P3 | ●●●●● | todo | 1 | 1 |
 | [Equations](#text.math) | P2 | ●●●●○ | todo | 125 | 69 |
@@ -1430,11 +1430,13 @@ a:bodyPr/@numCol and @spcCol.
 
 ### Vertical and rotated text
 
-`text.vertical` · P2 · difficulty 3 · todo
+`text.vertical` · P2 · difficulty 3 · done
 
 a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 **Rendering:** Rotate the line layout, or lay out top to bottom for East Asian and WordArt vertical text.
+
+**Office behaviour:** vert and vert270 lay the text out along the shape's height and turn it by 90 or 270 degrees; the insets stay with the shape's sides and the anchor works across the turned lines (the text's top faces right for vert, left for vert270). eaVert keeps ideographs, kana and full-width forms upright (turned back about the middle of their em box) and stacks lines right to left; mongolianVert stacks them left to right. wordArtVert stacks upright characters in columns from the left (wordArtVertRtl from the right): characters and columns 1.41 x the size apart, the baseline 1.12 x the size into each cell, words that do not fit break between characters, trailing spaces take no room (measured). upright keeps the text level in rotated shapes, laid out with width and height swapped between 45 and 135 (225 and 315) degrees. Table cells (tcPr vert) wrap at the row height (generated/text- vertical).
 
 <a id="text.warp"></a>
 
@@ -1588,7 +1590,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 | [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
 | [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
 | [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | todo | 30 | 15 |
-| [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | todo | 12 | 3 |
+| [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | done | 12 | 3 |
 | [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | todo | 118 | 0 |
 
 <a id="chart.part"></a>
@@ -1861,9 +1863,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Pivot chart settings
 
-`chart.pivot` · P3 · difficulty 1 · todo
+`chart.pivot` · P3 · difficulty 1 · done
 
 **Rendering:** Field buttons are not shown in presentations; pivot formats apply like data point formats.
+
+**Office behaviour:** Pivot sources, pivot formats and field button options do not change the picture: PowerPoint shows pivot charts like other charts, with the formats stored on the series and points, and without field buttons.
 
 **Elements (12):** [`c14:dropZoneCategories`](../format/namespaces/c14.md#c14dropzonecategories), [`c14:dropZoneData`](../format/namespaces/c14.md#c14dropzonedata), [`c14:dropZoneFilter`](../format/namespaces/c14.md#c14dropzonefilter), [`c14:dropZoneSeries`](../format/namespaces/c14.md#c14dropzoneseries), [`c14:dropZonesVisible`](../format/namespaces/c14.md#c14dropzonesvisible), [`c14:pivotOptions`](../format/namespaces/c14.md#c14pivotoptions), [`c15:pivotSource`](../format/namespaces/c15.md#c15pivotsource), [`c16:pivotOptions16`](../format/namespaces/c16.md#c16pivotoptions16), [`c16:showExpandCollapseFieldButtons`](../format/namespaces/c16.md#c16showexpandcollapsefieldbuttons), [`c:pivotFmt`](../format/namespaces/c.md#cpivotfmt), [`c:pivotFmts`](../format/namespaces/c.md#cpivotfmts), [`c:pivotSource`](../format/namespaces/c.md#cpivotsource)
 

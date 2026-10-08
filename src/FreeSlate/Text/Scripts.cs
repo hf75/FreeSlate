@@ -49,6 +49,12 @@ public static class Scripts
         };
     }
 
+    /// <summary>
+    /// Characters that stay upright in East Asian vertical text (catalog: text.vertical): ideographs, kana, hangul
+    /// and full-width forms; the prolonged sound mark, dashes and half-width forms turn with the Latin text.
+    /// </summary>
+    public static bool Upright(int c) => IsEastAsian(c) && c is not (0x30FC or 0x2015 or 0xFF5E or 0x301C) and not (>= 0xFF61 and <= 0xFFDC);
+
     static bool IsEastAsian(int c) =>
         c is >= 0x2E80 and <= 0x2FDF or >= 0x3000 and <= 0x303F or >= 0x3040 and <= 0x31FF or >= 0x3200 and <= 0x33FF
             or >= 0x3400 and <= 0x4DBF or >= 0x4E00 and <= 0x9FFF or >= 0xA000 and <= 0xA4CF or >= 0xAC00 and <= 0xD7AF

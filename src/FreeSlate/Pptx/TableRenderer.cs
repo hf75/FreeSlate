@@ -55,10 +55,15 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         {
             var (marL, marR, marT, marB) = Margins(cell.Element);
             var width = Span(xs, cell.Column, cell.ColumnSpan) - marL - marR;
-            var layout = text.LayoutCell(cell.Element.Element(Ns.A + "txBody") ?? new XElement(Ns.A + "txBody"), TextStyles(style, Parts(cell, rows.Count, columns.Count, tblPr)), width);
+            // Vertical cell text (tcPr vert) wraps at the row's height and makes the row as long as its longest line.
+            var turned = Turned(cell);
+            var stored = Enumerable.Range(cell.Row, Math.Min(cell.RowSpan, heights.Length - cell.Row)).Sum(r => heights[r]);
+            var layout = text.LayoutCell(cell.Element.Element(Ns.A + "txBody") ?? new XElement(Ns.A + "txBody"), TextStyles(style, Parts(cell, rows.Count, columns.Count, tblPr)),
+                turned != null ? Math.Max(1, stored - marT - marB) : width);
             layouts[cell] = layout;
+            var extent = turned != null ? (layout.Lines.Count == 0 ? 0 : layout.Lines.Max(l => l.Width)) : layout.Height;
             if (cell.RowSpan == 1 && cell.Row < heights.Length)
-                heights[cell.Row] = Math.Max(heights[cell.Row], layout.Height + marT + marB);
+                heights[cell.Row] = Math.Max(heights[cell.Row], extent + marT + marB);
         }
         var ys = new double[rows.Count + 1];
         for (var r = 0; r < rows.Count; r++)
@@ -119,7 +124,9 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             Edge("lnBlToTr", _ => "tr2bl", x, y + h, x + w, y);
 
             var (marL, marR, marT, marB) = Margins(cell.Element);
-            texts.Append(text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
+            texts.Append(Turned(cell) is { } mode
+                ? text.EmitTurned(layouts[cell], mode, x + marL, y + marT, w - marL - marR, h - marT - marB, tcPr.Str("anchor") ?? "t")
+                : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
         }
 
         foreach (var edge in edges.Values)
@@ -211,6 +218,14 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     }
 
     /// <summary>A cell border: the cell's own a:lnX, else the highest style part defining the side.</summary>
+    /// <summary>The vertical text mode of a cell (tcPr vert), or null for horizontal text.</summary>
+    static string? Turned(Cell cell) => cell.Element.Element(Ns.A + "tcPr").Str("vert") switch
+    {
+        { } mode when mode is "vert" or "vert270" or "eaVert" or "mongolianVert" => mode,
+        "wordArtVert" or "wordArtVertRtl" => "eaVert",
+        _ => null,
+    };
+
     /// <summary>The border of a cell edge with its priority: own properties first, then the style parts, latest first.</summary>
     (Outline? Outline, int Priority) Border(XElement? tcPr, List<XElement> parts, string own, Func<string, string> side)
     {

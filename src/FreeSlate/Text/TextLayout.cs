@@ -74,6 +74,9 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
     /// <summary>The picture of a picture bullet and its height in points.</summary>
     public string? Picture { get; init; }
 
+    /// <summary>An East Asian character that stays upright in vertical text.</summary>
+    public bool Upright { get; init; }
+
     public double PictureHeight { get; init; }
 }
 
@@ -87,6 +90,10 @@ public sealed class LaidOutLine
     public double Ascent { get; init; }
     public double Descent { get; init; }
     public double Width { get; init; }
+
+    /// <summary>The paragraph's alignment (l, ctr, r, just …).</summary>
+    public string Align { get; init; } = "l";
+
     public List<PlacedRun> Runs { get; } = [];
 }
 
@@ -307,7 +314,7 @@ public static class TextLayout
         if (justify && available > lineWidth && CountInnerSpaces(all, pieces) is var spaces and > 0)
             spaceExtra = (available - lineWidth) / spaces;
 
-        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth };
+        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align };
         if (first && paragraph.Bullet is { } bullet)
             line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, EffectiveMargin(paragraph) + paragraph.Indent + offset, bulletWidth)
             {
