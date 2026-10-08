@@ -839,6 +839,11 @@ areas:
           Bullet glyph in its own font (Wingdings and Symbol mapped to Unicode or embedded), color and size;
           automatic numbering in 40 schemes (arabic, roman, alphabetic, circled, East Asian, Hebrew, Arabic, Thai …)
           with startAt; picture bullets.
+        office: >-
+          A hanging indent reaching left of the text area moves the paragraph right (marL 0, indent -27 pt: bullet
+          at 0, text at 27 pt). Latin letters repeat after z (aa, bb); Arabic schemes count in hijā'ī (arabic1) and
+          abjad (arabic2) order followed by a hyphen-minus; Thai letters skip ฃ ฅ ฆ. Picture bullets are as high as
+          the capitals and sit on the baseline.
 
       - id: text.styles
         title: List styles and the text style cascade
