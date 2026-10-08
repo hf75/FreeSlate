@@ -212,6 +212,23 @@ public static class Engine
         Place(child, -extent.X * factor, -extent.Y * factor, w * factor, h * factor, pins);
     }
 
+    /// <summary>
+    /// A child's size across a line once it has its length along it: what its own constraints make of the new length
+    /// (h = 0.6 w follows), or null where they give the across size no relation to it.
+    /// </summary>
+    static double? Derived(LayoutNode child, string across, string along, double length)
+    {
+        foreach (var constraint in child.Constraints)
+        {
+            if ((string?)constraint.Attribute("for") is not (null or "" or "self") || (string?)constraint.Attribute("type") != across
+                || (string?)constraint.Attribute("refType") != along || constraint.Attribute("refFor") != null)
+                continue;
+            var fact = double.TryParse((string?)constraint.Attribute("fact"), NumberStyles.Float, CultureInfo.InvariantCulture, out var f) && double.IsFinite(f) ? f : 1;
+            return length * fact;
+        }
+        return null;
+    }
+
     static double Align(string? alignment, double room, double size) => alignment switch
     {
         "l" or "t" => 0,
@@ -234,13 +251,49 @@ public static class Engine
         var gap = Value(node, "sp");
         var extents = children.Select(Extent).ToList();
         var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * (children.Count - 1);
-        var across = extents.Max(e => horizontal ? e.H : e.W);
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
-        var factor = Math.Min(along > 0 ? boxAlong / along : 1, across > 0 ? boxAcross / across : 1);
-        if (!double.IsFinite(factor) || factor <= 0)
-            factor = 1;
-        for (var i = 0; i < children.Count; i++)
-            PlaceScaled(children[i], extents[i], factor, pins);
+        double factor;
+        if (node.Param("fallback") == "2D")
+        {
+            var across = extents.Max(e => horizontal ? e.H : e.W);
+            factor = Math.Min(along > 0 ? boxAlong / along : 1, across > 0 ? boxAcross / across : 1);
+            if (!double.IsFinite(factor) || factor <= 0)
+                factor = 1;
+            for (var i = 0; i < children.Count; i++)
+                PlaceScaled(children[i], extents[i], factor, pins);
+        }
+        else
+        {
+            // The children shrink along the line to fit it; across they keep what their constraints make of their new
+            // length (a height that follows the width follows it), all shrinking further only where they stick out
+            // (measured: VerticalActionList's rows keep the full width while their heights shrink).
+            var shrink = along > boxAlong && along > 0 ? boxAlong / along : 1;
+            var sizes = new List<(double Along, double Across)>();
+            for (var i = 0; i < children.Count; i++)
+            {
+                var (alongType, acrossType) = horizontal ? ("w", "h") : ("h", "w");
+                var length = (horizontal ? extents[i].W : extents[i].H) * shrink;
+                var cross = horizontal ? extents[i].H : extents[i].W;
+                if (shrink < 1 && Derived(children[i], acrossType, alongType, length) is { } derived)
+                    cross = derived;
+                sizes.Add((length, cross));
+            }
+            var widest = sizes.Max(z => z.Across);
+            var more = widest > boxAcross && widest > 0 ? boxAcross / widest : 1;
+            factor = shrink * more;
+            for (var i = 0; i < children.Count; i++)
+            {
+                var (length, cross) = (sizes[i].Along * more, sizes[i].Across * more);
+                var e = extents[i];
+                var (w, h) = horizontal ? (length, cross) : (cross, length);
+                var (sx, sy) = (e.W > 0 ? w / e.W : factor, e.H > 0 ? h / e.H : factor);
+                children[i].Scale = horizontal ? sx : sy;
+                var (ow, oh) = (Finite(children[i], "w") ?? e.X + e.W, Finite(children[i], "h") ?? e.Y + e.H);
+                if (children[i].AlgorithmType == "composite" && oh > 100 * Math.Max(ow, 1e-6))
+                    oh = e.Y + e.H;
+                Place(children[i], -e.X * sx, -e.Y * sy, ow * sx, oh * sy, pins);
+            }
+        }
 
         var bounds = children.Select(Bounds).ToList();
         var total = bounds.Sum(b => horizontal ? b.W : b.H) + gap * factor * (children.Count - 1);
