@@ -44,6 +44,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     XElement? chartStyle;
     XElement? colorStyle;
     CultureInfo culture = CultureInfo.InvariantCulture;
+    ColorContext colors = null!;
     double width, height;
     double originX, originY;
 
@@ -129,6 +130,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         culture = Culture(ChartModel.Val(model.ChartSpace, "lang"));
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
+        colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
 
         var svg = new StringBuilder();
         svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false));
@@ -274,8 +276,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// <summary>Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title).</summary>
     string Area(XElement? spPr, Box box, bool snap)
     {
-        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, slide.Colors) : Fill.None;
-        var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, slide.Colors)]) : null;
+        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : Fill.None;
+        var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
         return Rect(box, fill, outline, snap);
@@ -649,25 +651,25 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// <summary>The automatic color of series or point <paramref name="index"/>: the chart's color style, else the accents.</summary>
     RgbColor AutoColor(int index)
     {
-        var colors = colorStyle?.Elements().Where(e => e.Name.Namespace == Ns.A).ToList() ?? [];
+        var palette = colorStyle?.Elements().Where(e => e.Name.Namespace == Ns.A).ToList() ?? [];
         var variations = colorStyle?.Elements(Ns.Cs + "variation").ToList() ?? [];
-        if (colors.Count == 0)
-            colors = Enumerable.Range(1, 6).Select(i => new XElement(Ns.A + "schemeClr", new XAttribute("val", $"accent{i}"))).ToList();
-        var color = new XElement(colors[index % colors.Count]);
-        var cycle = index / colors.Count;
+        if (palette.Count == 0)
+            palette = Enumerable.Range(1, 6).Select(i => new XElement(Ns.A + "schemeClr", new XAttribute("val", $"accent{i}"))).ToList();
+        var color = new XElement(palette[index % palette.Count]);
+        var cycle = index / palette.Count;
         if (variations.Count > 0)
             color.Add(variations[cycle % variations.Count].Elements());
-        return slide.Colors.Resolve(color);
+        return colors.Resolve(color);
     }
 
     Fill PointFill(ChartGroup group, ChartSeries series, int point)
     {
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && FillReader.FindFill(dPt.Element(Ns.C + "spPr")) is { } own)
-            return FillReader.Read(own, slide.Colors);
+            return FillReader.Read(own, colors);
         if (point >= 0 && group.VaryColors && group.Series.Count == 1)
             return new SolidFill(AutoColor(point));
         if (FillReader.FindFill(series.SpPr) is { } fill)
-            return FillReader.Read(fill, slide.Colors);
+            return FillReader.Read(fill, colors);
         if (group.IsLine || group.IsScatter)
             return new SolidFill(AutoColor(series.Index));
         return new SolidFill(AutoColor(series.Index));
@@ -676,8 +678,8 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     Outline? PointOutline(ChartSeries series, int point)
     {
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && dPt.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } own)
-            return OutlineReader.Merge([(own, slide.Colors)]);
-        return series.SpPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, slide.Colors)]) : null;
+            return OutlineReader.Merge([(own, colors)]);
+        return series.SpPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
     }
 
     /// <summary>The line of a line or scatter series: its own a:ln, else an automatic 2.25 pt line.</summary>
@@ -685,12 +687,12 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     {
         var own = series.SpPr?.Element(Ns.A + "ln");
         if (!group.IsLine && !group.IsScatter)
-            return own != null ? OutlineReader.Merge([(own, slide.Colors)]) : null;
+            return own != null ? OutlineReader.Merge([(own, colors)]) : null;
         var automatic = new XElement(Ns.A + "ln", new XAttribute("w", "28575"), new XAttribute("cap", "rnd"),
             new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", AutoColor(series.Index).ToHex().TrimStart('#')))),
             new XElement(Ns.A + "round"));
-        var layers = new List<(XElement, ColorContext)> { (automatic, slide.Colors) };
-        if (own != null) layers.Add((own, slide.Colors));
+        var layers = new List<(XElement, ColorContext)> { (automatic, colors) };
+        if (own != null) layers.Add((own, colors));
         return OutlineReader.Merge(layers);
     }
 
@@ -1033,7 +1035,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
             if (element == null)
                 continue;
             var outline = element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
-                ? OutlineReader.Merge([(ln, slide.Colors)])
+                ? OutlineReader.Merge([(ln, colors)])
                 : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
             IEnumerable<double> positions;
             if (layout.Axis.IsValue)
@@ -1059,7 +1061,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
     string AxisLine(AxisLayout layout, List<AxisLayout> axes, Box plot)
     {
         var outline = layout.Axis.SpPr?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, slide.Colors)])
+            ? OutlineReader.Merge([(ln, colors)])
             : new Outline(9525, new SolidFill(RgbColor.FromHex("BFBFBF")), "solid", "flat", "round", 8, "sng");
         if (outline is not { Visible: true })
             return "";
@@ -1406,9 +1408,9 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
         if (symbol == "auto") symbol = MarkerCycle[seriesIndex % MarkerCycle.Length];
         var size = Math.Clamp(ChartModel.Number(marker, "size") ?? 5, 2, 72);
         var spPr = marker.Element(Ns.C + "spPr");
-        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, slide.Colors) : seriesFill is NoFill ? new SolidFill(seriesLine?.Fill is SolidFill sf ? sf.Color : RgbColor.Black) : seriesFill;
+        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : seriesFill is NoFill ? new SolidFill(seriesLine?.Fill is SolidFill sf ? sf.Color : RgbColor.Black) : seriesFill;
         var line = spPr?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, slide.Colors)])
+            ? OutlineReader.Merge([(ln, colors)])
             : seriesLine is { Visible: true } ? seriesLine with { WidthEmu = 9525, Dash = "solid" } : null;
         var r = size / 2;
         string d = symbol switch

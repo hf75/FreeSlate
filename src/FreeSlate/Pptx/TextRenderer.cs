@@ -301,9 +301,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     runs.Add(new TextRun(t, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, t)));
                     break;
                 case "fld":
-                    var text = element.Str("type") == "slidenum"
-                        ? slide.Number.ToString(CultureInfo.InvariantCulture)
-                        : element.Element(Ns.A + "t")?.Value ?? "";
+                    var text = FieldText(element);
                     runs.Add(new TextRun(text, Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, text)));
                     break;
                 case "br":
@@ -335,6 +333,45 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 ? Bullet(pPr, sources, level, runs.FirstOrDefault(r => r.Text != "\n")?.Style ?? endStyle, counters)
                 : ResetBullet(level, counters),
         };
+    }
+
+    /// <summary>
+    /// The text of a field (catalog: text.fields): slide numbers and dates are computed when rendering, like
+    /// PowerPoint does when it shows the slide; other fields keep their stored text.
+    /// </summary>
+    string FieldText(XElement field)
+    {
+        var type = field.Str("type") ?? "";
+        var stored = field.Element(Ns.A + "t")?.Value ?? "";
+        if (type == "slidenum")
+            return slide.Number.ToString(CultureInfo.InvariantCulture);
+        if (!type.StartsWith("datetime", StringComparison.Ordinal))
+            return stored;
+        CultureInfo culture;
+        try { culture = CultureInfo.GetCultureInfo(field.Element(Ns.A + "rPr").Str("lang") ?? "en-US"); }
+        catch (CultureNotFoundException) { culture = CultureInfo.GetCultureInfo("en-US"); }
+        var f = culture.DateTimeFormat;
+        var twelveHours = f.ShortTimePattern.Contains('t');
+        var time = twelveHours ? "h:mm tt" : "HH:mm";
+        var seconds = twelveHours ? "h:mm:ss tt" : "HH:mm:ss";
+        var dayMonth = culture.TwoLetterISOLanguageName == "en" ? "d MMMM yyyy" : f.LongDatePattern.Replace("dddd, ", "").Replace("dddd ", "");
+        var format = type switch
+        {
+            "datetime2" => f.LongDatePattern,
+            "datetime3" => dayMonth,
+            "datetime4" => culture.TwoLetterISOLanguageName == "en" ? "MMMM d, yyyy" : dayMonth,
+            "datetime5" => culture.TwoLetterISOLanguageName == "en" ? "dd-MMM-yy" : f.ShortDatePattern.Replace("yyyy", "yy").Replace("MM", "MMM"),
+            "datetime6" => "MMMM yy",
+            "datetime7" => "MMM-yy",
+            "datetime8" => f.ShortDatePattern + " " + time,
+            "datetime9" => f.ShortDatePattern + " " + seconds,
+            "datetime10" => "HH:mm",
+            "datetime11" => "HH:mm:ss",
+            "datetime12" => "h:mm tt",
+            "datetime13" => "h:mm:ss tt",
+            _ => f.ShortDatePattern,
+        };
+        return DateTime.Now.ToString(format, culture);
     }
 
     static Bullet? ResetBullet(int level, int[] counters)

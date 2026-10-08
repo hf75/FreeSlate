@@ -26,12 +26,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             (OffX + (x - ChildX) * ScaleX, OffY + (y - ChildY) * ScaleY, w * ScaleX, h * ScaleY);
     }
 
-    public string Render()
+    /// <summary>The slide as a section element; <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.</summary>
+    public string Render(string attributes = "", string appendix = "")
     {
         var width = Units.ToPx(slide.Presentation.SlideWidth);
         var height = Units.ToPx(slide.Presentation.SlideHeight);
         var html = new StringBuilder();
-        html.Append($"<section class=\"slide\" id=\"slide-{slide.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+        html.Append($"<section class=\"slide\" id=\"slide-{slide.Number}\"{attributes} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
         html.Append(Background(width, height));
 
         var showMaster = slide.Slide.Root.Bool("showMasterSp") ?? true;
@@ -41,7 +42,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             RenderTree(Tree(slide.Layout), slide.LayoutPart!, html, Placement.Root, isSlide: false);
         RenderTree(Tree(slide.Slide), slide.SlidePart, html, Placement.Root, isSlide: true);
 
-        html.Append("</section>");
+        html.Append(appendix).Append("</section>");
         return html.ToString();
     }
 
@@ -51,6 +52,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     {
         foreach (var element in tree?.Elements() ?? [])
         {
+            if (IsHidden(element))
+                continue;   // catalog: shape.accessibility, hidden="1" shapes are not drawn
             switch (element.Name.LocalName)
             {
                 case "sp" or "cxnSp" or "pic":
@@ -132,7 +135,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{(path.Stroke ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"")}/>");
         }
 
-        html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+        html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
@@ -181,7 +184,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, 0, false, false));
             var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
             var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
-            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
             return;
         }
@@ -192,7 +195,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
             var (svg, width, height) = Tables.Render(table);
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
-            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
     }
@@ -261,7 +264,37 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             chOff.Long("x") ?? x,
             chOff.Long("y") ?? y,
             groupFill ?? placement.GroupFill);
+        html.Append($"<div class=\"grp\"{Accessibility(group, isSlide)}>");
         RenderTree(group, part, html, child, isSlide);
+        html.Append("</div>");
+    }
+
+    static readonly XNamespace Adec = "http://schemas.microsoft.com/office/drawing/2017/decorative";
+
+    static XElement? NonVisual(XElement shape) =>
+        shape.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("nv", StringComparison.Ordinal))?.Elements().FirstOrDefault(e => e.Name.LocalName == "cNvPr");
+
+    static bool IsHidden(XElement shape) => NonVisual(shape).Bool("hidden") == true;
+
+    /// <summary>
+    /// Shape id for the player (slide shapes only; ids repeat across master and layout) and accessibility
+    /// attributes: alt text, title, decorative shapes hidden from assistive technology (catalog: shape.accessibility).
+    /// </summary>
+    static string Accessibility(XElement shape, bool isSlide)
+    {
+        var c = NonVisual(shape);
+        if (c == null)
+            return "";
+        var sb = new StringBuilder();
+        if (isSlide && c.Str("id") is { } id)
+            sb.Append($" data-id=\"{System.Net.WebUtility.HtmlEncode(id)}\"");
+        if (c.Descendants(Adec + "decorative").Any(d => d.Bool("val") != false))
+            return sb.Append(" aria-hidden=\"true\"").ToString();
+        if (c.Str("descr") is { Length: > 0 } descr)
+            sb.Append($" role=\"img\" aria-label=\"{System.Net.WebUtility.HtmlEncode(descr)}\"");
+        if (c.Str("title") is { Length: > 0 } title)
+            sb.Append($" title=\"{System.Net.WebUtility.HtmlEncode(title)}\"");
+        return sb.ToString();
     }
 
     static (double X, double Y, double W, double H, double Rotation, bool FlipH, bool FlipV) ReadTransform(XElement xfrm)

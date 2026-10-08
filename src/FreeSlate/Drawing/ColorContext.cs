@@ -14,6 +14,9 @@ public sealed class ColorContext(Theme theme, IReadOnlyDictionary<string, string
 
     public ColorContext WithPlaceholder(RgbColor? color) => new(Theme, colorMap, color);
 
+    /// <summary>The same color map with another theme (theme overrides of slides and charts).</summary>
+    public ColorContext WithTheme(Theme theme) => new(theme, colorMap, placeholder);
+
     /// <summary>The color of the first color child of <paramref name="parent"/>, if any.</summary>
     public RgbColor? ResolveChild(XElement? parent)
     {

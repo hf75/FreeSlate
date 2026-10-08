@@ -19,6 +19,12 @@ public sealed class SlideContext
         MasterPart = LayoutPart != null ? package.FirstRelationship(LayoutPart, "slideMaster")?.Target : null;
         Master = MasterPart != null && package.Exists(MasterPart) ? presentation.Load(MasterPart) : null;
         Theme = MasterPart != null ? presentation.ThemeOf(MasterPart) : Theme.Load(null);
+        foreach (var part in new[] { LayoutPart, slidePart })
+        {
+            var target = part != null ? package.FirstRelationship(part, "themeOverride")?.Target : null;
+            if (target != null && package.Exists(target) && presentation.Load(target).Root is { } themeOverride)
+                Theme = Theme.WithOverride(themeOverride);
+        }
 
         // Color map: the master's p:clrMap, overridden by the layout's and then the slide's p:clrMapOvr.
         var map = new Dictionary<string, string>(StringComparer.Ordinal);

@@ -15,16 +15,16 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 0 |
-| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 5 | 1 |
-| [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 1 |
+| [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 4 |
+| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 8 | 7 |
+| [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 3 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
-| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 1 |
+| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 0 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
-| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 3 | 0 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 11 | 0 |
+| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 3 | 1 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 1 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 0 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **61** | **6** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **63** | **23** |
 
 <a id="package"></a>
 
@@ -46,11 +46,11 @@ ZIP container, relationships, markup compatibility and metadata.
 |---|---|---|---|---:|---:|
 | [Package, content types and relationships](#package.opc) | P0 | ●○○○○ | partial | 5 | 0 |
 | [Markup compatibility and extension lists](#package.mce) | P0 | ●●○○○ | partial | 34 | 4 |
-| [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | todo | 9 | 0 |
+| [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | done | 9 | 0 |
 | [Encrypted and write-protected files](#package.encryption) | P2 | ●●●○○ | todo | 2 | 1 |
-| [Document properties](#package.properties) | P3 | ●○○○○ | todo | 73 | 16 |
-| [Custom XML parts](#package.customXml) | P3 | ●○○○○ | todo | 3 | 0 |
-| [Object ids and co-authoring revisions](#package.ids) | P3 | ●○○○○ | todo | 51 | 0 |
+| [Document properties](#package.properties) | P3 | ●○○○○ | done | 73 | 16 |
+| [Custom XML parts](#package.customXml) | P3 | ●○○○○ | done | 3 | 0 |
+| [Object ids and co-authoring revisions](#package.ids) | P3 | ●○○○○ | done | 51 | 0 |
 
 <a id="package.opc"></a>
 
@@ -84,7 +84,7 @@ mc:AlternateContent, mc:Ignorable and the extLst/ext mechanism every newer featu
 
 ### Compatibility leftovers
 
-`package.compatibility` · P3 · difficulty 1 · todo
+`package.compatibility` · P3 · difficulty 1 · done
 
 Properties Office keeps for older versions or for converted VML content.
 
@@ -112,7 +112,7 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Document properties
 
-`package.properties` · P3 · difficulty 1 · todo
+`package.properties` · P3 · difficulty 1 · done
 
 **Rendering:** Metadata only; title, author and language go into the HTML head.
 
@@ -126,7 +126,7 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Custom XML parts
 
-`package.customXml` · P3 · difficulty 1 · todo
+`package.customXml` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; preserved for round-trips.
 
@@ -138,7 +138,7 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Object ids and co-authoring revisions
 
-`package.ids` · P3 · difficulty 1 · todo
+`package.ids` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered. Stable creation ids help to match objects between slides (Morph) and in the editor.
 
@@ -155,20 +155,20 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Slide list and slide size](#presentation.slides) | P0 | ●○○○○ | done | 11 | 3 |
-| [Hidden slides](#presentation.hiddenSlides) | P1 | ●○○○○ | todo | 0 | 0 |
+| [Hidden slides](#presentation.hiddenSlides) | P1 | ●○○○○ | partial | 0 | 0 |
 | [Slide masters, layouts and slides](#presentation.masters) | P0 | ●●●○○ | partial | 7 | 2 |
 | [Placeholders and inheritance](#presentation.placeholders) | P0 | ●●●●○ | partial | 2 | 2 |
 | [Color mapping](#presentation.colorMap) | P0 | ●●○○○ | partial | 4 | 0 |
 | [Slide background](#presentation.background) | P0 | ●●○○○ | partial | 4 | 2 |
-| [Header, footer, date and slide number](#presentation.headerFooter) | P1 | ●●○○○ | partial | 1 | 0 |
-| [Sections](#presentation.sections) | P2 | ●○○○○ | todo | 4 | 0 |
-| [Custom shows](#presentation.customShows) | P3 | ●●○○○ | todo | 3 | 2 |
-| [Notes pages and speaker notes](#presentation.notes) | P2 | ●●○○○ | todo | 3 | 2 |
-| [Handout master](#presentation.handouts) | P3 | ●●○○○ | todo | 1 | 0 |
-| [Slide show settings](#presentation.showSettings) | P3 | ●○○○○ | todo | 16 | 2 |
-| [Editor view settings](#presentation.viewSettings) | P3 | ●○○○○ | todo | 23 | 6 |
-| [Tags and customer data](#presentation.tags) | P3 | ●○○○○ | todo | 6 | 3 |
-| [Photo album, slide library and Designer metadata](#presentation.misc) | P3 | ●○○○○ | todo | 7 | 1 |
+| [Header, footer, date and slide number](#presentation.headerFooter) | P1 | ●●○○○ | done | 1 | 0 |
+| [Sections](#presentation.sections) | P2 | ●○○○○ | done | 4 | 0 |
+| [Custom shows](#presentation.customShows) | P3 | ●●○○○ | partial | 3 | 2 |
+| [Notes pages and speaker notes](#presentation.notes) | P2 | ●●○○○ | partial | 3 | 2 |
+| [Handout master](#presentation.handouts) | P3 | ●●○○○ | done | 1 | 0 |
+| [Slide show settings](#presentation.showSettings) | P3 | ●○○○○ | partial | 16 | 2 |
+| [Editor view settings](#presentation.viewSettings) | P3 | ●○○○○ | done | 23 | 6 |
+| [Tags and customer data](#presentation.tags) | P3 | ●○○○○ | done | 6 | 3 |
+| [Photo album, slide library and Designer metadata](#presentation.misc) | P3 | ●○○○○ | done | 7 | 1 |
 
 <a id="presentation.slides"></a>
 
@@ -188,7 +188,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 
 ### Hidden slides
 
-`presentation.hiddenSlides` · P1 · difficulty 1 · todo
+`presentation.hiddenSlides` · P1 · difficulty 1 · partial
 
 p:sld/@show="0".
 
@@ -256,7 +256,7 @@ p:sld/@show="0".
 
 ### Header, footer, date and slide number
 
-`presentation.headerFooter` · P1 · difficulty 2 · partial
+`presentation.headerFooter` · P1 · difficulty 2 · done
 
 **Rendering:** p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.
 
@@ -270,7 +270,7 @@ p:sld/@show="0".
 
 ### Sections
 
-`presentation.sections` · P2 · difficulty 1 · todo
+`presentation.sections` · P2 · difficulty 1 · done
 
 **Rendering:** Group slides in the viewer's navigation; sections are not drawn.
 
@@ -282,7 +282,7 @@ p:sld/@show="0".
 
 ### Custom shows
 
-`presentation.customShows` · P3 · difficulty 2 · todo
+`presentation.customShows` · P3 · difficulty 2 · partial
 
 **Rendering:** Alternative slide sequences, selectable in the player and reachable through action links.
 
@@ -296,7 +296,7 @@ p:sld/@show="0".
 
 ### Notes pages and speaker notes
 
-`presentation.notes` · P2 · difficulty 2 · todo
+`presentation.notes` · P2 · difficulty 2 · partial
 
 **Rendering:** Speaker notes text for the presenter view; full notes pages only for printing.
 
@@ -310,7 +310,7 @@ p:sld/@show="0".
 
 ### Handout master
 
-`presentation.handouts` · P3 · difficulty 2 · todo
+`presentation.handouts` · P3 · difficulty 2 · done
 
 **Rendering:** Print layout only; not rendered.
 
@@ -322,7 +322,7 @@ p:sld/@show="0".
 
 ### Slide show settings
 
-`presentation.showSettings` · P3 · difficulty 1 · todo
+`presentation.showSettings` · P3 · difficulty 1 · partial
 
 **Rendering:** Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.
 
@@ -336,7 +336,7 @@ p:sld/@show="0".
 
 ### Editor view settings
 
-`presentation.viewSettings` · P3 · difficulty 1 · todo
+`presentation.viewSettings` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; zoom, guides and grid settings for the editor.
 
@@ -350,7 +350,7 @@ p:sld/@show="0".
 
 ### Tags and customer data
 
-`presentation.tags` · P3 · difficulty 1 · todo
+`presentation.tags` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; preserved for round-trips (add-ins store their data here).
 
@@ -364,7 +364,7 @@ p:sld/@show="0".
 
 ### Photo album, slide library and Designer metadata
 
-`presentation.misc` · P3 · difficulty 1 · todo
+`presentation.misc` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered.
 
@@ -384,8 +384,8 @@ p:sld/@show="0".
 | [Theme fonts](#theme.fonts) | P0 | ●●○○○ | partial | 4 | 0 |
 | [Theme formats (style matrix)](#theme.formatScheme) | P0 | ●●○○○ | partial | 6 | 0 |
 | [Shape style references](#theme.styleRefs) | P0 | ●●○○○ | partial | 7 | 3 |
-| [Theme overrides](#theme.override) | P2 | ●○○○○ | todo | 1 | 0 |
-| [Object defaults, extra and custom colors](#theme.editorData) | P3 | ●○○○○ | todo | 10 | 0 |
+| [Theme overrides](#theme.override) | P2 | ●○○○○ | done | 1 | 0 |
+| [Object defaults, extra and custom colors](#theme.editorData) | P3 | ●○○○○ | done | 10 | 0 |
 
 <a id="theme.colors"></a>
 
@@ -445,7 +445,7 @@ p:sld/@show="0".
 
 ### Theme overrides
 
-`theme.override` · P2 · difficulty 1 · todo
+`theme.override` · P2 · difficulty 1 · done
 
 **Rendering:** A layout or slide can override parts of the theme (usually the color scheme).
 
@@ -457,7 +457,7 @@ p:sld/@show="0".
 
 ### Object defaults, extra and custom colors
 
-`theme.editorData` · P3 · difficulty 1 · todo
+`theme.editorData` · P3 · difficulty 1 · done
 
 **Rendering:** Defaults for new objects and color picker entries; only relevant to an editor.
 
@@ -509,16 +509,16 @@ p:sld/@show="0".
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Shapes](#shape.basic) | P0 | ●●○○○ | partial | 8 | 2 |
-| [Names, alt text, hidden and decorative shapes](#shape.accessibility) | P1 | ●○○○○ | todo | 3 | 0 |
+| [Names, alt text, hidden and decorative shapes](#shape.accessibility) | P1 | ●○○○○ | done | 3 | 0 |
 | [Position, size, rotation and flip](#shape.transform) | P0 | ●●○○○ | done | 6 | 8 |
 | [Groups](#shape.group) | P0 | ●●○○○ | partial | 11 | 3 |
 | [Preset geometries](#shape.presetGeometry) | P0 | ●●●○○ | partial | 3 | 1 |
 | [Custom geometry (freeforms)](#shape.customGeometry) | P0 | ●●●○○ | partial | 18 | 6 |
 | [Connectors](#shape.connectors) | P1 | ●●○○○ | partial | 8 | 3 |
 | [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | partial | 8 | 2 |
-| [Locks](#shape.locks) | P3 | ●○○○○ | todo | 6 | 5 |
+| [Locks](#shape.locks) | P3 | ●○○○○ | done | 6 | 5 |
 | [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | todo | 8 | 0 |
-| [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | todo | 2 | 0 |
+| [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="shape.basic"></a>
 
@@ -538,7 +538,7 @@ p:sld/@show="0".
 
 ### Names, alt text, hidden and decorative shapes
 
-`shape.accessibility` · P1 · difficulty 1 · todo
+`shape.accessibility` · P1 · difficulty 1 · done
 
 **Rendering:** hidden="1" shapes are not drawn; descr and title become aria-label/title; decorative shapes get aria-hidden.
 
@@ -642,7 +642,7 @@ p:sld/@show="0".
 
 ### Locks
 
-`shape.locks` · P3 · difficulty 1 · todo
+`shape.locks` · P3 · difficulty 1 · done
 
 **Rendering:** Editor-only.
 
@@ -668,7 +668,7 @@ p:sld/@show="0".
 
 ### Sensitivity label markings
 
-`shape.classification` · P3 · difficulty 1 · todo
+`shape.classification` · P3 · difficulty 1 · done
 
 **Rendering:** Shapes added by sensitivity labels; drawn like normal shapes, the marker itself is metadata.
 
@@ -1026,7 +1026,7 @@ gradFill and pattFill inside a:ln.
 | [Ink](#picture.ink) | P2 | ●●●○○ | todo | 28 | 0 |
 | [3D models](#picture.model3d) | P2 | ●○○○○ | todo | 35 | 0 |
 | [Cameo and live camera feeds](#picture.liveFeed) | P3 | ●●○○○ | todo | 11 | 0 |
-| [Picture sources and formulas](#picture.sources) | P3 | ●○○○○ | todo | 2 | 0 |
+| [Picture sources and formulas](#picture.sources) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="picture.basic"></a>
 
@@ -1172,7 +1172,7 @@ The content type behind a:blip/@r:embed.
 
 ### Picture sources and formulas
 
-`picture.sources` · P3 · difficulty 1 · todo
+`picture.sources` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; the picture itself is stored as usual.
 
@@ -1201,7 +1201,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | todo | 0 | 0 |
 | [Underlines](#text.underline) | P1 | ●●○○○ | partial | 4 | 2 |
 | [Text effects](#text.effects) | P2 | ●●●●○ | todo | 0 | 0 |
-| [Fields](#text.fields) | P1 | ●●○○○ | partial | 1 | 1 |
+| [Fields](#text.fields) | P1 | ●●○○○ | done | 1 | 1 |
 | [Text columns](#text.columns) | P2 | ●●●○○ | todo | 0 | 0 |
 | [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | todo | 0 | 0 |
 | [WordArt transforms](#text.warp) | P2 | ●●●●● | todo | 1 | 0 |
@@ -1390,7 +1390,7 @@ effectLst on runs (shadow, glow, reflection, soft edges).
 
 ### Fields
 
-`text.fields` · P1 · difficulty 2 · partial
+`text.fields` · P1 · difficulty 2 · done
 
 **Rendering:** slidenum and datetime1–13 are computed when rendering; other field types keep their stored text.
 

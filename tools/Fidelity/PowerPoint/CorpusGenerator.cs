@@ -45,6 +45,7 @@ public static class CorpusGenerator
         ("objects", Objects, false),
         ("diagrams", Diagrams, true),
         ("charts", Charts.Build, true),
+        ("presentation", PresentationDeck.Build, true),
     ];
 
     /// <summary>Generates the named decks, or all of them.</summary>

@@ -21,9 +21,35 @@ public sealed class Theme
     {
         var theme = new Theme();
         var elements = document?.Root?.Element(Ns.A + "themeElements");
-        if (elements == null)
-            return theme;
+        if (elements != null)
+            theme.Read(elements);
+        return theme;
+    }
 
+    /// <summary>
+    /// A copy with the parts of an a:themeOverride (catalog: theme.override): a layout or slide can replace the
+    /// color, font or format scheme of its master's theme.
+    /// </summary>
+    public Theme WithOverride(XElement themeOverride)
+    {
+        var theme = new Theme
+        {
+            MajorLatin = MajorLatin, MinorLatin = MinorLatin, MajorEastAsian = MajorEastAsian, MinorEastAsian = MinorEastAsian,
+            MajorComplex = MajorComplex, MinorComplex = MinorComplex,
+        };
+        foreach (var (key, value) in Colors) theme.Colors[key] = value;
+        theme.FillStyles.AddRange(FillStyles);
+        theme.LineStyles.AddRange(LineStyles);
+        theme.EffectStyles.AddRange(EffectStyles);
+        theme.BackgroundFillStyles.AddRange(BackgroundFillStyles);
+        theme.Read(themeOverride);
+        return theme;
+    }
+
+    /// <summary>Reads the schemes present in a:themeElements or a:themeOverride.</summary>
+    void Read(XElement elements)
+    {
+        var theme = this;
         foreach (var entry in elements.Element(Ns.A + "clrScheme")?.Elements() ?? [])
         {
             var color = entry.Elements().FirstOrDefault();
@@ -35,23 +61,46 @@ public sealed class Theme
             };
         }
 
-        var fonts = elements.Element(Ns.A + "fontScheme");
-        string Typeface(string font, string script) =>
-            (string?)fonts?.Element(Ns.A + font)?.Element(Ns.A + script)?.Attribute("typeface") ?? "";
-        theme.MajorLatin = Typeface("majorFont", "latin");
-        theme.MinorLatin = Typeface("minorFont", "latin");
-        theme.MajorEastAsian = Typeface("majorFont", "ea");
-        theme.MinorEastAsian = Typeface("minorFont", "ea");
-        theme.MajorComplex = Typeface("majorFont", "cs");
-        theme.MinorComplex = Typeface("minorFont", "cs");
+        if (elements.Element(Ns.A + "fontScheme") is { } fonts)
+        {
+            string Typeface(string font, string script) =>
+                (string?)fonts.Element(Ns.A + font)?.Element(Ns.A + script)?.Attribute("typeface") ?? "";
+            theme.MajorLatin = Typeface("majorFont", "latin");
+            theme.MinorLatin = Typeface("minorFont", "latin");
+            theme.MajorEastAsian = Typeface("majorFont", "ea");
+            theme.MinorEastAsian = Typeface("minorFont", "ea");
+            theme.MajorComplex = Typeface("majorFont", "cs");
+            theme.MinorComplex = Typeface("minorFont", "cs");
+            theme.ScriptFonts.Clear();
+            foreach (var kind in new[] { "majorFont", "minorFont" })
+            {
+                foreach (var font in fonts.Element(Ns.A + kind)?.Elements(Ns.A + "font") ?? [])
+                {
+                    if (font.Str("script") is { } script && font.Str("typeface") is { Length: > 0 } typeface)
+                        theme.ScriptFonts[(kind == "majorFont", script)] = typeface;
+                }
+            }
+        }
 
-        var formats = elements.Element(Ns.A + "fmtScheme");
-        theme.FillStyles.AddRange(formats?.Element(Ns.A + "fillStyleLst")?.Elements() ?? []);
-        theme.LineStyles.AddRange(formats?.Element(Ns.A + "lnStyleLst")?.Elements() ?? []);
-        theme.EffectStyles.AddRange(formats?.Element(Ns.A + "effectStyleLst")?.Elements() ?? []);
-        theme.BackgroundFillStyles.AddRange(formats?.Element(Ns.A + "bgFillStyleLst")?.Elements() ?? []);
-        return theme;
+        if (elements.Element(Ns.A + "fmtScheme") is { } formats)
+        {
+            void Replace(List<XElement> list, string name)
+            {
+                if (formats.Element(Ns.A + name) is { } styles)
+                {
+                    list.Clear();
+                    list.AddRange(styles.Elements());
+                }
+            }
+            Replace(theme.FillStyles, "fillStyleLst");
+            Replace(theme.LineStyles, "lnStyleLst");
+            Replace(theme.EffectStyles, "effectStyleLst");
+            Replace(theme.BackgroundFillStyles, "bgFillStyleLst");
+        }
     }
+
+    /// <summary>Per-script fonts of the font scheme (a:font script="Jpan" …), keyed by (major, script).</summary>
+    public Dictionary<(bool Major, string Script), string> ScriptFonts { get; } = [];
 
     /// <summary>Resolves theme font references such as "+mn-lt" or "+mj-ea".</summary>
     public string ResolveTypeface(string typeface) => typeface switch

@@ -177,7 +177,7 @@
       "description": "Properties Office keeps for older versions or for converted VML content.",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered; preserved for round-trips in the editor.",
       "elements": [
         "a14:cameraTool",
@@ -287,7 +287,7 @@
       "title": "Document properties",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Metadata only; title, author and language go into the HTML head.",
       "elements": [
         "ap:AppVersion",
@@ -823,7 +823,7 @@
       "title": "Custom XML parts",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered; preserved for round-trips.",
       "elements": [
         "ds:datastoreItem",
@@ -858,7 +858,7 @@
       "title": "Object ids and co-authoring revisions",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered. Stable creation ids help to match objects between slides (Morph) and in the editor.",
       "elements": [
         "a16:colId",
@@ -1298,7 +1298,7 @@
       "description": "p:sld/@show=\"0\".",
       "priority": "P1",
       "difficulty": 1,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Skipped in the slide show, shown dimmed in the overview.",
       "elements": [],
       "spec": [],
@@ -1532,7 +1532,7 @@
       "title": "Header, footer, date and slide number",
       "priority": "P1",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "p:hf flags on master, layout and slide decide whether the dt, ftr and sldNum placeholders are shown.",
       "office": "Only footer placeholders that exist on the slide itself are drawn; their slide number and date fields are recomputed when the slide is shown.",
       "elements": [
@@ -1554,7 +1554,7 @@
       "title": "Sections",
       "priority": "P2",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Group slides in the viewer's navigation; sections are not drawn.",
       "elements": [
         "p14:section",
@@ -1596,7 +1596,7 @@
       "title": "Custom shows",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Alternative slide sequences, selectable in the player and reachable through action links.",
       "elements": [
         "p:custShow",
@@ -1652,7 +1652,7 @@
       "title": "Notes pages and speaker notes",
       "priority": "P2",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Speaker notes text for the presenter view; full notes pages only for printing.",
       "elements": [
         "p:notes",
@@ -1696,7 +1696,7 @@
       "title": "Handout master",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Print layout only; not rendered.",
       "elements": [
         "p:handoutMaster"
@@ -1717,7 +1717,7 @@
       "title": "Slide show settings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.",
       "elements": [
         "p14:browseMode",
@@ -1852,7 +1852,7 @@
       "title": "Editor view settings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered; zoom, guides and grid settings for the editor.",
       "elements": [
         "a:sx",
@@ -2046,7 +2046,7 @@
       "title": "Tags and customer data",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered; preserved for round-trips (add-ins store their data here).",
       "elements": [
         "p:custData",
@@ -2115,7 +2115,7 @@
       "title": "Photo album, slide library and Designer metadata",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered.",
       "elements": [
         "asl:scriptLink",
@@ -2532,7 +2532,7 @@
       "title": "Theme overrides",
       "priority": "P2",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "A layout or slide can override parts of the theme (usually the color scheme).",
       "elements": [
         "a:themeOverride"
@@ -2553,7 +2553,7 @@
       "title": "Object defaults, extra and custom colors",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Defaults for new objects and color picker entries; only relevant to an editor.",
       "elements": [
         "a:clrMap",
@@ -3114,7 +3114,7 @@
       "title": "Names, alt text, hidden and decorative shapes",
       "priority": "P1",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "hidden=\"1\" shapes are not drawn; descr and title become aria-label/title; decorative shapes get aria-hidden.",
       "elements": [
         "a:cNvPr",
@@ -3737,7 +3737,7 @@
       "title": "Locks",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Editor-only.",
       "elements": [
         "a14:cpLocks",
@@ -3854,7 +3854,7 @@
       "title": "Sensitivity label markings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shapes added by sensitivity labels; drawn like normal shapes, the marker itself is metadata.",
       "elements": [
         "aclsh:classification",
@@ -5986,7 +5986,7 @@
       "title": "Picture sources and formulas",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Not rendered; the picture itself is stored as usual.",
       "elements": [
         "a1611:picAttrSrcUrl",
@@ -6809,7 +6809,7 @@
       "title": "Fields",
       "priority": "P1",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "slidenum and datetime1–13 are computed when rendering; other field types keep their stored text.",
       "elements": [
         "a:fld"
