@@ -16,7 +16,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 4 |
-| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 6 | 9 |
+| [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 5 | 10 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 3 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **42** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **43** |
 
 <a id="package"></a>
 
@@ -158,7 +158,7 @@ Slides, masters and layouts, placeholders, backgrounds, settings.
 | [Hidden slides](#presentation.hiddenSlides) | P1 | ●○○○○ | done | 0 | 0 |
 | [Slide masters, layouts and slides](#presentation.masters) | P0 | ●●●○○ | partial | 7 | 2 |
 | [Placeholders and inheritance](#presentation.placeholders) | P0 | ●●●●○ | partial | 2 | 2 |
-| [Color mapping](#presentation.colorMap) | P0 | ●●○○○ | partial | 4 | 0 |
+| [Color mapping](#presentation.colorMap) | P0 | ●●○○○ | done | 4 | 0 |
 | [Slide background](#presentation.background) | P0 | ●●○○○ | partial | 4 | 2 |
 | [Header, footer, date and slide number](#presentation.headerFooter) | P1 | ●●○○○ | done | 1 | 0 |
 | [Sections](#presentation.sections) | P2 | ●○○○○ | done | 4 | 0 |
@@ -230,9 +230,11 @@ p:sld/@show="0".
 
 ### Color mapping
 
-`presentation.colorMap` · P0 · difficulty 2 · partial
+`presentation.colorMap` · P0 · difficulty 2 · done
 
 **Rendering:** bg1/tx1/bg2/tx2 map to dk1/lt1/dk2/lt2 through the master's clrMap or a layout or slide override.
+
+**Office behaviour:** The master's p:clrMap maps all twelve names (accents and hyperlink colors too), a layout's or slide's overrideClrMapping replaces it; a chart keeps its own c:clrMapOvr against the slide's mapping, for its text as well (measured with generated/colormap: dark mapping with swapped accents).
 
 **Elements (4):** [`a:masterClrMapping`](../format/namespaces/a.md#amasterclrmapping), [`a:overrideClrMapping`](../format/namespaces/a.md#aoverrideclrmapping), [`p:clrMap`](../format/namespaces/p.md#pclrmap), [`p:clrMapOvr`](../format/namespaces/p.md#pclrmapovr)
 
@@ -528,7 +530,7 @@ p:sld/@show="0".
 
 **Rendering:** Each shape is an absolutely positioned element with an SVG for geometry, fill, line and effects plus a text layer.
 
-**Office behaviour:** Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces.
+**Office behaviour:** Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces. p:sp/@useBgFill fills the shape with the slide's background, aligned to the slide (generated/colormap). bwMode only matters for grayscale printing.
 
 **Elements (8):** [`a:cNvSpPr`](../format/namespaces/a.md#acnvsppr), [`a:nvSpPr`](../format/namespaces/a.md#anvsppr), [`a:sp`](../format/namespaces/a.md#asp), [`a:spPr`](../format/namespaces/a.md#asppr), [`p:cNvSpPr`](../format/namespaces/p.md#pcnvsppr), [`p:nvSpPr`](../format/namespaces/p.md#pnvsppr), [`p:sp`](../format/namespaces/p.md#psp), [`p:spPr`](../format/namespaces/p.md#psppr)
 
@@ -738,6 +740,8 @@ p:sld/@show="0".
 
 **Rendering:** SVG image clipped to the geometry: stretched into the fillRect insets, or repeated through an SVG pattern for tiles (offset, scale, alignment, flip).
 
+**Office behaviour:** Tiles are sized from the picture's own resolution; PowerPoint ignores blipFill dpi (measured).
+
 **Elements (8):** [`a:blip`](../format/namespaces/a.md#ablip), [`a:blipFill`](../format/namespaces/a.md#ablipfill), [`a:fillRect`](../format/namespaces/a.md#afillrect), [`a:srcRect`](../format/namespaces/a.md#asrcrect), [`a:stretch`](../format/namespaces/a.md#astretch), [`a:tile`](../format/namespaces/a.md#atile), [`p:blipFill`](../format/namespaces/p.md#pblipfill), [`pic:blipFill`](../format/namespaces/pic.md#picblipfill)
 
 **Specification:** §19.3.1.4 Picture Fill (p.2572); §20.1.8.13 Blip (p.2865); §20.1.8.14 Picture Fill (p.2866); §20.1.8.30 Fill Rectangle (p.2875); §20.1.8.55 Source Rectangle (p.2891); §20.1.8.56 Stretch (p.2891) and 2 more
@@ -885,6 +889,8 @@ gradFill and pattFill inside a:ln.
 
 **Rendering:** SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.
 
+**Office behaviour:** A shadow is the shape scaled and skewed about its alignment point (algn, bottom center by default) with [sx, tan kx; tan ky, sy], the skew not scaled, then moved by dist along dir and blurred (σ = 0.35 blurRad). With rotWithShape 0, as PowerPoint writes its shadows, the offset and the transform stay on the slide, about the box around the turned shape (measured with generated/effects).
+
 **Elements (1):** [`a:outerShdw`](../format/namespaces/a.md#aoutershdw)
 
 **Specification:** §20.1.8.45 Outer Shadow Effect (p.2884)
@@ -952,6 +958,8 @@ gradFill and pattFill inside a:ln.
 `effect.reflection` · P2 · difficulty 4 · partial
 
 **Rendering:** Mirrored copy with distance, blur and a gradient alpha mask.
+
+**Office behaviour:** The copy is scaled and skewed like a shadow about algn, moved by dist along dir, faded along fadeDir (90° by default) across the copy from stA at stPos to endA at endPos and blurred; with rotWithShape 0 the turned shape is mirrored on the slide (measured with generated/effects).
 
 **Elements (1):** [`a:reflection`](../format/namespaces/a.md#areflection)
 
@@ -1094,6 +1102,8 @@ The content type behind a:blip/@r:embed.
 
 **Rendering:** SVG filters (feColorMatrix, feComponentTransfer) or pre-processing in C#. Recolor presets (grayscale, washout, duotone with theme colors) and transparency (alphaModFix) are the common ones.
 
+**Office behaviour:** clrChange matches the alpha too unless useA is 0.
+
 **Elements (18):** [`a:alphaBiLevel`](../format/namespaces/a.md#aalphabilevel), [`a:alphaCeiling`](../format/namespaces/a.md#aalphaceiling), [`a:alphaFloor`](../format/namespaces/a.md#aalphafloor), [`a:alphaInv`](../format/namespaces/a.md#aalphainv), [`a:alphaMod`](../format/namespaces/a.md#aalphamod), [`a:alphaModFix`](../format/namespaces/a.md#aalphamodfix), [`a:alphaRepl`](../format/namespaces/a.md#aalpharepl), [`a:biLevel`](../format/namespaces/a.md#abilevel), [`a:blur`](../format/namespaces/a.md#ablur), [`a:clrChange`](../format/namespaces/a.md#aclrchange), [`a:clrFrom`](../format/namespaces/a.md#aclrfrom), [`a:clrRepl`](../format/namespaces/a.md#aclrrepl), [`a:clrTo`](../format/namespaces/a.md#aclrto), [`a:duotone`](../format/namespaces/a.md#aduotone), [`a:grayscl`](../format/namespaces/a.md#agrayscl), [`a:hsl`](../format/namespaces/a.md#ahsl), [`a:lum`](../format/namespaces/a.md#alum), [`a:tint`](../format/namespaces/a.md#atint)
 
 **Specification:** §20.1.2.3.2 Alpha Modulation (p.2767); §20.1.2.3.19 Luminance (p.2776); §20.1.2.3.34 Tint (p.2785); §20.1.8.1 Alpha Bi-Level Effect (p.2862); §20.1.8.2 Alpha Ceiling Effect (p.2862); §20.1.8.3 Alpha Floor Effect (p.2862) and 15 more
@@ -1230,6 +1240,8 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** The text box is the geometry's text rectangle minus the insets (default 91440 EMU left/right, 45720 top/bottom); anchoring top, middle or bottom, anchorCtr, wrap or no wrap, rotation and overflow.
 
+**Office behaviour:** anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body).
+
 **Elements (6):** [`a:bodyPr`](../format/namespaces/a.md#abodypr), [`a:txBody`](../format/namespaces/a.md#atxbody), [`a:txSp`](../format/namespaces/a.md#atxsp), [`a:useSpRect`](../format/namespaces/a.md#ausesprect), [`dsp:txXfrm`](../format/namespaces/dsp.md#dsptxxfrm), [`p:txBody`](../format/namespaces/p.md#ptxbody)
 
 **Specification:** §19.3.1.51 Shape Text Body (p.2603); §20.1.2.2.40 Shape Text Body (p.2764); §20.1.2.2.41 Text Shape (p.2764); §20.1.2.2.42 Use Shape Text Rectangle (p.2765); §21.1.2.1.1 Body Properties (p.3197)
@@ -1259,6 +1271,8 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 `text.paragraph` · P0 · difficulty 3 · partial
 
 **Rendering:** Alignment (left, center, right, justified, distributed), margins, first-line or hanging indent, levels 0–8.
+
+**Office behaviour:** fontAlgn t, ctr and b line up the tops, middles or bottoms of runs of different sizes (base and auto: the baselines; measured with generated/text-body).
 
 **Elements (3):** [`a:endParaRPr`](../format/namespaces/a.md#aendpararpr), [`a:p`](../format/namespaces/a.md#ap), [`a:pPr`](../format/namespaces/a.md#appr)
 
@@ -1347,6 +1361,8 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 `text.fonts` · P0 · difficulty 4 · partial
 
 **Rendering:** Choose the latin, East Asian or complex-script font per character; resolve theme fonts; see engine.fonts.
+
+**Office behaviour:** PowerPoint draws every missing font in Calibri, whatever its panose, pitch family or charset say (measured with serif, monospaced, script and decorative hints in generated/text-body).
 
 **Elements (4):** [`a:cs`](../format/namespaces/a.md#acs), [`a:ea`](../format/namespaces/a.md#aea), [`a:latin`](../format/namespaces/a.md#alatin), [`a:sym`](../format/namespaces/a.md#asym)
 
@@ -1450,7 +1466,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 **Rendering:** Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.
 
-**Office behaviour:** The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape; presets with one or three paths keep the glyph height and run the baseline along the path.
+**Office behaviour:** The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape. Presets with one or three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length (measured with textArchUp in generated/text-body).
 
 **Elements (1):** [`a:prstTxWarp`](../format/namespaces/a.md#aprsttxwarp)
 
@@ -1530,7 +1546,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 **Rendering:** Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge, vMerge) and position the cells absolutely; an HTML table would compute its own sizes.
 
-**Office behaviour:** Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text.
+**Office behaviour:** Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text. A right-to-left table (tblPr rtl) mirrors its cells with their left and right borders, not the text in them (generated/tables).
 
 **Elements (8):** [`a:gridCol`](../format/namespaces/a.md#agridcol), [`a:header`](../format/namespaces/a.md#aheader), [`a:headers`](../format/namespaces/a.md#aheaders), [`a:tbl`](../format/namespaces/a.md#atbl), [`a:tblGrid`](../format/namespaces/a.md#atblgrid), [`a:tblPr`](../format/namespaces/a.md#atblpr), [`a:tc`](../format/namespaces/a.md#atc), [`a:tr`](../format/namespaces/a.md#atr)
 
@@ -1545,6 +1561,8 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 `table.cells` · P0 · difficulty 3 · partial
 
 **Rendering:** Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
+
+**Office behaviour:** tcPr anchorCtr centers the cell's text block; bodyPr wrap none and horzOverflow have no effect in cells, the text always wraps (measured with generated/tables).
 
 **Elements (8):** [`a:cell3D`](../format/namespaces/a.md#acell3d), [`a:lnB`](../format/namespaces/a.md#alnb), [`a:lnBlToTr`](../format/namespaces/a.md#alnbltotr), [`a:lnL`](../format/namespaces/a.md#alnl), [`a:lnR`](../format/namespaces/a.md#alnr), [`a:lnT`](../format/namespaces/a.md#alnt), [`a:lnTlToBr`](../format/namespaces/a.md#alntltobr), [`a:tcPr`](../format/namespaces/a.md#atcpr)
 
@@ -1604,6 +1622,8 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 `chart.part` · P1 · difficulty 2 · partial
 
 **Rendering:** Read chart settings and render from cached data; print settings are ignored.
+
+**Office behaviour:** A chart's c:clrMapOvr replaces the slide's color mapping for the chart, text included (generated/colormap).
 
 **Elements (33):** [`c16r3:dataDisplayOptions16`](../format/namespaces/c16r3.md#c16r3datadisplayoptions16), [`c16r3:dispNaAsBlank`](../format/namespaces/c16r3.md#c16r3dispnaasblank), [`c:autoTitleDeleted`](../format/namespaces/c.md#cautotitledeleted), [`c:autoUpdate`](../format/namespaces/c.md#cautoupdate), [`c:chart`](../format/namespaces/c.md#cchart), [`c:chartObject`](../format/namespaces/c.md#cchartobject), [`c:chartSpace`](../format/namespaces/c.md#cchartspace), [`c:clrMapOvr`](../format/namespaces/c.md#cclrmapovr), [`c:data`](../format/namespaces/c.md#cdata), [`c:date1904`](../format/namespaces/c.md#cdate1904), [`c:dispBlanksAs`](../format/namespaces/c.md#cdispblanksas), [`c:evenFooter`](../format/namespaces/c.md#cevenfooter), [`c:evenHeader`](../format/namespaces/c.md#cevenheader), [`c:externalData`](../format/namespaces/c.md#cexternaldata), [`c:firstFooter`](../format/namespaces/c.md#cfirstfooter), [`c:firstHeader`](../format/namespaces/c.md#cfirstheader), [`c:fmtId`](../format/namespaces/c.md#cfmtid), [`c:formatting`](../format/namespaces/c.md#cformatting), [`c:headerFooter`](../format/namespaces/c.md#cheaderfooter), [`c:lang`](../format/namespaces/c.md#clang), [`c:legacyDrawingHF`](../format/namespaces/c.md#clegacydrawinghf), [`c:oddFooter`](../format/namespaces/c.md#coddfooter), [`c:oddHeader`](../format/namespaces/c.md#coddheader), [`c:pageMargins`](../format/namespaces/c.md#cpagemargins), [`c:pageSetup`](../format/namespaces/c.md#cpagesetup), [`c:plotVisOnly`](../format/namespaces/c.md#cplotvisonly), [`c:printSettings`](../format/namespaces/c.md#cprintsettings), [`c:protection`](../format/namespaces/c.md#cprotection), [`c:roundedCorners`](../format/namespaces/c.md#croundedcorners), [`c:selection`](../format/namespaces/c.md#cselection), [`c:showDLblsOverMax`](../format/namespaces/c.md#cshowdlblsovermax), [`c:style`](../format/namespaces/c.md#cstyle), [`c:userInterface`](../format/namespaces/c.md#cuserinterface)
 
@@ -2185,7 +2205,7 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 **Rendering:** Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.
 
-**Office behaviour:** Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color.
+**Office behaviour:** Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show.
 
 **Elements (5):** [`a:hlinkClick`](../format/namespaces/a.md#ahlinkclick), [`a:hlinkHover`](../format/namespaces/a.md#ahlinkhover), [`a:hlinkMouseOver`](../format/namespaces/a.md#ahlinkmouseover), [`a:snd`](../format/namespaces/a.md#asnd), [`ahyp:hlinkClr`](../format/namespaces/ahyp.md#ahyphlinkclr)
 

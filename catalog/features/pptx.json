@@ -1433,8 +1433,9 @@
       "title": "Color mapping",
       "priority": "P0",
       "difficulty": 2,
-      "status": "partial",
+      "status": "done",
       "strategy": "bg1/tx1/bg2/tx2 map to dk1/lt1/dk2/lt2 through the master's clrMap or a layout or slide override.",
+      "office": "The master's p:clrMap maps all twelve names (accents and hyperlink colors too), a layout's or slide's overrideClrMapping replaces it; a chart keeps its own c:clrMapOvr against the slide's mapping, for its text as well (measured with generated/colormap: dark mapping with swapped accents).",
       "elements": [
         "a:masterClrMapping",
         "a:overrideClrMapping",
@@ -3037,7 +3038,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Each shape is an absolutely positioned element with an SVG for geometry, fill, line and effects plus a text layer.",
-      "office": "Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces.",
+      "office": "Axis-aligned rectangles and lines are drawn without antialiasing: every edge goes to the nearest pixel (fills and outlines at fractional positions), which crispEdges reproduces. p:sp/@useBgFill fills the shape with the slide's background, aligned to the slide (generated/colormap). bwMode only matters for grayscale printing.",
       "elements": [
         "a:cNvSpPr",
         "a:nvSpPr",
@@ -4035,6 +4036,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "SVG image clipped to the geometry: stretched into the fillRect insets, or repeated through an SVG pattern for tiles (offset, scale, alignment, flip).",
+      "office": "Tiles are sized from the picture's own resolution; PowerPoint ignores blipFill dpi (measured).",
       "elements": [
         "a:blip",
         "a:blipFill",
@@ -4340,6 +4342,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "SVG filter with blur (blurRad), offset (dist, dir), scaling, skew and alignment; CSS drop-shadow where it suffices.",
+      "office": "A shadow is the shape scaled and skewed about its alignment point (algn, bottom center by default) with [sx, tan kx; tan ky, sy], the skew not scaled, then moved by dist along dir and blurred (σ = 0.35 blurRad). With rotWithShape 0, as PowerPoint writes its shadows, the offset and the transform stay on the slide, about the box around the turned shape (measured with generated/effects).",
       "elements": [
         "a:outerShdw"
       ],
@@ -4461,6 +4464,7 @@
       "difficulty": 4,
       "status": "partial",
       "strategy": "Mirrored copy with distance, blur and a gradient alpha mask.",
+      "office": "The copy is scaled and skewed like a shadow about algn, moved by dist along dir, faded along fadeDir (90° by default) across the copy from stA at stPos to endA at endPos and blurred; with rotWithShape 0 the turned shape is mirrored on the slide (measured with generated/effects).",
       "elements": [
         "a:reflection"
       ],
@@ -4936,6 +4940,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "SVG filters (feColorMatrix, feComponentTransfer) or pre-processing in C#. Recolor presets (grayscale, washout, duotone with theme colors) and transparency (alphaModFix) are the common ones.",
+      "office": "clrChange matches the alpha too unless useA is 0.",
       "elements": [
         "a:alphaBiLevel",
         "a:alphaCeiling",
@@ -6022,6 +6027,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "The text box is the geometry's text rectangle minus the insets (default 91440 EMU left/right, 45720 top/bottom); anchoring top, middle or bottom, anchorCtr, wrap or no wrap, rotation and overflow.",
+      "office": "anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body).",
       "elements": [
         "a:bodyPr",
         "a:txBody",
@@ -6126,6 +6132,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "Alignment (left, center, right, justified, distributed), margins, first-line or hanging indent, levels 0–8.",
+      "office": "fontAlgn t, ctr and b line up the tops, middles or bottoms of runs of different sizes (base and auto: the baselines; measured with generated/text-body).",
       "elements": [
         "a:endParaRPr",
         "a:p",
@@ -6611,6 +6618,7 @@
       "difficulty": 4,
       "status": "partial",
       "strategy": "Choose the latin, East Asian or complex-script font per character; resolve theme fonts; see engine.fonts.",
+      "office": "PowerPoint draws every missing font in Calibri, whatever its panose, pitch family or charset say (measured with serif, monospaced, script and decorative hints in generated/text-body).",
       "elements": [
         "a:cs",
         "a:ea",
@@ -6874,7 +6882,7 @@
       "difficulty": 5,
       "status": "partial",
       "strategy": "Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.",
-      "office": "The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape; presets with one or three paths keep the glyph height and run the baseline along the path.",
+      "office": "The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape. Presets with one or three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length (measured with textArchUp in generated/text-body).",
       "elements": [
         "a:prstTxWarp"
       ],
@@ -8136,7 +8144,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "Lay out the grid ourselves (column widths from gridCol, merged cells from gridSpan, rowSpan, hMerge, vMerge) and position the cells absolutely; an HTML table would compute its own sizes.",
-      "office": "Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text.",
+      "office": "Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text. A right-to-left table (tblPr rtl) mirrors its cells with their left and right borders, not the text in them (generated/tables).",
       "elements": [
         "a:gridCol",
         "a:header",
@@ -8228,6 +8236,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.",
+      "office": "tcPr anchorCtr centers the cell's text block; bodyPr wrap none and horzOverflow have no effect in cells, the text always wraps (measured with generated/tables).",
       "elements": [
         "a:cell3D",
         "a:lnB",
@@ -8579,6 +8588,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Read chart settings and render from cached data; print settings are ignored.",
+      "office": "A chart's c:clrMapOvr replaces the slide's color mapping for the chart, text included (generated/colormap).",
       "elements": [
         "c16r3:dataDisplayOptions16",
         "c16r3:dispNaAsBlank",
@@ -14598,7 +14608,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.",
-      "office": "Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color.",
+      "office": "Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show.",
       "elements": [
         "a:hlinkClick",
         "a:hlinkHover",
