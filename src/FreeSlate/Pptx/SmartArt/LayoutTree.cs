@@ -65,6 +65,9 @@ public sealed class LayoutNode(XElement definition, DataPoint point, LayoutNode?
     /// <summary>Notes of the layout for diagnostics (text fitting).</summary>
     public string Note { get; set; } = "";
 
+    /// <summary>The value types the node's ancestors' constraints set for it, which win over its own.</summary>
+    public HashSet<string> FromAncestors { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Constraint values resolved for this node (w, h, primFontSz, lMarg …).</summary>
     public Dictionary<string, double> Values { get; } = new(StringComparer.Ordinal);
 

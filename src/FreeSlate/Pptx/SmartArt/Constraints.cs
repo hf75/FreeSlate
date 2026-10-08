@@ -71,6 +71,18 @@ public static class Constraints
     public static void Evaluate(LayoutNode root, Pins? pins = null)
     {
         var nodes = root.Descendants().Prepend(root).ToList();
+        foreach (var node in nodes)
+        {
+            node.FromAncestors.Clear();
+            for (var ancestor = node.Parent; ancestor != null; ancestor = ancestor.Parent)
+            {
+                foreach (var constraint in ancestor.Constraints.Where(c => !Own(c) && !Bound(c)))
+                {
+                    if (Targets(ancestor, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(node))
+                        node.FromAncestors.Add((string?)constraint.Attribute("type") ?? "");
+                }
+            }
+        }
         if (pins != null)
         {
             foreach (var node in nodes)
@@ -82,9 +94,20 @@ public static class Constraints
         for (var pass = 0; pass < 8; pass++)
         {
             var before = nodes.Select(n => n.Values.Count + n.Values.Values.Sum(v => double.IsFinite(v) ? v : 0)).ToList();
+            // A node's own values first, those its ancestors set for it over them (the nearest last), bounds at the end.
             foreach (var node in nodes)
             {
-                foreach (var constraint in node.Constraints)
+                foreach (var constraint in node.Constraints.Where(c => Own(c) && !Bound(c)))
+                    Apply(node, constraint, pins, null);
+            }
+            foreach (var node in nodes)
+            {
+                foreach (var constraint in node.Constraints.Where(c => !Own(c) && !Bound(c)))
+                    Apply(node, constraint, pins, null);
+            }
+            foreach (var node in nodes)
+            {
+                foreach (var constraint in node.Constraints.Where(Bound))
                     Apply(node, constraint, pins, null);
             }
             var after = nodes.Select(n => n.Values.Count + n.Values.Values.Sum(v => double.IsFinite(v) ? v : 0)).ToList();
@@ -93,17 +116,43 @@ public static class Constraints
         }
     }
 
+    static bool Own(XElement constraint) => (string?)constraint.Attribute("for") is null or "" or "self";
+
+    static bool Bound(XElement constraint) => (string?)constraint.Attribute("op") is "lte" or "gte";
+
     /// <summary>
     /// Evaluates a node's list again once it has its box: the values of its children and descendants follow its size,
-    /// its own box stays as given.
+    /// its own box stays as given, and its own values give way to those its ancestors set.
     /// </summary>
     public static void EvaluateList(LayoutNode node, Pins? pins)
     {
         for (var pass = 0; pass < 2; pass++)
         {
-            foreach (var constraint in node.Constraints)
+            foreach (var constraint in node.Constraints.Where(c => !Bound(c)))
+            {
+                if (Own(constraint) && node.FromAncestors.Contains((string?)constraint.Attribute("type") ?? ""))
+                    continue;
+                Apply(node, constraint, pins, node);
+            }
+            foreach (var constraint in node.Constraints.Where(Bound))
                 Apply(node, constraint, pins, node);
         }
+    }
+
+    /// <summary>
+    /// Applies a node's constraints on itself again once its parent's list has given it new values: those its ancestors
+    /// do not set (h = 0.6 w follows a new width), then its bounds (h ≤ 0.4 w caps a height its parent's width gives;
+    /// measured with process3).
+    /// </summary>
+    public static void EvaluateOwn(LayoutNode node, Pins? pins)
+    {
+        foreach (var constraint in node.Constraints.Where(c => Own(c) && !Bound(c)))
+        {
+            if (!node.FromAncestors.Contains((string?)constraint.Attribute("type") ?? ""))
+                Apply(node, constraint, pins, null);
+        }
+        foreach (var constraint in node.Constraints.Where(c => Own(c) && Bound(c)))
+            Apply(node, constraint, pins, null);
     }
 
     static void Apply(LayoutNode owner, XElement constraint, Pins? pins, LayoutNode? keep)
@@ -171,6 +220,39 @@ public static class Constraints
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// The smallest bound the lte constraints set on a node's value (its own and those of its ancestors that target it),
+    /// or null: text fitting lets a node grow only that far (measured: process3's text node, h ≤ 0.4 w, shrinks its font).
+    /// </summary>
+    public static double? UpperBound(LayoutNode node, string type)
+    {
+        double? bound = null;
+        for (var owner = node; owner != null; owner = owner.Parent)
+        {
+            foreach (var constraint in owner.Constraints)
+            {
+                if ((string?)constraint.Attribute("op") != "lte" || (string?)constraint.Attribute("type") != type)
+                    continue;
+                if (!Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(node))
+                    continue;
+                var fact = Number(constraint, "fact") is { } f && !double.IsNaN(f) ? f : 1;
+                double? value = null;
+                if ((string?)constraint.Attribute("refType") is { Length: > 0 } refType && refType != "none")
+                {
+                    var references = Targets(owner, (string?)constraint.Attribute("refFor"), (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType"));
+                    var reference = references.FirstOrDefault(r => r.Point == node.Point) ?? references.FirstOrDefault();
+                    if (reference != null && Get(reference, refType) is { } referenced)
+                        value = referenced * fact;
+                }
+                else if (Number(constraint, "val") is { } v && !double.IsNaN(v))
+                    value = v;
+                if (value is { } upper)
+                    bound = bound is { } b ? Math.Min(b, upper) : upper;
+            }
+        }
+        return bound;
     }
 
     /// <summary>A value of a node: set by a constraint, or derived (r = l + w, ctrX = l + w / 2 …).</summary>

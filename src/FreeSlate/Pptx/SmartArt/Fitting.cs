@@ -264,6 +264,8 @@ static class Fitting
                 // far as the rule and its parent's room allow.
                 var limit = Number(rule, "val") is { } v ? v : Number(rule, "fact") is { } f ? f * startHeight : startHeight;
                 limit = Math.Min(limit, Room(node));
+                if (Constraints.UpperBound(node, "h") is { } upper)
+                    limit = Math.Min(limit, Math.Max(upper * node.Scale, node.H));
                 var wanted = Check(node, measure).Needed / Engine.PtPerMm;
                 if (startHeight > 0)
                     wanted = Math.Ceiling(wanted / startHeight * 16 - 1e-9) / 16 * startHeight;

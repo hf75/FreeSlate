@@ -86,6 +86,8 @@ public static class Engine
         node.Values["w"] = w;
         node.Values["h"] = h;
         Constraints.EvaluateList(node, pins);
+        foreach (var child in node.Children)
+            Constraints.EvaluateOwn(child, pins);
         switch (node.AlgorithmType)
         {
             case "lin":
@@ -274,7 +276,8 @@ public static class Engine
                 var (alongType, acrossType) = horizontal ? ("w", "h") : ("h", "w");
                 var length = (horizontal ? extents[i].W : extents[i].H) * shrink;
                 var cross = horizontal ? extents[i].H : extents[i].W;
-                if (shrink < 1 && Derived(children[i], acrossType, alongType, length) is { } derived)
+                // A composite takes the room of its children, whose lengths follow it where they relate to it.
+                if (shrink < 1 && children[i].AlgorithmType != "composite" && Derived(children[i], acrossType, alongType, length) is { } derived)
                     cross = derived;
                 sizes.Add((length, cross));
             }

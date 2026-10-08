@@ -140,6 +140,10 @@ public static class SmartArtCheck
                     Console.WriteLine($"  slide {diagram.Slide,3} {Short(diagram.Layout)}: {diagramGood}/{count}");
                     foreach (var line in lines)
                         Console.WriteLine(line);
+                    // Text nodes the drawing does not show (their text taken by other shapes), for the text fitting.
+                    var k = Engine.PtPerMm;
+                    foreach (var node in root.Descendants().Where(n => n.Note.Length > 0 && !lines.Any(l => l.Contains($" {n.Name} "))))
+                        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"      ({node.Name,-18} ours ({node.X * k,7:0.0} {node.Y * k,7:0.0} {node.W * k,7:0.0} {node.H * k,7:0.0}) {node.Note})"));
                 }
             }
             foreach (var r in results.OrderByDescending(r => r.Mean))
