@@ -2168,7 +2168,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var (dataMin, dataMax) = values.Count == 0 ? (0.0, 1.0) : (values.Min(), values.Max());
         var lo = axis?.Min ?? (dataMin >= 0 && dataMax - dataMin > dataMax / 6 ? 0 : dataMin);
         var hi = axis?.Max ?? dataMax;
-        var unit = axis?.MajorUnit is { } fixedUnit and > 0 ? fixedUnit : AxisScaling.NiceUnit(Math.Max(hi - lo, 1e-9), 6);
+        // 3D surfaces divide their (taller) value axis finer, like the axis of a 3D chart.
+        var unit = axis?.MajorUnit is { } fixedUnit and > 0 ? fixedUnit : AxisScaling.NiceUnit(Math.Max(hi - lo, 1e-9), group.Type == "surface3DChart" ? 10 : 6);
         var min = axis?.Min ?? Math.Floor(AxisScale.Clean(lo / unit)) * unit;
         var max = axis?.Max ?? Math.Ceiling(AxisScale.Clean(hi / unit)) * unit;
         if (max <= min) max = min + unit;

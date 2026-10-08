@@ -31,6 +31,13 @@ public sealed partial class ChartRenderer
             return (vx, y * cosX + vz * sinX, -y * sinX + vz * cosX);
         }
 
+        /// <summary>A view-space point back in (centred) model space.</summary>
+        public (double X, double Y, double Z) ToModel((double X, double Y, double Z) v)
+        {
+            var (y, vz) = (v.Y * cosX - v.Z * sinX, v.Y * sinX + v.Z * cosX);
+            return (v.X * cosY - vz * sinY, y, v.X * sinY + vz * cosY);
+        }
+
         /// <summary>A view-space direction (a normal) of a model direction.</summary>
         public (double X, double Y, double Z) Direction(double x, double y, double z) => View(x, y, z);
 

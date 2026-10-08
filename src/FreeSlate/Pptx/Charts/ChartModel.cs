@@ -46,8 +46,8 @@ public sealed class ChartGroup
     /// <summary>A radar chart of filled polygons (c:radarStyle val="filled").</summary>
     public bool IsFilledRadar => IsRadar && ChartModel.Val(Element, "radarStyle") == "filled";
 
-    /// <summary>Series drawn as lines with line keys in the legend: line, stock, scatter and unfilled radar charts.</summary>
-    public bool HasLines => IsLine || IsScatter && !IsBubble || IsRadar && !IsFilledRadar;
+    /// <summary>Series drawn as lines with line keys in the legend: line (not 3D ribbons), stock, scatter and unfilled radar charts.</summary>
+    public bool HasLines => IsLine && Type != "line3DChart" || IsScatter && !IsBubble || IsRadar && !IsFilledRadar;
 
     /// <summary>Bars grow horizontally (c:barDir val="bar").</summary>
     public bool Horizontal { get; init; }
