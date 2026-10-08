@@ -587,13 +587,16 @@ areas:
         elements: [a:innerShdw]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: SVG filter inside the shape's alpha.
+        office: The shadow lies along the inner edges the direction points to (at 45° the right and bottom edges).
 
       - id: effect.presetShadow
         title: Preset shadows
         elements: [a:prstShdw]
         priority: P3
         difficulty: 3
+        status: partial
         strategy: The 20 preset shadows as parameter sets of the shadow filters.
 
       - id: effect.glow

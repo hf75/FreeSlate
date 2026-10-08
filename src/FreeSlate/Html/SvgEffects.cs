@@ -5,8 +5,8 @@ using FreeSlate.Drawing;
 namespace FreeSlate.Html;
 
 /// <summary>
-/// Builds SVG filters for DrawingML effect lists (catalog: effect.outerShadow, effect.glow, effect.softEdge) and
-/// reflections (catalog: effect.reflection).
+/// Builds SVG filters for DrawingML effect lists (catalog: effect.outerShadow, effect.innerShadow,
+/// effect.presetShadow, effect.glow, effect.softEdge) and reflections (catalog: effect.reflection).
 /// The constants come from radial profiles measured in PowerPoint renderings (generated/objects, slide 4):
 /// shadow σ = 0.35 × blurRad; glow = dilate r/2 then σ = r/6; soft edge = erode 0.85 r then σ = r/3.
 /// </summary>
@@ -19,10 +19,13 @@ public static class SvgEffects
     {
         if (effectLst == null)
             return null;
-        var shadow = effectLst.Element(Ns.A + "outerShdw");
+        // Preset shadows (shdw1 … shdw20, the classic hard-edged shadows) are drawn as unblurred outer shadows
+        // with their distance and direction (catalog: effect.presetShadow).
+        var shadow = effectLst.Element(Ns.A + "outerShdw") ?? effectLst.Element(Ns.A + "prstShdw");
         var glow = effectLst.Element(Ns.A + "glow");
         var soft = effectLst.Element(Ns.A + "softEdge");
-        if (shadow == null && glow == null && soft == null)
+        var inner = effectLst.Element(Ns.A + "innerShdw");
+        if (shadow == null && glow == null && soft == null && inner == null)
             return null;
 
         var id = $"e{Interlocked.Increment(ref nextId)}";
@@ -64,6 +67,22 @@ public static class SvgEffects
             extent = Math.Max(extent, distance + blur * 2);
         }
         merge.Add(source);
+        if (inner != null)
+        {
+            // Inner shadow: the shape's outside, blurred and moved against the direction, colored and kept inside
+            // the shape (measured: at 45° the shadow lies along the inner right and bottom edges).
+            var blur = Units.ToPx(inner.Long("blurRad") ?? 0);
+            var distance = Units.ToPx(inner.Long("dist") ?? 0);
+            var direction = (inner.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
+            var color = colors.ResolveChild(inner) ?? RgbColor.Black;
+            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"io\"><feFuncA type=\"table\" tableValues=\"1 0\"/></feComponentTransfer>");
+            steps.Append($"<feGaussianBlur in=\"io\" stdDeviation=\"{Units.Css(blur * 0.35)}\"/>");
+            steps.Append($"<feOffset dx=\"{Units.Css(-distance * Math.Cos(direction))}\" dy=\"{Units.Css(-distance * Math.Sin(direction))}\" result=\"ib\"/>");
+            steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
+            steps.Append("<feComposite in2=\"ib\" operator=\"in\"/>");
+            steps.Append("<feComposite in2=\"SourceAlpha\" operator=\"in\" result=\"inner\"/>");
+            merge.Add("inner");
+        }
 
         defs.Append(boundingBox
             ? $"<filter id=\"{id}\" x=\"-0.5\" y=\"-1\" width=\"2\" height=\"3\" color-interpolation-filters=\"sRGB\">"
