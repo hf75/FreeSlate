@@ -1,0 +1,1810 @@
+[
+  {
+    "prefix": "w",
+    "uri": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema wml.xsd",
+    "counts": {
+      "elements": 613,
+      "attributes": 1016,
+      "globalAttributes": 0,
+      "complexTypes": 285,
+      "simpleTypes": 110,
+      "enumValues": 733,
+      "specSections": 871,
+      "officeNotes": 480
+    }
+  },
+  {
+    "prefix": "w14",
+    "uri": "http://schemas.microsoft.com/office/word/2010/wordml",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1",
+    "counts": {
+      "elements": 51,
+      "attributes": 64,
+      "globalAttributes": 2,
+      "complexTypes": 38,
+      "simpleTypes": 16,
+      "enumValues": 202,
+      "specSections": 68,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w15",
+    "uri": "http://schemas.microsoft.com/office/word/2012/wordml",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-DOCX] v20260818 §5.2",
+    "counts": {
+      "elements": 18,
+      "attributes": 22,
+      "globalAttributes": 1,
+      "complexTypes": 8,
+      "simpleTypes": 2,
+      "enumValues": 3,
+      "specSections": 24,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16cei",
+    "uri": "http://schemas.microsoft.com/office/word/2026/wordml/cei",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "source": "[MS-DOCX] v20260818 §5.10",
+    "counts": {
+      "elements": 2,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16cex",
+    "uri": "http://schemas.microsoft.com/office/word/2018/wordml/cex",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-DOCX] v20260818 §5.6",
+    "counts": {
+      "elements": 3,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 4,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16cid",
+    "uri": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-DOCX] v20260818 §5.4",
+    "counts": {
+      "elements": 2,
+      "attributes": 2,
+      "globalAttributes": 1,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16cur",
+    "uri": "http://schemas.microsoft.com/office/word/2018/wordml",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-DOCX] v20260818 §5.5",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16du",
+    "uri": "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-DOCX] v20260818 §5.8",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 1,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16sdtdh",
+    "uri": "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-DOCX] v20260818 §5.7",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 1,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16sdtfl",
+    "uri": "http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-DOCX] v20260818 §5.9",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 1,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "w16se",
+    "uri": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-DOCX] v20260818 §5.3",
+    "counts": {
+      "elements": 1,
+      "attributes": 2,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "woe",
+    "uri": "http://schemas.microsoft.com/office/word/2020/oembed",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-ODRAWXML] v20261006 §5.38",
+    "counts": {
+      "elements": 1,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "wp",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-wordprocessingDrawing.xsd",
+    "counts": {
+      "elements": 43,
+      "attributes": 85,
+      "globalAttributes": 0,
+      "complexTypes": 20,
+      "simpleTypes": 7,
+      "enumValues": 30,
+      "specSections": 50,
+      "officeNotes": 8
+    }
+  },
+  {
+    "prefix": "wp14",
+    "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.11",
+    "counts": {
+      "elements": 6,
+      "attributes": 2,
+      "globalAttributes": 2,
+      "complexTypes": 2,
+      "simpleTypes": 3,
+      "enumValues": 12,
+      "specSections": 11,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "wp15",
+    "uri": "http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-ODRAWXML] v20261006 §5.18",
+    "counts": {
+      "elements": 1,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "wpc",
+    "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.5",
+    "counts": {
+      "elements": 5,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "wpg",
+    "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.4",
+    "counts": {
+      "elements": 9,
+      "attributes": 9,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "wps",
+    "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+    "area": "WordprocessingML (DOCX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.2",
+    "counts": {
+      "elements": 10,
+      "attributes": 30,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 4,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "iact",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2014/inkAction",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-ODRAWXML] v20261006 §5.19",
+    "counts": {
+      "elements": 7,
+      "attributes": 16,
+      "globalAttributes": 0,
+      "complexTypes": 6,
+      "simpleTypes": 12,
+      "enumValues": 12,
+      "specSections": 19,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p",
+    "uri": "http://schemas.openxmlformats.org/presentationml/2006/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema pml.xsd",
+    "counts": {
+      "elements": 213,
+      "attributes": 344,
+      "globalAttributes": 0,
+      "complexTypes": 149,
+      "simpleTypes": 58,
+      "enumValues": 254,
+      "specSections": 281,
+      "officeNotes": 100
+    }
+  },
+  {
+    "prefix": "p14",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2010/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-PPTX] v20240820 §5.1",
+    "counts": {
+      "elements": 53,
+      "attributes": 73,
+      "globalAttributes": 4,
+      "complexTypes": 31,
+      "simpleTypes": 6,
+      "enumValues": 7,
+      "specSections": 76,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p15",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2012/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-PPTX] v20240820 §5.2",
+    "counts": {
+      "elements": 11,
+      "attributes": 15,
+      "globalAttributes": 0,
+      "complexTypes": 8,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 15,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p1510",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2015/10/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.5",
+    "counts": {
+      "elements": 4,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 2,
+      "enumValues": 0,
+      "specSections": 6,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p159",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.4",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 1,
+      "enumValues": 3,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p16",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2015/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-PPTX] v20240820 §5.6",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p166",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2016/6/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.7",
+    "counts": {
+      "elements": 2,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 1,
+      "enumValues": 2,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p1710",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2017/10/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-PPTX] v20240820 §5.11",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p173",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2017/3/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-PPTX] v20240820 §5.12",
+    "counts": {
+      "elements": 3,
+      "attributes": 6,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 1,
+      "enumValues": 2,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p184",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2018/4/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-PPTX] v20240820 §5.13",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 1,
+      "enumValues": 4,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p188",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2018/8/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-PPTX] v20240820 §5.14",
+    "counts": {
+      "elements": 11,
+      "attributes": 21,
+      "globalAttributes": 0,
+      "complexTypes": 8,
+      "simpleTypes": 4,
+      "enumValues": 3,
+      "specSections": 15,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p202",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2020/02/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-PPTX] v20240820 §5.16",
+    "counts": {
+      "elements": 4,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p223",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2022/03/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-PPTX] v20240820 §5.17",
+    "counts": {
+      "elements": 4,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 4,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p228",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2022/08/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-PPTX] v20240820 §5.19",
+    "counts": {
+      "elements": 15,
+      "attributes": 10,
+      "globalAttributes": 0,
+      "complexTypes": 11,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 12,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "p232",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2023/02/main",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-PPTX] v20240820 §5.20",
+    "counts": {
+      "elements": 4,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "pc",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2013/main/command",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-PPTX] v20240820 §5.3",
+    "counts": {
+      "elements": 23,
+      "attributes": 21,
+      "globalAttributes": 0,
+      "complexTypes": 21,
+      "simpleTypes": 13,
+      "enumValues": 124,
+      "specSections": 49,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "pc2",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2019/9/main/command",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-PPTX] v20240820 §5.15",
+    "counts": {
+      "elements": 2,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 4,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 6,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "pc226",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2022/06/main/command",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-PPTX] v20240820 §5.18",
+    "counts": {
+      "elements": 4,
+      "attributes": 11,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 4,
+      "enumValues": 9,
+      "specSections": 8,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "psez",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2016/sectionzoom",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.8",
+    "counts": {
+      "elements": 4,
+      "attributes": 6,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 4,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "pslz",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2016/slidezoom",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.9",
+    "counts": {
+      "elements": 4,
+      "attributes": 7,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 4,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "psuz",
+    "uri": "http://schemas.microsoft.com/office/powerpoint/2016/summaryzoom",
+    "area": "PresentationML (PPTX)",
+    "inScope": true,
+    "source": "[MS-PPTX] v20240820 §5.10",
+    "counts": {
+      "elements": 6,
+      "attributes": 12,
+      "globalAttributes": 0,
+      "complexTypes": 4,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 6,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "a",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-main.xsd",
+    "counts": {
+      "elements": 321,
+      "attributes": 663,
+      "globalAttributes": 0,
+      "complexTypes": 231,
+      "simpleTypes": 94,
+      "enumValues": 893,
+      "specSections": 426,
+      "officeNotes": 199
+    }
+  },
+  {
+    "prefix": "a14",
+    "uri": "http://schemas.microsoft.com/office/drawing/2010/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.1",
+    "counts": {
+      "elements": 50,
+      "attributes": 97,
+      "globalAttributes": 1,
+      "complexTypes": 42,
+      "simpleTypes": 7,
+      "enumValues": 0,
+      "specSections": 63,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "a15",
+    "uri": "http://schemas.microsoft.com/office/drawing/2012/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-ODRAWXML] v20261006 §5.14",
+    "counts": {
+      "elements": 4,
+      "attributes": 20,
+      "globalAttributes": 0,
+      "complexTypes": 4,
+      "simpleTypes": 1,
+      "enumValues": 11,
+      "specSections": 9,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "a16",
+    "uri": "http://schemas.microsoft.com/office/drawing/2014/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-ODRAWXML] v20261006 §5.23",
+    "counts": {
+      "elements": 5,
+      "attributes": 6,
+      "globalAttributes": 0,
+      "complexTypes": 4,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 9,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "a1611",
+    "uri": "http://schemas.microsoft.com/office/drawing/2016/11/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.25",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "a3danim",
+    "uri": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.34",
+    "counts": {
+      "elements": 4,
+      "attributes": 10,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 6,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "aanim",
+    "uri": "http://schemas.microsoft.com/office/drawing/2018/animation",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.35",
+    "counts": {
+      "elements": 2,
+      "attributes": 7,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 4,
+      "enumValues": 1,
+      "specSections": 6,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "aclsh",
+    "uri": "http://schemas.microsoft.com/office/drawing/2020/classificationShape",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-ODRAWXML] v20261006 §5.37",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 1,
+      "enumValues": 4,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "adec",
+    "uri": "http://schemas.microsoft.com/office/drawing/2017/decorative",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.32",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "ahyp",
+    "uri": "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.33",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 1,
+      "enumValues": 2,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "aif",
+    "uri": "http://schemas.microsoft.com/office/drawing/2022/imageformula",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-ODRAWXML] v20261006 §5.41",
+    "counts": {
+      "elements": 1,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "aink",
+    "uri": "http://schemas.microsoft.com/office/drawing/2016/ink",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.28",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 2,
+      "enumValues": 14,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "alf",
+    "uri": "http://schemas.microsoft.com/office/drawing/2021/livefeed",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-ODRAWXML] v20261006 §5.40",
+    "counts": {
+      "elements": 7,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 6,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 7,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "am3d",
+    "uri": "http://schemas.microsoft.com/office/drawing/2017/model3d",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.29",
+    "counts": {
+      "elements": 31,
+      "attributes": 49,
+      "globalAttributes": 0,
+      "complexTypes": 16,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 19,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "ask",
+    "uri": "http://schemas.microsoft.com/office/drawing/2018/sketchyshapes",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2021",
+    "source": "[MS-ODRAWXML] v20261006 §5.36",
+    "counts": {
+      "elements": 8,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "asl",
+    "uri": "http://schemas.microsoft.com/office/drawing/2021/scriptlink",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Microsoft365",
+    "source": "[MS-ODRAWXML] v20261006 §5.39",
+    "counts": {
+      "elements": 2,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "asvg",
+    "uri": "http://schemas.microsoft.com/office/drawing/2016/SVG/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.24",
+    "counts": {
+      "elements": 1,
+      "attributes": 2,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "lc",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/lockedCanvas",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-lockedCanvas.xsd",
+    "counts": {
+      "elements": 1,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "msink",
+    "uri": "http://schemas.microsoft.com/ink/2010/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "source": "[MS-ODRAWXML] v20261006 §5.7",
+    "counts": {
+      "elements": 4,
+      "attributes": 26,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 9,
+      "enumValues": 37,
+      "specSections": 13,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "oac",
+    "uri": "http://schemas.microsoft.com/office/drawing/2013/main/command",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-ODRAWXML] v20261006 §5.27",
+    "counts": {
+      "elements": 11,
+      "attributes": 11,
+      "globalAttributes": 0,
+      "complexTypes": 23,
+      "simpleTypes": 12,
+      "enumValues": 59,
+      "specSections": 43,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "pic",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/picture",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-picture.xsd",
+    "counts": {
+      "elements": 6,
+      "attributes": 9,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 6,
+      "officeNotes": 2
+    }
+  },
+  {
+    "prefix": "pic14",
+    "uri": "http://schemas.microsoft.com/office/drawing/2010/picture",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.12",
+    "counts": {
+      "elements": 2,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "thm15",
+    "uri": "http://schemas.microsoft.com/office/thememl/2012/main",
+    "area": "DrawingML",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-ODRAWXML] v20261006 §5.17",
+    "counts": {
+      "elements": 2,
+      "attributes": 3,
+      "globalAttributes": 1,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/chart",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-chart.xsd",
+    "counts": {
+      "elements": 221,
+      "attributes": 161,
+      "globalAttributes": 0,
+      "complexTypes": 136,
+      "simpleTypes": 68,
+      "enumValues": 122,
+      "specSections": 306,
+      "officeNotes": 172
+    }
+  },
+  {
+    "prefix": "c14",
+    "uri": "http://schemas.microsoft.com/office/drawing/2007/8/2/chart",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.10",
+    "counts": {
+      "elements": 9,
+      "attributes": 7,
+      "globalAttributes": 0,
+      "complexTypes": 5,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 9,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c15",
+    "uri": "http://schemas.microsoft.com/office/drawing/2012/chart",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-ODRAWXML] v20261006 §5.13",
+    "counts": {
+      "elements": 40,
+      "attributes": 10,
+      "globalAttributes": 0,
+      "complexTypes": 18,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 44,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c16",
+    "uri": "http://schemas.microsoft.com/office/drawing/2014/chart",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-ODRAWXML] v20261006 §5.20",
+    "counts": {
+      "elements": 18,
+      "attributes": 7,
+      "globalAttributes": 0,
+      "complexTypes": 11,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 20,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c16ac",
+    "uri": "http://schemas.microsoft.com/office/drawing/2014/chart/ac",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-ODRAWXML] v20261006 §5.21",
+    "counts": {
+      "elements": 1,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c16r2",
+    "uri": "http://schemas.microsoft.com/office/drawing/2015/06/chart",
+    "area": "Charts",
+    "inScope": true,
+    "source": "[MS-ODRAWXML] v20261006 §5.42",
+    "counts": {
+      "elements": 1,
+      "attributes": 0,
+      "globalAttributes": 1,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "c16r3",
+    "uri": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.31",
+    "counts": {
+      "elements": 2,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "cdr",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-chartDrawing.xsd",
+    "counts": {
+      "elements": 29,
+      "attributes": 26,
+      "globalAttributes": 0,
+      "complexTypes": 14,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 30,
+      "officeNotes": 15
+    }
+  },
+  {
+    "prefix": "cdr14",
+    "uri": "http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.8",
+    "counts": {
+      "elements": 7,
+      "attributes": 13,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "cs",
+    "uri": "http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2013",
+    "source": "[MS-ODRAWXML] v20261006 §5.15",
+    "counts": {
+      "elements": 44,
+      "attributes": 83,
+      "globalAttributes": 0,
+      "complexTypes": 8,
+      "simpleTypes": 12,
+      "enumValues": 18,
+      "specSections": 22,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "cx",
+    "uri": "http://schemas.microsoft.com/office/drawing/2014/chartex",
+    "area": "Charts",
+    "inScope": true,
+    "officeVersion": "Office2016",
+    "source": "[MS-ODRAWXML] v20261006 §5.22",
+    "counts": {
+      "elements": 118,
+      "attributes": 150,
+      "globalAttributes": 0,
+      "complexTypes": 99,
+      "simpleTypes": 26,
+      "enumValues": 92,
+      "specSections": 127,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "dgm",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/diagram",
+    "area": "Diagrams (SmartArt)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-diagram.xsd",
+    "counts": {
+      "elements": 65,
+      "attributes": 159,
+      "globalAttributes": 0,
+      "complexTypes": 58,
+      "simpleTypes": 66,
+      "enumValues": 331,
+      "specSections": 140,
+      "officeNotes": 27
+    }
+  },
+  {
+    "prefix": "dgm14",
+    "uri": "http://schemas.microsoft.com/office/drawing/2010/diagram",
+    "area": "Diagrams (SmartArt)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.16",
+    "counts": {
+      "elements": 2,
+      "attributes": 6,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "dgm1611",
+    "uri": "http://schemas.microsoft.com/office/drawing/2016/11/diagram",
+    "area": "Diagrams (SmartArt)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.26",
+    "counts": {
+      "elements": 3,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 1,
+      "enumValues": 2,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "dgm1612",
+    "uri": "http://schemas.microsoft.com/office/drawing/2016/12/diagram",
+    "area": "Diagrams (SmartArt)",
+    "inScope": true,
+    "officeVersion": "Office2019",
+    "source": "[MS-ODRAWXML] v20261006 §5.30",
+    "counts": {
+      "elements": 2,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "dsp",
+    "uri": "http://schemas.microsoft.com/office/drawing/2008/diagram",
+    "area": "Diagrams (SmartArt)",
+    "inScope": true,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.6",
+    "counts": {
+      "elements": 16,
+      "attributes": 14,
+      "globalAttributes": 0,
+      "complexTypes": 6,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 8,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "m",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+    "area": "Math (OMML)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-math.xsd",
+    "counts": {
+      "elements": 124,
+      "attributes": 66,
+      "globalAttributes": 0,
+      "complexTypes": 72,
+      "simpleTypes": 14,
+      "enumValues": 30,
+      "specSections": 138,
+      "officeNotes": 74
+    }
+  },
+  {
+    "prefix": "o",
+    "uri": "urn:schemas-microsoft-com:office:office",
+    "area": "VML (legacy drawing)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema vml-officeDrawing.xsd",
+    "counts": {
+      "elements": 32,
+      "attributes": 273,
+      "globalAttributes": 53,
+      "complexTypes": 25,
+      "simpleTypes": 23,
+      "enumValues": 80,
+      "specSections": 57,
+      "officeNotes": 33
+    }
+  },
+  {
+    "prefix": "pvml",
+    "uri": "urn:schemas-microsoft-com:office:powerpoint",
+    "area": "VML (legacy drawing)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema vml-presentationDrawing.xsd",
+    "counts": {
+      "elements": 2,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 1
+    }
+  },
+  {
+    "prefix": "v",
+    "uri": "urn:schemas-microsoft-com:vml",
+    "area": "VML (legacy drawing)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema vml-main.xsd",
+    "counts": {
+      "elements": 23,
+      "attributes": 733,
+      "globalAttributes": 0,
+      "complexTypes": 23,
+      "simpleTypes": 12,
+      "enumValues": 51,
+      "specSections": 37,
+      "officeNotes": 29
+    }
+  },
+  {
+    "prefix": "w10",
+    "uri": "urn:schemas-microsoft-com:office:word",
+    "area": "VML (legacy drawing)",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema vml-wordprocessingDrawing.xsd",
+    "counts": {
+      "elements": 6,
+      "attributes": 16,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 6,
+      "enumValues": 48,
+      "specSections": 12,
+      "officeNotes": 7
+    }
+  },
+  {
+    "prefix": "ac",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/characteristics",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-additionalCharacteristics.xsd",
+    "counts": {
+      "elements": 2,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 1,
+      "enumValues": 5,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "ap",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-documentPropertiesExtended.xsd",
+    "counts": {
+      "elements": 28,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 4,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 28,
+      "officeNotes": 7
+    }
+  },
+  {
+    "prefix": "b",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/bibliography",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-bibliography.xsd",
+    "counts": {
+      "elements": 75,
+      "attributes": 3,
+      "globalAttributes": 0,
+      "complexTypes": 7,
+      "simpleTypes": 1,
+      "enumValues": 17,
+      "specSections": 77,
+      "officeNotes": 7
+    }
+  },
+  {
+    "prefix": "cp",
+    "uri": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-2 schema opc-coreProperties.xsd",
+    "counts": {
+      "elements": 9,
+      "attributes": 2,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 0,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "ct",
+    "uri": "http://schemas.openxmlformats.org/package/2006/content-types",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-2 schema opc-contentTypes.xsd",
+    "counts": {
+      "elements": 3,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 2,
+      "enumValues": 0,
+      "specSections": 0,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "ds",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/customXml",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-customXmlDataProperties.xsd",
+    "counts": {
+      "elements": 3,
+      "attributes": 2,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 3,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "mdssi",
+    "uri": "http://schemas.openxmlformats.org/package/2006/digital-signature",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-2 schema opc-digSig.xsd",
+    "counts": {
+      "elements": 5,
+      "attributes": 2,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 2,
+      "enumValues": 0,
+      "specSections": 0,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "op",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-documentPropertiesCustom.xsd",
+    "counts": {
+      "elements": 2,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 1
+    }
+  },
+  {
+    "prefix": "pr",
+    "uri": "http://schemas.openxmlformats.org/package/2006/relationships",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-2 schema opc-relationships.xsd",
+    "counts": {
+      "elements": 2,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 1,
+      "enumValues": 2,
+      "specSections": 0,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "r",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-relationshipReference.xsd",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 14,
+      "complexTypes": 0,
+      "simpleTypes": 1,
+      "enumValues": 0,
+      "specSections": 1,
+      "officeNotes": 1
+    }
+  },
+  {
+    "prefix": "s",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-commonSimpleTypes.xsd",
+    "counts": {
+      "elements": 0,
+      "attributes": 0,
+      "globalAttributes": 0,
+      "complexTypes": 0,
+      "simpleTypes": 28,
+      "enumValues": 50,
+      "specSections": 27,
+      "officeNotes": 8
+    }
+  },
+  {
+    "prefix": "sl",
+    "uri": "http://schemas.openxmlformats.org/schemaLibrary/2006/main",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-customXmlSchemaProperties.xsd",
+    "counts": {
+      "elements": 2,
+      "attributes": 4,
+      "globalAttributes": 0,
+      "complexTypes": 2,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 2,
+      "officeNotes": 1
+    }
+  },
+  {
+    "prefix": "vt",
+    "uri": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes",
+    "area": "Packages and document properties",
+    "inScope": true,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema shared-documentPropertiesVariantTypes.xsd",
+    "counts": {
+      "elements": 34,
+      "attributes": 6,
+      "globalAttributes": 0,
+      "complexTypes": 6,
+      "simpleTypes": 4,
+      "enumValues": 37,
+      "specSections": 38,
+      "officeNotes": 9
+    }
+  },
+  {
+    "prefix": "x",
+    "uri": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    "area": "SpreadsheetML (out of scope)",
+    "inScope": false,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema sml.xsd",
+    "counts": {
+      "elements": 389,
+      "attributes": 1594,
+      "globalAttributes": 0,
+      "complexTypes": 367,
+      "simpleTypes": 96,
+      "enumValues": 560,
+      "specSections": 508,
+      "officeNotes": 316
+    }
+  },
+  {
+    "prefix": "xdr",
+    "uri": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+    "area": "SpreadsheetML (out of scope)",
+    "inScope": false,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema dml-spreadsheetDrawing.xsd",
+    "counts": {
+      "elements": 36,
+      "attributes": 32,
+      "globalAttributes": 0,
+      "complexTypes": 17,
+      "simpleTypes": 3,
+      "enumValues": 3,
+      "specSections": 39,
+      "officeNotes": 20
+    }
+  },
+  {
+    "prefix": "xdr14",
+    "uri": "http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing",
+    "area": "SpreadsheetML (out of scope)",
+    "inScope": false,
+    "officeVersion": "Office2010",
+    "source": "[MS-ODRAWXML] v20261006 §5.9",
+    "counts": {
+      "elements": 7,
+      "attributes": 13,
+      "globalAttributes": 0,
+      "complexTypes": 3,
+      "simpleTypes": 0,
+      "enumValues": 0,
+      "specSections": 5,
+      "officeNotes": 0
+    }
+  },
+  {
+    "prefix": "xvml",
+    "uri": "urn:schemas-microsoft-com:office:excel",
+    "area": "SpreadsheetML (out of scope)",
+    "inScope": false,
+    "officeVersion": "Office2007",
+    "source": "ECMA-376-4 transitional schema vml-spreadsheetDrawing.xsd",
+    "counts": {
+      "elements": 68,
+      "attributes": 1,
+      "globalAttributes": 0,
+      "complexTypes": 1,
+      "simpleTypes": 2,
+      "enumValues": 19,
+      "specSections": 70,
+      "officeNotes": 37
+    }
+  }
+]

@@ -1,0 +1,1250 @@
+{
+  "prefix": "am3d",
+  "uri": "http://schemas.microsoft.com/office/drawing/2017/model3d",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.29",
+  "counts": {
+    "elements": 31,
+    "attributes": 49,
+    "globalAttributes": 0,
+    "complexTypes": 16,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 19,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "am3d:ambientLight",
+      "types": [
+        "am3d:CT_AmbientLight"
+      ],
+      "attributes": [
+        {
+          "name": "enabled",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "am3d:clr",
+        "am3d:illuminance",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.1",
+          "title": "CT_AmbientLight",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "am3d:attrSrcUrl",
+      "types": [
+        "a1611:CT_PictureAttributionSourceURL"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.27.3.1",
+          "title": "CT_PictureAttributionSourceURL",
+          "page": 269
+        }
+      ]
+    },
+    {
+      "name": "am3d:blip",
+      "types": [
+        "a:CT_Blip"
+      ],
+      "attributes": [
+        {
+          "name": "cstate",
+          "type": "a:ST_BlipCompression",
+          "default": "none"
+        },
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        },
+        {
+          "name": "r:link",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:alphaBiLevel",
+        "a:alphaCeiling",
+        "a:alphaFloor",
+        "a:alphaInv",
+        "a:alphaMod",
+        "a:alphaModFix",
+        "a:alphaRepl",
+        "a:biLevel",
+        "a:blur",
+        "a:clrChange",
+        "a:clrRepl",
+        "a:duotone",
+        "a:fillOverlay",
+        "a:grayscl",
+        "a:hsl",
+        "a:lum",
+        "a:tint",
+        "a:extLst"
+      ],
+      "parents": [
+        "am3d:raster"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:camera",
+      "types": [
+        "am3d:CT_Model3DCamera"
+      ],
+      "attributes": [],
+      "children": [
+        "am3d:pos",
+        "am3d:up",
+        "am3d:lookAt",
+        "am3d:orthographic",
+        "am3d:perspective",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.4",
+          "title": "CT_Model3DCamera",
+          "page": 301
+        }
+      ]
+    },
+    {
+      "name": "am3d:clr",
+      "types": [
+        "a:CT_Color"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "am3d:ambientLight",
+        "am3d:dirLight",
+        "am3d:ptLight",
+        "am3d:spotLight"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:dirLight",
+      "types": [
+        "am3d:CT_DirectionalLight"
+      ],
+      "attributes": [
+        {
+          "name": "angularRad",
+          "type": "am3d:ST_AngularRadius",
+          "required": true
+        },
+        {
+          "name": "enabled",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "am3d:clr",
+        "am3d:illuminance",
+        "am3d:pos",
+        "am3d:lookAt",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.2",
+          "title": "CT_DirectionalLight",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "am3d:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "am3d:ambientLight",
+        "am3d:camera",
+        "am3d:dirLight",
+        "am3d:model3d",
+        "am3d:objViewport",
+        "am3d:orthographic",
+        "am3d:perspective",
+        "am3d:ptLight",
+        "am3d:spotLight",
+        "am3d:trans",
+        "am3d:winViewport"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:illuminance",
+      "types": [
+        "am3d:CT_PositiveRatio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:unsignedLong",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:unsignedLong",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:ambientLight",
+        "am3d:dirLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.16",
+          "title": "CT_PositiveRatio",
+          "page": 308
+        }
+      ]
+    },
+    {
+      "name": "am3d:intensity",
+      "types": [
+        "am3d:CT_PositiveRatio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:unsignedLong",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:unsignedLong",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:ptLight",
+        "am3d:spotLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.16",
+          "title": "CT_PositiveRatio",
+          "page": 308
+        }
+      ]
+    },
+    {
+      "name": "am3d:lookAt",
+      "types": [
+        "a:CT_Point3D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "z",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:camera",
+        "am3d:dirLight",
+        "am3d:spotLight"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:meterPerModelUnit",
+      "types": [
+        "am3d:CT_PositiveRatio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:unsignedLong",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:unsignedLong",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:trans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.16",
+          "title": "CT_PositiveRatio",
+          "page": 308
+        }
+      ]
+    },
+    {
+      "name": "am3d:model3d",
+      "global": true,
+      "types": [
+        "am3d:CT_Model3D"
+      ],
+      "attributes": [
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        },
+        {
+          "name": "r:link",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [
+        "am3d:spPr",
+        "am3d:camera",
+        "am3d:trans",
+        "am3d:attrSrcUrl",
+        "am3d:raster",
+        "am3d:extLst",
+        "am3d:objViewport",
+        "am3d:winViewport",
+        "am3d:ambientLight",
+        "am3d:ptLight",
+        "am3d:spotLight",
+        "am3d:dirLight",
+        "am3d:unkLight"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.1.1",
+          "title": "model3d",
+          "page": 297
+        }
+      ]
+    },
+    {
+      "name": "am3d:objViewport",
+      "types": [
+        "am3d:CT_ObjectViewport"
+      ],
+      "attributes": [
+        {
+          "name": "viewportSz",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        }
+      ],
+      "children": [
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.7",
+          "title": "CT_ObjectViewport",
+          "page": 303
+        }
+      ]
+    },
+    {
+      "name": "am3d:orthographic",
+      "types": [
+        "am3d:CT_OrthographicProjection"
+      ],
+      "attributes": [],
+      "children": [
+        "am3d:sz",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:camera"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.8",
+          "title": "CT_OrthographicProjection",
+          "page": 303
+        }
+      ]
+    },
+    {
+      "name": "am3d:perspective",
+      "types": [
+        "am3d:CT_PerspectiveProjection"
+      ],
+      "attributes": [
+        {
+          "name": "fov",
+          "type": "a:ST_FOVAngle",
+          "required": true
+        }
+      ],
+      "children": [
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:camera"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.9",
+          "title": "CT_PerspectiveProjection",
+          "page": 304
+        }
+      ]
+    },
+    {
+      "name": "am3d:pos",
+      "types": [
+        "a:CT_Point3D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "z",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:camera",
+        "am3d:dirLight",
+        "am3d:ptLight",
+        "am3d:spotLight"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:postTrans",
+      "types": [
+        "a:CT_Vector3D"
+      ],
+      "attributes": [
+        {
+          "name": "dx",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dy",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dz",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:trans"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:preTrans",
+      "types": [
+        "a:CT_Vector3D"
+      ],
+      "attributes": [
+        {
+          "name": "dx",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dy",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dz",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:trans"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:ptLight",
+      "types": [
+        "am3d:CT_PointLight"
+      ],
+      "attributes": [
+        {
+          "name": "enabled",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "rad",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        }
+      ],
+      "children": [
+        "am3d:clr",
+        "am3d:intensity",
+        "am3d:pos",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.10",
+          "title": "CT_PointLight",
+          "page": 304
+        }
+      ]
+    },
+    {
+      "name": "am3d:raster",
+      "types": [
+        "am3d:CT_Model3DRaster"
+      ],
+      "attributes": [
+        {
+          "name": "rName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "rVer",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "am3d:blip"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.5",
+          "title": "CT_Model3DRaster",
+          "page": 301
+        }
+      ]
+    },
+    {
+      "name": "am3d:rot",
+      "types": [
+        "am3d:CT_Rotate3D"
+      ],
+      "attributes": [
+        {
+          "name": "ax",
+          "type": "a:ST_Angle",
+          "default": "0"
+        },
+        {
+          "name": "ay",
+          "type": "a:ST_Angle",
+          "default": "0"
+        },
+        {
+          "name": "az",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:trans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.11",
+          "title": "CT_Rotate3D",
+          "page": 305
+        }
+      ]
+    },
+    {
+      "name": "am3d:scale",
+      "types": [
+        "am3d:CT_Scale3D"
+      ],
+      "attributes": [],
+      "children": [
+        "am3d:sx",
+        "am3d:sy",
+        "am3d:sz"
+      ],
+      "parents": [
+        "am3d:trans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.12",
+          "title": "CT_Scale3D",
+          "page": 306
+        }
+      ]
+    },
+    {
+      "name": "am3d:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:spotLight",
+      "types": [
+        "am3d:CT_SpotLight"
+      ],
+      "attributes": [
+        {
+          "name": "enabled",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "rad",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        },
+        {
+          "name": "spotAng",
+          "type": "a:ST_FOVAngle",
+          "required": true
+        }
+      ],
+      "children": [
+        "am3d:clr",
+        "am3d:intensity",
+        "am3d:pos",
+        "am3d:lookAt",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.13",
+          "title": "CT_SpotLight",
+          "page": 306
+        }
+      ]
+    },
+    {
+      "name": "am3d:sx",
+      "types": [
+        "a:CT_Ratio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:long",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:long",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:scale"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:sy",
+      "types": [
+        "a:CT_Ratio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:long",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:long",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:scale"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:sz",
+      "types": [
+        "a:CT_Ratio",
+        "am3d:CT_PositiveRatio"
+      ],
+      "attributes": [
+        {
+          "name": "d",
+          "type": "xsd:long",
+          "required": true
+        },
+        {
+          "name": "n",
+          "type": "xsd:long",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:orthographic",
+        "am3d:scale"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.16",
+          "title": "CT_PositiveRatio",
+          "page": 308
+        }
+      ]
+    },
+    {
+      "name": "am3d:trans",
+      "types": [
+        "am3d:CT_Model3DTransform"
+      ],
+      "attributes": [],
+      "children": [
+        "am3d:meterPerModelUnit",
+        "am3d:preTrans",
+        "am3d:scale",
+        "am3d:rot",
+        "am3d:postTrans",
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.6",
+          "title": "CT_Model3DTransform",
+          "page": 302
+        }
+      ]
+    },
+    {
+      "name": "am3d:unkLight",
+      "types": [
+        "am3d:CT_UnknownLight"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.14",
+          "title": "CT_UnknownLight",
+          "page": 307
+        }
+      ]
+    },
+    {
+      "name": "am3d:up",
+      "types": [
+        "a:CT_Vector3D"
+      ],
+      "attributes": [
+        {
+          "name": "dx",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dy",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "dz",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "am3d:camera"
+      ],
+      "spec": []
+    },
+    {
+      "name": "am3d:winViewport",
+      "types": [
+        "am3d:CT_WindowViewport"
+      ],
+      "attributes": [],
+      "children": [
+        "am3d:extLst"
+      ],
+      "parents": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.15",
+          "title": "CT_WindowViewport",
+          "page": 308
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "am3d:CT_AmbientLight",
+      "content": "elements",
+      "model": "(am3d:clr, am3d:illuminance, am3d:extLst?)",
+      "attributes": [
+        "enabled"
+      ],
+      "usedBy": [
+        "am3d:ambientLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.1",
+          "title": "CT_AmbientLight",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_DirectionalLight",
+      "content": "elements",
+      "model": "(am3d:clr, am3d:illuminance, am3d:pos, am3d:lookAt, am3d:extLst?)",
+      "attributes": [
+        "angularRad",
+        "enabled"
+      ],
+      "usedBy": [
+        "am3d:dirLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.2",
+          "title": "CT_DirectionalLight",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Model3D",
+      "content": "elements",
+      "model": "(am3d:spPr, am3d:camera, am3d:trans, am3d:attrSrcUrl?, am3d:raster?, am3d:extLst?, (am3d:objViewport | am3d:winViewport), am3d:ambientLight?, (am3d:ptLight | am3d:spotLight | am3d:dirLight | am3d:unkLight)*)",
+      "attributes": [
+        "r:embed",
+        "r:link"
+      ],
+      "usedBy": [
+        "am3d:model3d"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.3",
+          "title": "CT_Model3D",
+          "page": 299
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Model3DCamera",
+      "content": "elements",
+      "model": "(am3d:pos, am3d:up, am3d:lookAt, (am3d:orthographic | am3d:perspective), am3d:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "am3d:camera"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.4",
+          "title": "CT_Model3DCamera",
+          "page": 301
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Model3DRaster",
+      "content": "elements",
+      "model": "am3d:blip?",
+      "attributes": [
+        "rName",
+        "rVer"
+      ],
+      "usedBy": [
+        "am3d:raster"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.5",
+          "title": "CT_Model3DRaster",
+          "page": 301
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Model3DTransform",
+      "content": "elements",
+      "model": "(am3d:meterPerModelUnit?, am3d:preTrans?, am3d:scale?, am3d:rot?, am3d:postTrans?, am3d:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "am3d:trans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.6",
+          "title": "CT_Model3DTransform",
+          "page": 302
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_ObjectViewport",
+      "content": "elements",
+      "model": "am3d:extLst?",
+      "attributes": [
+        "viewportSz"
+      ],
+      "usedBy": [
+        "am3d:objViewport"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.7",
+          "title": "CT_ObjectViewport",
+          "page": 303
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_OrthographicProjection",
+      "content": "elements",
+      "model": "(am3d:sz, am3d:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "am3d:orthographic"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.8",
+          "title": "CT_OrthographicProjection",
+          "page": 303
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_PerspectiveProjection",
+      "content": "elements",
+      "model": "am3d:extLst?",
+      "attributes": [
+        "fov"
+      ],
+      "usedBy": [
+        "am3d:perspective"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.9",
+          "title": "CT_PerspectiveProjection",
+          "page": 304
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_PointLight",
+      "content": "elements",
+      "model": "(am3d:clr, am3d:intensity, am3d:pos, am3d:extLst?)",
+      "attributes": [
+        "enabled",
+        "rad"
+      ],
+      "usedBy": [
+        "am3d:ptLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.10",
+          "title": "CT_PointLight",
+          "page": 304
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_PositiveRatio",
+      "content": "empty",
+      "attributes": [
+        "d",
+        "n"
+      ],
+      "usedBy": [
+        "am3d:illuminance",
+        "am3d:intensity",
+        "am3d:meterPerModelUnit",
+        "am3d:sz"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.16",
+          "title": "CT_PositiveRatio",
+          "page": 308
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Rotate3D",
+      "content": "empty",
+      "attributes": [
+        "ax",
+        "ay",
+        "az"
+      ],
+      "usedBy": [
+        "am3d:rot"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.11",
+          "title": "CT_Rotate3D",
+          "page": 305
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_Scale3D",
+      "content": "elements",
+      "model": "(am3d:sx, am3d:sy, am3d:sz)",
+      "attributes": [],
+      "usedBy": [
+        "am3d:scale"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.12",
+          "title": "CT_Scale3D",
+          "page": 306
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_SpotLight",
+      "content": "elements",
+      "model": "(am3d:clr, am3d:intensity, am3d:pos, am3d:lookAt, am3d:extLst?)",
+      "attributes": [
+        "enabled",
+        "rad",
+        "spotAng"
+      ],
+      "usedBy": [
+        "am3d:spotLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.13",
+          "title": "CT_SpotLight",
+          "page": 306
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_UnknownLight",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "am3d:unkLight"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.14",
+          "title": "CT_UnknownLight",
+          "page": 307
+        }
+      ]
+    },
+    {
+      "name": "am3d:CT_WindowViewport",
+      "content": "elements",
+      "model": "am3d:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "am3d:winViewport"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.3.15",
+          "title": "CT_WindowViewport",
+          "page": 308
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "am3d:ST_AngularRadius",
+      "definition": "restriction of a:ST_Angle",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "5400000"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.31.4.1",
+          "title": "ST_AngularRadius",
+          "page": 309
+        }
+      ]
+    }
+  ]
+}

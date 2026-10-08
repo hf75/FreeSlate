@@ -1,0 +1,35 @@
+{
+  "prefix": "w16du",
+  "uri": "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-DOCX] v20260818 §5.8",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 1,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 0
+  },
+  "elements": [],
+  "globalAttributes": [
+    {
+      "name": "w16du:dateUtc",
+      "type": "xsd:dateTime",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.12.2.1",
+          "title": "dateUtc",
+          "page": 92
+        }
+      ]
+    }
+  ],
+  "complexTypes": [],
+  "simpleTypes": []
+}

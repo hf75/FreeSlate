@@ -1,0 +1,1957 @@
+[
+  {
+    "level": 0,
+    "title": "1 Introduction",
+    "page": 12
+  },
+  {
+    "level": 1,
+    "title": "1.1 Glossary",
+    "page": 12
+  },
+  {
+    "level": 1,
+    "title": "1.2 References",
+    "page": 13
+  },
+  {
+    "level": 2,
+    "title": "1.2.1 Normative References",
+    "page": 13
+  },
+  {
+    "level": 2,
+    "title": "1.2.2 Informative References",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "1.3 Overview",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "1.4 Relationship to Protocols and Other Structures",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "1.5 Applicability Statement",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "1.6 Versioning and Localization",
+    "page": 15
+  },
+  {
+    "level": 1,
+    "title": "1.7 Vendor-Extensible Fields",
+    "page": 15
+  },
+  {
+    "level": 0,
+    "title": "2 Structures",
+    "page": 16
+  },
+  {
+    "level": 1,
+    "title": "2.1 Part Enumerations",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.1.1 Media Part",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.1.2 Revision Information Part",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.1.3 Track Part",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.1.4 Changes Information Part",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.1.5 Comment Part",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.1.6 Author Part",
+    "page": 18
+  },
+  {
+    "level": 1,
+    "title": "2.2 Extensions",
+    "page": 18
+  },
+  {
+    "level": 2,
+    "title": "2.2.1 Slide Transition Extensions",
+    "page": 18
+  },
+  {
+    "level": 2,
+    "title": "2.2.2 Animation Info Extensions",
+    "page": 20
+  },
+  {
+    "level": 2,
+    "title": "2.2.3 Content Part Extensions",
+    "page": 20
+  },
+  {
+    "level": 3,
+    "title": "2.2.3.1 Ink Extensions",
+    "page": 21
+  },
+  {
+    "level": 2,
+    "title": "2.2.4 Media Extensions",
+    "page": 21
+  },
+  {
+    "level": 3,
+    "title": "2.2.4.1 TracksInfo Extensions",
+    "page": 21
+  },
+  {
+    "level": 2,
+    "title": "2.2.5 Section Extensions",
+    "page": 22
+  },
+  {
+    "level": 2,
+    "title": "2.2.6 Slide Show Extensions",
+    "page": 22
+  },
+  {
+    "level": 2,
+    "title": "2.2.7 Image Extensions",
+    "page": 22
+  },
+  {
+    "level": 2,
+    "title": "2.2.8 Math Extensions",
+    "page": 23
+  },
+  {
+    "level": 2,
+    "title": "2.2.9 Change Tracking Extensions",
+    "page": 23
+  },
+  {
+    "level": 2,
+    "title": "2.2.10 Comment Extensions",
+    "page": 23
+  },
+  {
+    "level": 2,
+    "title": "2.2.11 Guide Extensions",
+    "page": 24
+  },
+  {
+    "level": 2,
+    "title": "2.2.12 Charting Extensions",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "2.2.13 Office App Extensions",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "2.2.14 Narration Extensions",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "2.2.15 Zoom Extensions",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "2.2.16 View Mode Extensions",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "2.2.17 Design Element Extensions",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "2.2.18 Classification Element Extensions",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "2.2.19 Designer Properties Extensions",
+    "page": 27
+  },
+  {
+    "level": 2,
+    "title": "2.2.20 Designer Tags Extensions",
+    "page": 27
+  },
+  {
+    "level": 1,
+    "title": "2.3 http://schemas.microsoft.com/office/powerpoint/2010/main",
+    "page": 27
+  },
+  {
+    "level": 2,
+    "title": "2.3.1 Elements",
+    "page": 27
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.1 bmkTgt",
+    "page": 27
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.2 browseMode",
+    "page": 27
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.3 conveyor",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.4 creationId",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.5 defaultImageDpi",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.6 discardImageEditData",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.7 doors",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.8 extLst",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.9 ferris",
+    "page": 30
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.10 flash",
+    "page": 30
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.11 flip",
+    "page": 30
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.12 flythrough",
+    "page": 31
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.13 gallery",
+    "page": 31
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.14 glitter",
+    "page": 32
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.15 honeycomb",
+    "page": 32
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.16 laserClr",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.17 laserTraceLst",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.18 media",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.19 modId",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.20 nvContentPartPr",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.21 pan",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.22 prism",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.23 reveal",
+    "page": 35
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.24 ripple",
+    "page": 36
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.25 sectionLst",
+    "page": 36
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.26 showEvtLst",
+    "page": 36
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.27 showMediaCtrls",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.28 shred",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.29 switch",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.30 vortex",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.31 warp",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.32 wheelReverse",
+    "page": 39
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.33 window",
+    "page": 39
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.34 xfrm",
+    "page": 40
+  },
+  {
+    "level": 2,
+    "title": "2.3.2 Attributes",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.3.2.1 bounceEnd",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.3.2.2 bwMode",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.3.2.3 dur",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.3.2.4 presetBounceEnd",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "2.3.3 Complex Types",
+    "page": 41
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.1 CT_BrowseMode",
+    "page": 41
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.2 CT_ContentPartNonVisual",
+    "page": 42
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.3 CT_DefaultImageDpi",
+    "page": 42
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.4 CT_DiscardImageEditData",
+    "page": 43
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.5 CT_FlyThroughTransition",
+    "page": 43
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.6 CT_GlitterTransition",
+    "page": 43
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.7 CT_LaserTrace",
+    "page": 44
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.8 CT_LaserTraceList",
+    "page": 44
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.9 CT_LaserTracePoint",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.10 CT_LeftRightDirectionTransition",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.11 CT_MediaBookmark",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.12 CT_MediaBookmarkList",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.13 CT_MediaBookmarkTarget",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.14 CT_Media",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.15 CT_MediaFade",
+    "page": 48
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.16 CT_MediaPlaybackEventRecord",
+    "page": 48
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.17 CT_MediaSeekEventRecord",
+    "page": 49
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.18 CT_MediaTrim",
+    "page": 49
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.19 CT_NullEventRecord",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.20 CT_PrismTransition",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.21 CT_RandomId",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.22 CT_RevealTransition",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.23 CT_RippleTransition",
+    "page": 52
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.24 CT_Section",
+    "page": 52
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.25 CT_SectionList",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.26 CT_SectionSlideIdList",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.27 CT_SectionSlideIdListEntry",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.28 CT_ShowEventRecordList",
+    "page": 54
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.29 CT_ShowMediaControls",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.30 CT_ShredTransition",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.31 CT_TriggerEventRecord",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "2.3.4 Simple Types",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.1 ST_TransitionCenterDirectionType",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.2 ST_TransitionCornerAndCenterDirectionType",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.3 ST_TransitionLeftRightDirectionType",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.4 ST_TransitionPattern",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.5 ST_TransitionShredPattern",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.6 ST_UniversalTimeOffset",
+    "page": 58
+  },
+  {
+    "level": 1,
+    "title": "2.4 http://schemas.microsoft.com/office/powerpoint/2012/main",
+    "page": 59
+  },
+  {
+    "level": 2,
+    "title": "2.4.1 Elements",
+    "page": 59
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.1 chartTrackingRefBased",
+    "page": 59
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.2 isNarration",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.3 notesGuideLst",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.4 presenceInfo",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.5 prstTrans",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.6 sldGuideLst",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.7 threadingInfo",
+    "page": 61
+  },
+  {
+    "level": 2,
+    "title": "2.4.2 Attributes",
+    "page": 61
+  },
+  {
+    "level": 2,
+    "title": "2.4.3 Complex Types",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.1 CT_ChartTrackingRefBased",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.2 CT_CommentThreading",
+    "page": 62
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.3 CT_ExtendedGuide",
+    "page": 62
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.4 CT_ExtendedGuideList",
+    "page": 63
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.5 CT_IsNarration",
+    "page": 64
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.6 CT_ParentCommentIdentifier",
+    "page": 64
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.7 CT_PresenceInfo",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.8 CT_PresetTransition",
+    "page": 65
+  },
+  {
+    "level": 2,
+    "title": "2.4.4 Simple Types",
+    "page": 68
+  },
+  {
+    "level": 1,
+    "title": "2.5 http://schemas.microsoft.com/office/powerpoint/2015/main",
+    "page": 69
+  },
+  {
+    "level": 2,
+    "title": "2.5.1 Elements",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.1 designElem",
+    "page": 69
+  },
+  {
+    "level": 2,
+    "title": "2.5.2 Attributes",
+    "page": 69
+  },
+  {
+    "level": 2,
+    "title": "2.5.3 Complex Types",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.1 CT_DesignElement",
+    "page": 69
+  },
+  {
+    "level": 2,
+    "title": "2.5.4 Simple Types",
+    "page": 69
+  },
+  {
+    "level": 1,
+    "title": "2.6 http://schemas.microsoft.com/office/powerpoint/2015/09/main",
+    "page": 70
+  },
+  {
+    "level": 2,
+    "title": "2.6.1 Elements",
+    "page": 70
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.1 morph",
+    "page": 70
+  },
+  {
+    "level": 2,
+    "title": "2.6.2 Attributes",
+    "page": 70
+  },
+  {
+    "level": 2,
+    "title": "2.6.3 Complex Types",
+    "page": 70
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.1 CT_MorphTransition",
+    "page": 70
+  },
+  {
+    "level": 2,
+    "title": "2.6.4 Simple Types",
+    "page": 71
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.1 ST_TransitionMorphOption",
+    "page": 71
+  },
+  {
+    "level": 1,
+    "title": "2.7 http://schemas.microsoft.com/office/powerpoint/2015/10/main",
+    "page": 71
+  },
+  {
+    "level": 2,
+    "title": "2.7.1 Elements",
+    "page": 71
+  },
+  {
+    "level": 3,
+    "title": "2.7.1.1 revInfo",
+    "page": 71
+  },
+  {
+    "level": 2,
+    "title": "2.7.2 Attributes",
+    "page": 72
+  },
+  {
+    "level": 2,
+    "title": "2.7.3 Complex Types",
+    "page": 72
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.1 CT_ClientRevision",
+    "page": 72
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.2 CT_ClientRevisionList",
+    "page": 72
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.3 CT_RevisionInfo",
+    "page": 73
+  },
+  {
+    "level": 2,
+    "title": "2.7.4 Simple Types",
+    "page": 73
+  },
+  {
+    "level": 3,
+    "title": "2.7.4.1 ST_ClientID",
+    "page": 73
+  },
+  {
+    "level": 3,
+    "title": "2.7.4.2 ST_ClientRevisionNumber",
+    "page": 74
+  },
+  {
+    "level": 1,
+    "title": "2.8 http://schemas.microsoft.com/office/powerpoint/2016/6/main",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "2.8.1 Elements",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "2.8.2 Attributes",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "2.8.3 Complex Types",
+    "page": 74
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.1 CT_ZoomObjectProperties",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "2.8.4 Simple Types",
+    "page": 75
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.1 ST_ZoomObjectImageType",
+    "page": 75
+  },
+  {
+    "level": 1,
+    "title": "2.9 http://schemas.microsoft.com/office/powerpoint/2016/sectionzoom",
+    "page": 76
+  },
+  {
+    "level": 2,
+    "title": "2.9.1 Elements",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.9.1.1 sectionZm",
+    "page": 76
+  },
+  {
+    "level": 2,
+    "title": "2.9.2 Attributes",
+    "page": 76
+  },
+  {
+    "level": 2,
+    "title": "2.9.3 Complex Types",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.9.3.1 CT_SectionZoom",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.9.3.2 CT_SectionZoomObject",
+    "page": 76
+  },
+  {
+    "level": 2,
+    "title": "2.9.4 Simple Types",
+    "page": 77
+  },
+  {
+    "level": 1,
+    "title": "2.10 http://schemas.microsoft.com/office/powerpoint/2016/slidezoom",
+    "page": 77
+  },
+  {
+    "level": 2,
+    "title": "2.10.1 Elements",
+    "page": 77
+  },
+  {
+    "level": 3,
+    "title": "2.10.1.1 sldZm",
+    "page": 77
+  },
+  {
+    "level": 2,
+    "title": "2.10.2 Attributes",
+    "page": 77
+  },
+  {
+    "level": 2,
+    "title": "2.10.3 Complex Types",
+    "page": 78
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.1 CT_SlideZoom",
+    "page": 78
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.2 CT_SlideZoomObject",
+    "page": 78
+  },
+  {
+    "level": 2,
+    "title": "2.10.4 Simple Types",
+    "page": 79
+  },
+  {
+    "level": 1,
+    "title": "2.11 http://schemas.microsoft.com/office/powerpoint/2016/summaryzoom",
+    "page": 79
+  },
+  {
+    "level": 2,
+    "title": "2.11.1 Elements",
+    "page": 79
+  },
+  {
+    "level": 3,
+    "title": "2.11.1.1 summaryZm",
+    "page": 79
+  },
+  {
+    "level": 2,
+    "title": "2.11.2 Attributes",
+    "page": 79
+  },
+  {
+    "level": 2,
+    "title": "2.11.3 Complex Types",
+    "page": 79
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.1 CT_FixedLayout",
+    "page": 79
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.2 CT_GridLayout",
+    "page": 79
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.3 CT_SummaryZoom",
+    "page": 80
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.4 CT_SummaryZoomObject",
+    "page": 80
+  },
+  {
+    "level": 2,
+    "title": "2.11.4 Simple Types",
+    "page": 81
+  },
+  {
+    "level": 1,
+    "title": "2.12 http://schemas.microsoft.com/office/powerpoint/2013/main/command",
+    "page": 81
+  },
+  {
+    "level": 2,
+    "title": "2.12.1 Elements",
+    "page": 81
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.1 chgInfo",
+    "page": 81
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.2 cmAuthorMkLst",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.3 cmMkLst",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.4 docMkLst",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.5 sldBaseMkLst",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.6 sldLayoutMkLst",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.7 sldMasterMkLst",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.8 sldMkLst",
+    "page": 83
+  },
+  {
+    "level": 2,
+    "title": "2.12.2 Attributes",
+    "page": 84
+  },
+  {
+    "level": 2,
+    "title": "2.12.3 Complex Types",
+    "page": 84
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.1 CT_ChangesInfo",
+    "page": 84
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.2 CT_CommentAuthorChanges",
+    "page": 84
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.3 CT_CommentAuthorMoniker",
+    "page": 85
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.4 CT_CommentAuthorMonikerList",
+    "page": 85
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.5 CT_CommentChanges",
+    "page": 86
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.6 CT_CommentMoniker",
+    "page": 86
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.7 CT_CommentMonikerList",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.8 CT_DocumentChanges",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.9 CT_DocumentChangesList",
+    "page": 88
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.10 CT_DocumentMoniker",
+    "page": 88
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.11 CT_DocumentMonikerList",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.12 CT_MainMasterChanges",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.13 CT_MainMasterMoniker",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.14 CT_MainMasterMonikerList",
+    "page": 91
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.15 CT_SlideBaseMonikerList",
+    "page": 91
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.16 CT_SlideChanges",
+    "page": 92
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.17 CT_SlideLayoutChanges",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.18 CT_SlideLayoutMoniker",
+    "page": 94
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.19 CT_SlideLayoutMonikerList",
+    "page": 94
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.20 CT_SlideMoniker",
+    "page": 95
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.21 CT_SlideMonikerList",
+    "page": 95
+  },
+  {
+    "level": 2,
+    "title": "2.12.4 Simple Types",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.1 ST_CommentAuthorChangeBit",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.2 ST_CommentAuthorChangeBits",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.3 ST_CommentChangeBit",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.4 ST_CommentChangeBits",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.5 ST_CreationId",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.6 ST_DocumentChangeBit",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.7 ST_DocumentChangeBits",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.8 ST_MainMasterChangeBit",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.9 ST_MainMasterChangeBits",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.10 ST_SlideChangeBit",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.11 ST_SlideChangeBits",
+    "page": 104
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.12 ST_SlideLayoutChangeBit",
+    "page": 104
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.13 ST_SlideLayoutChangeBits",
+    "page": 106
+  },
+  {
+    "level": 1,
+    "title": "2.13 http://schemas.microsoft.com/office/powerpoint/2017/3/main",
+    "page": 106
+  },
+  {
+    "level": 2,
+    "title": "2.13.1 Elements",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.13.1.1 tracksInfo",
+    "page": 106
+  },
+  {
+    "level": 2,
+    "title": "2.13.2 Attributes",
+    "page": 106
+  },
+  {
+    "level": 2,
+    "title": "2.13.3 Complex Types",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.1 CT_Track",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.2 CT_TrackList",
+    "page": 107
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.3 CT_TracksInfo",
+    "page": 107
+  },
+  {
+    "level": 2,
+    "title": "2.13.4 Simple Types",
+    "page": 108
+  },
+  {
+    "level": 3,
+    "title": "2.13.4.1 ST_DisplayLocation",
+    "page": 108
+  },
+  {
+    "level": 1,
+    "title": "2.14 http://schemas.microsoft.com/office/powerpoint/2017/10/main",
+    "page": 108
+  },
+  {
+    "level": 2,
+    "title": "2.14.1 Elements",
+    "page": 108
+  },
+  {
+    "level": 3,
+    "title": "2.14.1.1 readonlyRecommended",
+    "page": 108
+  },
+  {
+    "level": 2,
+    "title": "2.14.2 Attributes",
+    "page": 109
+  },
+  {
+    "level": 2,
+    "title": "2.14.3 Complex Types",
+    "page": 109
+  },
+  {
+    "level": 3,
+    "title": "2.14.3.1 CT_ReadonlyRecommended",
+    "page": 109
+  },
+  {
+    "level": 2,
+    "title": "2.14.4 Simple Types",
+    "page": 109
+  },
+  {
+    "level": 1,
+    "title": "2.15 http://schemas.microsoft.com/office/powerpoint/2018/4/main",
+    "page": 109
+  },
+  {
+    "level": 2,
+    "title": "2.15.1 Elements",
+    "page": 109
+  },
+  {
+    "level": 3,
+    "title": "2.15.1.1 classification",
+    "page": 109
+  },
+  {
+    "level": 2,
+    "title": "2.15.2 Attributes",
+    "page": 110
+  },
+  {
+    "level": 2,
+    "title": "2.15.3 Complex Types",
+    "page": 110
+  },
+  {
+    "level": 3,
+    "title": "2.15.3.1 CT_ClassificationOutcome",
+    "page": 110
+  },
+  {
+    "level": 2,
+    "title": "2.15.4 Simple Types",
+    "page": 110
+  },
+  {
+    "level": 3,
+    "title": "2.15.4.1 ST_ClassificationOutcomeType",
+    "page": 110
+  },
+  {
+    "level": 1,
+    "title": "2.16 http://schemas.microsoft.com/office/powerpoint/2018/8/main",
+    "page": 111
+  },
+  {
+    "level": 2,
+    "title": "2.16.1 Elements",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "2.16.1.1 authorLst",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "2.16.1.2 cmLst",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "2.16.1.3 commentRel",
+    "page": 111
+  },
+  {
+    "level": 2,
+    "title": "2.16.2 Attributes",
+    "page": 112
+  },
+  {
+    "level": 2,
+    "title": "2.16.3 Complex Types",
+    "page": 112
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.1 CT_Author",
+    "page": 112
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.2 CT_AuthorList",
+    "page": 112
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.3 CT_Comment",
+    "page": 113
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.4 CT_CommentList",
+    "page": 114
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.5 CT_CommentRelationship",
+    "page": 115
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.6 CT_CommentReply",
+    "page": 115
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.7 CT_CommentReplyList",
+    "page": 116
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.8 CT_CommentUnknownAnchor",
+    "page": 116
+  },
+  {
+    "level": 2,
+    "title": "2.16.4 Simple Types",
+    "page": 116
+  },
+  {
+    "level": 3,
+    "title": "2.16.4.1 ST_AuthorId",
+    "page": 116
+  },
+  {
+    "level": 3,
+    "title": "2.16.4.2 ST_AuthorIdList",
+    "page": 117
+  },
+  {
+    "level": 3,
+    "title": "2.16.4.3 ST_CommentId",
+    "page": 117
+  },
+  {
+    "level": 3,
+    "title": "2.16.4.4 ST_CommentStatus",
+    "page": 117
+  },
+  {
+    "level": 1,
+    "title": "2.17 http://schemas.microsoft.com/office/powerpoint/2020/02/main",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.17.1 Elements",
+    "page": 118
+  },
+  {
+    "level": 3,
+    "title": "2.17.1.1 designPr",
+    "page": 118
+  },
+  {
+    "level": 3,
+    "title": "2.17.1.2 designTagLst",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.17.2 Attributes",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.17.3 Complex Types",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "2.17.3.1 CT_DesignerDrawingProps",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "2.17.3.2 CT_DesignerTag",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "2.17.3.3 CT_DesignerTagList",
+    "page": 120
+  },
+  {
+    "level": 2,
+    "title": "2.17.4 Simple Types",
+    "page": 120
+  },
+  {
+    "level": 1,
+    "title": "2.18 http://schemas.microsoft.com/office/powerpoint/2019/9/main/command",
+    "page": 120
+  },
+  {
+    "level": 2,
+    "title": "2.18.1 Elements",
+    "page": 120
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.1 cmMkLst",
+    "page": 120
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.2 cmRplyMkLst",
+    "page": 121
+  },
+  {
+    "level": 2,
+    "title": "2.18.2 Attributes",
+    "page": 121
+  },
+  {
+    "level": 2,
+    "title": "2.18.3 Complex Types",
+    "page": 121
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.1 CT_CommentReplyV2Moniker",
+    "page": 121
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.2 CT_CommentReplyV2MonikerList",
+    "page": 121
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.3 CT_CommentV2Moniker",
+    "page": 122
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.4 CT_CommentV2MonikerList",
+    "page": 122
+  },
+  {
+    "level": 2,
+    "title": "2.18.4 Simple Types",
+    "page": 123
+  },
+  {
+    "level": 1,
+    "title": "2.19 http://schemas.microsoft.com/office/powerpoint/2022/06/main/command",
+    "page": 123
+  },
+  {
+    "level": 2,
+    "title": "2.19.1 Elements",
+    "page": 123
+  },
+  {
+    "level": 3,
+    "title": "2.19.1.1 cmChg",
+    "page": 123
+  },
+  {
+    "level": 2,
+    "title": "2.19.2 Attributes",
+    "page": 123
+  },
+  {
+    "level": 2,
+    "title": "2.19.3 Complex Types",
+    "page": 123
+  },
+  {
+    "level": 3,
+    "title": "2.19.3.1 CT_CommentReplyV2Changes",
+    "page": 123
+  },
+  {
+    "level": 3,
+    "title": "2.19.3.2 CT_CommentV2Changes",
+    "page": 124
+  },
+  {
+    "level": 2,
+    "title": "2.19.4 Simple Types",
+    "page": 124
+  },
+  {
+    "level": 3,
+    "title": "2.19.4.1 ST_CommentReplyV2ChangeBit",
+    "page": 124
+  },
+  {
+    "level": 3,
+    "title": "2.19.4.2 ST_CommentReplyV2ChangeBits",
+    "page": 125
+  },
+  {
+    "level": 3,
+    "title": "2.19.4.3 ST_CommentV2ChangeBit",
+    "page": 125
+  },
+  {
+    "level": 3,
+    "title": "2.19.4.4 ST_CommentV2ChangeBits",
+    "page": 126
+  },
+  {
+    "level": 1,
+    "title": "2.20 http://schemas.microsoft.com/office/powerpoint/2022/08/main",
+    "page": 126
+  },
+  {
+    "level": 2,
+    "title": "2.20.1 Elements",
+    "page": 126
+  },
+  {
+    "level": 3,
+    "title": "2.20.1.1 taskDetails",
+    "page": 126
+  },
+  {
+    "level": 2,
+    "title": "2.20.2 Attributes",
+    "page": 127
+  },
+  {
+    "level": 2,
+    "title": "2.20.3 Complex Types",
+    "page": 127
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.1 CT_CommentAnchor",
+    "page": 127
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.2 CT_TaskAnchor",
+    "page": 127
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.3 CT_TaskAssignUnassignUser",
+    "page": 128
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.4 CT_TaskDetails",
+    "page": 128
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.5 CT_TaskHistory",
+    "page": 128
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.6 CT_TaskHistoryEvent",
+    "page": 129
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.7 CT_TaskProgressEventInfo",
+    "page": 130
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.8 CT_TaskScheduleEventInfo",
+    "page": 131
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.9 CT_TaskTitleEventInfo",
+    "page": 131
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.10 CT_TaskUndo",
+    "page": 131
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.11 CT_TaskUnknownRecord",
+    "page": 132
+  },
+  {
+    "level": 2,
+    "title": "2.20.4 Simple Types",
+    "page": 132
+  },
+  {
+    "level": 1,
+    "title": "2.21 http://schemas.microsoft.com/office/powerpoint/2022/03/main",
+    "page": 132
+  },
+  {
+    "level": 2,
+    "title": "2.21.1 Elements",
+    "page": 132
+  },
+  {
+    "level": 3,
+    "title": "2.21.1.1 reactions",
+    "page": 132
+  },
+  {
+    "level": 2,
+    "title": "2.21.2 Attributes",
+    "page": 132
+  },
+  {
+    "level": 2,
+    "title": "2.21.3 Complex Types",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.1 CT_Reaction",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.2 CT_ReactionInstance",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.3 CT_Reactions",
+    "page": 134
+  },
+  {
+    "level": 2,
+    "title": "2.21.4 Simple Types",
+    "page": 134
+  },
+  {
+    "level": 1,
+    "title": "2.22 http://schemas.microsoft.com/office/powerpoint/2023/02/main",
+    "page": 134
+  },
+  {
+    "level": 2,
+    "title": "2.22.1 Elements",
+    "page": 134
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.1 phTypeExt",
+    "page": 134
+  },
+  {
+    "level": 2,
+    "title": "2.22.2 Attributes",
+    "page": 135
+  },
+  {
+    "level": 2,
+    "title": "2.22.3 Complex Types",
+    "page": 135
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.1 CT_PlaceholderTypeACB",
+    "page": 135
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.2 CT_PlaceholderTypeExtension",
+    "page": 135
+  },
+  {
+    "level": 2,
+    "title": "2.22.4 Simple Types",
+    "page": 136
+  },
+  {
+    "level": 0,
+    "title": "3 Structure Examples",
+    "page": 137
+  },
+  {
+    "level": 1,
+    "title": "3.1 Slide Transitions",
+    "page": 137
+  },
+  {
+    "level": 1,
+    "title": "3.2 Media",
+    "page": 137
+  },
+  {
+    "level": 1,
+    "title": "3.3 Sections",
+    "page": 138
+  },
+  {
+    "level": 1,
+    "title": "3.4 Slide Show",
+    "page": 139
+  },
+  {
+    "level": 0,
+    "title": "4 Security",
+    "page": 141
+  },
+  {
+    "level": 1,
+    "title": "4.1 Security Considerations for Implementers",
+    "page": 141
+  },
+  {
+    "level": 1,
+    "title": "4.2 Index of Security Parameters",
+    "page": 141
+  },
+  {
+    "level": 0,
+    "title": "5 Appendix A: Full XML Schemas",
+    "page": 142
+  },
+  {
+    "level": 1,
+    "title": "5.1 http://schemas.microsoft.com/office/powerpoint/2010/main Schema",
+    "page": 142
+  },
+  {
+    "level": 1,
+    "title": "5.2 http://schemas.microsoft.com/office/powerpoint/2012/main Schema",
+    "page": 146
+  },
+  {
+    "level": 1,
+    "title": "5.3 http://schemas.microsoft.com/office/powerpoint/2013/main/command Schema",
+    "page": 147
+  },
+  {
+    "level": 1,
+    "title": "5.4 http://schemas.microsoft.com/office/powerpoint/2015/09/main Schema",
+    "page": 153
+  },
+  {
+    "level": 1,
+    "title": "5.5 http://schemas.microsoft.com/office/powerpoint/2015/10/main Schema",
+    "page": 153
+  },
+  {
+    "level": 1,
+    "title": "5.6 http://schemas.microsoft.com/office/powerpoint/2015/main Schema",
+    "page": 154
+  },
+  {
+    "level": 1,
+    "title": "5.7 http://schemas.microsoft.com/office/powerpoint/2016/6/main Schema",
+    "page": 154
+  },
+  {
+    "level": 1,
+    "title": "5.8 http://schemas.microsoft.com/office/powerpoint/2016/sectionzoom Schema",
+    "page": 155
+  },
+  {
+    "level": 1,
+    "title": "5.9 http://schemas.microsoft.com/office/powerpoint/2016/slidezoom Schema",
+    "page": 155
+  },
+  {
+    "level": 1,
+    "title": "5.10 http://schemas.microsoft.com/office/powerpoint/2016/summaryzoom Schema",
+    "page": 156
+  },
+  {
+    "level": 1,
+    "title": "5.11 http://schemas.microsoft.com/office/powerpoint/2017/10/main Schema",
+    "page": 156
+  },
+  {
+    "level": 1,
+    "title": "5.12 http://schemas.microsoft.com/office/powerpoint/2017/3/main Schema",
+    "page": 157
+  },
+  {
+    "level": 1,
+    "title": "5.13 http://schemas.microsoft.com/office/powerpoint/2018/4/main Schema",
+    "page": 157
+  },
+  {
+    "level": 1,
+    "title": "5.14 http://schemas.microsoft.com/office/powerpoint/2018/8/main Schema",
+    "page": 158
+  },
+  {
+    "level": 1,
+    "title": "5.15 http://schemas.microsoft.com/office/powerpoint/2019/9/main/command Schema",
+    "page": 159
+  },
+  {
+    "level": 1,
+    "title": "5.16 http://schemas.microsoft.com/office/powerpoint/2020/02/main Schema",
+    "page": 160
+  },
+  {
+    "level": 1,
+    "title": "5.17 http://schemas.microsoft.com/office/powerpoint/2022/03/main Schema",
+    "page": 160
+  },
+  {
+    "level": 1,
+    "title": "5.18 http://schemas.microsoft.com/office/powerpoint/2022/06/main/command Schema",
+    "page": 161
+  },
+  {
+    "level": 1,
+    "title": "5.19 http://schemas.microsoft.com/office/powerpoint/2022/08/main Schema",
+    "page": 162
+  },
+  {
+    "level": 1,
+    "title": "5.20 http://schemas.microsoft.com/office/powerpoint/2023/02/main Schema",
+    "page": 163
+  },
+  {
+    "level": 0,
+    "title": "6 Appendix B: Product Behavior",
+    "page": 165
+  },
+  {
+    "level": 0,
+    "title": "7 Change Tracking",
+    "page": 167
+  },
+  {
+    "level": 0,
+    "title": "8 Index",
+    "page": 168
+  }
+]

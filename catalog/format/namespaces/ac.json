@@ -1,0 +1,125 @@
+{
+  "prefix": "ac",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/characteristics",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-additionalCharacteristics.xsd",
+  "counts": {
+    "elements": 2,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 1,
+    "enumValues": 5,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "ac:additionalCharacteristics",
+      "global": true,
+      "types": [
+        "ac:CT_AdditionalCharacteristics"
+      ],
+      "attributes": [],
+      "children": [
+        "ac:characteristic"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.7.2.1",
+          "title": "Set of Additional Characteristics",
+          "page": 3795
+        }
+      ]
+    },
+    {
+      "name": "ac:characteristic",
+      "types": [
+        "ac:CT_Characteristic"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "relation",
+          "type": "ac:ST_Relation",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "vocabulary",
+          "type": "xsd:anyURI"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "ac:additionalCharacteristics"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.7.2.2",
+          "title": "Single Characteristic",
+          "page": 3795
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ac:CT_AdditionalCharacteristics",
+      "content": "elements",
+      "model": "ac:characteristic*",
+      "attributes": [],
+      "usedBy": [
+        "ac:additionalCharacteristics"
+      ]
+    },
+    {
+      "name": "ac:CT_Characteristic",
+      "content": "empty",
+      "attributes": [
+        "name",
+        "relation",
+        "val",
+        "vocabulary"
+      ],
+      "usedBy": [
+        "ac:characteristic"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "ac:ST_Relation",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "ge",
+        "le",
+        "gt",
+        "lt",
+        "eq"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.7.3.1",
+          "title": "Characteristic Relationship Types",
+          "page": 3797
+        }
+      ]
+    }
+  ]
+}

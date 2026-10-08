@@ -1,0 +1,302 @@
+{
+  "prefix": "wpg",
+  "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.4",
+  "counts": {
+    "elements": 9,
+    "attributes": 9,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "wpg:cNvFrPr",
+      "types": [
+        "a:CT_NonVisualGraphicFrameProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:graphicFrameLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wpc:graphicFrame",
+        "wpg:graphicFrame"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpg:cNvGrpSpPr",
+      "types": [
+        "a:CT_NonVisualGroupDrawingShapeProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:grpSpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpg:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "wpc:graphicFrame",
+        "wpg:graphicFrame",
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpg:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "wpc:graphicFrame",
+        "wpg:graphicFrame",
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpg:graphicFrame",
+      "types": [
+        "wpg:CT_GraphicFrame"
+      ],
+      "attributes": [],
+      "children": [
+        "wpg:cNvPr",
+        "wpg:cNvFrPr",
+        "wpg:xfrm",
+        "a:graphic",
+        "wpg:extLst"
+      ],
+      "parents": [
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.3.1",
+          "title": "CT_GraphicFrame",
+          "page": 163
+        }
+      ]
+    },
+    {
+      "name": "wpg:grpSp",
+      "types": [
+        "wpg:CT_WordprocessingGroup"
+      ],
+      "attributes": [],
+      "children": [
+        "wpg:cNvPr",
+        "wpg:cNvGrpSpPr",
+        "wpg:grpSpPr",
+        "wps:wsp",
+        "wpg:grpSp",
+        "wpg:graphicFrame",
+        "pic:pic",
+        "w14:contentPart",
+        "wpg:extLst"
+      ],
+      "parents": [
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.3.2",
+          "title": "CT_WordprocessingGroup",
+          "page": 164
+        }
+      ]
+    },
+    {
+      "name": "wpg:grpSpPr",
+      "types": [
+        "a:CT_GroupShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpg:wgp",
+      "global": true,
+      "types": [
+        "wpg:CT_WordprocessingGroup"
+      ],
+      "attributes": [],
+      "children": [
+        "wpg:cNvPr",
+        "wpg:cNvGrpSpPr",
+        "wpg:grpSpPr",
+        "wps:wsp",
+        "wpg:grpSp",
+        "wpg:graphicFrame",
+        "pic:pic",
+        "w14:contentPart",
+        "wpg:extLst"
+      ],
+      "parents": [
+        "wpc:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.1.1",
+          "title": "wgp",
+          "page": 163
+        }
+      ]
+    },
+    {
+      "name": "wpg:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "wpc:graphicFrame",
+        "wpg:graphicFrame"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "wpg:CT_GraphicFrame",
+      "content": "elements",
+      "model": "(wpg:cNvPr, wpg:cNvFrPr, wpg:xfrm, a:graphic, wpg:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wpc:graphicFrame",
+        "wpg:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.3.1",
+          "title": "CT_GraphicFrame",
+          "page": 163
+        }
+      ]
+    },
+    {
+      "name": "wpg:CT_WordprocessingGroup",
+      "content": "elements",
+      "model": "(wpg:cNvPr?, wpg:cNvGrpSpPr, wpg:grpSpPr, (wps:wsp | wpg:grpSp | wpg:graphicFrame | pic:pic | w14:contentPart)*, wpg:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.3.2",
+          "title": "CT_WordprocessingGroup",
+          "page": 164
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

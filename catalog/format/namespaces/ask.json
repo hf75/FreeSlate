@@ -1,0 +1,248 @@
+{
+  "prefix": "ask",
+  "uri": "http://schemas.microsoft.com/office/drawing/2018/sketchyshapes",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-ODRAWXML] v20261006 §5.36",
+  "counts": {
+    "elements": 8,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "ask:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "ask:lineSketchStyleProps"
+      ],
+      "spec": []
+    },
+    {
+      "name": "ask:lineSketchCurved",
+      "types": [
+        "ask:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ask:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.1",
+          "title": "CT_Empty",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:lineSketchFreehand",
+      "types": [
+        "ask:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ask:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.1",
+          "title": "CT_Empty",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:lineSketchNone",
+      "types": [
+        "ask:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ask:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.1",
+          "title": "CT_Empty",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:lineSketchScribble",
+      "types": [
+        "ask:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ask:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.1",
+          "title": "CT_Empty",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:lineSketchStyleProps",
+      "global": true,
+      "types": [
+        "ask:CT_LineSketchStyleProperties"
+      ],
+      "attributes": [
+        {
+          "name": "sd",
+          "type": "ask:ST_LineSketchSeed"
+        }
+      ],
+      "children": [
+        "a:custGeom",
+        "a:prstGeom",
+        "ask:type",
+        "ask:seed",
+        "ask:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.1.1",
+          "title": "lineSketchStyleProps",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:seed",
+      "types": [
+        "ask:ST_LineSketchSeed"
+      ],
+      "text": "ask:ST_LineSketchSeed",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ask:lineSketchStyleProps"
+      ],
+      "spec": []
+    },
+    {
+      "name": "ask:type",
+      "types": [
+        "ask:CT_LineSketchTypeProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "ask:lineSketchNone",
+        "ask:lineSketchCurved",
+        "ask:lineSketchFreehand",
+        "ask:lineSketchScribble"
+      ],
+      "parents": [
+        "ask:lineSketchStyleProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.3",
+          "title": "CT_LineSketchTypeProperties",
+          "page": 322
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ask:CT_Empty",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "ask:lineSketchCurved",
+        "ask:lineSketchFreehand",
+        "ask:lineSketchNone",
+        "ask:lineSketchScribble"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.1",
+          "title": "CT_Empty",
+          "page": 320
+        }
+      ]
+    },
+    {
+      "name": "ask:CT_LineSketchStyleProperties",
+      "content": "elements",
+      "model": "((a:custGeom | a:prstGeom)?, ask:type?, ask:seed?, ask:extLst?)",
+      "attributes": [
+        "sd"
+      ],
+      "usedBy": [
+        "ask:lineSketchStyleProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.2",
+          "title": "CT_LineSketchStyleProperties",
+          "page": 321
+        }
+      ]
+    },
+    {
+      "name": "ask:CT_LineSketchTypeProperties",
+      "content": "elements",
+      "model": "(ask:lineSketchNone | ask:lineSketchCurved | ask:lineSketchFreehand | ask:lineSketchScribble)?",
+      "attributes": [],
+      "usedBy": [
+        "ask:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.3.3",
+          "title": "CT_LineSketchTypeProperties",
+          "page": 322
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "ask:ST_LineSketchSeed",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.38.4.1",
+          "title": "ST_LineSketchSeed",
+          "page": 322
+        }
+      ]
+    }
+  ]
+}

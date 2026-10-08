@@ -1,0 +1,1785 @@
+{
+  "prefix": "b",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/bibliography",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-bibliography.xsd",
+  "counts": {
+    "elements": 75,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 7,
+    "simpleTypes": 1,
+    "enumValues": 17,
+    "specSections": 77,
+    "officeNotes": 7
+  },
+  "elements": [
+    {
+      "name": "b:AbbreviatedCaseNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.1",
+          "title": "Abbreviated Case Number",
+          "page": 3759
+        }
+      ]
+    },
+    {
+      "name": "b:AlbumTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.2",
+          "title": "Album Title",
+          "page": 3760
+        }
+      ]
+    },
+    {
+      "name": "b:Artist",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.3",
+          "title": "Artist",
+          "page": 3760
+        }
+      ]
+    },
+    {
+      "name": "b:Author",
+      "types": [
+        "b:CT_NameOrCorporateType",
+        "b:CT_AuthorType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList",
+        "b:Corporate",
+        "b:Artist",
+        "b:Author",
+        "b:BookAuthor",
+        "b:Compiler",
+        "b:Composer",
+        "b:Conductor",
+        "b:Counsel",
+        "b:Director",
+        "b:Editor",
+        "b:Interviewee",
+        "b:Interviewer",
+        "b:Inventor",
+        "b:Performer",
+        "b:ProducerName",
+        "b:Translator",
+        "b:Writer"
+      ],
+      "parents": [
+        "b:Author",
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.4",
+          "title": "Contributors List",
+          "page": 3761,
+          "officeNotes": [
+            "2.1.1734"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.5",
+          "title": "Author",
+          "page": 3762
+        }
+      ]
+    },
+    {
+      "name": "b:BookAuthor",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.6",
+          "title": "Book Author",
+          "page": 3763
+        }
+      ]
+    },
+    {
+      "name": "b:BookTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.7",
+          "title": "Book Title",
+          "page": 3763
+        }
+      ]
+    },
+    {
+      "name": "b:BroadcastTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.9",
+          "title": "Broadcast Title",
+          "page": 3764
+        }
+      ]
+    },
+    {
+      "name": "b:Broadcaster",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.8",
+          "title": "Broadcaster",
+          "page": 3764
+        }
+      ]
+    },
+    {
+      "name": "b:CaseNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.10",
+          "title": "Case Number",
+          "page": 3765
+        }
+      ]
+    },
+    {
+      "name": "b:ChapterNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.11",
+          "title": "Chapter Number",
+          "page": 3765
+        }
+      ]
+    },
+    {
+      "name": "b:City",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.12",
+          "title": "City",
+          "page": 3765
+        }
+      ]
+    },
+    {
+      "name": "b:Comments",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.13",
+          "title": "Comments",
+          "page": 3766
+        }
+      ]
+    },
+    {
+      "name": "b:Compiler",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.14",
+          "title": "Compiler",
+          "page": 3766
+        }
+      ]
+    },
+    {
+      "name": "b:Composer",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.15",
+          "title": "Composer",
+          "page": 3767
+        }
+      ]
+    },
+    {
+      "name": "b:Conductor",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.16",
+          "title": "Conductor",
+          "page": 3767
+        }
+      ]
+    },
+    {
+      "name": "b:ConferenceName",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.17",
+          "title": "Conference or Proceedings Name",
+          "page": 3767
+        }
+      ]
+    },
+    {
+      "name": "b:Corporate",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Author",
+        "b:Performer"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.18",
+          "title": "Corporate Author",
+          "page": 3768
+        }
+      ]
+    },
+    {
+      "name": "b:Counsel",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.19",
+          "title": "Counsel",
+          "page": 3768
+        }
+      ]
+    },
+    {
+      "name": "b:CountryRegion",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.20",
+          "title": "Country or Region",
+          "page": 3768
+        }
+      ]
+    },
+    {
+      "name": "b:Court",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.21",
+          "title": "Court",
+          "page": 3769
+        }
+      ]
+    },
+    {
+      "name": "b:Day",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.22",
+          "title": "Day",
+          "page": 3769
+        }
+      ]
+    },
+    {
+      "name": "b:DayAccessed",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.23",
+          "title": "Day Accessed",
+          "page": 3770
+        }
+      ]
+    },
+    {
+      "name": "b:Department",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.24",
+          "title": "Department",
+          "page": 3770
+        }
+      ]
+    },
+    {
+      "name": "b:Director",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.25",
+          "title": "Director",
+          "page": 3770
+        }
+      ]
+    },
+    {
+      "name": "b:Distributor",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.26",
+          "title": "Distributor",
+          "page": 3771
+        }
+      ]
+    },
+    {
+      "name": "b:Edition",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.27",
+          "title": "Editor",
+          "page": 3771
+        }
+      ]
+    },
+    {
+      "name": "b:Editor",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.28",
+          "title": "Editor",
+          "page": 3771
+        }
+      ]
+    },
+    {
+      "name": "b:First",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Person"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.29",
+          "title": "Person's First, or Given, Name",
+          "page": 3772
+        }
+      ]
+    },
+    {
+      "name": "b:Guid",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.30",
+          "title": "GUID",
+          "page": 3772,
+          "officeNotes": [
+            "2.1.1735"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b:Institution",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.31",
+          "title": "Institution",
+          "page": 3773
+        }
+      ]
+    },
+    {
+      "name": "b:InternetSiteTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.32",
+          "title": "Internet Site Title",
+          "page": 3773
+        }
+      ]
+    },
+    {
+      "name": "b:Interviewee",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.33",
+          "title": "Interviewee",
+          "page": 3774
+        }
+      ]
+    },
+    {
+      "name": "b:Interviewer",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.34",
+          "title": "Interviewer",
+          "page": 3774
+        }
+      ]
+    },
+    {
+      "name": "b:Inventor",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.35",
+          "title": "Inventor",
+          "page": 3775
+        }
+      ]
+    },
+    {
+      "name": "b:Issue",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.36",
+          "title": "Issue",
+          "page": 3775
+        }
+      ]
+    },
+    {
+      "name": "b:JournalName",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.37",
+          "title": "Journal Name",
+          "page": 3776
+        }
+      ]
+    },
+    {
+      "name": "b:LCID",
+      "types": [
+        "s:ST_Lang"
+      ],
+      "text": "s:ST_Lang",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.39",
+          "title": "Locale ID",
+          "page": 3777,
+          "officeNotes": [
+            "2.1.1736"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b:Last",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Person"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.38",
+          "title": "Person's Last, or Family, Name",
+          "page": 3776
+        }
+      ]
+    },
+    {
+      "name": "b:Medium",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.40",
+          "title": "Medium",
+          "page": 3777
+        }
+      ]
+    },
+    {
+      "name": "b:Middle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Person"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.41",
+          "title": "Person's Middle, or Other, Name",
+          "page": 3777
+        }
+      ]
+    },
+    {
+      "name": "b:Month",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.42",
+          "title": "Month",
+          "page": 3778
+        }
+      ]
+    },
+    {
+      "name": "b:MonthAccessed",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.43",
+          "title": "Month Accessed",
+          "page": 3778
+        }
+      ]
+    },
+    {
+      "name": "b:NameList",
+      "types": [
+        "b:CT_NameListType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:Person"
+      ],
+      "parents": [
+        "b:Artist",
+        "b:Author",
+        "b:BookAuthor",
+        "b:Compiler",
+        "b:Composer",
+        "b:Conductor",
+        "b:Counsel",
+        "b:Director",
+        "b:Editor",
+        "b:Interviewee",
+        "b:Interviewer",
+        "b:Inventor",
+        "b:Performer",
+        "b:ProducerName",
+        "b:Translator",
+        "b:Writer"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.44",
+          "title": "Name List",
+          "page": 3778
+        }
+      ]
+    },
+    {
+      "name": "b:NumberVolumes",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.45",
+          "title": "Number of Volumes",
+          "page": 3779
+        }
+      ]
+    },
+    {
+      "name": "b:Pages",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.46",
+          "title": "Pages",
+          "page": 3779
+        }
+      ]
+    },
+    {
+      "name": "b:PatentNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.47",
+          "title": "Patent Number",
+          "page": 3780
+        }
+      ]
+    },
+    {
+      "name": "b:Performer",
+      "types": [
+        "b:CT_NameOrCorporateType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList",
+        "b:Corporate"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.48",
+          "title": "Performer",
+          "page": 3780
+        }
+      ]
+    },
+    {
+      "name": "b:PeriodicalTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.49",
+          "title": "Periodical Title",
+          "page": 3780
+        }
+      ]
+    },
+    {
+      "name": "b:Person",
+      "types": [
+        "b:CT_PersonType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:Last",
+        "b:First",
+        "b:Middle"
+      ],
+      "parents": [
+        "b:NameList"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.50",
+          "title": "Person",
+          "page": 3781,
+          "officeNotes": [
+            "2.1.1737"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b:ProducerName",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.51",
+          "title": "Producer Name",
+          "page": 3781
+        }
+      ]
+    },
+    {
+      "name": "b:ProductionCompany",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.52",
+          "title": "Production Company",
+          "page": 3782
+        }
+      ]
+    },
+    {
+      "name": "b:PublicationTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.53",
+          "title": "Publication Title",
+          "page": 3782
+        }
+      ]
+    },
+    {
+      "name": "b:Publisher",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.54",
+          "title": "Publisher",
+          "page": 3782
+        }
+      ]
+    },
+    {
+      "name": "b:RecordingNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.55",
+          "title": "Recording Number",
+          "page": 3783
+        }
+      ]
+    },
+    {
+      "name": "b:RefOrder",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.56",
+          "title": "Reference Order",
+          "page": 3783
+        }
+      ]
+    },
+    {
+      "name": "b:Reporter",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.57",
+          "title": "Reporter",
+          "page": 3783
+        }
+      ]
+    },
+    {
+      "name": "b:ShortTitle",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.58",
+          "title": "Short Title",
+          "page": 3784
+        }
+      ]
+    },
+    {
+      "name": "b:Source",
+      "types": [
+        "b:CT_SourceType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:AbbreviatedCaseNumber",
+        "b:AlbumTitle",
+        "b:Author",
+        "b:BookTitle",
+        "b:Broadcaster",
+        "b:BroadcastTitle",
+        "b:CaseNumber",
+        "b:ChapterNumber",
+        "b:City",
+        "b:Comments",
+        "b:ConferenceName",
+        "b:CountryRegion",
+        "b:Court",
+        "b:Day",
+        "b:DayAccessed",
+        "b:Department",
+        "b:Distributor",
+        "b:Edition",
+        "b:Guid",
+        "b:Institution",
+        "b:InternetSiteTitle",
+        "b:Issue",
+        "b:JournalName",
+        "b:LCID",
+        "b:Medium",
+        "b:Month",
+        "b:MonthAccessed",
+        "b:NumberVolumes",
+        "b:Pages",
+        "b:PatentNumber",
+        "b:PeriodicalTitle",
+        "b:ProductionCompany",
+        "b:PublicationTitle",
+        "b:Publisher",
+        "b:RecordingNumber",
+        "b:RefOrder",
+        "b:Reporter",
+        "b:SourceType",
+        "b:ShortTitle",
+        "b:StandardNumber",
+        "b:StateProvince",
+        "b:Station",
+        "b:Tag",
+        "b:Theater",
+        "b:ThesisType",
+        "b:Title",
+        "b:Type",
+        "b:URL",
+        "b:Version",
+        "b:Volume",
+        "b:Year",
+        "b:YearAccessed"
+      ],
+      "parents": [
+        "b:Sources"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.59",
+          "title": "Source",
+          "page": 3784,
+          "officeNotes": [
+            "2.1.1738"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b:SourceType",
+      "types": [
+        "b:ST_SourceType"
+      ],
+      "text": "b:ST_SourceType",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.61",
+          "title": "Source Type",
+          "page": 3786
+        }
+      ]
+    },
+    {
+      "name": "b:Sources",
+      "global": true,
+      "types": [
+        "b:CT_Sources"
+      ],
+      "attributes": [
+        {
+          "name": "SelectedStyle",
+          "type": "s:ST_String"
+        },
+        {
+          "name": "StyleName",
+          "type": "s:ST_String"
+        },
+        {
+          "name": "URI",
+          "type": "s:ST_String"
+        }
+      ],
+      "children": [
+        "b:Source"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.60",
+          "title": "Sources",
+          "page": 3785
+        }
+      ]
+    },
+    {
+      "name": "b:StandardNumber",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.62",
+          "title": "Standard Number",
+          "page": 3787
+        }
+      ]
+    },
+    {
+      "name": "b:StateProvince",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.63",
+          "title": "State or Province",
+          "page": 3787
+        }
+      ]
+    },
+    {
+      "name": "b:Station",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.64",
+          "title": "Station",
+          "page": 3787
+        }
+      ]
+    },
+    {
+      "name": "b:Tag",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.65",
+          "title": "Tag",
+          "page": 3788,
+          "officeNotes": [
+            "2.1.1739"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b:Theater",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.66",
+          "title": "Theater",
+          "page": 3788
+        }
+      ]
+    },
+    {
+      "name": "b:ThesisType",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.67",
+          "title": "Thesis Type",
+          "page": 3789
+        }
+      ]
+    },
+    {
+      "name": "b:Title",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.68",
+          "title": "Title",
+          "page": 3789
+        }
+      ]
+    },
+    {
+      "name": "b:Translator",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.69",
+          "title": "Translator",
+          "page": 3789
+        }
+      ]
+    },
+    {
+      "name": "b:Type",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.70",
+          "title": "Patent Type",
+          "page": 3790
+        }
+      ]
+    },
+    {
+      "name": "b:URL",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.71",
+          "title": "URL",
+          "page": 3790
+        }
+      ]
+    },
+    {
+      "name": "b:Version",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.72",
+          "title": "Version",
+          "page": 3791
+        }
+      ]
+    },
+    {
+      "name": "b:Volume",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.73",
+          "title": "Volume",
+          "page": 3791
+        }
+      ]
+    },
+    {
+      "name": "b:Writer",
+      "types": [
+        "b:CT_NameType"
+      ],
+      "attributes": [],
+      "children": [
+        "b:NameList"
+      ],
+      "parents": [
+        "b:Author"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.74",
+          "title": "Writer",
+          "page": 3792
+        }
+      ]
+    },
+    {
+      "name": "b:Year",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.75",
+          "title": "Year",
+          "page": 3792
+        }
+      ]
+    },
+    {
+      "name": "b:YearAccessed",
+      "types": [
+        "s:ST_String"
+      ],
+      "text": "s:ST_String",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "b:Source"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.2.76",
+          "title": "Year Accessed",
+          "page": 3792,
+          "officeNotes": [
+            "2.1.1740"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "b:CT_AuthorType",
+      "content": "elements",
+      "model": "(b:Artist | b:Author | b:BookAuthor | b:Compiler | b:Composer | b:Conductor | b:Counsel | b:Director | b:Editor | b:Interviewee | b:Interviewer | b:Inventor | b:Performer | b:ProducerName | b:Translator | b:Writer)*",
+      "attributes": [],
+      "usedBy": [
+        "b:Author"
+      ]
+    },
+    {
+      "name": "b:CT_NameListType",
+      "content": "elements",
+      "model": "b:Person+",
+      "attributes": [],
+      "usedBy": [
+        "b:NameList"
+      ]
+    },
+    {
+      "name": "b:CT_NameOrCorporateType",
+      "content": "elements",
+      "model": "(b:NameList | b:Corporate)?",
+      "attributes": [],
+      "usedBy": [
+        "b:Author",
+        "b:Performer"
+      ]
+    },
+    {
+      "name": "b:CT_NameType",
+      "content": "elements",
+      "model": "b:NameList",
+      "attributes": [],
+      "usedBy": [
+        "b:Artist",
+        "b:BookAuthor",
+        "b:Compiler",
+        "b:Composer",
+        "b:Conductor",
+        "b:Counsel",
+        "b:Director",
+        "b:Editor",
+        "b:Interviewee",
+        "b:Interviewer",
+        "b:Inventor",
+        "b:ProducerName",
+        "b:Translator",
+        "b:Writer"
+      ]
+    },
+    {
+      "name": "b:CT_PersonType",
+      "content": "elements",
+      "model": "(b:Last*, b:First*, b:Middle*)",
+      "attributes": [],
+      "usedBy": [
+        "b:Person"
+      ]
+    },
+    {
+      "name": "b:CT_SourceType",
+      "content": "elements",
+      "model": "(b:AbbreviatedCaseNumber | b:AlbumTitle | b:Author | b:BookTitle | b:Broadcaster | b:BroadcastTitle | b:CaseNumber | b:ChapterNumber | b:City | b:Comments | b:ConferenceName | b:CountryRegion | b:Court | b:Day | b:DayAccessed | b:Department | b:Distributor | b:Edition | b:Guid | b:Institution | b:InternetSiteTitle | b:Issue | b:JournalName | b:LCID | b:Medium | b:Month | b:MonthAccessed | b:NumberVolumes | b:Pages | b:PatentNumber | b:PeriodicalTitle | b:ProductionCompany | b:PublicationTitle | b:Publisher | b:RecordingNumber | b:RefOrder | b:Reporter | b:SourceType | b:ShortTitle | b:StandardNumber | b:StateProvince | b:Station | b:Tag | b:Theater | b:ThesisType | b:Title | b:Type | b:URL | b:Version | b:Volume | b:Year | b:YearAccessed)*",
+      "attributes": [],
+      "usedBy": [
+        "b:Source"
+      ]
+    },
+    {
+      "name": "b:CT_Sources",
+      "content": "elements",
+      "model": "b:Source*",
+      "attributes": [
+        "SelectedStyle",
+        "StyleName",
+        "URI"
+      ],
+      "usedBy": [
+        "b:Sources"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "b:ST_SourceType",
+      "definition": "restriction of s:ST_String",
+      "values": [
+        "ArticleInAPeriodical",
+        "Book",
+        "BookSection",
+        "JournalArticle",
+        "ConferenceProceedings",
+        "Report",
+        "SoundRecording",
+        "Performance",
+        "Art",
+        "DocumentFromInternetSite",
+        "InternetSite",
+        "Film",
+        "Interview",
+        "Patent",
+        "ElectronicSource",
+        "Case",
+        "Misc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.6.3.1",
+          "title": "Bibliographic Data Source Types",
+          "page": 3793
+        }
+      ]
+    }
+  ]
+}

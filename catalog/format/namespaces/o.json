@@ -1,0 +1,2998 @@
+{
+  "prefix": "o",
+  "uri": "urn:schemas-microsoft-com:office:office",
+  "area": "VML (legacy drawing)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema vml-officeDrawing.xsd",
+  "counts": {
+    "elements": 32,
+    "attributes": 273,
+    "globalAttributes": 53,
+    "complexTypes": 25,
+    "simpleTypes": 23,
+    "enumValues": 80,
+    "specSections": 57,
+    "officeNotes": 33
+  },
+  "elements": [
+    {
+      "name": "o:FieldCodes",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "o:OLEObject"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.12",
+          "title": "WordprocessingML Field Switches",
+          "page": 751,
+          "officeNotes": [
+            "2.1.1826"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:LinkType",
+      "types": [
+        "o:ST_OLELinkType"
+      ],
+      "text": "o:ST_OLELinkType",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "o:OLEObject"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.17",
+          "title": "Embedded Object Alternate Image Request",
+          "page": 767,
+          "officeNotes": [
+            "2.1.1831"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:LockedField",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "o:OLEObject"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.19",
+          "title": "Embedded Object Cannot Be Refreshed",
+          "page": 769,
+          "officeNotes": [
+            "2.1.1833"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:OLEObject",
+      "global": true,
+      "types": [
+        "o:CT_OLEObject"
+      ],
+      "attributes": [
+        {
+          "name": "DrawAspect",
+          "type": "o:ST_OLEDrawAspect"
+        },
+        {
+          "name": "ObjectID",
+          "type": "xsd:string"
+        },
+        {
+          "name": "ProgID",
+          "type": "xsd:string"
+        },
+        {
+          "name": "ShapeID",
+          "type": "xsd:string"
+        },
+        {
+          "name": "Type",
+          "type": "o:ST_OLEType"
+        },
+        {
+          "name": "UpdateMode",
+          "type": "o:ST_OLEUpdateMode"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId"
+        }
+      ],
+      "children": [
+        "o:LinkType",
+        "o:LockedField",
+        "o:FieldCodes"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.20",
+          "title": "Embedded OLE Object",
+          "page": 769,
+          "officeNotes": [
+            "2.1.1834"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:bottom",
+      "global": true,
+      "types": [
+        "o:CT_StrokeChild"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:stroke"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.1",
+          "title": "Text Box Bottom Stroke",
+          "page": 699,
+          "officeNotes": [
+            "2.1.1817"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:callout",
+      "global": true,
+      "types": [
+        "o:CT_Callout"
+      ],
+      "attributes": [
+        {
+          "name": "accentbar",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "angle",
+          "type": "o:ST_Angle"
+        },
+        {
+          "name": "distance",
+          "type": "xsd:string"
+        },
+        {
+          "name": "drop",
+          "type": "o:ST_CalloutDrop"
+        },
+        {
+          "name": "dropauto",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "gap",
+          "type": "xsd:string"
+        },
+        {
+          "name": "length",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lengthspecified",
+          "type": "s:ST_TrueFalse",
+          "default": "f"
+        },
+        {
+          "name": "minusx",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "minusy",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "textborder",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "type",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.2",
+          "title": "Callout",
+          "page": 711,
+          "officeNotes": [
+            "2.1.1818"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:clippath",
+      "global": true,
+      "types": [
+        "o:CT_ClipPath"
+      ],
+      "attributes": [
+        {
+          "name": "o:v",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.3",
+          "title": "Shape Clipping Path",
+          "page": 713,
+          "officeNotes": [
+            "2.1.1819"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:colormenu",
+      "types": [
+        "o:CT_ColorMenu"
+      ],
+      "attributes": [
+        {
+          "name": "extrusioncolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "shadowcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.4",
+          "title": "UI Default Colors",
+          "page": 716,
+          "officeNotes": [
+            "2.1.1820"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:colormru",
+      "types": [
+        "o:CT_ColorMru"
+      ],
+      "attributes": [
+        {
+          "name": "colors",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.5",
+          "title": "Most Recently Used Colors",
+          "page": 717,
+          "officeNotes": [
+            "2.1.1821"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:column",
+      "global": true,
+      "types": [
+        "o:CT_StrokeChild"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:stroke"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.6",
+          "title": "Text Box Interior Stroke",
+          "page": 718,
+          "officeNotes": [
+            "2.1.1822"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:complex",
+      "global": true,
+      "types": [
+        "o:CT_Complex"
+      ],
+      "attributes": [
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.7",
+          "title": "Complex",
+          "page": 730,
+          "officeNotes": [
+            "2.1.1823"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:diagram",
+      "global": true,
+      "types": [
+        "o:CT_Diagram"
+      ],
+      "attributes": [
+        {
+          "name": "autoformat",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "autolayout",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "constrainbounds",
+          "type": "xsd:string"
+        },
+        {
+          "name": "dgmbasetextscale",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "dgmfontsize",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "dgmscalex",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "dgmscaley",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "dgmstyle",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "reverse",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "o:relationtable"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.8",
+          "title": "VML Diagram",
+          "page": 731,
+          "officeNotes": [
+            "2.1.1824"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:entry",
+      "types": [
+        "o:CT_Entry"
+      ],
+      "attributes": [
+        {
+          "name": "new",
+          "type": "xsd:int"
+        },
+        {
+          "name": "old",
+          "type": "xsd:int"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:regrouptable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.9",
+          "title": "Regroup Entry",
+          "page": 735
+        }
+      ]
+    },
+    {
+      "name": "o:equationxml",
+      "global": true,
+      "types": [
+        "o:CT_EquationXml"
+      ],
+      "attributes": [
+        {
+          "name": "contentType",
+          "type": "o:ST_AlternateMathContentType"
+        }
+      ],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "v:shape"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.10",
+          "title": "Storage for Alternate Math Content",
+          "page": 735
+        }
+      ]
+    },
+    {
+      "name": "o:extrusion",
+      "global": true,
+      "types": [
+        "o:CT_Extrusion"
+      ],
+      "attributes": [
+        {
+          "name": "autorotationcenter",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "backdepth",
+          "type": "xsd:string"
+        },
+        {
+          "name": "brightness",
+          "type": "xsd:string"
+        },
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "colormode",
+          "type": "o:ST_ColorMode"
+        },
+        {
+          "name": "diffusity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "edge",
+          "type": "xsd:string"
+        },
+        {
+          "name": "facet",
+          "type": "xsd:string"
+        },
+        {
+          "name": "foredepth",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lightface",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "lightharsh",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "lightharsh2",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "lightlevel",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lightlevel2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lightposition",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lightposition2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "lockrotationcenter",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "metal",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "orientation",
+          "type": "xsd:string"
+        },
+        {
+          "name": "orientationangle",
+          "type": "xsd:float"
+        },
+        {
+          "name": "plane",
+          "type": "o:ST_ExtrusionPlane",
+          "default": "XY"
+        },
+        {
+          "name": "render",
+          "type": "o:ST_ExtrusionRender",
+          "default": "solid"
+        },
+        {
+          "name": "rotationangle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "rotationcenter",
+          "type": "xsd:string"
+        },
+        {
+          "name": "shininess",
+          "type": "xsd:float"
+        },
+        {
+          "name": "skewamt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "skewangle",
+          "type": "xsd:float"
+        },
+        {
+          "name": "specularity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "type",
+          "type": "o:ST_ExtrusionType",
+          "default": "parallel"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "viewpoint",
+          "type": "xsd:string"
+        },
+        {
+          "name": "viewpointorigin",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.11",
+          "title": "3D Extrusion",
+          "page": 736,
+          "officeNotes": [
+            "2.1.1825"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:fill",
+      "global": true,
+      "types": [
+        "o:CT_Fill"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "o:ST_FillType"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:fill"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.5",
+          "title": "Shape Fill Properties",
+          "page": 375,
+          "officeNotes": [
+            "2.1.1794"
+          ]
+        },
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.13",
+          "title": "Shape Fill Extended Properties",
+          "page": 752,
+          "officeNotes": [
+            "2.1.1827"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:idmap",
+      "types": [
+        "o:CT_IdMap"
+      ],
+      "attributes": [
+        {
+          "name": "data",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapelayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.14",
+          "title": "Shape ID Map",
+          "page": 752,
+          "officeNotes": [
+            "2.1.1828"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:ink",
+      "global": true,
+      "types": [
+        "o:CT_Ink"
+      ],
+      "attributes": [
+        {
+          "name": "annotation",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "contentType",
+          "type": "o:ST_ContentType"
+        },
+        {
+          "name": "i",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:polyline",
+        "v:shape"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.15",
+          "title": "Ink",
+          "page": 753,
+          "officeNotes": [
+            "2.1.1829"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:left",
+      "global": true,
+      "types": [
+        "o:CT_StrokeChild"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:stroke"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.16",
+          "title": "Text Box Left Stroke",
+          "page": 755,
+          "officeNotes": [
+            "2.1.1830"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:lock",
+      "global": true,
+      "types": [
+        "o:CT_Lock"
+      ],
+      "attributes": [
+        {
+          "name": "adjusthandles",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "aspectratio",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "cropping",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "grouping",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "position",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "rotation",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "selection",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "shapetype",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "text",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "ungrouping",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "verticies",
+          "type": "s:ST_TrueFalse"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.18",
+          "title": "Shape Protections",
+          "page": 767,
+          "officeNotes": [
+            "2.1.1832"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:proxy",
+      "types": [
+        "o:CT_Proxy"
+      ],
+      "attributes": [
+        {
+          "name": "connectloc",
+          "type": "xsd:int"
+        },
+        {
+          "name": "end",
+          "type": "s:ST_TrueFalseBlank",
+          "default": "false"
+        },
+        {
+          "name": "idref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "start",
+          "type": "s:ST_TrueFalseBlank",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.21",
+          "title": "Shape Reference",
+          "page": 772,
+          "officeNotes": [
+            "2.1.1835"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:r",
+      "types": [
+        "o:CT_R"
+      ],
+      "attributes": [
+        {
+          "name": "how",
+          "type": "o:ST_How"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "idref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "type",
+          "type": "o:ST_RType"
+        }
+      ],
+      "children": [
+        "o:proxy"
+      ],
+      "parents": [
+        "o:rules"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.22",
+          "title": "Rule",
+          "page": 773,
+          "officeNotes": [
+            "2.1.1836"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:regrouptable",
+      "types": [
+        "o:CT_RegroupTable"
+      ],
+      "attributes": [
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "o:entry"
+      ],
+      "parents": [
+        "o:shapelayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.23",
+          "title": "Shape Grouping History",
+          "page": 774
+        }
+      ]
+    },
+    {
+      "name": "o:rel",
+      "types": [
+        "o:CT_Relation"
+      ],
+      "attributes": [
+        {
+          "name": "idcntr",
+          "type": "xsd:string"
+        },
+        {
+          "name": "iddest",
+          "type": "xsd:string"
+        },
+        {
+          "name": "idsrc",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:relationtable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.24",
+          "title": "Diagram Relationship",
+          "page": 775,
+          "officeNotes": [
+            "2.1.1837"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:relationtable",
+      "types": [
+        "o:CT_RelationTable"
+      ],
+      "attributes": [
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "o:rel"
+      ],
+      "parents": [
+        "o:diagram"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.25",
+          "title": "Diagram Relationship Table",
+          "page": 777
+        }
+      ]
+    },
+    {
+      "name": "o:right",
+      "global": true,
+      "types": [
+        "o:CT_StrokeChild"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:stroke"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.26",
+          "title": "Text Box Right Stroke",
+          "page": 778,
+          "officeNotes": [
+            "2.1.1838"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:rules",
+      "types": [
+        "o:CT_Rules"
+      ],
+      "attributes": [
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "o:r"
+      ],
+      "parents": [
+        "o:shapelayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.27",
+          "title": "Rule Set",
+          "page": 790
+        }
+      ]
+    },
+    {
+      "name": "o:shapedefaults",
+      "global": true,
+      "types": [
+        "o:CT_ShapeDefaults"
+      ],
+      "attributes": [
+        {
+          "name": "fill",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "spidmax",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "stroke",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "v:fill",
+        "v:stroke",
+        "v:textbox",
+        "v:shadow",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:colormru",
+        "o:colormenu"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.28",
+          "title": "New Shape Defaults",
+          "page": 791,
+          "officeNotes": [
+            "2.1.1839"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:shapelayout",
+      "global": true,
+      "types": [
+        "o:CT_ShapeLayout"
+      ],
+      "attributes": [
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [
+        "o:idmap",
+        "o:regrouptable",
+        "o:rules"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.29",
+          "title": "Shape Layout Properties",
+          "page": 802,
+          "officeNotes": [
+            "2.1.1840"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:signatureline",
+      "global": true,
+      "types": [
+        "o:CT_SignatureLine"
+      ],
+      "attributes": [
+        {
+          "name": "addlxml",
+          "type": "xsd:string"
+        },
+        {
+          "name": "allowcomments",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "id",
+          "type": "s:ST_Guid"
+        },
+        {
+          "name": "issignatureline",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:suggestedsigner",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:suggestedsigner2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:suggestedsigneremail",
+          "type": "xsd:string"
+        },
+        {
+          "name": "provid",
+          "type": "s:ST_Guid"
+        },
+        {
+          "name": "showsigndate",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "signinginstructions",
+          "type": "xsd:string"
+        },
+        {
+          "name": "signinginstructionsset",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "sigprovurl",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.30",
+          "title": "Digital Signature Line",
+          "page": 802,
+          "officeNotes": [
+            "2.1.1841"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:skew",
+      "global": true,
+      "types": [
+        "o:CT_Skew"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "matrix",
+          "type": "xsd:string"
+        },
+        {
+          "name": "offset",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "origin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.31",
+          "title": "Skew Transform",
+          "page": 806,
+          "officeNotes": [
+            "2.1.1842"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:top",
+      "global": true,
+      "types": [
+        "o:CT_StrokeChild"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "v:ext",
+          "type": "v:ST_Ext"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:stroke"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.32",
+          "title": "Text Box Top Stroke",
+          "page": 808,
+          "officeNotes": [
+            "2.1.1843"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "o:allowincell",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:allowoverlap",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:althref",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:borderbottomcolor",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:borderleftcolor",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:borderrightcolor",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:bordertopcolor",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:bullet",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:button",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:bwmode",
+      "type": "o:ST_BWMode"
+    },
+    {
+      "name": "o:bwnormal",
+      "type": "o:ST_BWMode"
+    },
+    {
+      "name": "o:bwpure",
+      "type": "o:ST_BWMode"
+    },
+    {
+      "name": "o:clip",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:cliptowrap",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:connectangles",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:connectlocs",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:connectortype",
+      "type": "o:ST_ConnectorType",
+      "default": "straight"
+    },
+    {
+      "name": "o:connecttype",
+      "type": "o:ST_ConnectType"
+    },
+    {
+      "name": "o:detectmouseclick",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:dgmlayout",
+      "type": "o:ST_DiagramLayout"
+    },
+    {
+      "name": "o:dgmlayoutmru",
+      "type": "o:ST_DiagramLayout"
+    },
+    {
+      "name": "o:dgmnodekind",
+      "type": "xsd:integer"
+    },
+    {
+      "name": "o:doubleclicknotify",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:extrusionok",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:forcedash",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:gfxdata",
+      "type": "xsd:base64Binary"
+    },
+    {
+      "name": "o:hr",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:hralign",
+      "type": "o:ST_HrAlign",
+      "default": "left"
+    },
+    {
+      "name": "o:href",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:hrnoshade",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:hrpct",
+      "type": "xsd:float"
+    },
+    {
+      "name": "o:hrstd",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:insetmode",
+      "type": "o:ST_InsetMode",
+      "default": "custom"
+    },
+    {
+      "name": "o:master",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:movie",
+      "type": "xsd:float"
+    },
+    {
+      "name": "o:ole",
+      "type": "s:ST_TrueFalseBlank"
+    },
+    {
+      "name": "o:oleicon",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:oleid",
+      "type": "xsd:float"
+    },
+    {
+      "name": "o:oned",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:opacity2",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:preferrelative",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:regroupid",
+      "type": "xsd:integer"
+    },
+    {
+      "name": "o:relid",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "o:singleclick",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:spid",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:spt",
+      "type": "xsd:float"
+    },
+    {
+      "name": "o:tablelimits",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:tableproperties",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:targetscreensize",
+      "type": "o:ST_ScreenSize"
+    },
+    {
+      "name": "o:title",
+      "type": "xsd:string"
+    },
+    {
+      "name": "o:userdrawn",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:userhidden",
+      "type": "s:ST_TrueFalse"
+    },
+    {
+      "name": "o:wrapcoords",
+      "type": "xsd:string"
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "o:CT_Callout",
+      "content": "empty",
+      "attributes": [
+        "accentbar",
+        "angle",
+        "distance",
+        "drop",
+        "dropauto",
+        "gap",
+        "length",
+        "lengthspecified",
+        "minusx",
+        "minusy",
+        "on",
+        "textborder",
+        "type",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:callout"
+      ]
+    },
+    {
+      "name": "o:CT_ClipPath",
+      "content": "empty",
+      "attributes": [
+        "o:v"
+      ],
+      "usedBy": [
+        "o:clippath"
+      ]
+    },
+    {
+      "name": "o:CT_ColorMenu",
+      "content": "empty",
+      "attributes": [
+        "extrusioncolor",
+        "fillcolor",
+        "shadowcolor",
+        "strokecolor",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:colormenu"
+      ]
+    },
+    {
+      "name": "o:CT_ColorMru",
+      "content": "empty",
+      "attributes": [
+        "colors",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:colormru"
+      ]
+    },
+    {
+      "name": "o:CT_Complex",
+      "content": "empty",
+      "attributes": [
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:complex"
+      ]
+    },
+    {
+      "name": "o:CT_Diagram",
+      "content": "elements",
+      "model": "o:relationtable?",
+      "attributes": [
+        "autoformat",
+        "autolayout",
+        "constrainbounds",
+        "dgmbasetextscale",
+        "dgmfontsize",
+        "dgmscalex",
+        "dgmscaley",
+        "dgmstyle",
+        "reverse",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:diagram"
+      ]
+    },
+    {
+      "name": "o:CT_Entry",
+      "content": "empty",
+      "attributes": [
+        "new",
+        "old"
+      ],
+      "usedBy": [
+        "o:entry"
+      ]
+    },
+    {
+      "name": "o:CT_EquationXml",
+      "content": "elements",
+      "model": "any(##any)",
+      "attributes": [
+        "contentType"
+      ],
+      "usedBy": [
+        "o:equationxml"
+      ]
+    },
+    {
+      "name": "o:CT_Extrusion",
+      "content": "empty",
+      "attributes": [
+        "autorotationcenter",
+        "backdepth",
+        "brightness",
+        "color",
+        "colormode",
+        "diffusity",
+        "edge",
+        "facet",
+        "foredepth",
+        "lightface",
+        "lightharsh",
+        "lightharsh2",
+        "lightlevel",
+        "lightlevel2",
+        "lightposition",
+        "lightposition2",
+        "lockrotationcenter",
+        "metal",
+        "on",
+        "orientation",
+        "orientationangle",
+        "plane",
+        "render",
+        "rotationangle",
+        "rotationcenter",
+        "shininess",
+        "skewamt",
+        "skewangle",
+        "specularity",
+        "type",
+        "v:ext",
+        "viewpoint",
+        "viewpointorigin"
+      ],
+      "usedBy": [
+        "o:extrusion"
+      ]
+    },
+    {
+      "name": "o:CT_Fill",
+      "content": "empty",
+      "attributes": [
+        "type",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:fill"
+      ]
+    },
+    {
+      "name": "o:CT_IdMap",
+      "content": "empty",
+      "attributes": [
+        "data",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:idmap"
+      ]
+    },
+    {
+      "name": "o:CT_Ink",
+      "content": "empty",
+      "attributes": [
+        "annotation",
+        "contentType",
+        "i"
+      ],
+      "usedBy": [
+        "o:ink"
+      ]
+    },
+    {
+      "name": "o:CT_Lock",
+      "content": "empty",
+      "attributes": [
+        "adjusthandles",
+        "aspectratio",
+        "cropping",
+        "grouping",
+        "position",
+        "rotation",
+        "selection",
+        "shapetype",
+        "text",
+        "ungrouping",
+        "v:ext",
+        "verticies"
+      ],
+      "usedBy": [
+        "o:lock"
+      ]
+    },
+    {
+      "name": "o:CT_OLEObject",
+      "content": "elements",
+      "model": "(o:LinkType?, o:LockedField?, o:FieldCodes?)",
+      "attributes": [
+        "DrawAspect",
+        "ObjectID",
+        "ProgID",
+        "ShapeID",
+        "Type",
+        "UpdateMode",
+        "r:id"
+      ],
+      "usedBy": [
+        "o:OLEObject"
+      ]
+    },
+    {
+      "name": "o:CT_Proxy",
+      "content": "empty",
+      "attributes": [
+        "connectloc",
+        "end",
+        "idref",
+        "start"
+      ],
+      "usedBy": [
+        "o:proxy"
+      ]
+    },
+    {
+      "name": "o:CT_R",
+      "content": "elements",
+      "model": "o:proxy*",
+      "attributes": [
+        "how",
+        "id",
+        "idref",
+        "type"
+      ],
+      "usedBy": [
+        "o:r"
+      ]
+    },
+    {
+      "name": "o:CT_RegroupTable",
+      "content": "elements",
+      "model": "o:entry*",
+      "attributes": [
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:regrouptable"
+      ]
+    },
+    {
+      "name": "o:CT_Relation",
+      "content": "empty",
+      "attributes": [
+        "idcntr",
+        "iddest",
+        "idsrc",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:rel"
+      ]
+    },
+    {
+      "name": "o:CT_RelationTable",
+      "content": "elements",
+      "model": "o:rel*",
+      "attributes": [
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:relationtable"
+      ]
+    },
+    {
+      "name": "o:CT_Rules",
+      "content": "elements",
+      "model": "o:r*",
+      "attributes": [
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:rules"
+      ]
+    },
+    {
+      "name": "o:CT_ShapeDefaults",
+      "content": "elements",
+      "model": "(v:fill? & v:stroke? & v:textbox? & v:shadow? & o:skew? & o:extrusion? & o:callout? & o:lock? & o:colormru? & o:colormenu?)?",
+      "attributes": [
+        "fill",
+        "fillcolor",
+        "o:allowincell",
+        "spidmax",
+        "stroke",
+        "strokecolor",
+        "style",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:shapedefaults"
+      ]
+    },
+    {
+      "name": "o:CT_ShapeLayout",
+      "content": "elements",
+      "model": "(o:idmap? & o:regrouptable? & o:rules?)",
+      "attributes": [
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:shapelayout"
+      ]
+    },
+    {
+      "name": "o:CT_SignatureLine",
+      "content": "empty",
+      "attributes": [
+        "addlxml",
+        "allowcomments",
+        "id",
+        "issignatureline",
+        "o:suggestedsigner",
+        "o:suggestedsigner2",
+        "o:suggestedsigneremail",
+        "provid",
+        "showsigndate",
+        "signinginstructions",
+        "signinginstructionsset",
+        "sigprovurl",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:signatureline"
+      ]
+    },
+    {
+      "name": "o:CT_Skew",
+      "content": "empty",
+      "attributes": [
+        "id",
+        "matrix",
+        "offset",
+        "on",
+        "origin",
+        "v:ext"
+      ],
+      "usedBy": [
+        "o:skew"
+      ]
+    },
+    {
+      "name": "o:CT_StrokeChild",
+      "content": "empty",
+      "attributes": [
+        "color",
+        "color2",
+        "dashstyle",
+        "endarrow",
+        "endarrowlength",
+        "endarrowwidth",
+        "endcap",
+        "filltype",
+        "imagealignshape",
+        "imageaspect",
+        "imagesize",
+        "insetpen",
+        "joinstyle",
+        "linestyle",
+        "miterlimit",
+        "o:althref",
+        "o:forcedash",
+        "o:href",
+        "o:title",
+        "on",
+        "opacity",
+        "src",
+        "startarrow",
+        "startarrowlength",
+        "startarrowwidth",
+        "v:ext",
+        "weight"
+      ],
+      "usedBy": [
+        "o:bottom",
+        "o:column",
+        "o:left",
+        "o:right",
+        "o:top"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "o:ST_AlternateMathContentType",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.1",
+          "title": "Alternate Math Content Type",
+          "page": 820
+        }
+      ]
+    },
+    {
+      "name": "o:ST_Angle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "any",
+        "30",
+        "45",
+        "60",
+        "90",
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.2",
+          "title": "Callout Angles",
+          "page": 820
+        }
+      ]
+    },
+    {
+      "name": "o:ST_BWMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "color",
+        "auto",
+        "grayScale",
+        "lightGrayscale",
+        "inverseGray",
+        "grayOutline",
+        "highContrast",
+        "black",
+        "white",
+        "hide",
+        "undrawn",
+        "blackTextAndLines"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.3",
+          "title": "Black And White Modes",
+          "page": 820,
+          "officeNotes": [
+            "2.1.1844"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:ST_CalloutDrop",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.4",
+          "title": "Callout Drop Location",
+          "page": 821,
+          "officeNotes": [
+            "2.1.1845"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:ST_CalloutPlacement",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "top",
+        "center",
+        "bottom",
+        "user"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.5",
+          "title": "Callout Placement",
+          "page": 821
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ColorMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "auto",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.6",
+          "title": "Extrusion Color Types",
+          "page": 822
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ConnectType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "rect",
+        "segments",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.8",
+          "title": "Connection Locations Type",
+          "page": 822
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ConnectorType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "straight",
+        "elbow",
+        "curved"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.7",
+          "title": "Connector Type",
+          "page": 822
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ContentType",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.9",
+          "title": "Content Type",
+          "page": 823
+        }
+      ]
+    },
+    {
+      "name": "o:ST_DiagramLayout",
+      "definition": "restriction of xsd:integer",
+      "values": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.10",
+          "title": "Diagram Layout Type",
+          "page": 823
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ExtrusionPlane",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "XY",
+        "ZX",
+        "YZ"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.11",
+          "title": "Extrusion Planes",
+          "page": 824
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ExtrusionRender",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "solid",
+        "wireFrame",
+        "boundingCube"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.12",
+          "title": "Extrusion Rendering Types",
+          "page": 824
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ExtrusionType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "perspective",
+        "parallel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.13",
+          "title": "Extrusion Type",
+          "page": 824
+        }
+      ]
+    },
+    {
+      "name": "o:ST_FillType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "gradientCenter",
+        "solid",
+        "pattern",
+        "tile",
+        "frame",
+        "gradientUnscaled",
+        "gradientRadial",
+        "gradient",
+        "background"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.4",
+          "title": "Shape Fill Type",
+          "page": 692,
+          "officeNotes": [
+            "2.1.1815"
+          ]
+        },
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.14",
+          "title": "Shape Fill Type",
+          "page": 825,
+          "officeNotes": [
+            "2.1.1846"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:ST_How",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "top",
+        "middle",
+        "bottom",
+        "left",
+        "center",
+        "right"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.15",
+          "title": "Alignment Type",
+          "page": 826
+        }
+      ]
+    },
+    {
+      "name": "o:ST_HrAlign",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "left",
+        "right",
+        "center"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.16",
+          "title": "Alignment Type",
+          "page": 827
+        }
+      ]
+    },
+    {
+      "name": "o:ST_InsetMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "auto",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.17",
+          "title": "Inset Margin Type",
+          "page": 827
+        }
+      ]
+    },
+    {
+      "name": "o:ST_OLEDrawAspect",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "Content",
+        "Icon"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.18",
+          "title": " Embedded Object Representations",
+          "page": 827
+        }
+      ]
+    },
+    {
+      "name": "o:ST_OLELinkType",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.19",
+          "title": "Embedded Object Alternate Image Request Types",
+          "page": 828,
+          "officeNotes": [
+            "2.1.1847"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "o:ST_OLEType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "Embed",
+        "Link"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.20",
+          "title": " Embedded Connection Type",
+          "page": 828
+        }
+      ]
+    },
+    {
+      "name": "o:ST_OLEUpdateMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "Always",
+        "OnCall"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.21",
+          "title": " Embedded Object Update Method Type",
+          "page": 828
+        }
+      ]
+    },
+    {
+      "name": "o:ST_RType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "arc",
+        "callout",
+        "connector",
+        "align"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.22",
+          "title": "Rule Type",
+          "page": 829
+        }
+      ]
+    },
+    {
+      "name": "o:ST_ScreenSize",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "544,376",
+        "640,480",
+        "720,512",
+        "800,600",
+        "1024,768",
+        "1152,862"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.23",
+          "title": "Screen Sizes Type",
+          "page": 829
+        }
+      ]
+    }
+  ]
+}

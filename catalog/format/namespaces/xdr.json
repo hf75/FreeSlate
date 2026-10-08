@@ -1,0 +1,1348 @@
+{
+  "prefix": "xdr",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+  "area": "SpreadsheetML (out of scope)",
+  "inScope": false,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-spreadsheetDrawing.xsd",
+  "counts": {
+    "elements": 36,
+    "attributes": 32,
+    "globalAttributes": 0,
+    "complexTypes": 17,
+    "simpleTypes": 3,
+    "enumValues": 3,
+    "specSections": 39,
+    "officeNotes": 20
+  },
+  "elements": [
+    {
+      "name": "xdr:absoluteAnchor",
+      "types": [
+        "xdr:CT_AbsoluteAnchor"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:pos",
+        "xdr:ext",
+        "xdr:sp",
+        "xdr:grpSp",
+        "xdr:graphicFrame",
+        "xdr:cxnSp",
+        "xdr:pic",
+        "xdr:contentPart",
+        "xdr:clientData"
+      ],
+      "parents": [
+        "xdr:wsDr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.1",
+          "title": "Absolute Anchor Shape Size",
+          "page": 3167
+        }
+      ]
+    },
+    {
+      "name": "xdr:blipFill",
+      "types": [
+        "a:CT_BlipFillProperties"
+      ],
+      "attributes": [
+        {
+          "name": "dpi",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "rotWithShape",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "a:blip",
+        "a:srcRect",
+        "a:tile",
+        "a:stretch"
+      ],
+      "parents": [
+        "xdr:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.2",
+          "title": "Picture Fill",
+          "page": 3168,
+          "officeNotes": [
+            "2.1.1358"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvCxnSpPr",
+      "types": [
+        "a:CT_NonVisualConnectorProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:cxnSpLocks",
+        "a:stCxn",
+        "a:endCxn",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvCxnSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.4",
+          "title": "Non-Visual Connector Shape Drawing Properties",
+          "page": 3170
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvGraphicFramePr",
+      "types": [
+        "a:CT_NonVisualGraphicFrameProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:graphicFrameLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvGraphicFramePr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.5",
+          "title": "Non-Visual Graphic Frame Drawing Properties",
+          "page": 3171
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvGrpSpPr",
+      "types": [
+        "a:CT_NonVisualGroupDrawingShapeProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:grpSpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvGrpSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.6",
+          "title": "Non-Visual Group Shape Drawing Properties",
+          "page": 3171
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvPicPr",
+      "types": [
+        "a:CT_NonVisualPictureProperties"
+      ],
+      "attributes": [
+        {
+          "name": "preferRelativeResize",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a:picLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvPicPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.7",
+          "title": "Non-Visual Picture Drawing Properties",
+          "page": 3171
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvCxnSpPr",
+        "xdr:nvGraphicFramePr",
+        "xdr:nvGrpSpPr",
+        "xdr:nvPicPr",
+        "xdr:nvSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.8",
+          "title": "Non-Visual Drawing Properties",
+          "page": 3172,
+          "officeNotes": [
+            "2.1.1359"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:cNvSpPr",
+      "types": [
+        "a:CT_NonVisualDrawingShapeProps"
+      ],
+      "attributes": [
+        {
+          "name": "txBox",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a:spLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:nvSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.9",
+          "title": "Connection Non-Visual Shape Properties",
+          "page": 3174,
+          "officeNotes": [
+            "2.1.1360"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:clientData",
+      "types": [
+        "xdr:CT_AnchorClientData"
+      ],
+      "attributes": [
+        {
+          "name": "fLocksWithSheet",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "fPrintsWithSheet",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.3",
+          "title": "Client Data",
+          "page": 3170
+        }
+      ]
+    },
+    {
+      "name": "xdr:col",
+      "types": [
+        "xdr:ST_ColID"
+      ],
+      "text": "xdr:ST_ColID",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xdr:from",
+        "xdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.10",
+          "title": "Column)",
+          "page": 3175,
+          "officeNotes": [
+            "2.1.1361"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:colOff",
+      "types": [
+        "a:ST_Coordinate"
+      ],
+      "text": "a:ST_Coordinate",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xdr:from",
+        "xdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.11",
+          "title": "Column Offset",
+          "page": 3175,
+          "officeNotes": [
+            "2.1.1362"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:contentPart",
+      "types": [
+        "xdr:CT_Rel"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.12",
+          "title": "Content Part",
+          "page": 3175
+        }
+      ]
+    },
+    {
+      "name": "xdr:cxnSp",
+      "types": [
+        "xdr:CT_Connector"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "xdr:nvCxnSpPr",
+        "xdr:spPr",
+        "xdr:style"
+      ],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:grpSp",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.13",
+          "title": "Connection Shape",
+          "page": 3179,
+          "officeNotes": [
+            "2.1.1363"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:ext",
+      "types": [
+        "a:CT_PositiveSize2D"
+      ],
+      "attributes": [
+        {
+          "name": "cx",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        },
+        {
+          "name": "cy",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:oneCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.14",
+          "title": "Shape Extent",
+          "page": 3180,
+          "officeNotes": [
+            "2.1.1364"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:from",
+      "global": true,
+      "types": [
+        "xdr:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:col",
+        "xdr:colOff",
+        "xdr:row",
+        "xdr:rowOff"
+      ],
+      "parents": [
+        "x:anchor",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.15",
+          "title": "Starting Anchor Point",
+          "page": 3181,
+          "officeNotes": [
+            "2.1.1365"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:graphicFrame",
+      "types": [
+        "xdr:CT_GraphicalObjectFrame"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "xdr:nvGraphicFramePr",
+        "xdr:xfrm",
+        "a:graphic"
+      ],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:grpSp",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.16",
+          "title": "Graphic Frame",
+          "page": 3181,
+          "officeNotes": [
+            "2.1.1366"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:grpSp",
+      "types": [
+        "xdr:CT_GroupShape"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:nvGrpSpPr",
+        "xdr:grpSpPr",
+        "xdr:sp",
+        "xdr:grpSp",
+        "xdr:graphicFrame",
+        "xdr:cxnSp",
+        "xdr:pic"
+      ],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:grpSp",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.17",
+          "title": "Group Shape",
+          "page": 3182
+        }
+      ]
+    },
+    {
+      "name": "xdr:grpSpPr",
+      "types": [
+        "a:CT_GroupShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:grpSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.18",
+          "title": "Group Shape Properties",
+          "page": 3183,
+          "officeNotes": [
+            "2.1.1367"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:nvCxnSpPr",
+      "types": [
+        "xdr:CT_ConnectorNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:cNvPr",
+        "xdr:cNvCxnSpPr"
+      ],
+      "parents": [
+        "xdr:cxnSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.19",
+          "title": "Non-Visual Properties for a Connection Shape",
+          "page": 3183
+        }
+      ]
+    },
+    {
+      "name": "xdr:nvGraphicFramePr",
+      "types": [
+        "xdr:CT_GraphicalObjectFrameNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:cNvPr",
+        "xdr:cNvGraphicFramePr"
+      ],
+      "parents": [
+        "xdr:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.20",
+          "title": "Non-Visual Properties for a Graphic Frame",
+          "page": 3184
+        }
+      ]
+    },
+    {
+      "name": "xdr:nvGrpSpPr",
+      "types": [
+        "xdr:CT_GroupShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:cNvPr",
+        "xdr:cNvGrpSpPr"
+      ],
+      "parents": [
+        "xdr:grpSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.21",
+          "title": "Non-Visual Properties for a Group Shape",
+          "page": 3184
+        }
+      ]
+    },
+    {
+      "name": "xdr:nvPicPr",
+      "types": [
+        "xdr:CT_PictureNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:cNvPr",
+        "xdr:cNvPicPr"
+      ],
+      "parents": [
+        "xdr:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.22",
+          "title": "Non-Visual Properties for a Picture",
+          "page": 3184
+        }
+      ]
+    },
+    {
+      "name": "xdr:nvSpPr",
+      "types": [
+        "xdr:CT_ShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:cNvPr",
+        "xdr:cNvSpPr"
+      ],
+      "parents": [
+        "xdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.23",
+          "title": "Non-Visual Properties for a Shape",
+          "page": 3185
+        }
+      ]
+    },
+    {
+      "name": "xdr:oneCellAnchor",
+      "types": [
+        "xdr:CT_OneCellAnchor"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:from",
+        "xdr:ext",
+        "xdr:sp",
+        "xdr:grpSp",
+        "xdr:graphicFrame",
+        "xdr:cxnSp",
+        "xdr:pic",
+        "xdr:contentPart",
+        "xdr:clientData"
+      ],
+      "parents": [
+        "xdr:wsDr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.24",
+          "title": "One Cell Anchor Shape Size",
+          "page": 3185
+        }
+      ]
+    },
+    {
+      "name": "xdr:pic",
+      "types": [
+        "xdr:CT_Picture"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "xdr:nvPicPr",
+        "xdr:blipFill",
+        "xdr:spPr",
+        "xdr:style"
+      ],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:grpSp",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.25",
+          "title": "Picture",
+          "page": 3185,
+          "officeNotes": [
+            "2.1.1368"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:pos",
+      "types": [
+        "a:CT_Point2D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "xdr:absoluteAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.26",
+          "title": "Position",
+          "page": 3186,
+          "officeNotes": [
+            "2.1.1369"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:row",
+      "types": [
+        "xdr:ST_RowID"
+      ],
+      "text": "xdr:ST_RowID",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xdr:from",
+        "xdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.27",
+          "title": "Row",
+          "page": 3187,
+          "officeNotes": [
+            "2.1.1370"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:rowOff",
+      "types": [
+        "a:ST_Coordinate"
+      ],
+      "text": "a:ST_Coordinate",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xdr:from",
+        "xdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.28",
+          "title": "Row Offset",
+          "page": 3187,
+          "officeNotes": [
+            "2.1.1371"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:sp",
+      "types": [
+        "xdr:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "fLocksText",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        },
+        {
+          "name": "textlink",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "xdr:nvSpPr",
+        "xdr:spPr",
+        "xdr:style",
+        "xdr:txBody"
+      ],
+      "parents": [
+        "xdr:absoluteAnchor",
+        "xdr:grpSp",
+        "xdr:oneCellAnchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.29",
+          "title": "Shape",
+          "page": 3187,
+          "officeNotes": [
+            "2.1.1372"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "xdr:cxnSp",
+        "xdr:pic",
+        "xdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.30",
+          "title": "Shape Properties",
+          "page": 3188,
+          "officeNotes": [
+            "2.1.1373"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "xdr:cxnSp",
+        "xdr:pic",
+        "xdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.31",
+          "title": "Shape Style",
+          "page": 3189,
+          "officeNotes": [
+            "2.1.1374"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:to",
+      "global": true,
+      "types": [
+        "xdr:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:col",
+        "xdr:colOff",
+        "xdr:row",
+        "xdr:rowOff"
+      ],
+      "parents": [
+        "x:anchor",
+        "xdr:twoCellAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.32",
+          "title": "Ending Anchor Point",
+          "page": 3189,
+          "officeNotes": [
+            "2.1.1375"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:twoCellAnchor",
+      "types": [
+        "xdr:CT_TwoCellAnchor"
+      ],
+      "attributes": [
+        {
+          "name": "editAs",
+          "type": "xdr:ST_EditAs",
+          "default": "twoCell"
+        }
+      ],
+      "children": [
+        "xdr:from",
+        "xdr:to",
+        "xdr:sp",
+        "xdr:grpSp",
+        "xdr:graphicFrame",
+        "xdr:cxnSp",
+        "xdr:pic",
+        "xdr:contentPart",
+        "xdr:clientData"
+      ],
+      "parents": [
+        "xdr:wsDr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.33",
+          "title": "Two Cell Anchor Shape Size",
+          "page": 3189
+        }
+      ]
+    },
+    {
+      "name": "xdr:txBody",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "xdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.34",
+          "title": "Shape Text Body",
+          "page": 3190,
+          "officeNotes": [
+            "2.1.1376"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xdr:wsDr",
+      "global": true,
+      "types": [
+        "xdr:CT_Drawing"
+      ],
+      "attributes": [],
+      "children": [
+        "xdr:twoCellAnchor",
+        "xdr:oneCellAnchor",
+        "xdr:absoluteAnchor"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.35",
+          "title": "Worksheet Drawing",
+          "page": 3190
+        }
+      ]
+    },
+    {
+      "name": "xdr:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "xdr:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.2.36",
+          "title": "2D Transform for Graphic Frames",
+          "page": 3190,
+          "officeNotes": [
+            "2.1.1377"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "xdr:CT_AbsoluteAnchor",
+      "content": "elements",
+      "model": "(xdr:pos, xdr:ext, (xdr:sp | xdr:grpSp | xdr:graphicFrame | xdr:cxnSp | xdr:pic | xdr:contentPart), xdr:clientData)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:absoluteAnchor"
+      ]
+    },
+    {
+      "name": "xdr:CT_AnchorClientData",
+      "content": "empty",
+      "attributes": [
+        "fLocksWithSheet",
+        "fPrintsWithSheet"
+      ],
+      "usedBy": [
+        "xdr:clientData"
+      ]
+    },
+    {
+      "name": "xdr:CT_Connector",
+      "content": "elements",
+      "model": "(xdr:nvCxnSpPr, xdr:spPr, xdr:style?)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "xdr:cxnSp"
+      ]
+    },
+    {
+      "name": "xdr:CT_ConnectorNonVisual",
+      "content": "elements",
+      "model": "(xdr:cNvPr, xdr:cNvCxnSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:nvCxnSpPr"
+      ]
+    },
+    {
+      "name": "xdr:CT_Drawing",
+      "content": "elements",
+      "model": "(xdr:twoCellAnchor | xdr:oneCellAnchor | xdr:absoluteAnchor)*",
+      "attributes": [],
+      "usedBy": [
+        "xdr:wsDr"
+      ]
+    },
+    {
+      "name": "xdr:CT_GraphicalObjectFrame",
+      "content": "elements",
+      "model": "(xdr:nvGraphicFramePr, xdr:xfrm, a:graphic)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "xdr:graphicFrame"
+      ]
+    },
+    {
+      "name": "xdr:CT_GraphicalObjectFrameNonVisual",
+      "content": "elements",
+      "model": "(xdr:cNvPr, xdr:cNvGraphicFramePr)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:nvGraphicFramePr"
+      ]
+    },
+    {
+      "name": "xdr:CT_GroupShape",
+      "content": "elements",
+      "model": "(xdr:nvGrpSpPr, xdr:grpSpPr, (xdr:sp | xdr:grpSp | xdr:graphicFrame | xdr:cxnSp | xdr:pic)*)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:grpSp"
+      ]
+    },
+    {
+      "name": "xdr:CT_GroupShapeNonVisual",
+      "content": "elements",
+      "model": "(xdr:cNvPr, xdr:cNvGrpSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:nvGrpSpPr"
+      ]
+    },
+    {
+      "name": "xdr:CT_Marker",
+      "content": "elements",
+      "model": "(xdr:col, xdr:colOff, xdr:row, xdr:rowOff)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:from",
+        "xdr:to"
+      ]
+    },
+    {
+      "name": "xdr:CT_OneCellAnchor",
+      "content": "elements",
+      "model": "(xdr:from, xdr:ext, (xdr:sp | xdr:grpSp | xdr:graphicFrame | xdr:cxnSp | xdr:pic | xdr:contentPart), xdr:clientData)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:oneCellAnchor"
+      ]
+    },
+    {
+      "name": "xdr:CT_Picture",
+      "content": "elements",
+      "model": "(xdr:nvPicPr, xdr:blipFill, xdr:spPr, xdr:style?)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "xdr:pic"
+      ]
+    },
+    {
+      "name": "xdr:CT_PictureNonVisual",
+      "content": "elements",
+      "model": "(xdr:cNvPr, xdr:cNvPicPr)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:nvPicPr"
+      ]
+    },
+    {
+      "name": "xdr:CT_Rel",
+      "content": "empty",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "xdr:contentPart"
+      ]
+    },
+    {
+      "name": "xdr:CT_Shape",
+      "content": "elements",
+      "model": "(xdr:nvSpPr, xdr:spPr, xdr:style?, xdr:txBody?)",
+      "attributes": [
+        "fLocksText",
+        "fPublished",
+        "macro",
+        "textlink"
+      ],
+      "usedBy": [
+        "xdr:sp"
+      ]
+    },
+    {
+      "name": "xdr:CT_ShapeNonVisual",
+      "content": "elements",
+      "model": "(xdr:cNvPr, xdr:cNvSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "xdr:nvSpPr"
+      ]
+    },
+    {
+      "name": "xdr:CT_TwoCellAnchor",
+      "content": "elements",
+      "model": "(xdr:from, xdr:to, (xdr:sp | xdr:grpSp | xdr:graphicFrame | xdr:cxnSp | xdr:pic | xdr:contentPart), xdr:clientData)",
+      "attributes": [
+        "editAs"
+      ],
+      "usedBy": [
+        "xdr:twoCellAnchor"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "xdr:ST_ColID",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.3.1",
+          "title": "Column ID",
+          "page": 3191
+        }
+      ]
+    },
+    {
+      "name": "xdr:ST_EditAs",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "twoCell",
+        "oneCell",
+        "absolute"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.3.2",
+          "title": "Resizing Behaviors",
+          "page": 3192
+        }
+      ]
+    },
+    {
+      "name": "xdr:ST_RowID",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.5.3.3",
+          "title": "Row ID",
+          "page": 3193
+        }
+      ]
+    }
+  ]
+}

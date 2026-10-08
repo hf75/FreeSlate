@@ -1,0 +1,104 @@
+{
+  "prefix": "c16r3",
+  "uri": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.31",
+  "counts": {
+    "elements": 2,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c16r3:dataDisplayOptions16",
+      "global": true,
+      "types": [
+        "c16r3:CT_DataDisplayOptions16"
+      ],
+      "attributes": [],
+      "children": [
+        "c16r3:dispNaAsBlank"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.33.1.1",
+          "title": "dataDisplayOptions16",
+          "page": 310
+        }
+      ]
+    },
+    {
+      "name": "c16r3:dispNaAsBlank",
+      "types": [
+        "c16r3:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "c16r3:val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16r3:dataDisplayOptions16"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.33.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 311
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "c16r3:CT_BooleanFalse",
+      "content": "empty",
+      "attributes": [
+        "c16r3:val"
+      ],
+      "usedBy": [
+        "c16r3:dispNaAsBlank"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.33.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 311
+        }
+      ]
+    },
+    {
+      "name": "c16r3:CT_DataDisplayOptions16",
+      "content": "elements",
+      "model": "c16r3:dispNaAsBlank?",
+      "attributes": [],
+      "usedBy": [
+        "c16r3:dataDisplayOptions16"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.33.3.2",
+          "title": "CT_DataDisplayOptions16",
+          "page": 311
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

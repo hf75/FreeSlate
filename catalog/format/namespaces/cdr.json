@@ -1,0 +1,1064 @@
+{
+  "prefix": "cdr",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-chartDrawing.xsd",
+  "counts": {
+    "elements": 29,
+    "attributes": 26,
+    "globalAttributes": 0,
+    "complexTypes": 14,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 30,
+    "officeNotes": 15
+  },
+  "elements": [
+    {
+      "name": "cdr:absSizeAnchor",
+      "types": [
+        "cdr:CT_AbsSizeAnchor"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:from",
+        "cdr:ext",
+        "cdr:sp",
+        "cdr:grpSp",
+        "cdr:graphicFrame",
+        "cdr:cxnSp",
+        "cdr:pic"
+      ],
+      "parents": [
+        "c:userShapes"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.1",
+          "title": "Absolute Anchor Shape Size",
+          "page": 3484,
+          "officeNotes": [
+            "2.1.1600"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:blipFill",
+      "types": [
+        "a:CT_BlipFillProperties"
+      ],
+      "attributes": [
+        {
+          "name": "dpi",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "rotWithShape",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "a:blip",
+        "a:srcRect",
+        "a:tile",
+        "a:stretch"
+      ],
+      "parents": [
+        "cdr:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.2",
+          "title": "Picture Fill",
+          "page": 3484,
+          "officeNotes": [
+            "2.1.1601"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvCxnSpPr",
+      "types": [
+        "a:CT_NonVisualConnectorProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:cxnSpLocks",
+        "a:stCxn",
+        "a:endCxn",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvCxnSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.3",
+          "title": "Non-Visual Connection Shape Drawing Properties",
+          "page": 3487
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvGraphicFramePr",
+      "types": [
+        "a:CT_NonVisualGraphicFrameProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:graphicFrameLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvGraphicFramePr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.4",
+          "title": "Non-Visual Graphic Frame Drawing Properties",
+          "page": 3487
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvGrpSpPr",
+      "types": [
+        "a:CT_NonVisualGroupDrawingShapeProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:grpSpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvGrpSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.5",
+          "title": "Non-Visual Group Shape Drawing Properties",
+          "page": 3487
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvPicPr",
+      "types": [
+        "a:CT_NonVisualPictureProperties"
+      ],
+      "attributes": [
+        {
+          "name": "preferRelativeResize",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a:picLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvPicPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.6",
+          "title": "Non-Visual Picture Drawing Properties",
+          "page": 3487
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvCxnSpPr",
+        "cdr:nvGraphicFramePr",
+        "cdr:nvGrpSpPr",
+        "cdr:nvPicPr",
+        "cdr:nvSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.7",
+          "title": "Non-Visual Drawing Properties",
+          "page": 3488,
+          "officeNotes": [
+            "2.1.1602"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:cNvSpPr",
+      "types": [
+        "a:CT_NonVisualDrawingShapeProps"
+      ],
+      "attributes": [
+        {
+          "name": "txBox",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a:spLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:nvSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.8",
+          "title": "Non-Visual Shape Drawing Properties",
+          "page": 3490
+        }
+      ]
+    },
+    {
+      "name": "cdr:cxnSp",
+      "types": [
+        "cdr:CT_Connector"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "cdr:nvCxnSpPr",
+        "cdr:spPr",
+        "cdr:style"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:grpSp",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.9",
+          "title": "Connection Shape",
+          "page": 3491,
+          "officeNotes": [
+            "2.1.1603"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:ext",
+      "types": [
+        "a:CT_PositiveSize2D"
+      ],
+      "attributes": [
+        {
+          "name": "cx",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        },
+        {
+          "name": "cy",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cdr:absSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.10",
+          "title": "Shape Extent",
+          "page": 3493,
+          "officeNotes": [
+            "2.1.1604"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:from",
+      "types": [
+        "cdr:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:x",
+        "cdr:y"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.11",
+          "title": "Starting Anchor Point",
+          "page": 3493
+        }
+      ]
+    },
+    {
+      "name": "cdr:graphicFrame",
+      "types": [
+        "cdr:CT_GraphicFrame"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "cdr:nvGraphicFramePr",
+        "cdr:xfrm",
+        "a:graphic"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:grpSp",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.12",
+          "title": "Graphic Frame",
+          "page": 3494,
+          "officeNotes": [
+            "2.1.1605"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:grpSp",
+      "types": [
+        "cdr:CT_GroupShape"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:nvGrpSpPr",
+        "cdr:grpSpPr",
+        "cdr:sp",
+        "cdr:grpSp",
+        "cdr:graphicFrame",
+        "cdr:cxnSp",
+        "cdr:pic"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:grpSp",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.13",
+          "title": "Group Shape",
+          "page": 3495
+        }
+      ]
+    },
+    {
+      "name": "cdr:grpSpPr",
+      "types": [
+        "a:CT_GroupShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:grpSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.14",
+          "title": "Group Shape Properties",
+          "page": 3496,
+          "officeNotes": [
+            "2.1.1606"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:nvCxnSpPr",
+      "types": [
+        "cdr:CT_ConnectorNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:cNvPr",
+        "cdr:cNvCxnSpPr"
+      ],
+      "parents": [
+        "cdr:cxnSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.15",
+          "title": "Connector Non Visual Properties",
+          "page": 3496
+        }
+      ]
+    },
+    {
+      "name": "cdr:nvGraphicFramePr",
+      "types": [
+        "cdr:CT_GraphicFrameNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:cNvPr",
+        "cdr:cNvGraphicFramePr"
+      ],
+      "parents": [
+        "cdr:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.16",
+          "title": "Non-Visual Graphic Frame Properties",
+          "page": 3497
+        }
+      ]
+    },
+    {
+      "name": "cdr:nvGrpSpPr",
+      "types": [
+        "cdr:CT_GroupShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:cNvPr",
+        "cdr:cNvGrpSpPr"
+      ],
+      "parents": [
+        "cdr:grpSp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.17",
+          "title": "Non-Visual Group Shape Properties",
+          "page": 3497
+        }
+      ]
+    },
+    {
+      "name": "cdr:nvPicPr",
+      "types": [
+        "cdr:CT_PictureNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:cNvPr",
+        "cdr:cNvPicPr"
+      ],
+      "parents": [
+        "cdr:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.18",
+          "title": "Non-Visual Picture Properties",
+          "page": 3497
+        }
+      ]
+    },
+    {
+      "name": "cdr:nvSpPr",
+      "types": [
+        "cdr:CT_ShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:cNvPr",
+        "cdr:cNvSpPr"
+      ],
+      "parents": [
+        "cdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.19",
+          "title": "Non-Visual Shape Properties",
+          "page": 3497
+        }
+      ]
+    },
+    {
+      "name": "cdr:pic",
+      "types": [
+        "cdr:CT_Picture"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "cdr:nvPicPr",
+        "cdr:blipFill",
+        "cdr:spPr",
+        "cdr:style"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:grpSp",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.20",
+          "title": "Picture",
+          "page": 3498,
+          "officeNotes": [
+            "2.1.1607"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:relSizeAnchor",
+      "types": [
+        "cdr:CT_RelSizeAnchor"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:from",
+        "cdr:to",
+        "cdr:sp",
+        "cdr:grpSp",
+        "cdr:graphicFrame",
+        "cdr:cxnSp",
+        "cdr:pic"
+      ],
+      "parents": [
+        "c:userShapes"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.21",
+          "title": "Relative Anchor Shape Size",
+          "page": 3499,
+          "officeNotes": [
+            "2.1.1608"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:sp",
+      "types": [
+        "cdr:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "fLocksText",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        },
+        {
+          "name": "textlink",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "cdr:nvSpPr",
+        "cdr:spPr",
+        "cdr:style",
+        "cdr:txBody"
+      ],
+      "parents": [
+        "cdr:absSizeAnchor",
+        "cdr:grpSp",
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.22",
+          "title": "Shape",
+          "page": 3499,
+          "officeNotes": [
+            "2.1.1609"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr:cxnSp",
+        "cdr:pic",
+        "cdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.23",
+          "title": "Shape Properties",
+          "page": 3501,
+          "officeNotes": [
+            "2.1.1610"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "cdr:cxnSp",
+        "cdr:pic",
+        "cdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.24",
+          "title": "Shape Style",
+          "page": 3501,
+          "officeNotes": [
+            "2.1.1611"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:to",
+      "types": [
+        "cdr:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr:x",
+        "cdr:y"
+      ],
+      "parents": [
+        "cdr:relSizeAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.25",
+          "title": "Ending Anchor Point",
+          "page": 3502,
+          "officeNotes": [
+            "2.1.1612"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:txBody",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "cdr:sp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.26",
+          "title": "Shape Text Body",
+          "page": 3502,
+          "officeNotes": [
+            "2.1.1613"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:x",
+      "types": [
+        "cdr:ST_MarkerCoordinate"
+      ],
+      "text": "cdr:ST_MarkerCoordinate",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cdr:from",
+        "cdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.27",
+          "title": "Relative X Coordinate",
+          "page": 3502
+        }
+      ]
+    },
+    {
+      "name": "cdr:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "cdr:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.28",
+          "title": "Graphic Frame Transform",
+          "page": 3503,
+          "officeNotes": [
+            "2.1.1614"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdr:y",
+      "types": [
+        "cdr:ST_MarkerCoordinate"
+      ],
+      "text": "cdr:ST_MarkerCoordinate",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cdr:from",
+        "cdr:to"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.2.29",
+          "title": "Relative Y Coordinate",
+          "page": 3504
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "cdr:CT_AbsSizeAnchor",
+      "content": "elements",
+      "model": "(cdr:from, cdr:ext, (cdr:sp | cdr:grpSp | cdr:graphicFrame | cdr:cxnSp | cdr:pic))",
+      "attributes": [],
+      "usedBy": [
+        "cdr:absSizeAnchor"
+      ]
+    },
+    {
+      "name": "cdr:CT_Connector",
+      "content": "elements",
+      "model": "(cdr:nvCxnSpPr, cdr:spPr, cdr:style?)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "cdr:cxnSp"
+      ]
+    },
+    {
+      "name": "cdr:CT_ConnectorNonVisual",
+      "content": "elements",
+      "model": "(cdr:cNvPr, cdr:cNvCxnSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:nvCxnSpPr"
+      ]
+    },
+    {
+      "name": "cdr:CT_Drawing",
+      "content": "elements",
+      "model": "(cdr:relSizeAnchor | cdr:absSizeAnchor)*",
+      "attributes": [],
+      "usedBy": [
+        "c:userShapes"
+      ]
+    },
+    {
+      "name": "cdr:CT_GraphicFrame",
+      "content": "elements",
+      "model": "(cdr:nvGraphicFramePr, cdr:xfrm, a:graphic)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "cdr:graphicFrame"
+      ]
+    },
+    {
+      "name": "cdr:CT_GraphicFrameNonVisual",
+      "content": "elements",
+      "model": "(cdr:cNvPr, cdr:cNvGraphicFramePr)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:nvGraphicFramePr"
+      ]
+    },
+    {
+      "name": "cdr:CT_GroupShape",
+      "content": "elements",
+      "model": "(cdr:nvGrpSpPr, cdr:grpSpPr, (cdr:sp | cdr:grpSp | cdr:graphicFrame | cdr:cxnSp | cdr:pic)*)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:grpSp"
+      ]
+    },
+    {
+      "name": "cdr:CT_GroupShapeNonVisual",
+      "content": "elements",
+      "model": "(cdr:cNvPr, cdr:cNvGrpSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:nvGrpSpPr"
+      ]
+    },
+    {
+      "name": "cdr:CT_Marker",
+      "content": "elements",
+      "model": "(cdr:x, cdr:y)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:from",
+        "cdr:to"
+      ]
+    },
+    {
+      "name": "cdr:CT_Picture",
+      "content": "elements",
+      "model": "(cdr:nvPicPr, cdr:blipFill, cdr:spPr, cdr:style?)",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "cdr:pic"
+      ]
+    },
+    {
+      "name": "cdr:CT_PictureNonVisual",
+      "content": "elements",
+      "model": "(cdr:cNvPr, cdr:cNvPicPr)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:nvPicPr"
+      ]
+    },
+    {
+      "name": "cdr:CT_RelSizeAnchor",
+      "content": "elements",
+      "model": "(cdr:from, cdr:to, (cdr:sp | cdr:grpSp | cdr:graphicFrame | cdr:cxnSp | cdr:pic))",
+      "attributes": [],
+      "usedBy": [
+        "cdr:relSizeAnchor"
+      ]
+    },
+    {
+      "name": "cdr:CT_Shape",
+      "content": "elements",
+      "model": "(cdr:nvSpPr, cdr:spPr, cdr:style?, cdr:txBody?)",
+      "attributes": [
+        "fLocksText",
+        "fPublished",
+        "macro",
+        "textlink"
+      ],
+      "usedBy": [
+        "cdr:sp"
+      ]
+    },
+    {
+      "name": "cdr:CT_ShapeNonVisual",
+      "content": "elements",
+      "model": "(cdr:cNvPr, cdr:cNvSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "cdr:nvSpPr"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "cdr:ST_MarkerCoordinate",
+      "definition": "restriction of xsd:double",
+      "facets": {
+        "minInclusive": "0.0",
+        "maxInclusive": "1.0"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.3.3.1",
+          "title": "Chart Marker Coordinate Value",
+          "page": 3504
+        }
+      ]
+    }
+  ]
+}

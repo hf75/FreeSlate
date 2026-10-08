@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Extracted from [MS-DOCX] v20260818, section 5.8 (http://schemas.microsoft.com/office/word/2023/wordml/word16du) by tools/SpecTools. -->
+<xsd:schema xmlns="http://schemas.microsoft.com/office/word/2023/wordml/word16du" xmlns:xsd="http://www.w3.org/2001/XMLSchema" blockDefault="#all" elementFormDefault="qualified" attributeFormDefault="qualified" targetNamespace="http://schemas.microsoft.com/office/word/2023/wordml/word16du">
+  <xsd:attribute name="dateUtc" type="xsd:dateTime" />
+</xsd:schema>

@@ -1,0 +1,5590 @@
+{
+  "prefix": "cx",
+  "uri": "http://schemas.microsoft.com/office/drawing/2014/chartex",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-ODRAWXML] v20261006 §5.22",
+  "counts": {
+    "elements": 118,
+    "attributes": 150,
+    "globalAttributes": 0,
+    "complexTypes": 99,
+    "simpleTypes": 26,
+    "enumValues": 92,
+    "specSections": 127,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "cx:address",
+      "types": [
+        "cx:CT_Address"
+      ],
+      "attributes": [
+        {
+          "name": "address1",
+          "type": "xsd:string"
+        },
+        {
+          "name": "adminDistrict1",
+          "type": "xsd:string"
+        },
+        {
+          "name": "adminDistrict2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "countryRegion",
+          "type": "xsd:string"
+        },
+        {
+          "name": "isoCountryCode",
+          "type": "xsd:string"
+        },
+        {
+          "name": "locality",
+          "type": "xsd:string"
+        },
+        {
+          "name": "postalCode",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoLocation"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.1",
+          "title": "CT_Address",
+          "page": 194
+        }
+      ]
+    },
+    {
+      "name": "cx:aggregation",
+      "types": [
+        "cx:CT_Aggregation"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.2",
+          "title": "CT_Aggregation",
+          "page": 194
+        }
+      ]
+    },
+    {
+      "name": "cx:artifact",
+      "types": [
+        "cx:CT_Artifact"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "source",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "type",
+          "type": "cx:ST_ArtifactType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:artifacts"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.3",
+          "title": "CT_Artifact",
+          "page": 195
+        }
+      ]
+    },
+    {
+      "name": "cx:artifacts",
+      "types": [
+        "cx:CT_Artifacts"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:artifact",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:dashboard"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.4",
+          "title": "CT_Artifacts",
+          "page": 195
+        }
+      ]
+    },
+    {
+      "name": "cx:axis",
+      "types": [
+        "cx:CT_Axis"
+      ],
+      "attributes": [
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "0"
+        },
+        {
+          "name": "id",
+          "type": "cx:ST_AxisId",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:catScaling",
+        "cx:valScaling",
+        "cx:title",
+        "cx:units",
+        "cx:majorGridlines",
+        "cx:minorGridlines",
+        "cx:majorTickMarks",
+        "cx:minorTickMarks",
+        "cx:tickLabels",
+        "cx:numFmt",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.5",
+          "title": "CT_Axis",
+          "page": 196
+        }
+      ]
+    },
+    {
+      "name": "cx:axisId",
+      "types": [
+        "cx:ST_AxisId"
+      ],
+      "text": "cx:ST_AxisId",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:binCount",
+      "types": [
+        "xsd:unsignedInt"
+      ],
+      "text": "xsd:unsignedInt",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:binning"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:binSize",
+      "types": [
+        "xsd:double"
+      ],
+      "text": "xsd:double",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:binning"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:binary",
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:geoCache"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:binding",
+      "types": [
+        "cx:CT_Binding"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "cx:ST_DataId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "cx:ST_BindingType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:bindings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.9",
+          "title": "CT_Binding",
+          "page": 199
+        }
+      ]
+    },
+    {
+      "name": "cx:bindings",
+      "types": [
+        "cx:CT_Bindings"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:binding",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:dashboard"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.10",
+          "title": "CT_Bindings",
+          "page": 199
+        }
+      ]
+    },
+    {
+      "name": "cx:binning",
+      "types": [
+        "cx:CT_Binning"
+      ],
+      "attributes": [
+        {
+          "name": "intervalClosed",
+          "type": "cx:ST_IntervalClosedSide"
+        },
+        {
+          "name": "overflow",
+          "type": "cx:ST_DoubleOrAutomatic"
+        },
+        {
+          "name": "underflow",
+          "type": "cx:ST_DoubleOrAutomatic"
+        }
+      ],
+      "children": [
+        "cx:binSize",
+        "cx:binCount"
+      ],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.11",
+          "title": "CT_Binning",
+          "page": 200
+        }
+      ]
+    },
+    {
+      "name": "cx:catScaling",
+      "types": [
+        "cx:CT_CategoryAxisScaling"
+      ],
+      "attributes": [
+        {
+          "name": "gapWidth",
+          "type": "cx:ST_GapWidthRatio"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.12",
+          "title": "CT_CategoryAxisScaling",
+          "page": 201
+        }
+      ]
+    },
+    {
+      "name": "cx:chart",
+      "global": true,
+      "types": [
+        "cx:CT_RelId",
+        "cx:CT_Chart"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:title",
+        "cx:plotArea",
+        "cx:legend",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.1.1",
+          "title": "chart",
+          "page": 193
+        }
+      ]
+    },
+    {
+      "name": "cx:chartData",
+      "types": [
+        "cx:CT_ChartData"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:externalData",
+        "cx:data",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.14",
+          "title": "CT_ChartData",
+          "page": 202
+        }
+      ]
+    },
+    {
+      "name": "cx:chartSpace",
+      "global": true,
+      "types": [
+        "cx:CT_ChartSpace"
+      ],
+      "attributes": [
+        {
+          "name": "fallbackImg",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "featureList",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "version",
+          "type": "xsd:string",
+          "default": "0.0"
+        }
+      ],
+      "children": [
+        "cx:chartData",
+        "cx:chart",
+        "cx:dashboard",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:clrMapOvr",
+        "cx:fmtOvrs",
+        "cx:printSettings",
+        "cx:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.1.2",
+          "title": "chartSpace",
+          "page": 193
+        }
+      ]
+    },
+    {
+      "name": "cx:clear",
+      "types": [
+        "cx:CT_Clear"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoLocationQueryResults",
+        "cx:geoDataEntityQueryResults",
+        "cx:geoDataPointToEntityQueryResults",
+        "cx:geoChildEntitiesQueryResults",
+        "cx:geoParentEntitiesQueryResults"
+      ],
+      "parents": [
+        "cx:geoCache"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.17",
+          "title": "CT_Clear",
+          "page": 204
+        }
+      ]
+    },
+    {
+      "name": "cx:clrMapOvr",
+      "types": [
+        "a:CT_ColorMapping"
+      ],
+      "attributes": [
+        {
+          "name": "accent1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent3",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent4",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent5",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent6",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "bg1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "bg2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "folHlink",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "hlink",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "tx1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "tx2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        }
+      ],
+      "children": [
+        "a:extLst"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:copyright",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:copyrights"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:copyrights",
+      "types": [
+        "cx:CT_Copyrights"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:copyright"
+      ],
+      "parents": [
+        "cx:geoData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.18",
+          "title": "CT_Copyrights",
+          "page": 205
+        }
+      ]
+    },
+    {
+      "name": "cx:dashboard",
+      "types": [
+        "cx:CT_Dashboard"
+      ],
+      "attributes": [
+        {
+          "name": "entrypoint",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:bindings",
+        "cx:artifacts",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.19",
+          "title": "CT_Dashboard",
+          "page": 205
+        }
+      ]
+    },
+    {
+      "name": "cx:data",
+      "types": [
+        "cx:CT_Data"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "cx:ST_DataId",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:numDim",
+        "cx:strDim",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chartData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.20",
+          "title": "CT_Data",
+          "page": 206
+        }
+      ]
+    },
+    {
+      "name": "cx:dataId",
+      "types": [
+        "cx:CT_DataId"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "cx:ST_DataId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.21",
+          "title": "CT_DataId",
+          "page": 207
+        }
+      ]
+    },
+    {
+      "name": "cx:dataLabel",
+      "types": [
+        "cx:CT_DataLabel"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "pos",
+          "type": "cx:ST_DataLabelPos"
+        }
+      ],
+      "children": [
+        "cx:numFmt",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:visibility",
+        "cx:separator",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:dataLabels"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.22",
+          "title": "CT_DataLabel",
+          "page": 207
+        }
+      ]
+    },
+    {
+      "name": "cx:dataLabelHidden",
+      "types": [
+        "cx:CT_DataLabelHidden"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:dataLabels"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.23",
+          "title": "CT_DataLabelHidden",
+          "page": 208
+        }
+      ]
+    },
+    {
+      "name": "cx:dataLabels",
+      "types": [
+        "cx:CT_DataLabels"
+      ],
+      "attributes": [
+        {
+          "name": "pos",
+          "type": "cx:ST_DataLabelPos"
+        }
+      ],
+      "children": [
+        "cx:numFmt",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:visibility",
+        "cx:separator",
+        "cx:dataLabel",
+        "cx:dataLabelHidden",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.24",
+          "title": "CT_DataLabels",
+          "page": 208
+        }
+      ]
+    },
+    {
+      "name": "cx:dataPt",
+      "types": [
+        "cx:CT_DataPoint"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.26",
+          "title": "CT_DataPoint",
+          "page": 210
+        }
+      ]
+    },
+    {
+      "name": "cx:entityType",
+      "types": [
+        "cx:ST_EntityType"
+      ],
+      "text": "cx:ST_EntityType",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:geoChildTypes"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:evenFooter",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:evenHeader",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:ext",
+      "types": [
+        "cx:CT_Extension"
+      ],
+      "attributes": [
+        {
+          "name": "uri",
+          "type": "xsd:token"
+        }
+      ],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "cx:extLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.27",
+          "title": "CT_Extension",
+          "page": 210
+        }
+      ]
+    },
+    {
+      "name": "cx:extLst",
+      "types": [
+        "cx:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:ext"
+      ],
+      "parents": [
+        "cx:artifacts",
+        "cx:axis",
+        "cx:bindings",
+        "cx:chart",
+        "cx:chartData",
+        "cx:chartSpace",
+        "cx:dashboard",
+        "cx:data",
+        "cx:dataLabel",
+        "cx:dataLabels",
+        "cx:dataPt",
+        "cx:fmtOvr",
+        "cx:layoutPr",
+        "cx:legend",
+        "cx:majorGridlines",
+        "cx:majorTickMarks",
+        "cx:minorGridlines",
+        "cx:minorTickMarks",
+        "cx:plotArea",
+        "cx:plotAreaRegion",
+        "cx:plotSurface",
+        "cx:series",
+        "cx:tickLabels",
+        "cx:title",
+        "cx:units",
+        "cx:unitsLabel"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.28",
+          "title": "CT_ExtensionList",
+          "page": 211
+        }
+      ]
+    },
+    {
+      "name": "cx:externalData",
+      "types": [
+        "cx:CT_ExternalData"
+      ],
+      "attributes": [
+        {
+          "name": "autoUpdate",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:chartData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.29",
+          "title": "CT_ExternalData",
+          "page": 211
+        }
+      ]
+    },
+    {
+      "name": "cx:extremeValue",
+      "types": [
+        "cx:CT_ExtremeValueColorPosition"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:max",
+        "cx:min"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.30",
+          "title": "CT_ExtremeValueColorPosition",
+          "page": 212
+        }
+      ]
+    },
+    {
+      "name": "cx:f",
+      "types": [
+        "cx:CT_Formula"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "cx:ST_FormulaDirection",
+          "default": "col"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:numDim",
+        "cx:strDim",
+        "cx:txData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.34",
+          "title": "CT_Formula",
+          "page": 214
+        }
+      ]
+    },
+    {
+      "name": "cx:firstFooter",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:firstHeader",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:fmtOvr",
+      "types": [
+        "cx:CT_FormatOverride"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:fmtOvrs"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.32",
+          "title": "CT_FormatOverride",
+          "page": 213
+        }
+      ]
+    },
+    {
+      "name": "cx:fmtOvrs",
+      "types": [
+        "cx:CT_FormatOverrides"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:fmtOvr"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.33",
+          "title": "CT_FormatOverrides",
+          "page": 213
+        }
+      ]
+    },
+    {
+      "name": "cx:geoCache",
+      "types": [
+        "cx:CT_GeoCache"
+      ],
+      "attributes": [
+        {
+          "name": "provider",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:binary",
+        "cx:clear"
+      ],
+      "parents": [
+        "cx:geography"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.35",
+          "title": "CT_GeoCache",
+          "page": 214
+        }
+      ]
+    },
+    {
+      "name": "cx:geoChildEntities",
+      "types": [
+        "cx:CT_GeoChildEntities"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoHierarchyEntity"
+      ],
+      "parents": [
+        "cx:geoChildEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.36",
+          "title": "CT_GeoChildEntities",
+          "page": 215
+        }
+      ]
+    },
+    {
+      "name": "cx:geoChildEntitiesQuery",
+      "types": [
+        "cx:CT_GeoChildEntitiesQuery"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:geoChildTypes"
+      ],
+      "parents": [
+        "cx:geoChildEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.37",
+          "title": "CT_GeoChildEntitiesQuery",
+          "page": 215
+        }
+      ]
+    },
+    {
+      "name": "cx:geoChildEntitiesQueryResult",
+      "types": [
+        "cx:CT_GeoChildEntitiesQueryResult"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoChildEntitiesQuery",
+        "cx:geoChildEntities"
+      ],
+      "parents": [
+        "cx:geoChildEntitiesQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.38",
+          "title": "CT_GeoChildEntitiesQueryResult",
+          "page": 216
+        }
+      ]
+    },
+    {
+      "name": "cx:geoChildEntitiesQueryResults",
+      "types": [
+        "cx:CT_GeoChildEntitiesQueryResults"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoChildEntitiesQueryResult"
+      ],
+      "parents": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.39",
+          "title": "CT_GeoChildEntitiesQueryResults",
+          "page": 216
+        }
+      ]
+    },
+    {
+      "name": "cx:geoChildTypes",
+      "types": [
+        "cx:CT_GeoChildTypes"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:entityType"
+      ],
+      "parents": [
+        "cx:geoChildEntitiesQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.40",
+          "title": "CT_GeoChildTypes",
+          "page": 217
+        }
+      ]
+    },
+    {
+      "name": "cx:geoData",
+      "types": [
+        "cx:CT_GeoData"
+      ],
+      "attributes": [
+        {
+          "name": "east",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "north",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "south",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "west",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:geoPolygons",
+        "cx:copyrights"
+      ],
+      "parents": [
+        "cx:geoDataEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.41",
+          "title": "CT_GeoData",
+          "page": 217
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataEntityQuery",
+      "types": [
+        "cx:CT_GeoDataEntityQuery"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoDataEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.42",
+          "title": "CT_GeoDataEntityQuery",
+          "page": 218
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataEntityQueryResult",
+      "types": [
+        "cx:CT_GeoDataEntityQueryResult"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoDataEntityQuery",
+        "cx:geoData"
+      ],
+      "parents": [
+        "cx:geoDataEntityQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.43",
+          "title": "CT_GeoDataEntityQueryResult",
+          "page": 218
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataEntityQueryResults",
+      "types": [
+        "cx:CT_GeoDataEntityQueryResults"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoDataEntityQueryResult"
+      ],
+      "parents": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.44",
+          "title": "CT_GeoDataEntityQueryResults",
+          "page": 219
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataPointQuery",
+      "types": [
+        "cx:CT_GeoDataPointQuery"
+      ],
+      "attributes": [
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        },
+        {
+          "name": "latitude",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "longitude",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoDataPointToEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.45",
+          "title": "CT_GeoDataPointQuery",
+          "page": 219
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataPointToEntityQuery",
+      "types": [
+        "cx:CT_GeoDataPointToEntityQuery"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoDataPointToEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.46",
+          "title": "CT_GeoDataPointToEntityQuery",
+          "page": 220
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataPointToEntityQueryResult",
+      "types": [
+        "cx:CT_GeoDataPointToEntityQueryResult"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoDataPointQuery",
+        "cx:geoDataPointToEntityQuery"
+      ],
+      "parents": [
+        "cx:geoDataPointToEntityQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.47",
+          "title": "CT_GeoDataPointToEntityQueryResult",
+          "page": 220
+        }
+      ]
+    },
+    {
+      "name": "cx:geoDataPointToEntityQueryResults",
+      "types": [
+        "cx:CT_GeoDataPointToEntityQueryResults"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoDataPointToEntityQueryResult"
+      ],
+      "parents": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.48",
+          "title": "CT_GeoDataPointToEntityQueryResults",
+          "page": 221
+        }
+      ]
+    },
+    {
+      "name": "cx:geoEntity",
+      "types": [
+        "cx:CT_GeoEntity"
+      ],
+      "attributes": [
+        {
+          "name": "entityName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoParentEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.49",
+          "title": "CT_GeoEntity",
+          "page": 221
+        }
+      ]
+    },
+    {
+      "name": "cx:geoHierarchyEntity",
+      "types": [
+        "cx:CT_GeoHierarchyEntity"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoChildEntities"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.51",
+          "title": "CT_GeoHierarchyEntity",
+          "page": 223
+        }
+      ]
+    },
+    {
+      "name": "cx:geoLocation",
+      "types": [
+        "cx:CT_GeoLocation"
+      ],
+      "attributes": [
+        {
+          "name": "entityName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        },
+        {
+          "name": "latitude",
+          "type": "xsd:double"
+        },
+        {
+          "name": "longitude",
+          "type": "xsd:double"
+        }
+      ],
+      "children": [
+        "cx:address"
+      ],
+      "parents": [
+        "cx:geoLocations"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.52",
+          "title": "CT_GeoLocation",
+          "page": 223
+        }
+      ]
+    },
+    {
+      "name": "cx:geoLocationQuery",
+      "types": [
+        "cx:CT_GeoLocationQuery"
+      ],
+      "attributes": [
+        {
+          "name": "adminDistrict1",
+          "type": "xsd:string"
+        },
+        {
+          "name": "adminDistrict2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "countryRegion",
+          "type": "xsd:string"
+        },
+        {
+          "name": "entityType",
+          "type": "cx:ST_EntityType",
+          "required": true
+        },
+        {
+          "name": "postalCode",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoLocationQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.53",
+          "title": "CT_GeoLocationQuery",
+          "page": 224
+        }
+      ]
+    },
+    {
+      "name": "cx:geoLocationQueryResult",
+      "types": [
+        "cx:CT_GeoLocationQueryResult"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoLocationQuery",
+        "cx:geoLocations"
+      ],
+      "parents": [
+        "cx:geoLocationQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.54",
+          "title": "CT_GeoLocationQueryResult",
+          "page": 225
+        }
+      ]
+    },
+    {
+      "name": "cx:geoLocationQueryResults",
+      "types": [
+        "cx:CT_GeoLocationQueryResults"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoLocationQueryResult"
+      ],
+      "parents": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.55",
+          "title": "CT_GeoLocationQueryResults",
+          "page": 225
+        }
+      ]
+    },
+    {
+      "name": "cx:geoLocations",
+      "types": [
+        "cx:CT_GeoLocations"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoLocation"
+      ],
+      "parents": [
+        "cx:geoLocationQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.56",
+          "title": "CT_GeoLocations",
+          "page": 226
+        }
+      ]
+    },
+    {
+      "name": "cx:geoParentEntitiesQuery",
+      "types": [
+        "cx:CT_GeoParentEntitiesQuery"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoParentEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.57",
+          "title": "CT_GeoParentEntitiesQuery",
+          "page": 226
+        }
+      ]
+    },
+    {
+      "name": "cx:geoParentEntitiesQueryResult",
+      "types": [
+        "cx:CT_GeoParentEntitiesQueryResult"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoParentEntitiesQuery",
+        "cx:geoEntity",
+        "cx:geoParentEntity"
+      ],
+      "parents": [
+        "cx:geoParentEntitiesQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.58",
+          "title": "CT_GeoParentEntitiesQueryResult",
+          "page": 227
+        }
+      ]
+    },
+    {
+      "name": "cx:geoParentEntitiesQueryResults",
+      "types": [
+        "cx:CT_GeoParentEntitiesQueryResults"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoParentEntitiesQueryResult"
+      ],
+      "parents": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.59",
+          "title": "CT_GeoParentEntitiesQueryResults",
+          "page": 227
+        }
+      ]
+    },
+    {
+      "name": "cx:geoParentEntity",
+      "types": [
+        "cx:CT_GeoParentEntity"
+      ],
+      "attributes": [
+        {
+          "name": "entityId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoParentEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.60",
+          "title": "CT_GeoParentEntity",
+          "page": 228
+        }
+      ]
+    },
+    {
+      "name": "cx:geoPolygon",
+      "types": [
+        "cx:CT_GeoPolygon"
+      ],
+      "attributes": [
+        {
+          "name": "numPoints",
+          "type": "xsd:integer",
+          "required": true
+        },
+        {
+          "name": "pcaRings",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "polygonId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:geoPolygons"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.61",
+          "title": "CT_GeoPolygon",
+          "page": 228
+        }
+      ]
+    },
+    {
+      "name": "cx:geoPolygons",
+      "types": [
+        "cx:CT_GeoPolygons"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:geoPolygon"
+      ],
+      "parents": [
+        "cx:geoData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.62",
+          "title": "CT_GeoPolygons",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:geography",
+      "types": [
+        "cx:CT_Geography"
+      ],
+      "attributes": [
+        {
+          "name": "attribution",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "cultureLanguage",
+          "type": "xsd:language",
+          "required": true
+        },
+        {
+          "name": "cultureRegion",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "projectionType",
+          "type": "cx:ST_GeoProjectionType"
+        },
+        {
+          "name": "viewedRegionType",
+          "type": "cx:ST_GeoMappingLevel"
+        }
+      ],
+      "children": [
+        "cx:geoCache"
+      ],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.50",
+          "title": "CT_Geography",
+          "page": 222
+        }
+      ]
+    },
+    {
+      "name": "cx:headerFooter",
+      "types": [
+        "cx:CT_HeaderFooter"
+      ],
+      "attributes": [
+        {
+          "name": "alignWithMargins",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "differentFirst",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "differentOddEven",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "cx:oddHeader",
+        "cx:oddFooter",
+        "cx:evenHeader",
+        "cx:evenFooter",
+        "cx:firstHeader",
+        "cx:firstFooter"
+      ],
+      "parents": [
+        "cx:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.64",
+          "title": "CT_HeaderFooter",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:idx",
+      "types": [
+        "cx:CT_SubtotalIndex"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:subtotals"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.89",
+          "title": "CT_SubtotalIndex",
+          "page": 244
+        }
+      ]
+    },
+    {
+      "name": "cx:layoutPr",
+      "types": [
+        "cx:CT_SeriesLayoutProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:parentLabelLayout",
+        "cx:regionLabelLayout",
+        "cx:visibility",
+        "cx:aggregation",
+        "cx:binning",
+        "cx:geography",
+        "cx:statistics",
+        "cx:subtotals",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.84",
+          "title": "CT_SeriesLayoutProperties",
+          "page": 241
+        }
+      ]
+    },
+    {
+      "name": "cx:legend",
+      "types": [
+        "cx:CT_Legend"
+      ],
+      "attributes": [
+        {
+          "name": "align",
+          "type": "cx:ST_PosAlign",
+          "default": "ctr"
+        },
+        {
+          "name": "overlay",
+          "type": "xsd:boolean",
+          "default": "0"
+        },
+        {
+          "name": "pos",
+          "type": "cx:ST_SidePos",
+          "default": "r"
+        }
+      ],
+      "children": [
+        "cx:spPr",
+        "cx:txPr",
+        "cx:offset",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.65",
+          "title": "CT_Legend",
+          "page": 230
+        }
+      ]
+    },
+    {
+      "name": "cx:lvl",
+      "types": [
+        "cx:CT_StringLevel",
+        "cx:CT_NumericLevel"
+      ],
+      "attributes": [
+        {
+          "name": "formatCode",
+          "type": "xsd:string"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "ptCount",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:pt"
+      ],
+      "parents": [
+        "cx:numDim",
+        "cx:strDim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.87",
+          "title": "CT_StringLevel",
+          "page": 243
+        },
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.69",
+          "title": "CT_NumericLevel",
+          "page": 233
+        }
+      ]
+    },
+    {
+      "name": "cx:majorGridlines",
+      "types": [
+        "cx:CT_Gridlines"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.63",
+          "title": "CT_Gridlines",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:majorTickMarks",
+      "types": [
+        "cx:CT_TickMarks"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "cx:ST_TickMarksType"
+        }
+      ],
+      "children": [
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.94",
+          "title": "CT_TickMarks",
+          "page": 247
+        }
+      ]
+    },
+    {
+      "name": "cx:max",
+      "types": [
+        "cx:CT_ValueColorEndPosition"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:extremeValue",
+        "cx:number",
+        "cx:percent"
+      ],
+      "parents": [
+        "cx:valueColorPositions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.96",
+          "title": "CT_ValueColorEndPosition",
+          "page": 248
+        }
+      ]
+    },
+    {
+      "name": "cx:maxColor",
+      "types": [
+        "a:CT_SolidColorFillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "cx:valueColors"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:mid",
+      "types": [
+        "cx:CT_ValueColorMiddlePosition"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:number",
+        "cx:percent"
+      ],
+      "parents": [
+        "cx:valueColorPositions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.97",
+          "title": "CT_ValueColorMiddlePosition",
+          "page": 248
+        }
+      ]
+    },
+    {
+      "name": "cx:midColor",
+      "types": [
+        "a:CT_SolidColorFillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "cx:valueColors"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:min",
+      "types": [
+        "cx:CT_ValueColorEndPosition"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:extremeValue",
+        "cx:number",
+        "cx:percent"
+      ],
+      "parents": [
+        "cx:valueColorPositions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.96",
+          "title": "CT_ValueColorEndPosition",
+          "page": 248
+        }
+      ]
+    },
+    {
+      "name": "cx:minColor",
+      "types": [
+        "a:CT_SolidColorFillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "cx:valueColors"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:minorGridlines",
+      "types": [
+        "cx:CT_Gridlines"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.63",
+          "title": "CT_Gridlines",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:minorTickMarks",
+      "types": [
+        "cx:CT_TickMarks"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "cx:ST_TickMarksType"
+        }
+      ],
+      "children": [
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.94",
+          "title": "CT_TickMarks",
+          "page": 247
+        }
+      ]
+    },
+    {
+      "name": "cx:nf",
+      "types": [
+        "cx:CT_Formula"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "cx:ST_FormulaDirection",
+          "default": "col"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:numDim",
+        "cx:strDim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.34",
+          "title": "CT_Formula",
+          "page": 214
+        }
+      ]
+    },
+    {
+      "name": "cx:numDim",
+      "types": [
+        "cx:CT_NumericDimension"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "cx:ST_NumericDimensionType",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:f",
+        "cx:nf",
+        "cx:lvl"
+      ],
+      "parents": [
+        "cx:data"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.68",
+          "title": "CT_NumericDimension",
+          "page": 232
+        }
+      ]
+    },
+    {
+      "name": "cx:numFmt",
+      "types": [
+        "cx:CT_NumberFormat"
+      ],
+      "attributes": [
+        {
+          "name": "formatCode",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "sourceLinked",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:axis",
+        "cx:dataLabel",
+        "cx:dataLabels"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.67",
+          "title": "CT_NumberFormat",
+          "page": 232
+        }
+      ]
+    },
+    {
+      "name": "cx:number",
+      "types": [
+        "cx:CT_NumberColorPosition"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:max",
+        "cx:mid",
+        "cx:min"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.66",
+          "title": "CT_NumberColorPosition",
+          "page": 231
+        }
+      ]
+    },
+    {
+      "name": "cx:oddFooter",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:oddHeader",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:headerFooter"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:offset",
+      "types": [
+        "cx:CT_Offset"
+      ],
+      "attributes": [
+        {
+          "name": "left",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "top",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:legend",
+        "cx:title"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.71",
+          "title": "CT_Offset",
+          "page": 234
+        }
+      ]
+    },
+    {
+      "name": "cx:pageMargins",
+      "types": [
+        "cx:CT_PageMargins"
+      ],
+      "attributes": [
+        {
+          "name": "b",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "footer",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "header",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "l",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "r",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "t",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.72",
+          "title": "CT_PageMargins",
+          "page": 234
+        }
+      ]
+    },
+    {
+      "name": "cx:pageSetup",
+      "types": [
+        "cx:CT_PageSetup"
+      ],
+      "attributes": [
+        {
+          "name": "blackAndWhite",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "copies",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "draft",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "firstPageNumber",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "horizontalDpi",
+          "type": "xsd:int",
+          "default": "600"
+        },
+        {
+          "name": "orientation",
+          "type": "cx:ST_PageOrientation",
+          "default": "default"
+        },
+        {
+          "name": "paperSize",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "useFirstPageNumber",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "verticalDpi",
+          "type": "xsd:int",
+          "default": "600"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.73",
+          "title": "CT_PageSetup",
+          "page": 235
+        }
+      ]
+    },
+    {
+      "name": "cx:parentLabelLayout",
+      "types": [
+        "cx:CT_ParentLabelLayout"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "cx:ST_ParentLabelLayout",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.74",
+          "title": "CT_ParentLabelLayout",
+          "page": 236
+        }
+      ]
+    },
+    {
+      "name": "cx:percent",
+      "types": [
+        "cx:CT_PercentageColorPosition"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:max",
+        "cx:mid",
+        "cx:min"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.75",
+          "title": "CT_PercentageColorPosition",
+          "page": 236
+        }
+      ]
+    },
+    {
+      "name": "cx:plotArea",
+      "types": [
+        "cx:CT_PlotArea"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:plotAreaRegion",
+        "cx:axis",
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:chart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.76",
+          "title": "CT_PlotArea",
+          "page": 237
+        }
+      ]
+    },
+    {
+      "name": "cx:plotAreaRegion",
+      "types": [
+        "cx:CT_PlotAreaRegion"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:plotSurface",
+        "cx:series",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.77",
+          "title": "CT_PlotAreaRegion",
+          "page": 237
+        }
+      ]
+    },
+    {
+      "name": "cx:plotSurface",
+      "types": [
+        "cx:CT_PlotSurface"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:spPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:plotAreaRegion"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.78",
+          "title": "CT_PlotSurface",
+          "page": 238
+        }
+      ]
+    },
+    {
+      "name": "cx:printSettings",
+      "types": [
+        "cx:CT_PrintSettings"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:headerFooter",
+        "cx:pageMargins",
+        "cx:pageSetup"
+      ],
+      "parents": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.79",
+          "title": "CT_PrintSettings",
+          "page": 238
+        }
+      ]
+    },
+    {
+      "name": "cx:pt",
+      "types": [
+        "cx:CT_StringValue",
+        "cx:CT_NumericValue"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:lvl"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.88",
+          "title": "CT_StringValue",
+          "page": 244
+        },
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.70",
+          "title": "CT_NumericValue",
+          "page": 233
+        }
+      ]
+    },
+    {
+      "name": "cx:regionLabelLayout",
+      "types": [
+        "cx:CT_RegionLabelLayout"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "cx:ST_RegionLabelLayout",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.80",
+          "title": "CT_RegionLabelLayout",
+          "page": 239
+        }
+      ]
+    },
+    {
+      "name": "cx:rich",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "cx:tx"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:separator",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:dataLabel",
+        "cx:dataLabels"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:series",
+      "types": [
+        "cx:CT_Series"
+      ],
+      "attributes": [
+        {
+          "name": "formatIdx",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "0"
+        },
+        {
+          "name": "layoutId",
+          "type": "cx:ST_SeriesLayout",
+          "required": true
+        },
+        {
+          "name": "ownerIdx",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "cx:tx",
+        "cx:spPr",
+        "cx:valueColors",
+        "cx:valueColorPositions",
+        "cx:dataPt",
+        "cx:dataLabels",
+        "cx:dataId",
+        "cx:layoutPr",
+        "cx:axisId",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:plotAreaRegion"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.82",
+          "title": "CT_Series",
+          "page": 239
+        }
+      ]
+    },
+    {
+      "name": "cx:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "cx:axis",
+        "cx:chartSpace",
+        "cx:dataLabel",
+        "cx:dataLabels",
+        "cx:dataPt",
+        "cx:fmtOvr",
+        "cx:legend",
+        "cx:majorGridlines",
+        "cx:minorGridlines",
+        "cx:plotArea",
+        "cx:plotSurface",
+        "cx:series",
+        "cx:title",
+        "cx:unitsLabel"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:statistics",
+      "types": [
+        "cx:CT_Statistics"
+      ],
+      "attributes": [
+        {
+          "name": "quartileMethod",
+          "type": "cx:ST_QuartileMethod"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.85",
+          "title": "CT_Statistics",
+          "page": 242
+        }
+      ]
+    },
+    {
+      "name": "cx:strDim",
+      "types": [
+        "cx:CT_StringDimension"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "cx:ST_StringDimensionType",
+          "required": true
+        }
+      ],
+      "children": [
+        "cx:f",
+        "cx:nf",
+        "cx:lvl"
+      ],
+      "parents": [
+        "cx:data"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.86",
+          "title": "CT_StringDimension",
+          "page": 243
+        }
+      ]
+    },
+    {
+      "name": "cx:subtotals",
+      "types": [
+        "cx:CT_Subtotals"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:idx"
+      ],
+      "parents": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.90",
+          "title": "CT_Subtotals",
+          "page": 245
+        }
+      ]
+    },
+    {
+      "name": "cx:tickLabels",
+      "types": [
+        "cx:CT_TickLabels"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.93",
+          "title": "CT_TickLabels",
+          "page": 246
+        }
+      ]
+    },
+    {
+      "name": "cx:title",
+      "types": [
+        "cx:CT_AxisTitle",
+        "cx:CT_ChartTitle"
+      ],
+      "attributes": [
+        {
+          "name": "align",
+          "type": "cx:ST_PosAlign",
+          "default": "ctr"
+        },
+        {
+          "name": "overlay",
+          "type": "xsd:boolean",
+          "default": "0"
+        },
+        {
+          "name": "pos",
+          "type": "cx:ST_SidePos",
+          "default": "t"
+        }
+      ],
+      "children": [
+        "cx:tx",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:offset",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis",
+        "cx:chart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.6",
+          "title": "CT_AxisTitle",
+          "page": 197
+        },
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.16",
+          "title": "CT_ChartTitle",
+          "page": 203
+        }
+      ]
+    },
+    {
+      "name": "cx:tx",
+      "types": [
+        "cx:CT_Text"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:txData",
+        "cx:rich"
+      ],
+      "parents": [
+        "cx:series",
+        "cx:title",
+        "cx:unitsLabel"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.91",
+          "title": "CT_Text",
+          "page": 245
+        }
+      ]
+    },
+    {
+      "name": "cx:txData",
+      "types": [
+        "cx:CT_TextData"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:f",
+        "cx:v"
+      ],
+      "parents": [
+        "cx:tx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.92",
+          "title": "CT_TextData",
+          "page": 246
+        }
+      ]
+    },
+    {
+      "name": "cx:txPr",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "cx:axis",
+        "cx:chartSpace",
+        "cx:dataLabel",
+        "cx:dataLabels",
+        "cx:legend",
+        "cx:title",
+        "cx:unitsLabel"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:units",
+      "types": [
+        "cx:CT_AxisUnits"
+      ],
+      "attributes": [
+        {
+          "name": "unit",
+          "type": "cx:ST_AxisUnit"
+        }
+      ],
+      "children": [
+        "cx:unitsLabel",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.7",
+          "title": "CT_AxisUnits",
+          "page": 198
+        }
+      ]
+    },
+    {
+      "name": "cx:unitsLabel",
+      "types": [
+        "cx:CT_AxisUnitsLabel"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:tx",
+        "cx:spPr",
+        "cx:txPr",
+        "cx:extLst"
+      ],
+      "parents": [
+        "cx:units"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.8",
+          "title": "CT_AxisUnitsLabel",
+          "page": 198
+        }
+      ]
+    },
+    {
+      "name": "cx:v",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cx:txData"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cx:valScaling",
+      "types": [
+        "cx:CT_ValueAxisScaling"
+      ],
+      "attributes": [
+        {
+          "name": "majorUnit",
+          "type": "cx:ST_ValueAxisUnit"
+        },
+        {
+          "name": "max",
+          "type": "cx:ST_DoubleOrAutomatic"
+        },
+        {
+          "name": "min",
+          "type": "cx:ST_DoubleOrAutomatic"
+        },
+        {
+          "name": "minorUnit",
+          "type": "cx:ST_ValueAxisUnit"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.95",
+          "title": "CT_ValueAxisScaling",
+          "page": 247
+        }
+      ]
+    },
+    {
+      "name": "cx:valueColorPositions",
+      "types": [
+        "cx:CT_ValueColorPositions"
+      ],
+      "attributes": [
+        {
+          "name": "count",
+          "type": "cx:ST_ValueColorPositionCount",
+          "default": "2"
+        }
+      ],
+      "children": [
+        "cx:min",
+        "cx:mid",
+        "cx:max"
+      ],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.98",
+          "title": "CT_ValueColorPositions",
+          "page": 249
+        }
+      ]
+    },
+    {
+      "name": "cx:valueColors",
+      "types": [
+        "cx:CT_ValueColors"
+      ],
+      "attributes": [],
+      "children": [
+        "cx:minColor",
+        "cx:midColor",
+        "cx:maxColor"
+      ],
+      "parents": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.99",
+          "title": "CT_ValueColors",
+          "page": 249
+        }
+      ]
+    },
+    {
+      "name": "cx:visibility",
+      "types": [
+        "cx:CT_SeriesElementVisibilities",
+        "cx:CT_DataLabelVisibilities"
+      ],
+      "attributes": [
+        {
+          "name": "categoryName",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "connectorLines",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "meanLine",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "meanMarker",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "nonoutliers",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "outliers",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "seriesName",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "value",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cx:dataLabel",
+        "cx:dataLabels",
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.83",
+          "title": "CT_SeriesElementVisibilities",
+          "page": 241
+        },
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.25",
+          "title": "CT_DataLabelVisibilities",
+          "page": 209
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "cx:CT_Address",
+      "content": "empty",
+      "attributes": [
+        "address1",
+        "adminDistrict1",
+        "adminDistrict2",
+        "countryRegion",
+        "isoCountryCode",
+        "locality",
+        "postalCode"
+      ],
+      "usedBy": [
+        "cx:address"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.1",
+          "title": "CT_Address",
+          "page": 194
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Aggregation",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "cx:aggregation"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.2",
+          "title": "CT_Aggregation",
+          "page": 194
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Artifact",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "name",
+        "source",
+        "type"
+      ],
+      "usedBy": [
+        "cx:artifact"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.3",
+          "title": "CT_Artifact",
+          "page": 195
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Artifacts",
+      "content": "elements",
+      "model": "(cx:artifact+, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:artifacts"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.4",
+          "title": "CT_Artifacts",
+          "page": 195
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Axis",
+      "content": "elements",
+      "model": "((cx:catScaling | cx:valScaling), cx:title?, cx:units?, cx:majorGridlines?, cx:minorGridlines?, cx:majorTickMarks?, cx:minorTickMarks?, cx:tickLabels?, cx:numFmt?, cx:spPr?, cx:txPr?, cx:extLst?)",
+      "attributes": [
+        "hidden",
+        "id"
+      ],
+      "usedBy": [
+        "cx:axis"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.5",
+          "title": "CT_Axis",
+          "page": 196
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_AxisTitle",
+      "content": "elements",
+      "model": "(cx:tx?, cx:spPr?, cx:txPr?, cx:offset?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:title"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.6",
+          "title": "CT_AxisTitle",
+          "page": 197
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_AxisUnits",
+      "content": "elements",
+      "model": "(cx:unitsLabel?, cx:extLst?)",
+      "attributes": [
+        "unit"
+      ],
+      "usedBy": [
+        "cx:units"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.7",
+          "title": "CT_AxisUnits",
+          "page": 198
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_AxisUnitsLabel",
+      "content": "elements",
+      "model": "(cx:tx?, cx:spPr?, cx:txPr?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:unitsLabel"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.8",
+          "title": "CT_AxisUnitsLabel",
+          "page": 198
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Binding",
+      "content": "empty",
+      "attributes": [
+        "id",
+        "name",
+        "type"
+      ],
+      "usedBy": [
+        "cx:binding"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.9",
+          "title": "CT_Binding",
+          "page": 199
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Bindings",
+      "content": "elements",
+      "model": "(cx:binding*, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:bindings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.10",
+          "title": "CT_Bindings",
+          "page": 199
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Binning",
+      "content": "elements",
+      "model": "(cx:binSize | cx:binCount)?",
+      "attributes": [
+        "intervalClosed",
+        "overflow",
+        "underflow"
+      ],
+      "usedBy": [
+        "cx:binning"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.11",
+          "title": "CT_Binning",
+          "page": 200
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_CategoryAxisScaling",
+      "content": "empty",
+      "attributes": [
+        "gapWidth"
+      ],
+      "usedBy": [
+        "cx:catScaling"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.12",
+          "title": "CT_CategoryAxisScaling",
+          "page": 201
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Chart",
+      "content": "elements",
+      "model": "(cx:title?, cx:plotArea, cx:legend?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:chart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.13",
+          "title": "CT_Chart",
+          "page": 201
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ChartData",
+      "content": "elements",
+      "model": "(cx:externalData?, cx:data+, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:chartData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.14",
+          "title": "CT_ChartData",
+          "page": 202
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ChartSpace",
+      "content": "elements",
+      "model": "(cx:chartData, (cx:chart | cx:dashboard), cx:spPr?, cx:txPr?, cx:clrMapOvr?, cx:fmtOvrs?, cx:printSettings?, cx:extLst?)",
+      "attributes": [
+        "fallbackImg",
+        "featureList",
+        "version"
+      ],
+      "usedBy": [
+        "cx:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.15",
+          "title": "CT_ChartSpace",
+          "page": 202
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ChartTitle",
+      "content": "elements",
+      "model": "(cx:tx?, cx:spPr?, cx:txPr?, cx:offset?, cx:extLst?)",
+      "attributes": [
+        "align",
+        "overlay",
+        "pos"
+      ],
+      "usedBy": [
+        "cx:title"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.16",
+          "title": "CT_ChartTitle",
+          "page": 203
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Clear",
+      "content": "elements",
+      "model": "(cx:geoLocationQueryResults?, cx:geoDataEntityQueryResults?, cx:geoDataPointToEntityQueryResults?, cx:geoChildEntitiesQueryResults?, cx:geoParentEntitiesQueryResults?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:clear"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.17",
+          "title": "CT_Clear",
+          "page": 204
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Copyrights",
+      "content": "elements",
+      "model": "cx:copyright*",
+      "attributes": [],
+      "usedBy": [
+        "cx:copyrights"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.18",
+          "title": "CT_Copyrights",
+          "page": 205
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Dashboard",
+      "content": "elements",
+      "model": "(cx:bindings, cx:artifacts, cx:extLst?)",
+      "attributes": [
+        "entrypoint"
+      ],
+      "usedBy": [
+        "cx:dashboard"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.19",
+          "title": "CT_Dashboard",
+          "page": 205
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Data",
+      "content": "elements",
+      "model": "((cx:numDim | cx:strDim)+, cx:extLst?)",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "cx:data"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.20",
+          "title": "CT_Data",
+          "page": 206
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataId",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:dataId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.21",
+          "title": "CT_DataId",
+          "page": 207
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataLabel",
+      "content": "elements",
+      "model": "(cx:numFmt?, cx:spPr?, cx:txPr?, cx:visibility?, cx:separator?, cx:extLst?)",
+      "attributes": [
+        "idx",
+        "pos"
+      ],
+      "usedBy": [
+        "cx:dataLabel"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.22",
+          "title": "CT_DataLabel",
+          "page": 207
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataLabelHidden",
+      "content": "empty",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "cx:dataLabelHidden"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.23",
+          "title": "CT_DataLabelHidden",
+          "page": 208
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataLabelVisibilities",
+      "content": "empty",
+      "attributes": [
+        "categoryName",
+        "seriesName",
+        "value"
+      ],
+      "usedBy": [
+        "cx:visibility"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.25",
+          "title": "CT_DataLabelVisibilities",
+          "page": 209
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataLabels",
+      "content": "elements",
+      "model": "(cx:numFmt?, cx:spPr?, cx:txPr?, cx:visibility?, cx:separator?, cx:dataLabel*, cx:dataLabelHidden*, cx:extLst?)",
+      "attributes": [
+        "pos"
+      ],
+      "usedBy": [
+        "cx:dataLabels"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.24",
+          "title": "CT_DataLabels",
+          "page": 208
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_DataPoint",
+      "content": "elements",
+      "model": "(cx:spPr?, cx:extLst?)",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "cx:dataPt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.26",
+          "title": "CT_DataPoint",
+          "page": 210
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Extension",
+      "content": "elements",
+      "model": "any(##any)",
+      "attributes": [
+        "uri"
+      ],
+      "usedBy": [
+        "cx:ext"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.27",
+          "title": "CT_Extension",
+          "page": 210
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ExtensionList",
+      "content": "elements",
+      "model": "cx:ext*",
+      "attributes": [],
+      "usedBy": [
+        "cx:extLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.28",
+          "title": "CT_ExtensionList",
+          "page": 211
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ExternalData",
+      "content": "empty",
+      "attributes": [
+        "autoUpdate",
+        "r:id"
+      ],
+      "usedBy": [
+        "cx:externalData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.29",
+          "title": "CT_ExternalData",
+          "page": 211
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ExtremeValueColorPosition",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "cx:extremeValue"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.30",
+          "title": "CT_ExtremeValueColorPosition",
+          "page": 212
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_FeatureExtension",
+      "content": "elements",
+      "model": "any(##any)",
+      "attributes": [
+        "drop",
+        "feature"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.31",
+          "title": "CT_FeatureExtension",
+          "page": 212
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_FormatOverride",
+      "content": "elements",
+      "model": "(cx:spPr?, cx:extLst?)",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "cx:fmtOvr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.32",
+          "title": "CT_FormatOverride",
+          "page": 213
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_FormatOverrides",
+      "content": "elements",
+      "model": "cx:fmtOvr*",
+      "attributes": [],
+      "usedBy": [
+        "cx:fmtOvrs"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.33",
+          "title": "CT_FormatOverrides",
+          "page": 213
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Formula",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "dir"
+      ],
+      "usedBy": [
+        "cx:f",
+        "cx:nf"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.34",
+          "title": "CT_Formula",
+          "page": 214
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoCache",
+      "content": "elements",
+      "model": "(cx:binary? | cx:clear?)+",
+      "attributes": [
+        "provider"
+      ],
+      "usedBy": [
+        "cx:geoCache"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.35",
+          "title": "CT_GeoCache",
+          "page": 214
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoChildEntities",
+      "content": "elements",
+      "model": "cx:geoHierarchyEntity*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoChildEntities"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.36",
+          "title": "CT_GeoChildEntities",
+          "page": 215
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoChildEntitiesQuery",
+      "content": "elements",
+      "model": "cx:geoChildTypes?",
+      "attributes": [
+        "entityId"
+      ],
+      "usedBy": [
+        "cx:geoChildEntitiesQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.37",
+          "title": "CT_GeoChildEntitiesQuery",
+          "page": 215
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoChildEntitiesQueryResult",
+      "content": "elements",
+      "model": "(cx:geoChildEntitiesQuery?, cx:geoChildEntities?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoChildEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.38",
+          "title": "CT_GeoChildEntitiesQueryResult",
+          "page": 216
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoChildEntitiesQueryResults",
+      "content": "elements",
+      "model": "cx:geoChildEntitiesQueryResult*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoChildEntitiesQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.39",
+          "title": "CT_GeoChildEntitiesQueryResults",
+          "page": 216
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoChildTypes",
+      "content": "elements",
+      "model": "cx:entityType*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoChildTypes"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.40",
+          "title": "CT_GeoChildTypes",
+          "page": 217
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoData",
+      "content": "elements",
+      "model": "(cx:geoPolygons?, cx:copyrights?)",
+      "attributes": [
+        "east",
+        "entityId",
+        "entityName",
+        "north",
+        "south",
+        "west"
+      ],
+      "usedBy": [
+        "cx:geoData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.41",
+          "title": "CT_GeoData",
+          "page": 217
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataEntityQuery",
+      "content": "empty",
+      "attributes": [
+        "entityId",
+        "entityType"
+      ],
+      "usedBy": [
+        "cx:geoDataEntityQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.42",
+          "title": "CT_GeoDataEntityQuery",
+          "page": 218
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataEntityQueryResult",
+      "content": "elements",
+      "model": "(cx:geoDataEntityQuery?, cx:geoData?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoDataEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.43",
+          "title": "CT_GeoDataEntityQueryResult",
+          "page": 218
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataEntityQueryResults",
+      "content": "elements",
+      "model": "cx:geoDataEntityQueryResult*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoDataEntityQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.44",
+          "title": "CT_GeoDataEntityQueryResults",
+          "page": 219
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataPointQuery",
+      "content": "empty",
+      "attributes": [
+        "entityType",
+        "latitude",
+        "longitude"
+      ],
+      "usedBy": [
+        "cx:geoDataPointQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.45",
+          "title": "CT_GeoDataPointQuery",
+          "page": 219
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataPointToEntityQuery",
+      "content": "empty",
+      "attributes": [
+        "entityId",
+        "entityType"
+      ],
+      "usedBy": [
+        "cx:geoDataPointToEntityQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.46",
+          "title": "CT_GeoDataPointToEntityQuery",
+          "page": 220
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataPointToEntityQueryResult",
+      "content": "elements",
+      "model": "(cx:geoDataPointQuery?, cx:geoDataPointToEntityQuery?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoDataPointToEntityQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.47",
+          "title": "CT_GeoDataPointToEntityQueryResult",
+          "page": 220
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoDataPointToEntityQueryResults",
+      "content": "elements",
+      "model": "cx:geoDataPointToEntityQueryResult*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoDataPointToEntityQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.48",
+          "title": "CT_GeoDataPointToEntityQueryResults",
+          "page": 221
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoEntity",
+      "content": "empty",
+      "attributes": [
+        "entityName",
+        "entityType"
+      ],
+      "usedBy": [
+        "cx:geoEntity"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.49",
+          "title": "CT_GeoEntity",
+          "page": 221
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoHierarchyEntity",
+      "content": "empty",
+      "attributes": [
+        "entityId",
+        "entityName",
+        "entityType"
+      ],
+      "usedBy": [
+        "cx:geoHierarchyEntity"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.51",
+          "title": "CT_GeoHierarchyEntity",
+          "page": 223
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoLocation",
+      "content": "elements",
+      "model": "cx:address?",
+      "attributes": [
+        "entityName",
+        "entityType",
+        "latitude",
+        "longitude"
+      ],
+      "usedBy": [
+        "cx:geoLocation"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.52",
+          "title": "CT_GeoLocation",
+          "page": 223
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoLocationQuery",
+      "content": "empty",
+      "attributes": [
+        "adminDistrict1",
+        "adminDistrict2",
+        "countryRegion",
+        "entityType",
+        "postalCode"
+      ],
+      "usedBy": [
+        "cx:geoLocationQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.53",
+          "title": "CT_GeoLocationQuery",
+          "page": 224
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoLocationQueryResult",
+      "content": "elements",
+      "model": "(cx:geoLocationQuery?, cx:geoLocations?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoLocationQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.54",
+          "title": "CT_GeoLocationQueryResult",
+          "page": 225
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoLocationQueryResults",
+      "content": "elements",
+      "model": "cx:geoLocationQueryResult*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoLocationQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.55",
+          "title": "CT_GeoLocationQueryResults",
+          "page": 225
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoLocations",
+      "content": "elements",
+      "model": "cx:geoLocation?",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoLocations"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.56",
+          "title": "CT_GeoLocations",
+          "page": 226
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoParentEntitiesQuery",
+      "content": "empty",
+      "attributes": [
+        "entityId"
+      ],
+      "usedBy": [
+        "cx:geoParentEntitiesQuery"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.57",
+          "title": "CT_GeoParentEntitiesQuery",
+          "page": 226
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoParentEntitiesQueryResult",
+      "content": "elements",
+      "model": "(cx:geoParentEntitiesQuery, cx:geoEntity?, cx:geoParentEntity?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoParentEntitiesQueryResult"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.58",
+          "title": "CT_GeoParentEntitiesQueryResult",
+          "page": 227
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoParentEntitiesQueryResults",
+      "content": "elements",
+      "model": "cx:geoParentEntitiesQueryResult*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoParentEntitiesQueryResults"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.59",
+          "title": "CT_GeoParentEntitiesQueryResults",
+          "page": 227
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoParentEntity",
+      "content": "empty",
+      "attributes": [
+        "entityId"
+      ],
+      "usedBy": [
+        "cx:geoParentEntity"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.60",
+          "title": "CT_GeoParentEntity",
+          "page": 228
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoPolygon",
+      "content": "empty",
+      "attributes": [
+        "numPoints",
+        "pcaRings",
+        "polygonId"
+      ],
+      "usedBy": [
+        "cx:geoPolygon"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.61",
+          "title": "CT_GeoPolygon",
+          "page": 228
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_GeoPolygons",
+      "content": "elements",
+      "model": "cx:geoPolygon*",
+      "attributes": [],
+      "usedBy": [
+        "cx:geoPolygons"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.62",
+          "title": "CT_GeoPolygons",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Geography",
+      "content": "elements",
+      "model": "cx:geoCache?",
+      "attributes": [
+        "attribution",
+        "cultureLanguage",
+        "cultureRegion",
+        "projectionType",
+        "viewedRegionType"
+      ],
+      "usedBy": [
+        "cx:geography"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.50",
+          "title": "CT_Geography",
+          "page": 222
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Gridlines",
+      "content": "elements",
+      "model": "(cx:spPr?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:majorGridlines",
+        "cx:minorGridlines"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.63",
+          "title": "CT_Gridlines",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_HeaderFooter",
+      "content": "elements",
+      "model": "(cx:oddHeader?, cx:oddFooter?, cx:evenHeader?, cx:evenFooter?, cx:firstHeader?, cx:firstFooter?)",
+      "attributes": [
+        "alignWithMargins",
+        "differentFirst",
+        "differentOddEven"
+      ],
+      "usedBy": [
+        "cx:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.64",
+          "title": "CT_HeaderFooter",
+          "page": 229
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Legend",
+      "content": "elements",
+      "model": "(cx:spPr?, cx:txPr?, cx:offset?, cx:extLst?)",
+      "attributes": [
+        "align",
+        "overlay",
+        "pos"
+      ],
+      "usedBy": [
+        "cx:legend"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.65",
+          "title": "CT_Legend",
+          "page": 230
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_NumberColorPosition",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:number"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.66",
+          "title": "CT_NumberColorPosition",
+          "page": 231
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_NumberFormat",
+      "content": "empty",
+      "attributes": [
+        "formatCode",
+        "sourceLinked"
+      ],
+      "usedBy": [
+        "cx:numFmt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.67",
+          "title": "CT_NumberFormat",
+          "page": 232
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_NumericDimension",
+      "content": "elements",
+      "model": "((cx:f, cx:nf?, cx:lvl*) | cx:lvl+)",
+      "attributes": [
+        "type"
+      ],
+      "usedBy": [
+        "cx:numDim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.68",
+          "title": "CT_NumericDimension",
+          "page": 232
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_NumericLevel",
+      "content": "elements",
+      "model": "cx:pt*",
+      "attributes": [
+        "formatCode",
+        "name",
+        "ptCount"
+      ],
+      "usedBy": [
+        "cx:lvl"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.69",
+          "title": "CT_NumericLevel",
+          "page": 233
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_NumericValue",
+      "base": "xsd:double",
+      "content": "text",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "cx:pt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.70",
+          "title": "CT_NumericValue",
+          "page": 233
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Offset",
+      "content": "empty",
+      "attributes": [
+        "left",
+        "top"
+      ],
+      "usedBy": [
+        "cx:offset"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.71",
+          "title": "CT_Offset",
+          "page": 234
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PageMargins",
+      "content": "empty",
+      "attributes": [
+        "b",
+        "footer",
+        "header",
+        "l",
+        "r",
+        "t"
+      ],
+      "usedBy": [
+        "cx:pageMargins"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.72",
+          "title": "CT_PageMargins",
+          "page": 234
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PageSetup",
+      "content": "empty",
+      "attributes": [
+        "blackAndWhite",
+        "copies",
+        "draft",
+        "firstPageNumber",
+        "horizontalDpi",
+        "orientation",
+        "paperSize",
+        "useFirstPageNumber",
+        "verticalDpi"
+      ],
+      "usedBy": [
+        "cx:pageSetup"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.73",
+          "title": "CT_PageSetup",
+          "page": 235
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ParentLabelLayout",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:parentLabelLayout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.74",
+          "title": "CT_ParentLabelLayout",
+          "page": 236
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PercentageColorPosition",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:percent"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.75",
+          "title": "CT_PercentageColorPosition",
+          "page": 236
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PlotArea",
+      "content": "elements",
+      "model": "(cx:plotAreaRegion, cx:axis*, cx:spPr?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.76",
+          "title": "CT_PlotArea",
+          "page": 237
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PlotAreaRegion",
+      "content": "elements",
+      "model": "(cx:plotSurface?, cx:series*, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:plotAreaRegion"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.77",
+          "title": "CT_PlotAreaRegion",
+          "page": 237
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PlotSurface",
+      "content": "elements",
+      "model": "(cx:spPr?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:plotSurface"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.78",
+          "title": "CT_PlotSurface",
+          "page": 238
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_PrintSettings",
+      "content": "elements",
+      "model": "(cx:headerFooter?, cx:pageMargins?, cx:pageSetup?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.79",
+          "title": "CT_PrintSettings",
+          "page": 238
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_RegionLabelLayout",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:regionLabelLayout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.80",
+          "title": "CT_RegionLabelLayout",
+          "page": 239
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_RelId",
+      "content": "empty",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "cx:chart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.81",
+          "title": "CT_RelId",
+          "page": 239
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Series",
+      "content": "elements",
+      "model": "(cx:tx?, cx:spPr?, cx:valueColors?, cx:valueColorPositions?, cx:dataPt*, cx:dataLabels?, cx:dataId?, cx:layoutPr?, cx:axisId*, cx:extLst?)",
+      "attributes": [
+        "formatIdx",
+        "hidden",
+        "layoutId",
+        "ownerIdx",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "cx:series"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.82",
+          "title": "CT_Series",
+          "page": 239
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_SeriesElementVisibilities",
+      "content": "empty",
+      "attributes": [
+        "connectorLines",
+        "meanLine",
+        "meanMarker",
+        "nonoutliers",
+        "outliers"
+      ],
+      "usedBy": [
+        "cx:visibility"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.83",
+          "title": "CT_SeriesElementVisibilities",
+          "page": 241
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_SeriesLayoutProperties",
+      "content": "elements",
+      "model": "(cx:parentLabelLayout?, cx:regionLabelLayout?, cx:visibility?, (cx:aggregation? | cx:binning?)?, cx:geography?, cx:statistics?, cx:subtotals?, cx:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:layoutPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.84",
+          "title": "CT_SeriesLayoutProperties",
+          "page": 241
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Statistics",
+      "content": "empty",
+      "attributes": [
+        "quartileMethod"
+      ],
+      "usedBy": [
+        "cx:statistics"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.85",
+          "title": "CT_Statistics",
+          "page": 242
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_StringDimension",
+      "content": "elements",
+      "model": "((cx:f, cx:nf?, cx:lvl*) | cx:lvl+)",
+      "attributes": [
+        "type"
+      ],
+      "usedBy": [
+        "cx:strDim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.86",
+          "title": "CT_StringDimension",
+          "page": 243
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_StringLevel",
+      "content": "elements",
+      "model": "cx:pt*",
+      "attributes": [
+        "name",
+        "ptCount"
+      ],
+      "usedBy": [
+        "cx:lvl"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.87",
+          "title": "CT_StringLevel",
+          "page": 243
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_StringValue",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "cx:pt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.88",
+          "title": "CT_StringValue",
+          "page": 244
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_SubtotalIndex",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cx:idx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.89",
+          "title": "CT_SubtotalIndex",
+          "page": 244
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Subtotals",
+      "content": "elements",
+      "model": "cx:idx*",
+      "attributes": [],
+      "usedBy": [
+        "cx:subtotals"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.90",
+          "title": "CT_Subtotals",
+          "page": 245
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_Text",
+      "content": "elements",
+      "model": "(cx:txData | cx:rich)",
+      "attributes": [],
+      "usedBy": [
+        "cx:tx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.91",
+          "title": "CT_Text",
+          "page": 245
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_TextData",
+      "content": "elements",
+      "model": "((cx:f, cx:v?) | cx:v)",
+      "attributes": [],
+      "usedBy": [
+        "cx:txData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.92",
+          "title": "CT_TextData",
+          "page": 246
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_TickLabels",
+      "content": "elements",
+      "model": "cx:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "cx:tickLabels"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.93",
+          "title": "CT_TickLabels",
+          "page": 246
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_TickMarks",
+      "content": "elements",
+      "model": "cx:extLst?",
+      "attributes": [
+        "type"
+      ],
+      "usedBy": [
+        "cx:majorTickMarks",
+        "cx:minorTickMarks"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.94",
+          "title": "CT_TickMarks",
+          "page": 247
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ValueAxisScaling",
+      "content": "empty",
+      "attributes": [
+        "majorUnit",
+        "max",
+        "min",
+        "minorUnit"
+      ],
+      "usedBy": [
+        "cx:valScaling"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.95",
+          "title": "CT_ValueAxisScaling",
+          "page": 247
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ValueColorEndPosition",
+      "content": "elements",
+      "model": "(cx:extremeValue | cx:number | cx:percent)",
+      "attributes": [],
+      "usedBy": [
+        "cx:max",
+        "cx:min"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.96",
+          "title": "CT_ValueColorEndPosition",
+          "page": 248
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ValueColorMiddlePosition",
+      "content": "elements",
+      "model": "(cx:number | cx:percent)",
+      "attributes": [],
+      "usedBy": [
+        "cx:mid"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.97",
+          "title": "CT_ValueColorMiddlePosition",
+          "page": 248
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ValueColorPositions",
+      "content": "elements",
+      "model": "(cx:min?, cx:mid?, cx:max?)",
+      "attributes": [
+        "count"
+      ],
+      "usedBy": [
+        "cx:valueColorPositions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.98",
+          "title": "CT_ValueColorPositions",
+          "page": 249
+        }
+      ]
+    },
+    {
+      "name": "cx:CT_ValueColors",
+      "content": "elements",
+      "model": "(cx:minColor?, cx:midColor?, cx:maxColor?)",
+      "attributes": [],
+      "usedBy": [
+        "cx:valueColors"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.3.99",
+          "title": "CT_ValueColors",
+          "page": 249
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "cx:ST_ArtifactType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "html"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.1",
+          "title": "ST_ArtifactType",
+          "page": 250
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_AxisId",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.2",
+          "title": "ST_AxisId",
+          "page": 250
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_AxisUnit",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "hundreds",
+        "thousands",
+        "tenThousands",
+        "hundredThousands",
+        "millions",
+        "tenMillions",
+        "hundredMillions",
+        "billions",
+        "trillions",
+        "percentage"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.3",
+          "title": "ST_AxisUnit",
+          "page": 251
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_BindingType",
+      "definition": "union of cx:ST_NumericDimensionType, cx:ST_StringDimensionType",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.4",
+          "title": "ST_BindingType",
+          "page": 252
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_DataId",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.5",
+          "title": "ST_DataId",
+          "page": 252
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_DataLabelPos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "bestFit",
+        "b",
+        "ctr",
+        "inBase",
+        "inEnd",
+        "l",
+        "outEnd",
+        "r",
+        "t"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.6",
+          "title": "ST_DataLabelPos",
+          "page": 252
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_DoubleOrAutomatic",
+      "definition": "union of xsd:double, restriction of xsd:string",
+      "values": [
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.7",
+          "title": "ST_DoubleOrAutomatic",
+          "page": 253
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_EntityType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "Address",
+        "AdminDistrict",
+        "AdminDistrict2",
+        "AdminDistrict3",
+        "Continent",
+        "CountryRegion",
+        "Locality",
+        "Ocean",
+        "Planet",
+        "PostalCode",
+        "Region",
+        "Unsupported"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.8",
+          "title": "ST_EntityType",
+          "page": 253
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_ExtensionDropMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "never",
+        "onModelChange",
+        "onDataChange",
+        "always"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.9",
+          "title": "ST_ExtensionDropMode",
+          "page": 255
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_FormulaDirection",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "col",
+        "row"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.10",
+          "title": "ST_FormulaDirection",
+          "page": 255
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_GapWidthRatio",
+      "definition": "union of restriction of xsd:double, restriction of xsd:string",
+      "values": [
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.11",
+          "title": "ST_GapWidthRatio",
+          "page": 256
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_GeoMappingLevel",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "dataOnly",
+        "postalCode",
+        "county",
+        "state",
+        "countryRegion",
+        "countryRegionList",
+        "world"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.12",
+          "title": "ST_GeoMappingLevel",
+          "page": 256
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_GeoProjectionType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "mercator",
+        "miller",
+        "robinson",
+        "albers"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.13",
+          "title": "ST_GeoProjectionType",
+          "page": 257
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_IntervalClosedSide",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "l",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.14",
+          "title": "ST_IntervalClosedSide",
+          "page": 257
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_NumericDimensionType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "val",
+        "x",
+        "y",
+        "size",
+        "colorVal"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.15",
+          "title": "ST_NumericDimensionType",
+          "page": 258
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_PageOrientation",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "default",
+        "portrait",
+        "landscape"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.16",
+          "title": "ST_PageOrientation",
+          "page": 259
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_ParentLabelLayout",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "banner",
+        "overlapping"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.17",
+          "title": "ST_ParentLabelLayout",
+          "page": 259
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_PosAlign",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "min",
+        "ctr",
+        "max"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.18",
+          "title": "ST_PosAlign",
+          "page": 260
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_QuartileMethod",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "inclusive",
+        "exclusive"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.19",
+          "title": "ST_QuartileMethod",
+          "page": 260
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_RegionLabelLayout",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "bestFitOnly",
+        "showAll"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.20",
+          "title": "ST_RegionLabelLayout",
+          "page": 261
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_SeriesLayout",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "boxWhisker",
+        "clusteredColumn",
+        "funnel",
+        "paretoLine",
+        "regionMap",
+        "sunburst",
+        "treemap",
+        "waterfall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.21",
+          "title": "ST_SeriesLayout",
+          "page": 261
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_SidePos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "l",
+        "t",
+        "r",
+        "b"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.22",
+          "title": "ST_SidePos",
+          "page": 262
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_StringDimensionType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "cat",
+        "colorStr",
+        "entityId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.23",
+          "title": "ST_StringDimensionType",
+          "page": 263
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_TickMarksType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "in",
+        "out",
+        "cross",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.24",
+          "title": "ST_TickMarksType",
+          "page": 263
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_ValueAxisUnit",
+      "definition": "union of restriction of xsd:double, restriction of xsd:string",
+      "values": [
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.25",
+          "title": "ST_ValueAxisUnit",
+          "page": 264
+        }
+      ]
+    },
+    {
+      "name": "cx:ST_ValueColorPositionCount",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "2",
+        "maxInclusive": "3"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.24.4.26",
+          "title": "ST_ValueColorPositionCount",
+          "page": 264
+        }
+      ]
+    }
+  ]
+}

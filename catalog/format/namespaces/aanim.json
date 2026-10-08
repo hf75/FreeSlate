@@ -1,0 +1,173 @@
+{
+  "prefix": "aanim",
+  "uri": "http://schemas.microsoft.com/office/drawing/2018/animation",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.35",
+  "counts": {
+    "elements": 2,
+    "attributes": 7,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 4,
+    "enumValues": 1,
+    "specSections": 6,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "aanim:animPr",
+      "global": true,
+      "types": [
+        "aanim:CT_AnimationProperties"
+      ],
+      "attributes": [
+        {
+          "name": "auto",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "count",
+          "type": "aanim:ST_PlayCount",
+          "default": "1"
+        },
+        {
+          "name": "end",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "length",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "aanim:ST_AnimationName",
+          "default": ""
+        },
+        {
+          "name": "offset",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "st",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "aanim:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.1.1",
+          "title": "animPr",
+          "page": 316
+        }
+      ]
+    },
+    {
+      "name": "aanim:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "a3danim:animPr",
+        "aanim:animPr"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "aanim:CT_AnimationProperties",
+      "content": "elements",
+      "model": "aanim:extLst?",
+      "attributes": [
+        "auto",
+        "count",
+        "end",
+        "length",
+        "name",
+        "offset",
+        "st"
+      ],
+      "usedBy": [
+        "a3danim:animPr",
+        "aanim:animPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.3.1",
+          "title": "CT_AnimationProperties",
+          "page": 317
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "aanim:ST_AnimationName",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.4.1",
+          "title": "ST_AnimationName",
+          "page": 318
+        }
+      ]
+    },
+    {
+      "name": "aanim:ST_Indefinite",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "indefinite"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.4.2",
+          "title": "ST_Indefinite",
+          "page": 318
+        }
+      ]
+    },
+    {
+      "name": "aanim:ST_PlayCount",
+      "definition": "union of xsd:unsignedInt, aanim:ST_Indefinite",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.4.3",
+          "title": "ST_PlayCount",
+          "page": 319
+        }
+      ]
+    },
+    {
+      "name": "aanim:ST_UniversalTimeOffset",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.4.4",
+          "title": "ST_UniversalTimeOffset",
+          "page": 319
+        }
+      ]
+    }
+  ]
+}

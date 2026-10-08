@@ -1,0 +1,183 @@
+{
+  "prefix": "dgm1611",
+  "uri": "http://schemas.microsoft.com/office/drawing/2016/11/diagram",
+  "area": "Diagrams (SmartArt)",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.26",
+  "counts": {
+    "elements": 3,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 1,
+    "enumValues": 2,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "dgm1611:autoBuNodeInfo",
+      "types": [
+        "dgm1611:CT_NumberDiagramInfo"
+      ],
+      "attributes": [
+        {
+          "name": "lvl",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "ptType",
+          "type": "dgm1611:ST_STorageType",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm1611:buPr"
+      ],
+      "parents": [
+        "dgm1611:autoBuNodeInfoLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.3.2",
+          "title": "CT_NumberDiagramInfo",
+          "page": 271
+        }
+      ]
+    },
+    {
+      "name": "dgm1611:autoBuNodeInfoLst",
+      "global": true,
+      "types": [
+        "dgm1611:CT_NumberDiagramInfoList"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm1611:autoBuNodeInfo"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.1.1",
+          "title": "autoBuNodeInfoLst",
+          "page": 270
+        }
+      ]
+    },
+    {
+      "name": "dgm1611:buPr",
+      "types": [
+        "dgm1611:CT_DiagramAutoBullet"
+      ],
+      "attributes": [
+        {
+          "name": "leadZeros",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "prefix",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "a:buNone",
+        "a:buAutoNum",
+        "a:buChar",
+        "a:buBlip"
+      ],
+      "parents": [
+        "dgm1611:autoBuNodeInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.3.1",
+          "title": "CT_DiagramAutoBullet",
+          "page": 270
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "dgm1611:CT_DiagramAutoBullet",
+      "content": "elements",
+      "model": "(a:buNone | a:buAutoNum | a:buChar | a:buBlip)",
+      "attributes": [
+        "leadZeros",
+        "prefix"
+      ],
+      "usedBy": [
+        "dgm1611:buPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.3.1",
+          "title": "CT_DiagramAutoBullet",
+          "page": 270
+        }
+      ]
+    },
+    {
+      "name": "dgm1611:CT_NumberDiagramInfo",
+      "content": "elements",
+      "model": "dgm1611:buPr",
+      "attributes": [
+        "lvl",
+        "ptType"
+      ],
+      "usedBy": [
+        "dgm1611:autoBuNodeInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.3.2",
+          "title": "CT_NumberDiagramInfo",
+          "page": 271
+        }
+      ]
+    },
+    {
+      "name": "dgm1611:CT_NumberDiagramInfoList",
+      "content": "elements",
+      "model": "dgm1611:autoBuNodeInfo*",
+      "attributes": [],
+      "usedBy": [
+        "dgm1611:autoBuNodeInfoLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.3.3",
+          "title": "CT_NumberDiagramInfoList",
+          "page": 271
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "dgm1611:ST_STorageType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "sibTrans",
+        "parTrans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.28.4.1",
+          "title": "ST_STorageType",
+          "page": 272
+        }
+      ]
+    }
+  ]
+}

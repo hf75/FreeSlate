@@ -1,0 +1,556 @@
+{
+  "prefix": "p188",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2018/8/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-PPTX] v20240820 §5.14",
+  "counts": {
+    "elements": 11,
+    "attributes": 21,
+    "globalAttributes": 0,
+    "complexTypes": 8,
+    "simpleTypes": 4,
+    "enumValues": 3,
+    "specSections": 15,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p188:author",
+      "types": [
+        "p188:CT_Author"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        },
+        {
+          "name": "initials",
+          "type": "xsd:string"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "providerId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "userId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "p188:extLst"
+      ],
+      "parents": [
+        "p188:authorLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.1",
+          "title": "CT_Author",
+          "page": 112
+        }
+      ]
+    },
+    {
+      "name": "p188:authorLst",
+      "global": true,
+      "types": [
+        "p188:CT_AuthorList"
+      ],
+      "attributes": [],
+      "children": [
+        "p188:author"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.1.1",
+          "title": "authorLst",
+          "page": 111
+        }
+      ]
+    },
+    {
+      "name": "p188:cm",
+      "types": [
+        "p188:CT_Comment"
+      ],
+      "attributes": [
+        {
+          "name": "assignedTo",
+          "type": "p188:ST_AuthorIdList",
+          "default": ""
+        },
+        {
+          "name": "authorId",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        },
+        {
+          "name": "complete",
+          "type": "s:ST_PositiveFixedPercentage",
+          "default": "0%"
+        },
+        {
+          "name": "created",
+          "type": "xsd:dateTime",
+          "required": true
+        },
+        {
+          "name": "dueDate",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "id",
+          "type": "p188:ST_CommentId",
+          "required": true
+        },
+        {
+          "name": "startDate",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "status",
+          "type": "p188:ST_CommentStatus",
+          "default": "active"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "pc:sldMkLst",
+        "oac:deMkLst",
+        "oac:txMkLst",
+        "p188:unknownAnchor",
+        "p188:pos",
+        "p188:replyLst",
+        "p188:txBody",
+        "p188:extLst"
+      ],
+      "parents": [
+        "p188:cmLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.3",
+          "title": "CT_Comment",
+          "page": 113
+        }
+      ]
+    },
+    {
+      "name": "p188:cmLst",
+      "global": true,
+      "types": [
+        "p188:CT_CommentList"
+      ],
+      "attributes": [],
+      "children": [
+        "p188:cm"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.1.2",
+          "title": "cmLst",
+          "page": 111
+        }
+      ]
+    },
+    {
+      "name": "p188:commentRel",
+      "global": true,
+      "types": [
+        "p188:CT_CommentRelationship"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.1.3",
+          "title": "commentRel",
+          "page": 111
+        }
+      ]
+    },
+    {
+      "name": "p188:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p188:author",
+        "p188:cm",
+        "p188:reply"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p188:pos",
+      "types": [
+        "a:CT_Point2D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p188:cm"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p188:reply",
+      "types": [
+        "p188:CT_CommentReply"
+      ],
+      "attributes": [
+        {
+          "name": "authorId",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        },
+        {
+          "name": "created",
+          "type": "xsd:dateTime",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "p188:ST_CommentId",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "p188:ST_CommentStatus",
+          "default": "active"
+        }
+      ],
+      "children": [
+        "p188:txBody",
+        "p188:extLst"
+      ],
+      "parents": [
+        "p188:replyLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.6",
+          "title": "CT_CommentReply",
+          "page": 115
+        }
+      ]
+    },
+    {
+      "name": "p188:replyLst",
+      "types": [
+        "p188:CT_CommentReplyList"
+      ],
+      "attributes": [],
+      "children": [
+        "p188:reply"
+      ],
+      "parents": [
+        "p188:cm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.7",
+          "title": "CT_CommentReplyList",
+          "page": 116
+        }
+      ]
+    },
+    {
+      "name": "p188:txBody",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "p188:cm",
+        "p188:reply"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p188:unknownAnchor",
+      "types": [
+        "p188:CT_CommentUnknownAnchor"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p188:cm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.8",
+          "title": "CT_CommentUnknownAnchor",
+          "page": 116
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p188:CT_Author",
+      "content": "elements",
+      "model": "p188:extLst?",
+      "attributes": [
+        "id",
+        "initials",
+        "name",
+        "providerId",
+        "userId"
+      ],
+      "usedBy": [
+        "p188:author"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.1",
+          "title": "CT_Author",
+          "page": 112
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_AuthorList",
+      "content": "elements",
+      "model": "p188:author*",
+      "attributes": [],
+      "usedBy": [
+        "p188:authorLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.2",
+          "title": "CT_AuthorList",
+          "page": 112
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_Comment",
+      "content": "elements",
+      "model": "((pc:sldMkLst | oac:deMkLst* | oac:txMkLst* | p188:unknownAnchor), p188:pos?, p188:replyLst?, p188:txBody?, p188:extLst?)",
+      "attributes": [
+        "assignedTo",
+        "authorId",
+        "complete",
+        "created",
+        "dueDate",
+        "id",
+        "startDate",
+        "status",
+        "title"
+      ],
+      "usedBy": [
+        "p188:cm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.3",
+          "title": "CT_Comment",
+          "page": 113
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_CommentList",
+      "content": "elements",
+      "model": "p188:cm*",
+      "attributes": [],
+      "usedBy": [
+        "p188:cmLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.4",
+          "title": "CT_CommentList",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_CommentRelationship",
+      "content": "empty",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "p188:commentRel"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.5",
+          "title": "CT_CommentRelationship",
+          "page": 115
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_CommentReply",
+      "content": "elements",
+      "model": "(p188:txBody?, p188:extLst?)",
+      "attributes": [
+        "authorId",
+        "created",
+        "id",
+        "status"
+      ],
+      "usedBy": [
+        "p188:reply"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.6",
+          "title": "CT_CommentReply",
+          "page": 115
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_CommentReplyList",
+      "content": "elements",
+      "model": "p188:reply*",
+      "attributes": [],
+      "usedBy": [
+        "p188:replyLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.7",
+          "title": "CT_CommentReplyList",
+          "page": 116
+        }
+      ]
+    },
+    {
+      "name": "p188:CT_CommentUnknownAnchor",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "p188:unknownAnchor"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.3.8",
+          "title": "CT_CommentUnknownAnchor",
+          "page": 116
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p188:ST_AuthorId",
+      "definition": "restriction of s:ST_Guid",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.4.1",
+          "title": "ST_AuthorId",
+          "page": 116
+        }
+      ]
+    },
+    {
+      "name": "p188:ST_AuthorIdList",
+      "definition": "list of p188:ST_AuthorId",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.4.2",
+          "title": "ST_AuthorIdList",
+          "page": 117
+        }
+      ]
+    },
+    {
+      "name": "p188:ST_CommentId",
+      "definition": "restriction of s:ST_Guid",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.4.3",
+          "title": "ST_CommentId",
+          "page": 117
+        }
+      ]
+    },
+    {
+      "name": "p188:ST_CommentStatus",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "active",
+        "resolved",
+        "closed"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.16.4.4",
+          "title": "ST_CommentStatus",
+          "page": 117
+        }
+      ]
+    }
+  ]
+}

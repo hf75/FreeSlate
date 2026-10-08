@@ -1,0 +1,256 @@
+{
+  "prefix": "pc226",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2022/06/main/command",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-PPTX] v20240820 §5.18",
+  "counts": {
+    "elements": 4,
+    "attributes": 11,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 4,
+    "enumValues": 9,
+    "specSections": 8,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pc226:chgData",
+      "types": [
+        "oac:CT_ChangesData"
+      ],
+      "attributes": [
+        {
+          "name": "actId",
+          "type": "xsd:int"
+        },
+        {
+          "name": "clId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "dt",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "email",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_Guid"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "providerId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "userId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v",
+          "type": "xsd:unsignedInt"
+        }
+      ],
+      "children": [
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc226:cmChg",
+        "pc226:cmRplyChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.1",
+          "title": "CT_ChangesData",
+          "page": 275
+        }
+      ]
+    },
+    {
+      "name": "pc226:cmChg",
+      "global": true,
+      "types": [
+        "pc226:CT_CommentV2Changes"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc226:ST_CommentV2ChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc226:chgData",
+        "pc2:cmMkLst",
+        "pc226:cmRplyChg",
+        "pc226:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.1.1",
+          "title": "cmChg",
+          "page": 123
+        }
+      ]
+    },
+    {
+      "name": "pc226:cmRplyChg",
+      "types": [
+        "pc226:CT_CommentReplyV2Changes"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc226:ST_CommentReplyV2ChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc226:chgData",
+        "pc2:cmRplyMkLst",
+        "pc226:extLst"
+      ],
+      "parents": [
+        "pc226:cmChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.3.1",
+          "title": "CT_CommentReplyV2Changes",
+          "page": 123
+        }
+      ]
+    },
+    {
+      "name": "pc226:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "pc226:cmChg",
+        "pc226:cmRplyChg"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pc226:CT_CommentReplyV2Changes",
+      "content": "elements",
+      "model": "(pc226:chgData?, pc2:cmRplyMkLst, pc226:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc226:cmRplyChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.3.1",
+          "title": "CT_CommentReplyV2Changes",
+          "page": 123
+        }
+      ]
+    },
+    {
+      "name": "pc226:CT_CommentV2Changes",
+      "content": "elements",
+      "model": "(pc226:chgData?, pc2:cmMkLst, pc226:cmRplyChg*, pc226:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc226:cmChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.3.2",
+          "title": "CT_CommentV2Changes",
+          "page": 124
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "pc226:ST_CommentReplyV2ChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "modRxn"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.4.1",
+          "title": "ST_CommentReplyV2ChangeBit",
+          "page": 124
+        }
+      ]
+    },
+    {
+      "name": "pc226:ST_CommentReplyV2ChangeBits",
+      "definition": "list of pc226:ST_CommentReplyV2ChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.4.2",
+          "title": "ST_CommentReplyV2ChangeBits",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "pc226:ST_CommentV2ChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "modTsk",
+        "modRxn"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.4.3",
+          "title": "ST_CommentV2ChangeBit",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "pc226:ST_CommentV2ChangeBits",
+      "definition": "list of pc226:ST_CommentV2ChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.19.4.4",
+          "title": "ST_CommentV2ChangeBits",
+          "page": 126
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2317 @@
+{
+  "prefix": "cs",
+  "uri": "http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-ODRAWXML] v20261006 §5.15",
+  "counts": {
+    "elements": 44,
+    "attributes": 83,
+    "globalAttributes": 0,
+    "complexTypes": 8,
+    "simpleTypes": 12,
+    "enumValues": 18,
+    "specSections": 22,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "cs:axisTitle",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:bodyPr",
+      "types": [
+        "a:CT_TextBodyProperties"
+      ],
+      "attributes": [
+        {
+          "name": "anchor",
+          "type": "a:ST_TextAnchoringType"
+        },
+        {
+          "name": "anchorCtr",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "bIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "compatLnSpc",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "forceAA",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "fromWordArt",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "horzOverflow",
+          "type": "a:ST_TextHorzOverflowType"
+        },
+        {
+          "name": "lIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "numCol",
+          "type": "a:ST_TextColumnCount"
+        },
+        {
+          "name": "rIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle"
+        },
+        {
+          "name": "rtlCol",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "spcCol",
+          "type": "a:ST_PositiveCoordinate32"
+        },
+        {
+          "name": "spcFirstLastPara",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "tIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "upright",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "vert",
+          "type": "a:ST_TextVerticalType"
+        },
+        {
+          "name": "vertOverflow",
+          "type": "a:ST_TextVertOverflowType"
+        },
+        {
+          "name": "wrap",
+          "type": "a:ST_TextWrappingType"
+        }
+      ],
+      "children": [
+        "a:prstTxWarp",
+        "a:noAutofit",
+        "a:normAutofit",
+        "a:spAutoFit",
+        "a:scene3d",
+        "a:sp3d",
+        "a:flatTx",
+        "a:extLst"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cs:categoryAxis",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:chartArea",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:chartStyle",
+      "global": true,
+      "types": [
+        "cs:CT_ChartStyle"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedInt"
+        }
+      ],
+      "children": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointMarkerLayout",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall",
+        "cs:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.1.1",
+          "title": "chartStyle",
+          "page": 118
+        }
+      ]
+    },
+    {
+      "name": "cs:colorStyle",
+      "global": true,
+      "types": [
+        "cs:CT_ColorStyle"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "meth",
+          "type": "cs:ST_ColorStyleMethod",
+          "required": true
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr",
+        "cs:variation",
+        "cs:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.1.2",
+          "title": "colorStyle",
+          "page": 118
+        }
+      ]
+    },
+    {
+      "name": "cs:dataLabel",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataLabelCallout",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPoint",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPoint3D",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPointLine",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPointMarker",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPointMarkerLayout",
+      "types": [
+        "cs:CT_MarkerLayout"
+      ],
+      "attributes": [
+        {
+          "name": "size",
+          "type": "cs:ST_MarkerSize"
+        },
+        {
+          "name": "symbol",
+          "type": "cs:ST_MarkerStyle"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.5",
+          "title": "CT_MarkerLayout",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "cs:dataPointWireframe",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dataTable",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:defRPr",
+      "types": [
+        "a:CT_TextCharacterProperties"
+      ],
+      "attributes": [
+        {
+          "name": "altLang",
+          "type": "s:ST_Lang"
+        },
+        {
+          "name": "b",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "baseline",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "bmk",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cap",
+          "type": "a:ST_TextCapsType",
+          "default": "none"
+        },
+        {
+          "name": "dirty",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "err",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "i",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "kern",
+          "type": "a:ST_TextNonNegativePoint"
+        },
+        {
+          "name": "kumimoji",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "lang",
+          "type": "s:ST_Lang"
+        },
+        {
+          "name": "noProof",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "normalizeH",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "smtClean",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "smtId",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        },
+        {
+          "name": "spc",
+          "type": "a:ST_TextPoint"
+        },
+        {
+          "name": "strike",
+          "type": "a:ST_TextStrikeType"
+        },
+        {
+          "name": "sz",
+          "type": "a:ST_TextFontSize"
+        },
+        {
+          "name": "u",
+          "type": "a:ST_TextUnderlineType"
+        }
+      ],
+      "children": [
+        "a:ln",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:highlight",
+        "a:uLnTx",
+        "a:uLn",
+        "a:uFillTx",
+        "a:uFill",
+        "a:latin",
+        "a:ea",
+        "a:cs",
+        "a:sym",
+        "a:hlinkClick",
+        "a:hlinkMouseOver",
+        "a:rtl",
+        "a:extLst"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cs:downBar",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:dropLine",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:effectRef",
+      "types": [
+        "cs:CT_StyleReference"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "a:ST_StyleMatrixColumnIndex",
+          "required": true
+        },
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleReferenceModifierList"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr",
+        "cs:styleClr"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.8",
+          "title": "CT_StyleReference",
+          "page": 129
+        }
+      ]
+    },
+    {
+      "name": "cs:errorBar",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:chartStyle",
+        "cs:colorStyle",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cs:fillRef",
+      "types": [
+        "cs:CT_StyleReference"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "a:ST_StyleMatrixColumnIndex",
+          "required": true
+        },
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleReferenceModifierList"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr",
+        "cs:styleClr"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.8",
+          "title": "CT_StyleReference",
+          "page": 129
+        }
+      ]
+    },
+    {
+      "name": "cs:floor",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:fontRef",
+      "types": [
+        "cs:CT_FontReference"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "a:ST_FontCollectionIndex",
+          "required": true
+        },
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleReferenceModifierList"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr",
+        "cs:styleClr"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.4",
+          "title": "CT_FontReference",
+          "page": 124
+        }
+      ]
+    },
+    {
+      "name": "cs:gridlineMajor",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:gridlineMinor",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:hiLoLine",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:leaderLine",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:legend",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:lineWidthScale",
+      "types": [
+        "xsd:double"
+      ],
+      "text": "xsd:double",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cs:lnRef",
+      "types": [
+        "cs:CT_StyleReference"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "a:ST_StyleMatrixColumnIndex",
+          "required": true
+        },
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleReferenceModifierList"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr",
+        "cs:styleClr"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.8",
+          "title": "CT_StyleReference",
+          "page": 129
+        }
+      ]
+    },
+    {
+      "name": "cs:plotArea",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:plotArea3D",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:seriesAxis",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:seriesLine",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cs:styleClr",
+      "types": [
+        "cs:CT_StyleColor"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "cs:ST_StyleColorVal"
+        }
+      ],
+      "children": [
+        "a:tint",
+        "a:shade",
+        "a:comp",
+        "a:inv",
+        "a:gray",
+        "a:alpha",
+        "a:alphaOff",
+        "a:alphaMod",
+        "a:hue",
+        "a:hueOff",
+        "a:hueMod",
+        "a:sat",
+        "a:satOff",
+        "a:satMod",
+        "a:lum",
+        "a:lumOff",
+        "a:lumMod",
+        "a:red",
+        "a:redOff",
+        "a:redMod",
+        "a:green",
+        "a:greenOff",
+        "a:greenMod",
+        "a:blue",
+        "a:blueOff",
+        "a:blueMod",
+        "a:gamma",
+        "a:invGamma"
+      ],
+      "parents": [
+        "cs:effectRef",
+        "cs:fillRef",
+        "cs:fontRef",
+        "cs:lnRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.6",
+          "title": "CT_StyleColor",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "cs:title",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:trendline",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:trendlineLabel",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:upBar",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:valueAxis",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:variation",
+      "types": [
+        "cs:CT_ColorStyleVariation"
+      ],
+      "attributes": [],
+      "children": [
+        "a:tint",
+        "a:shade",
+        "a:comp",
+        "a:inv",
+        "a:gray",
+        "a:alpha",
+        "a:alphaOff",
+        "a:alphaMod",
+        "a:hue",
+        "a:hueOff",
+        "a:hueMod",
+        "a:sat",
+        "a:satOff",
+        "a:satMod",
+        "a:lum",
+        "a:lumOff",
+        "a:lumMod",
+        "a:red",
+        "a:redOff",
+        "a:redMod",
+        "a:green",
+        "a:greenOff",
+        "a:greenMod",
+        "a:blue",
+        "a:blueOff",
+        "a:blueMod",
+        "a:gamma",
+        "a:invGamma"
+      ],
+      "parents": [
+        "cs:colorStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.3",
+          "title": "CT_ColorStyleVariation",
+          "page": 122
+        }
+      ]
+    },
+    {
+      "name": "cs:wall",
+      "types": [
+        "cs:CT_StyleEntry"
+      ],
+      "attributes": [
+        {
+          "name": "mods",
+          "type": "cs:ST_StyleEntryModifierList"
+        }
+      ],
+      "children": [
+        "cs:lnRef",
+        "cs:lineWidthScale",
+        "cs:fillRef",
+        "cs:effectRef",
+        "cs:fontRef",
+        "cs:spPr",
+        "cs:defRPr",
+        "cs:bodyPr",
+        "cs:extLst"
+      ],
+      "parents": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "cs:CT_ChartStyle",
+      "content": "elements",
+      "model": "(cs:axisTitle, cs:categoryAxis, cs:chartArea, cs:dataLabel, cs:dataLabelCallout?, cs:dataPoint, cs:dataPoint3D, cs:dataPointLine, cs:dataPointMarker, cs:dataPointMarkerLayout?, cs:dataPointWireframe, cs:dataTable, cs:downBar, cs:dropLine, cs:errorBar, cs:floor, cs:gridlineMajor, cs:gridlineMinor, cs:hiLoLine, cs:leaderLine, cs:legend, cs:plotArea, cs:plotArea3D, cs:seriesAxis, cs:seriesLine, cs:title, cs:trendline, cs:trendlineLabel, cs:upBar, cs:valueAxis, cs:wall, cs:extLst?)",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "cs:chartStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.1",
+          "title": "CT_ChartStyle",
+          "page": 119
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_ColorStyle",
+      "content": "elements",
+      "model": "((a:scrgbClr | a:srgbClr | a:hslClr | a:sysClr | a:schemeClr | a:prstClr)+, cs:variation*, cs:extLst?)",
+      "attributes": [
+        "id",
+        "meth"
+      ],
+      "usedBy": [
+        "cs:colorStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.2",
+          "title": "CT_ColorStyle",
+          "page": 121
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_ColorStyleVariation",
+      "content": "elements",
+      "model": "(a:tint | a:shade | a:comp | a:inv | a:gray | a:alpha | a:alphaOff | a:alphaMod | a:hue | a:hueOff | a:hueMod | a:sat | a:satOff | a:satMod | a:lum | a:lumOff | a:lumMod | a:red | a:redOff | a:redMod | a:green | a:greenOff | a:greenMod | a:blue | a:blueOff | a:blueMod | a:gamma | a:invGamma)*",
+      "attributes": [],
+      "usedBy": [
+        "cs:variation"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.3",
+          "title": "CT_ColorStyleVariation",
+          "page": 122
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_FontReference",
+      "content": "elements",
+      "model": "((a:scrgbClr | a:srgbClr | a:hslClr | a:sysClr | a:schemeClr | a:prstClr)?, cs:styleClr?)",
+      "attributes": [
+        "idx",
+        "mods"
+      ],
+      "usedBy": [
+        "cs:fontRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.4",
+          "title": "CT_FontReference",
+          "page": 124
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_MarkerLayout",
+      "content": "empty",
+      "attributes": [
+        "size",
+        "symbol"
+      ],
+      "usedBy": [
+        "cs:dataPointMarkerLayout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.5",
+          "title": "CT_MarkerLayout",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_StyleColor",
+      "content": "elements",
+      "model": "(a:tint | a:shade | a:comp | a:inv | a:gray | a:alpha | a:alphaOff | a:alphaMod | a:hue | a:hueOff | a:hueMod | a:sat | a:satOff | a:satMod | a:lum | a:lumOff | a:lumMod | a:red | a:redOff | a:redMod | a:green | a:greenOff | a:greenMod | a:blue | a:blueOff | a:blueMod | a:gamma | a:invGamma)*",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "cs:styleClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.6",
+          "title": "CT_StyleColor",
+          "page": 125
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_StyleEntry",
+      "content": "elements",
+      "model": "(cs:lnRef, cs:lineWidthScale?, cs:fillRef, cs:effectRef, cs:fontRef, cs:spPr?, cs:defRPr?, cs:bodyPr?, cs:extLst?)",
+      "attributes": [
+        "mods"
+      ],
+      "usedBy": [
+        "cs:axisTitle",
+        "cs:categoryAxis",
+        "cs:chartArea",
+        "cs:dataLabel",
+        "cs:dataLabelCallout",
+        "cs:dataPoint",
+        "cs:dataPoint3D",
+        "cs:dataPointLine",
+        "cs:dataPointMarker",
+        "cs:dataPointWireframe",
+        "cs:dataTable",
+        "cs:downBar",
+        "cs:dropLine",
+        "cs:errorBar",
+        "cs:floor",
+        "cs:gridlineMajor",
+        "cs:gridlineMinor",
+        "cs:hiLoLine",
+        "cs:leaderLine",
+        "cs:legend",
+        "cs:plotArea",
+        "cs:plotArea3D",
+        "cs:seriesAxis",
+        "cs:seriesLine",
+        "cs:title",
+        "cs:trendline",
+        "cs:trendlineLabel",
+        "cs:upBar",
+        "cs:valueAxis",
+        "cs:wall"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.7",
+          "title": "CT_StyleEntry",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "cs:CT_StyleReference",
+      "content": "elements",
+      "model": "((a:scrgbClr | a:srgbClr | a:hslClr | a:sysClr | a:schemeClr | a:prstClr)?, cs:styleClr?)",
+      "attributes": [
+        "idx",
+        "mods"
+      ],
+      "usedBy": [
+        "cs:effectRef",
+        "cs:fillRef",
+        "cs:lnRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.3.8",
+          "title": "CT_StyleReference",
+          "page": 129
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "cs:ST_ColorStyleMethod",
+      "definition": "union of cs:ST_ColorStyleMethodEnum, xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.1",
+          "title": "ST_ColorStyleMethod",
+          "page": 130
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_ColorStyleMethodEnum",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "cycle",
+        "withinLinear",
+        "acrossLinear",
+        "withinLinearReversed",
+        "acrossLinearReversed"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.2",
+          "title": "ST_ColorStyleMethodEnum",
+          "page": 130
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_MarkerSize",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "2",
+        "maxInclusive": "72"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.3",
+          "title": "ST_MarkerSize",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_MarkerStyle",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "circle",
+        "dash",
+        "diamond",
+        "dot",
+        "plus",
+        "square",
+        "star",
+        "triangle",
+        "x"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.4",
+          "title": "ST_MarkerStyle",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleColorEnum",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.5",
+          "title": "ST_StyleColorEnum",
+          "page": 132
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleColorVal",
+      "definition": "union of xsd:unsignedInt, cs:ST_StyleColorEnum, xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.6",
+          "title": "ST_StyleColorVal",
+          "page": 133
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleEntryModifier",
+      "definition": "union of cs:ST_StyleEntryModifierEnum, xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.7",
+          "title": "ST_StyleEntryModifier",
+          "page": 133
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleEntryModifierEnum",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "allowNoFillOverride",
+        "allowNoLineOverride"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.8",
+          "title": "ST_StyleEntryModifierEnum",
+          "page": 134
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleEntryModifierList",
+      "definition": "list of cs:ST_StyleEntryModifier",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.9",
+          "title": "ST_StyleEntryModifierList",
+          "page": 134
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleReferenceModifier",
+      "definition": "union of cs:ST_StyleReferenceModifierEnum, xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.10",
+          "title": "ST_StyleReferenceModifier",
+          "page": 134
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleReferenceModifierEnum",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "ignoreCSTransforms"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.11",
+          "title": "ST_StyleReferenceModifierEnum",
+          "page": 135
+        }
+      ]
+    },
+    {
+      "name": "cs:ST_StyleReferenceModifierList",
+      "definition": "list of cs:ST_StyleReferenceModifier",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.8.4.12",
+          "title": "ST_StyleReferenceModifierList",
+          "page": 135
+        }
+      ]
+    }
+  ]
+}

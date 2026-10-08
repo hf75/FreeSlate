@@ -1,0 +1,88 @@
+{
+  "prefix": "w16cur",
+  "uri": "http://schemas.microsoft.com/office/word/2018/wordml",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-DOCX] v20260818 §5.5",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w16cur:ext",
+      "types": [
+        "w16cur:CT_Extension"
+      ],
+      "attributes": [
+        {
+          "name": "w16cur:uri",
+          "type": "xsd:token"
+        }
+      ],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "w16cei:extLst",
+        "w16cex:extLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.9.3.1",
+          "title": "CT_Extension",
+          "page": 89
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "w16cur:CT_Extension",
+      "content": "elements",
+      "model": "any(##any)",
+      "attributes": [
+        "w16cur:uri"
+      ],
+      "usedBy": [
+        "w16cur:ext"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.9.3.1",
+          "title": "CT_Extension",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "w16cur:CT_ExtensionList",
+      "content": "elements",
+      "model": "w16cur:ext*",
+      "attributes": [],
+      "usedBy": [
+        "w16cei:extLst",
+        "w16cex:extLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.9.3.2",
+          "title": "CT_ExtensionList",
+          "page": 89
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

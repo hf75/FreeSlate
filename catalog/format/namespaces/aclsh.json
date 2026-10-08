@@ -1,0 +1,84 @@
+{
+  "prefix": "aclsh",
+  "uri": "http://schemas.microsoft.com/office/drawing/2020/classificationShape",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-ODRAWXML] v20261006 §5.37",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 1,
+    "enumValues": 4,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "aclsh:classification",
+      "global": true,
+      "types": [
+        "aclsh:CT_ClassificationOutcome"
+      ],
+      "attributes": [
+        {
+          "name": "classificationOutcomeType",
+          "type": "aclsh:ST_ClassificationOutcomeType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.39.1.1",
+          "title": "classification",
+          "page": 323
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "aclsh:CT_ClassificationOutcome",
+      "content": "empty",
+      "attributes": [
+        "classificationOutcomeType"
+      ],
+      "usedBy": [
+        "aclsh:classification"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.39.3.1",
+          "title": "CT_ClassificationOutcome",
+          "page": 323
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "aclsh:ST_ClassificationOutcomeType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "hdr",
+        "ftr",
+        "watermark"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.39.4.1",
+          "title": "ST_ClassificationOutcomeType",
+          "page": 323
+        }
+      ]
+    }
+  ]
+}

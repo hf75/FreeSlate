@@ -1,0 +1,2495 @@
+{
+  "prefix": "w14",
+  "uri": "http://schemas.microsoft.com/office/word/2010/wordml",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1",
+  "counts": {
+    "elements": 51,
+    "attributes": 64,
+    "globalAttributes": 2,
+    "complexTypes": 38,
+    "simpleTypes": 16,
+    "enumValues": 202,
+    "specSections": 68,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w14:alpha",
+      "types": [
+        "w14:CT_PositiveFixedPercentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.20",
+          "title": "CT_PositiveFixedPercentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:bevel",
+      "types": [
+        "w:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "w14:bevelB",
+      "types": [
+        "w14:CT_Bevel"
+      ],
+      "attributes": [
+        {
+          "name": "w14:h",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:prst",
+          "type": "w14:ST_BevelPresetType"
+        },
+        {
+          "name": "w14:w",
+          "type": "a:ST_PositiveCoordinate"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.1",
+          "title": "CT_Bevel",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "w14:bevelT",
+      "types": [
+        "w14:CT_Bevel"
+      ],
+      "attributes": [
+        {
+          "name": "w14:h",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:prst",
+          "type": "w14:ST_BevelPresetType"
+        },
+        {
+          "name": "w14:w",
+          "type": "a:ST_PositiveCoordinate"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.1",
+          "title": "CT_Bevel",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "w14:cNvContentPartPr",
+      "types": [
+        "a14:CT_NonVisualInkContentPartProperties"
+      ],
+      "attributes": [
+        {
+          "name": "isComment",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a14:cpLocks",
+        "a14:extLst"
+      ],
+      "parents": [
+        "w14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.7",
+          "title": "CT_NonVisualInkContentPartProperties",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "w14:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "w14:nvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "w14:camera",
+      "types": [
+        "w14:CT_Camera"
+      ],
+      "attributes": [
+        {
+          "name": "w14:prst",
+          "type": "w14:ST_PresetCameraType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.2",
+          "title": "CT_Camera",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "w14:checkbox",
+      "global": true,
+      "types": [
+        "w14:CT_SdtCheckbox"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:checked",
+        "w14:checkedState",
+        "w14:uncheckedState"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.1",
+          "title": "checkbox",
+          "page": 38
+        }
+      ]
+    },
+    {
+      "name": "w14:checked",
+      "types": [
+        "w14:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:checkbox"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.17",
+          "title": "CT_OnOff",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "w14:checkedState",
+      "types": [
+        "w14:CT_SdtCheckboxSymbol"
+      ],
+      "attributes": [
+        {
+          "name": "w14:font",
+          "type": "w:ST_String"
+        },
+        {
+          "name": "w14:val",
+          "type": "w:ST_ShortHexNumber"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:checkbox"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.29",
+          "title": "CT_SdtCheckboxSymbol",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "w14:conflictMode",
+      "global": true,
+      "types": [
+        "w14:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.7",
+          "title": "conflictMode",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "w14:contentPart",
+      "global": true,
+      "types": [
+        "w14:CT_WordContentPart"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "w14:nvContentPartPr",
+        "w14:xfrm",
+        "w14:extLst"
+      ],
+      "parents": [
+        "wpc:wpc",
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.15.1.1",
+          "title": "contentPart",
+          "page": 161
+        }
+      ]
+    },
+    {
+      "name": "w14:contourClr",
+      "types": [
+        "w14:CT_Color"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.3",
+          "title": "CT_Color",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "w14:customXmlConflictDelRangeEnd",
+      "global": true,
+      "types": [
+        "w:CT_Markup"
+      ],
+      "attributes": [
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.8",
+          "title": "customXmlConflictDelRangeEnd",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "w14:customXmlConflictDelRangeStart",
+      "global": true,
+      "types": [
+        "w:CT_TrackChange"
+      ],
+      "attributes": [
+        {
+          "name": "w:author",
+          "type": "s:ST_String",
+          "required": true
+        },
+        {
+          "name": "w:date",
+          "type": "w:ST_DateTime"
+        },
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.9",
+          "title": "customXmlConflictDelRangeStart",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "w14:customXmlConflictInsRangeEnd",
+      "global": true,
+      "types": [
+        "w:CT_Markup"
+      ],
+      "attributes": [
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.10",
+          "title": "customXmlConflictInsRangeEnd",
+          "page": 41
+        }
+      ]
+    },
+    {
+      "name": "w14:customXmlConflictInsRangeStart",
+      "global": true,
+      "types": [
+        "w:CT_TrackChange"
+      ],
+      "attributes": [
+        {
+          "name": "w:author",
+          "type": "s:ST_String",
+          "required": true
+        },
+        {
+          "name": "w:date",
+          "type": "w:ST_DateTime"
+        },
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.11",
+          "title": "customXmlConflictInsRangeStart",
+          "page": 41
+        }
+      ]
+    },
+    {
+      "name": "w14:defaultImageDpi",
+      "global": true,
+      "types": [
+        "w14:CT_DefaultImageDpi"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.12",
+          "title": "defaultImageDpi",
+          "page": 41
+        }
+      ]
+    },
+    {
+      "name": "w14:discardImageEditingData",
+      "global": true,
+      "types": [
+        "w14:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.13",
+          "title": "discardImageEditingData",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "name": "w14:docId",
+      "global": true,
+      "types": [
+        "w14:CT_LongHexNumber"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w:ST_LongHexNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.14",
+          "title": "docId",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "name": "w14:entityPicker",
+      "global": true,
+      "types": [
+        "w:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.15",
+          "title": "entityPicker",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "name": "w14:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "w14:contentPart"
+      ],
+      "spec": []
+    },
+    {
+      "name": "w14:extrusionClr",
+      "types": [
+        "w14:CT_Color"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.3",
+          "title": "CT_Color",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "w14:fillToRect",
+      "types": [
+        "w14:CT_RelativeRect"
+      ],
+      "attributes": [
+        {
+          "name": "w14:b",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "w14:l",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "w14:r",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "w14:t",
+          "type": "a:ST_Percentage"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:path"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.25",
+          "title": "CT_RelativeRect",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "w14:gradFill",
+      "types": [
+        "w14:CT_GradientFillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:gsLst",
+        "w14:lin",
+        "w14:path"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.7",
+          "title": "CT_GradientFillProperties",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "name": "w14:gs",
+      "types": [
+        "w14:CT_GradientStop"
+      ],
+      "attributes": [
+        {
+          "name": "w14:pos",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [
+        "w14:gsLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.8",
+          "title": "CT_GradientStop",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "w14:gsLst",
+      "types": [
+        "w14:CT_GradientStopList"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:gs"
+      ],
+      "parents": [
+        "w14:gradFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.9",
+          "title": "CT_GradientStopList",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "w14:hueMod",
+      "types": [
+        "w14:CT_PositivePercentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_PositivePercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.21",
+          "title": "CT_PositivePercentage",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:lightRig",
+      "types": [
+        "w14:CT_LightRig"
+      ],
+      "attributes": [
+        {
+          "name": "w14:dir",
+          "type": "w14:ST_LightRigDirection",
+          "required": true
+        },
+        {
+          "name": "w14:rig",
+          "type": "w14:ST_LightRigType",
+          "required": true
+        }
+      ],
+      "children": [
+        "w14:rot"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.11",
+          "title": "CT_LightRig",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "w14:lin",
+      "types": [
+        "w14:CT_LinearShadeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "w14:ang",
+          "type": "a:ST_PositiveFixedAngle"
+        },
+        {
+          "name": "w14:scaled",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:gradFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.12",
+          "title": "CT_LinearShadeProperties",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "name": "w14:lum",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:lumMod",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:lumOff",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:miter",
+      "types": [
+        "w14:CT_LineJoinMiterProperties"
+      ],
+      "attributes": [
+        {
+          "name": "w14:lim",
+          "type": "a:ST_PositivePercentage"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.13",
+          "title": "CT_LineJoinMiterProperties",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "name": "w14:noFill",
+      "types": [
+        "w:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "w14:nvContentPartPr",
+      "types": [
+        "w14:CT_WordContentPartNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:cNvPr",
+        "w14:cNvContentPartPr"
+      ],
+      "parents": [
+        "w14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.15.3.2",
+          "title": "CT_WordContentPartNonVisual",
+          "page": 162
+        }
+      ]
+    },
+    {
+      "name": "w14:path",
+      "types": [
+        "w14:CT_PathShadeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "w14:path",
+          "type": "w14:ST_PathShadeType"
+        }
+      ],
+      "children": [
+        "w14:fillToRect"
+      ],
+      "parents": [
+        "w14:gradFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.18",
+          "title": "CT_PathShadeProperties",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "w14:prstDash",
+      "types": [
+        "w14:CT_PresetLineDashProperties"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_PresetLineDashVal"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.22",
+          "title": "CT_PresetLineDashProperties",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:rot",
+      "types": [
+        "w14:CT_SphereCoords"
+      ],
+      "attributes": [
+        {
+          "name": "w14:lat",
+          "type": "a:ST_PositiveFixedAngle",
+          "required": true
+        },
+        {
+          "name": "w14:lon",
+          "type": "a:ST_PositiveFixedAngle",
+          "required": true
+        },
+        {
+          "name": "w14:rev",
+          "type": "a:ST_PositiveFixedAngle",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:lightRig"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.32",
+          "title": "CT_SphereCoords",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "w14:round",
+      "types": [
+        "w:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "w14:sat",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:satMod",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:satOff",
+      "types": [
+        "w14:CT_Percentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_Percentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:schemeClr",
+      "types": [
+        "w14:CT_SchemeColor"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_SchemeColorVal",
+          "required": true
+        }
+      ],
+      "children": [
+        "w14:tint",
+        "w14:shade",
+        "w14:alpha",
+        "w14:hueMod",
+        "w14:sat",
+        "w14:satOff",
+        "w14:satMod",
+        "w14:lum",
+        "w14:lumOff",
+        "w14:lumMod"
+      ],
+      "parents": [
+        "w14:contourClr",
+        "w14:extrusionClr",
+        "w14:gs",
+        "w14:solidFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.27",
+          "title": "CT_SchemeColor",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "w14:shade",
+      "types": [
+        "w14:CT_PositiveFixedPercentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.20",
+          "title": "CT_PositiveFixedPercentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:solidFill",
+      "types": [
+        "w14:CT_SolidColorFillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.31",
+          "title": "CT_SolidColorFillProperties",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "w14:srgbClr",
+      "types": [
+        "w14:CT_SRgbColor"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w:ST_HexColorRGB",
+          "required": true
+        }
+      ],
+      "children": [
+        "w14:tint",
+        "w14:shade",
+        "w14:alpha",
+        "w14:hueMod",
+        "w14:sat",
+        "w14:satOff",
+        "w14:satMod",
+        "w14:lum",
+        "w14:lumOff",
+        "w14:lumMod"
+      ],
+      "parents": [
+        "w14:contourClr",
+        "w14:extrusionClr",
+        "w14:gs",
+        "w14:solidFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.33",
+          "title": "CT_SRgbColor",
+          "page": 66
+        }
+      ]
+    },
+    {
+      "name": "w14:styleSet",
+      "types": [
+        "w14:CT_StyleSet"
+      ],
+      "attributes": [
+        {
+          "name": "w14:id",
+          "type": "w:ST_UnsignedDecimalNumber",
+          "required": true
+        },
+        {
+          "name": "w14:val",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.34",
+          "title": "CT_StyleSet",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "w14:tint",
+      "types": [
+        "w14:CT_PositiveFixedPercentage"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:schemeClr",
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.20",
+          "title": "CT_PositiveFixedPercentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:uncheckedState",
+      "types": [
+        "w14:CT_SdtCheckboxSymbol"
+      ],
+      "attributes": [
+        {
+          "name": "w14:font",
+          "type": "w:ST_String"
+        },
+        {
+          "name": "w14:val",
+          "type": "w:ST_ShortHexNumber"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w14:checkbox"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.29",
+          "title": "CT_SdtCheckboxSymbol",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "w14:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "w14:contentPart"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "w14:anchorId",
+      "type": "w:ST_LongHexNumber",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.2.1",
+          "title": "anchorId",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "name": "w14:noSpellErr",
+      "type": "w:ST_OnOff",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.2.2",
+          "title": "noSpellErr",
+          "page": 47
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "w14:CT_Bevel",
+      "content": "empty",
+      "attributes": [
+        "w14:h",
+        "w14:prst",
+        "w14:w"
+      ],
+      "usedBy": [
+        "w14:bevelB",
+        "w14:bevelT"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.1",
+          "title": "CT_Bevel",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Camera",
+      "content": "empty",
+      "attributes": [
+        "w14:prst"
+      ],
+      "usedBy": [
+        "w14:camera"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.2",
+          "title": "CT_Camera",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Color",
+      "content": "elements",
+      "model": "(w14:srgbClr | w14:schemeClr)",
+      "attributes": [],
+      "usedBy": [
+        "w14:contourClr",
+        "w14:extrusionClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.3",
+          "title": "CT_Color",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_DefaultImageDpi",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:defaultImageDpi"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.4",
+          "title": "CT_DefaultImageDpi",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_FillTextEffect",
+      "content": "elements",
+      "model": "(w14:noFill | w14:solidFill | w14:gradFill)?",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.5",
+          "title": "CT_FillTextEffect",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Glow",
+      "content": "elements",
+      "model": "(w14:srgbClr | w14:schemeClr)",
+      "attributes": [
+        "w14:rad"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.6",
+          "title": "CT_Glow",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_GradientFillProperties",
+      "content": "elements",
+      "model": "(w14:gsLst?, (w14:lin | w14:path)?)",
+      "attributes": [],
+      "usedBy": [
+        "w14:gradFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.7",
+          "title": "CT_GradientFillProperties",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_GradientStop",
+      "content": "elements",
+      "model": "(w14:srgbClr | w14:schemeClr)",
+      "attributes": [
+        "w14:pos"
+      ],
+      "usedBy": [
+        "w14:gs"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.8",
+          "title": "CT_GradientStop",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_GradientStopList",
+      "content": "elements",
+      "model": "w14:gs{2,10}",
+      "attributes": [],
+      "usedBy": [
+        "w14:gsLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.9",
+          "title": "CT_GradientStopList",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Ligatures",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.10",
+          "title": "CT_Ligatures",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_LightRig",
+      "content": "elements",
+      "model": "w14:rot?",
+      "attributes": [
+        "w14:dir",
+        "w14:rig"
+      ],
+      "usedBy": [
+        "w14:lightRig"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.11",
+          "title": "CT_LightRig",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_LineJoinMiterProperties",
+      "content": "empty",
+      "attributes": [
+        "w14:lim"
+      ],
+      "usedBy": [
+        "w14:miter"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.13",
+          "title": "CT_LineJoinMiterProperties",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_LinearShadeProperties",
+      "content": "empty",
+      "attributes": [
+        "w14:ang",
+        "w14:scaled"
+      ],
+      "usedBy": [
+        "w14:lin"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.12",
+          "title": "CT_LinearShadeProperties",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_LongHexNumber",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:docId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.14",
+          "title": "CT_LongHexNumber",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_NumForm",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.15",
+          "title": "CT_NumForm",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_NumSpacing",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.16",
+          "title": "CT_NumSpacing",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_OnOff",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:checked",
+        "w14:conflictMode",
+        "w14:discardImageEditingData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.17",
+          "title": "CT_OnOff",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_PathShadeProperties",
+      "content": "elements",
+      "model": "w14:fillToRect?",
+      "attributes": [
+        "w14:path"
+      ],
+      "usedBy": [
+        "w14:path"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.18",
+          "title": "CT_PathShadeProperties",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Percentage",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:lum",
+        "w14:lumMod",
+        "w14:lumOff",
+        "w14:sat",
+        "w14:satMod",
+        "w14:satOff"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.19",
+          "title": "CT_Percentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_PositiveFixedPercentage",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:alpha",
+        "w14:shade",
+        "w14:tint"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.20",
+          "title": "CT_PositiveFixedPercentage",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_PositivePercentage",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:hueMod"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.21",
+          "title": "CT_PositivePercentage",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_PresetLineDashProperties",
+      "content": "empty",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:prstDash"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.22",
+          "title": "CT_PresetLineDashProperties",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Props3D",
+      "content": "elements",
+      "model": "(w14:bevelT?, w14:bevelB?, w14:extrusionClr?, w14:contourClr?)",
+      "attributes": [
+        "w14:contourW",
+        "w14:extrusionH",
+        "w14:prstMaterial"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.23",
+          "title": "CT_Props3D",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Reflection",
+      "content": "empty",
+      "attributes": [
+        "w14:algn",
+        "w14:blurRad",
+        "w14:dir",
+        "w14:dist",
+        "w14:endA",
+        "w14:endPos",
+        "w14:fadeDir",
+        "w14:kx",
+        "w14:ky",
+        "w14:stA",
+        "w14:stPos",
+        "w14:sx",
+        "w14:sy"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.24",
+          "title": "CT_Reflection",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_RelativeRect",
+      "content": "empty",
+      "attributes": [
+        "w14:b",
+        "w14:l",
+        "w14:r",
+        "w14:t"
+      ],
+      "usedBy": [
+        "w14:fillToRect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.25",
+          "title": "CT_RelativeRect",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SRgbColor",
+      "content": "elements",
+      "model": "(w14:tint | w14:shade | w14:alpha | w14:hueMod | w14:sat | w14:satOff | w14:satMod | w14:lum | w14:lumOff | w14:lumMod)*",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:srgbClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.33",
+          "title": "CT_SRgbColor",
+          "page": 66
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Scene3D",
+      "content": "elements",
+      "model": "(w14:camera, w14:lightRig)",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.26",
+          "title": "CT_Scene3D",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SchemeColor",
+      "content": "elements",
+      "model": "(w14:tint | w14:shade | w14:alpha | w14:hueMod | w14:sat | w14:satOff | w14:satMod | w14:lum | w14:lumOff | w14:lumMod)*",
+      "attributes": [
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:schemeClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.27",
+          "title": "CT_SchemeColor",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SdtCheckbox",
+      "content": "elements",
+      "model": "(w14:checked?, w14:checkedState?, w14:uncheckedState?)",
+      "attributes": [],
+      "usedBy": [
+        "w14:checkbox"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.28",
+          "title": "CT_SdtCheckbox",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SdtCheckboxSymbol",
+      "content": "empty",
+      "attributes": [
+        "w14:font",
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:checkedState",
+        "w14:uncheckedState"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.29",
+          "title": "CT_SdtCheckboxSymbol",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_Shadow",
+      "content": "elements",
+      "model": "(w14:srgbClr | w14:schemeClr)",
+      "attributes": [
+        "w14:algn",
+        "w14:blurRad",
+        "w14:dir",
+        "w14:dist",
+        "w14:kx",
+        "w14:ky",
+        "w14:sx",
+        "w14:sy"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.30",
+          "title": "CT_Shadow",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SolidColorFillProperties",
+      "content": "elements",
+      "model": "(w14:srgbClr | w14:schemeClr)?",
+      "attributes": [],
+      "usedBy": [
+        "w14:solidFill"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.31",
+          "title": "CT_SolidColorFillProperties",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_SphereCoords",
+      "content": "empty",
+      "attributes": [
+        "w14:lat",
+        "w14:lon",
+        "w14:rev"
+      ],
+      "usedBy": [
+        "w14:rot"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.32",
+          "title": "CT_SphereCoords",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_StyleSet",
+      "content": "empty",
+      "attributes": [
+        "w14:id",
+        "w14:val"
+      ],
+      "usedBy": [
+        "w14:styleSet"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.34",
+          "title": "CT_StyleSet",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_StylisticSets",
+      "content": "elements",
+      "model": "(w14:styleSet*)?",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.35",
+          "title": "CT_StylisticSets",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_TextOutlineEffect",
+      "content": "elements",
+      "model": "((w14:noFill | w14:solidFill | w14:gradFill)?, (w14:prstDash)?, (w14:round | w14:bevel | w14:miter)?)",
+      "attributes": [
+        "w14:algn",
+        "w14:cap",
+        "w14:cmpd",
+        "w14:w"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.3.36",
+          "title": "CT_TextOutlineEffect",
+          "page": 68
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_WordContentPart",
+      "content": "elements",
+      "model": "(w14:nvContentPartPr?, w14:xfrm?, w14:extLst?)",
+      "attributes": [
+        "bwMode",
+        "r:id"
+      ],
+      "usedBy": [
+        "w14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.15.3.1",
+          "title": "CT_WordContentPart",
+          "page": 161
+        }
+      ]
+    },
+    {
+      "name": "w14:CT_WordContentPartNonVisual",
+      "content": "elements",
+      "model": "(w14:cNvPr?, w14:cNvContentPartPr?)",
+      "attributes": [],
+      "usedBy": [
+        "w14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.15.3.2",
+          "title": "CT_WordContentPartNonVisual",
+          "page": 162
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "w14:ST_BevelPresetType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "relaxedInset",
+        "circle",
+        "slope",
+        "cross",
+        "angle",
+        "softRound",
+        "convex",
+        "coolSlant",
+        "divot",
+        "riblet",
+        "hardEdge",
+        "artDeco"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.1",
+          "title": "ST_BevelPresetType",
+          "page": 69
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_CompoundLine",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "sng",
+        "dbl",
+        "thickThin",
+        "thinThick",
+        "tri"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.2",
+          "title": "ST_CompoundLine",
+          "page": 70
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_Ligatures",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "standard",
+        "contextual",
+        "historical",
+        "discretional",
+        "standardContextual",
+        "standardHistorical",
+        "contextualHistorical",
+        "standardDiscretional",
+        "contextualDiscretional",
+        "historicalDiscretional",
+        "standardContextualHistorical",
+        "standardContextualDiscretional",
+        "standardHistoricalDiscretional",
+        "contextualHistoricalDiscretional",
+        "all"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.3",
+          "title": "ST_Ligatures",
+          "page": 70
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_LightRigDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "tl",
+        "t",
+        "tr",
+        "l",
+        "r",
+        "bl",
+        "b",
+        "br"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.4",
+          "title": "ST_LightRigDirection",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_LightRigType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "legacyFlat1",
+        "legacyFlat2",
+        "legacyFlat3",
+        "legacyFlat4",
+        "legacyNormal1",
+        "legacyNormal2",
+        "legacyNormal3",
+        "legacyNormal4",
+        "legacyHarsh1",
+        "legacyHarsh2",
+        "legacyHarsh3",
+        "legacyHarsh4",
+        "threePt",
+        "balanced",
+        "soft",
+        "harsh",
+        "flood",
+        "contrasting",
+        "morning",
+        "sunrise",
+        "sunset",
+        "chilly",
+        "freezing",
+        "flat",
+        "twoPt",
+        "glow",
+        "brightRoom"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.5",
+          "title": "ST_LightRigType",
+          "page": 73
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_LineCap",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "rnd",
+        "sq",
+        "flat"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.6",
+          "title": "ST_LineCap",
+          "page": 74
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_NumForm",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "default",
+        "lining",
+        "oldStyle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.7",
+          "title": "ST_NumForm",
+          "page": 75
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_NumSpacing",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "default",
+        "proportional",
+        "tabular"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.8",
+          "title": "ST_NumSpacing",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_OnOff",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "true",
+        "false",
+        "0",
+        "1"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.9",
+          "title": "ST_OnOff",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_PathShadeType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "shape",
+        "circle",
+        "rect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.10",
+          "title": "ST_PathShadeType",
+          "page": 77
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_PenAlignment",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "ctr",
+        "in"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.11",
+          "title": "ST_PenAlignment",
+          "page": 77
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_PresetCameraType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "legacyObliqueTopLeft",
+        "legacyObliqueTop",
+        "legacyObliqueTopRight",
+        "legacyObliqueLeft",
+        "legacyObliqueFront",
+        "legacyObliqueRight",
+        "legacyObliqueBottomLeft",
+        "legacyObliqueBottom",
+        "legacyObliqueBottomRight",
+        "legacyPerspectiveTopLeft",
+        "legacyPerspectiveTop",
+        "legacyPerspectiveTopRight",
+        "legacyPerspectiveLeft",
+        "legacyPerspectiveFront",
+        "legacyPerspectiveRight",
+        "legacyPerspectiveBottomLeft",
+        "legacyPerspectiveBottom",
+        "legacyPerspectiveBottomRight",
+        "orthographicFront",
+        "isometricTopUp",
+        "isometricTopDown",
+        "isometricBottomUp",
+        "isometricBottomDown",
+        "isometricLeftUp",
+        "isometricLeftDown",
+        "isometricRightUp",
+        "isometricRightDown",
+        "isometricOffAxis1Left",
+        "isometricOffAxis1Right",
+        "isometricOffAxis1Top",
+        "isometricOffAxis2Left",
+        "isometricOffAxis2Right",
+        "isometricOffAxis2Top",
+        "isometricOffAxis3Left",
+        "isometricOffAxis3Right",
+        "isometricOffAxis3Bottom",
+        "isometricOffAxis4Left",
+        "isometricOffAxis4Right",
+        "isometricOffAxis4Bottom",
+        "obliqueTopLeft",
+        "obliqueTop",
+        "obliqueTopRight",
+        "obliqueLeft",
+        "obliqueRight",
+        "obliqueBottomLeft",
+        "obliqueBottom",
+        "obliqueBottomRight",
+        "perspectiveFront",
+        "perspectiveLeft",
+        "perspectiveRight",
+        "perspectiveAbove",
+        "perspectiveBelow",
+        "perspectiveAboveLeftFacing",
+        "perspectiveAboveRightFacing",
+        "perspectiveContrastingLeftFacing",
+        "perspectiveContrastingRightFacing",
+        "perspectiveHeroicLeftFacing",
+        "perspectiveHeroicRightFacing",
+        "perspectiveHeroicExtremeLeftFacing",
+        "perspectiveHeroicExtremeRightFacing",
+        "perspectiveRelaxed",
+        "perspectiveRelaxedModerately"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.12",
+          "title": "ST_PresetCameraType",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_PresetLineDashVal",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "solid",
+        "dot",
+        "sysDot",
+        "dash",
+        "sysDash",
+        "lgDash",
+        "dashDot",
+        "sysDashDot",
+        "lgDashDot",
+        "lgDashDotDot",
+        "sysDashDotDot"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.13",
+          "title": "ST_PresetLineDashVal",
+          "page": 81
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_PresetMaterialType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "legacyMatte",
+        "legacyPlastic",
+        "legacyMetal",
+        "legacyWireframe",
+        "matte",
+        "plastic",
+        "metal",
+        "warmMatte",
+        "translucentPowder",
+        "powder",
+        "dkEdge",
+        "softEdge",
+        "clear",
+        "flat",
+        "softmetal",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.14",
+          "title": "ST_PresetMaterialType",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_RectAlignment",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "tl",
+        "t",
+        "tr",
+        "l",
+        "ctr",
+        "r",
+        "bl",
+        "b",
+        "br"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.15",
+          "title": "ST_RectAlignment",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "w14:ST_SchemeColorVal",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "bg1",
+        "tx1",
+        "bg2",
+        "tx2",
+        "accent1",
+        "accent2",
+        "accent3",
+        "accent4",
+        "accent5",
+        "accent6",
+        "hlink",
+        "folHlink",
+        "dk1",
+        "lt1",
+        "dk2",
+        "lt2",
+        "phClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.4.16",
+          "title": "ST_SchemeColorVal",
+          "page": 84
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "prefix": "ahyp",
+  "uri": "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.33",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 1,
+    "enumValues": 2,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "ahyp:hlinkClr",
+      "global": true,
+      "types": [
+        "ahyp:CT_HyperlinkColor"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "ahyp:ST_HyperlinkColor",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.35.1.1",
+          "title": "hlinkClr",
+          "page": 313
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ahyp:CT_HyperlinkColor",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "ahyp:hlinkClr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.35.3.1",
+          "title": "CT_HyperlinkColor",
+          "page": 313
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "ahyp:ST_HyperlinkColor",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "hlink",
+        "tx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.35.4.1",
+          "title": "ST_HyperlinkColor",
+          "page": 313
+        }
+      ]
+    }
+  ]
+}

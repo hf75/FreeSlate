@@ -1,0 +1,280 @@
+{
+  "prefix": "cdr14",
+  "uri": "http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.8",
+  "counts": {
+    "elements": 7,
+    "attributes": 13,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "cdr14:cNvContentPartPr",
+      "types": [
+        "a14:CT_NonVisualInkContentPartProperties"
+      ],
+      "attributes": [
+        {
+          "name": "isComment",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a14:cpLocks",
+        "a14:extLst"
+      ],
+      "parents": [
+        "cdr14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.7",
+          "title": "CT_NonVisualInkContentPartProperties",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "cdr14:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "cdr14:nvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cdr14:contentPart",
+      "global": true,
+      "types": [
+        "cdr14:CT_ContentPart"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode",
+          "default": "auto"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "cdr14:nvContentPartPr",
+        "cdr14:nvPr",
+        "cdr14:xfrm",
+        "cdr14:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.1.1",
+          "title": "contentPart",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "cdr14:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "cdr14:contentPart"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cdr14:nvContentPartPr",
+      "types": [
+        "cdr14:CT_ContentPartNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "cdr14:cNvPr",
+        "cdr14:cNvContentPartPr"
+      ],
+      "parents": [
+        "cdr14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.3.3",
+          "title": "CT_ContentPartNonVisual",
+          "page": 95
+        }
+      ]
+    },
+    {
+      "name": "cdr14:nvPr",
+      "types": [
+        "cdr14:CT_ApplicationNonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "fPublished",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "macro",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cdr14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.3.1",
+          "title": "CT_ApplicationNonVisualDrawingProps",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "cdr14:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "cdr14:contentPart"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "cdr14:CT_ApplicationNonVisualDrawingProps",
+      "content": "empty",
+      "attributes": [
+        "fPublished",
+        "macro"
+      ],
+      "usedBy": [
+        "cdr14:nvPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.3.1",
+          "title": "CT_ApplicationNonVisualDrawingProps",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "cdr14:CT_ContentPart",
+      "content": "elements",
+      "model": "(cdr14:nvContentPartPr?, cdr14:nvPr?, cdr14:xfrm?, cdr14:extLst?)",
+      "attributes": [
+        "bwMode",
+        "r:id"
+      ],
+      "usedBy": [
+        "cdr14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.3.2",
+          "title": "CT_ContentPart",
+          "page": 94
+        }
+      ]
+    },
+    {
+      "name": "cdr14:CT_ContentPartNonVisual",
+      "content": "elements",
+      "model": "(cdr14:cNvPr, cdr14:cNvContentPartPr?)",
+      "attributes": [],
+      "usedBy": [
+        "cdr14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.5.3.3",
+          "title": "CT_ContentPartNonVisual",
+          "page": 95
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

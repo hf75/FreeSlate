@@ -1,0 +1,146 @@
+{
+  "prefix": "mdssi",
+  "uri": "http://schemas.openxmlformats.org/package/2006/digital-signature",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-2 schema opc-digSig.xsd",
+  "counts": {
+    "elements": 5,
+    "attributes": 2,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 2,
+    "enumValues": 0,
+    "specSections": 0,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "mdssi:Format",
+      "types": [
+        "mdssi:ST_Format"
+      ],
+      "text": "mdssi:ST_Format",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "mdssi:SignatureTime"
+      ],
+      "spec": []
+    },
+    {
+      "name": "mdssi:RelationshipReference",
+      "global": true,
+      "types": [
+        "mdssi:CT_RelationshipReference"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "SourceId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "mdssi:RelationshipsGroupReference",
+      "global": true,
+      "types": [
+        "mdssi:CT_RelationshipsGroupReference"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "SourceType",
+          "type": "xsd:anyURI",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "mdssi:SignatureTime",
+      "global": true,
+      "types": [
+        "mdssi:CT_SignatureTime"
+      ],
+      "attributes": [],
+      "children": [
+        "mdssi:Format",
+        "mdssi:Value"
+      ],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "mdssi:Value",
+      "types": [
+        "mdssi:ST_Value"
+      ],
+      "text": "mdssi:ST_Value",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "mdssi:SignatureTime"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "mdssi:CT_RelationshipReference",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "SourceId"
+      ],
+      "usedBy": [
+        "mdssi:RelationshipReference"
+      ]
+    },
+    {
+      "name": "mdssi:CT_RelationshipsGroupReference",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "SourceType"
+      ],
+      "usedBy": [
+        "mdssi:RelationshipsGroupReference"
+      ]
+    },
+    {
+      "name": "mdssi:CT_SignatureTime",
+      "content": "elements",
+      "model": "(mdssi:Format, mdssi:Value)",
+      "attributes": [],
+      "usedBy": [
+        "mdssi:SignatureTime"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "mdssi:ST_Format",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "(YYYY)|(YYYY-MM)|(YYYY-MM-DD)|(YYYY-MM-DDThh:mmTZD)|(YYYY-MM-DDThh:mm:ssTZD)|(YYYY-MM-DDThh:mm:ss.sTZD)"
+      }
+    },
+    {
+      "name": "mdssi:ST_Value",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "(([0-9][0-9][0-9][0-9]))|(([0-9][0-9][0-9][0-9])-((0[1-9])|(1(0|1|2))))|(([0-9][0-9][0-9][0-9])-((0[1-9])|(1(0|1|2)))-((0[1-9])|(1[0-9])|(2[0-9])|(3(0|1))))|(([0-9][0-9][0-9][0-9])-((0[1-9])|(1(0|1|2)))-((0[1-9])|(1[0-9])|(2[0-9])|(3(0|1)))T((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9]))(((\\+|-)((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9])))|Z))|(([0-9][0-9][0-9][0-9])-((0[1-9])|(1(0|1|2)))-((0[1-9])|(1[0-9])|(2[0-9])|(3(0|1)))T((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9])):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9]))(((\\+|-)((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9])))|Z))|(([0-9][0-9][0-9][0-9])-((0[1-9])|(1(0|1|2)))-((0[1-9])|(1[0-9])|(2[0-9])|(3(0|1)))T((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9])):(((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9]))\\.[0-9])(((\\+|-)((0[0-9])|(1[0-9])|(2(0|1|2|3))):((0[0-9])|(1[0-9])|(2[0-9])|(3[0-9])|(4[0-9])|(5[0-9])))|Z))"
+      }
+    }
+  ]
+}

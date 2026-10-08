@@ -1,0 +1,278 @@
+{
+  "prefix": "psuz",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2016/summaryzoom",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.10",
+  "counts": {
+    "elements": 6,
+    "attributes": 12,
+    "globalAttributes": 0,
+    "complexTypes": 4,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 6,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "psuz:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "psuz:summaryZm",
+        "psuz:summaryZmObj"
+      ],
+      "spec": []
+    },
+    {
+      "name": "psuz:fixedLayout",
+      "types": [
+        "psuz:CT_FixedLayout"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "psuz:summaryZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.1",
+          "title": "CT_FixedLayout",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "psuz:gridLayout",
+      "types": [
+        "psuz:CT_GridLayout"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "psuz:summaryZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.2",
+          "title": "CT_GridLayout",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "psuz:summaryZm",
+      "global": true,
+      "types": [
+        "psuz:CT_SummaryZoom"
+      ],
+      "attributes": [],
+      "children": [
+        "psuz:summaryZmObj",
+        "psuz:gridLayout",
+        "psuz:fixedLayout",
+        "psuz:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.1.1",
+          "title": "summaryZm",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "psuz:summaryZmObj",
+      "types": [
+        "psuz:CT_SummaryZoomObject"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "offsetFactorX",
+          "type": "a:ST_Percentage",
+          "default": "0"
+        },
+        {
+          "name": "offsetFactorY",
+          "type": "a:ST_Percentage",
+          "default": "0"
+        },
+        {
+          "name": "scaleFactorX",
+          "type": "a:ST_Percentage",
+          "default": "100000"
+        },
+        {
+          "name": "scaleFactorY",
+          "type": "a:ST_Percentage",
+          "default": "100000"
+        },
+        {
+          "name": "sectionId",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "psuz:zmPr",
+        "psuz:extLst"
+      ],
+      "parents": [
+        "psuz:summaryZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.4",
+          "title": "CT_SummaryZoomObject",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "psuz:zmPr",
+      "types": [
+        "p166:CT_ZoomObjectProperties"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "imageType",
+          "type": "p166:ST_ZoomObjectImageType",
+          "default": "preview"
+        },
+        {
+          "name": "returnToParent",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "showBg",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "transitionDur",
+          "type": "p14:ST_UniversalTimeOffset"
+        }
+      ],
+      "children": [
+        "p166:blipFill",
+        "p166:spPr"
+      ],
+      "parents": [
+        "psuz:summaryZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.8.3.1",
+          "title": "CT_ZoomObjectProperties",
+          "page": 74
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "psuz:CT_FixedLayout",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "psuz:fixedLayout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.1",
+          "title": "CT_FixedLayout",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "psuz:CT_GridLayout",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "psuz:gridLayout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.2",
+          "title": "CT_GridLayout",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "psuz:CT_SummaryZoom",
+      "content": "elements",
+      "model": "(psuz:summaryZmObj*, (psuz:gridLayout | psuz:fixedLayout), psuz:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "psuz:summaryZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.3",
+          "title": "CT_SummaryZoom",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "psuz:CT_SummaryZoomObject",
+      "content": "elements",
+      "model": "(psuz:zmPr, psuz:extLst?)",
+      "attributes": [
+        "descr",
+        "offsetFactorX",
+        "offsetFactorY",
+        "scaleFactorX",
+        "scaleFactorY",
+        "sectionId",
+        "title"
+      ],
+      "usedBy": [
+        "psuz:summaryZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.11.3.4",
+          "title": "CT_SummaryZoomObject",
+          "page": 80
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

@@ -1,0 +1,83 @@
+{
+  "prefix": "p159",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.4",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 1,
+    "enumValues": 3,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p159:morph",
+      "global": true,
+      "types": [
+        "p159:CT_MorphTransition"
+      ],
+      "attributes": [
+        {
+          "name": "option",
+          "type": "p159:ST_TransitionMorphOption",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.6.1.1",
+          "title": "morph",
+          "page": 70
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p159:CT_MorphTransition",
+      "content": "empty",
+      "attributes": [
+        "option"
+      ],
+      "usedBy": [
+        "p159:morph"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.6.3.1",
+          "title": "CT_MorphTransition",
+          "page": 70
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p159:ST_TransitionMorphOption",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "byObject",
+        "byWord",
+        "byChar"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.6.4.1",
+          "title": "ST_TransitionMorphOption",
+          "page": 71
+        }
+      ]
+    }
+  ]
+}

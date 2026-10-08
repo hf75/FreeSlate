@@ -1,0 +1,170 @@
+{
+  "prefix": "psez",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2016/sectionzoom",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.8",
+  "counts": {
+    "elements": 4,
+    "attributes": 6,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 4,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "psez:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "psez:sectionZm",
+        "psez:sectionZmObj"
+      ],
+      "spec": []
+    },
+    {
+      "name": "psez:sectionZm",
+      "global": true,
+      "types": [
+        "psez:CT_SectionZoom"
+      ],
+      "attributes": [],
+      "children": [
+        "psez:sectionZmObj",
+        "psez:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.9.1.1",
+          "title": "sectionZm",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "psez:sectionZmObj",
+      "types": [
+        "psez:CT_SectionZoomObject"
+      ],
+      "attributes": [
+        {
+          "name": "sectionId",
+          "type": "s:ST_Guid",
+          "required": true
+        }
+      ],
+      "children": [
+        "psez:zmPr",
+        "psez:extLst"
+      ],
+      "parents": [
+        "psez:sectionZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.9.3.2",
+          "title": "CT_SectionZoomObject",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "psez:zmPr",
+      "types": [
+        "p166:CT_ZoomObjectProperties"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "imageType",
+          "type": "p166:ST_ZoomObjectImageType",
+          "default": "preview"
+        },
+        {
+          "name": "returnToParent",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "showBg",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "transitionDur",
+          "type": "p14:ST_UniversalTimeOffset"
+        }
+      ],
+      "children": [
+        "p166:blipFill",
+        "p166:spPr"
+      ],
+      "parents": [
+        "psez:sectionZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.8.3.1",
+          "title": "CT_ZoomObjectProperties",
+          "page": 74
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "psez:CT_SectionZoom",
+      "content": "elements",
+      "model": "(psez:sectionZmObj, psez:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "psez:sectionZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.9.3.1",
+          "title": "CT_SectionZoom",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "psez:CT_SectionZoomObject",
+      "content": "elements",
+      "model": "(psez:zmPr, psez:extLst?)",
+      "attributes": [
+        "sectionId"
+      ],
+      "usedBy": [
+        "psez:sectionZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.9.3.2",
+          "title": "CT_SectionZoomObject",
+          "page": 76
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

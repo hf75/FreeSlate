@@ -1,0 +1,5012 @@
+{
+  "prefix": "m",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+  "area": "Math (OMML)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-math.xsd",
+  "counts": {
+    "elements": 124,
+    "attributes": 66,
+    "globalAttributes": 0,
+    "complexTypes": 72,
+    "simpleTypes": 14,
+    "enumValues": 30,
+    "specSections": 138,
+    "officeNotes": 74
+  },
+  "elements": [
+    {
+      "name": "m:acc",
+      "types": [
+        "m:CT_Acc"
+      ],
+      "attributes": [],
+      "children": [
+        "m:accPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.1",
+          "title": "Accent",
+          "page": 3616,
+          "officeNotes": [
+            "2.1.1643"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:accPr",
+      "types": [
+        "m:CT_AccPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:chr",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:acc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.2",
+          "title": "Accent Properties",
+          "page": 3617
+        }
+      ]
+    },
+    {
+      "name": "m:aln",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:boxPr",
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.3",
+          "title": "Alignment",
+          "page": 3617,
+          "officeNotes": [
+            "2.1.1644"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:alnScr",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:sSubSupPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.4",
+          "title": "Align Scripts",
+          "page": 3619
+        }
+      ]
+    },
+    {
+      "name": "m:argPr",
+      "types": [
+        "m:CT_OMathArgPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argSz"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:sub",
+        "m:sup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.5",
+          "title": "Argument Properties",
+          "page": 3620
+        }
+      ]
+    },
+    {
+      "name": "m:argSz",
+      "types": [
+        "m:CT_Integer2"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Integer2",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:argPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.6",
+          "title": "Argument Size",
+          "page": 3621
+        }
+      ]
+    },
+    {
+      "name": "m:bar",
+      "types": [
+        "m:CT_Bar"
+      ],
+      "attributes": [],
+      "children": [
+        "m:barPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.7",
+          "title": "Bar",
+          "page": 3623,
+          "officeNotes": [
+            "2.1.1645"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:barPr",
+      "types": [
+        "m:CT_BarPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:pos",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:bar"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.8",
+          "title": "Bar Properties",
+          "page": 3623,
+          "officeNotes": [
+            "2.1.1646"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:baseJc",
+      "types": [
+        "m:CT_YAlign"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_YAlign",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:eqArrPr",
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.9",
+          "title": "Matrix Base Justification",
+          "page": 3624,
+          "officeNotes": [
+            "2.1.1647"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:begChr",
+      "types": [
+        "m:CT_Char"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Char",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:dPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.10",
+          "title": "Delimiter Beginning Character",
+          "page": 3627
+        }
+      ]
+    },
+    {
+      "name": "m:borderBox",
+      "types": [
+        "m:CT_BorderBox"
+      ],
+      "attributes": [],
+      "children": [
+        "m:borderBoxPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.11",
+          "title": "Border-Box Object",
+          "page": 3628,
+          "officeNotes": [
+            "2.1.1648"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:borderBoxPr",
+      "types": [
+        "m:CT_BorderBoxPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:hideTop",
+        "m:hideBot",
+        "m:hideLeft",
+        "m:hideRight",
+        "m:strikeH",
+        "m:strikeV",
+        "m:strikeBLTR",
+        "m:strikeTLBR",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:borderBox"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.12",
+          "title": "Border-Box Properties",
+          "page": 3628
+        }
+      ]
+    },
+    {
+      "name": "m:box",
+      "types": [
+        "m:CT_Box"
+      ],
+      "attributes": [],
+      "children": [
+        "m:boxPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.13",
+          "title": "Box Object",
+          "page": 3629,
+          "officeNotes": [
+            "2.1.1649"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:boxPr",
+      "types": [
+        "m:CT_BoxPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:opEmu",
+        "m:noBreak",
+        "m:diff",
+        "m:brk",
+        "m:aln",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:box"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.14",
+          "title": "Box Properties",
+          "page": 3629
+        }
+      ]
+    },
+    {
+      "name": "m:brk",
+      "types": [
+        "m:CT_ManualBreak"
+      ],
+      "attributes": [
+        {
+          "name": "m:alnAt",
+          "type": "m:ST_Integer255"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:boxPr",
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.15",
+          "title": "Break",
+          "page": 3630,
+          "officeNotes": [
+            "2.1.1650"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:brkBin",
+      "types": [
+        "m:CT_BreakBin"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_BreakBin"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.16",
+          "title": "Break on Binary Operators",
+          "page": 3632
+        }
+      ]
+    },
+    {
+      "name": "m:brkBinSub",
+      "types": [
+        "m:CT_BreakBinSub"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_BreakBinSub"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.17",
+          "title": "Break on Binary Subtraction",
+          "page": 3633
+        }
+      ]
+    },
+    {
+      "name": "m:cGp",
+      "types": [
+        "m:CT_UnSignedInteger"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_UnSignedInteger",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.18",
+          "title": "Matrix Column Gap",
+          "page": 3634,
+          "officeNotes": [
+            "2.1.1651"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:cGpRule",
+      "types": [
+        "m:CT_SpacingRule"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_SpacingRule",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.19",
+          "title": "Matrix Column Gap Rule",
+          "page": 3635,
+          "officeNotes": [
+            "2.1.1652"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:cSp",
+      "types": [
+        "m:CT_UnSignedInteger"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_UnSignedInteger",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.22",
+          "title": "Minimum Matrix Column Width",
+          "page": 3639,
+          "officeNotes": [
+            "2.1.1654"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:chr",
+      "types": [
+        "m:CT_Char"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Char",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:accPr",
+        "m:groupChrPr",
+        "m:naryPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.20",
+          "title": "Character",
+          "page": 3637
+        }
+      ]
+    },
+    {
+      "name": "m:count",
+      "types": [
+        "m:CT_Integer255"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Integer255",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mcPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.21",
+          "title": "Matrix Column Count",
+          "page": 3638,
+          "officeNotes": [
+            "2.1.1653"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:ctrlPr",
+      "types": [
+        "m:CT_CtrlPr"
+      ],
+      "attributes": [],
+      "children": [
+        "w:rPr",
+        "w:ins",
+        "w:del"
+      ],
+      "parents": [
+        "m:accPr",
+        "m:barPr",
+        "m:borderBoxPr",
+        "m:boxPr",
+        "m:dPr",
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:eqArrPr",
+        "m:fName",
+        "m:fPr",
+        "m:funcPr",
+        "m:groupChrPr",
+        "m:lim",
+        "m:limLowPr",
+        "m:limUppPr",
+        "m:mPr",
+        "m:naryPr",
+        "m:num",
+        "m:phantPr",
+        "m:radPr",
+        "m:sPrePr",
+        "m:sSubPr",
+        "m:sSubSupPr",
+        "m:sSupPr",
+        "m:sub",
+        "m:sup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.23",
+          "title": "Control Properties",
+          "page": 3640,
+          "officeNotes": [
+            "2.1.1655"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:d",
+      "types": [
+        "m:CT_D"
+      ],
+      "attributes": [],
+      "children": [
+        "m:dPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.24",
+          "title": "Delimiter Object",
+          "page": 3641,
+          "officeNotes": [
+            "2.1.1656"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:dPr",
+      "types": [
+        "m:CT_DPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:begChr",
+        "m:sepChr",
+        "m:endChr",
+        "m:grow",
+        "m:shp",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:d"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.31",
+          "title": "Delimiter Properties",
+          "page": 3648
+        }
+      ]
+    },
+    {
+      "name": "m:defJc",
+      "types": [
+        "m:CT_OMathJc"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Jc"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.25",
+          "title": "Default Justification",
+          "page": 3642,
+          "officeNotes": [
+            "2.1.1657"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:deg",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:rad"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.26",
+          "title": "Degree",
+          "page": 3643,
+          "officeNotes": [
+            "2.1.1658"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:degHide",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:radPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.27",
+          "title": "Hide Degree",
+          "page": 3644,
+          "officeNotes": [
+            "2.1.1659"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:den",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:f"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.28",
+          "title": "Denominator",
+          "page": 3645,
+          "officeNotes": [
+            "2.1.1660"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:diff",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:boxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.29",
+          "title": "Differential",
+          "page": 3645
+        }
+      ]
+    },
+    {
+      "name": "m:dispDef",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.30",
+          "title": "Use Display Math Defaults",
+          "page": 3647,
+          "officeNotes": [
+            "2.1.1661"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:e",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:acc",
+        "m:bar",
+        "m:borderBox",
+        "m:box",
+        "m:d",
+        "m:eqArr",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:mr",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.32",
+          "title": "Element (Argument)",
+          "page": 3648,
+          "officeNotes": [
+            "2.1.1662"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:endChr",
+      "types": [
+        "m:CT_Char"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Char",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:dPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.33",
+          "title": "Delimiter Ending Character",
+          "page": 3650
+        }
+      ]
+    },
+    {
+      "name": "m:eqArr",
+      "types": [
+        "m:CT_EqArr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:eqArrPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.34",
+          "title": "Array Object",
+          "page": 3650,
+          "officeNotes": [
+            "2.1.1663"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:eqArrPr",
+      "types": [
+        "m:CT_EqArrPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:baseJc",
+        "m:maxDist",
+        "m:objDist",
+        "m:rSpRule",
+        "m:rSp",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:eqArr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.35",
+          "title": "Array Properties",
+          "page": 3652
+        }
+      ]
+    },
+    {
+      "name": "m:f",
+      "types": [
+        "m:CT_F"
+      ],
+      "attributes": [],
+      "children": [
+        "m:fPr",
+        "m:num",
+        "m:den"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.36",
+          "title": "Fraction Object",
+          "page": 3653,
+          "officeNotes": [
+            "2.1.1664"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:fName",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:func"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.37",
+          "title": "Function Name",
+          "page": 3654,
+          "officeNotes": [
+            "2.1.1665"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:fPr",
+      "types": [
+        "m:CT_FPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:type",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:f"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.38",
+          "title": "Fraction Properties",
+          "page": 3654
+        }
+      ]
+    },
+    {
+      "name": "m:func",
+      "types": [
+        "m:CT_Func"
+      ],
+      "attributes": [],
+      "children": [
+        "m:funcPr",
+        "m:fName",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.39",
+          "title": "Function Apply Object",
+          "page": 3655,
+          "officeNotes": [
+            "2.1.1666"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:funcPr",
+      "types": [
+        "m:CT_FuncPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:func"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.40",
+          "title": "Function Properties",
+          "page": 3655
+        }
+      ]
+    },
+    {
+      "name": "m:groupChr",
+      "types": [
+        "m:CT_GroupChr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:groupChrPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.41",
+          "title": "Group-Character Object",
+          "page": 3656,
+          "officeNotes": [
+            "2.1.1667"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:groupChrPr",
+      "types": [
+        "m:CT_GroupChrPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:chr",
+        "m:pos",
+        "m:vertJc",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:groupChr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.42",
+          "title": "Group-Character Properties",
+          "page": 3657
+        }
+      ]
+    },
+    {
+      "name": "m:grow",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:dPr",
+        "m:naryPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.43",
+          "title": "n-ary Grow",
+          "page": 3657,
+          "officeNotes": [
+            "2.1.1668"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:hideBot",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.44",
+          "title": "Hide Bottom Edge",
+          "page": 3658
+        }
+      ]
+    },
+    {
+      "name": "m:hideLeft",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.45",
+          "title": "Hide Left Edge",
+          "page": 3659
+        }
+      ]
+    },
+    {
+      "name": "m:hideRight",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.46",
+          "title": "Hide Right Edge",
+          "page": 3660
+        }
+      ]
+    },
+    {
+      "name": "m:hideTop",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.47",
+          "title": "Hide Top Edge",
+          "page": 3661
+        }
+      ]
+    },
+    {
+      "name": "m:intLim",
+      "types": [
+        "m:CT_LimLoc"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_LimLoc",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.49",
+          "title": "Integral Limit Locations",
+          "page": 3662,
+          "officeNotes": [
+            "2.1.1670"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:interSp",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.48",
+          "title": "Inter-Equation Spacing",
+          "page": 3661,
+          "officeNotes": [
+            "2.1.1669"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:intraSp",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.50",
+          "title": "Intra-Equation Spacing",
+          "page": 3663,
+          "officeNotes": [
+            "2.1.1671"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:jc",
+      "types": [
+        "m:CT_OMathJc"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Jc"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:oMathParaPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.51",
+          "title": "Justification",
+          "page": 3663,
+          "officeNotes": [
+            "2.1.1672"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:lMargin",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.59",
+          "title": "Left Margin",
+          "page": 3669
+        }
+      ]
+    },
+    {
+      "name": "m:lim",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:limLow",
+        "m:limUpp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.52",
+          "title": "Limit",
+          "page": 3664,
+          "officeNotes": [
+            "2.1.1673"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:limLoc",
+      "types": [
+        "m:CT_LimLoc"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_LimLoc",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:naryPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.53",
+          "title": "n-ary Limit Location",
+          "page": 3664
+        }
+      ]
+    },
+    {
+      "name": "m:limLow",
+      "types": [
+        "m:CT_LimLow"
+      ],
+      "attributes": [],
+      "children": [
+        "m:limLowPr",
+        "m:e",
+        "m:lim"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.54",
+          "title": "Lower-Limit Object",
+          "page": 3665,
+          "officeNotes": [
+            "2.1.1674"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:limLowPr",
+      "types": [
+        "m:CT_LimLowPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:limLow"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.55",
+          "title": "Lower-Limit Properties",
+          "page": 3666
+        }
+      ]
+    },
+    {
+      "name": "m:limUpp",
+      "types": [
+        "m:CT_LimUpp"
+      ],
+      "attributes": [],
+      "children": [
+        "m:limUppPr",
+        "m:e",
+        "m:lim"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.56",
+          "title": "Upper-Limit Object",
+          "page": 3666,
+          "officeNotes": [
+            "2.1.1675"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:limUppPr",
+      "types": [
+        "m:CT_LimUppPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:limUpp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.57",
+          "title": "Upper-Limit Properties",
+          "page": 3667
+        }
+      ]
+    },
+    {
+      "name": "m:lit",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.58",
+          "title": "Literal",
+          "page": 3668
+        }
+      ]
+    },
+    {
+      "name": "m:m",
+      "types": [
+        "m:CT_M"
+      ],
+      "attributes": [],
+      "children": [
+        "m:mPr",
+        "m:mr"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.60",
+          "title": "Matrix Object",
+          "page": 3670,
+          "officeNotes": [
+            "2.1.1676"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:mPr",
+      "types": [
+        "m:CT_MPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:baseJc",
+        "m:plcHide",
+        "m:rSpRule",
+        "m:cGpRule",
+        "m:rSp",
+        "m:cSp",
+        "m:cGp",
+        "m:mcs",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:m"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.68",
+          "title": "Matrix Properties",
+          "page": 3682
+        }
+      ]
+    },
+    {
+      "name": "m:mathFont",
+      "types": [
+        "m:CT_String"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_String"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.61",
+          "title": "Math Font",
+          "page": 3672,
+          "officeNotes": [
+            "2.1.1677"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:mathPr",
+      "global": true,
+      "types": [
+        "m:CT_MathPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:mathFont",
+        "m:brkBin",
+        "m:brkBinSub",
+        "m:smallFrac",
+        "m:dispDef",
+        "m:lMargin",
+        "m:rMargin",
+        "m:defJc",
+        "m:preSp",
+        "m:postSp",
+        "m:interSp",
+        "m:intraSp",
+        "m:wrapIndent",
+        "m:wrapRight",
+        "m:intLim",
+        "m:naryLim"
+      ],
+      "parents": [
+        "w:settings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.62",
+          "title": "Math Properties",
+          "page": 3673
+        }
+      ]
+    },
+    {
+      "name": "m:maxDist",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:eqArrPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.63",
+          "title": "Maximum Distribution",
+          "page": 3674,
+          "officeNotes": [
+            "2.1.1678"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:mc",
+      "types": [
+        "m:CT_MC"
+      ],
+      "attributes": [],
+      "children": [
+        "m:mcPr"
+      ],
+      "parents": [
+        "m:mcs"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.64",
+          "title": "Matrix Column",
+          "page": 3676,
+          "officeNotes": [
+            "2.1.1679"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:mcJc",
+      "types": [
+        "m:CT_XAlign"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_XAlign",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mcPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.65",
+          "title": "Matrix Column Justification",
+          "page": 3677
+        }
+      ]
+    },
+    {
+      "name": "m:mcPr",
+      "types": [
+        "m:CT_MCPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:count",
+        "m:mcJc"
+      ],
+      "parents": [
+        "m:mc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.66",
+          "title": "Matrix Column Properties",
+          "page": 3679
+        }
+      ]
+    },
+    {
+      "name": "m:mcs",
+      "types": [
+        "m:CT_MCS"
+      ],
+      "attributes": [],
+      "children": [
+        "m:mc"
+      ],
+      "parents": [
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.67",
+          "title": "Matrix Columns",
+          "page": 3681,
+          "officeNotes": [
+            "2.1.1680"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:mr",
+      "types": [
+        "m:CT_MR"
+      ],
+      "attributes": [],
+      "children": [
+        "m:e"
+      ],
+      "parents": [
+        "m:m"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.69",
+          "title": "Matrix Row",
+          "page": 3683,
+          "officeNotes": [
+            "2.1.1681"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:nary",
+      "types": [
+        "m:CT_Nary"
+      ],
+      "attributes": [],
+      "children": [
+        "m:naryPr",
+        "m:sub",
+        "m:sup",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.70",
+          "title": "n-ary Operator Object",
+          "page": 3685,
+          "officeNotes": [
+            "2.1.1682"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:naryLim",
+      "types": [
+        "m:CT_LimLoc"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_LimLoc",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.71",
+          "title": "n-ary Limit Location",
+          "page": 3686,
+          "officeNotes": [
+            "2.1.1683"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:naryPr",
+      "types": [
+        "m:CT_NaryPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:chr",
+        "m:limLoc",
+        "m:grow",
+        "m:subHide",
+        "m:supHide",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:nary"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.72",
+          "title": "n-ary Properties",
+          "page": 3687
+        }
+      ]
+    },
+    {
+      "name": "m:noBreak",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:boxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.73",
+          "title": "No Break",
+          "page": 3688,
+          "officeNotes": [
+            "2.1.1684"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:nor",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.74",
+          "title": "Normal Text",
+          "page": 3689
+        }
+      ]
+    },
+    {
+      "name": "m:num",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:f"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.75",
+          "title": "Numerator",
+          "page": 3690,
+          "officeNotes": [
+            "2.1.1685"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:oMath",
+      "global": true,
+      "types": [
+        "m:CT_OMath"
+      ],
+      "attributes": [],
+      "children": [
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath"
+      ],
+      "parents": [
+        "a14:m",
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:oMathPara",
+        "m:sub",
+        "m:sup",
+        "w:bdo",
+        "w:body",
+        "w:comment",
+        "w:customXml",
+        "w:del",
+        "w:dir",
+        "w:docPartBody",
+        "w:endnote",
+        "w:fldSimple",
+        "w:footnote",
+        "w:ftr",
+        "w:hdr",
+        "w:hyperlink",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo",
+        "w:p",
+        "w:rt",
+        "w:rubyBase",
+        "w:sdtContent",
+        "w:smartTag",
+        "w:tbl",
+        "w:tc",
+        "w:tr",
+        "w:txbxContent",
+        "wne:txbxContent",
+        "wp:txbxContent"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.77",
+          "title": "Office Math",
+          "page": 3692,
+          "officeNotes": [
+            "2.1.1687"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:oMathPara",
+      "global": true,
+      "types": [
+        "m:CT_OMathPara"
+      ],
+      "attributes": [],
+      "children": [
+        "m:oMathParaPr",
+        "m:oMath"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:bdo",
+        "w:body",
+        "w:comment",
+        "w:customXml",
+        "w:del",
+        "w:dir",
+        "w:docPartBody",
+        "w:endnote",
+        "w:fldSimple",
+        "w:footnote",
+        "w:ftr",
+        "w:hdr",
+        "w:hyperlink",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo",
+        "w:p",
+        "w:rt",
+        "w:rubyBase",
+        "w:sdtContent",
+        "w:smartTag",
+        "w:tbl",
+        "w:tc",
+        "w:tr",
+        "w:txbxContent",
+        "wne:txbxContent",
+        "wp:txbxContent"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.78",
+          "title": "Office Math Paragraph",
+          "page": 3693,
+          "officeNotes": [
+            "2.1.1688"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:oMathParaPr",
+      "types": [
+        "m:CT_OMathParaPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:jc"
+      ],
+      "parents": [
+        "m:oMathPara"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.79",
+          "title": "Office Math Paragraph Properties",
+          "page": 3693
+        }
+      ]
+    },
+    {
+      "name": "m:objDist",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:eqArrPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.76",
+          "title": "Object Distribution",
+          "page": 3691,
+          "officeNotes": [
+            "2.1.1686"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:opEmu",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:boxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.80",
+          "title": "Operator Emulator",
+          "page": 3694,
+          "officeNotes": [
+            "2.1.1689"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:phant",
+      "types": [
+        "m:CT_Phant"
+      ],
+      "attributes": [],
+      "children": [
+        "m:phantPr",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.81",
+          "title": "Phantom Object",
+          "page": 3695,
+          "officeNotes": [
+            "2.1.1690"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:phantPr",
+      "types": [
+        "m:CT_PhantPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:show",
+        "m:zeroWid",
+        "m:zeroAsc",
+        "m:zeroDesc",
+        "m:transp",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:phant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.82",
+          "title": "Phantom Properties",
+          "page": 3696
+        }
+      ]
+    },
+    {
+      "name": "m:plcHide",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.83",
+          "title": "Hide Placeholders (Matrix)",
+          "page": 3696
+        }
+      ]
+    },
+    {
+      "name": "m:pos",
+      "types": [
+        "m:CT_TopBot"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_TopBot",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:barPr",
+        "m:groupChrPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.84",
+          "title": "Position",
+          "page": 3697,
+          "officeNotes": [
+            "2.1.1691"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:postSp",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.85",
+          "title": "Post-Paragraph Spacing",
+          "page": 3698,
+          "officeNotes": [
+            "2.1.1692"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:preSp",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.86",
+          "title": "Pre-Paragraph Spacing",
+          "page": 3698,
+          "officeNotes": [
+            "2.1.1693"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:r",
+      "types": [
+        "m:CT_R"
+      ],
+      "attributes": [],
+      "children": [
+        "m:rPr",
+        "w:rPr",
+        "w:br",
+        "w:t",
+        "w:contentPart",
+        "w:delText",
+        "w:instrText",
+        "w:delInstrText",
+        "w:noBreakHyphen",
+        "w:softHyphen",
+        "w:dayShort",
+        "w:monthShort",
+        "w:yearShort",
+        "w:dayLong",
+        "w:monthLong",
+        "w:yearLong",
+        "w:annotationRef",
+        "w:footnoteRef",
+        "w:endnoteRef",
+        "w:separator",
+        "w:continuationSeparator",
+        "w:sym",
+        "w:pgNum",
+        "w:cr",
+        "w:tab",
+        "w:object",
+        "w:pict",
+        "w:fldChar",
+        "w:ruby",
+        "w:footnoteReference",
+        "w:endnoteReference",
+        "w:commentReference",
+        "w:drawing",
+        "w:ptab",
+        "w:lastRenderedPageBreak",
+        "m:t"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.87",
+          "title": "Run",
+          "page": 3699,
+          "officeNotes": [
+            "2.1.1694"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:rMargin",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.90",
+          "title": "Right Margin",
+          "page": 3700
+        }
+      ]
+    },
+    {
+      "name": "m:rPr",
+      "types": [
+        "m:CT_RPR"
+      ],
+      "attributes": [],
+      "children": [
+        "m:lit",
+        "m:nor",
+        "m:scr",
+        "m:sty",
+        "m:brk",
+        "m:aln"
+      ],
+      "parents": [
+        "m:r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.91",
+          "title": "Run Properties",
+          "page": 3701
+        }
+      ]
+    },
+    {
+      "name": "m:rSp",
+      "types": [
+        "m:CT_UnSignedInteger"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_UnSignedInteger",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:eqArrPr",
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.92",
+          "title": "Row Spacing (Array)",
+          "page": 3702,
+          "officeNotes": [
+            "2.1.1696"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:rSpRule",
+      "types": [
+        "m:CT_SpacingRule"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_SpacingRule",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:eqArrPr",
+        "m:mPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.93",
+          "title": "Row Spacing Rule",
+          "page": 3703,
+          "officeNotes": [
+            "2.1.1697"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:rad",
+      "types": [
+        "m:CT_Rad"
+      ],
+      "attributes": [],
+      "children": [
+        "m:radPr",
+        "m:deg",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.88",
+          "title": "Radical Object",
+          "page": 3699,
+          "officeNotes": [
+            "2.1.1695"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:radPr",
+      "types": [
+        "m:CT_RadPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:degHide",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:rad"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.89",
+          "title": "Radical Properties",
+          "page": 3700
+        }
+      ]
+    },
+    {
+      "name": "m:sPre",
+      "types": [
+        "m:CT_SPre"
+      ],
+      "attributes": [],
+      "children": [
+        "m:sPrePr",
+        "m:sub",
+        "m:sup",
+        "m:e"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.99",
+          "title": "Pre-Sub-Superscript Object",
+          "page": 3709,
+          "officeNotes": [
+            "2.1.1701"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sPrePr",
+      "types": [
+        "m:CT_SPrePr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:sPre"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.100",
+          "title": "Pre-Sub-Superscript Properties",
+          "page": 3709
+        }
+      ]
+    },
+    {
+      "name": "m:sSub",
+      "types": [
+        "m:CT_SSub"
+      ],
+      "attributes": [],
+      "children": [
+        "m:sSubPr",
+        "m:e",
+        "m:sub"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.101",
+          "title": "Subscript Object",
+          "page": 3710,
+          "officeNotes": [
+            "2.1.1702"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sSubPr",
+      "types": [
+        "m:CT_SSubPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:sSub"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.102",
+          "title": "Subscript Properties",
+          "page": 3711
+        }
+      ]
+    },
+    {
+      "name": "m:sSubSup",
+      "types": [
+        "m:CT_SSubSup"
+      ],
+      "attributes": [],
+      "children": [
+        "m:sSubSupPr",
+        "m:e",
+        "m:sub",
+        "m:sup"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.103",
+          "title": "Sub-Superscript Object",
+          "page": 3711,
+          "officeNotes": [
+            "2.1.1703"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sSubSupPr",
+      "types": [
+        "m:CT_SSubSupPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:alnScr",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:sSubSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.104",
+          "title": "Sub-Superscript Properties",
+          "page": 3712
+        }
+      ]
+    },
+    {
+      "name": "m:sSup",
+      "types": [
+        "m:CT_SSup"
+      ],
+      "attributes": [],
+      "children": [
+        "m:sSupPr",
+        "m:e",
+        "m:sup"
+      ],
+      "parents": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:oMath",
+        "m:sub",
+        "m:sup",
+        "w:del",
+        "w:ins",
+        "w:moveFrom",
+        "w:moveTo"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.105",
+          "title": "Superscript Object",
+          "page": 3713,
+          "officeNotes": [
+            "2.1.1704"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sSupPr",
+      "types": [
+        "m:CT_SSupPr"
+      ],
+      "attributes": [],
+      "children": [
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:sSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.106",
+          "title": "Superscript Properties",
+          "page": 3713
+        }
+      ]
+    },
+    {
+      "name": "m:scr",
+      "types": [
+        "m:CT_Script"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Script"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.94",
+          "title": "Script",
+          "page": 3705,
+          "officeNotes": [
+            "2.1.1698"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sepChr",
+      "types": [
+        "m:CT_Char"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Char",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:dPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.95",
+          "title": "Delimiter Separator Character",
+          "page": 3706
+        }
+      ]
+    },
+    {
+      "name": "m:show",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:phantPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.96",
+          "title": "Phantom Show",
+          "page": 3707
+        }
+      ]
+    },
+    {
+      "name": "m:shp",
+      "types": [
+        "m:CT_Shp"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Shp",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:dPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.97",
+          "title": "Shape (Delimiters)",
+          "page": 3707,
+          "officeNotes": [
+            "2.1.1699"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:smallFrac",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.98",
+          "title": "Small Fraction",
+          "page": 3708,
+          "officeNotes": [
+            "2.1.1700"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:strikeBLTR",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.107",
+          "title": "Border Box Strikethrough Bottom-Left to Top-Right",
+          "page": 3714
+        }
+      ]
+    },
+    {
+      "name": "m:strikeH",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.108",
+          "title": "Border Box Strikethrough Horizontal",
+          "page": 3715
+        }
+      ]
+    },
+    {
+      "name": "m:strikeTLBR",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.109",
+          "title": "Border Box Strikethrough Top-Left to Bottom-Right",
+          "page": 3715
+        }
+      ]
+    },
+    {
+      "name": "m:strikeV",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:borderBoxPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.110",
+          "title": "Border Box Strikethrough Vertical",
+          "page": 3716
+        }
+      ]
+    },
+    {
+      "name": "m:sty",
+      "types": [
+        "m:CT_Style"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_Style"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:rPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.111",
+          "title": "style",
+          "page": 3717,
+          "officeNotes": [
+            "2.1.1705"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sub",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:nary",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.112",
+          "title": "Subscript (Pre-Sub-Superscript)",
+          "page": 3718,
+          "officeNotes": [
+            "2.1.1706"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:subHide",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:naryPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.113",
+          "title": "Hide Subscript (n-ary)",
+          "page": 3718,
+          "officeNotes": [
+            "2.1.1707"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:sup",
+      "types": [
+        "m:CT_OMathArg"
+      ],
+      "attributes": [],
+      "children": [
+        "m:argPr",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r",
+        "w:customXml",
+        "w:fldSimple",
+        "w:hyperlink",
+        "w:smartTag",
+        "w:sdt",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:ctrlPr"
+      ],
+      "parents": [
+        "m:nary",
+        "m:sPre",
+        "m:sSubSup",
+        "m:sSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.114",
+          "title": "Superscript (Superscript object)",
+          "page": 3719,
+          "officeNotes": [
+            "2.1.1708"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:supHide",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:naryPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.115",
+          "title": "Hide Superscript (n-ary)",
+          "page": 3720,
+          "officeNotes": [
+            "2.1.1709"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:t",
+      "types": [
+        "m:CT_Text"
+      ],
+      "text": "s:ST_String",
+      "attributes": [
+        {
+          "name": "xml:space",
+          "type": "restriction of xsd:NCName",
+          "values": [
+            "default",
+            "preserve"
+          ]
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.116",
+          "title": "Text",
+          "page": 3721,
+          "officeNotes": [
+            "2.1.1710"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:transp",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:phantPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.117",
+          "title": "Transparent (Phantom)",
+          "page": 3721,
+          "officeNotes": [
+            "2.1.1711"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:type",
+      "types": [
+        "m:CT_FType"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_FType",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:fPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.118",
+          "title": "Fraction type",
+          "page": 3722
+        }
+      ]
+    },
+    {
+      "name": "m:vertJc",
+      "types": [
+        "m:CT_TopBot"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "m:ST_TopBot",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:groupChrPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.119",
+          "title": "Vertical Justification",
+          "page": 3723
+        }
+      ]
+    },
+    {
+      "name": "m:wrapIndent",
+      "types": [
+        "m:CT_TwipsMeasure"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_TwipsMeasure",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.120",
+          "title": "Wrap Indent",
+          "page": 3725
+        }
+      ]
+    },
+    {
+      "name": "m:wrapRight",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:mathPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.121",
+          "title": "Wrap Right",
+          "page": 3725
+        }
+      ]
+    },
+    {
+      "name": "m:zeroAsc",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:phantPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.122",
+          "title": "Phantom Zero Ascent",
+          "page": 3726
+        }
+      ]
+    },
+    {
+      "name": "m:zeroDesc",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:phantPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.123",
+          "title": "Phantom Zero Descent",
+          "page": 3727
+        }
+      ]
+    },
+    {
+      "name": "m:zeroWid",
+      "types": [
+        "m:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "m:val",
+          "type": "s:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "m:phantPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.2.124",
+          "title": "Phantom Zero Width",
+          "page": 3728
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "m:CT_Acc",
+      "content": "elements",
+      "model": "(m:accPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:acc"
+      ]
+    },
+    {
+      "name": "m:CT_AccPr",
+      "content": "elements",
+      "model": "(m:chr?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:accPr"
+      ]
+    },
+    {
+      "name": "m:CT_Bar",
+      "content": "elements",
+      "model": "(m:barPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:bar"
+      ]
+    },
+    {
+      "name": "m:CT_BarPr",
+      "content": "elements",
+      "model": "(m:pos?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:barPr"
+      ]
+    },
+    {
+      "name": "m:CT_BorderBox",
+      "content": "elements",
+      "model": "(m:borderBoxPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:borderBox"
+      ]
+    },
+    {
+      "name": "m:CT_BorderBoxPr",
+      "content": "elements",
+      "model": "(m:hideTop?, m:hideBot?, m:hideLeft?, m:hideRight?, m:strikeH?, m:strikeV?, m:strikeBLTR?, m:strikeTLBR?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:borderBoxPr"
+      ]
+    },
+    {
+      "name": "m:CT_Box",
+      "content": "elements",
+      "model": "(m:boxPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:box"
+      ]
+    },
+    {
+      "name": "m:CT_BoxPr",
+      "content": "elements",
+      "model": "(m:opEmu?, m:noBreak?, m:diff?, m:brk?, m:aln?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:boxPr"
+      ]
+    },
+    {
+      "name": "m:CT_BreakBin",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:brkBin"
+      ]
+    },
+    {
+      "name": "m:CT_BreakBinSub",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:brkBinSub"
+      ]
+    },
+    {
+      "name": "m:CT_Char",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:begChr",
+        "m:chr",
+        "m:endChr",
+        "m:sepChr"
+      ]
+    },
+    {
+      "name": "m:CT_CtrlPr",
+      "content": "elements",
+      "model": "(w:rPr? | w:ins | w:del)?",
+      "attributes": [],
+      "usedBy": [
+        "m:ctrlPr"
+      ]
+    },
+    {
+      "name": "m:CT_D",
+      "content": "elements",
+      "model": "(m:dPr?, m:e+)",
+      "attributes": [],
+      "usedBy": [
+        "m:d"
+      ]
+    },
+    {
+      "name": "m:CT_DPr",
+      "content": "elements",
+      "model": "(m:begChr?, m:sepChr?, m:endChr?, m:grow?, m:shp?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:dPr"
+      ]
+    },
+    {
+      "name": "m:CT_EqArr",
+      "content": "elements",
+      "model": "(m:eqArrPr?, m:e+)",
+      "attributes": [],
+      "usedBy": [
+        "m:eqArr"
+      ]
+    },
+    {
+      "name": "m:CT_EqArrPr",
+      "content": "elements",
+      "model": "(m:baseJc?, m:maxDist?, m:objDist?, m:rSpRule?, m:rSp?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:eqArrPr"
+      ]
+    },
+    {
+      "name": "m:CT_F",
+      "content": "elements",
+      "model": "(m:fPr?, m:num, m:den)",
+      "attributes": [],
+      "usedBy": [
+        "m:f"
+      ]
+    },
+    {
+      "name": "m:CT_FPr",
+      "content": "elements",
+      "model": "(m:type?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:fPr"
+      ]
+    },
+    {
+      "name": "m:CT_FType",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:type"
+      ]
+    },
+    {
+      "name": "m:CT_Func",
+      "content": "elements",
+      "model": "(m:funcPr?, m:fName, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:func"
+      ]
+    },
+    {
+      "name": "m:CT_FuncPr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:funcPr"
+      ]
+    },
+    {
+      "name": "m:CT_GroupChr",
+      "content": "elements",
+      "model": "(m:groupChrPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:groupChr"
+      ]
+    },
+    {
+      "name": "m:CT_GroupChrPr",
+      "content": "elements",
+      "model": "(m:chr?, m:pos?, m:vertJc?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:groupChrPr"
+      ]
+    },
+    {
+      "name": "m:CT_Integer2",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:argSz"
+      ]
+    },
+    {
+      "name": "m:CT_Integer255",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:count"
+      ]
+    },
+    {
+      "name": "m:CT_LimLoc",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:intLim",
+        "m:limLoc",
+        "m:naryLim"
+      ]
+    },
+    {
+      "name": "m:CT_LimLow",
+      "content": "elements",
+      "model": "(m:limLowPr?, m:e, m:lim)",
+      "attributes": [],
+      "usedBy": [
+        "m:limLow"
+      ]
+    },
+    {
+      "name": "m:CT_LimLowPr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:limLowPr"
+      ]
+    },
+    {
+      "name": "m:CT_LimUpp",
+      "content": "elements",
+      "model": "(m:limUppPr?, m:e, m:lim)",
+      "attributes": [],
+      "usedBy": [
+        "m:limUpp"
+      ]
+    },
+    {
+      "name": "m:CT_LimUppPr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:limUppPr"
+      ]
+    },
+    {
+      "name": "m:CT_M",
+      "content": "elements",
+      "model": "(m:mPr?, m:mr+)",
+      "attributes": [],
+      "usedBy": [
+        "m:m"
+      ]
+    },
+    {
+      "name": "m:CT_MC",
+      "content": "elements",
+      "model": "m:mcPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:mc"
+      ]
+    },
+    {
+      "name": "m:CT_MCPr",
+      "content": "elements",
+      "model": "(m:count?, m:mcJc?)",
+      "attributes": [],
+      "usedBy": [
+        "m:mcPr"
+      ]
+    },
+    {
+      "name": "m:CT_MCS",
+      "content": "elements",
+      "model": "m:mc+",
+      "attributes": [],
+      "usedBy": [
+        "m:mcs"
+      ]
+    },
+    {
+      "name": "m:CT_MPr",
+      "content": "elements",
+      "model": "(m:baseJc?, m:plcHide?, m:rSpRule?, m:cGpRule?, m:rSp?, m:cSp?, m:cGp?, m:mcs?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:mPr"
+      ]
+    },
+    {
+      "name": "m:CT_MR",
+      "content": "elements",
+      "model": "m:e+",
+      "attributes": [],
+      "usedBy": [
+        "m:mr"
+      ]
+    },
+    {
+      "name": "m:CT_ManualBreak",
+      "content": "empty",
+      "attributes": [
+        "m:alnAt"
+      ],
+      "usedBy": [
+        "m:brk"
+      ]
+    },
+    {
+      "name": "m:CT_MathPr",
+      "content": "elements",
+      "model": "(m:mathFont?, m:brkBin?, m:brkBinSub?, m:smallFrac?, m:dispDef?, m:lMargin?, m:rMargin?, m:defJc?, m:preSp?, m:postSp?, m:interSp?, m:intraSp?, (m:wrapIndent | m:wrapRight)?, m:intLim?, m:naryLim?)",
+      "attributes": [],
+      "usedBy": [
+        "m:mathPr"
+      ]
+    },
+    {
+      "name": "m:CT_Nary",
+      "content": "elements",
+      "model": "(m:naryPr?, m:sub, m:sup, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:nary"
+      ]
+    },
+    {
+      "name": "m:CT_NaryPr",
+      "content": "elements",
+      "model": "(m:chr?, m:limLoc?, m:grow?, m:subHide?, m:supHide?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:naryPr"
+      ]
+    },
+    {
+      "name": "m:CT_OMath",
+      "content": "elements",
+      "model": "(m:acc | m:bar | m:box | m:borderBox | m:d | m:eqArr | m:f | m:func | m:groupChr | m:limLow | m:limUpp | m:m | m:nary | m:phant | m:rad | m:sPre | m:sSub | m:sSubSup | m:sSup | m:r | (w:customXml | w:fldSimple* | w:hyperlink)* | (w:smartTag | w:sdt | (w:proofErr? | w:permStart? | w:permEnd? | (w:bookmarkStart | w:bookmarkEnd | w:moveFromRangeStart | w:moveFromRangeEnd | w:moveToRangeStart | w:moveToRangeEnd | w:commentRangeStart | w:commentRangeEnd | w:customXmlInsRangeStart | w:customXmlInsRangeEnd | w:customXmlDelRangeStart | w:customXmlDelRangeEnd | w:customXmlMoveFromRangeStart | w:customXmlMoveFromRangeEnd | w:customXmlMoveToRangeStart | w:customXmlMoveToRangeEnd)* | w:ins? | w:del? | w:moveFrom | w:moveTo | (m:oMathPara | m:oMath)*)*)*)*",
+      "attributes": [],
+      "usedBy": [
+        "m:oMath"
+      ]
+    },
+    {
+      "name": "m:CT_OMathArg",
+      "content": "elements",
+      "model": "(m:argPr?, (m:acc | m:bar | m:box | m:borderBox | m:d | m:eqArr | m:f | m:func | m:groupChr | m:limLow | m:limUpp | m:m | m:nary | m:phant | m:rad | m:sPre | m:sSub | m:sSubSup | m:sSup | m:r | (w:customXml | w:fldSimple* | w:hyperlink)* | (w:smartTag | w:sdt | (w:proofErr? | w:permStart? | w:permEnd? | (w:bookmarkStart | w:bookmarkEnd | w:moveFromRangeStart | w:moveFromRangeEnd | w:moveToRangeStart | w:moveToRangeEnd | w:commentRangeStart | w:commentRangeEnd | w:customXmlInsRangeStart | w:customXmlInsRangeEnd | w:customXmlDelRangeStart | w:customXmlDelRangeEnd | w:customXmlMoveFromRangeStart | w:customXmlMoveFromRangeEnd | w:customXmlMoveToRangeStart | w:customXmlMoveToRangeEnd)* | w:ins? | w:del? | w:moveFrom | w:moveTo | (m:oMathPara | m:oMath)*)*)*)*, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:deg",
+        "m:den",
+        "m:e",
+        "m:fName",
+        "m:lim",
+        "m:num",
+        "m:sub",
+        "m:sup"
+      ]
+    },
+    {
+      "name": "m:CT_OMathArgPr",
+      "content": "elements",
+      "model": "m:argSz?",
+      "attributes": [],
+      "usedBy": [
+        "m:argPr"
+      ]
+    },
+    {
+      "name": "m:CT_OMathJc",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:defJc",
+        "m:jc"
+      ]
+    },
+    {
+      "name": "m:CT_OMathPara",
+      "content": "elements",
+      "model": "(m:oMathParaPr?, m:oMath+)",
+      "attributes": [],
+      "usedBy": [
+        "m:oMathPara"
+      ]
+    },
+    {
+      "name": "m:CT_OMathParaPr",
+      "content": "elements",
+      "model": "m:jc?",
+      "attributes": [],
+      "usedBy": [
+        "m:oMathParaPr"
+      ]
+    },
+    {
+      "name": "m:CT_OnOff",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:aln",
+        "m:alnScr",
+        "m:degHide",
+        "m:diff",
+        "m:dispDef",
+        "m:grow",
+        "m:hideBot",
+        "m:hideLeft",
+        "m:hideRight",
+        "m:hideTop",
+        "m:lit",
+        "m:maxDist",
+        "m:noBreak",
+        "m:nor",
+        "m:objDist",
+        "m:opEmu",
+        "m:plcHide",
+        "m:show",
+        "m:smallFrac",
+        "m:strikeBLTR",
+        "m:strikeH",
+        "m:strikeTLBR",
+        "m:strikeV",
+        "m:subHide",
+        "m:supHide",
+        "m:transp",
+        "m:wrapRight",
+        "m:zeroAsc",
+        "m:zeroDesc",
+        "m:zeroWid"
+      ]
+    },
+    {
+      "name": "m:CT_Phant",
+      "content": "elements",
+      "model": "(m:phantPr?, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:phant"
+      ]
+    },
+    {
+      "name": "m:CT_PhantPr",
+      "content": "elements",
+      "model": "(m:show?, m:zeroWid?, m:zeroAsc?, m:zeroDesc?, m:transp?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:phantPr"
+      ]
+    },
+    {
+      "name": "m:CT_R",
+      "content": "elements",
+      "model": "(m:rPr?, (w:rPr?)?, (w:br | w:t | w:contentPart | w:delText | w:instrText | w:delInstrText | w:noBreakHyphen | w:softHyphen? | w:dayShort? | w:monthShort? | w:yearShort? | w:dayLong? | w:monthLong? | w:yearLong? | w:annotationRef? | w:footnoteRef? | w:endnoteRef? | w:separator? | w:continuationSeparator? | w:sym? | w:pgNum? | w:cr? | w:tab? | w:object | w:pict | w:fldChar | w:ruby | w:footnoteReference | w:endnoteReference | w:commentReference | w:drawing | w:ptab? | w:lastRenderedPageBreak? | m:t?)*)",
+      "attributes": [],
+      "usedBy": [
+        "m:r"
+      ]
+    },
+    {
+      "name": "m:CT_RPR",
+      "content": "elements",
+      "model": "(m:lit?, (m:nor? | (m:scr?, m:sty?)), m:brk?, m:aln?)",
+      "attributes": [],
+      "usedBy": [
+        "m:rPr"
+      ]
+    },
+    {
+      "name": "m:CT_Rad",
+      "content": "elements",
+      "model": "(m:radPr?, m:deg, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:rad"
+      ]
+    },
+    {
+      "name": "m:CT_RadPr",
+      "content": "elements",
+      "model": "(m:degHide?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:radPr"
+      ]
+    },
+    {
+      "name": "m:CT_SPre",
+      "content": "elements",
+      "model": "(m:sPrePr?, m:sub, m:sup, m:e)",
+      "attributes": [],
+      "usedBy": [
+        "m:sPre"
+      ]
+    },
+    {
+      "name": "m:CT_SPrePr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:sPrePr"
+      ]
+    },
+    {
+      "name": "m:CT_SSub",
+      "content": "elements",
+      "model": "(m:sSubPr?, m:e, m:sub)",
+      "attributes": [],
+      "usedBy": [
+        "m:sSub"
+      ]
+    },
+    {
+      "name": "m:CT_SSubPr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:sSubPr"
+      ]
+    },
+    {
+      "name": "m:CT_SSubSup",
+      "content": "elements",
+      "model": "(m:sSubSupPr?, m:e, m:sub, m:sup)",
+      "attributes": [],
+      "usedBy": [
+        "m:sSubSup"
+      ]
+    },
+    {
+      "name": "m:CT_SSubSupPr",
+      "content": "elements",
+      "model": "(m:alnScr?, m:ctrlPr?)",
+      "attributes": [],
+      "usedBy": [
+        "m:sSubSupPr"
+      ]
+    },
+    {
+      "name": "m:CT_SSup",
+      "content": "elements",
+      "model": "(m:sSupPr?, m:e, m:sup)",
+      "attributes": [],
+      "usedBy": [
+        "m:sSup"
+      ]
+    },
+    {
+      "name": "m:CT_SSupPr",
+      "content": "elements",
+      "model": "m:ctrlPr?",
+      "attributes": [],
+      "usedBy": [
+        "m:sSupPr"
+      ]
+    },
+    {
+      "name": "m:CT_Script",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:scr"
+      ]
+    },
+    {
+      "name": "m:CT_Shp",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:shp"
+      ]
+    },
+    {
+      "name": "m:CT_SpacingRule",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:cGpRule",
+        "m:rSpRule"
+      ]
+    },
+    {
+      "name": "m:CT_String",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:mathFont"
+      ]
+    },
+    {
+      "name": "m:CT_Style",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:sty"
+      ]
+    },
+    {
+      "name": "m:CT_Text",
+      "base": "s:ST_String",
+      "content": "text",
+      "attributes": [
+        "xml:space"
+      ],
+      "usedBy": [
+        "m:t"
+      ]
+    },
+    {
+      "name": "m:CT_TopBot",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:pos",
+        "m:vertJc"
+      ]
+    },
+    {
+      "name": "m:CT_TwipsMeasure",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:interSp",
+        "m:intraSp",
+        "m:lMargin",
+        "m:postSp",
+        "m:preSp",
+        "m:rMargin",
+        "m:wrapIndent"
+      ]
+    },
+    {
+      "name": "m:CT_UnSignedInteger",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:cGp",
+        "m:cSp",
+        "m:rSp"
+      ]
+    },
+    {
+      "name": "m:CT_XAlign",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:mcJc"
+      ]
+    },
+    {
+      "name": "m:CT_YAlign",
+      "content": "empty",
+      "attributes": [
+        "m:val"
+      ],
+      "usedBy": [
+        "m:baseJc"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "m:ST_BreakBin",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "before",
+        "after",
+        "repeat"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.1",
+          "title": "Break Binary Operators",
+          "page": 3729,
+          "officeNotes": [
+            "2.1.1712"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:ST_BreakBinSub",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "--",
+        "-+",
+        "+-"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.2",
+          "title": "Break on Binary Subtraction",
+          "page": 3729
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Char",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "maxLength": "1"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.3",
+          "title": "Character",
+          "page": 3730
+        }
+      ]
+    },
+    {
+      "name": "m:ST_FType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "bar",
+        "skw",
+        "lin",
+        "noBar"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.4",
+          "title": "Fraction Type",
+          "page": 3730
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Integer2",
+      "definition": "restriction of xsd:integer",
+      "facets": {
+        "minInclusive": "-2",
+        "maxInclusive": "2"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.5",
+          "title": "Integer value (-2 to 2)",
+          "page": 3731
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Integer255",
+      "definition": "restriction of xsd:integer",
+      "facets": {
+        "minInclusive": "1",
+        "maxInclusive": "255"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.6",
+          "title": "Integer value (1 to 255)",
+          "page": 3731
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Jc",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "left",
+        "right",
+        "center",
+        "centerGroup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.7",
+          "title": "Justification",
+          "page": 3731,
+          "officeNotes": [
+            "2.1.1713"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:ST_LimLoc",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "undOvr",
+        "subSup"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.8",
+          "title": "Limit Location",
+          "page": 3732
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Script",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "roman",
+        "script",
+        "fraktur",
+        "double-struck",
+        "sans-serif",
+        "monospace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.9",
+          "title": "Script",
+          "page": 3732
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Shp",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "centered",
+        "match"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.10",
+          "title": "Shape (Delimiters)",
+          "page": 3733,
+          "officeNotes": [
+            "2.1.1714"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:ST_SpacingRule",
+      "definition": "restriction of xsd:integer",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "4"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.11",
+          "title": "Spacing Rule",
+          "page": 3733
+        }
+      ]
+    },
+    {
+      "name": "m:ST_Style",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "p",
+        "b",
+        "i",
+        "bi"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.12",
+          "title": "Style",
+          "page": 3733
+        }
+      ]
+    },
+    {
+      "name": "m:ST_TopBot",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "top",
+        "bot"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.13",
+          "title": "Top-Bottom",
+          "page": 3734,
+          "officeNotes": [
+            "2.1.1715"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m:ST_UnSignedInteger",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.1.3.14",
+          "title": "Unsigned integer.",
+          "page": 3734,
+          "officeNotes": [
+            "2.1.1716"
+          ]
+        }
+      ]
+    }
+  ]
+}

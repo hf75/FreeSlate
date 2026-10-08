@@ -1,0 +1,190 @@
+{
+  "prefix": "p173",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2017/3/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-PPTX] v20240820 §5.12",
+  "counts": {
+    "elements": 3,
+    "attributes": 6,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 1,
+    "enumValues": 2,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p173:track",
+      "types": [
+        "p173:CT_Track"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "label",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "lang",
+          "type": "a:ST_TextLanguageID"
+        },
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        },
+        {
+          "name": "r:link",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p173:trackLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.3.1",
+          "title": "CT_Track",
+          "page": 106
+        }
+      ]
+    },
+    {
+      "name": "p173:trackLst",
+      "types": [
+        "p173:CT_TrackList"
+      ],
+      "attributes": [],
+      "children": [
+        "p173:track"
+      ],
+      "parents": [
+        "p173:tracksInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.3.2",
+          "title": "CT_TrackList",
+          "page": 107
+        }
+      ]
+    },
+    {
+      "name": "p173:tracksInfo",
+      "global": true,
+      "types": [
+        "p173:CT_TracksInfo"
+      ],
+      "attributes": [
+        {
+          "name": "displayLoc",
+          "type": "p173:ST_DisplayLocation",
+          "required": true
+        }
+      ],
+      "children": [
+        "p173:trackLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.1.1",
+          "title": "tracksInfo",
+          "page": 106
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p173:CT_Track",
+      "content": "empty",
+      "attributes": [
+        "id",
+        "label",
+        "lang",
+        "r:embed",
+        "r:link"
+      ],
+      "usedBy": [
+        "p173:track"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.3.1",
+          "title": "CT_Track",
+          "page": 106
+        }
+      ]
+    },
+    {
+      "name": "p173:CT_TrackList",
+      "content": "elements",
+      "model": "p173:track*",
+      "attributes": [],
+      "usedBy": [
+        "p173:trackLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.3.2",
+          "title": "CT_TrackList",
+          "page": 107
+        }
+      ]
+    },
+    {
+      "name": "p173:CT_TracksInfo",
+      "content": "elements",
+      "model": "p173:trackLst?",
+      "attributes": [
+        "displayLoc"
+      ],
+      "usedBy": [
+        "p173:tracksInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.3.3",
+          "title": "CT_TracksInfo",
+          "page": 107
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p173:ST_DisplayLocation",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "media",
+        "slide"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.13.4.1",
+          "title": "ST_DisplayLocation",
+          "page": 108
+        }
+      ]
+    }
+  ]
+}

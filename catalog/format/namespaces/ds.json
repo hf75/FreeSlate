@@ -1,0 +1,126 @@
+{
+  "prefix": "ds",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/customXml",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-customXmlDataProperties.xsd",
+  "counts": {
+    "elements": 3,
+    "attributes": 2,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "ds:datastoreItem",
+      "global": true,
+      "types": [
+        "ds:CT_DatastoreItem"
+      ],
+      "attributes": [
+        {
+          "name": "ds:itemID",
+          "type": "s:ST_Guid",
+          "required": true
+        }
+      ],
+      "children": [
+        "ds:schemaRefs"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.5.2.1",
+          "title": "Custom XML Data Properties",
+          "page": 3755
+        }
+      ]
+    },
+    {
+      "name": "ds:schemaRef",
+      "types": [
+        "ds:CT_DatastoreSchemaRef"
+      ],
+      "attributes": [
+        {
+          "name": "ds:uri",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "ds:schemaRefs"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.5.2.2",
+          "title": "Associated XML Schema",
+          "page": 3756
+        }
+      ]
+    },
+    {
+      "name": "ds:schemaRefs",
+      "types": [
+        "ds:CT_DatastoreSchemaRefs"
+      ],
+      "attributes": [],
+      "children": [
+        "ds:schemaRef"
+      ],
+      "parents": [
+        "ds:datastoreItem"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.5.2.3",
+          "title": "Set of Associated XML Schemas",
+          "page": 3757
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ds:CT_DatastoreItem",
+      "content": "elements",
+      "model": "ds:schemaRefs?",
+      "attributes": [
+        "ds:itemID"
+      ],
+      "usedBy": [
+        "ds:datastoreItem"
+      ]
+    },
+    {
+      "name": "ds:CT_DatastoreSchemaRef",
+      "content": "empty",
+      "attributes": [
+        "ds:uri"
+      ],
+      "usedBy": [
+        "ds:schemaRef"
+      ]
+    },
+    {
+      "name": "ds:CT_DatastoreSchemaRefs",
+      "content": "elements",
+      "model": "ds:schemaRef*",
+      "attributes": [],
+      "usedBy": [
+        "ds:schemaRefs"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

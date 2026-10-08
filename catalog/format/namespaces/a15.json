@@ -1,0 +1,294 @@
+{
+  "prefix": "a15",
+  "uri": "http://schemas.microsoft.com/office/drawing/2012/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-ODRAWXML] v20261006 §5.14",
+  "counts": {
+    "elements": 4,
+    "attributes": 20,
+    "globalAttributes": 0,
+    "complexTypes": 4,
+    "simpleTypes": 1,
+    "enumValues": 11,
+    "specSections": 9,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "a15:backgroundPr",
+      "global": true,
+      "types": [
+        "a15:CT_BackgroundPr"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "bwNormal",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "bwPure",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "targetScreenSize",
+          "type": "a15:ST_TargetScreenSz"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.1.1",
+          "title": "backgroundPr",
+          "page": 151
+        }
+      ]
+    },
+    {
+      "name": "a15:nonVisualGroupProps",
+      "global": true,
+      "types": [
+        "a15:CT_NonVisualGroupProps"
+      ],
+      "attributes": [
+        {
+          "name": "isLegacyGroup",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.1.2",
+          "title": "nonVisualGroupProps",
+          "page": 151
+        }
+      ]
+    },
+    {
+      "name": "a15:objectPr",
+      "global": true,
+      "types": [
+        "a15:CT_ObjectPr"
+      ],
+      "attributes": [
+        {
+          "name": "isActiveX",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "linkType",
+          "type": "xsd:string"
+        },
+        {
+          "name": "objectId",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.1.3",
+          "title": "objectPr",
+          "page": 152
+        }
+      ]
+    },
+    {
+      "name": "a15:signatureLine",
+      "global": true,
+      "types": [
+        "a15:CT_SignatureLine"
+      ],
+      "attributes": [
+        {
+          "name": "addlXml",
+          "type": "xsd:string"
+        },
+        {
+          "name": "allowComments",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_Guid"
+        },
+        {
+          "name": "isSignatureLine",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "provId",
+          "type": "a:ST_Guid"
+        },
+        {
+          "name": "showSignDate",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "sigProvUrl",
+          "type": "xsd:string"
+        },
+        {
+          "name": "signingInstructions",
+          "type": "xsd:string"
+        },
+        {
+          "name": "signingInstructionsSet",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "suggestedSigner",
+          "type": "xsd:string"
+        },
+        {
+          "name": "suggestedSigner2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "suggestedSignerEmail",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.1.4",
+          "title": "signatureLine",
+          "page": 152
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "a15:CT_BackgroundPr",
+      "content": "empty",
+      "attributes": [
+        "bwMode",
+        "bwNormal",
+        "bwPure",
+        "targetScreenSize"
+      ],
+      "usedBy": [
+        "a15:backgroundPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.3.1",
+          "title": "CT_BackgroundPr",
+          "page": 152
+        }
+      ]
+    },
+    {
+      "name": "a15:CT_NonVisualGroupProps",
+      "content": "empty",
+      "attributes": [
+        "isLegacyGroup"
+      ],
+      "usedBy": [
+        "a15:nonVisualGroupProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.3.2",
+          "title": "CT_NonVisualGroupProps",
+          "page": 153
+        }
+      ]
+    },
+    {
+      "name": "a15:CT_ObjectPr",
+      "content": "empty",
+      "attributes": [
+        "isActiveX",
+        "linkType",
+        "objectId"
+      ],
+      "usedBy": [
+        "a15:objectPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.3.3",
+          "title": "CT_ObjectPr",
+          "page": 153
+        }
+      ]
+    },
+    {
+      "name": "a15:CT_SignatureLine",
+      "content": "empty",
+      "attributes": [
+        "addlXml",
+        "allowComments",
+        "id",
+        "isSignatureLine",
+        "provId",
+        "showSignDate",
+        "sigProvUrl",
+        "signingInstructions",
+        "signingInstructionsSet",
+        "suggestedSigner",
+        "suggestedSigner2",
+        "suggestedSignerEmail"
+      ],
+      "usedBy": [
+        "a15:signatureLine"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.3.4",
+          "title": "CT_SignatureLine",
+          "page": 154
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "a15:ST_TargetScreenSz",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "544x376",
+        "640x480",
+        "720x512",
+        "800x600",
+        "1024x768",
+        "1152x882",
+        "1152x900",
+        "1280x1024",
+        "1600x1200",
+        "1800x1440",
+        "1920x1200"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.12.4.1",
+          "title": "ST_TargetScreenSz",
+          "page": 155
+        }
+      ]
+    }
+  ]
+}

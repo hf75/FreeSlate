@@ -1,0 +1,100 @@
+{
+  "prefix": "r",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-relationshipReference.xsd",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 14,
+    "complexTypes": 0,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 1
+  },
+  "elements": [],
+  "globalAttributes": [
+    {
+      "name": "r:blip",
+      "type": "r:ST_RelationshipId",
+      "default": ""
+    },
+    {
+      "name": "r:bottomLeft",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:bottomRight",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:cs",
+      "type": "r:ST_RelationshipId",
+      "default": ""
+    },
+    {
+      "name": "r:dm",
+      "type": "r:ST_RelationshipId",
+      "default": ""
+    },
+    {
+      "name": "r:embed",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:href",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:id",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:link",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:lo",
+      "type": "r:ST_RelationshipId",
+      "default": ""
+    },
+    {
+      "name": "r:pict",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:qs",
+      "type": "r:ST_RelationshipId",
+      "default": ""
+    },
+    {
+      "name": "r:topLeft",
+      "type": "r:ST_RelationshipId"
+    },
+    {
+      "name": "r:topRight",
+      "type": "r:ST_RelationshipId"
+    }
+  ],
+  "complexTypes": [],
+  "simpleTypes": [
+    {
+      "name": "r:ST_RelationshipId",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.8.2.1",
+          "title": "Explicit Relationship ID",
+          "page": 3798,
+          "officeNotes": [
+            "2.1.1741"
+          ]
+        }
+      ]
+    }
+  ]
+}

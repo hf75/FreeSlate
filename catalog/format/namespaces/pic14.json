@@ -1,0 +1,66 @@
+{
+  "prefix": "pic14",
+  "uri": "http://schemas.microsoft.com/office/drawing/2010/picture",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.12",
+  "counts": {
+    "elements": 2,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pic14:extLst",
+      "global": true,
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.14.1.1",
+          "title": "extLst",
+          "page": 160
+        }
+      ]
+    },
+    {
+      "name": "pic14:style",
+      "global": true,
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.14.1.2",
+          "title": "style",
+          "page": 160
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": []
+}

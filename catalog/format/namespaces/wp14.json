@@ -1,0 +1,259 @@
+{
+  "prefix": "wp14",
+  "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.11",
+  "counts": {
+    "elements": 6,
+    "attributes": 2,
+    "globalAttributes": 2,
+    "complexTypes": 2,
+    "simpleTypes": 3,
+    "enumValues": 12,
+    "specSections": 11,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "wp14:pctHeight",
+      "types": [
+        "a:ST_PositivePercentage"
+      ],
+      "text": "a:ST_PositivePercentage",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "wp14:sizeRelV"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wp14:pctPosHOffset",
+      "global": true,
+      "types": [
+        "a:ST_Percentage"
+      ],
+      "text": "a:ST_Percentage",
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.1.1",
+          "title": "pctPosHOffset",
+          "page": 167
+        }
+      ]
+    },
+    {
+      "name": "wp14:pctPosVOffset",
+      "global": true,
+      "types": [
+        "a:ST_Percentage"
+      ],
+      "text": "a:ST_Percentage",
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.1.2",
+          "title": "pctPosVOffset",
+          "page": 167
+        }
+      ]
+    },
+    {
+      "name": "wp14:pctWidth",
+      "types": [
+        "a:ST_PositivePercentage"
+      ],
+      "text": "a:ST_PositivePercentage",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "wp14:sizeRelH"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wp14:sizeRelH",
+      "global": true,
+      "types": [
+        "wp14:CT_SizeRelH"
+      ],
+      "attributes": [
+        {
+          "name": "relativeFrom",
+          "type": "wp14:ST_SizeRelFromH",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp14:pctWidth"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.1.3",
+          "title": "sizeRelH",
+          "page": 167
+        }
+      ]
+    },
+    {
+      "name": "wp14:sizeRelV",
+      "global": true,
+      "types": [
+        "wp14:CT_SizeRelV"
+      ],
+      "attributes": [
+        {
+          "name": "relativeFrom",
+          "type": "wp14:ST_SizeRelFromV",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp14:pctHeight"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.1.4",
+          "title": "sizeRelV",
+          "page": 168
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "wp14:anchorId",
+      "type": "wp14:ST_EditId",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.2.1",
+          "title": "anchorId",
+          "page": 168
+        }
+      ]
+    },
+    {
+      "name": "wp14:editId",
+      "type": "wp14:ST_EditId",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.2.2",
+          "title": "editId",
+          "page": 168
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "wp14:CT_SizeRelH",
+      "content": "elements",
+      "model": "wp14:pctWidth",
+      "attributes": [
+        "relativeFrom"
+      ],
+      "usedBy": [
+        "wp14:sizeRelH"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.3.1",
+          "title": "CT_SizeRelH",
+          "page": 169
+        }
+      ]
+    },
+    {
+      "name": "wp14:CT_SizeRelV",
+      "content": "elements",
+      "model": "wp14:pctHeight",
+      "attributes": [
+        "relativeFrom"
+      ],
+      "usedBy": [
+        "wp14:sizeRelV"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.3.2",
+          "title": "CT_SizeRelV",
+          "page": 169
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "wp14:ST_EditId",
+      "definition": "restriction of xsd:hexBinary",
+      "facets": {
+        "length": "4"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.4.1",
+          "title": "ST_EditId",
+          "page": 170
+        }
+      ]
+    },
+    {
+      "name": "wp14:ST_SizeRelFromH",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "margin",
+        "page",
+        "leftMargin",
+        "rightMargin",
+        "insideMargin",
+        "outsideMargin"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.4.2",
+          "title": "ST_SizeRelFromH",
+          "page": 170
+        }
+      ]
+    },
+    {
+      "name": "wp14:ST_SizeRelFromV",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "margin",
+        "page",
+        "topMargin",
+        "bottomMargin",
+        "insideMargin",
+        "outsideMargin"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.18.4.3",
+          "title": "ST_SizeRelFromV",
+          "page": 171
+        }
+      ]
+    }
+  ]
+}

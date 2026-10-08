@@ -1,0 +1,1822 @@
+{
+  "shapes": [
+    {
+      "name": "accentBorderCallout1",
+      "adjustValues": 4,
+      "guides": 4,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "accentBorderCallout2",
+      "adjustValues": 6,
+      "guides": 6,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "accentBorderCallout3",
+      "adjustValues": 8,
+      "guides": 8,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "accentCallout1",
+      "adjustValues": 4,
+      "guides": 4,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "accentCallout2",
+      "adjustValues": 6,
+      "guides": 6,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "accentCallout3",
+      "adjustValues": 8,
+      "guides": 8,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "actionButtonBackPrevious",
+      "adjustValues": 0,
+      "guides": 5,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonBeginning",
+      "adjustValues": 0,
+      "guides": 10,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonBlank",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "actionButtonDocument",
+      "adjustValues": 0,
+      "guides": 9,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 5
+    },
+    {
+      "name": "actionButtonEnd",
+      "adjustValues": 0,
+      "guides": 10,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonForwardNext",
+      "adjustValues": 0,
+      "guides": 5,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonHelp",
+      "adjustValues": 0,
+      "guides": 21,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonHome",
+      "adjustValues": 0,
+      "guides": 26,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 5
+    },
+    {
+      "name": "actionButtonInformation",
+      "adjustValues": 0,
+      "guides": 22,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 5
+    },
+    {
+      "name": "actionButtonMovie",
+      "adjustValues": 0,
+      "guides": 41,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonReturn",
+      "adjustValues": 0,
+      "guides": 20,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "actionButtonSound",
+      "adjustValues": 0,
+      "guides": 19,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 4
+    },
+    {
+      "name": "arc",
+      "adjustValues": 2,
+      "guides": 42,
+      "handles": 2,
+      "connectionSites": 3,
+      "paths": 2
+    },
+    {
+      "name": "bentArrow",
+      "adjustValues": 4,
+      "guides": 23,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "bentConnector2",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "bentConnector3",
+      "adjustValues": 1,
+      "guides": 1,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "bentConnector4",
+      "adjustValues": 2,
+      "guides": 4,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "bentConnector5",
+      "adjustValues": 3,
+      "guides": 6,
+      "handles": 3,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "bentUpArrow",
+      "adjustValues": 3,
+      "guides": 16,
+      "handles": 3,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "bevel",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 6
+    },
+    {
+      "name": "blockArc",
+      "adjustValues": 3,
+      "guides": 71,
+      "handles": 2,
+      "connectionSites": 3,
+      "paths": 1
+    },
+    {
+      "name": "borderCallout1",
+      "adjustValues": 4,
+      "guides": 4,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "borderCallout2",
+      "adjustValues": 6,
+      "guides": 6,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "borderCallout3",
+      "adjustValues": 8,
+      "guides": 8,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "bracePair",
+      "adjustValues": 1,
+      "guides": 12,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "bracketPair",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "callout1",
+      "adjustValues": 4,
+      "guides": 4,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "callout2",
+      "adjustValues": 6,
+      "guides": 6,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "callout3",
+      "adjustValues": 8,
+      "guides": 8,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "can",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "chartPlus",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "chartStar",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "chartX",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "chevron",
+      "adjustValues": 1,
+      "guides": 8,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "chord",
+      "adjustValues": 2,
+      "guides": 27,
+      "handles": 2,
+      "connectionSites": 3,
+      "paths": 1
+    },
+    {
+      "name": "circularArrow",
+      "adjustValues": 5,
+      "guides": 192,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "cloud",
+      "adjustValues": 0,
+      "guides": 8,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 2
+    },
+    {
+      "name": "cloudCallout",
+      "adjustValues": 2,
+      "guides": 43,
+      "handles": 1,
+      "connectionSites": 5,
+      "paths": 5
+    },
+    {
+      "name": "corner",
+      "adjustValues": 2,
+      "guides": 12,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "cornerTabs",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 12,
+      "paths": 4
+    },
+    {
+      "name": "cube",
+      "adjustValues": 1,
+      "guides": 8,
+      "handles": 1,
+      "connectionSites": 6,
+      "paths": 4
+    },
+    {
+      "name": "curvedConnector2",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "curvedConnector3",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "curvedConnector4",
+      "adjustValues": 2,
+      "guides": 10,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "curvedConnector5",
+      "adjustValues": 3,
+      "guides": 14,
+      "handles": 3,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "curvedDownArrow",
+      "adjustValues": 3,
+      "guides": 41,
+      "handles": 3,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "curvedLeftArrow",
+      "adjustValues": 3,
+      "guides": 40,
+      "handles": 3,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "curvedRightArrow",
+      "adjustValues": 3,
+      "guides": 41,
+      "handles": 3,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "curvedUpArrow",
+      "adjustValues": 3,
+      "guides": 42,
+      "handles": 3,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "decagon",
+      "adjustValues": 1,
+      "guides": 13,
+      "handles": 0,
+      "connectionSites": 10,
+      "paths": 1
+    },
+    {
+      "name": "diagStripe",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "diamond",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "dodecagon",
+      "adjustValues": 0,
+      "guides": 8,
+      "handles": 0,
+      "connectionSites": 12,
+      "paths": 1
+    },
+    {
+      "name": "donut",
+      "adjustValues": 1,
+      "guides": 10,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "doubleWave",
+      "adjustValues": 2,
+      "guides": 36,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "downArrow",
+      "adjustValues": 2,
+      "guides": 10,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "downArrowCallout",
+      "adjustValues": 4,
+      "guides": 19,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "ellipse",
+      "adjustValues": 0,
+      "guides": 6,
+      "handles": 0,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "ellipseRibbon",
+      "adjustValues": 3,
+      "guides": 43,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "ellipseRibbon2",
+      "adjustValues": 3,
+      "guides": 53,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartAlternateProcess",
+      "adjustValues": 0,
+      "guides": 5,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartCollate",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 3,
+      "paths": 1
+    },
+    {
+      "name": "flowChartConnector",
+      "adjustValues": 0,
+      "guides": 6,
+      "handles": 0,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "flowChartDecision",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartDelay",
+      "adjustValues": 0,
+      "guides": 5,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartDisplay",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartDocument",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartExtract",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartInputOutput",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "flowChartInternalStorage",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartMagneticDisk",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "flowChartMagneticDrum",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 5,
+      "paths": 3
+    },
+    {
+      "name": "flowChartMagneticTape",
+      "adjustValues": 0,
+      "guides": 7,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartManualInput",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartManualOperation",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartMerge",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartMultidocument",
+      "adjustValues": 0,
+      "guides": 5,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartOfflineStorage",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartOffpageConnector",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartOnlineStorage",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartOr",
+      "adjustValues": 0,
+      "guides": 6,
+      "handles": 0,
+      "connectionSites": 8,
+      "paths": 3
+    },
+    {
+      "name": "flowChartPredefinedProcess",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartPreparation",
+      "adjustValues": 0,
+      "guides": 1,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartProcess",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartPunchedCard",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartPunchedTape",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "flowChartSort",
+      "adjustValues": 0,
+      "guides": 2,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "flowChartSummingJunction",
+      "adjustValues": 0,
+      "guides": 6,
+      "handles": 0,
+      "connectionSites": 8,
+      "paths": 3
+    },
+    {
+      "name": "flowChartTerminator",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "foldedCorner",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "frame",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "funnel",
+      "adjustValues": 0,
+      "guides": 31,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "gear6",
+      "adjustValues": 2,
+      "guides": 107,
+      "handles": 2,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "gear9",
+      "adjustValues": 2,
+      "guides": 242,
+      "handles": 2,
+      "connectionSites": 9,
+      "paths": 1
+    },
+    {
+      "name": "halfFrame",
+      "adjustValues": 2,
+      "guides": 16,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "heart",
+      "adjustValues": 0,
+      "guides": 10,
+      "handles": 0,
+      "connectionSites": 2,
+      "paths": 1
+    },
+    {
+      "name": "heptagon",
+      "adjustValues": 2,
+      "guides": 19,
+      "handles": 0,
+      "connectionSites": 7,
+      "paths": 1
+    },
+    {
+      "name": "hexagon",
+      "adjustValues": 2,
+      "guides": 20,
+      "handles": 1,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "homePlate",
+      "adjustValues": 1,
+      "guides": 6,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "horizontalScroll",
+      "adjustValues": 1,
+      "guides": 11,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "irregularSeal1",
+      "adjustValues": 0,
+      "guides": 8,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "irregularSeal2",
+      "adjustValues": 0,
+      "guides": 11,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftArrow",
+      "adjustValues": 2,
+      "guides": 10,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftArrowCallout",
+      "adjustValues": 4,
+      "guides": 19,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftBrace",
+      "adjustValues": 2,
+      "guides": 14,
+      "handles": 2,
+      "connectionSites": 3,
+      "paths": 2
+    },
+    {
+      "name": "leftBracket",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 3,
+      "paths": 2
+    },
+    {
+      "name": "leftCircularArrow",
+      "adjustValues": 5,
+      "guides": 205,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftRightArrow",
+      "adjustValues": 2,
+      "guides": 11,
+      "handles": 2,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "leftRightArrowCallout",
+      "adjustValues": 4,
+      "guides": 20,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftRightCircularArrow",
+      "adjustValues": 5,
+      "guides": 230,
+      "handles": 4,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "leftRightRibbon",
+      "adjustValues": 3,
+      "guides": 23,
+      "handles": 3,
+      "connectionSites": 6,
+      "paths": 3
+    },
+    {
+      "name": "leftRightUpArrow",
+      "adjustValues": 3,
+      "guides": 21,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "leftUpArrow",
+      "adjustValues": 3,
+      "guides": 20,
+      "handles": 3,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "lightningBolt",
+      "adjustValues": 0,
+      "guides": 14,
+      "handles": 0,
+      "connectionSites": 7,
+      "paths": 1
+    },
+    {
+      "name": "line",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 2,
+      "paths": 1
+    },
+    {
+      "name": "lineInv",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 2,
+      "paths": 1
+    },
+    {
+      "name": "mathDivide",
+      "adjustValues": 3,
+      "guides": 22,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "mathEqual",
+      "adjustValues": 2,
+      "guides": 15,
+      "handles": 2,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "mathMinus",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "mathMultiply",
+      "adjustValues": 1,
+      "guides": 31,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "mathNotEqual",
+      "adjustValues": 3,
+      "guides": 55,
+      "handles": 3,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "mathPlus",
+      "adjustValues": 1,
+      "guides": 12,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "moon",
+      "adjustValues": 1,
+      "guides": 34,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "noSmoking",
+      "adjustValues": 1,
+      "guides": 32,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "nonIsoscelesTrapezoid",
+      "adjustValues": 2,
+      "guides": 13,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "notchedRightArrow",
+      "adjustValues": 2,
+      "guides": 10,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "octagon",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "parallelogram",
+      "adjustValues": 1,
+      "guides": 18,
+      "handles": 1,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "pentagon",
+      "adjustValues": 2,
+      "guides": 14,
+      "handles": 0,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "pie",
+      "adjustValues": 2,
+      "guides": 23,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "pieWedge",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 2,
+      "paths": 1
+    },
+    {
+      "name": "plaque",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "plaqueTabs",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 12,
+      "paths": 4
+    },
+    {
+      "name": "plus",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "quadArrow",
+      "adjustValues": 3,
+      "guides": 21,
+      "handles": 3,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "quadArrowCallout",
+      "adjustValues": 4,
+      "guides": 27,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "rect",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "ribbon",
+      "adjustValues": 2,
+      "guides": 19,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "ribbon2",
+      "adjustValues": 2,
+      "guides": 21,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "rightArrow",
+      "adjustValues": 2,
+      "guides": 10,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "rightArrowCallout",
+      "adjustValues": 4,
+      "guides": 19,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "rightBrace",
+      "adjustValues": 2,
+      "guides": 15,
+      "handles": 2,
+      "connectionSites": 3,
+      "paths": 2
+    },
+    {
+      "name": "rightBracket",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 3,
+      "paths": 2
+    },
+    {
+      "name": "round1Rect",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "round2DiagRect",
+      "adjustValues": 2,
+      "guides": 13,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "round2SameRect",
+      "adjustValues": 2,
+      "guides": 13,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "roundRect",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "rtTriangle",
+      "adjustValues": 0,
+      "guides": 3,
+      "handles": 0,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "smileyFace",
+      "adjustValues": 1,
+      "guides": 20,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 4
+    },
+    {
+      "name": "snip1Rect",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "snip2DiagRect",
+      "adjustValues": 2,
+      "guides": 13,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "snip2SameRect",
+      "adjustValues": 2,
+      "guides": 13,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "snipRoundRect",
+      "adjustValues": 2,
+      "guides": 7,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "squareTabs",
+      "adjustValues": 0,
+      "guides": 4,
+      "handles": 0,
+      "connectionSites": 16,
+      "paths": 4
+    },
+    {
+      "name": "star10",
+      "adjustValues": 2,
+      "guides": 31,
+      "handles": 1,
+      "connectionSites": 10,
+      "paths": 1
+    },
+    {
+      "name": "star12",
+      "adjustValues": 1,
+      "guides": 30,
+      "handles": 1,
+      "connectionSites": 12,
+      "paths": 1
+    },
+    {
+      "name": "star16",
+      "adjustValues": 1,
+      "guides": 52,
+      "handles": 1,
+      "connectionSites": 16,
+      "paths": 1
+    },
+    {
+      "name": "star24",
+      "adjustValues": 1,
+      "guides": 76,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "star32",
+      "adjustValues": 1,
+      "guides": 100,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "star4",
+      "adjustValues": 1,
+      "guides": 10,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "star5",
+      "adjustValues": 3,
+      "guides": 28,
+      "handles": 1,
+      "connectionSites": 5,
+      "paths": 1
+    },
+    {
+      "name": "star6",
+      "adjustValues": 2,
+      "guides": 17,
+      "handles": 1,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "star7",
+      "adjustValues": 3,
+      "guides": 38,
+      "handles": 1,
+      "connectionSites": 7,
+      "paths": 1
+    },
+    {
+      "name": "star8",
+      "adjustValues": 1,
+      "guides": 22,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "straightConnector1",
+      "adjustValues": 0,
+      "guides": 0,
+      "handles": 0,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "stripedRightArrow",
+      "adjustValues": 2,
+      "guides": 11,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "sun",
+      "adjustValues": 1,
+      "guides": 47,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "swooshArrow",
+      "adjustValues": 2,
+      "guides": 25,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "teardrop",
+      "adjustValues": 1,
+      "guides": 18,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "trapezoid",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "triangle",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 6,
+      "paths": 1
+    },
+    {
+      "name": "upArrowCallout",
+      "adjustValues": 4,
+      "guides": 19,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "upDownArrow",
+      "adjustValues": 2,
+      "guides": 11,
+      "handles": 2,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "upDownArrow",
+      "adjustValues": 2,
+      "guides": 11,
+      "handles": 2,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "upDownArrowCallout",
+      "adjustValues": 4,
+      "guides": 20,
+      "handles": 4,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "uturnArrow",
+      "adjustValues": 5,
+      "guides": 32,
+      "handles": 5,
+      "connectionSites": 5,
+      "paths": 1
+    },
+    {
+      "name": "verticalScroll",
+      "adjustValues": 1,
+      "guides": 11,
+      "handles": 1,
+      "connectionSites": 4,
+      "paths": 3
+    },
+    {
+      "name": "wave",
+      "adjustValues": 2,
+      "guides": 30,
+      "handles": 2,
+      "connectionSites": 4,
+      "paths": 1
+    },
+    {
+      "name": "wedgeEllipseCallout",
+      "adjustValues": 2,
+      "guides": 28,
+      "handles": 1,
+      "connectionSites": 8,
+      "paths": 1
+    },
+    {
+      "name": "wedgeRectCallout",
+      "adjustValues": 2,
+      "guides": 34,
+      "handles": 1,
+      "connectionSites": 5,
+      "paths": 1
+    },
+    {
+      "name": "wedgeRoundRectCallout",
+      "adjustValues": 3,
+      "guides": 38,
+      "handles": 1,
+      "connectionSites": 5,
+      "paths": 1
+    }
+  ],
+  "textWarps": [
+    {
+      "name": "textArchDown",
+      "adjustValues": 1,
+      "guides": 26,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "textArchDownPour",
+      "adjustValues": 2,
+      "guides": 36,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textArchUp",
+      "adjustValues": 1,
+      "guides": 17,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "textArchUpPour",
+      "adjustValues": 2,
+      "guides": 27,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textButton",
+      "adjustValues": 1,
+      "guides": 42,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 3
+    },
+    {
+      "name": "textButtonPour",
+      "adjustValues": 2,
+      "guides": 71,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 6
+    },
+    {
+      "name": "textCanDown",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCanUp",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCascadeDown",
+      "adjustValues": 1,
+      "guides": 6,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCascadeUp",
+      "adjustValues": 1,
+      "guides": 6,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textChevron",
+      "adjustValues": 1,
+      "guides": 3,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textChevronInverted",
+      "adjustValues": 1,
+      "guides": 3,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCircle",
+      "adjustValues": 1,
+      "guides": 13,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 1
+    },
+    {
+      "name": "textCirclePour",
+      "adjustValues": 2,
+      "guides": 23,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCurveDown",
+      "adjustValues": 1,
+      "guides": 17,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textCurveUp",
+      "adjustValues": 1,
+      "guides": 17,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textDeflate",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textDeflateBottom",
+      "adjustValues": 1,
+      "guides": 5,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textDeflateInflate",
+      "adjustValues": 1,
+      "guides": 9,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 4
+    },
+    {
+      "name": "textDeflateInflateDeflate",
+      "adjustValues": 1,
+      "guides": 16,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 6
+    },
+    {
+      "name": "textDeflateTop",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textDoubleWave1",
+      "adjustValues": 2,
+      "guides": 32,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textFadeDown",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textFadeLeft",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textFadeRight",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textFadeUp",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textInflate",
+      "adjustValues": 1,
+      "guides": 11,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textInflateBottom",
+      "adjustValues": 1,
+      "guides": 3,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textInflateTop",
+      "adjustValues": 1,
+      "guides": 3,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textPlain",
+      "adjustValues": 1,
+      "guides": 14,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textRingInside",
+      "adjustValues": 1,
+      "guides": 6,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textRingOutside",
+      "adjustValues": 1,
+      "guides": 6,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textSlantDown",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textSlantUp",
+      "adjustValues": 1,
+      "guides": 4,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textStop",
+      "adjustValues": 1,
+      "guides": 7,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textTriangle",
+      "adjustValues": 1,
+      "guides": 2,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textTriangleInverted",
+      "adjustValues": 1,
+      "guides": 2,
+      "handles": 1,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textWave1",
+      "adjustValues": 2,
+      "guides": 25,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textWave2",
+      "adjustValues": 2,
+      "guides": 25,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 2
+    },
+    {
+      "name": "textWave4",
+      "adjustValues": 2,
+      "guides": 32,
+      "handles": 2,
+      "connectionSites": 0,
+      "paths": 2
+    }
+  ]
+}

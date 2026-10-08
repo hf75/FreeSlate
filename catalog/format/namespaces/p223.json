@@ -1,0 +1,173 @@
+{
+  "prefix": "p223",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2022/03/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-PPTX] v20240820 §5.17",
+  "counts": {
+    "elements": 4,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 4,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p223:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p223:instance"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p223:instance",
+      "types": [
+        "p223:CT_ReactionInstance"
+      ],
+      "attributes": [
+        {
+          "name": "authorId",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "xsd:dateTime",
+          "required": true
+        }
+      ],
+      "children": [
+        "p223:extLst"
+      ],
+      "parents": [
+        "p223:rxn"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.3.2",
+          "title": "CT_ReactionInstance",
+          "page": 133
+        }
+      ]
+    },
+    {
+      "name": "p223:reactions",
+      "global": true,
+      "types": [
+        "p223:CT_Reactions"
+      ],
+      "attributes": [],
+      "children": [
+        "p223:rxn"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.1.1",
+          "title": "reactions",
+          "page": 132
+        }
+      ]
+    },
+    {
+      "name": "p223:rxn",
+      "types": [
+        "p223:CT_Reaction"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "p223:instance"
+      ],
+      "parents": [
+        "p223:reactions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.3.1",
+          "title": "CT_Reaction",
+          "page": 133
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p223:CT_Reaction",
+      "content": "elements",
+      "model": "p223:instance*",
+      "attributes": [
+        "type"
+      ],
+      "usedBy": [
+        "p223:rxn"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.3.1",
+          "title": "CT_Reaction",
+          "page": 133
+        }
+      ]
+    },
+    {
+      "name": "p223:CT_ReactionInstance",
+      "content": "elements",
+      "model": "p223:extLst?",
+      "attributes": [
+        "authorId",
+        "time"
+      ],
+      "usedBy": [
+        "p223:instance"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.3.2",
+          "title": "CT_ReactionInstance",
+          "page": 133
+        }
+      ]
+    },
+    {
+      "name": "p223:CT_Reactions",
+      "content": "elements",
+      "model": "p223:rxn*",
+      "attributes": [],
+      "usedBy": [
+        "p223:reactions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.21.3.3",
+          "title": "CT_Reactions",
+          "page": 134
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

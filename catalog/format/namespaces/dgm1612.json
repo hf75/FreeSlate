@@ -1,0 +1,92 @@
+{
+  "prefix": "dgm1612",
+  "uri": "http://schemas.microsoft.com/office/drawing/2016/12/diagram",
+  "area": "Diagrams (SmartArt)",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.30",
+  "counts": {
+    "elements": 2,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "dgm1612:lstStyle",
+      "global": true,
+      "types": [
+        "a:CT_TextListStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:defPPr",
+        "a:lvl1pPr",
+        "a:lvl2pPr",
+        "a:lvl3pPr",
+        "a:lvl4pPr",
+        "a:lvl5pPr",
+        "a:lvl6pPr",
+        "a:lvl7pPr",
+        "a:lvl8pPr",
+        "a:lvl9pPr",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.32.1.1",
+          "title": "lstStyle",
+          "page": 309
+        }
+      ]
+    },
+    {
+      "name": "dgm1612:spPr",
+      "global": true,
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.32.1.2",
+          "title": "spPr",
+          "page": 310
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": []
+}

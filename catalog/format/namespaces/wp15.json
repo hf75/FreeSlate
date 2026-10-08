@@ -1,0 +1,78 @@
+{
+  "prefix": "wp15",
+  "uri": "http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-ODRAWXML] v20261006 §5.18",
+  "counts": {
+    "elements": 1,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "wp15:webVideoPr",
+      "global": true,
+      "types": [
+        "wp15:CT_WebVideoPr"
+      ],
+      "attributes": [
+        {
+          "name": "embeddedHtml",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "h",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        },
+        {
+          "name": "w",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.19.1.1",
+          "title": "webVideoPr",
+          "page": 172
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "wp15:CT_WebVideoPr",
+      "content": "empty",
+      "attributes": [
+        "embeddedHtml",
+        "h",
+        "w"
+      ],
+      "usedBy": [
+        "wp15:webVideoPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.19.3.1",
+          "title": "CT_WebVideoPr",
+          "page": 172
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

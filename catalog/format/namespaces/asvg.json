@@ -1,0 +1,72 @@
+{
+  "prefix": "asvg",
+  "uri": "http://schemas.microsoft.com/office/drawing/2016/SVG/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.24",
+  "counts": {
+    "elements": 1,
+    "attributes": 2,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "asvg:svgBlip",
+      "global": true,
+      "types": [
+        "asvg:CT_SVGBlip"
+      ],
+      "attributes": [
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        },
+        {
+          "name": "r:link",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.26.1.1",
+          "title": "svgBlip",
+          "page": 268
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "asvg:CT_SVGBlip",
+      "content": "empty",
+      "attributes": [
+        "r:embed",
+        "r:link"
+      ],
+      "usedBy": [
+        "asvg:svgBlip"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.26.3.1",
+          "title": "CT_SVGBlip",
+          "page": 268
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

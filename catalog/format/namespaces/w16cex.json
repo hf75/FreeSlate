@@ -1,0 +1,140 @@
+{
+  "prefix": "w16cex",
+  "uri": "http://schemas.microsoft.com/office/word/2018/wordml/cex",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-DOCX] v20260818 §5.6",
+  "counts": {
+    "elements": 3,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 4,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w16cex:commentExtensible",
+      "types": [
+        "w16cex:CT_CommentExtensible"
+      ],
+      "attributes": [
+        {
+          "name": "w16cex:dateUtc",
+          "type": "w:ST_DateTime"
+        },
+        {
+          "name": "w16cex:durableId",
+          "type": "w:ST_LongHexNumber",
+          "required": true
+        },
+        {
+          "name": "w16cex:intelligentPlaceholder",
+          "type": "w:ST_OnOff"
+        }
+      ],
+      "children": [
+        "w16cex:extLst"
+      ],
+      "parents": [
+        "w16cex:commentsExtensible"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.10.3.1",
+          "title": "CT_CommentExtensible",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "w16cex:commentsExtensible",
+      "global": true,
+      "types": [
+        "w16cex:CT_CommentsExtensible"
+      ],
+      "attributes": [],
+      "children": [
+        "w16cex:commentExtensible",
+        "w16cex:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.10.1.1",
+          "title": "commentsExtensible",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "w16cex:extLst",
+      "types": [
+        "w16cur:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "w16cur:ext"
+      ],
+      "parents": [
+        "w16cex:commentExtensible",
+        "w16cex:commentsExtensible"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.9.3.2",
+          "title": "CT_ExtensionList",
+          "page": 89
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "w16cex:CT_CommentExtensible",
+      "content": "elements",
+      "model": "w16cex:extLst?",
+      "attributes": [
+        "w16cex:dateUtc",
+        "w16cex:durableId",
+        "w16cex:intelligentPlaceholder"
+      ],
+      "usedBy": [
+        "w16cex:commentExtensible"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.10.3.1",
+          "title": "CT_CommentExtensible",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "w16cex:CT_CommentsExtensible",
+      "content": "elements",
+      "model": "(w16cex:commentExtensible*, w16cex:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "w16cex:commentsExtensible"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.10.3.2",
+          "title": "CT_CommentsExtensible",
+          "page": 91
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

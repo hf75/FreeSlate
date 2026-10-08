@@ -1,0 +1,132 @@
+{
+  "prefix": "ct",
+  "uri": "http://schemas.openxmlformats.org/package/2006/content-types",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-2 schema opc-contentTypes.xsd",
+  "counts": {
+    "elements": 3,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 2,
+    "enumValues": 0,
+    "specSections": 0,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "ct:Default",
+      "global": true,
+      "types": [
+        "ct:CT_Default"
+      ],
+      "attributes": [
+        {
+          "name": "ContentType",
+          "type": "ct:ST_ContentType",
+          "required": true
+        },
+        {
+          "name": "Extension",
+          "type": "ct:ST_Extension",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "ct:Types"
+      ],
+      "spec": []
+    },
+    {
+      "name": "ct:Override",
+      "global": true,
+      "types": [
+        "ct:CT_Override"
+      ],
+      "attributes": [
+        {
+          "name": "ContentType",
+          "type": "ct:ST_ContentType",
+          "required": true
+        },
+        {
+          "name": "PartName",
+          "type": "xsd:anyURI",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "ct:Types"
+      ],
+      "spec": []
+    },
+    {
+      "name": "ct:Types",
+      "global": true,
+      "types": [
+        "ct:CT_Types"
+      ],
+      "attributes": [],
+      "children": [
+        "ct:Default",
+        "ct:Override"
+      ],
+      "parents": [],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ct:CT_Default",
+      "content": "empty",
+      "attributes": [
+        "ContentType",
+        "Extension"
+      ],
+      "usedBy": [
+        "ct:Default"
+      ]
+    },
+    {
+      "name": "ct:CT_Override",
+      "content": "empty",
+      "attributes": [
+        "ContentType",
+        "PartName"
+      ],
+      "usedBy": [
+        "ct:Override"
+      ]
+    },
+    {
+      "name": "ct:CT_Types",
+      "content": "elements",
+      "model": "(ct:Default | ct:Override)*",
+      "attributes": [],
+      "usedBy": [
+        "ct:Types"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "ct:ST_ContentType",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "(((([\\p{IsBasicLatin}-[\\p{Cc}\u007F\\(\\)<>@,;:\\\\\"/\\[\\]\\?=\\{\\}\\s\\t]])+))/((([\\p{IsBasicLatin}-[\\p{Cc}\u007F\\(\\)<>@,;:\\\\\"/\\[\\]\\?=\\{\\}\\s\\t]])+))((\\s+)*;(\\s+)*(((([\\p{IsBasicLatin}-[\\p{Cc}\u007F\\(\\)<>@,;:\\\\\"/\\[\\]\\?=\\{\\}\\s\\t]])+))=((([\\p{IsBasicLatin}-[\\p{Cc}\u007F\\(\\)<>@,;:\\\\\"/\\[\\]\\?=\\{\\}\\s\\t]])+)|(\"(([\\p{IsLatin-1Supplement}\\p{IsBasicLatin}-[\\p{Cc}\u007F\"\\n\\r]]|(\\s+))|(\\\\[\\p{IsBasicLatin}]))*\"))))*)"
+      }
+    },
+    {
+      "name": "ct:ST_Extension",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "([!$&'\\(\\)\\*\\+,:=]|(%[0-9a-fA-F][0-9a-fA-F])|[:@]|[a-zA-Z0-9\\-_~])+"
+      }
+    }
+  ]
+}

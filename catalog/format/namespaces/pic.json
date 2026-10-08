@@ -1,0 +1,249 @@
+{
+  "prefix": "pic",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/picture",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-picture.xsd",
+  "counts": {
+    "elements": 6,
+    "attributes": 9,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 6,
+    "officeNotes": 2
+  },
+  "elements": [
+    {
+      "name": "pic:blipFill",
+      "types": [
+        "a:CT_BlipFillProperties"
+      ],
+      "attributes": [
+        {
+          "name": "dpi",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "rotWithShape",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "a:blip",
+        "a:srcRect",
+        "a:tile",
+        "a:stretch"
+      ],
+      "parents": [
+        "pic:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.1",
+          "title": "Picture Fill",
+          "page": 3100,
+          "officeNotes": [
+            "2.1.1348"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pic:cNvPicPr",
+      "types": [
+        "a:CT_NonVisualPictureProperties"
+      ],
+      "attributes": [
+        {
+          "name": "preferRelativeResize",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a:picLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "pic:nvPicPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.2",
+          "title": "Non-Visual Picture Drawing Properties",
+          "page": 3103
+        }
+      ]
+    },
+    {
+      "name": "pic:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "pic:nvPicPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.3",
+          "title": "Non-Visual Drawing Properties",
+          "page": 3104
+        }
+      ]
+    },
+    {
+      "name": "pic:nvPicPr",
+      "types": [
+        "pic:CT_PictureNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "pic:cNvPr",
+        "pic:cNvPicPr"
+      ],
+      "parents": [
+        "pic:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.4",
+          "title": "Non-Visual Picture Properties",
+          "page": 3106
+        }
+      ]
+    },
+    {
+      "name": "pic:pic",
+      "global": true,
+      "types": [
+        "pic:CT_Picture"
+      ],
+      "attributes": [],
+      "children": [
+        "pic:nvPicPr",
+        "pic:blipFill",
+        "pic:spPr"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp",
+        "wp:wpc",
+        "wpc:wpc",
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.5",
+          "title": "Picture",
+          "page": 3106
+        }
+      ]
+    },
+    {
+      "name": "pic:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "pic:pic"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.2.2.6",
+          "title": "Shape Properties",
+          "page": 3107,
+          "officeNotes": [
+            "2.1.1349"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pic:CT_Picture",
+      "content": "elements",
+      "model": "(pic:nvPicPr, pic:blipFill, pic:spPr)",
+      "attributes": [],
+      "usedBy": [
+        "pic:pic"
+      ]
+    },
+    {
+      "name": "pic:CT_PictureNonVisual",
+      "content": "elements",
+      "model": "(pic:cNvPr, pic:cNvPicPr)",
+      "attributes": [],
+      "usedBy": [
+        "pic:nvPicPr"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

@@ -1,0 +1,1097 @@
+{
+  "prefix": "vt",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-documentPropertiesVariantTypes.xsd",
+  "counts": {
+    "elements": 34,
+    "attributes": 6,
+    "globalAttributes": 0,
+    "complexTypes": 6,
+    "simpleTypes": 4,
+    "enumValues": 37,
+    "specSections": 38,
+    "officeNotes": 9
+  },
+  "elements": [
+    {
+      "name": "vt:array",
+      "global": true,
+      "types": [
+        "vt:CT_Array"
+      ],
+      "attributes": [
+        {
+          "name": "baseType",
+          "type": "vt:ST_ArrayBaseType",
+          "required": true
+        },
+        {
+          "name": "lBounds",
+          "type": "xsd:int",
+          "required": true
+        },
+        {
+          "name": "uBounds",
+          "type": "xsd:int",
+          "required": true
+        }
+      ],
+      "children": [
+        "vt:variant",
+        "vt:i1",
+        "vt:i2",
+        "vt:i4",
+        "vt:int",
+        "vt:ui1",
+        "vt:ui2",
+        "vt:ui4",
+        "vt:uint",
+        "vt:r4",
+        "vt:r8",
+        "vt:decimal",
+        "vt:bstr",
+        "vt:date",
+        "vt:bool",
+        "vt:error",
+        "vt:cy"
+      ],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.1",
+          "title": "Array",
+          "page": 3744,
+          "officeNotes": [
+            "2.1.1725"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:blob",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:DigSig",
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.2",
+          "title": "Binary Blob",
+          "page": 3745
+        }
+      ]
+    },
+    {
+      "name": "vt:bool",
+      "global": true,
+      "types": [
+        "xsd:boolean"
+      ],
+      "text": "xsd:boolean",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.3",
+          "title": "Boolean",
+          "page": 3745
+        }
+      ]
+    },
+    {
+      "name": "vt:bstr",
+      "global": true,
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.4",
+          "title": "Basic String",
+          "page": 3746
+        }
+      ]
+    },
+    {
+      "name": "vt:clsid",
+      "global": true,
+      "types": [
+        "s:ST_Guid"
+      ],
+      "text": "s:ST_Guid",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.5",
+          "title": "Class ID",
+          "page": 3746,
+          "officeNotes": [
+            "2.1.1726"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:cy",
+      "global": true,
+      "types": [
+        "vt:ST_Cy"
+      ],
+      "text": "vt:ST_Cy",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.6",
+          "title": "Currency",
+          "page": 3746
+        }
+      ]
+    },
+    {
+      "name": "vt:date",
+      "global": true,
+      "types": [
+        "xsd:dateTime"
+      ],
+      "text": "xsd:dateTime",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.7",
+          "title": "Date and Time",
+          "page": 3746,
+          "officeNotes": [
+            "2.1.1727"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:decimal",
+      "global": true,
+      "types": [
+        "xsd:decimal"
+      ],
+      "text": "xsd:decimal",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.8",
+          "title": "Decimal",
+          "page": 3746
+        }
+      ]
+    },
+    {
+      "name": "vt:empty",
+      "global": true,
+      "types": [
+        "vt:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.9",
+          "title": "Empty",
+          "page": 3746
+        }
+      ]
+    },
+    {
+      "name": "vt:error",
+      "global": true,
+      "types": [
+        "vt:ST_Error"
+      ],
+      "text": "vt:ST_Error",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.10",
+          "title": "Error Status Code",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:filetime",
+      "global": true,
+      "types": [
+        "xsd:dateTime"
+      ],
+      "text": "xsd:dateTime",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.11",
+          "title": "File Time",
+          "page": 3747,
+          "officeNotes": [
+            "2.1.1728"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:i1",
+      "global": true,
+      "types": [
+        "xsd:byte"
+      ],
+      "text": "xsd:byte",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.12",
+          "title": "1-Byte Signed Integer",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:i2",
+      "global": true,
+      "types": [
+        "xsd:short"
+      ],
+      "text": "xsd:short",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.13",
+          "title": "2-Byte Signed Integer",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:i4",
+      "global": true,
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.14",
+          "title": "4-Byte Signed Integer",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:i8",
+      "global": true,
+      "types": [
+        "xsd:long"
+      ],
+      "text": "xsd:long",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.15",
+          "title": "8-Byte Signed Integer",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:int",
+      "global": true,
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.16",
+          "title": "Integer",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:lpstr",
+      "global": true,
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.17",
+          "title": "LPSTR",
+          "page": 3747
+        }
+      ]
+    },
+    {
+      "name": "vt:lpwstr",
+      "global": true,
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.18",
+          "title": "LPWSTR",
+          "page": 3748
+        }
+      ]
+    },
+    {
+      "name": "vt:null",
+      "global": true,
+      "types": [
+        "vt:CT_Null"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.19",
+          "title": "Null",
+          "page": 3748,
+          "officeNotes": [
+            "2.1.1729"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:oblob",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.20",
+          "title": "Binary Blob Object",
+          "page": 3748
+        }
+      ]
+    },
+    {
+      "name": "vt:ostorage",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.21",
+          "title": "Binary Storage Object",
+          "page": 3748,
+          "officeNotes": [
+            "2.1.1730"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:ostream",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.22",
+          "title": "Binary Stream Object",
+          "page": 3748
+        }
+      ]
+    },
+    {
+      "name": "vt:r4",
+      "global": true,
+      "types": [
+        "xsd:float"
+      ],
+      "text": "xsd:float",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.23",
+          "title": "4-Byte Real Number",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:r8",
+      "global": true,
+      "types": [
+        "xsd:double"
+      ],
+      "text": "xsd:double",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.24",
+          "title": "8-Byte Real Number",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:storage",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.25",
+          "title": "Binary Storage",
+          "page": 3749,
+          "officeNotes": [
+            "2.1.1731"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:stream",
+      "global": true,
+      "types": [
+        "xsd:base64Binary"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.26",
+          "title": "Binary Stream",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:ui1",
+      "global": true,
+      "types": [
+        "xsd:unsignedByte"
+      ],
+      "text": "xsd:unsignedByte",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.27",
+          "title": "1-Byte Unsigned Integer",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:ui2",
+      "global": true,
+      "types": [
+        "xsd:unsignedShort"
+      ],
+      "text": "xsd:unsignedShort",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.28",
+          "title": "2-Byte Unsigned Integer",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:ui4",
+      "global": true,
+      "types": [
+        "xsd:unsignedInt"
+      ],
+      "text": "xsd:unsignedInt",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.29",
+          "title": "4-Byte Unsigned Integer",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:ui8",
+      "global": true,
+      "types": [
+        "xsd:unsignedLong"
+      ],
+      "text": "xsd:unsignedLong",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.30",
+          "title": "8-Byte Unsigned Integer",
+          "page": 3749
+        }
+      ]
+    },
+    {
+      "name": "vt:uint",
+      "global": true,
+      "types": [
+        "xsd:unsignedInt"
+      ],
+      "text": "xsd:unsignedInt",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:array",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.31",
+          "title": "Unsigned Integer",
+          "page": 3750
+        }
+      ]
+    },
+    {
+      "name": "vt:variant",
+      "global": true,
+      "types": [
+        "vt:CT_Variant"
+      ],
+      "attributes": [],
+      "children": [
+        "vt:variant",
+        "vt:vector",
+        "vt:array",
+        "vt:blob",
+        "vt:oblob",
+        "vt:empty",
+        "vt:null",
+        "vt:i1",
+        "vt:i2",
+        "vt:i4",
+        "vt:i8",
+        "vt:int",
+        "vt:ui1",
+        "vt:ui2",
+        "vt:ui4",
+        "vt:ui8",
+        "vt:uint",
+        "vt:r4",
+        "vt:r8",
+        "vt:decimal",
+        "vt:lpstr",
+        "vt:lpwstr",
+        "vt:bstr",
+        "vt:date",
+        "vt:filetime",
+        "vt:bool",
+        "vt:cy",
+        "vt:error",
+        "vt:stream",
+        "vt:ostream",
+        "vt:storage",
+        "vt:ostorage",
+        "vt:vstream",
+        "vt:clsid"
+      ],
+      "parents": [
+        "vt:array",
+        "vt:variant",
+        "vt:vector"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.32",
+          "title": "Variant",
+          "page": 3750
+        }
+      ]
+    },
+    {
+      "name": "vt:vector",
+      "global": true,
+      "types": [
+        "vt:CT_Vector"
+      ],
+      "attributes": [
+        {
+          "name": "baseType",
+          "type": "vt:ST_VectorBaseType",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [
+        "vt:variant",
+        "vt:i1",
+        "vt:i2",
+        "vt:i4",
+        "vt:i8",
+        "vt:ui1",
+        "vt:ui2",
+        "vt:ui4",
+        "vt:ui8",
+        "vt:r4",
+        "vt:r8",
+        "vt:lpstr",
+        "vt:lpwstr",
+        "vt:bstr",
+        "vt:date",
+        "vt:filetime",
+        "vt:bool",
+        "vt:cy",
+        "vt:error",
+        "vt:clsid"
+      ],
+      "parents": [
+        "ap:HLinks",
+        "ap:HeadingPairs",
+        "ap:TitlesOfParts",
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.33",
+          "title": "Vector",
+          "page": 3750
+        }
+      ]
+    },
+    {
+      "name": "vt:vstream",
+      "global": true,
+      "types": [
+        "vt:CT_Vstream"
+      ],
+      "text": "xsd:base64Binary",
+      "attributes": [
+        {
+          "name": "version",
+          "type": "s:ST_Guid"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "op:property",
+        "vt:variant"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.2.34",
+          "title": "Binary Versioned Stream",
+          "page": 3751,
+          "officeNotes": [
+            "2.1.1732"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "vt:CT_Array",
+      "content": "elements",
+      "model": "(vt:variant | vt:i1 | vt:i2 | vt:i4 | vt:int | vt:ui1 | vt:ui2 | vt:ui4 | vt:uint | vt:r4 | vt:r8 | vt:decimal | vt:bstr | vt:date | vt:bool | vt:error | vt:cy)+",
+      "attributes": [
+        "baseType",
+        "lBounds",
+        "uBounds"
+      ],
+      "usedBy": [
+        "vt:array"
+      ]
+    },
+    {
+      "name": "vt:CT_Empty",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "vt:empty"
+      ]
+    },
+    {
+      "name": "vt:CT_Null",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "vt:null"
+      ]
+    },
+    {
+      "name": "vt:CT_Variant",
+      "content": "elements",
+      "model": "(vt:variant | vt:vector | vt:array | vt:blob | vt:oblob | vt:empty | vt:null | vt:i1 | vt:i2 | vt:i4 | vt:i8 | vt:int | vt:ui1 | vt:ui2 | vt:ui4 | vt:ui8 | vt:uint | vt:r4 | vt:r8 | vt:decimal | vt:lpstr | vt:lpwstr | vt:bstr | vt:date | vt:filetime | vt:bool | vt:cy | vt:error | vt:stream | vt:ostream | vt:storage | vt:ostorage | vt:vstream | vt:clsid)",
+      "attributes": [],
+      "usedBy": [
+        "vt:variant"
+      ]
+    },
+    {
+      "name": "vt:CT_Vector",
+      "content": "elements",
+      "model": "(vt:variant | vt:i1 | vt:i2 | vt:i4 | vt:i8 | vt:ui1 | vt:ui2 | vt:ui4 | vt:ui8 | vt:r4 | vt:r8 | vt:lpstr | vt:lpwstr | vt:bstr | vt:date | vt:filetime | vt:bool | vt:cy | vt:error | vt:clsid)+",
+      "attributes": [
+        "baseType",
+        "size"
+      ],
+      "usedBy": [
+        "vt:vector"
+      ]
+    },
+    {
+      "name": "vt:CT_Vstream",
+      "base": "xsd:base64Binary",
+      "content": "text",
+      "attributes": [
+        "version"
+      ],
+      "usedBy": [
+        "vt:vstream"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "vt:ST_ArrayBaseType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "variant",
+        "i1",
+        "i2",
+        "i4",
+        "int",
+        "ui1",
+        "ui2",
+        "ui4",
+        "uint",
+        "r4",
+        "r8",
+        "decimal",
+        "bstr",
+        "date",
+        "bool",
+        "cy",
+        "error"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.3.1",
+          "title": "Array Base Type Simple Type",
+          "page": 3751
+        }
+      ]
+    },
+    {
+      "name": "vt:ST_Cy",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "\\s*[0-9]*\\.[0-9]{4}\\s*"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.3.2",
+          "title": "Currency Simple Type",
+          "page": 3752
+        }
+      ]
+    },
+    {
+      "name": "vt:ST_Error",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "\\s*0x[0-9A-Za-z]{8}\\s*"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.3.3",
+          "title": "Error Status Code Simple Type",
+          "page": 3753,
+          "officeNotes": [
+            "2.1.1733"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vt:ST_VectorBaseType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "variant",
+        "i1",
+        "i2",
+        "i4",
+        "i8",
+        "ui1",
+        "ui2",
+        "ui4",
+        "ui8",
+        "r4",
+        "r8",
+        "lpstr",
+        "lpwstr",
+        "bstr",
+        "date",
+        "filetime",
+        "bool",
+        "cy",
+        "error",
+        "clsid"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.4.3.4",
+          "title": "Vector Base Type Simple Type",
+          "page": 3753
+        }
+      ]
+    }
+  ]
+}

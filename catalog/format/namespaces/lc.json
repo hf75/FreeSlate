@@ -1,0 +1,51 @@
+{
+  "prefix": "lc",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/lockedCanvas",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-lockedCanvas.xsd",
+  "counts": {
+    "elements": 1,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "lc:lockedCanvas",
+      "global": true,
+      "types": [
+        "a:CT_GvmlGroupShape"
+      ],
+      "attributes": [],
+      "children": [
+        "a:nvGrpSpPr",
+        "a:grpSpPr",
+        "a:txSp",
+        "a:sp",
+        "a:cxnSp",
+        "a:pic",
+        "a:graphicFrame",
+        "a:grpSp",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.3.2.1",
+          "title": "Locked Canvas Container",
+          "page": 3108
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": []
+}

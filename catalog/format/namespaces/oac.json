@@ -1,0 +1,947 @@
+{
+  "prefix": "oac",
+  "uri": "http://schemas.microsoft.com/office/drawing/2013/main/command",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-ODRAWXML] v20261006 §5.27",
+  "counts": {
+    "elements": 11,
+    "attributes": 11,
+    "globalAttributes": 0,
+    "complexTypes": 23,
+    "simpleTypes": 12,
+    "enumValues": 59,
+    "specSections": 43,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "oac:chgData",
+      "types": [
+        "oac:CT_ChangesData"
+      ],
+      "attributes": [
+        {
+          "name": "actId",
+          "type": "xsd:int"
+        },
+        {
+          "name": "clId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "dt",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "email",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_Guid"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "providerId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "userId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v",
+          "type": "xsd:unsignedInt"
+        }
+      ],
+      "children": [
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:cxnChg",
+        "pc:graphicFrameChg",
+        "pc:grpChg",
+        "pc:inkChg",
+        "pc:picChg",
+        "pc:spChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.1",
+          "title": "CT_ChangesData",
+          "page": 275
+        }
+      ]
+    },
+    {
+      "name": "oac:context",
+      "types": [
+        "oac:CT_TextCharRangeContext"
+      ],
+      "attributes": [
+        {
+          "name": "hash",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "len",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.22",
+          "title": "CT_TextCharRangeContext",
+          "page": 286
+        }
+      ]
+    },
+    {
+      "name": "oac:cxnSpMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_ConnectorMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:cxnChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.1",
+          "title": "cxnSpMkLst",
+          "page": 272
+        }
+      ]
+    },
+    {
+      "name": "oac:deMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_DrawingElementMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "p188:cm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.2",
+          "title": "deMkLst",
+          "page": 273
+        }
+      ]
+    },
+    {
+      "name": "oac:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "oac:chgData",
+        "pc226:chgData",
+        "pc:chgData",
+        "pc:cxnChg",
+        "pc:graphicFrameChg",
+        "pc:grpChg",
+        "pc:inkChg",
+        "pc:picChg",
+        "pc:spChg"
+      ],
+      "spec": []
+    },
+    {
+      "name": "oac:graphicFrameMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_GraphicFrameMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:graphicFrameChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.3",
+          "title": "graphicFrameMkLst",
+          "page": 273
+        }
+      ]
+    },
+    {
+      "name": "oac:grpSpMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_GroupShapeMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:grpChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.4",
+          "title": "grpSpMkLst",
+          "page": 273
+        }
+      ]
+    },
+    {
+      "name": "oac:inkMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_InkMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:inkChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.5",
+          "title": "inkMkLst",
+          "page": 273
+        }
+      ]
+    },
+    {
+      "name": "oac:picMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_PictureMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:picChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.6",
+          "title": "picMkLst",
+          "page": 274
+        }
+      ]
+    },
+    {
+      "name": "oac:spMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_ShapeMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:spChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.7",
+          "title": "spMkLst",
+          "page": 274
+        }
+      ]
+    },
+    {
+      "name": "oac:txMkLst",
+      "global": true,
+      "types": [
+        "oac:CT_TextCharRangeMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "p188:cm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.1.8",
+          "title": "txMkLst",
+          "page": 274
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "oac:CT_ChangesData",
+      "content": "elements",
+      "model": "oac:extLst?",
+      "attributes": [
+        "actId",
+        "clId",
+        "dt",
+        "email",
+        "id",
+        "name",
+        "providerId",
+        "userId",
+        "v"
+      ],
+      "usedBy": [
+        "oac:chgData",
+        "pc226:chgData",
+        "pc:chgData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.1",
+          "title": "CT_ChangesData",
+          "page": 275
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ConnectorChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:cxnSpMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:cxnChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.2",
+          "title": "CT_ConnectorChanges",
+          "page": 276
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ConnectorMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.3",
+          "title": "CT_ConnectorMoniker",
+          "page": 276
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ConnectorMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:cxnSpMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.4",
+          "title": "CT_ConnectorMonikerList",
+          "page": 277
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_DrawingElementMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:deMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.20",
+          "title": "CT_DrawingElementMonikerList",
+          "page": 285
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GraphicFrameChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:graphicFrameMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:graphicFrameChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.19",
+          "title": "CT_GraphicFrameChanges",
+          "page": 284
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GraphicFrameMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.5",
+          "title": "CT_GraphicFrameMoniker",
+          "page": 277
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GraphicFrameMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:graphicFrameMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.6",
+          "title": "CT_GraphicFrameMonikerList",
+          "page": 278
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GroupShapeChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:grpSpMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:grpChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.7",
+          "title": "CT_GroupShapeChanges",
+          "page": 278
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GroupShapeMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.8",
+          "title": "CT_GroupShapeMoniker",
+          "page": 279
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_GroupShapeMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:grpSpMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.9",
+          "title": "CT_GroupShapeMonikerList",
+          "page": 279
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_InkChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:inkMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:inkChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.10",
+          "title": "CT_InkChanges",
+          "page": 279
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_InkMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.11",
+          "title": "CT_InkMoniker",
+          "page": 280
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_InkMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:inkMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.12",
+          "title": "CT_InkMonikerList",
+          "page": 280
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_PictureChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:picMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:picChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.13",
+          "title": "CT_PictureChanges",
+          "page": 281
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_PictureMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.14",
+          "title": "CT_PictureMoniker",
+          "page": 282
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_PictureMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:picMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.15",
+          "title": "CT_PictureMonikerList",
+          "page": 282
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ShapeChanges",
+      "content": "elements",
+      "model": "(oac:chgData?, oac:spMkLst, oac:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:spChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.16",
+          "title": "CT_ShapeChanges",
+          "page": 282
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ShapeMoniker",
+      "content": "empty",
+      "attributes": [
+        "creationId",
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.17",
+          "title": "CT_ShapeMoniker",
+          "page": 283
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_ShapeMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:spMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.18",
+          "title": "CT_ShapeMonikerList",
+          "page": 283
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_TextCharRangeContext",
+      "content": "empty",
+      "attributes": [
+        "hash",
+        "len"
+      ],
+      "usedBy": [
+        "oac:context"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.22",
+          "title": "CT_TextCharRangeContext",
+          "page": 286
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_TextCharRangeMoniker",
+      "content": "elements",
+      "model": "oac:context?",
+      "attributes": [
+        "cp",
+        "len"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.23",
+          "title": "CT_TextCharRangeMoniker",
+          "page": 286
+        }
+      ]
+    },
+    {
+      "name": "oac:CT_TextCharRangeMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "oac:txMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.21",
+          "title": "CT_TextCharRangeMonikerList",
+          "page": 285
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "oac:ST_ConnectorChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.1",
+          "title": "ST_ConnectorChangeBit",
+          "page": 287
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_ConnectorChangesBits",
+      "definition": "list of oac:ST_ConnectorChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.2",
+          "title": "ST_ConnectorChangesBits",
+          "page": 288
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_GraphicFrameChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId",
+        "modGraphic"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.11",
+          "title": "ST_GraphicFrameChangeBit",
+          "page": 293
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_GraphicFrameChangesBits",
+      "definition": "list of oac:ST_GraphicFrameChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.12",
+          "title": "ST_GraphicFrameChangesBits",
+          "page": 294
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_GroupShapeChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.3",
+          "title": "ST_GroupShapeChangeBit",
+          "page": 288
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_GroupShapeChangesBits",
+      "definition": "list of oac:ST_GroupShapeChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.4",
+          "title": "ST_GroupShapeChangesBits",
+          "page": 289
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_InkChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId",
+        "reco",
+        "modStrokes"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.5",
+          "title": "ST_InkChangeBit",
+          "page": 289
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_InkChangesBits",
+      "definition": "list of oac:ST_InkChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.6",
+          "title": "ST_InkChangesBits",
+          "page": 290
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_PictureChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId",
+        "modCrop"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.7",
+          "title": "ST_PictureChangeBit",
+          "page": 290
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_PictureChangesBits",
+      "definition": "list of oac:ST_PictureChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.8",
+          "title": "ST_PictureChangesBits",
+          "page": 291
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_ShapeChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "topLvl",
+        "modVis",
+        "replST",
+        "delST",
+        "replId",
+        "modCrop"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.9",
+          "title": "ST_ShapeChangeBit",
+          "page": 292
+        }
+      ]
+    },
+    {
+      "name": "oac:ST_ShapeChangesBits",
+      "definition": "list of oac:ST_ShapeChangeBit",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.4.10",
+          "title": "ST_ShapeChangesBits",
+          "page": 292
+        }
+      ]
+    }
+  ]
+}

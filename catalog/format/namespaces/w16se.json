@@ -1,0 +1,70 @@
+{
+  "prefix": "w16se",
+  "uri": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-DOCX] v20260818 §5.3",
+  "counts": {
+    "elements": 1,
+    "attributes": 2,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w16se:symEx",
+      "global": true,
+      "types": [
+        "w16se:CT_SymEx"
+      ],
+      "attributes": [
+        {
+          "name": "w16se:char",
+          "type": "w:ST_LongHexNumber"
+        },
+        {
+          "name": "w16se:font",
+          "type": "w:ST_String"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.7.1.1",
+          "title": "symEx",
+          "page": 86
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "w16se:CT_SymEx",
+      "content": "empty",
+      "attributes": [
+        "w16se:char",
+        "w16se:font"
+      ],
+      "usedBy": [
+        "w16se:symEx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.7.3.1",
+          "title": "CT_SymEx",
+          "page": 86
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

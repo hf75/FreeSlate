@@ -1,0 +1,467 @@
+{
+  "prefix": "p15",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2012/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-PPTX] v20240820 §5.2",
+  "counts": {
+    "elements": 11,
+    "attributes": 15,
+    "globalAttributes": 0,
+    "complexTypes": 8,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 15,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p15:chartTrackingRefBased",
+      "global": true,
+      "types": [
+        "p15:CT_ChartTrackingRefBased"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.1",
+          "title": "chartTrackingRefBased",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "name": "p15:clr",
+      "types": [
+        "a:CT_Color"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "p15:guide"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p15:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p15:guide",
+        "p15:notesGuideLst",
+        "p15:sldGuideLst"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p15:guide",
+      "types": [
+        "p15:CT_ExtendedGuide"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "orient",
+          "type": "p:ST_Direction",
+          "default": "vert"
+        },
+        {
+          "name": "pos",
+          "type": "a:ST_Coordinate32",
+          "default": "0"
+        },
+        {
+          "name": "userDrawn",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "p15:clr",
+        "p15:extLst"
+      ],
+      "parents": [
+        "p15:notesGuideLst",
+        "p15:sldGuideLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.3",
+          "title": "CT_ExtendedGuide",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "p15:isNarration",
+      "global": true,
+      "types": [
+        "p15:CT_IsNarration"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.2",
+          "title": "isNarration",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "p15:notesGuideLst",
+      "global": true,
+      "types": [
+        "p15:CT_ExtendedGuideList"
+      ],
+      "attributes": [],
+      "children": [
+        "p15:guide",
+        "p15:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.3",
+          "title": "notesGuideLst",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "p15:parentCm",
+      "types": [
+        "p15:CT_ParentCommentIdentifier"
+      ],
+      "attributes": [
+        {
+          "name": "authorId",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p15:threadingInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.6",
+          "title": "CT_ParentCommentIdentifier",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "p15:presenceInfo",
+      "global": true,
+      "types": [
+        "p15:CT_PresenceInfo"
+      ],
+      "attributes": [
+        {
+          "name": "providerId",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "userId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.4",
+          "title": "presenceInfo",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "p15:prstTrans",
+      "global": true,
+      "types": [
+        "p15:CT_PresetTransition"
+      ],
+      "attributes": [
+        {
+          "name": "invX",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "invY",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "prst",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.5",
+          "title": "prstTrans",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "p15:sldGuideLst",
+      "global": true,
+      "types": [
+        "p15:CT_ExtendedGuideList"
+      ],
+      "attributes": [],
+      "children": [
+        "p15:guide",
+        "p15:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.6",
+          "title": "sldGuideLst",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "p15:threadingInfo",
+      "global": true,
+      "types": [
+        "p15:CT_CommentThreading"
+      ],
+      "attributes": [
+        {
+          "name": "timeZoneBias",
+          "type": "xsd:int"
+        }
+      ],
+      "children": [
+        "p15:parentCm"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.1.7",
+          "title": "threadingInfo",
+          "page": 61
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p15:CT_ChartTrackingRefBased",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p15:chartTrackingRefBased"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.1",
+          "title": "CT_ChartTrackingRefBased",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_CommentThreading",
+      "content": "elements",
+      "model": "p15:parentCm?",
+      "attributes": [
+        "timeZoneBias"
+      ],
+      "usedBy": [
+        "p15:threadingInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.2",
+          "title": "CT_CommentThreading",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_ExtendedGuide",
+      "content": "elements",
+      "model": "(p15:clr, p15:extLst?)",
+      "attributes": [
+        "id",
+        "name",
+        "orient",
+        "pos",
+        "userDrawn"
+      ],
+      "usedBy": [
+        "p15:guide"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.3",
+          "title": "CT_ExtendedGuide",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_ExtendedGuideList",
+      "content": "elements",
+      "model": "(p15:guide*, p15:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "p15:notesGuideLst",
+        "p15:sldGuideLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.4",
+          "title": "CT_ExtendedGuideList",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_IsNarration",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p15:isNarration"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.5",
+          "title": "CT_IsNarration",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_ParentCommentIdentifier",
+      "content": "empty",
+      "attributes": [
+        "authorId",
+        "idx"
+      ],
+      "usedBy": [
+        "p15:parentCm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.6",
+          "title": "CT_ParentCommentIdentifier",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_PresenceInfo",
+      "content": "empty",
+      "attributes": [
+        "providerId",
+        "userId"
+      ],
+      "usedBy": [
+        "p15:presenceInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.7",
+          "title": "CT_PresenceInfo",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "p15:CT_PresetTransition",
+      "content": "empty",
+      "attributes": [
+        "invX",
+        "invY",
+        "prst"
+      ],
+      "usedBy": [
+        "p15:prstTrans"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.4.3.8",
+          "title": "CT_PresetTransition",
+          "page": 65
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

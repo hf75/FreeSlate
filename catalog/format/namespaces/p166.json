@@ -1,0 +1,128 @@
+{
+  "prefix": "p166",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2016/6/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.7",
+  "counts": {
+    "elements": 2,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 1,
+    "enumValues": 2,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p166:blipFill",
+      "types": [
+        "a:CT_BlipFillProperties"
+      ],
+      "attributes": [
+        {
+          "name": "dpi",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "rotWithShape",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "a:blip",
+        "a:srcRect",
+        "a:tile",
+        "a:stretch"
+      ],
+      "parents": [
+        "psez:zmPr",
+        "pslz:zmPr",
+        "psuz:zmPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p166:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "psez:zmPr",
+        "pslz:zmPr",
+        "psuz:zmPr"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p166:CT_ZoomObjectProperties",
+      "content": "elements",
+      "model": "(p166:blipFill, p166:spPr)",
+      "attributes": [
+        "id",
+        "imageType",
+        "returnToParent",
+        "showBg",
+        "transitionDur"
+      ],
+      "usedBy": [
+        "psez:zmPr",
+        "pslz:zmPr",
+        "psuz:zmPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.8.3.1",
+          "title": "CT_ZoomObjectProperties",
+          "page": 74
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p166:ST_ZoomObjectImageType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "preview",
+        "cover"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.8.4.1",
+          "title": "ST_ZoomObjectImageType",
+          "page": 75
+        }
+      ]
+    }
+  ]
+}

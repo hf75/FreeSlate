@@ -1,0 +1,66 @@
+{
+  "prefix": "p1710",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2017/10/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-PPTX] v20240820 §5.11",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p1710:readonlyRecommended",
+      "global": true,
+      "types": [
+        "p1710:CT_ReadonlyRecommended"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.14.1.1",
+          "title": "readonlyRecommended",
+          "page": 108
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p1710:CT_ReadonlyRecommended",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p1710:readonlyRecommended"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.14.3.1",
+          "title": "CT_ReadonlyRecommended",
+          "page": 109
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

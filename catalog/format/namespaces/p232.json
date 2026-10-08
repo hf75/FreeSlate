@@ -1,0 +1,124 @@
+{
+  "prefix": "p232",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2023/02/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-PPTX] v20240820 §5.20",
+  "counts": {
+    "elements": 4,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p232:cameo",
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p232:type"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p232:phTypeExt",
+      "global": true,
+      "types": [
+        "p232:CT_PlaceholderTypeExtension"
+      ],
+      "attributes": [],
+      "children": [
+        "p232:type"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.22.1.1",
+          "title": "phTypeExt",
+          "page": 134
+        }
+      ]
+    },
+    {
+      "name": "p232:type",
+      "types": [
+        "p232:CT_PlaceholderTypeACB"
+      ],
+      "attributes": [],
+      "children": [
+        "p232:cameo",
+        "p232:unknown"
+      ],
+      "parents": [
+        "p232:phTypeExt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.22.3.1",
+          "title": "CT_PlaceholderTypeACB",
+          "page": 135
+        }
+      ]
+    },
+    {
+      "name": "p232:unknown",
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p232:type"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p232:CT_PlaceholderTypeACB",
+      "content": "elements",
+      "model": "(p232:cameo | p232:unknown)",
+      "attributes": [],
+      "usedBy": [
+        "p232:type"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.22.3.1",
+          "title": "CT_PlaceholderTypeACB",
+          "page": 135
+        }
+      ]
+    },
+    {
+      "name": "p232:CT_PlaceholderTypeExtension",
+      "content": "elements",
+      "model": "p232:type",
+      "attributes": [],
+      "usedBy": [
+        "p232:phTypeExt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.22.3.2",
+          "title": "CT_PlaceholderTypeExtension",
+          "page": 135
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

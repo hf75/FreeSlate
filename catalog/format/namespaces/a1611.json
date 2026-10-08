@@ -1,0 +1,67 @@
+{
+  "prefix": "a1611",
+  "uri": "http://schemas.microsoft.com/office/drawing/2016/11/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.25",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "a1611:picAttrSrcUrl",
+      "global": true,
+      "types": [
+        "a1611:CT_PictureAttributionSourceURL"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.27.1.1",
+          "title": "picAttrSrcUrl",
+          "page": 269
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "a1611:CT_PictureAttributionSourceURL",
+      "content": "empty",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "a1611:picAttrSrcUrl",
+        "am3d:attrSrcUrl"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.27.3.1",
+          "title": "CT_PictureAttributionSourceURL",
+          "page": 269
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

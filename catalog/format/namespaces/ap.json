@@ -1,0 +1,672 @@
+{
+  "prefix": "ap",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-documentPropertiesExtended.xsd",
+  "counts": {
+    "elements": 28,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 4,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 28,
+    "officeNotes": 7
+  },
+  "elements": [
+    {
+      "name": "ap:AppVersion",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.2",
+          "title": "Application Version",
+          "page": 3736,
+          "officeNotes": [
+            "2.1.1717"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:Application",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.1",
+          "title": "Application Name",
+          "page": 3736
+        }
+      ]
+    },
+    {
+      "name": "ap:Characters",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.3",
+          "title": "Total Number of Characters",
+          "page": 3736
+        }
+      ]
+    },
+    {
+      "name": "ap:CharactersWithSpaces",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.4",
+          "title": "Number of Characters (With Spaces)",
+          "page": 3737
+        }
+      ]
+    },
+    {
+      "name": "ap:Company",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.5",
+          "title": "Name of Company",
+          "page": 3737
+        }
+      ]
+    },
+    {
+      "name": "ap:DigSig",
+      "types": [
+        "ap:CT_DigSigBlob"
+      ],
+      "attributes": [],
+      "children": [
+        "vt:blob"
+      ],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.6",
+          "title": "Digital Signature",
+          "page": 3737,
+          "officeNotes": [
+            "2.1.1718"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:DocSecurity",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.7",
+          "title": "Document Security",
+          "page": 3737,
+          "officeNotes": [
+            "2.1.1719"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:HLinks",
+      "types": [
+        "ap:CT_VectorVariant"
+      ],
+      "attributes": [],
+      "children": [
+        "vt:vector"
+      ],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.10",
+          "title": "Hyperlink List",
+          "page": 3738,
+          "officeNotes": [
+            "2.1.1721"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:HeadingPairs",
+      "types": [
+        "ap:CT_VectorVariant"
+      ],
+      "attributes": [],
+      "children": [
+        "vt:vector"
+      ],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.8",
+          "title": "Heading Pairs",
+          "page": 3737,
+          "officeNotes": [
+            "2.1.1720"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:HiddenSlides",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.9",
+          "title": "Number of Hidden Slides",
+          "page": 3738
+        }
+      ]
+    },
+    {
+      "name": "ap:HyperlinkBase",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.11",
+          "title": "Relative Hyperlink Base",
+          "page": 3738
+        }
+      ]
+    },
+    {
+      "name": "ap:HyperlinksChanged",
+      "types": [
+        "xsd:boolean"
+      ],
+      "text": "xsd:boolean",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.12",
+          "title": "Hyperlinks Changed",
+          "page": 3738
+        }
+      ]
+    },
+    {
+      "name": "ap:Lines",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.13",
+          "title": "Number of Lines",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:LinksUpToDate",
+      "types": [
+        "xsd:boolean"
+      ],
+      "text": "xsd:boolean",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.14",
+          "title": "Links Up-to-Date",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:MMClips",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.16",
+          "title": "Total Number of Multimedia Clips",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:Manager",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.15",
+          "title": "Name of Manager",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:Notes",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.17",
+          "title": "Number of Slides Containing Notes",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:Pages",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.18",
+          "title": "Total Number of Pages",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:Paragraphs",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.19",
+          "title": "Total Number of Paragraphs",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:PresentationFormat",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.20",
+          "title": "Intended Format of Presentation",
+          "page": 3739
+        }
+      ]
+    },
+    {
+      "name": "ap:Properties",
+      "global": true,
+      "types": [
+        "ap:CT_Properties"
+      ],
+      "attributes": [],
+      "children": [
+        "ap:Template",
+        "ap:Manager",
+        "ap:Company",
+        "ap:Pages",
+        "ap:Words",
+        "ap:Characters",
+        "ap:PresentationFormat",
+        "ap:Lines",
+        "ap:Paragraphs",
+        "ap:Slides",
+        "ap:Notes",
+        "ap:TotalTime",
+        "ap:HiddenSlides",
+        "ap:MMClips",
+        "ap:ScaleCrop",
+        "ap:HeadingPairs",
+        "ap:TitlesOfParts",
+        "ap:LinksUpToDate",
+        "ap:CharactersWithSpaces",
+        "ap:SharedDoc",
+        "ap:HyperlinkBase",
+        "ap:HLinks",
+        "ap:HyperlinksChanged",
+        "ap:DigSig",
+        "ap:Application",
+        "ap:AppVersion",
+        "ap:DocSecurity"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.21",
+          "title": "Application Specific File Properties",
+          "page": 3740
+        }
+      ]
+    },
+    {
+      "name": "ap:ScaleCrop",
+      "types": [
+        "xsd:boolean"
+      ],
+      "text": "xsd:boolean",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.22",
+          "title": "Thumbnail Display Mode",
+          "page": 3740
+        }
+      ]
+    },
+    {
+      "name": "ap:SharedDoc",
+      "types": [
+        "xsd:boolean"
+      ],
+      "text": "xsd:boolean",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.23",
+          "title": "Shared Document",
+          "page": 3740
+        }
+      ]
+    },
+    {
+      "name": "ap:Slides",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.24",
+          "title": "Slides Metadata Element",
+          "page": 3740
+        }
+      ]
+    },
+    {
+      "name": "ap:Template",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.25",
+          "title": "Name of Document Template",
+          "page": 3740
+        }
+      ]
+    },
+    {
+      "name": "ap:TitlesOfParts",
+      "types": [
+        "ap:CT_VectorLpstr"
+      ],
+      "attributes": [],
+      "children": [
+        "vt:vector"
+      ],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.26",
+          "title": "Part Titles",
+          "page": 3740,
+          "officeNotes": [
+            "2.1.1722"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:TotalTime",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.27",
+          "title": "Total Edit Time Metadata Element",
+          "page": 3741,
+          "officeNotes": [
+            "2.1.1723"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ap:Words",
+      "types": [
+        "xsd:int"
+      ],
+      "text": "xsd:int",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "ap:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.2.2.28",
+          "title": "Word Count",
+          "page": 3741
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "ap:CT_DigSigBlob",
+      "content": "elements",
+      "model": "vt:blob",
+      "attributes": [],
+      "usedBy": [
+        "ap:DigSig"
+      ]
+    },
+    {
+      "name": "ap:CT_Properties",
+      "content": "elements",
+      "model": "(ap:Template? & ap:Manager? & ap:Company? & ap:Pages? & ap:Words? & ap:Characters? & ap:PresentationFormat? & ap:Lines? & ap:Paragraphs? & ap:Slides? & ap:Notes? & ap:TotalTime? & ap:HiddenSlides? & ap:MMClips? & ap:ScaleCrop? & ap:HeadingPairs? & ap:TitlesOfParts? & ap:LinksUpToDate? & ap:CharactersWithSpaces? & ap:SharedDoc? & ap:HyperlinkBase? & ap:HLinks? & ap:HyperlinksChanged? & ap:DigSig? & ap:Application? & ap:AppVersion? & ap:DocSecurity?)",
+      "attributes": [],
+      "usedBy": [
+        "ap:Properties"
+      ]
+    },
+    {
+      "name": "ap:CT_VectorLpstr",
+      "content": "elements",
+      "model": "vt:vector",
+      "attributes": [],
+      "usedBy": [
+        "ap:TitlesOfParts"
+      ]
+    },
+    {
+      "name": "ap:CT_VectorVariant",
+      "content": "elements",
+      "model": "vt:vector",
+      "attributes": [],
+      "usedBy": [
+        "ap:HLinks",
+        "ap:HeadingPairs"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

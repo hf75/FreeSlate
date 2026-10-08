@@ -1,0 +1,142 @@
+{
+  "prefix": "op",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-documentPropertiesCustom.xsd",
+  "counts": {
+    "elements": 2,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 1
+  },
+  "elements": [
+    {
+      "name": "op:Properties",
+      "global": true,
+      "types": [
+        "op:CT_Properties"
+      ],
+      "attributes": [],
+      "children": [
+        "op:property"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.3.2.1",
+          "title": "Custom File Properties",
+          "page": 3742
+        }
+      ]
+    },
+    {
+      "name": "op:property",
+      "types": [
+        "op:CT_Property"
+      ],
+      "attributes": [
+        {
+          "name": "fmtid",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "linkTarget",
+          "type": "xsd:string"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "pid",
+          "type": "xsd:int",
+          "required": true
+        }
+      ],
+      "children": [
+        "vt:vector",
+        "vt:array",
+        "vt:blob",
+        "vt:oblob",
+        "vt:empty",
+        "vt:null",
+        "vt:i1",
+        "vt:i2",
+        "vt:i4",
+        "vt:i8",
+        "vt:int",
+        "vt:ui1",
+        "vt:ui2",
+        "vt:ui4",
+        "vt:ui8",
+        "vt:uint",
+        "vt:r4",
+        "vt:r8",
+        "vt:decimal",
+        "vt:lpstr",
+        "vt:lpwstr",
+        "vt:bstr",
+        "vt:date",
+        "vt:filetime",
+        "vt:bool",
+        "vt:cy",
+        "vt:error",
+        "vt:stream",
+        "vt:ostream",
+        "vt:storage",
+        "vt:ostorage",
+        "vt:vstream",
+        "vt:clsid"
+      ],
+      "parents": [
+        "op:Properties"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.3.2.2",
+          "title": "Custom File Property",
+          "page": 3742,
+          "officeNotes": [
+            "2.1.1724"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "op:CT_Properties",
+      "content": "elements",
+      "model": "op:property*",
+      "attributes": [],
+      "usedBy": [
+        "op:Properties"
+      ]
+    },
+    {
+      "name": "op:CT_Property",
+      "content": "elements",
+      "model": "(vt:vector | vt:array | vt:blob | vt:oblob | vt:empty | vt:null | vt:i1 | vt:i2 | vt:i4 | vt:i8 | vt:int | vt:ui1 | vt:ui2 | vt:ui4 | vt:ui8 | vt:uint | vt:r4 | vt:r8 | vt:decimal | vt:lpstr | vt:lpwstr | vt:bstr | vt:date | vt:filetime | vt:bool | vt:cy | vt:error | vt:stream | vt:ostream | vt:storage | vt:ostorage | vt:vstream | vt:clsid)",
+      "attributes": [
+        "fmtid",
+        "linkTarget",
+        "name",
+        "pid"
+      ],
+      "usedBy": [
+        "op:property"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

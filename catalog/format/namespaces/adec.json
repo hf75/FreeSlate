@@ -1,0 +1,65 @@
+{
+  "prefix": "adec",
+  "uri": "http://schemas.microsoft.com/office/drawing/2017/decorative",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.32",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "adec:decorative",
+      "global": true,
+      "types": [
+        "adec:CT_Decorative"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.34.1.1",
+          "title": "decorative",
+          "page": 312
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "adec:CT_Decorative",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "adec:decorative"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.34.3.1",
+          "title": "CT_Decorative",
+          "page": 312
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

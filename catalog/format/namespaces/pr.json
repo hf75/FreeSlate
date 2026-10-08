@@ -1,0 +1,103 @@
+{
+  "prefix": "pr",
+  "uri": "http://schemas.openxmlformats.org/package/2006/relationships",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-2 schema opc-relationships.xsd",
+  "counts": {
+    "elements": 2,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 1,
+    "enumValues": 2,
+    "specSections": 0,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pr:Relationship",
+      "global": true,
+      "types": [
+        "pr:CT_Relationship"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "Id",
+          "type": "xsd:ID",
+          "required": true
+        },
+        {
+          "name": "Target",
+          "type": "xsd:anyURI",
+          "required": true
+        },
+        {
+          "name": "TargetMode",
+          "type": "pr:ST_TargetMode"
+        },
+        {
+          "name": "Type",
+          "type": "xsd:anyURI",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "pr:Relationships"
+      ],
+      "spec": []
+    },
+    {
+      "name": "pr:Relationships",
+      "global": true,
+      "types": [
+        "pr:CT_Relationships"
+      ],
+      "attributes": [],
+      "children": [
+        "pr:Relationship"
+      ],
+      "parents": [],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pr:CT_Relationship",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "Id",
+        "Target",
+        "TargetMode",
+        "Type"
+      ],
+      "usedBy": [
+        "pr:Relationship"
+      ]
+    },
+    {
+      "name": "pr:CT_Relationships",
+      "content": "elements",
+      "model": "pr:Relationship*",
+      "attributes": [],
+      "usedBy": [
+        "pr:Relationships"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "pr:ST_TargetMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "External",
+        "Internal"
+      ]
+    }
+  ]
+}

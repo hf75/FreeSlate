@@ -1,0 +1,175 @@
+{
+  "prefix": "pslz",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2016/slidezoom",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.9",
+  "counts": {
+    "elements": 4,
+    "attributes": 7,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 4,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pslz:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "pslz:sldZm",
+        "pslz:sldZmObj"
+      ],
+      "spec": []
+    },
+    {
+      "name": "pslz:sldZm",
+      "global": true,
+      "types": [
+        "pslz:CT_SlideZoom"
+      ],
+      "attributes": [],
+      "children": [
+        "pslz:sldZmObj",
+        "pslz:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.10.1.1",
+          "title": "sldZm",
+          "page": 77
+        }
+      ]
+    },
+    {
+      "name": "pslz:sldZmObj",
+      "types": [
+        "pslz:CT_SlideZoomObject"
+      ],
+      "attributes": [
+        {
+          "name": "cId",
+          "type": "xsd:unsignedInt"
+        },
+        {
+          "name": "sldId",
+          "type": "p:ST_SlideId",
+          "required": true
+        }
+      ],
+      "children": [
+        "pslz:zmPr",
+        "pslz:extLst"
+      ],
+      "parents": [
+        "pslz:sldZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.10.3.2",
+          "title": "CT_SlideZoomObject",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "pslz:zmPr",
+      "types": [
+        "p166:CT_ZoomObjectProperties"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "imageType",
+          "type": "p166:ST_ZoomObjectImageType",
+          "default": "preview"
+        },
+        {
+          "name": "returnToParent",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "showBg",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "transitionDur",
+          "type": "p14:ST_UniversalTimeOffset"
+        }
+      ],
+      "children": [
+        "p166:blipFill",
+        "p166:spPr"
+      ],
+      "parents": [
+        "pslz:sldZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.8.3.1",
+          "title": "CT_ZoomObjectProperties",
+          "page": 74
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pslz:CT_SlideZoom",
+      "content": "elements",
+      "model": "(pslz:sldZmObj, pslz:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "pslz:sldZm"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.10.3.1",
+          "title": "CT_SlideZoom",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "pslz:CT_SlideZoomObject",
+      "content": "elements",
+      "model": "(pslz:zmPr, pslz:extLst?)",
+      "attributes": [
+        "cId",
+        "sldId"
+      ],
+      "usedBy": [
+        "pslz:sldZmObj"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.10.3.2",
+          "title": "CT_SlideZoomObject",
+          "page": 78
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

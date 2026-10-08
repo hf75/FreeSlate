@@ -1,0 +1,275 @@
+{
+  "prefix": "alf",
+  "uri": "http://schemas.microsoft.com/office/drawing/2021/livefeed",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-ODRAWXML] v20261006 §5.40",
+  "counts": {
+    "elements": 7,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 6,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 7,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "alf:Blur",
+      "types": [
+        "alf:CT_BackgroundBlurProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:extLst"
+      ],
+      "parents": [
+        "alf:backgroundProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.1",
+          "title": "CT_BackgroundBlurProperties",
+          "page": 327
+        }
+      ]
+    },
+    {
+      "name": "alf:Custom",
+      "types": [
+        "alf:CT_BackgroundCustomProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:extLst"
+      ],
+      "parents": [
+        "alf:backgroundProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.2",
+          "title": "CT_BackgroundCustomProperties",
+          "page": 327
+        }
+      ]
+    },
+    {
+      "name": "alf:Normal",
+      "types": [
+        "alf:CT_BackgroundNormalProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:extLst"
+      ],
+      "parents": [
+        "alf:backgroundProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.3",
+          "title": "CT_BackgroundNormalProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:Removed",
+      "types": [
+        "alf:CT_BackgroundRemovedProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:extLst"
+      ],
+      "parents": [
+        "alf:backgroundProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.4",
+          "title": "CT_BackgroundRemovedProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:backgroundProps",
+      "types": [
+        "alf:CT_LiveFeedBackgroundProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:Normal",
+        "alf:Removed",
+        "alf:Blur",
+        "alf:Custom",
+        "alf:extLst"
+      ],
+      "parents": [
+        "alf:liveFeedProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.5",
+          "title": "CT_LiveFeedBackgroundProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "alf:Blur",
+        "alf:Custom",
+        "alf:Normal",
+        "alf:Removed",
+        "alf:backgroundProps",
+        "alf:liveFeedProps"
+      ],
+      "spec": []
+    },
+    {
+      "name": "alf:liveFeedProps",
+      "global": true,
+      "types": [
+        "alf:CT_LiveFeedProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "alf:backgroundProps",
+        "alf:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.1.1",
+          "title": "liveFeedProps",
+          "page": 326
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "alf:CT_BackgroundBlurProperties",
+      "content": "elements",
+      "model": "alf:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "alf:Blur"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.1",
+          "title": "CT_BackgroundBlurProperties",
+          "page": 327
+        }
+      ]
+    },
+    {
+      "name": "alf:CT_BackgroundCustomProperties",
+      "content": "elements",
+      "model": "alf:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "alf:Custom"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.2",
+          "title": "CT_BackgroundCustomProperties",
+          "page": 327
+        }
+      ]
+    },
+    {
+      "name": "alf:CT_BackgroundNormalProperties",
+      "content": "elements",
+      "model": "alf:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "alf:Normal"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.3",
+          "title": "CT_BackgroundNormalProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:CT_BackgroundRemovedProperties",
+      "content": "elements",
+      "model": "alf:extLst?",
+      "attributes": [],
+      "usedBy": [
+        "alf:Removed"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.4",
+          "title": "CT_BackgroundRemovedProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:CT_LiveFeedBackgroundProperties",
+      "content": "elements",
+      "model": "((alf:Normal? | alf:Removed? | alf:Blur? | alf:Custom?)?, alf:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "alf:backgroundProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.5",
+          "title": "CT_LiveFeedBackgroundProperties",
+          "page": 328
+        }
+      ]
+    },
+    {
+      "name": "alf:CT_LiveFeedProperties",
+      "content": "elements",
+      "model": "(alf:backgroundProps?, alf:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "alf:liveFeedProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.42.3.6",
+          "title": "CT_LiveFeedProperties",
+          "page": 329
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

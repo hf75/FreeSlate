@@ -1,0 +1,114 @@
+{
+  "prefix": "dgm14",
+  "uri": "http://schemas.microsoft.com/office/drawing/2010/diagram",
+  "area": "Diagrams (SmartArt)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.16",
+  "counts": {
+    "elements": 2,
+    "attributes": 6,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "dgm14:cNvPr",
+      "global": true,
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.9.1.1",
+          "title": "cNvPr",
+          "page": 136
+        }
+      ]
+    },
+    {
+      "name": "dgm14:recolorImg",
+      "global": true,
+      "types": [
+        "dgm14:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.9.1.2",
+          "title": "recolorImg",
+          "page": 136
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "dgm14:CT_Boolean",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm14:recolorImg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.9.3.1",
+          "title": "CT_Boolean",
+          "page": 137
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

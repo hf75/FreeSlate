@@ -1,0 +1,2162 @@
+{
+  "prefix": "p14",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2010/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-PPTX] v20240820 §5.1",
+  "counts": {
+    "elements": 53,
+    "attributes": 73,
+    "globalAttributes": 4,
+    "complexTypes": 31,
+    "simpleTypes": 6,
+    "enumValues": 7,
+    "specSections": 76,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p14:bmk",
+      "types": [
+        "p14:CT_MediaBookmark"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:bmkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.11",
+          "title": "CT_MediaBookmark",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "p14:bmkLst",
+      "types": [
+        "p14:CT_MediaBookmarkList"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:bmk"
+      ],
+      "parents": [
+        "p14:media"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.12",
+          "title": "CT_MediaBookmarkList",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "p14:bmkTgt",
+      "global": true,
+      "types": [
+        "p14:CT_MediaBookmarkTarget"
+      ],
+      "attributes": [
+        {
+          "name": "bmkName",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "spid",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.1",
+          "title": "bmkTgt",
+          "page": 27
+        }
+      ]
+    },
+    {
+      "name": "p14:browseMode",
+      "global": true,
+      "types": [
+        "p14:CT_BrowseMode"
+      ],
+      "attributes": [
+        {
+          "name": "showStatus",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.2",
+          "title": "browseMode",
+          "page": 27
+        }
+      ]
+    },
+    {
+      "name": "p14:cNvContentPartPr",
+      "types": [
+        "a14:CT_NonVisualInkContentPartProperties"
+      ],
+      "attributes": [
+        {
+          "name": "isComment",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a14:cpLocks",
+        "a14:extLst"
+      ],
+      "parents": [
+        "p14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.7",
+          "title": "CT_NonVisualInkContentPartProperties",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "p14:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "p14:nvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p14:conveyor",
+      "global": true,
+      "types": [
+        "p14:CT_LeftRightDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.3",
+          "title": "conveyor",
+          "page": 28
+        }
+      ]
+    },
+    {
+      "name": "p14:creationId",
+      "global": true,
+      "types": [
+        "p14:CT_RandomId"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.4",
+          "title": "creationId",
+          "page": 28
+        }
+      ]
+    },
+    {
+      "name": "p14:defaultImageDpi",
+      "global": true,
+      "types": [
+        "p14:CT_DefaultImageDpi"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.5",
+          "title": "defaultImageDpi",
+          "page": 28
+        }
+      ]
+    },
+    {
+      "name": "p14:discardImageEditData",
+      "global": true,
+      "types": [
+        "p14:CT_DiscardImageEditData"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.6",
+          "title": "discardImageEditData",
+          "page": 29
+        }
+      ]
+    },
+    {
+      "name": "p14:doors",
+      "global": true,
+      "types": [
+        "p:CT_OrientationTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_Direction",
+          "default": "horz"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.7",
+          "title": "doors",
+          "page": 29
+        }
+      ]
+    },
+    {
+      "name": "p14:extLst",
+      "global": true,
+      "types": [
+        "p:CT_ExtensionListModify",
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [
+        {
+          "name": "mod",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p14:media",
+        "p14:section"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.8",
+          "title": "extLst",
+          "page": 29
+        }
+      ]
+    },
+    {
+      "name": "p14:fade",
+      "types": [
+        "p14:CT_MediaFade"
+      ],
+      "attributes": [
+        {
+          "name": "in",
+          "type": "p14:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "out",
+          "type": "p14:ST_UniversalTimeOffset",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:media"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.15",
+          "title": "CT_MediaFade",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:ferris",
+      "global": true,
+      "types": [
+        "p14:CT_LeftRightDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.9",
+          "title": "ferris",
+          "page": 30
+        }
+      ]
+    },
+    {
+      "name": "p14:flash",
+      "global": true,
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.10",
+          "title": "flash",
+          "page": 30
+        }
+      ]
+    },
+    {
+      "name": "p14:flip",
+      "global": true,
+      "types": [
+        "p14:CT_LeftRightDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.11",
+          "title": "flip",
+          "page": 30
+        }
+      ]
+    },
+    {
+      "name": "p14:flythrough",
+      "global": true,
+      "types": [
+        "p14:CT_FlyThroughTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionInOutDirectionType",
+          "default": "in"
+        },
+        {
+          "name": "hasBounce",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.12",
+          "title": "flythrough",
+          "page": 31
+        }
+      ]
+    },
+    {
+      "name": "p14:gallery",
+      "global": true,
+      "types": [
+        "p14:CT_LeftRightDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.13",
+          "title": "gallery",
+          "page": 31
+        }
+      ]
+    },
+    {
+      "name": "p14:glitter",
+      "global": true,
+      "types": [
+        "p14:CT_GlitterTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionSideDirectionType",
+          "default": "l"
+        },
+        {
+          "name": "pattern",
+          "type": "p14:ST_TransitionPattern",
+          "default": "diamond"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.14",
+          "title": "glitter",
+          "page": 32
+        }
+      ]
+    },
+    {
+      "name": "p14:honeycomb",
+      "global": true,
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.15",
+          "title": "honeycomb",
+          "page": 32
+        }
+      ]
+    },
+    {
+      "name": "p14:laserClr",
+      "global": true,
+      "types": [
+        "a:CT_Color"
+      ],
+      "attributes": [],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.16",
+          "title": "laserClr",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "name": "p14:laserTraceLst",
+      "global": true,
+      "types": [
+        "p14:CT_LaserTraceList"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:tracePtLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.17",
+          "title": "laserTraceLst",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "name": "p14:media",
+      "global": true,
+      "types": [
+        "p14:CT_Media"
+      ],
+      "attributes": [
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        },
+        {
+          "name": "r:link",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [
+        "p14:trim",
+        "p14:fade",
+        "p14:bmkLst",
+        "p14:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.18",
+          "title": "media",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "name": "p14:modId",
+      "global": true,
+      "types": [
+        "p14:CT_RandomId"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.19",
+          "title": "modId",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "name": "p14:nullEvt",
+      "types": [
+        "p14:CT_NullEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.19",
+          "title": "CT_NullEventRecord",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "name": "p14:nvContentPartPr",
+      "global": true,
+      "types": [
+        "p14:CT_ContentPartNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:cNvPr",
+        "p14:cNvContentPartPr",
+        "p14:nvPr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.20",
+          "title": "nvContentPartPr",
+          "page": 34
+        }
+      ]
+    },
+    {
+      "name": "p14:nvPr",
+      "types": [
+        "p:CT_ApplicationNonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "isPhoto",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "userDrawn",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "p:ph",
+        "a:audioCd",
+        "a:wavAudioFile",
+        "a:audioFile",
+        "a:videoFile",
+        "a:quickTimeFile",
+        "p:custDataLst",
+        "p:extLst"
+      ],
+      "parents": [
+        "p14:nvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p14:pan",
+      "global": true,
+      "types": [
+        "p:CT_SideDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionSideDirectionType",
+          "default": "l"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.21",
+          "title": "pan",
+          "page": 34
+        }
+      ]
+    },
+    {
+      "name": "p14:pauseEvt",
+      "types": [
+        "p14:CT_MediaPlaybackEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.16",
+          "title": "CT_MediaPlaybackEventRecord",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:playEvt",
+      "types": [
+        "p14:CT_MediaPlaybackEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.16",
+          "title": "CT_MediaPlaybackEventRecord",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:prism",
+      "global": true,
+      "types": [
+        "p14:CT_PrismTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionSideDirectionType",
+          "default": "l"
+        },
+        {
+          "name": "isContent",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "isInverted",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.22",
+          "title": "prism",
+          "page": 34
+        }
+      ]
+    },
+    {
+      "name": "p14:resumeEvt",
+      "types": [
+        "p14:CT_MediaPlaybackEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.16",
+          "title": "CT_MediaPlaybackEventRecord",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:reveal",
+      "global": true,
+      "types": [
+        "p14:CT_RevealTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType",
+          "default": "l"
+        },
+        {
+          "name": "thruBlk",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.23",
+          "title": "reveal",
+          "page": 35
+        }
+      ]
+    },
+    {
+      "name": "p14:ripple",
+      "global": true,
+      "types": [
+        "p14:CT_RippleTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionCornerAndCenterDirectionType",
+          "default": "center"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.24",
+          "title": "ripple",
+          "page": 36
+        }
+      ]
+    },
+    {
+      "name": "p14:section",
+      "types": [
+        "p14:CT_Section"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "p14:sldIdLst",
+        "p14:extLst"
+      ],
+      "parents": [
+        "p14:sectionLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.24",
+          "title": "CT_Section",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "p14:sectionLst",
+      "global": true,
+      "types": [
+        "p14:CT_SectionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:section"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.25",
+          "title": "sectionLst",
+          "page": 36
+        }
+      ]
+    },
+    {
+      "name": "p14:seekEvt",
+      "types": [
+        "p14:CT_MediaSeekEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "seek",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.17",
+          "title": "CT_MediaSeekEventRecord",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "p14:showEvtLst",
+      "global": true,
+      "types": [
+        "p14:CT_ShowEventRecordList"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:triggerEvt",
+        "p14:playEvt",
+        "p14:stopEvt",
+        "p14:pauseEvt",
+        "p14:resumeEvt",
+        "p14:seekEvt",
+        "p14:nullEvt"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.26",
+          "title": "showEvtLst",
+          "page": 36
+        }
+      ]
+    },
+    {
+      "name": "p14:showMediaCtrls",
+      "global": true,
+      "types": [
+        "p14:CT_ShowMediaControls"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.27",
+          "title": "showMediaCtrls",
+          "page": 37
+        }
+      ]
+    },
+    {
+      "name": "p14:shred",
+      "global": true,
+      "types": [
+        "p14:CT_ShredTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionInOutDirectionType",
+          "default": "in"
+        },
+        {
+          "name": "pattern",
+          "type": "p14:ST_TransitionShredPattern",
+          "default": "strip"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.28",
+          "title": "shred",
+          "page": 37
+        }
+      ]
+    },
+    {
+      "name": "p14:sldId",
+      "types": [
+        "p14:CT_SectionSlideIdListEntry"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "p:ST_SlideId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:sldIdLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.27",
+          "title": "CT_SectionSlideIdListEntry",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "p14:sldIdLst",
+      "types": [
+        "p14:CT_SectionSlideIdList"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:sldId"
+      ],
+      "parents": [
+        "p14:section"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.26",
+          "title": "CT_SectionSlideIdList",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "p14:stopEvt",
+      "types": [
+        "p14:CT_MediaPlaybackEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.16",
+          "title": "CT_MediaPlaybackEventRecord",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:switch",
+      "global": true,
+      "types": [
+        "p14:CT_LeftRightDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p14:ST_TransitionLeftRightDirectionType"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.29",
+          "title": "switch",
+          "page": 37
+        }
+      ]
+    },
+    {
+      "name": "p14:tracePt",
+      "types": [
+        "p14:CT_LaserTracePoint"
+      ],
+      "attributes": [
+        {
+          "name": "t",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        },
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:tracePtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.9",
+          "title": "CT_LaserTracePoint",
+          "page": 45
+        }
+      ]
+    },
+    {
+      "name": "p14:tracePtLst",
+      "types": [
+        "p14:CT_LaserTrace"
+      ],
+      "attributes": [],
+      "children": [
+        "p14:tracePt"
+      ],
+      "parents": [
+        "p14:laserTraceLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.7",
+          "title": "CT_LaserTrace",
+          "page": 44
+        }
+      ]
+    },
+    {
+      "name": "p14:triggerEvt",
+      "types": [
+        "p14:CT_TriggerEventRecord"
+      ],
+      "attributes": [
+        {
+          "name": "objId",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "p14:ST_UniversalTimeOffset",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "p:ST_TLTriggerEvent",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.31",
+          "title": "CT_TriggerEventRecord",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "p14:trim",
+      "types": [
+        "p14:CT_MediaTrim"
+      ],
+      "attributes": [
+        {
+          "name": "end",
+          "type": "p14:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "st",
+          "type": "p14:ST_UniversalTimeOffset",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p14:media"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.18",
+          "title": "CT_MediaTrim",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "p14:vortex",
+      "global": true,
+      "types": [
+        "p:CT_SideDirectionTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionSideDirectionType",
+          "default": "l"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.30",
+          "title": "vortex",
+          "page": 38
+        }
+      ]
+    },
+    {
+      "name": "p14:warp",
+      "global": true,
+      "types": [
+        "p:CT_InOutTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_TransitionInOutDirectionType",
+          "default": "out"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.31",
+          "title": "warp",
+          "page": 38
+        }
+      ]
+    },
+    {
+      "name": "p14:wheelReverse",
+      "global": true,
+      "types": [
+        "p:CT_WheelTransition"
+      ],
+      "attributes": [
+        {
+          "name": "spokes",
+          "type": "xsd:unsignedInt",
+          "default": "4"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.32",
+          "title": "wheelReverse",
+          "page": 39
+        }
+      ]
+    },
+    {
+      "name": "p14:window",
+      "global": true,
+      "types": [
+        "p:CT_OrientationTransition"
+      ],
+      "attributes": [
+        {
+          "name": "dir",
+          "type": "p:ST_Direction",
+          "default": "horz"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.33",
+          "title": "window",
+          "page": 39
+        }
+      ]
+    },
+    {
+      "name": "p14:xfrm",
+      "global": true,
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.1.34",
+          "title": "xfrm",
+          "page": 40
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "p14:bounceEnd",
+      "type": "s:ST_PositiveFixedPercentage",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.2.1",
+          "title": "bounceEnd",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "p14:bwMode",
+      "type": "a:ST_BlackWhiteMode",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.2.2",
+          "title": "bwMode",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "p14:dur",
+      "type": "p14:ST_UniversalTimeOffset",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.2.3",
+          "title": "dur",
+          "page": 40
+        }
+      ]
+    },
+    {
+      "name": "p14:presetBounceEnd",
+      "type": "s:ST_PositiveFixedPercentage",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.2.4",
+          "title": "presetBounceEnd",
+          "page": 41
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "p14:CT_BrowseMode",
+      "content": "empty",
+      "attributes": [
+        "showStatus"
+      ],
+      "usedBy": [
+        "p14:browseMode"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.1",
+          "title": "CT_BrowseMode",
+          "page": 41
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_ContentPartNonVisual",
+      "content": "elements",
+      "model": "(p14:cNvPr, p14:cNvContentPartPr?, p14:nvPr)",
+      "attributes": [],
+      "usedBy": [
+        "p14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.2",
+          "title": "CT_ContentPartNonVisual",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_DefaultImageDpi",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p14:defaultImageDpi"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.3",
+          "title": "CT_DefaultImageDpi",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_DiscardImageEditData",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p14:discardImageEditData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.4",
+          "title": "CT_DiscardImageEditData",
+          "page": 43
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_FlyThroughTransition",
+      "content": "empty",
+      "attributes": [
+        "dir",
+        "hasBounce"
+      ],
+      "usedBy": [
+        "p14:flythrough"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.5",
+          "title": "CT_FlyThroughTransition",
+          "page": 43
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_GlitterTransition",
+      "content": "empty",
+      "attributes": [
+        "dir",
+        "pattern"
+      ],
+      "usedBy": [
+        "p14:glitter"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.6",
+          "title": "CT_GlitterTransition",
+          "page": 43
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_LaserTrace",
+      "content": "elements",
+      "model": "p14:tracePt*",
+      "attributes": [],
+      "usedBy": [
+        "p14:tracePtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.7",
+          "title": "CT_LaserTrace",
+          "page": 44
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_LaserTraceList",
+      "content": "elements",
+      "model": "p14:tracePtLst*",
+      "attributes": [],
+      "usedBy": [
+        "p14:laserTraceLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.8",
+          "title": "CT_LaserTraceList",
+          "page": 44
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_LaserTracePoint",
+      "content": "empty",
+      "attributes": [
+        "t",
+        "x",
+        "y"
+      ],
+      "usedBy": [
+        "p14:tracePt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.9",
+          "title": "CT_LaserTracePoint",
+          "page": 45
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_LeftRightDirectionTransition",
+      "content": "empty",
+      "attributes": [
+        "dir"
+      ],
+      "usedBy": [
+        "p14:conveyor",
+        "p14:ferris",
+        "p14:flip",
+        "p14:gallery",
+        "p14:switch"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.10",
+          "title": "CT_LeftRightDirectionTransition",
+          "page": 45
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_Media",
+      "content": "elements",
+      "model": "(p14:trim?, p14:fade?, p14:bmkLst?, p14:extLst?)",
+      "attributes": [
+        "r:embed",
+        "r:link"
+      ],
+      "usedBy": [
+        "p14:media"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.14",
+          "title": "CT_Media",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaBookmark",
+      "content": "empty",
+      "attributes": [
+        "name",
+        "time"
+      ],
+      "usedBy": [
+        "p14:bmk"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.11",
+          "title": "CT_MediaBookmark",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaBookmarkList",
+      "content": "elements",
+      "model": "p14:bmk*",
+      "attributes": [],
+      "usedBy": [
+        "p14:bmkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.12",
+          "title": "CT_MediaBookmarkList",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaBookmarkTarget",
+      "content": "empty",
+      "attributes": [
+        "bmkName",
+        "spid"
+      ],
+      "usedBy": [
+        "p14:bmkTgt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.13",
+          "title": "CT_MediaBookmarkTarget",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaFade",
+      "content": "empty",
+      "attributes": [
+        "in",
+        "out"
+      ],
+      "usedBy": [
+        "p14:fade"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.15",
+          "title": "CT_MediaFade",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaPlaybackEventRecord",
+      "content": "empty",
+      "attributes": [
+        "objId",
+        "time"
+      ],
+      "usedBy": [
+        "p14:pauseEvt",
+        "p14:playEvt",
+        "p14:resumeEvt",
+        "p14:stopEvt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.16",
+          "title": "CT_MediaPlaybackEventRecord",
+          "page": 48
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaSeekEventRecord",
+      "content": "empty",
+      "attributes": [
+        "objId",
+        "seek",
+        "time"
+      ],
+      "usedBy": [
+        "p14:seekEvt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.17",
+          "title": "CT_MediaSeekEventRecord",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_MediaTrim",
+      "content": "empty",
+      "attributes": [
+        "end",
+        "st"
+      ],
+      "usedBy": [
+        "p14:trim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.18",
+          "title": "CT_MediaTrim",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_NullEventRecord",
+      "content": "empty",
+      "attributes": [
+        "objId",
+        "time"
+      ],
+      "usedBy": [
+        "p14:nullEvt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.19",
+          "title": "CT_NullEventRecord",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_PrismTransition",
+      "content": "empty",
+      "attributes": [
+        "dir",
+        "isContent",
+        "isInverted"
+      ],
+      "usedBy": [
+        "p14:prism"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.20",
+          "title": "CT_PrismTransition",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_RandomId",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p14:creationId",
+        "p14:modId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.21",
+          "title": "CT_RandomId",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_RevealTransition",
+      "content": "empty",
+      "attributes": [
+        "dir",
+        "thruBlk"
+      ],
+      "usedBy": [
+        "p14:reveal"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.22",
+          "title": "CT_RevealTransition",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_RippleTransition",
+      "content": "empty",
+      "attributes": [
+        "dir"
+      ],
+      "usedBy": [
+        "p14:ripple"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.23",
+          "title": "CT_RippleTransition",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_Section",
+      "content": "elements",
+      "model": "(p14:sldIdLst, p14:extLst?)",
+      "attributes": [
+        "id",
+        "name"
+      ],
+      "usedBy": [
+        "p14:section"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.24",
+          "title": "CT_Section",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_SectionList",
+      "content": "elements",
+      "model": "p14:section+",
+      "attributes": [],
+      "usedBy": [
+        "p14:sectionLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.25",
+          "title": "CT_SectionList",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_SectionSlideIdList",
+      "content": "elements",
+      "model": "p14:sldId*",
+      "attributes": [],
+      "usedBy": [
+        "p14:sldIdLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.26",
+          "title": "CT_SectionSlideIdList",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_SectionSlideIdListEntry",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "p14:sldId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.27",
+          "title": "CT_SectionSlideIdListEntry",
+          "page": 53
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_ShowEventRecordList",
+      "content": "elements",
+      "model": "(p14:triggerEvt | p14:playEvt | p14:stopEvt | p14:pauseEvt | p14:resumeEvt | p14:seekEvt | p14:nullEvt)*",
+      "attributes": [],
+      "usedBy": [
+        "p14:showEvtLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.28",
+          "title": "CT_ShowEventRecordList",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_ShowMediaControls",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p14:showMediaCtrls"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.29",
+          "title": "CT_ShowMediaControls",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_ShredTransition",
+      "content": "empty",
+      "attributes": [
+        "dir",
+        "pattern"
+      ],
+      "usedBy": [
+        "p14:shred"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.30",
+          "title": "CT_ShredTransition",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "p14:CT_TriggerEventRecord",
+      "content": "empty",
+      "attributes": [
+        "objId",
+        "time",
+        "type"
+      ],
+      "usedBy": [
+        "p14:triggerEvt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.3.31",
+          "title": "CT_TriggerEventRecord",
+          "page": 55
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p14:ST_TransitionCenterDirectionType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "center"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.1",
+          "title": "ST_TransitionCenterDirectionType",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "p14:ST_TransitionCornerAndCenterDirectionType",
+      "definition": "union of p:ST_TransitionCornerDirectionType, p14:ST_TransitionCenterDirectionType",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.2",
+          "title": "ST_TransitionCornerAndCenterDirectionType",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "p14:ST_TransitionLeftRightDirectionType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "l",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.3",
+          "title": "ST_TransitionLeftRightDirectionType",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "p14:ST_TransitionPattern",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "diamond",
+        "hexagon"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.4",
+          "title": "ST_TransitionPattern",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "p14:ST_TransitionShredPattern",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "strip",
+        "rectangle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.5",
+          "title": "ST_TransitionShredPattern",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "p14:ST_UniversalTimeOffset",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.3.4.6",
+          "title": "ST_UniversalTimeOffset",
+          "page": 58
+        }
+      ]
+    }
+  ]
+}

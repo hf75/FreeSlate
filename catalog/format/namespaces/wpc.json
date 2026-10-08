@@ -1,0 +1,144 @@
+{
+  "prefix": "wpc",
+  "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.5",
+  "counts": {
+    "elements": 5,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "wpc:bg",
+      "types": [
+        "a:CT_BackgroundFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "wpc:wpc"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpc:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "wpc:wpc"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpc:graphicFrame",
+      "types": [
+        "wpg:CT_GraphicFrame"
+      ],
+      "attributes": [],
+      "children": [
+        "wpg:cNvPr",
+        "wpg:cNvFrPr",
+        "wpg:xfrm",
+        "a:graphic",
+        "wpg:extLst"
+      ],
+      "parents": [
+        "wpc:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.16.3.1",
+          "title": "CT_GraphicFrame",
+          "page": 163
+        }
+      ]
+    },
+    {
+      "name": "wpc:whole",
+      "types": [
+        "a:CT_WholeE2oFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "wpc:wpc"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wpc:wpc",
+      "global": true,
+      "types": [
+        "wpc:CT_WordprocessingCanvas"
+      ],
+      "attributes": [],
+      "children": [
+        "wpc:bg",
+        "wpc:whole",
+        "wps:wsp",
+        "pic:pic",
+        "w14:contentPart",
+        "wpg:wgp",
+        "wpc:graphicFrame",
+        "wpc:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.17.1.1",
+          "title": "wpc",
+          "page": 165
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "wpc:CT_WordprocessingCanvas",
+      "content": "elements",
+      "model": "(wpc:bg?, wpc:whole?, (wps:wsp | pic:pic | w14:contentPart | wpg:wgp | wpc:graphicFrame)*, wpc:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wpc:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.17.3.1",
+          "title": "CT_WordprocessingCanvas",
+          "page": 165
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

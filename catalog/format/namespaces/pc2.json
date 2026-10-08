@@ -1,0 +1,134 @@
+{
+  "prefix": "pc2",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2019/9/main/command",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-PPTX] v20240820 §5.15",
+  "counts": {
+    "elements": 2,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 4,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 6,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pc2:cmMkLst",
+      "global": true,
+      "types": [
+        "pc2:CT_CommentV2MonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc226:cmChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.1.1",
+          "title": "cmMkLst",
+          "page": 120
+        }
+      ]
+    },
+    {
+      "name": "pc2:cmRplyMkLst",
+      "global": true,
+      "types": [
+        "pc2:CT_CommentReplyV2MonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc226:cmRplyChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.1.2",
+          "title": "cmRplyMkLst",
+          "page": 121
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pc2:CT_CommentReplyV2Moniker",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.3.1",
+          "title": "CT_CommentReplyV2Moniker",
+          "page": 121
+        }
+      ]
+    },
+    {
+      "name": "pc2:CT_CommentReplyV2MonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc2:cmRplyMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.3.2",
+          "title": "CT_CommentReplyV2MonikerList",
+          "page": 121
+        }
+      ]
+    },
+    {
+      "name": "pc2:CT_CommentV2Moniker",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.3.3",
+          "title": "CT_CommentV2Moniker",
+          "page": 122
+        }
+      ]
+    },
+    {
+      "name": "pc2:CT_CommentV2MonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc2:cmMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.18.3.4",
+          "title": "CT_CommentV2MonikerList",
+          "page": 122
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

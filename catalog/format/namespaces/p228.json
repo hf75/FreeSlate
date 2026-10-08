@@ -1,0 +1,564 @@
+{
+  "prefix": "p228",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2022/08/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-PPTX] v20240820 §5.19",
+  "counts": {
+    "elements": 15,
+    "attributes": 10,
+    "globalAttributes": 0,
+    "complexTypes": 11,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 12,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p228:add",
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p228:anchr",
+      "types": [
+        "p228:CT_TaskAnchor"
+      ],
+      "attributes": [],
+      "children": [
+        "p228:comment",
+        "p228:extLst"
+      ],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.2",
+          "title": "CT_TaskAnchor",
+          "page": 127
+        }
+      ]
+    },
+    {
+      "name": "p228:asgn",
+      "types": [
+        "p228:CT_TaskAssignUnassignUser"
+      ],
+      "attributes": [
+        {
+          "name": "authorId",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.3",
+          "title": "CT_TaskAssignUnassignUser",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:atrbtn",
+      "types": [
+        "p228:CT_TaskAssignUnassignUser"
+      ],
+      "attributes": [
+        {
+          "name": "authorId",
+          "type": "p188:ST_AuthorId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.3",
+          "title": "CT_TaskAssignUnassignUser",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:comment",
+      "types": [
+        "p228:CT_CommentAnchor"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:anchr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.1",
+          "title": "CT_CommentAnchor",
+          "page": 127
+        }
+      ]
+    },
+    {
+      "name": "p228:date",
+      "types": [
+        "p228:CT_TaskScheduleEventInfo"
+      ],
+      "attributes": [
+        {
+          "name": "endDt",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "stDt",
+          "type": "xsd:dateTime"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.8",
+          "title": "CT_TaskScheduleEventInfo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:event",
+      "types": [
+        "p228:CT_TaskHistoryEvent"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "time",
+          "type": "xsd:dateTime",
+          "required": true
+        }
+      ],
+      "children": [
+        "p228:atrbtn",
+        "p228:anchr",
+        "p228:asgn",
+        "p228:add",
+        "p228:title",
+        "p228:date",
+        "p228:pcntCmplt",
+        "p228:unasgnAll",
+        "p228:undo",
+        "p228:unknown",
+        "p228:extLst"
+      ],
+      "parents": [
+        "p228:history"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.6",
+          "title": "CT_TaskHistoryEvent",
+          "page": 129
+        }
+      ]
+    },
+    {
+      "name": "p228:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p228:anchr",
+        "p228:event",
+        "p228:taskDetails"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p228:history",
+      "types": [
+        "p228:CT_TaskHistory"
+      ],
+      "attributes": [],
+      "children": [
+        "p228:event"
+      ],
+      "parents": [
+        "p228:taskDetails"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.5",
+          "title": "CT_TaskHistory",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:pcntCmplt",
+      "types": [
+        "p228:CT_TaskProgressEventInfo"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "s:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.7",
+          "title": "CT_TaskProgressEventInfo",
+          "page": 130
+        }
+      ]
+    },
+    {
+      "name": "p228:taskDetails",
+      "global": true,
+      "types": [
+        "p228:CT_TaskDetails"
+      ],
+      "attributes": [],
+      "children": [
+        "p228:history",
+        "p228:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.1.1",
+          "title": "taskDetails",
+          "page": 126
+        }
+      ]
+    },
+    {
+      "name": "p228:title",
+      "types": [
+        "p228:CT_TaskTitleEventInfo"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.9",
+          "title": "CT_TaskTitleEventInfo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:unasgnAll",
+      "types": [
+        "p:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p228:undo",
+      "types": [
+        "p228:CT_TaskUndo"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "s:ST_Guid",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.10",
+          "title": "CT_TaskUndo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:unknown",
+      "types": [
+        "p228:CT_TaskUnknownRecord"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.11",
+          "title": "CT_TaskUnknownRecord",
+          "page": 132
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p228:CT_CommentAnchor",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "p228:comment"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.1",
+          "title": "CT_CommentAnchor",
+          "page": 127
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskAnchor",
+      "content": "elements",
+      "model": "(p228:comment, p228:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "p228:anchr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.2",
+          "title": "CT_TaskAnchor",
+          "page": 127
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskAssignUnassignUser",
+      "content": "empty",
+      "attributes": [
+        "authorId"
+      ],
+      "usedBy": [
+        "p228:asgn",
+        "p228:atrbtn"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.3",
+          "title": "CT_TaskAssignUnassignUser",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskDetails",
+      "content": "elements",
+      "model": "(p228:history, p228:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "p228:taskDetails"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.4",
+          "title": "CT_TaskDetails",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskHistory",
+      "content": "elements",
+      "model": "p228:event*",
+      "attributes": [],
+      "usedBy": [
+        "p228:history"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.5",
+          "title": "CT_TaskHistory",
+          "page": 128
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskHistoryEvent",
+      "content": "elements",
+      "model": "(p228:atrbtn, p228:anchr?, (p228:asgn | p228:add? | p228:title | p228:date | p228:pcntCmplt | p228:unasgnAll? | p228:undo | p228:unknown)?, p228:extLst?)",
+      "attributes": [
+        "id",
+        "time"
+      ],
+      "usedBy": [
+        "p228:event"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.6",
+          "title": "CT_TaskHistoryEvent",
+          "page": 129
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskProgressEventInfo",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p228:pcntCmplt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.7",
+          "title": "CT_TaskProgressEventInfo",
+          "page": 130
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskScheduleEventInfo",
+      "content": "empty",
+      "attributes": [
+        "endDt",
+        "stDt"
+      ],
+      "usedBy": [
+        "p228:date"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.8",
+          "title": "CT_TaskScheduleEventInfo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskTitleEventInfo",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p228:title"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.9",
+          "title": "CT_TaskTitleEventInfo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskUndo",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "p228:undo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.10",
+          "title": "CT_TaskUndo",
+          "page": 131
+        }
+      ]
+    },
+    {
+      "name": "p228:CT_TaskUnknownRecord",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "p228:unknown"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.20.3.11",
+          "title": "CT_TaskUnknownRecord",
+          "page": 132
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

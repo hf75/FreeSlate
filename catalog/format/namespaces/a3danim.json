@@ -1,0 +1,202 @@
+{
+  "prefix": "a3danim",
+  "uri": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.34",
+  "counts": {
+    "elements": 4,
+    "attributes": 10,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 6,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "a3danim:animPr",
+      "types": [
+        "aanim:CT_AnimationProperties"
+      ],
+      "attributes": [
+        {
+          "name": "auto",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "count",
+          "type": "aanim:ST_PlayCount",
+          "default": "1"
+        },
+        {
+          "name": "end",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "length",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "aanim:ST_AnimationName",
+          "default": ""
+        },
+        {
+          "name": "offset",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        },
+        {
+          "name": "st",
+          "type": "aanim:ST_UniversalTimeOffset",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "aanim:extLst"
+      ],
+      "parents": [
+        "a3danim:embedAnim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.37.3.1",
+          "title": "CT_AnimationProperties",
+          "page": 317
+        }
+      ]
+    },
+    {
+      "name": "a3danim:embedAnim",
+      "global": true,
+      "types": [
+        "a3danim:CT_EmbeddedAnimation"
+      ],
+      "attributes": [
+        {
+          "name": "animId",
+          "type": "a3danim:ST_EmbeddedAnimationID",
+          "required": true
+        }
+      ],
+      "children": [
+        "a3danim:animPr",
+        "a3danim:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.36.1.2",
+          "title": "embedAnim",
+          "page": 314
+        }
+      ]
+    },
+    {
+      "name": "a3danim:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "a3danim:embedAnim"
+      ],
+      "spec": []
+    },
+    {
+      "name": "a3danim:posterFrame",
+      "global": true,
+      "types": [
+        "a3danim:CT_PosterFrame"
+      ],
+      "attributes": [
+        {
+          "name": "animId",
+          "type": "a3danim:ST_EmbeddedAnimationID",
+          "required": true
+        },
+        {
+          "name": "frame",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.36.1.1",
+          "title": "posterFrame",
+          "page": 314
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "a3danim:CT_EmbeddedAnimation",
+      "content": "elements",
+      "model": "(a3danim:animPr, a3danim:extLst?)",
+      "attributes": [
+        "animId"
+      ],
+      "usedBy": [
+        "a3danim:embedAnim"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.36.3.1",
+          "title": "CT_EmbeddedAnimation",
+          "page": 315
+        }
+      ]
+    },
+    {
+      "name": "a3danim:CT_PosterFrame",
+      "content": "empty",
+      "attributes": [
+        "animId",
+        "frame"
+      ],
+      "usedBy": [
+        "a3danim:posterFrame"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.36.3.2",
+          "title": "CT_PosterFrame",
+          "page": 315
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "a3danim:ST_EmbeddedAnimationID",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.36.4.1",
+          "title": "ST_EmbeddedAnimationID",
+          "page": 316
+        }
+      ]
+    }
+  ]
+}

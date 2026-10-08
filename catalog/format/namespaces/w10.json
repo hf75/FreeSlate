@@ -1,0 +1,463 @@
+{
+  "prefix": "w10",
+  "uri": "urn:schemas-microsoft-com:office:word",
+  "area": "VML (legacy drawing)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema vml-wordprocessingDrawing.xsd",
+  "counts": {
+    "elements": 6,
+    "attributes": 16,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 6,
+    "enumValues": 48,
+    "specSections": 12,
+    "officeNotes": 7
+  },
+  "elements": [
+    {
+      "name": "w10:anchorlock",
+      "global": true,
+      "types": [
+        "w10:CT_AnchorLock"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.1",
+          "title": "Anchor Location Is Locked",
+          "page": 831
+        }
+      ]
+    },
+    {
+      "name": "w10:borderbottom",
+      "global": true,
+      "types": [
+        "w10:CT_Border"
+      ],
+      "attributes": [
+        {
+          "name": "shadow",
+          "type": "w10:ST_BorderShadow"
+        },
+        {
+          "name": "type",
+          "type": "w10:ST_BorderType"
+        },
+        {
+          "name": "width",
+          "type": "xsd:positiveInteger"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.2",
+          "title": "Bottom Border",
+          "page": 831,
+          "officeNotes": [
+            "2.1.1848"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:borderleft",
+      "global": true,
+      "types": [
+        "w10:CT_Border"
+      ],
+      "attributes": [
+        {
+          "name": "shadow",
+          "type": "w10:ST_BorderShadow"
+        },
+        {
+          "name": "type",
+          "type": "w10:ST_BorderType"
+        },
+        {
+          "name": "width",
+          "type": "xsd:positiveInteger"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.3",
+          "title": "Left Border",
+          "page": 833,
+          "officeNotes": [
+            "2.1.1849"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:borderright",
+      "global": true,
+      "types": [
+        "w10:CT_Border"
+      ],
+      "attributes": [
+        {
+          "name": "shadow",
+          "type": "w10:ST_BorderShadow"
+        },
+        {
+          "name": "type",
+          "type": "w10:ST_BorderType"
+        },
+        {
+          "name": "width",
+          "type": "xsd:positiveInteger"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.4",
+          "title": "Right Border",
+          "page": 834,
+          "officeNotes": [
+            "2.1.1850"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:bordertop",
+      "global": true,
+      "types": [
+        "w10:CT_Border"
+      ],
+      "attributes": [
+        {
+          "name": "shadow",
+          "type": "w10:ST_BorderShadow"
+        },
+        {
+          "name": "type",
+          "type": "w10:ST_BorderType"
+        },
+        {
+          "name": "width",
+          "type": "xsd:positiveInteger"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.5",
+          "title": "Top Border",
+          "page": 835,
+          "officeNotes": [
+            "2.1.1851"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:wrap",
+      "global": true,
+      "types": [
+        "w10:CT_Wrap"
+      ],
+      "attributes": [
+        {
+          "name": "anchorx",
+          "type": "w10:ST_HorizontalAnchor"
+        },
+        {
+          "name": "anchory",
+          "type": "w10:ST_VerticalAnchor"
+        },
+        {
+          "name": "side",
+          "type": "w10:ST_WrapSide"
+        },
+        {
+          "name": "type",
+          "type": "w10:ST_WrapType"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.2.6",
+          "title": "Text Wrapping",
+          "page": 837,
+          "officeNotes": [
+            "2.1.1852"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "w10:CT_AnchorLock",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "w10:anchorlock"
+      ]
+    },
+    {
+      "name": "w10:CT_Border",
+      "content": "empty",
+      "attributes": [
+        "shadow",
+        "type",
+        "width"
+      ],
+      "usedBy": [
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "w10:bordertop"
+      ]
+    },
+    {
+      "name": "w10:CT_Wrap",
+      "content": "empty",
+      "attributes": [
+        "anchorx",
+        "anchory",
+        "side",
+        "type"
+      ],
+      "usedBy": [
+        "w10:wrap"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "w10:ST_BorderShadow",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "t",
+        "true",
+        "f",
+        "false"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.1",
+          "title": "Border Shadow Type",
+          "page": 839
+        }
+      ]
+    },
+    {
+      "name": "w10:ST_BorderType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "single",
+        "thick",
+        "double",
+        "hairline",
+        "dot",
+        "dash",
+        "dotDash",
+        "dashDotDot",
+        "triple",
+        "thinThickSmall",
+        "thickThinSmall",
+        "thickBetweenThinSmall",
+        "thinThick",
+        "thickThin",
+        "thickBetweenThin",
+        "thinThickLarge",
+        "thickThinLarge",
+        "thickBetweenThinLarge",
+        "wave",
+        "doubleWave",
+        "dashedSmall",
+        "dashDotStroked",
+        "threeDEmboss",
+        "threeDEngrave",
+        "HTMLOutset",
+        "HTMLInset"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.2",
+          "title": "Border Type",
+          "page": 839
+        }
+      ]
+    },
+    {
+      "name": "w10:ST_HorizontalAnchor",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "margin",
+        "page",
+        "text",
+        "char"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.3",
+          "title": "Horizontal Anchor Type",
+          "page": 842,
+          "officeNotes": [
+            "2.1.1853"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:ST_VerticalAnchor",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "margin",
+        "page",
+        "text",
+        "line"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.4",
+          "title": "Vertical Anchor Type",
+          "page": 843,
+          "officeNotes": [
+            "2.1.1854"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "w10:ST_WrapSide",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "both",
+        "left",
+        "right",
+        "largest"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.5",
+          "title": "Text Wrapping Side",
+          "page": 844
+        }
+      ]
+    },
+    {
+      "name": "w10:ST_WrapType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "topAndBottom",
+        "square",
+        "none",
+        "tight",
+        "through"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.3.3.6",
+          "title": "Text Wrapping Type",
+          "page": 844
+        }
+      ]
+    }
+  ]
+}

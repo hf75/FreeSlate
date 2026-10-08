@@ -1,0 +1,129 @@
+{
+  "prefix": "w16cid",
+  "uri": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-DOCX] v20260818 §5.4",
+  "counts": {
+    "elements": 2,
+    "attributes": 2,
+    "globalAttributes": 1,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w16cid:commentId",
+      "types": [
+        "w16cid:CT_CommentId"
+      ],
+      "attributes": [
+        {
+          "name": "w16cid:durableId",
+          "type": "w:ST_LongHexNumber",
+          "required": true
+        },
+        {
+          "name": "w16cid:paraId",
+          "type": "w:ST_LongHexNumber",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "w16cid:commentsIds"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.3.1",
+          "title": "CT_CommentId",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "w16cid:commentsIds",
+      "global": true,
+      "types": [
+        "w16cid:CT_CommentsIds"
+      ],
+      "attributes": [],
+      "children": [
+        "w16cid:commentId"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.1.1",
+          "title": "commentsIds",
+          "page": 87
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "w16cid:durableId",
+      "type": "w:ST_LongHexNumber",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.2.1",
+          "title": "durableId",
+          "page": 87
+        },
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.2.2",
+          "title": "durableId",
+          "page": 87
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "w16cid:CT_CommentId",
+      "content": "empty",
+      "attributes": [
+        "w16cid:durableId",
+        "w16cid:paraId"
+      ],
+      "usedBy": [
+        "w16cid:commentId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.3.1",
+          "title": "CT_CommentId",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "w16cid:CT_CommentsIds",
+      "content": "elements",
+      "model": "w16cid:commentId*",
+      "attributes": [],
+      "usedBy": [
+        "w16cid:commentsIds"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.8.3.2",
+          "title": "CT_CommentsIds",
+          "page": 88
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

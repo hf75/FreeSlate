@@ -1,0 +1,1636 @@
+{
+  "prefix": "xvml",
+  "uri": "urn:schemas-microsoft-com:office:excel",
+  "area": "SpreadsheetML (out of scope)",
+  "inScope": false,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema vml-spreadsheetDrawing.xsd",
+  "counts": {
+    "elements": 68,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 2,
+    "enumValues": 19,
+    "specSections": 70,
+    "officeNotes": 37
+  },
+  "elements": [
+    {
+      "name": "xvml:Accel",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.1",
+          "title": "Primary Keyboard Accelerator",
+          "page": 848,
+          "officeNotes": [
+            "2.1.1855"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Accel2",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.2",
+          "title": "Secondary Keyboard Accelerator",
+          "page": 848,
+          "officeNotes": [
+            "2.1.1856"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Anchor",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.3",
+          "title": "Anchor",
+          "page": 848,
+          "officeNotes": [
+            "2.1.1857"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:AutoFill",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.4",
+          "title": "AutoFill",
+          "page": 849,
+          "officeNotes": [
+            "2.1.1858"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:AutoLine",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.5",
+          "title": "AutoLine",
+          "page": 850,
+          "officeNotes": [
+            "2.1.1859"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:AutoPict",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.6",
+          "title": "Automatically Size",
+          "page": 850
+        }
+      ]
+    },
+    {
+      "name": "xvml:AutoScale",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.7",
+          "title": "Font AutoScale",
+          "page": 851,
+          "officeNotes": [
+            "2.1.1860"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:CF",
+      "types": [
+        "xvml:ST_CF"
+      ],
+      "text": "xvml:ST_CF",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.10",
+          "title": "Clipboard Format",
+          "page": 852,
+          "officeNotes": [
+            "2.1.1862"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Camera",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.8",
+          "title": "Camera Tool",
+          "page": 851,
+          "officeNotes": [
+            "2.1.1861"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Cancel",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.9",
+          "title": "Cancel Button",
+          "page": 852
+        }
+      ]
+    },
+    {
+      "name": "xvml:Checked",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.11",
+          "title": "Checked",
+          "page": 852
+        }
+      ]
+    },
+    {
+      "name": "xvml:ClientData",
+      "global": true,
+      "types": [
+        "xvml:CT_ClientData"
+      ],
+      "attributes": [
+        {
+          "name": "ObjectType",
+          "type": "xvml:ST_ObjectType",
+          "required": true
+        }
+      ],
+      "children": [
+        "xvml:MoveWithCells",
+        "xvml:SizeWithCells",
+        "xvml:Anchor",
+        "xvml:Locked",
+        "xvml:DefaultSize",
+        "xvml:PrintObject",
+        "xvml:Disabled",
+        "xvml:AutoFill",
+        "xvml:AutoLine",
+        "xvml:AutoPict",
+        "xvml:FmlaMacro",
+        "xvml:TextHAlign",
+        "xvml:TextVAlign",
+        "xvml:LockText",
+        "xvml:JustLastX",
+        "xvml:SecretEdit",
+        "xvml:Default",
+        "xvml:Help",
+        "xvml:Cancel",
+        "xvml:Dismiss",
+        "xvml:Accel",
+        "xvml:Accel2",
+        "xvml:Row",
+        "xvml:Column",
+        "xvml:Visible",
+        "xvml:RowHidden",
+        "xvml:ColHidden",
+        "xvml:VTEdit",
+        "xvml:MultiLine",
+        "xvml:VScroll",
+        "xvml:ValidIds",
+        "xvml:FmlaRange",
+        "xvml:WidthMin",
+        "xvml:Sel",
+        "xvml:NoThreeD2",
+        "xvml:SelType",
+        "xvml:MultiSel",
+        "xvml:LCT",
+        "xvml:ListItem",
+        "xvml:DropStyle",
+        "xvml:Colored",
+        "xvml:DropLines",
+        "xvml:Checked",
+        "xvml:FmlaLink",
+        "xvml:FmlaPict",
+        "xvml:NoThreeD",
+        "xvml:FirstButton",
+        "xvml:FmlaGroup",
+        "xvml:Val",
+        "xvml:Min",
+        "xvml:Max",
+        "xvml:Inc",
+        "xvml:Page",
+        "xvml:Horiz",
+        "xvml:Dx",
+        "xvml:MapOCX",
+        "xvml:CF",
+        "xvml:Camera",
+        "xvml:RecalcAlways",
+        "xvml:AutoScale",
+        "xvml:DDE",
+        "xvml:UIObj",
+        "xvml:ScriptText",
+        "xvml:ScriptExtended",
+        "xvml:ScriptLanguage",
+        "xvml:ScriptLocation",
+        "xvml:FmlaTxbx"
+      ],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.12",
+          "title": "Attached Object Data",
+          "page": 853,
+          "officeNotes": [
+            "2.1.1863"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:ColHidden",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.13",
+          "title": "Comment's Column is Hidden",
+          "page": 854,
+          "officeNotes": [
+            "2.1.1864"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Colored",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.14",
+          "title": "Dropdown Color Toggle",
+          "page": 854,
+          "officeNotes": [
+            "2.1.1865"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Column",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.15",
+          "title": "Comment Column Target",
+          "page": 855
+        }
+      ]
+    },
+    {
+      "name": "xvml:DDE",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.16",
+          "title": "Dynamic Data Exchange",
+          "page": 855,
+          "officeNotes": [
+            "2.1.1866"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Default",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.17",
+          "title": "Default Button",
+          "page": 855
+        }
+      ]
+    },
+    {
+      "name": "xvml:DefaultSize",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.18",
+          "title": "Default Size Toggle",
+          "page": 856,
+          "officeNotes": [
+            "2.1.1867"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Disabled",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.19",
+          "title": "Macro Disable Toggle",
+          "page": 856
+        }
+      ]
+    },
+    {
+      "name": "xvml:Dismiss",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.20",
+          "title": "Dismiss Button",
+          "page": 857
+        }
+      ]
+    },
+    {
+      "name": "xvml:DropLines",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.21",
+          "title": "Dropdown Maximum Lines",
+          "page": 857,
+          "officeNotes": [
+            "2.1.1868"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:DropStyle",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.22",
+          "title": "Dropdown Style",
+          "page": 857,
+          "officeNotes": [
+            "2.1.1869"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Dx",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.23",
+          "title": "Scroll Bar Width",
+          "page": 858,
+          "officeNotes": [
+            "2.1.1870"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:FirstButton",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.24",
+          "title": "First Radio Button",
+          "page": 858
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaGroup",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.25",
+          "title": "Linked Formula - Group Box",
+          "page": 858,
+          "officeNotes": [
+            "2.1.1871"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaLink",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.26",
+          "title": "Linked Formula",
+          "page": 859
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaMacro",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.27",
+          "title": "Reference to Custom Function",
+          "page": 859,
+          "officeNotes": [
+            "2.1.1872"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaPict",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.28",
+          "title": "Camera Source Range",
+          "page": 860
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaRange",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.29",
+          "title": "List Items Source Range",
+          "page": 860,
+          "officeNotes": [
+            "2.1.1873"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:FmlaTxbx",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.30",
+          "title": "Text Formula",
+          "page": 860,
+          "officeNotes": [
+            "2.1.1874"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Help",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.31",
+          "title": "Help Button",
+          "page": 860
+        }
+      ]
+    },
+    {
+      "name": "xvml:Horiz",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.32",
+          "title": "Scroll Bar Orientation",
+          "page": 861,
+          "officeNotes": [
+            "2.1.1875"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Inc",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.33",
+          "title": "Scroll Bar Increment",
+          "page": 861,
+          "officeNotes": [
+            "2.1.1876"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:JustLastX",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.34",
+          "title": "Far East Alignment Toggle",
+          "page": 861
+        }
+      ]
+    },
+    {
+      "name": "xvml:LCT",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.35",
+          "title": "Callback Type",
+          "page": 862,
+          "officeNotes": [
+            "2.1.1877"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:ListItem",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.36",
+          "title": "Non-linked List Item",
+          "page": 862,
+          "officeNotes": [
+            "2.1.1878"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:LockText",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.38",
+          "title": "Text Lock",
+          "page": 863
+        }
+      ]
+    },
+    {
+      "name": "xvml:Locked",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.37",
+          "title": "Lock Toggle",
+          "page": 862
+        }
+      ]
+    },
+    {
+      "name": "xvml:MapOCX",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.39",
+          "title": "Embedded Control",
+          "page": 863
+        }
+      ]
+    },
+    {
+      "name": "xvml:Max",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.40",
+          "title": "Scroll Bar Maximum",
+          "page": 864,
+          "officeNotes": [
+            "2.1.1879"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Min",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.41",
+          "title": "Scroll Bar Minimum",
+          "page": 864,
+          "officeNotes": [
+            "2.1.1880"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:MoveWithCells",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.42",
+          "title": "Move with Cells",
+          "page": 864,
+          "officeNotes": [
+            "2.1.1881"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:MultiLine",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.43",
+          "title": "Multi-line",
+          "page": 865
+        }
+      ]
+    },
+    {
+      "name": "xvml:MultiSel",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.44",
+          "title": "Multiple Selections",
+          "page": 865
+        }
+      ]
+    },
+    {
+      "name": "xvml:NoThreeD",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.45",
+          "title": "Disable 3D",
+          "page": 865,
+          "officeNotes": [
+            "2.1.1882"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:NoThreeD2",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.46",
+          "title": "Disable 3D",
+          "page": 866
+        }
+      ]
+    },
+    {
+      "name": "xvml:Page",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.47",
+          "title": "Scroll Bar Page Increment",
+          "page": 866,
+          "officeNotes": [
+            "2.1.1883"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:PrintObject",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.48",
+          "title": "Print Toggle",
+          "page": 866
+        }
+      ]
+    },
+    {
+      "name": "xvml:RecalcAlways",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.49",
+          "title": "Recalculation Toggle",
+          "page": 867,
+          "officeNotes": [
+            "2.1.1884"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Row",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.50",
+          "title": "Comment Row Target",
+          "page": 867
+        }
+      ]
+    },
+    {
+      "name": "xvml:RowHidden",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.51",
+          "title": "Comment's Row is Hidden",
+          "page": 867,
+          "officeNotes": [
+            "2.1.1885"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:ScriptExtended",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.52",
+          "title": "HTML Script Attributes",
+          "page": 868
+        }
+      ]
+    },
+    {
+      "name": "xvml:ScriptLanguage",
+      "types": [
+        "xsd:nonNegativeInteger"
+      ],
+      "text": "xsd:nonNegativeInteger",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.53",
+          "title": "HTML Script Language",
+          "page": 868
+        }
+      ]
+    },
+    {
+      "name": "xvml:ScriptLocation",
+      "types": [
+        "xsd:nonNegativeInteger"
+      ],
+      "text": "xsd:nonNegativeInteger",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.54",
+          "title": "HTML Script Location",
+          "page": 869
+        }
+      ]
+    },
+    {
+      "name": "xvml:ScriptText",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.55",
+          "title": "HTML Script Text",
+          "page": 869
+        }
+      ]
+    },
+    {
+      "name": "xvml:SecretEdit",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.56",
+          "title": "Password Edit",
+          "page": 869
+        }
+      ]
+    },
+    {
+      "name": "xvml:Sel",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.57",
+          "title": "Selected Entry",
+          "page": 870
+        }
+      ]
+    },
+    {
+      "name": "xvml:SelType",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.58",
+          "title": "Selection Type",
+          "page": 870
+        }
+      ]
+    },
+    {
+      "name": "xvml:SizeWithCells",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.59",
+          "title": "Resize with Cells",
+          "page": 870,
+          "officeNotes": [
+            "2.1.1886"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:TextHAlign",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.60",
+          "title": "Horizontal Text Alignment",
+          "page": 871
+        }
+      ]
+    },
+    {
+      "name": "xvml:TextVAlign",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.61",
+          "title": "Vertical Text Alignment",
+          "page": 871,
+          "officeNotes": [
+            "2.1.1887"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:UIObj",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.62",
+          "title": "UI Object Toggle",
+          "page": 871,
+          "officeNotes": [
+            "2.1.1888"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:VScroll",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.66",
+          "title": "Vertical Scroll",
+          "page": 873
+        }
+      ]
+    },
+    {
+      "name": "xvml:VTEdit",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.67",
+          "title": "Validation Type",
+          "page": 873
+        }
+      ]
+    },
+    {
+      "name": "xvml:Val",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.63",
+          "title": "Scroll bar position",
+          "page": 872,
+          "officeNotes": [
+            "2.1.1889"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:ValidIds",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.64",
+          "title": "Valid ID",
+          "page": 872,
+          "officeNotes": [
+            "2.1.1890"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xvml:Visible",
+      "types": [
+        "s:ST_TrueFalseBlank"
+      ],
+      "text": "s:ST_TrueFalseBlank",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.65",
+          "title": "Comment Visibility Toggle",
+          "page": 872
+        }
+      ]
+    },
+    {
+      "name": "xvml:WidthMin",
+      "types": [
+        "xsd:integer"
+      ],
+      "text": "xsd:integer",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "xvml:ClientData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.2.68",
+          "title": "Minimum Width",
+          "page": 874,
+          "officeNotes": [
+            "2.1.1891"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "xvml:CT_ClientData",
+      "content": "elements",
+      "model": "(xvml:MoveWithCells | xvml:SizeWithCells | xvml:Anchor | xvml:Locked | xvml:DefaultSize | xvml:PrintObject | xvml:Disabled | xvml:AutoFill | xvml:AutoLine | xvml:AutoPict | xvml:FmlaMacro | xvml:TextHAlign | xvml:TextVAlign | xvml:LockText | xvml:JustLastX | xvml:SecretEdit | xvml:Default | xvml:Help | xvml:Cancel | xvml:Dismiss | xvml:Accel | xvml:Accel2 | xvml:Row | xvml:Column | xvml:Visible | xvml:RowHidden | xvml:ColHidden | xvml:VTEdit | xvml:MultiLine | xvml:VScroll | xvml:ValidIds | xvml:FmlaRange | xvml:WidthMin | xvml:Sel | xvml:NoThreeD2 | xvml:SelType | xvml:MultiSel | xvml:LCT | xvml:ListItem | xvml:DropStyle | xvml:Colored | xvml:DropLines | xvml:Checked | xvml:FmlaLink | xvml:FmlaPict | xvml:NoThreeD | xvml:FirstButton | xvml:FmlaGroup | xvml:Val | xvml:Min | xvml:Max | xvml:Inc | xvml:Page | xvml:Horiz | xvml:Dx | xvml:MapOCX | xvml:CF | xvml:Camera | xvml:RecalcAlways | xvml:AutoScale | xvml:DDE | xvml:UIObj | xvml:ScriptText | xvml:ScriptExtended | xvml:ScriptLanguage | xvml:ScriptLocation | xvml:FmlaTxbx)*",
+      "attributes": [
+        "ObjectType"
+      ],
+      "usedBy": [
+        "xvml:ClientData"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "xvml:ST_CF",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.3.1",
+          "title": "Clipboard Format Type",
+          "page": 874
+        }
+      ]
+    },
+    {
+      "name": "xvml:ST_ObjectType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "Button",
+        "Checkbox",
+        "Dialog",
+        "Drop",
+        "Edit",
+        "GBox",
+        "Label",
+        "LineA",
+        "List",
+        "Movie",
+        "Note",
+        "Pict",
+        "Radio",
+        "RectA",
+        "Scroll",
+        "Spin",
+        "Shape",
+        "Group",
+        "Rect"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.4.3.2",
+          "title": "Object Type",
+          "page": 875
+        }
+      ]
+    }
+  ]
+}

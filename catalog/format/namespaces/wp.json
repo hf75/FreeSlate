@@ -1,0 +1,1881 @@
+{
+  "prefix": "wp",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-wordprocessingDrawing.xsd",
+  "counts": {
+    "elements": 43,
+    "attributes": 85,
+    "globalAttributes": 0,
+    "complexTypes": 20,
+    "simpleTypes": 7,
+    "enumValues": 30,
+    "specSections": 50,
+    "officeNotes": 8
+  },
+  "elements": [
+    {
+      "name": "wp:align",
+      "types": [
+        "wp:ST_AlignH",
+        "wp:ST_AlignV"
+      ],
+      "text": "wp:ST_AlignH",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "wp:positionH",
+        "wp:positionV"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.1",
+          "title": "Relative Horizontal Alignment",
+          "page": 3110
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.2",
+          "title": "Relative Vertical Alignment",
+          "page": 3111
+        }
+      ]
+    },
+    {
+      "name": "wp:anchor",
+      "global": true,
+      "types": [
+        "wp:CT_Anchor"
+      ],
+      "attributes": [
+        {
+          "name": "allowOverlap",
+          "type": "xsd:boolean",
+          "required": true
+        },
+        {
+          "name": "behindDoc",
+          "type": "xsd:boolean",
+          "required": true
+        },
+        {
+          "name": "distB",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distL",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distR",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distT",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "layoutInCell",
+          "type": "xsd:boolean",
+          "required": true
+        },
+        {
+          "name": "locked",
+          "type": "xsd:boolean",
+          "required": true
+        },
+        {
+          "name": "relativeHeight",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "simplePos",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "wp:simplePos",
+        "wp:positionH",
+        "wp:positionV",
+        "wp:extent",
+        "wp:effectExtent",
+        "wp:wrapNone",
+        "wp:wrapSquare",
+        "wp:wrapTight",
+        "wp:wrapThrough",
+        "wp:wrapTopAndBottom",
+        "wp:docPr",
+        "wp:cNvGraphicFramePr",
+        "a:graphic"
+      ],
+      "parents": [
+        "w:drawing"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.3",
+          "title": "Anchor for Floating DrawingML Object",
+          "page": 3112,
+          "officeNotes": [
+            "2.1.1350"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:bg",
+      "types": [
+        "a:CT_BackgroundFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.21",
+          "title": "Background Formatting",
+          "page": 3147
+        }
+      ]
+    },
+    {
+      "name": "wp:bodyPr",
+      "types": [
+        "a:CT_TextBodyProperties"
+      ],
+      "attributes": [
+        {
+          "name": "anchor",
+          "type": "a:ST_TextAnchoringType"
+        },
+        {
+          "name": "anchorCtr",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "bIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "compatLnSpc",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "forceAA",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "fromWordArt",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "horzOverflow",
+          "type": "a:ST_TextHorzOverflowType"
+        },
+        {
+          "name": "lIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "numCol",
+          "type": "a:ST_TextColumnCount"
+        },
+        {
+          "name": "rIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle"
+        },
+        {
+          "name": "rtlCol",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "spcCol",
+          "type": "a:ST_PositiveCoordinate32"
+        },
+        {
+          "name": "spcFirstLastPara",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "tIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "upright",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "vert",
+          "type": "a:ST_TextVerticalType"
+        },
+        {
+          "name": "vertOverflow",
+          "type": "a:ST_TextVertOverflowType"
+        },
+        {
+          "name": "wrap",
+          "type": "a:ST_TextWrappingType"
+        }
+      ],
+      "children": [
+        "a:prstTxWarp",
+        "a:noAutofit",
+        "a:normAutofit",
+        "a:spAutoFit",
+        "a:scene3d",
+        "a:sp3d",
+        "a:flatTx",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.22",
+          "title": "Body Properties",
+          "page": 3147
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvCnPr",
+      "types": [
+        "a:CT_NonVisualConnectorProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:cxnSpLocks",
+        "a:stCxn",
+        "a:endCxn",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.23",
+          "title": "Non-Visual Connector Shape Drawing Properties",
+          "page": 3150
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvContentPartPr",
+      "types": [
+        "a:CT_NonVisualContentPartProperties"
+      ],
+      "attributes": [
+        {
+          "name": "isComment",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a:cpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.24",
+          "title": "Non-Visual Content Part Drawing Properties",
+          "page": 3150
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvFrPr",
+      "types": [
+        "a:CT_NonVisualGraphicFrameProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:graphicFrameLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.25",
+          "title": "Non-Visual Graphic Frame Drawing Properties",
+          "page": 3151
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvGraphicFramePr",
+      "types": [
+        "a:CT_NonVisualGraphicFrameProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:graphicFrameLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:anchor",
+        "wp:inline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.4",
+          "title": "Common DrawingML Non-Visual Properties",
+          "page": 3119
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvGrpSpPr",
+      "types": [
+        "a:CT_NonVisualGroupDrawingShapeProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:grpSpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.26",
+          "title": "Non-Visual Group Shape Drawing Properties",
+          "page": 3151
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:graphicFrame",
+        "wp:grpSp",
+        "wp:nvContentPartPr",
+        "wp:wgp",
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.27",
+          "title": "Non-Visual Drawing Properties",
+          "page": 3151
+        }
+      ]
+    },
+    {
+      "name": "wp:cNvSpPr",
+      "types": [
+        "a:CT_NonVisualDrawingShapeProps"
+      ],
+      "attributes": [
+        {
+          "name": "txBox",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a:spLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.28",
+          "title": "Non-Visual Drawing Properties for a Shape",
+          "page": 3153
+        }
+      ]
+    },
+    {
+      "name": "wp:contentPart",
+      "types": [
+        "wp:CT_WordprocessingContentPart"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:nvContentPartPr",
+        "wp:xfrm",
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp",
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.29",
+          "title": "Content Part",
+          "page": 3154
+        }
+      ]
+    },
+    {
+      "name": "wp:docPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:anchor",
+        "wp:inline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.5",
+          "title": "Drawing Object Non-Visual Properties",
+          "page": 3119,
+          "officeNotes": [
+            "2.1.1351"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:effectExtent",
+      "types": [
+        "wp:CT_EffectExtent"
+      ],
+      "attributes": [
+        {
+          "name": "b",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "l",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "r",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "t",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "wp:anchor",
+        "wp:inline",
+        "wp:wrapSquare",
+        "wp:wrapTopAndBottom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.6",
+          "title": "Object Extents Including Effects",
+          "page": 3121,
+          "officeNotes": [
+            "2.1.1352"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "wp:contentPart",
+        "wp:graphicFrame",
+        "wp:grpSp",
+        "wp:linkedTxbx",
+        "wp:txbx",
+        "wp:wgp",
+        "wp:wpc",
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.30",
+          "title": "Extension List",
+          "page": 3155
+        }
+      ]
+    },
+    {
+      "name": "wp:extent",
+      "types": [
+        "a:CT_PositiveSize2D"
+      ],
+      "attributes": [
+        {
+          "name": "cx",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        },
+        {
+          "name": "cy",
+          "type": "a:ST_PositiveCoordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "wp:anchor",
+        "wp:inline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.7",
+          "title": "Drawing Object Size",
+          "page": 3125,
+          "officeNotes": [
+            "2.1.1353"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:graphicFrame",
+      "types": [
+        "wp:CT_GraphicFrame"
+      ],
+      "attributes": [],
+      "children": [
+        "wp:cNvPr",
+        "wp:cNvFrPr",
+        "wp:xfrm",
+        "a:graphic",
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp",
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.31",
+          "title": "Graphical object container",
+          "page": 3155
+        }
+      ]
+    },
+    {
+      "name": "wp:grpSp",
+      "types": [
+        "wp:CT_WordprocessingGroup"
+      ],
+      "attributes": [],
+      "children": [
+        "wp:cNvPr",
+        "wp:cNvGrpSpPr",
+        "wp:grpSpPr",
+        "wp:wsp",
+        "wp:grpSp",
+        "wp:graphicFrame",
+        "pic:pic",
+        "wp:contentPart",
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.32",
+          "title": "Group Shape",
+          "page": 3155
+        }
+      ]
+    },
+    {
+      "name": "wp:grpSpPr",
+      "types": [
+        "a:CT_GroupShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.33",
+          "title": "Group Shape Properties",
+          "page": 3155
+        }
+      ]
+    },
+    {
+      "name": "wp:inline",
+      "global": true,
+      "types": [
+        "wp:CT_Inline"
+      ],
+      "attributes": [
+        {
+          "name": "distB",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distL",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distR",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distT",
+          "type": "wp:ST_WrapDistance"
+        }
+      ],
+      "children": [
+        "wp:extent",
+        "wp:effectExtent",
+        "wp:docPr",
+        "wp:cNvGraphicFramePr",
+        "a:graphic"
+      ],
+      "parents": [
+        "w:drawing"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.8",
+          "title": "Inline DrawingML Object",
+          "page": 3126
+        }
+      ]
+    },
+    {
+      "name": "wp:lineTo",
+      "types": [
+        "a:CT_Point2D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "wp:wrapPolygon"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.9",
+          "title": "Wrapping Polygon Line End Position",
+          "page": 3129,
+          "officeNotes": [
+            "2.1.1354"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:linkedTxbx",
+      "types": [
+        "wp:CT_LinkedTextboxInformation"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedShort",
+          "required": true
+        },
+        {
+          "name": "seq",
+          "type": "xsd:unsignedShort",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.34",
+          "title": "Textual contents of shape",
+          "page": 3156
+        }
+      ]
+    },
+    {
+      "name": "wp:nvContentPartPr",
+      "types": [
+        "wp:CT_WordprocessingContentPartNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "wp:cNvPr",
+        "wp:cNvContentPartPr"
+      ],
+      "parents": [
+        "wp:contentPart"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wp:posOffset",
+      "types": [
+        "wp:ST_PositionOffset"
+      ],
+      "text": "wp:ST_PositionOffset",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "wp:positionH",
+        "wp:positionV"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.12",
+          "title": "Absolute Position Offset",
+          "page": 3133
+        }
+      ]
+    },
+    {
+      "name": "wp:positionH",
+      "types": [
+        "wp:CT_PosH"
+      ],
+      "attributes": [
+        {
+          "name": "relativeFrom",
+          "type": "wp:ST_RelFromH",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:align",
+        "wp:posOffset"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.10",
+          "title": "Horizontal Positioning",
+          "page": 3131
+        }
+      ]
+    },
+    {
+      "name": "wp:positionV",
+      "types": [
+        "wp:CT_PosV"
+      ],
+      "attributes": [
+        {
+          "name": "relativeFrom",
+          "type": "wp:ST_RelFromV",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:align",
+        "wp:posOffset"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.11",
+          "title": "Vertical Positioning",
+          "page": 3132,
+          "officeNotes": [
+            "2.1.1355"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:simplePos",
+      "types": [
+        "a:CT_Point2D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.13",
+          "title": "Simple Positioning Coordinates",
+          "page": 3133,
+          "officeNotes": [
+            "2.1.1356"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.35",
+          "title": "Shape Properties",
+          "page": 3156
+        }
+      ]
+    },
+    {
+      "name": "wp:start",
+      "types": [
+        "a:CT_Point2D"
+      ],
+      "attributes": [
+        {
+          "name": "x",
+          "type": "a:ST_Coordinate",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "a:ST_Coordinate",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "wp:wrapPolygon"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.14",
+          "title": "Wrapping Polygon Start",
+          "page": 3134,
+          "officeNotes": [
+            "2.1.1357"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wp:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.36",
+          "title": "Shape Style",
+          "page": 3157
+        }
+      ]
+    },
+    {
+      "name": "wp:txbx",
+      "types": [
+        "wp:CT_TextboxInfo"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedShort",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "wp:txbxContent",
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.37",
+          "title": "Textual contents of shape",
+          "page": 3157
+        }
+      ]
+    },
+    {
+      "name": "wp:txbxContent",
+      "types": [
+        "wp:CT_TxbxContent"
+      ],
+      "attributes": [],
+      "children": [
+        "w:customXml",
+        "w:sdt",
+        "w:p",
+        "w:tbl",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "w:altChunk"
+      ],
+      "parents": [
+        "wp:txbx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.38",
+          "title": "Rich Text Box Content Container",
+          "page": 3157
+        }
+      ]
+    },
+    {
+      "name": "wp:wgp",
+      "global": true,
+      "types": [
+        "wp:CT_WordprocessingGroup"
+      ],
+      "attributes": [],
+      "children": [
+        "wp:cNvPr",
+        "wp:cNvGrpSpPr",
+        "wp:grpSpPr",
+        "wp:wsp",
+        "wp:grpSp",
+        "wp:graphicFrame",
+        "pic:pic",
+        "wp:contentPart",
+        "wp:extLst"
+      ],
+      "parents": [
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.39",
+          "title": "WordprocessingML Shape Group",
+          "page": 3157
+        }
+      ]
+    },
+    {
+      "name": "wp:whole",
+      "types": [
+        "a:CT_WholeE2oFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.40",
+          "title": "Whole E2O Formatting",
+          "page": 3157
+        }
+      ]
+    },
+    {
+      "name": "wp:wpc",
+      "global": true,
+      "types": [
+        "wp:CT_WordprocessingCanvas"
+      ],
+      "attributes": [],
+      "children": [
+        "wp:bg",
+        "wp:whole",
+        "wp:wsp",
+        "pic:pic",
+        "wp:contentPart",
+        "wp:wgp",
+        "wp:graphicFrame",
+        "wp:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.41",
+          "title": "WordprocessingML Drawing Canvas",
+          "page": 3158
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapNone",
+      "types": [
+        "wp:CT_WrapNone"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.15",
+          "title": "No Text Wrapping",
+          "page": 3135
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapPolygon",
+      "types": [
+        "wp:CT_WrapPath"
+      ],
+      "attributes": [
+        {
+          "name": "edited",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [
+        "wp:start",
+        "wp:lineTo"
+      ],
+      "parents": [
+        "wp:wrapThrough",
+        "wp:wrapTight"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.16",
+          "title": "Wrapping Polygon",
+          "page": 3136
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapSquare",
+      "types": [
+        "wp:CT_WrapSquare"
+      ],
+      "attributes": [
+        {
+          "name": "distB",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distL",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distR",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distT",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "wrapText",
+          "type": "wp:ST_WrapText",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:effectExtent"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.17",
+          "title": "Square Wrapping",
+          "page": 3137
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapThrough",
+      "types": [
+        "wp:CT_WrapThrough"
+      ],
+      "attributes": [
+        {
+          "name": "distL",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distR",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "wrapText",
+          "type": "wp:ST_WrapText",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:wrapPolygon"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.18",
+          "title": "Through Wrapping",
+          "page": 3140
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapTight",
+      "types": [
+        "wp:CT_WrapTight"
+      ],
+      "attributes": [
+        {
+          "name": "distL",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distR",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "wrapText",
+          "type": "wp:ST_WrapText",
+          "required": true
+        }
+      ],
+      "children": [
+        "wp:wrapPolygon"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.19",
+          "title": "Tight Wrapping",
+          "page": 3143
+        }
+      ]
+    },
+    {
+      "name": "wp:wrapTopAndBottom",
+      "types": [
+        "wp:CT_WrapTopBottom"
+      ],
+      "attributes": [
+        {
+          "name": "distB",
+          "type": "wp:ST_WrapDistance"
+        },
+        {
+          "name": "distT",
+          "type": "wp:ST_WrapDistance"
+        }
+      ],
+      "children": [
+        "wp:effectExtent"
+      ],
+      "parents": [
+        "wp:anchor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.20",
+          "title": "Top and Bottom Wrapping",
+          "page": 3146
+        }
+      ]
+    },
+    {
+      "name": "wp:wsp",
+      "global": true,
+      "types": [
+        "wp:CT_WordprocessingShape"
+      ],
+      "attributes": [
+        {
+          "name": "normalEastAsianFlow",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "wp:cNvPr",
+        "wp:cNvSpPr",
+        "wp:cNvCnPr",
+        "wp:spPr",
+        "wp:style",
+        "wp:extLst",
+        "wp:txbx",
+        "wp:linkedTxbx",
+        "wp:bodyPr"
+      ],
+      "parents": [
+        "wp:grpSp",
+        "wp:wgp",
+        "wp:wpc"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.42",
+          "title": "WordprocessingML Shape",
+          "page": 3158
+        }
+      ]
+    },
+    {
+      "name": "wp:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "wp:contentPart",
+        "wp:graphicFrame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.2.43",
+          "title": "2D Transform for Graphic Frames",
+          "page": 3158
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "wp:CT_Anchor",
+      "content": "elements",
+      "model": "(wp:simplePos, wp:positionH, wp:positionV, wp:extent, wp:effectExtent?, (wp:wrapNone | wp:wrapSquare | wp:wrapTight | wp:wrapThrough | wp:wrapTopAndBottom), wp:docPr, wp:cNvGraphicFramePr?, a:graphic)",
+      "attributes": [
+        "allowOverlap",
+        "behindDoc",
+        "distB",
+        "distL",
+        "distR",
+        "distT",
+        "hidden",
+        "layoutInCell",
+        "locked",
+        "relativeHeight",
+        "simplePos"
+      ],
+      "usedBy": [
+        "wp:anchor"
+      ]
+    },
+    {
+      "name": "wp:CT_EffectExtent",
+      "content": "empty",
+      "attributes": [
+        "b",
+        "l",
+        "r",
+        "t"
+      ],
+      "usedBy": [
+        "wp:effectExtent"
+      ]
+    },
+    {
+      "name": "wp:CT_GraphicFrame",
+      "content": "elements",
+      "model": "(wp:cNvPr, wp:cNvFrPr, wp:xfrm, a:graphic, wp:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wp:graphicFrame"
+      ]
+    },
+    {
+      "name": "wp:CT_Inline",
+      "content": "elements",
+      "model": "(wp:extent, wp:effectExtent?, wp:docPr, wp:cNvGraphicFramePr?, a:graphic)",
+      "attributes": [
+        "distB",
+        "distL",
+        "distR",
+        "distT"
+      ],
+      "usedBy": [
+        "wp:inline"
+      ]
+    },
+    {
+      "name": "wp:CT_LinkedTextboxInformation",
+      "content": "elements",
+      "model": "wp:extLst?",
+      "attributes": [
+        "id",
+        "seq"
+      ],
+      "usedBy": [
+        "wp:linkedTxbx"
+      ]
+    },
+    {
+      "name": "wp:CT_PosH",
+      "content": "elements",
+      "model": "(wp:align | wp:posOffset)",
+      "attributes": [
+        "relativeFrom"
+      ],
+      "usedBy": [
+        "wp:positionH"
+      ]
+    },
+    {
+      "name": "wp:CT_PosV",
+      "content": "elements",
+      "model": "(wp:align | wp:posOffset)",
+      "attributes": [
+        "relativeFrom"
+      ],
+      "usedBy": [
+        "wp:positionV"
+      ]
+    },
+    {
+      "name": "wp:CT_TextboxInfo",
+      "content": "elements",
+      "model": "(wp:txbxContent, wp:extLst?)",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "wp:txbx"
+      ]
+    },
+    {
+      "name": "wp:CT_TxbxContent",
+      "content": "elements",
+      "model": "(((w:customXml | w:sdt | w:p* | w:tbl* | (w:proofErr? | w:permStart? | w:permEnd? | (w:bookmarkStart | w:bookmarkEnd | w:moveFromRangeStart | w:moveFromRangeEnd | w:moveToRangeStart | w:moveToRangeEnd | w:commentRangeStart | w:commentRangeEnd | w:customXmlInsRangeStart | w:customXmlInsRangeEnd | w:customXmlDelRangeStart | w:customXmlDelRangeEnd | w:customXmlMoveFromRangeStart | w:customXmlMoveFromRangeEnd | w:customXmlMoveToRangeStart | w:customXmlMoveToRangeEnd)* | w:ins? | w:del? | w:moveFrom | w:moveTo | (m:oMathPara | m:oMath)*)*)*)* | w:altChunk*)+",
+      "attributes": [],
+      "usedBy": [
+        "wp:txbxContent"
+      ]
+    },
+    {
+      "name": "wp:CT_WordprocessingCanvas",
+      "content": "elements",
+      "model": "(wp:bg?, wp:whole?, (wp:wsp | pic:pic | wp:contentPart | wp:wgp | wp:graphicFrame)*, wp:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wp:wpc"
+      ]
+    },
+    {
+      "name": "wp:CT_WordprocessingContentPart",
+      "content": "elements",
+      "model": "(wp:nvContentPartPr?, wp:xfrm?, wp:extLst?)",
+      "attributes": [
+        "bwMode",
+        "r:id"
+      ],
+      "usedBy": [
+        "wp:contentPart"
+      ]
+    },
+    {
+      "name": "wp:CT_WordprocessingContentPartNonVisual",
+      "content": "elements",
+      "model": "(wp:cNvPr?, wp:cNvContentPartPr?)",
+      "attributes": [],
+      "usedBy": [
+        "wp:nvContentPartPr"
+      ]
+    },
+    {
+      "name": "wp:CT_WordprocessingGroup",
+      "content": "elements",
+      "model": "(wp:cNvPr?, wp:cNvGrpSpPr, wp:grpSpPr, (wp:wsp | wp:grpSp | wp:graphicFrame | pic:pic | wp:contentPart)*, wp:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "wp:grpSp",
+        "wp:wgp"
+      ]
+    },
+    {
+      "name": "wp:CT_WordprocessingShape",
+      "content": "elements",
+      "model": "(wp:cNvPr?, (wp:cNvSpPr | wp:cNvCnPr), wp:spPr, wp:style?, wp:extLst?, (wp:txbx | wp:linkedTxbx)?, wp:bodyPr)",
+      "attributes": [
+        "normalEastAsianFlow"
+      ],
+      "usedBy": [
+        "wp:wsp"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapNone",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "wp:wrapNone"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapPath",
+      "content": "elements",
+      "model": "(wp:start, wp:lineTo{2,})",
+      "attributes": [
+        "edited"
+      ],
+      "usedBy": [
+        "wp:wrapPolygon"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapSquare",
+      "content": "elements",
+      "model": "wp:effectExtent?",
+      "attributes": [
+        "distB",
+        "distL",
+        "distR",
+        "distT",
+        "wrapText"
+      ],
+      "usedBy": [
+        "wp:wrapSquare"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapThrough",
+      "content": "elements",
+      "model": "wp:wrapPolygon",
+      "attributes": [
+        "distL",
+        "distR",
+        "wrapText"
+      ],
+      "usedBy": [
+        "wp:wrapThrough"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapTight",
+      "content": "elements",
+      "model": "wp:wrapPolygon",
+      "attributes": [
+        "distL",
+        "distR",
+        "wrapText"
+      ],
+      "usedBy": [
+        "wp:wrapTight"
+      ]
+    },
+    {
+      "name": "wp:CT_WrapTopBottom",
+      "content": "elements",
+      "model": "wp:effectExtent?",
+      "attributes": [
+        "distB",
+        "distT"
+      ],
+      "usedBy": [
+        "wp:wrapTopAndBottom"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "wp:ST_AlignH",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "left",
+        "right",
+        "center",
+        "inside",
+        "outside"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.1",
+          "title": "Relative Horizontal Alignment Positions",
+          "page": 3159
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_AlignV",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "top",
+        "bottom",
+        "center",
+        "inside",
+        "outside"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.2",
+          "title": "Vertical Alignment Definition",
+          "page": 3160
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_PositionOffset",
+      "definition": "restriction of xsd:int",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.3",
+          "title": "Absolute Position Offset Value",
+          "page": 3161
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_RelFromH",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "margin",
+        "page",
+        "column",
+        "character",
+        "leftMargin",
+        "rightMargin",
+        "insideMargin",
+        "outsideMargin"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.4",
+          "title": "Horizontal Relative Positioning",
+          "page": 3162
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_RelFromV",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "margin",
+        "page",
+        "paragraph",
+        "line",
+        "topMargin",
+        "bottomMargin",
+        "insideMargin",
+        "outsideMargin"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.5",
+          "title": "Vertical Relative Positioning",
+          "page": 3163
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_WrapDistance",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.6",
+          "title": "Distance from Text",
+          "page": 3164
+        }
+      ]
+    },
+    {
+      "name": "wp:ST_WrapText",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "bothSides",
+        "left",
+        "right",
+        "largest"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "20.4.3.7",
+          "title": "Text Wrapping Location",
+          "page": 3164
+        }
+      ]
+    }
+  ]
+}

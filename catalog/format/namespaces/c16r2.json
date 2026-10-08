@@ -1,0 +1,54 @@
+{
+  "prefix": "c16r2",
+  "uri": "http://schemas.microsoft.com/office/drawing/2015/06/chart",
+  "area": "Charts",
+  "inScope": true,
+  "source": "[MS-ODRAWXML] v20261006 §5.42",
+  "counts": {
+    "elements": 1,
+    "attributes": 0,
+    "globalAttributes": 1,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c16r2:formatcode2",
+      "global": true,
+      "types": [
+        "c:ST_Xstring"
+      ],
+      "text": "c:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.44.1.1",
+          "title": "formatcode2",
+          "page": 331
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "c16r2:formatcode2",
+      "type": "c:ST_Xstring",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.44.2.1",
+          "title": "formatcode2",
+          "page": 331
+        }
+      ]
+    }
+  ],
+  "complexTypes": [],
+  "simpleTypes": []
+}

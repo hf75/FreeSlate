@@ -1,0 +1,108 @@
+{
+  "prefix": "sl",
+  "uri": "http://schemas.openxmlformats.org/schemaLibrary/2006/main",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-customXmlSchemaProperties.xsd",
+  "counts": {
+    "elements": 2,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 1
+  },
+  "elements": [
+    {
+      "name": "sl:schema",
+      "types": [
+        "sl:CT_Schema"
+      ],
+      "attributes": [
+        {
+          "name": "sl:manifestLocation",
+          "type": "xsd:string"
+        },
+        {
+          "name": "sl:schemaLanguage",
+          "type": "xsd:token"
+        },
+        {
+          "name": "sl:schemaLocation",
+          "type": "xsd:string"
+        },
+        {
+          "name": "sl:uri",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [],
+      "parents": [
+        "sl:schemaLibrary"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "23.2.1",
+          "title": "Custom XML Schema Reference",
+          "page": 3814,
+          "officeNotes": [
+            "2.1.1748"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sl:schemaLibrary",
+      "global": true,
+      "types": [
+        "sl:CT_SchemaLibrary"
+      ],
+      "attributes": [],
+      "children": [
+        "sl:schema"
+      ],
+      "parents": [
+        "w:settings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "23.2.2",
+          "title": "Embedded Custom XML Schema Supplementary Data",
+          "page": 3816
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "sl:CT_Schema",
+      "content": "empty",
+      "attributes": [
+        "sl:manifestLocation",
+        "sl:schemaLanguage",
+        "sl:schemaLocation",
+        "sl:uri"
+      ],
+      "usedBy": [
+        "sl:schema"
+      ]
+    },
+    {
+      "name": "sl:CT_SchemaLibrary",
+      "content": "elements",
+      "model": "sl:schema*",
+      "attributes": [],
+      "usedBy": [
+        "sl:schemaLibrary"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

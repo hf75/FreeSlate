@@ -1,0 +1,197 @@
+{
+  "prefix": "cp",
+  "uri": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-2 schema opc-coreProperties.xsd",
+  "counts": {
+    "elements": 9,
+    "attributes": 2,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 0,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "cp:category",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:contentStatus",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:coreProperties",
+      "global": true,
+      "types": [
+        "cp:CT_CoreProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "cp:category",
+        "cp:contentStatus",
+        "dcterms:created",
+        "dc:creator",
+        "dc:description",
+        "dc:identifier",
+        "cp:keywords",
+        "dc:language",
+        "cp:lastModifiedBy",
+        "cp:lastPrinted",
+        "dcterms:modified",
+        "cp:revision",
+        "dc:subject",
+        "dc:title",
+        "cp:version"
+      ],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "cp:keywords",
+      "types": [
+        "cp:CT_Keywords"
+      ],
+      "attributes": [
+        {
+          "name": "xml:lang",
+          "type": "xsd:language"
+        }
+      ],
+      "children": [
+        "cp:value"
+      ],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:lastModifiedBy",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:lastPrinted",
+      "types": [
+        "xsd:dateTime"
+      ],
+      "text": "xsd:dateTime",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:revision",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:value",
+      "types": [
+        "cp:CT_Keyword"
+      ],
+      "text": "xsd:string",
+      "attributes": [
+        {
+          "name": "xml:lang",
+          "type": "xsd:language"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "cp:keywords"
+      ],
+      "spec": []
+    },
+    {
+      "name": "cp:version",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "cp:coreProperties"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "cp:CT_CoreProperties",
+      "content": "elements",
+      "model": "(cp:category? & cp:contentStatus? & dcterms:created? & dc:creator? & dc:description? & dc:identifier? & cp:keywords? & dc:language? & cp:lastModifiedBy? & cp:lastPrinted? & dcterms:modified? & cp:revision? & dc:subject? & dc:title? & cp:version?)",
+      "attributes": [],
+      "usedBy": [
+        "cp:coreProperties"
+      ]
+    },
+    {
+      "name": "cp:CT_Keyword",
+      "base": "xsd:string",
+      "content": "text",
+      "attributes": [
+        "xml:lang"
+      ],
+      "usedBy": [
+        "cp:value"
+      ]
+    },
+    {
+      "name": "cp:CT_Keywords",
+      "content": "mixed",
+      "model": "cp:value*",
+      "attributes": [
+        "xml:lang"
+      ],
+      "usedBy": [
+        "cp:keywords"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

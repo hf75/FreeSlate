@@ -1,0 +1,4257 @@
+[
+  {
+    "level": 0,
+    "title": "Contents",
+    "page": 3
+  },
+  {
+    "level": 0,
+    "title": "Foreword",
+    "page": 15
+  },
+  {
+    "level": 0,
+    "title": "Introduction",
+    "page": 16
+  },
+  {
+    "level": 0,
+    "title": "1. Scope",
+    "page": 17
+  },
+  {
+    "level": 0,
+    "title": "2. Conformance",
+    "page": 18
+  },
+  {
+    "level": 1,
+    "title": "2.1 Document Conformance",
+    "page": 18
+  },
+  {
+    "level": 1,
+    "title": "2.2 Application Conformance",
+    "page": 18
+  },
+  {
+    "level": 0,
+    "title": "3. Normative References",
+    "page": 20
+  },
+  {
+    "level": 0,
+    "title": "4. Terms and Definitions",
+    "page": 24
+  },
+  {
+    "level": 0,
+    "title": "5. Notational Conventions",
+    "page": 25
+  },
+  {
+    "level": 0,
+    "title": "6. Acronyms and Abbreviations",
+    "page": 26
+  },
+  {
+    "level": 0,
+    "title": "7. General Description",
+    "page": 27
+  },
+  {
+    "level": 0,
+    "title": "8. Additional Shared Parts",
+    "page": 29
+  },
+  {
+    "level": 1,
+    "title": "8.1 General",
+    "page": 29
+  },
+  {
+    "level": 1,
+    "title": "8.2 VML Drawing Part",
+    "page": 29
+  },
+  {
+    "level": 0,
+    "title": "9. WordprocessingML",
+    "page": 31
+  },
+  {
+    "level": 1,
+    "title": "9.1 General",
+    "page": 31
+  },
+  {
+    "level": 1,
+    "title": "9.2 Part Summary (Part 1, §11.3)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.1 Alternative Format Import Part (Part 1, §11.3.1)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.2 Comments Part (Part 1, §11.3.2)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.3 Document Settings Part (Part 1, §11.3.3)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.4 Endnotes Part (Part 1, §11.3.4)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.5 Fonts Table Part (Part 1, §11.3.5)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.6 Footer Part (Part 1, §11.3.6)",
+    "page": 31
+  },
+  {
+    "level": 2,
+    "title": "9.2.7 Footnotes Part (Part 1, §11.3.7)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.8 Glossary Document Part (Part 1, §11.3.8)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.9 Header Part (Part 1, §11.3.9)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.10 Main Document Part (Part 1, §11.3.10)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.11 Numbering Definitions Part (Part 1, §11.3.11)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.12 Style Definitions Part (Part 1, §11.3.12)",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "9.2.13 Web Settings Part (Part 1, §11.3.13)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.3 Document Template (Part 1, §11.4)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.4 Framesets (Part 1, §11.5)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.5 Master Documents and Subdocuments (Part 1, §11.6)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.6 Mail Merge Data Source (Part 1, §11.7)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.7 Mail Merger Header Data Source (Part 1, §11.8)",
+    "page": 33
+  },
+  {
+    "level": 1,
+    "title": "9.8 XSL Transformation (Part 1, §11.9)",
+    "page": 33
+  },
+  {
+    "level": 0,
+    "title": "10. SpreadsheetML",
+    "page": 34
+  },
+  {
+    "level": 1,
+    "title": "10.1 General",
+    "page": 34
+  },
+  {
+    "level": 1,
+    "title": "10.2 Part Summary (Part 1, §12.3)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.1 Calculation Chain Part (Part 1, §12.3.1)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.2 Chartsheet Part (Part 1, §12.3.2)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.3 Comments Part (Part 1, §12.3.3)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.4 Connections Part (Part 1, §12.3.4)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.5 Custom Property Part (Part 1, §12.3.5)",
+    "page": 34
+  },
+  {
+    "level": 2,
+    "title": "10.2.6 Custom XML Mappings Part (Part 1, §12.3.6)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.7 Dialogsheet Part (Part 1, §12.3.7)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.8 Drawings Part (Part 1, §12.3.8)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.9 External Workbook References Part (Part 1, §12.3.9)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.10 Metadata Part (Part 1, §12.3.10)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.11 Pivot Table Part (Part 1, §12.3.11)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.12 Pivot Table Cache Definition Part (Part 1, §12.3.12)",
+    "page": 35
+  },
+  {
+    "level": 2,
+    "title": "10.2.13 Pivot Table Cache Records Part (Part 1, §12.3.13)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.14 Query Table Part (Part 1, §12.3.14)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.15 Shared Strings Table Part (Part 1, §12.3.15)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.16 Shared Workbook Revision Headers Part (Part 1, §12.3.16)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.17 Shared Workbook Revision Log Part (Part 1, §12.3.17)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.18 Shared Workbook User Data part (Part 1, §12.3.18)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.19 Single Cell Table Definitions Part (Part 1, §12.3.19)",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "10.2.20 Styles Part (Part 1, §12.3.20)",
+    "page": 37
+  },
+  {
+    "level": 2,
+    "title": "10.2.21 Table Definition Part (Part 1, §12.3.21)",
+    "page": 37
+  },
+  {
+    "level": 2,
+    "title": "10.2.22 Volatile Dependencies Part (Part 1, §12.3.22)",
+    "page": 37
+  },
+  {
+    "level": 2,
+    "title": "10.2.23 Workbook Part (Part 1, §12.3.23)",
+    "page": 37
+  },
+  {
+    "level": 2,
+    "title": "10.2.24 Worksheet Part (Part 1, §12.3.24)",
+    "page": 37
+  },
+  {
+    "level": 1,
+    "title": "10.3 External Workbooks (Part 1, §12.4)",
+    "page": 37
+  },
+  {
+    "level": 0,
+    "title": "11. PresentationML",
+    "page": 38
+  },
+  {
+    "level": 1,
+    "title": "11.1 General",
+    "page": 38
+  },
+  {
+    "level": 1,
+    "title": "11.2 Part Summary (Part 1, §13.3)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.1 Comment Authors Part (Part 1, §13.3.1)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.2 Comments Part (Part 1, §13.3.2)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.3 Handout Master Part (Part 1, §13.3.3)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.4 Notes Master Part (Part 1, §13.3.4)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.5 Notes Slide Part (Part 1, §13.3.5)",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "11.2.6 Presentation Part (Part 1, §13.3.6)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.7 Presentation Properties Part (Part 1, §13.3.7)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.8 Slide Part (Part 1, §13.3.8)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.9 Slide Layout Part (Part 1, §13.3.9)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.10 Slide Master Part (Part 1, §13.3.10)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.11 Slide Synchronization Data Part (Part 1, §13.3.11)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.12 User Defined Tags Part (Part 1, §13.3.12)",
+    "page": 39
+  },
+  {
+    "level": 2,
+    "title": "11.2.13 View Properties Part (Part 1, §13.3.13)",
+    "page": 40
+  },
+  {
+    "level": 1,
+    "title": "11.3 HTML Publish Location (Part 1, §13.4)",
+    "page": 40
+  },
+  {
+    "level": 1,
+    "title": "11.4 Slide Synchronization Server Location (Part 1, §13.5)",
+    "page": 40
+  },
+  {
+    "level": 0,
+    "title": "12. DrawingML",
+    "page": 41
+  },
+  {
+    "level": 1,
+    "title": "12.1 General",
+    "page": 41
+  },
+  {
+    "level": 1,
+    "title": "12.2 Part Summary (Part 1, §14.2)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.1 Chart Part (Part 1, §14.2.1)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.2 Chart Drawing Part (Part 1, §14.2.2)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.3 Diagram Colors Part (Part 1, §14.2.3)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.4 Diagram Data Part (Part 1, §14.2.4)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.5 Diagram Layout Definition Part (Part 1, §14.2.5)",
+    "page": 41
+  },
+  {
+    "level": 2,
+    "title": "12.2.6 Diagram Style Part (Part 1, §14.2.6)",
+    "page": 42
+  },
+  {
+    "level": 2,
+    "title": "12.2.7 Theme Part (Part 1, §14.2.7)",
+    "page": 42
+  },
+  {
+    "level": 2,
+    "title": "12.2.8 Theme Override Part (Part 1, §14.2.8)",
+    "page": 42
+  },
+  {
+    "level": 2,
+    "title": "12.2.9 Table Styles Part (Part 1, §14.2.9)",
+    "page": 42
+  },
+  {
+    "level": 0,
+    "title": "13. Shared MLs",
+    "page": 43
+  },
+  {
+    "level": 1,
+    "title": "13.1 General",
+    "page": 43
+  },
+  {
+    "level": 1,
+    "title": "13.2 Part Summary (Part 1, §15.2)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.1 Additional Characteristics Part (Part 1, §15.2.1)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.2 Audio Part (Part 1, §15.2.2)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.3 Bibliography Part (Part 1, §15.2.3)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.4 Content Part (Part 1, §15.2.4)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.5 Custom XML Data Storage Part (Part 1, §15.2.5)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.6 Custom XML Data Storage Properties Part (Part 1, §15.2.6)",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "13.2.7 Embedded Control Persistence Part (Part 1, §15.2.9)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.8 Embedded Object Part (Part 1, §15.2.10)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.9 Embedded Package Part (Part 1, §15.2.11)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.10 Core File Properties Part (Part 1, §15.2.12.1)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.11 Custom File Properties Part (Part 1, §15.2.12.2)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.12 Extended File Properties Part (Part 1, §15.2.12.3)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.13 Font Part (Part 1, §15.2.13)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.14 Image Part (Part 1, §15.2.14)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.15 Printer Settings Part (Part 1, §15.2.15)",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "13.2.16 Thumbnail Part (Part 1, §15.2.16)",
+    "page": 45
+  },
+  {
+    "level": 2,
+    "title": "13.2.17 Video Part (Part 1, §15.2.17)",
+    "page": 45
+  },
+  {
+    "level": 1,
+    "title": "13.3 Hyperlinks Part (Part 1, §15.3)",
+    "page": 45
+  },
+  {
+    "level": 0,
+    "title": "14. WordprocessingML Reference Material",
+    "page": 46
+  },
+  {
+    "level": 1,
+    "title": "14.1 General",
+    "page": 46
+  },
+  {
+    "level": 1,
+    "title": "14.2 Table of Contents",
+    "page": 46
+  },
+  {
+    "level": 1,
+    "title": "14.3 Paragraphs and Rich Formatting",
+    "page": 50
+  },
+  {
+    "level": 2,
+    "title": "14.3.1 Paragraphs",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "14.3.1.1 Additional attribute for cnfStyle element (Part 1, §17.3.1.8)",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "14.3.1.2 Additional attributes for ind element (Part 1, §17.3.1.12)",
+    "page": 51
+  },
+  {
+    "level": 2,
+    "title": "14.3.2 Run Content",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "14.3.2.1 control (Floating Embedded Control)",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "14.3.2.2 pict (VML Object)",
+    "page": 53
+  },
+  {
+    "level": 1,
+    "title": "14.4 Tables",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "14.4.1 left (Table Cell Leading Edge Border)",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "14.4.2 left (Table Leading Edge Border)",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "14.4.3 left (Table Cell Leading Margin Exception)",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "14.4.4 left (Table Cell Leading Margin Default)",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "14.4.5 right (Table Cell Trailing Edge Border)",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "14.4.6 right (Table Trailing Edge Border)",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "14.4.7 right (Table Cell Trailing Margin Default)",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "14.4.8 right (Table Cell Trailing Margin Exception)",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "14.4.9 Additional attribute for cnfStyle element (Part 1, §17.4.7)",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "14.4.10 Additional attribute for cnfStyle element (Part 1, §17.4.8)",
+    "page": 56
+  },
+  {
+    "level": 2,
+    "title": "14.4.11 Additional attribute for tblLook element (Part 1, §17.4.54)",
+    "page": 58
+  },
+  {
+    "level": 2,
+    "title": "14.4.12 Additional attribute for tblLook element (Part 1, §17.4.55)",
+    "page": 58
+  },
+  {
+    "level": 2,
+    "title": "14.4.13 hMerge (Horizontally Merged Cell)",
+    "page": 59
+  },
+  {
+    "level": 1,
+    "title": "14.5 Fonts",
+    "page": 61
+  },
+  {
+    "level": 2,
+    "title": "14.5.1 Elements",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "14.5.1.1 Additional attribute for charset element (Part 1, §17.8.3.2)",
+    "page": 61
+  },
+  {
+    "level": 1,
+    "title": "14.6 Numbering",
+    "page": 63
+  },
+  {
+    "level": 2,
+    "title": "14.6.1 pict (Picture Numbering Symbol Properties)",
+    "page": 63
+  },
+  {
+    "level": 2,
+    "title": "14.6.2 legacy (Legacy Numbering Level Properties)",
+    "page": 64
+  },
+  {
+    "level": 1,
+    "title": "14.7 Annotations",
+    "page": 65
+  },
+  {
+    "level": 2,
+    "title": "14.7.1 Revisions",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "14.7.1.1 numberingChange (Previous Numbering Field Properties)",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "14.7.1.2 numberingChange (Previous Paragraph Numbering Properties)",
+    "page": 69
+  },
+  {
+    "level": 1,
+    "title": "14.8 Settings",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "14.8.1 Legacy Password Hash Algorithm",
+    "page": 74
+  },
+  {
+    "level": 2,
+    "title": "14.8.2 Document Settings",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "14.8.2.1 hdrShapeDefaults (Default Properties for VML Objects in Header and Footer)",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "14.8.2.2 shapeDefaults (Default Properties for VML Objects in Main Document)",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "14.8.2.3 Additional attributes for documentProtection element (Part 1, §17.15.1.29)",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "14.8.2.4 Additional attribute for stylePaneFormatFilter element (Part 1, §17.15.1.85)",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "14.8.2.5 Additional attributes for writeProtection element (Part 1, §17.15.1.93)",
+    "page": 90
+  },
+  {
+    "level": 2,
+    "title": "14.8.3 Compatibility Settings",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.1 alignTablesRowByRow (Align Table Rows Independently)",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.2 allowSpaceOfSameStyleInTable (Allow Contextual Spacing of Paragraphs in Tables)",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.3 autofitToFirstFixedWidthCell (Allow Table Columns To Exceed Preferred Widths of Constituent Cells)",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.4 autoSpaceLikeWord95 (Incorrectly Adjust Text Spacing for Specific Unicode Ranges)",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.5 cachedColBalance (Use Cached Paragraph Information for Column Balancing)",
+    "page": 103
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.6 convMailMergeEsc (Treat Backslash Quotation Delimiter as Two Quotation Marks)",
+    "page": 104
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.7 displayHangulFixedWidth (Always Use Fixed Width for Hangul Characters)",
+    "page": 105
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.8 doNotAutofitConstrainedTables (Do Not AutoFit Tables To Fit Next To Wrapped Objects)",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.9 doNotBreakConstrainedForcedTable (Don't Break Table Rows Around Floating Tables)",
+    "page": 107
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.10 doNotBreakWrappedTables (Do Not Allow Floating Tables To Break Across Pages)",
+    "page": 109
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.11 doNotSnapToGridInCell (Do Not Snap to Document Grid in Table Cells with Objects)",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.12 doNotSuppressIndentation (Do Not Ignore Floating Objects When Calculating Paragraph Indentation)",
+    "page": 112
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.13 doNotSuppressParagraphBorders (Do Not Suppress Paragraph Borders Next To Frames)",
+    "page": 114
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.14 doNotUseEastAsianBreakRules (Do Not Compress Compressible Characters When Using Document Grid)",
+    "page": 115
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.15 doNotUseHTMLParagraphAutoSpacing (Use Fixed Paragraph Spacing for HTML Auto Setting)",
+    "page": 116
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.16 doNotUseIndentAsNumberingTabStop (Ignore Hanging Indent When Creating Tab Stop After Numbering)",
+    "page": 118
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.17 doNotVertAlignCellWithSp (Don't Vertically Align Cells Containing Floating Objects)",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.18 doNotVertAlignInTxbx (Ignore Vertical Alignment in Textboxes)",
+    "page": 121
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.19 doNotWrapTextWithPunct (Do Not Allow Hanging Punctuation With Character Grid)",
+    "page": 123
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.20 footnoteLayoutLikeWW8 (Ignore Page Break from Continuous Section Break)",
+    "page": 124
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.21 forgetLastTabAlignment (Ignore Width of Last Tab Stop When Aligning Paragraph If It Is Not Left Aligned)",
+    "page": 127
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.22 growAutofit (Allow Tables to AutoFit Into Page Margins)",
+    "page": 129
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.23 layoutRawTableWidth (Ignore Space Before Table When Deciding If Table Should Wrap Floating Object)",
+    "page": 130
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.24 layoutTableRowsApart (Allow Table Rows to Wrap Inline Objects Independently)",
+    "page": 132
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.25 lineWrapLikeWord6 (Ignore Compression of Full-Width Punctuation Ending a Line)",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.26 mwSmallCaps (Use Specific Small Caps Algorithm)",
+    "page": 134
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.27 noColumnBalance (Do Not Balance Text Columns within a Section)",
+    "page": 135
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.28 noExtraLineSpacing (Do Not Center Content on Lines With Exact Line Height)",
+    "page": 137
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.29 noLeading (Do Not Add Leading Between Lines of Text)",
+    "page": 138
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.30 noSpaceRaiseLower (Do Not Increase Line Height for Raised/Lowered Text)",
+    "page": 140
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.31 noTabHangInd (Do Not Create Custom Tab Stop for Hanging Indent)",
+    "page": 140
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.32 printBodyTextBeforeHeader (Print Body Text before Header/Footer Contents)",
+    "page": 142
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.33 printColBlack (Print Colors as Black And White without Dithering)",
+    "page": 143
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.34 selectFldWithFirstOrLastChar (Select Field When First or Last Character Is Selected)",
+    "page": 143
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.35 shapeLayoutLikeWW8 (Ignore Text Wrapping around Objects at Bottom of Page)",
+    "page": 144
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.36 showBreaksInFrames (Display Page/Column Breaks Present in Frames)",
+    "page": 147
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.37 spacingInWholePoints (Only Expand/Condense Text By Whole Points)",
+    "page": 149
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.38 splitPgBreakAndParaMark (Always Move Paragraph Mark to Page after a Page Break)",
+    "page": 151
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.39 subFontBySize (Require Exact Size During Font Substitution)",
+    "page": 152
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.40 suppressBottomSpacing (Ignore Exact Line Height for Last Line on Page)",
+    "page": 153
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.41 suppressSpacingAtTopOfPage (Ignore Minimum Line Height for First Line on Page)",
+    "page": 155
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.42 suppressSpBfAfterPgBrk (Do Not Use Space Before On First Line After a Page Break)",
+    "page": 157
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.43 suppressTopSpacing (Ignore Minimum and Exact Line Height for First Line on Page)",
+    "page": 159
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.44 suppressTopSpacingWP (Use Static Text Leading)",
+    "page": 160
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.45 swapBordersFacingPages (Swap Paragraph Borders on Odd Numbered Pages)",
+    "page": 160
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.46 truncateFontHeightsLikeWP6 (Use Truncated Integer Division For Font Calculation)",
+    "page": 163
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.47 underlineTabInNumList (Underline Following Character Following Numbering)",
+    "page": 164
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.48 useAltKinsokuLineBreakRules (Use Alternate Set of East Asian Line Breaking Rules)",
+    "page": 165
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.49 useAnsiKerningPairs (Use ANSI Kerning Pairs from Fonts)",
+    "page": 166
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.50 useFELayout (Do Not Bypass East Asian/Complex Script Layout Code)",
+    "page": 166
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.51 useNormalStyleForList (Do Not Automatically Apply List Paragraph Style To Bulleted/Numbered Text)",
+    "page": 167
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.52 usePrinterMetrics (Use Printer Metrics To Display Documents)",
+    "page": 168
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.53 useSingleBorderforContiguousCells (Use Simplified Rules For Table Border Conflicts)",
+    "page": 169
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.54 useWord2002TableStyleRules (Incorrectly Display Top Border of Conditional Columns)",
+    "page": 170
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.55 useWord97LineBreakRules (Use Incorrect Inter-Character Spacing Rules)",
+    "page": 172
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.56 wpJustification (Fit To Expanded Width When Performing Full Justification)",
+    "page": 174
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.57 wpSpaceWidth (Use Specific Space Width)",
+    "page": 175
+  },
+  {
+    "level": 3,
+    "title": "14.8.3.58 wrapTrailSpaces (Line Wrap Trailing Spaces)",
+    "page": 175
+  },
+  {
+    "level": 2,
+    "title": "14.8.4 Web Page Settings",
+    "page": 176
+  },
+  {
+    "level": 3,
+    "title": "14.8.4.1 relyOnVML (Utilize VML When Saving as Web Page)",
+    "page": 176
+  },
+  {
+    "level": 1,
+    "title": "14.9 Miscellaneous Topics",
+    "page": 177
+  },
+  {
+    "level": 2,
+    "title": "14.9.1 Text Box Content",
+    "page": 177
+  },
+  {
+    "level": 3,
+    "title": "14.9.1.1 txbxContent (Rich Text Box Content Container)",
+    "page": 177
+  },
+  {
+    "level": 1,
+    "title": "14.10 Fields and Hyperlinks",
+    "page": 179
+  },
+  {
+    "level": 2,
+    "title": "14.10.1 Syntax",
+    "page": 179
+  },
+  {
+    "level": 2,
+    "title": "14.10.2 Legacy language references",
+    "page": 180
+  },
+  {
+    "level": 2,
+    "title": "14.10.3 Use of DOS File Paths",
+    "page": 187
+  },
+  {
+    "level": 2,
+    "title": "14.10.4 Field definitions",
+    "page": 187
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.1 AUTONUM",
+    "page": 187
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.2 AUTONUMLGL",
+    "page": 188
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.3 AUTONUMOUT",
+    "page": 189
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.4 BARCODE",
+    "page": 190
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.5 BIDIOUTLINE",
+    "page": 192
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.6 EQ",
+    "page": 192
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.7 INFO",
+    "page": 195
+  },
+  {
+    "level": 3,
+    "title": "14.10.4.8 QUOTE",
+    "page": 196
+  },
+  {
+    "level": 2,
+    "title": "14.10.5 fldData (Custom Field Data)",
+    "page": 196
+  },
+  {
+    "level": 2,
+    "title": "14.10.6 fldData (Custom Field Data)",
+    "page": 197
+  },
+  {
+    "level": 2,
+    "title": "14.10.7 hyperlink (Hyperlink) (Part 1, §17.16.22)",
+    "page": 198
+  },
+  {
+    "level": 1,
+    "title": "14.11 Simple Types",
+    "page": 198
+  },
+  {
+    "level": 2,
+    "title": "14.11.1 Additional member types for the union in ST_DecimalNumberOrPercent (Part 1, §17.18.11)",
+    "page": 198
+  },
+  {
+    "level": 2,
+    "title": "14.11.2 Additional enumeration values for ST_Jc (Part 1, §17.18.44)",
+    "page": 198
+  },
+  {
+    "level": 2,
+    "title": "14.11.3 Additional enumeration values for ST_JcTable (Part 1, §17.18.45)",
+    "page": 198
+  },
+  {
+    "level": 2,
+    "title": "14.11.4 Additional enumeration values for ST_NumberFormat (Part 1, §17.18.59)",
+    "page": 199
+  },
+  {
+    "level": 2,
+    "title": "14.11.5 Additional enumeration values for ST_StyleSort (Part 1, §17.18.82)",
+    "page": 199
+  },
+  {
+    "level": 2,
+    "title": "14.11.6 Additional enumeration values for ST_TabJc (Part 1, §17.18.84)",
+    "page": 200
+  },
+  {
+    "level": 2,
+    "title": "14.11.7 Additional enumeration values for ST_TextDirection (Part 1, §17.18.93)",
+    "page": 200
+  },
+  {
+    "level": 2,
+    "title": "14.11.8 Additional member types for the union in ST_TextScale (Part 1, §17.18.95)",
+    "page": 200
+  },
+  {
+    "level": 2,
+    "title": "14.11.9 ST_Cnf (Conditional Formatting Bitmask)",
+    "page": 201
+  },
+  {
+    "level": 2,
+    "title": "14.11.10 ST_UnqualifiedPercentage (Percentage Value Without Percent Sign)",
+    "page": 202
+  },
+  {
+    "level": 2,
+    "title": "14.11.11 ST_TextScaleDecimal (Text Expansion/Compression Percentage)",
+    "page": 202
+  },
+  {
+    "level": 2,
+    "title": "14.11.12 Changed enumeration value for ST_BrType (Part 1, §17.18.4)",
+    "page": 203
+  },
+  {
+    "level": 1,
+    "title": "14.12 Changed attributes",
+    "page": 203
+  },
+  {
+    "level": 2,
+    "title": "14.12.1 General",
+    "page": 203
+  },
+  {
+    "level": 2,
+    "title": "14.12.2 Changed attribute for contentPart element (Part 1, §17.3.3.2)",
+    "page": 203
+  },
+  {
+    "level": 2,
+    "title": "14.12.3 Changed attribute for control element (Part 1, §17.3.3.3)",
+    "page": 205
+  },
+  {
+    "level": 2,
+    "title": "14.12.4 Changed attribute for movie element (Part 1, §17.3.3.17)",
+    "page": 205
+  },
+  {
+    "level": 2,
+    "title": "14.12.5 Changed attribute for objectEmbed element (Part 1, §17.3.3.20)",
+    "page": 206
+  },
+  {
+    "level": 2,
+    "title": "14.12.6 Changed attribute for objectLink element (Part 1, §17.3.3.21)",
+    "page": 207
+  },
+  {
+    "level": 2,
+    "title": "14.12.7 Changed attribute for bottom element (Part 1, §17.6.2)",
+    "page": 207
+  },
+  {
+    "level": 2,
+    "title": "14.12.8 Changed attribute for left element (Part 1, §17.6.7)",
+    "page": 208
+  },
+  {
+    "level": 2,
+    "title": "14.12.9 Changed attribute for printerSettings element (Part 1, §17.6.14)",
+    "page": 209
+  },
+  {
+    "level": 2,
+    "title": "14.12.10 Changed attribute for right element (Part 1, §17.6.15)",
+    "page": 210
+  },
+  {
+    "level": 2,
+    "title": "14.12.11 Changed attribute for top element (Part 1, §17.6.21)",
+    "page": 210
+  },
+  {
+    "level": 2,
+    "title": "14.12.12 Changed attribute for embedBold element (Part 1, §17.8.3.3)",
+    "page": 212
+  },
+  {
+    "level": 2,
+    "title": "14.12.13 Changed attribute for embedBoldItalic element (Part 1, §17.8.3.4)",
+    "page": 212
+  },
+  {
+    "level": 2,
+    "title": "14.12.14 Changed attribute for embedItalic element (Part 1, §17.8.3.5)",
+    "page": 213
+  },
+  {
+    "level": 2,
+    "title": "14.12.15 Changed attribute for embedRegular element (Part 1, §17.8.3.6)",
+    "page": 214
+  },
+  {
+    "level": 2,
+    "title": "14.12.16 Changed attribute for footerReference element (Part 1, §17.10.2)",
+    "page": 214
+  },
+  {
+    "level": 2,
+    "title": "14.12.17 Changed attribute for headerReference element (Part 1, §17.10.5)",
+    "page": 215
+  },
+  {
+    "level": 2,
+    "title": "14.12.18 Changed attribute for dataSource element (Part 1, §17.14.9)",
+    "page": 216
+  },
+  {
+    "level": 2,
+    "title": "14.12.19 Changed attribute for headerSource element (Part 1, §17.14.16)",
+    "page": 216
+  },
+  {
+    "level": 2,
+    "title": "14.12.20 Changed attribute for recipientData element (Part 1, §17.14.28)",
+    "page": 217
+  },
+  {
+    "level": 2,
+    "title": "14.12.21 Changed attribute for src element (Part 1, §17.14.30)",
+    "page": 218
+  },
+  {
+    "level": 2,
+    "title": "14.12.22 Changed attribute for attachedTemplate element (Part 1, §17.15.1.6)",
+    "page": 218
+  },
+  {
+    "level": 2,
+    "title": "14.12.23 Changed attribute for saveThroughXslt element (Part 1, §17.15.1.76)",
+    "page": 219
+  },
+  {
+    "level": 2,
+    "title": "14.12.24 Changed attribute for longDesc element (Part 1, §17.15.2.23)",
+    "page": 219
+  },
+  {
+    "level": 2,
+    "title": "14.12.25 Changed attribute for sourceFileName element (Part 1, §17.15.2.39)",
+    "page": 220
+  },
+  {
+    "level": 2,
+    "title": "14.12.26 Changed attribute for subDoc element (Part 1, §17.17.1.1)",
+    "page": 221
+  },
+  {
+    "level": 2,
+    "title": "14.12.27 Changed attribute for altChunk element (Part 1, §17.17.2.1)",
+    "page": 221
+  },
+  {
+    "level": 0,
+    "title": "15. SpreadsheetML Reference Material",
+    "page": 223
+  },
+  {
+    "level": 1,
+    "title": "15.1 General",
+    "page": 223
+  },
+  {
+    "level": 1,
+    "title": "15.2 Table of Contents",
+    "page": 223
+  },
+  {
+    "level": 1,
+    "title": "15.3 Workbook",
+    "page": 224
+  },
+  {
+    "level": 2,
+    "title": "15.3.1 Additional attribute for fileSharing element (Part 1, §18.2.12)",
+    "page": 224
+  },
+  {
+    "level": 2,
+    "title": "15.3.2 Additional attribute for webPublishing element (Part 1, §18.2.24)",
+    "page": 224
+  },
+  {
+    "level": 2,
+    "title": "15.3.3 Additional attributes for workbookProtection element (Part 1, §18.2.29)",
+    "page": 225
+  },
+  {
+    "level": 2,
+    "title": "15.3.4 Modified content for Date Conversion for Serial Date-Times (Part 1, §18.17.4.1)",
+    "page": 231
+  },
+  {
+    "level": 1,
+    "title": "15.4 Worksheets",
+    "page": 232
+  },
+  {
+    "level": 2,
+    "title": "15.4.1 Worksheets",
+    "page": 232
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.1 legacyDrawing (Legacy Drawing Reference)",
+    "page": 232
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.2 legacyDrawingHF (Legacy Drawing Reference in Header Footer)",
+    "page": 232
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.3 Additional attribute for dataConsolidate element (Part 1, §18.3.1.29)",
+    "page": 233
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.4 Additional attributes for protectedRange element (Part 1, §18.3.1.71)",
+    "page": 233
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.5 Additional attribute for sheetProtection element (Part 1, §18.3.1.84)",
+    "page": 234
+  },
+  {
+    "level": 3,
+    "title": "15.4.1.6 Additional attribute for sheetProtection element (Part 1, §18.3.1.85)",
+    "page": 234
+  },
+  {
+    "level": 2,
+    "title": "15.4.2 AutoFilter Settings",
+    "page": 234
+  },
+  {
+    "level": 3,
+    "title": "15.4.2.1 Attributes with modified descriptions for dynamicFilter element (Part 1, §18.3.2.5)",
+    "page": 234
+  },
+  {
+    "level": 1,
+    "title": "15.5 Styles",
+    "page": 235
+  },
+  {
+    "level": 2,
+    "title": "15.5.1 left (Leading Edge Border)",
+    "page": 235
+  },
+  {
+    "level": 2,
+    "title": "15.5.2 right (Trailing Edge Border)",
+    "page": 236
+  },
+  {
+    "level": 1,
+    "title": "15.6 Pivot Tables",
+    "page": 236
+  },
+  {
+    "level": 2,
+    "title": "15.6.1 Pivot Tables",
+    "page": 236
+  },
+  {
+    "level": 3,
+    "title": "15.6.1.1 Additional attribute for pivotCacheDefinition element (Part 1, §18.10.1.67)",
+    "page": 236
+  },
+  {
+    "level": 1,
+    "title": "15.7 External Data Connections",
+    "page": 236
+  },
+  {
+    "level": 2,
+    "title": "15.7.1 Additional attribute for textPr element (Part 1, §18.13.12)",
+    "page": 236
+  },
+  {
+    "level": 1,
+    "title": "15.8 Simple Types",
+    "page": 237
+  },
+  {
+    "level": 2,
+    "title": "15.8.1 Additional enumeration values for ST_PivotAreaType (Part 1, §18.18.58)",
+    "page": 237
+  },
+  {
+    "level": 2,
+    "title": "15.8.2 ST_UnsignedShortHex (Unsigned Short Hex)",
+    "page": 237
+  },
+  {
+    "level": 2,
+    "title": "15.8.3 Removed enumeration values for ST_CellType (Part 1, §18.18.11)",
+    "page": 237
+  },
+  {
+    "level": 1,
+    "title": "15.9 Formulas",
+    "page": 237
+  },
+  {
+    "level": 2,
+    "title": "15.9.1 Attribute synonym for c element (Part 1, §18.6.1)",
+    "page": 237
+  },
+  {
+    "level": 2,
+    "title": "15.9.2 Additional representation for dates and times (Part 1, §18.17.4 )",
+    "page": 238
+  },
+  {
+    "level": 1,
+    "title": "15.10 Changed attributes",
+    "page": 238
+  },
+  {
+    "level": 2,
+    "title": "15.10.1 Changed attribute for externalReference element (Part 1, §18.2.8)",
+    "page": 238
+  },
+  {
+    "level": 2,
+    "title": "15.10.2 Changed attribute for pivotCache element (Part 1, §18.2.17)",
+    "page": 238
+  },
+  {
+    "level": 2,
+    "title": "15.10.3 Changed attribute for sheet element (Part 1, §18.2.19)",
+    "page": 238
+  },
+  {
+    "level": 2,
+    "title": "15.10.4 Changed attribute for control element (Part 1, §18.3.1.19)",
+    "page": 239
+  },
+  {
+    "level": 2,
+    "title": "15.10.5 Changed attribute for controlPr element (Part 1, §18.3.1.20)",
+    "page": 239
+  },
+  {
+    "level": 2,
+    "title": "15.10.6 Changed attribute for customPr element (Part 1, §18.3.1.22)",
+    "page": 239
+  },
+  {
+    "level": 2,
+    "title": "15.10.7 Changed attribute for dataRef element (Part 1, §18.3.1.30)",
+    "page": 240
+  },
+  {
+    "level": 2,
+    "title": "15.10.8 Changed attribute for drawing element (Part 1, §18.3.1.36)",
+    "page": 240
+  },
+  {
+    "level": 2,
+    "title": "15.10.9 Changed attribute for drawingHF element (Part 1, §18.3.1.37)",
+    "page": 240
+  },
+  {
+    "level": 2,
+    "title": "15.10.10 Changed attribute for hyperlink element (Part 1, §18.3.1.47)",
+    "page": 240
+  },
+  {
+    "level": 2,
+    "title": "15.10.11 Changed attribute for objectPr element (Part 1, §18.3.1.56)",
+    "page": 241
+  },
+  {
+    "level": 2,
+    "title": "15.10.12 Changed attribute for oleObject element (Part 1, §18.3.1.59)",
+    "page": 241
+  },
+  {
+    "level": 2,
+    "title": "15.10.13 Changed attribute for pageSetup element (Part 1, §18.3.1.63)",
+    "page": 241
+  },
+  {
+    "level": 2,
+    "title": "15.10.14 Changed attribute for pageSetup element (Part 1, §18.3.1.64)",
+    "page": 241
+  },
+  {
+    "level": 2,
+    "title": "15.10.15 Changed attribute for picture element (Part 1, §18.3.1.67)",
+    "page": 242
+  },
+  {
+    "level": 2,
+    "title": "15.10.16 Changed attribute for pivotSelection element (Part 1, §18.3.1.69)",
+    "page": 242
+  },
+  {
+    "level": 2,
+    "title": "15.10.17 Changed attribute for tablePart element (Part 1, §18.3.1.94)",
+    "page": 242
+  },
+  {
+    "level": 2,
+    "title": "15.10.18 Changed attribute for pivotCacheDefinition element (Part 1, §18.10.1.67)",
+    "page": 242
+  },
+  {
+    "level": 2,
+    "title": "15.10.19 Changed attribute for rangeSet element (Part 1, §18.10.1.79)",
+    "page": 242
+  },
+  {
+    "level": 2,
+    "title": "15.10.20 Changed attribute for worksheetSource element (Part 1, §18.10.1.95)",
+    "page": 243
+  },
+  {
+    "level": 2,
+    "title": "15.10.21 Changed attribute for header element (Part 1, §18.11.1.1)",
+    "page": 243
+  },
+  {
+    "level": 2,
+    "title": "15.10.22 Changed attribute for externalBook element (Part 1, §18.14.7)",
+    "page": 243
+  },
+  {
+    "level": 2,
+    "title": "15.10.23 Changed attribute for oleLink element (Part 1, §18.14.11)",
+    "page": 243
+  },
+  {
+    "level": 0,
+    "title": "16. PresentationML Reference Material",
+    "page": 245
+  },
+  {
+    "level": 1,
+    "title": "16.1 General",
+    "page": 245
+  },
+  {
+    "level": 1,
+    "title": "16.2 Table of Contents",
+    "page": 245
+  },
+  {
+    "level": 1,
+    "title": "16.3 Presentation",
+    "page": 246
+  },
+  {
+    "level": 2,
+    "title": "16.3.1 Presentation Properties",
+    "page": 246
+  },
+  {
+    "level": 3,
+    "title": "16.3.1.1 htmlPubPr (HTML Publishing Properties)",
+    "page": 246
+  },
+  {
+    "level": 3,
+    "title": "16.3.1.2 webPr (Web Properties)",
+    "page": 247
+  },
+  {
+    "level": 3,
+    "title": "16.3.1.3 Additional attributes for modifyVerifier element (Part 1, §19.2.1.19)",
+    "page": 248
+  },
+  {
+    "level": 1,
+    "title": "16.4 Slides",
+    "page": 254
+  },
+  {
+    "level": 2,
+    "title": "16.4.1 Embedded Objects",
+    "page": 254
+  },
+  {
+    "level": 3,
+    "title": "16.4.1.1 Additional attribute for control element (Part 1, §19.3.2.1)",
+    "page": 254
+  },
+  {
+    "level": 3,
+    "title": "16.4.1.2 Additional attribute for oleObj element (Part 1, §19.3.2.4)",
+    "page": 255
+  },
+  {
+    "level": 1,
+    "title": "16.5 Simple Types",
+    "page": 255
+  },
+  {
+    "level": 2,
+    "title": "16.5.1 ST_WebColorType (HTML Slide Navigation Control Colors)",
+    "page": 255
+  },
+  {
+    "level": 2,
+    "title": "16.5.2 ST_WebEncoding (Web Encoding)",
+    "page": 255
+  },
+  {
+    "level": 2,
+    "title": "16.5.3 ST_WebScreenSize (HTML/Web Screen Size Target)",
+    "page": 256
+  },
+  {
+    "level": 1,
+    "title": "16.6 Changed attributes",
+    "page": 256
+  },
+  {
+    "level": 2,
+    "title": "16.6.1 Changed attribute for bold element (Part 1, §19.2.1.1)",
+    "page": 256
+  },
+  {
+    "level": 2,
+    "title": "16.6.2 Changed attribute for boldItalic element (Part 1, §19.2.1.2)",
+    "page": 257
+  },
+  {
+    "level": 2,
+    "title": "16.6.3 Changed attribute for handoutMasterId element (Part 1, §19.2.1.14)",
+    "page": 257
+  },
+  {
+    "level": 2,
+    "title": "16.6.4 Changed attribute for italic element (Part 1, §19.2.1.16)",
+    "page": 257
+  },
+  {
+    "level": 2,
+    "title": "16.6.5 Changed attribute for notesMasterId element (Part 1, §19.2.1.20)",
+    "page": 258
+  },
+  {
+    "level": 2,
+    "title": "16.6.6 Changed attribute for notesSz element (Part 1, §19.2.1.22)",
+    "page": 258
+  },
+  {
+    "level": 2,
+    "title": "16.6.7 Changed attribute for regular element (Part 1, §19.2.1.29)",
+    "page": 259
+  },
+  {
+    "level": 2,
+    "title": "16.6.8 Changed attribute for sld element (Part 1, §19.2.1.31)",
+    "page": 259
+  },
+  {
+    "level": 2,
+    "title": "16.6.9 Changed attribute for sldId element (Part 1, §19.2.1.33)",
+    "page": 259
+  },
+  {
+    "level": 2,
+    "title": "16.6.10 Changed attribute for sldMasterId element (Part 1, §19.2.1.36)",
+    "page": 259
+  },
+  {
+    "level": 2,
+    "title": "16.6.11 Changed attribute for SmartTags element (Part 1, §19.2.1.40)",
+    "page": 260
+  },
+  {
+    "level": 2,
+    "title": "16.6.12 Changed attribute for gridSpacing element (Part 1, §19.2.2.3)",
+    "page": 260
+  },
+  {
+    "level": 2,
+    "title": "16.6.13 Changed attribute for origin element (Part 1, §19.2.2.9)",
+    "page": 261
+  },
+  {
+    "level": 2,
+    "title": "16.6.14 Changed attribute for sld element (Part 1, §19.2.2.14)",
+    "page": 261
+  },
+  {
+    "level": 2,
+    "title": "16.6.15 Changed attribute for bgRef element (Part 1, §19.3.1.3)",
+    "page": 262
+  },
+  {
+    "level": 2,
+    "title": "16.6.16 Changed attribute for blipFill element (Part 1, §19.3.1.4)",
+    "page": 262
+  },
+  {
+    "level": 2,
+    "title": "16.6.17 Changed attribute for clrMap element (Part 1, §19.3.1.6)",
+    "page": 262
+  },
+  {
+    "level": 2,
+    "title": "16.6.18 Changed attribute for cNvPicPr element (Part 1, §19.3.1.11)",
+    "page": 264
+  },
+  {
+    "level": 2,
+    "title": "16.6.19 Changed attribute for cNvPr element (Part 1, §19.3.1.12)",
+    "page": 264
+  },
+  {
+    "level": 2,
+    "title": "16.6.20 Changed attribute for cNvSpPr element (Part 1, §19.3.1.13)",
+    "page": 266
+  },
+  {
+    "level": 2,
+    "title": "16.6.21 Changed attribute for contentPart element (Part 1, §19.3.1.14)",
+    "page": 266
+  },
+  {
+    "level": 2,
+    "title": "16.6.22 Changed attribute for custData element (Part 1, §19.3.1.17)",
+    "page": 267
+  },
+  {
+    "level": 2,
+    "title": "16.6.23 Changed attribute for grpSpPr element (Part 1, §19.3.1.23)",
+    "page": 267
+  },
+  {
+    "level": 2,
+    "title": "16.6.24 Changed attribute for sldLayoutId element (Part 1, §19.3.1.40)",
+    "page": 267
+  },
+  {
+    "level": 2,
+    "title": "16.6.25 Changed attribute for spPr element (Part 1, §19.3.1.44)",
+    "page": 267
+  },
+  {
+    "level": 2,
+    "title": "16.6.26 Changed attribute for tags element (Part 1, §19.3.1.47)",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "16.6.27 Changed attribute for xfrm element (Part 1, §19.3.1.53)",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "16.6.28 Changed attribute for control element (Part 1, §19.3.2.1)",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "16.6.29 Changed attribute for oleObj element (Part 1, §19.3.2.4)",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "16.6.30 Changed attribute for pos element (Part 1, §19.4.5)",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "16.6.31 Changed attribute for snd element (Part 1, §19.5.68)",
+    "page": 270
+  },
+  {
+    "level": 2,
+    "title": "16.6.32 Changed attribute for sndTgt element (Part 1, §19.5.70)",
+    "page": 270
+  },
+  {
+    "level": 0,
+    "title": "17. DrawingML - Framework Reference Material",
+    "page": 272
+  },
+  {
+    "level": 1,
+    "title": "17.1 General",
+    "page": 272
+  },
+  {
+    "level": 1,
+    "title": "17.2 DrawingML - Main",
+    "page": 272
+  },
+  {
+    "level": 2,
+    "title": "17.2.1 Table of Contents",
+    "page": 272
+  },
+  {
+    "level": 2,
+    "title": "17.2.2 Simple Types",
+    "page": 272
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.1 Additional member types for the union in ST_FixedPercentage (Part 1, §20.1.10.24)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.2 Additional member types for the union in ST_Percentage (Part 1, §20.1.10.40)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.3 Additional member types for the union in ST_PositiveFixedPercentage (Part 1, §20.1.10.45)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.4 Additional member types for the union in ST_PositivePercentage (Part 1, §20.1.10.46)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.5 Additional member types for the union in ST_TextFontScalePercentOrPercentString (Part 1, §20.1.10.67)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.6 Additional member types for the union in ST_TextSpacingPercentOrPercentString (Part 1, §20.1.10.77)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.7 ST_FixedPercentageDecimal (Fixed Percentage)",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.8 ST_PositiveFixedPercentageDecimal (Positive Fixed Percentage)",
+    "page": 274
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.9 ST_PositivePercentageDecimal (Positive Percentage as Decimal Number)",
+    "page": 274
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.10 ST_TextFontScalePercent (Text Font Scale Percentage)",
+    "page": 274
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.11 ST_TextSpacingPercent (Text Spacing Percent)",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.12 ST_PercentageDecimal (Percentage as Decimal Number)",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.13 Additional member types for the union in ST_PrSetCustVal (Part 1, §21.4.7.66)",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.14 ST_TextBulletSizeDecimal (Bullet Size Percentage)",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "17.2.2.15 Additional member types for the union in ST_TextBulletSize (Part 1, §20.1.10.86)",
+    "page": 276
+  },
+  {
+    "level": 1,
+    "title": "17.3 DrawingML - Legacy Compatibility",
+    "page": 276
+  },
+  {
+    "level": 2,
+    "title": "17.3.1 Table of Contents",
+    "page": 276
+  },
+  {
+    "level": 2,
+    "title": "17.3.2 Basics",
+    "page": 277
+  },
+  {
+    "level": 3,
+    "title": "17.3.2.1 legacyDrawing (Legacy Drawing Object)",
+    "page": 277
+  },
+  {
+    "level": 1,
+    "title": "17.4 Changed attributes",
+    "page": 277
+  },
+  {
+    "level": 2,
+    "title": "17.4.1 Changed attribute for hlinkHover element (Part 1, §20.1.2.2.23)",
+    "page": 278
+  },
+  {
+    "level": 2,
+    "title": "17.4.2 Changed attribute for snd element (Part 1, §20.1.2.2.32)",
+    "page": 278
+  },
+  {
+    "level": 2,
+    "title": "17.4.3 Changed attribute for audioFile element (Part 1, §20.1.3.2)",
+    "page": 278
+  },
+  {
+    "level": 2,
+    "title": "17.4.4 Changed attribute for quickTimeFile element (Part 1, §20.1.3.4)",
+    "page": 279
+  },
+  {
+    "level": 2,
+    "title": "17.4.5 Changed attribute for videoFile element (Part 1, §20.1.3.6)",
+    "page": 279
+  },
+  {
+    "level": 2,
+    "title": "17.4.6 Changed attribute for wavAudioFile element (Part 1, §20.1.3.7)",
+    "page": 279
+  },
+  {
+    "level": 2,
+    "title": "17.4.7 Changed attribute for blip element (Part 1, §20.1.8.13)",
+    "page": 279
+  },
+  {
+    "level": 2,
+    "title": "17.4.8 Changed attribute for blipFill element (Part 1, §20.2.2.1)",
+    "page": 280
+  },
+  {
+    "level": 2,
+    "title": "17.4.9 Changed attribute for cNvPicPr element (Part 1, §20.2.2.2)",
+    "page": 280
+  },
+  {
+    "level": 2,
+    "title": "17.4.10 Changed attribute for cNvPr element (Part 1, §20.2.2.3)",
+    "page": 281
+  },
+  {
+    "level": 2,
+    "title": "17.4.11 Changed attribute for spPr element (Part 1, §20.2.2.6)",
+    "page": 282
+  },
+  {
+    "level": 2,
+    "title": "17.4.12 Changed attribute for docPr element (Part 1, §20.4.2.5)",
+    "page": 283
+  },
+  {
+    "level": 2,
+    "title": "17.4.13 Changed attribute for extent element (Part 1, §20.4.2.7)",
+    "page": 284
+  },
+  {
+    "level": 2,
+    "title": "17.4.14 Changed attribute for lineTo element (Part 1, §20.4.2.9)",
+    "page": 285
+  },
+  {
+    "level": 2,
+    "title": "17.4.15 Changed attribute for simplePos element (Part 1, §20.4.2.13)",
+    "page": 285
+  },
+  {
+    "level": 2,
+    "title": "17.4.16 Changed attribute for start element (Part 1, §20.4.2.14)",
+    "page": 286
+  },
+  {
+    "level": 2,
+    "title": "17.4.17 Changed attribute for blipFill element (Part 1, §20.5.2.2)",
+    "page": 287
+  },
+  {
+    "level": 2,
+    "title": "17.4.18 Changed attribute for cNvPicPr element (Part 1, §20.5.2.7)",
+    "page": 287
+  },
+  {
+    "level": 2,
+    "title": "17.4.19 Changed attribute for cNvPr element (Part 1, §20.5.2.8)",
+    "page": 288
+  },
+  {
+    "level": 2,
+    "title": "17.4.20 Changed attribute for cNvSpPr element (Part 1, §20.5.2.9)",
+    "page": 289
+  },
+  {
+    "level": 2,
+    "title": "17.4.21 Changed attribute for contentPart element (Part 1, §20.5.2.12)",
+    "page": 290
+  },
+  {
+    "level": 2,
+    "title": "17.4.22 Changed attribute for ext element (Part 1, §20.5.2.14)",
+    "page": 290
+  },
+  {
+    "level": 2,
+    "title": "17.4.23 Changed attribute for grpSpPr element (Part 1, §20.5.2.18)",
+    "page": 291
+  },
+  {
+    "level": 2,
+    "title": "17.4.24 Changed attribute for pos element (Part 1, §20.5.2.26)",
+    "page": 291
+  },
+  {
+    "level": 2,
+    "title": "17.4.25 Changed attribute for spPr element (Part 1, §20.5.2.30)",
+    "page": 292
+  },
+  {
+    "level": 2,
+    "title": "17.4.26 Changed attribute for xfrm element (Part 1, §20.5.2.36)",
+    "page": 292
+  },
+  {
+    "level": 0,
+    "title": "18. DrawingML - Components Reference Material",
+    "page": 294
+  },
+  {
+    "level": 1,
+    "title": "18.1 DrawingML - Charts",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "18.1.1 Table of Contents",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "18.1.2 Elements",
+    "page": 295
+  },
+  {
+    "level": 3,
+    "title": "18.1.2.1 legacyDrawingHF (Legacy Drawing for Headers and Footers)",
+    "page": 295
+  },
+  {
+    "level": 2,
+    "title": "18.1.3 Simple Types",
+    "page": 295
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.1 Additional member types for union in ST_DepthPercent",
+    "page": 295
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.2 ST_DepthPercentUShort (Depth Percent UnsignedShort) (Part 1, §21.2.3.9)",
+    "page": 295
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.3 Additional member types for union in ST_HPercent (Part 1, §21.2.3.19)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.4 ST_HPercentUShort (Depth Percent UnsignedShort)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.5 Additional member types for union in ST_GapAmount (Part 1, §21.2.3.16)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.6 ST_GapAmountUShort (Gap Amount UnsignedShort)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.7 Additional member types for union in ST_SecondPieSize (Part 1, §21.2.3.41)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.8 ST_SecondPieSizeUShort (Second Pie Size UnsignedShort)",
+    "page": 296
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.9 Additional member types for union in ST_HoleSize (Part 1, §21.2.3.18)",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.10 ST_HoleSizeUByte (Hole Size UnsignedByte)",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.11 Additional member types for union in ST_LblOffset (Part 1, §21.2.3.23)",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.12 ST_LblOffsetUShort (Label Offset UnsignedShort)",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.13 Additional member types for union in ST_Overlap (Part 1, §21.2.3.31)",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.14 ST_OverlapByte (Overlap Byte)",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.15 Additional member types for union in ST_BubbleScale (Part 1, §21.2.3.5)",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.16 ST_BubbleScaleUInt (Bubble Scale UnsignedInt)",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "18.1.3.17 Additional member types for union in ST_Thickness (Part 1, §21.2.3.206)",
+    "page": 298
+  },
+  {
+    "level": 1,
+    "title": "18.2 Changed attributes",
+    "page": 298
+  },
+  {
+    "level": 2,
+    "title": "18.2.1 Changed attribute for hlinkClick element (Part 1, §21.1.2.3.5)",
+    "page": 298
+  },
+  {
+    "level": 2,
+    "title": "18.2.2 Changed attribute for hlinkMouseOver element (Part 1, §21.1.2.3.6)",
+    "page": 299
+  },
+  {
+    "level": 2,
+    "title": "18.2.3 Changed attribute for chart element (Part 1, §21.2.2.26)",
+    "page": 299
+  },
+  {
+    "level": 2,
+    "title": "18.2.4 Changed attribute for clrMapOvr element (Part 1, §21.2.2.30)",
+    "page": 299
+  },
+  {
+    "level": 2,
+    "title": "18.2.5 Changed attribute for externalData element (Part 1, §21.2.2.63)",
+    "page": 301
+  },
+  {
+    "level": 2,
+    "title": "18.2.6 Changed attribute for spPr element (Part 1, §21.2.2.197)",
+    "page": 301
+  },
+  {
+    "level": 2,
+    "title": "18.2.7 Changed attribute for userShapes element (Part 1, §21.2.2.221)",
+    "page": 302
+  },
+  {
+    "level": 2,
+    "title": "18.2.8 Changed attribute for blipFill element (Part 1, §21.3.2.2)",
+    "page": 302
+  },
+  {
+    "level": 2,
+    "title": "18.2.9 Changed attribute for cNvPicPr element (Part 1, §21.3.2.6)",
+    "page": 302
+  },
+  {
+    "level": 2,
+    "title": "18.2.10 Changed attribute for cNvPr element (Part 1, §21.3.2.7)",
+    "page": 303
+  },
+  {
+    "level": 2,
+    "title": "18.2.11 Changed attribute for cNvSpPr element (Part 1, §21.3.2.8)",
+    "page": 305
+  },
+  {
+    "level": 2,
+    "title": "18.2.12 Changed attribute for ext element (Part 1, §21.3.2.10)",
+    "page": 305
+  },
+  {
+    "level": 2,
+    "title": "18.2.13 Changed attribute for grpSpPr element (Part 1, §21.3.2.14)",
+    "page": 306
+  },
+  {
+    "level": 2,
+    "title": "18.2.14 Changed attribute for spPr element (Part 1, §21.3.2.23)",
+    "page": 306
+  },
+  {
+    "level": 2,
+    "title": "18.2.15 Changed attribute for xfrm element (Part 1, §21.3.2.28)",
+    "page": 307
+  },
+  {
+    "level": 2,
+    "title": "18.2.16 Changed attribute for relIds element (Part 1, §21.4.2.22)",
+    "page": 307
+  },
+  {
+    "level": 2,
+    "title": "18.2.17 Changed attribute for shape element (Part 1, §21.4.2.27)",
+    "page": 308
+  },
+  {
+    "level": 2,
+    "title": "18.2.18 Changed attribute for spPr element (Part 1, §21.4.3.7)",
+    "page": 309
+  },
+  {
+    "level": 2,
+    "title": "18.2.19 Changed attribute for sp3d element (Part 1, §21.4.5.6)",
+    "page": 309
+  },
+  {
+    "level": 0,
+    "title": "19. VML Reference Material",
+    "page": 312
+  },
+  {
+    "level": 1,
+    "title": "19.1 VML",
+    "page": 312
+  },
+  {
+    "level": 2,
+    "title": "19.1.1 Table of Contents",
+    "page": 313
+  },
+  {
+    "level": 2,
+    "title": "19.1.2 Elements",
+    "page": 314
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.1 arc (Arc Segment)",
+    "page": 314
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.2 background (Document Background)",
+    "page": 341
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.3 curve (Bezier Curve)",
+    "page": 344
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.4 f (Single Formula)",
+    "page": 371
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.5 fill (Shape Fill Properties)",
+    "page": 375
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.6 formulas (Set of Formulas)",
+    "page": 386
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.7 group (Shape Group)",
+    "page": 387
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.8 h (Shape Handle)",
+    "page": 409
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.9 handles (Set of Handles)",
+    "page": 413
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.10 image (Image File)",
+    "page": 413
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.11 imagedata (Image Data)",
+    "page": 443
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.12 line (Line)",
+    "page": 451
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.13 oval (Oval)",
+    "page": 478
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.14 path (Shape Path)",
+    "page": 504
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.15 polyline (Multiple Path Line)",
+    "page": 512
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.16 rect (Rectangle)",
+    "page": 539
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.17 roundrect (Rounded Rectangle)",
+    "page": 565
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.18 shadow (Shadow Effect)",
+    "page": 591
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.19 shape (Shape Definition)",
+    "page": 597
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.20 shapetype (Shape Template)",
+    "page": 625
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.21 stroke (Line Stroke Settings)",
+    "page": 653
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.22 textbox (Text Box)",
+    "page": 666
+  },
+  {
+    "level": 3,
+    "title": "19.1.2.23 textpath (Text Layout Path)",
+    "page": 677
+  },
+  {
+    "level": 2,
+    "title": "19.1.3 Simple Types",
+    "page": 690
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.1 ST_EditAs (Shape Grouping Types)",
+    "page": 690
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.2 ST_Ext (VML Extension Handling Behaviors)",
+    "page": 690
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.3 ST_FillMethod (Gradient Fill Computation Type)",
+    "page": 691
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.4 ST_FillType (Shape Fill Type)",
+    "page": 692
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.5 ST_ImageAspect (Image Scaling Behavior)",
+    "page": 692
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.6 ST_ShadowType (Shadow Type)",
+    "page": 693
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.7 ST_StrokeArrowLength (Stroke Arrowhead Length)",
+    "page": 693
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.8 ST_StrokeArrowType (Stroke Arrowhead Type)",
+    "page": 694
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.9 ST_StrokeArrowWidth (Stroke Arrowhead Width)",
+    "page": 694
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.10 ST_StrokeEndCap (Stroke End Cap Type)",
+    "page": 695
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.11 ST_StrokeJoinStyle (Line Join Type)",
+    "page": 695
+  },
+  {
+    "level": 3,
+    "title": "19.1.3.12 ST_StrokeLineStyle (Stroke Line Style)",
+    "page": 696
+  },
+  {
+    "level": 1,
+    "title": "19.2 VML - Office Drawing",
+    "page": 697
+  },
+  {
+    "level": 2,
+    "title": "19.2.1 Table of Contents",
+    "page": 698
+  },
+  {
+    "level": 2,
+    "title": "19.2.2 Elements",
+    "page": 699
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.1 bottom (Text Box Bottom Stroke)",
+    "page": 699
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.2 callout (Callout)",
+    "page": 711
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.3 clippath (Shape Clipping Path)",
+    "page": 713
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.4 colormenu (UI Default Colors)",
+    "page": 716
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.5 colormru (Most Recently Used Colors)",
+    "page": 717
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.6 column (Text Box Interior Stroke)",
+    "page": 718
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.7 complex (Complex)",
+    "page": 730
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.8 diagram (VML Diagram)",
+    "page": 731
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.9 entry (Regroup Entry)",
+    "page": 735
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.10 equationxml (Storage for Alternate Math Content)",
+    "page": 735
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.11 extrusion (3D Extrusion)",
+    "page": 736
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.12 FieldCodes (WordprocessingML Field Switches)",
+    "page": 751
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.13 fill (Shape Fill Extended Properties)",
+    "page": 752
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.14 idmap (Shape ID Map)",
+    "page": 752
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.15 ink (Ink)",
+    "page": 753
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.16 left (Text Box Left Stroke)",
+    "page": 755
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.17 LinkType (Embedded Object Alternate Image Request)",
+    "page": 767
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.18 lock (Shape Protections)",
+    "page": 767
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.19 LockedField (Embedded Object Cannot Be Refreshed)",
+    "page": 769
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.20 OLEObject (Embedded OLE Object)",
+    "page": 769
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.21 proxy (Shape Reference)",
+    "page": 772
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.22 r (Rule)",
+    "page": 773
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.23 regrouptable (Shape Grouping History)",
+    "page": 774
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.24 rel (Diagram Relationship)",
+    "page": 775
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.25 relationtable (Diagram Relationship Table)",
+    "page": 777
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.26 right (Text Box Right Stroke)",
+    "page": 778
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.27 rules (Rule Set)",
+    "page": 790
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.28 shapedefaults (New Shape Defaults)",
+    "page": 791
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.29 shapelayout (Shape Layout Properties)",
+    "page": 802
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.30 signatureline (Digital Signature Line)",
+    "page": 802
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.31 skew (Skew Transform)",
+    "page": 806
+  },
+  {
+    "level": 3,
+    "title": "19.2.2.32 top (Text Box Top Stroke)",
+    "page": 808
+  },
+  {
+    "level": 2,
+    "title": "19.2.3 Simple Types",
+    "page": 820
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.1 ST_AlternateMathContentType (Alternate Math Content Type)",
+    "page": 820
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.2 ST_Angle (Callout Angles)",
+    "page": 820
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.3 ST_BWMode (Black And White Modes)",
+    "page": 820
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.4 ST_CalloutDrop (Callout Drop Location)",
+    "page": 821
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.5 ST_CalloutPlacement (Callout Placement)",
+    "page": 821
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.6 ST_ColorMode (Extrusion Color Types)",
+    "page": 822
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.7 ST_ConnectorType (Connector Type)",
+    "page": 822
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.8 ST_ConnectType (Connection Locations Type)",
+    "page": 822
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.9 ST_ContentType (Content Type)",
+    "page": 823
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.10 ST_DiagramLayout (Diagram Layout Type)",
+    "page": 823
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.11 ST_ExtrusionPlane (Extrusion Planes)",
+    "page": 824
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.12 ST_ExtrusionRender (Extrusion Rendering Types)",
+    "page": 824
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.13 ST_ExtrusionType (Extrusion Type)",
+    "page": 824
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.14 ST_FillType (Shape Fill Type)",
+    "page": 825
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.15 ST_How (Alignment Type)",
+    "page": 826
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.16 ST_HrAlign (Alignment Type)",
+    "page": 827
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.17 ST_InsetMode (Inset Margin Type)",
+    "page": 827
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.18 ST_OLEDrawAspect ( Embedded Object Representations)",
+    "page": 827
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.19 ST_OLELinkType (Embedded Object Alternate Image Request Types)",
+    "page": 828
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.20 ST_OLEType ( Embedded Connection Type)",
+    "page": 828
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.21 ST_OLEUpdateMode ( Embedded Object Update Method Type)",
+    "page": 828
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.22 ST_RType (Rule Type)",
+    "page": 829
+  },
+  {
+    "level": 3,
+    "title": "19.2.3.23 ST_ScreenSize (Screen Sizes Type)",
+    "page": 829
+  },
+  {
+    "level": 1,
+    "title": "19.3 VML - WordprocessingML Drawing",
+    "page": 830
+  },
+  {
+    "level": 2,
+    "title": "19.3.1 Table of Contents",
+    "page": 830
+  },
+  {
+    "level": 2,
+    "title": "19.3.2 Elements",
+    "page": 831
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.1 anchorlock (Anchor Location Is Locked)",
+    "page": 831
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.2 borderbottom (Bottom Border)",
+    "page": 831
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.3 borderleft (Left Border)",
+    "page": 833
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.4 borderright (Right Border)",
+    "page": 834
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.5 bordertop (Top Border)",
+    "page": 835
+  },
+  {
+    "level": 3,
+    "title": "19.3.2.6 wrap (Text Wrapping)",
+    "page": 837
+  },
+  {
+    "level": 2,
+    "title": "19.3.3 Simple Types",
+    "page": 839
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.1 ST_BorderShadow (Border Shadow Type)",
+    "page": 839
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.2 ST_BorderType (Border Type)",
+    "page": 839
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.3 ST_HorizontalAnchor (Horizontal Anchor Type)",
+    "page": 842
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.4 ST_VerticalAnchor (Vertical Anchor Type)",
+    "page": 843
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.5 ST_WrapSide (Text Wrapping Side)",
+    "page": 844
+  },
+  {
+    "level": 3,
+    "title": "19.3.3.6 ST_WrapType (Text Wrapping Type)",
+    "page": 844
+  },
+  {
+    "level": 1,
+    "title": "19.4 VML - SpreadsheetML Drawing",
+    "page": 845
+  },
+  {
+    "level": 2,
+    "title": "19.4.1 Table of Contents",
+    "page": 846
+  },
+  {
+    "level": 2,
+    "title": "19.4.2 Elements",
+    "page": 848
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.1 Accel (Primary Keyboard Accelerator)",
+    "page": 848
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.2 Accel2 (Secondary Keyboard Accelerator)",
+    "page": 848
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.3 Anchor (Anchor)",
+    "page": 848
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.4 AutoFill (AutoFill)",
+    "page": 849
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.5 AutoLine (AutoLine)",
+    "page": 850
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.6 AutoPict (Automatically Size)",
+    "page": 850
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.7 AutoScale (Font AutoScale)",
+    "page": 851
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.8 Camera (Camera Tool)",
+    "page": 851
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.9 Cancel (Cancel Button)",
+    "page": 852
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.10 CF (Clipboard Format)",
+    "page": 852
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.11 Checked (Checked)",
+    "page": 852
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.12 ClientData (Attached Object Data)",
+    "page": 853
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.13 ColHidden (Comment's Column is Hidden)",
+    "page": 854
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.14 Colored (Dropdown Color Toggle)",
+    "page": 854
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.15 Column (Comment Column Target)",
+    "page": 855
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.16 DDE (Dynamic Data Exchange)",
+    "page": 855
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.17 Default (Default Button)",
+    "page": 855
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.18 DefaultSize (Default Size Toggle)",
+    "page": 856
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.19 Disabled (Macro Disable Toggle)",
+    "page": 856
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.20 Dismiss (Dismiss Button)",
+    "page": 857
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.21 DropLines (Dropdown Maximum Lines)",
+    "page": 857
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.22 DropStyle (Dropdown Style)",
+    "page": 857
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.23 Dx (Scroll Bar Width)",
+    "page": 858
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.24 FirstButton (First Radio Button)",
+    "page": 858
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.25 FmlaGroup (Linked Formula - Group Box)",
+    "page": 858
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.26 FmlaLink (Linked Formula)",
+    "page": 859
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.27 FmlaMacro (Reference to Custom Function)",
+    "page": 859
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.28 FmlaPict (Camera Source Range)",
+    "page": 860
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.29 FmlaRange (List Items Source Range)",
+    "page": 860
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.30 FmlaTxbx (Text Formula)",
+    "page": 860
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.31 Help (Help Button)",
+    "page": 860
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.32 Horiz (Scroll Bar Orientation)",
+    "page": 861
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.33 Inc (Scroll Bar Increment)",
+    "page": 861
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.34 JustLastX (Far East Alignment Toggle)",
+    "page": 861
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.35 LCT (Callback Type)",
+    "page": 862
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.36 ListItem (Non-linked List Item)",
+    "page": 862
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.37 Locked (Lock Toggle)",
+    "page": 862
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.38 LockText (Text Lock)",
+    "page": 863
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.39 MapOCX (Embedded Control)",
+    "page": 863
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.40 Max (Scroll Bar Maximum)",
+    "page": 864
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.41 Min (Scroll Bar Minimum)",
+    "page": 864
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.42 MoveWithCells (Move with Cells)",
+    "page": 864
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.43 MultiLine (Multi-line)",
+    "page": 865
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.44 MultiSel (Multiple Selections)",
+    "page": 865
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.45 NoThreeD (Disable 3D)",
+    "page": 865
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.46 NoThreeD2 (Disable 3D)",
+    "page": 866
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.47 Page (Scroll Bar Page Increment)",
+    "page": 866
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.48 PrintObject (Print Toggle)",
+    "page": 866
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.49 RecalcAlways (Recalculation Toggle)",
+    "page": 867
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.50 Row (Comment Row Target)",
+    "page": 867
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.51 RowHidden (Comment's Row is Hidden)",
+    "page": 867
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.52 ScriptExtended (HTML Script Attributes)",
+    "page": 868
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.53 ScriptLanguage (HTML Script Language)",
+    "page": 868
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.54 ScriptLocation (HTML Script Location)",
+    "page": 869
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.55 ScriptText (HTML Script Text)",
+    "page": 869
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.56 SecretEdit (Password Edit)",
+    "page": 869
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.57 Sel (Selected Entry)",
+    "page": 870
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.58 SelType (Selection Type)",
+    "page": 870
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.59 SizeWithCells (Resize with Cells)",
+    "page": 870
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.60 TextHAlign (Horizontal Text Alignment)",
+    "page": 871
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.61 TextVAlign (Vertical Text Alignment)",
+    "page": 871
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.62 UIObj (UI Object Toggle)",
+    "page": 871
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.63 Val (Scroll bar position)",
+    "page": 872
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.64 ValidIds (Valid ID)",
+    "page": 872
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.65 Visible (Comment Visibility Toggle)",
+    "page": 872
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.66 VScroll (Vertical Scroll)",
+    "page": 873
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.67 VTEdit (Validation Type)",
+    "page": 873
+  },
+  {
+    "level": 3,
+    "title": "19.4.2.68 WidthMin (Minimum Width)",
+    "page": 874
+  },
+  {
+    "level": 2,
+    "title": "19.4.3 Simple Types",
+    "page": 874
+  },
+  {
+    "level": 3,
+    "title": "19.4.3.1 ST_CF (Clipboard Format Type)",
+    "page": 874
+  },
+  {
+    "level": 3,
+    "title": "19.4.3.2 ST_ObjectType (Object Type)",
+    "page": 875
+  },
+  {
+    "level": 1,
+    "title": "19.5 VML - PresentationML Drawing",
+    "page": 876
+  },
+  {
+    "level": 2,
+    "title": "19.5.1 Table of Contents",
+    "page": 876
+  },
+  {
+    "level": 2,
+    "title": "19.5.2 Elements",
+    "page": 877
+  },
+  {
+    "level": 3,
+    "title": "19.5.2.1 iscomment (Ink Annotation Flag)",
+    "page": 877
+  },
+  {
+    "level": 3,
+    "title": "19.5.2.2 textdata (VML Diagram Text)",
+    "page": 877
+  },
+  {
+    "level": 0,
+    "title": "20. Shared MLs Reference Material",
+    "page": 879
+  },
+  {
+    "level": 1,
+    "title": "20.1 Shared Simple Types",
+    "page": 879
+  },
+  {
+    "level": 2,
+    "title": "20.1.1 Table of Contents",
+    "page": 879
+  },
+  {
+    "level": 2,
+    "title": "20.1.2 Simple Types",
+    "page": 879
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.1 ST_AlgClass (Cryptographic Algorithm Classes)",
+    "page": 879
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.2 ST_AlgType (Cryptographic Algorithm Types)",
+    "page": 880
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.3 ST_ColorType (Color Type)",
+    "page": 881
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.4 ST_CryptProv (Cryptographic Provider Types)",
+    "page": 882
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.5 ST_TrueFalse (Boolean Value)",
+    "page": 883
+  },
+  {
+    "level": 3,
+    "title": "20.1.2.6 ST_TrueFalseBlank (Boolean Value with Blank [False] State)",
+    "page": 883
+  },
+  {
+    "level": 1,
+    "title": "20.2 Extended Properties (Part 1, §22.2)",
+    "page": 883
+  },
+  {
+    "level": 1,
+    "title": "20.3 Custom Properties (Part 1, §22.3)",
+    "page": 883
+  },
+  {
+    "level": 1,
+    "title": "20.4 Changed attributes",
+    "page": 884
+  },
+  {
+    "level": 2,
+    "title": "20.4.1 Changed attribute for sources element (Part 1, §22.6.2.60)",
+    "page": 884
+  },
+  {
+    "level": 0,
+    "title": "Annex A. (normative) Schemas – W3C XML Schema",
+    "page": 885
+  },
+  {
+    "level": 1,
+    "title": "A.1 General",
+    "page": 885
+  },
+  {
+    "level": 1,
+    "title": "A.2 WordprocessingML",
+    "page": 885
+  },
+  {
+    "level": 1,
+    "title": "A.3 SpreadsheetML",
+    "page": 954
+  },
+  {
+    "level": 1,
+    "title": "A.4 PresentationML",
+    "page": 1039
+  },
+  {
+    "level": 1,
+    "title": "A.5 DrawingML - Framework",
+    "page": 1071
+  },
+  {
+    "level": 2,
+    "title": "A.5.1 DrawingML - Main",
+    "page": 1071
+  },
+  {
+    "level": 2,
+    "title": "A.5.2 DrawingML - Picture",
+    "page": 1130
+  },
+  {
+    "level": 2,
+    "title": "A.5.3 DrawingML - Locked Canvas",
+    "page": 1130
+  },
+  {
+    "level": 2,
+    "title": "A.5.4 DrawingML - WordprocessingML Drawing",
+    "page": 1131
+  },
+  {
+    "level": 2,
+    "title": "A.5.5 DrawingML - SpreadsheetML Drawing",
+    "page": 1136
+  },
+  {
+    "level": 1,
+    "title": "A.6 DrawingML - Components",
+    "page": 1140
+  },
+  {
+    "level": 2,
+    "title": "A.6.1 DrawingML - Charts",
+    "page": 1140
+  },
+  {
+    "level": 2,
+    "title": "A.6.2 DrawingML - Chart Drawings",
+    "page": 1168
+  },
+  {
+    "level": 2,
+    "title": "A.6.3 DrawingML - Diagrams",
+    "page": 1171
+  },
+  {
+    "level": 1,
+    "title": "A.7 VML",
+    "page": 1192
+  },
+  {
+    "level": 2,
+    "title": "A.7.1 VML",
+    "page": 1192
+  },
+  {
+    "level": 2,
+    "title": "A.7.2 VML - Office Drawing",
+    "page": 1203
+  },
+  {
+    "level": 2,
+    "title": "A.7.3 VML - WordprocessingML Drawing",
+    "page": 1213
+  },
+  {
+    "level": 2,
+    "title": "A.7.4 VML - SpreadsheetML Drawing",
+    "page": 1215
+  },
+  {
+    "level": 2,
+    "title": "A.7.5 VML - PresentationML Drawing",
+    "page": 1217
+  },
+  {
+    "level": 1,
+    "title": "A.8 Shared MLs",
+    "page": 1217
+  },
+  {
+    "level": 2,
+    "title": "A.8.1 Math",
+    "page": 1217
+  },
+  {
+    "level": 2,
+    "title": "A.8.2 Extended Properties",
+    "page": 1228
+  },
+  {
+    "level": 2,
+    "title": "A.8.3 Custom Properties",
+    "page": 1229
+  },
+  {
+    "level": 2,
+    "title": "A.8.4 Variant Types",
+    "page": 1231
+  },
+  {
+    "level": 2,
+    "title": "A.8.5 Custom XML Data Properties",
+    "page": 1234
+  },
+  {
+    "level": 2,
+    "title": "A.8.6 Bibliography",
+    "page": 1235
+  },
+  {
+    "level": 2,
+    "title": "A.8.7 Additional Characteristics",
+    "page": 1238
+  },
+  {
+    "level": 2,
+    "title": "A.8.8 Office Document Relationships",
+    "page": 1238
+  },
+  {
+    "level": 2,
+    "title": "A.8.9 Shared Simple Types",
+    "page": 1239
+  },
+  {
+    "level": 1,
+    "title": "A.9 Custom XML Schema References",
+    "page": 1242
+  },
+  {
+    "level": 0,
+    "title": "Annex B. (informative) Schemas – RELAX NG",
+    "page": 1243
+  },
+  {
+    "level": 1,
+    "title": "B.1 General",
+    "page": 1243
+  },
+  {
+    "level": 1,
+    "title": "B.2 WordprocessingML",
+    "page": 1243
+  },
+  {
+    "level": 2,
+    "title": "B.2.1 Part Schemas",
+    "page": 1288
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.1 Comments Part",
+    "page": 1288
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.2 Document Settings Part",
+    "page": 1289
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.3 Endnotes Part",
+    "page": 1289
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.4 Font Table Part",
+    "page": 1290
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.5 Footer Part",
+    "page": 1290
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.6 Footnotes Part",
+    "page": 1291
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.7 Glossary Document Part",
+    "page": 1291
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.8 Header Part",
+    "page": 1291
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.9 Mail Merge Recipient Data Part",
+    "page": 1292
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.10 Main Document Part",
+    "page": 1292
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.11 Numbering Definitions Part",
+    "page": 1293
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.12 Style Definitions Part",
+    "page": 1293
+  },
+  {
+    "level": 3,
+    "title": "B.2.1.13 Web Settings Part",
+    "page": 1294
+  },
+  {
+    "level": 1,
+    "title": "B.3 SpreadsheetML",
+    "page": 1294
+  },
+  {
+    "level": 2,
+    "title": "B.3.1 Part Schemas",
+    "page": 1382
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.1 Calculation Chain Part",
+    "page": 1382
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.2 Chartsheet Part",
+    "page": 1383
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.3 Comments Part",
+    "page": 1383
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.4 Connections Part",
+    "page": 1383
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.5 Custom XML Mappings Part",
+    "page": 1384
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.6 Dialogsheet Part",
+    "page": 1384
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.7 Drawing Part",
+    "page": 1384
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.8 External Workbook References Part",
+    "page": 1385
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.9 Metadata Part",
+    "page": 1385
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.10 Pivot Table Part",
+    "page": 1385
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.11 Pivot Table Cache Definition Part",
+    "page": 1386
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.12 Pivot Table Cache Records Part",
+    "page": 1386
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.13 Query Table Part",
+    "page": 1386
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.14 Shared String Table Part",
+    "page": 1386
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.15 Shared Workbook Revision Headers Part",
+    "page": 1387
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.16 Shared Workbook Revision Log Part",
+    "page": 1387
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.17 Shared Workbook User Data Part",
+    "page": 1387
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.18 Single Cell Table Definitions Part",
+    "page": 1388
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.19 Styles Part",
+    "page": 1388
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.20 Table Definitions Part",
+    "page": 1388
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.21 Volatile Dependencies Part",
+    "page": 1389
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.22 Workbook Part",
+    "page": 1389
+  },
+  {
+    "level": 3,
+    "title": "B.3.1.23 Worksheet Part",
+    "page": 1389
+  },
+  {
+    "level": 1,
+    "title": "B.4 PresentationML",
+    "page": 1390
+  },
+  {
+    "level": 2,
+    "title": "B.4.1 Part Schemas",
+    "page": 1412
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.1 Comment Authors Part",
+    "page": 1412
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.2 Comments Part",
+    "page": 1413
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.3 Handout Master Part",
+    "page": 1413
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.4 Notes Master Part",
+    "page": 1413
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.5 Notes Slide Part",
+    "page": 1414
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.6 Presentation Part",
+    "page": 1414
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.7 Presentation Properties Part",
+    "page": 1414
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.8 Slide Part",
+    "page": 1414
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.9 Slide Layout Part",
+    "page": 1415
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.10 Slide Master Part",
+    "page": 1415
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.11 Slide Synchronization Data Part",
+    "page": 1415
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.12 User Defined Tags Part",
+    "page": 1416
+  },
+  {
+    "level": 3,
+    "title": "B.4.1.13 View Properties Part",
+    "page": 1416
+  },
+  {
+    "level": 1,
+    "title": "B.5 DrawingML - Framework",
+    "page": 1416
+  },
+  {
+    "level": 2,
+    "title": "B.5.1 DrawingML - Main",
+    "page": 1416
+  },
+  {
+    "level": 3,
+    "title": "B.5.1.1 Part Schemas",
+    "page": 1460
+  },
+  {
+    "level": 4,
+    "title": "B.5.1.1.1 Table Styles Part",
+    "page": 1460
+  },
+  {
+    "level": 4,
+    "title": "B.5.1.1.2 Theme Part",
+    "page": 1461
+  },
+  {
+    "level": 4,
+    "title": "B.5.1.1.3 Theme Override Part",
+    "page": 1461
+  },
+  {
+    "level": 2,
+    "title": "B.5.2 DrawingML - Picture",
+    "page": 1461
+  },
+  {
+    "level": 2,
+    "title": "B.5.3 DrawingML - Locked Canvas",
+    "page": 1462
+  },
+  {
+    "level": 2,
+    "title": "B.5.4 DrawingML - Wordprocessing Drawing",
+    "page": 1462
+  },
+  {
+    "level": 2,
+    "title": "B.5.5 DrawingML - Spreadsheet Drawing",
+    "page": 1465
+  },
+  {
+    "level": 1,
+    "title": "B.6 DrawingML - Components",
+    "page": 1468
+  },
+  {
+    "level": 2,
+    "title": "B.6.1 DrawingML - Chart",
+    "page": 1468
+  },
+  {
+    "level": 3,
+    "title": "B.6.1.1 Part Schemas",
+    "page": 1486
+  },
+  {
+    "level": 4,
+    "title": "B.6.1.1.1 Chart Part",
+    "page": 1486
+  },
+  {
+    "level": 4,
+    "title": "B.6.1.1.2 Chart Drawing Part",
+    "page": 1486
+  },
+  {
+    "level": 2,
+    "title": "B.6.2 DrawingML - Chart Drawing",
+    "page": 1487
+  },
+  {
+    "level": 2,
+    "title": "B.6.3 DrawingML - Diagrams",
+    "page": 1489
+  },
+  {
+    "level": 3,
+    "title": "B.6.3.1 Part Schemas",
+    "page": 1503
+  },
+  {
+    "level": 4,
+    "title": "B.6.3.1.1 Diagram Colors Part",
+    "page": 1503
+  },
+  {
+    "level": 4,
+    "title": "B.6.3.1.2 Diagram Data Part",
+    "page": 1503
+  },
+  {
+    "level": 4,
+    "title": "B.6.3.1.3 Diagram Layout Definitions Part",
+    "page": 1504
+  },
+  {
+    "level": 4,
+    "title": "B.6.3.1.4 Diagram Style Part",
+    "page": 1504
+  },
+  {
+    "level": 1,
+    "title": "B.7 VML",
+    "page": 1504
+  },
+  {
+    "level": 2,
+    "title": "B.7.1 VML - Main",
+    "page": 1504
+  },
+  {
+    "level": 2,
+    "title": "B.7.2 VML - Office Drawing",
+    "page": 1512
+  },
+  {
+    "level": 2,
+    "title": "B.7.3 VML - Wordprocessing Drawing",
+    "page": 1520
+  },
+  {
+    "level": 2,
+    "title": "B.7.4 VML - Spreadsheet Drawing",
+    "page": 1521
+  },
+  {
+    "level": 2,
+    "title": "B.7.5 VML - Presentation Drawing",
+    "page": 1523
+  },
+  {
+    "level": 2,
+    "title": "B.7.6 Part Schemas",
+    "page": 1523
+  },
+  {
+    "level": 1,
+    "title": "B.8 Shared MLs",
+    "page": 1525
+  },
+  {
+    "level": 2,
+    "title": "B.8.1 Math",
+    "page": 1525
+  },
+  {
+    "level": 2,
+    "title": "B.8.2 Extended Properties",
+    "page": 1530
+  },
+  {
+    "level": 3,
+    "title": "B.8.2.1 Part Schemas",
+    "page": 1531
+  },
+  {
+    "level": 4,
+    "title": "B.8.2.1.1 Extended File Properties Part",
+    "page": 1531
+  },
+  {
+    "level": 2,
+    "title": "B.8.3 Custom Properties",
+    "page": 1531
+  },
+  {
+    "level": 3,
+    "title": "B.8.3.1 Part Schemas",
+    "page": 1533
+  },
+  {
+    "level": 4,
+    "title": "B.8.3.1.1 Custom File Properties Part",
+    "page": 1533
+  },
+  {
+    "level": 2,
+    "title": "B.8.4 Variant Types",
+    "page": 1533
+  },
+  {
+    "level": 2,
+    "title": "B.8.5 Custom XML Data Properties",
+    "page": 1536
+  },
+  {
+    "level": 3,
+    "title": "B.8.5.1 Part Schemas",
+    "page": 1536
+  },
+  {
+    "level": 4,
+    "title": "B.8.5.1.1 Custom XML Data Properties Part",
+    "page": 1536
+  },
+  {
+    "level": 2,
+    "title": "B.8.6 Bibliography",
+    "page": 1537
+  },
+  {
+    "level": 3,
+    "title": "B.8.6.1 Part Schemas",
+    "page": 1539
+  },
+  {
+    "level": 4,
+    "title": "B.8.6.1.1 Bibliography Part",
+    "page": 1539
+  },
+  {
+    "level": 2,
+    "title": "B.8.7 Additional Characteristics",
+    "page": 1539
+  },
+  {
+    "level": 3,
+    "title": "B.8.7.1 Part Schemas",
+    "page": 1540
+  },
+  {
+    "level": 4,
+    "title": "B.8.7.1.1 Additional Characteristics Part",
+    "page": 1540
+  },
+  {
+    "level": 2,
+    "title": "B.8.8 Office Document Relationships",
+    "page": 1540
+  },
+  {
+    "level": 2,
+    "title": "B.8.9 Shared Simple Types",
+    "page": 1540
+  },
+  {
+    "level": 1,
+    "title": "B.9 Custom XML Schema References",
+    "page": 1542
+  },
+  {
+    "level": 1,
+    "title": "B.10 Additional Resources",
+    "page": 1542
+  },
+  {
+    "level": 2,
+    "title": "B.10.1 Any",
+    "page": 1542
+  },
+  {
+    "level": 2,
+    "title": "B.10.2 XML",
+    "page": 1543
+  },
+  {
+    "level": 0,
+    "title": "Annex C. (informative) Namespace Prefix Mapping in Examples",
+    "page": 1544
+  },
+  {
+    "level": 0,
+    "title": "Annex D. (informative) Differences Between ECMA-376:2016 and ECMA-376:2006",
+    "page": 1546
+  },
+  {
+    "level": 1,
+    "title": "D.1 General",
+    "page": 1546
+  },
+  {
+    "level": 1,
+    "title": "D.2 WordprocessingML",
+    "page": 1546
+  },
+  {
+    "level": 1,
+    "title": "D.3 SpreadsheetML",
+    "page": 1548
+  },
+  {
+    "level": 1,
+    "title": "D.4 PresentationML",
+    "page": 1549
+  },
+  {
+    "level": 1,
+    "title": "D.5 DrawingML",
+    "page": 1549
+  },
+  {
+    "level": 2,
+    "title": "D.5.1 DrawingML – Main",
+    "page": 1549
+  },
+  {
+    "level": 2,
+    "title": "D.5.2 DrawingML – Chart",
+    "page": 1550
+  },
+  {
+    "level": 2,
+    "title": "D.5.3 DrawingML – Diagrams",
+    "page": 1550
+  },
+  {
+    "level": 2,
+    "title": "D.5.4 DrawingML – Spreadsheet Drawing",
+    "page": 1550
+  },
+  {
+    "level": 1,
+    "title": "D.6 VML",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.6.1 VML",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.6.2 VML – Office Drawing",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.6.3 VML – Spreadsheet Drawing",
+    "page": 1551
+  },
+  {
+    "level": 1,
+    "title": "D.7 Shared",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.7.1 Shared – Bibliography",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.7.2 Shared – Custom Properties Variant Types",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.7.3 Shared – Math",
+    "page": 1551
+  },
+  {
+    "level": 2,
+    "title": "D.7.4 Shared Simple Types",
+    "page": 1552
+  },
+  {
+    "level": 1,
+    "title": "D.8 Custom XML Schema References",
+    "page": 1552
+  },
+  {
+    "level": 0,
+    "title": "Bibliography",
+    "page": 1553
+  }
+]

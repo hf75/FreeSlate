@@ -1,0 +1,100 @@
+{
+  "prefix": "pvml",
+  "uri": "urn:schemas-microsoft-com:office:powerpoint",
+  "area": "VML (legacy drawing)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema vml-presentationDrawing.xsd",
+  "counts": {
+    "elements": 2,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 2,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 1
+  },
+  "elements": [
+    {
+      "name": "pvml:iscomment",
+      "global": true,
+      "types": [
+        "pvml:CT_Empty"
+      ],
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "v:shape"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.5.2.1",
+          "title": "Ink Annotation Flag",
+          "page": 877
+        }
+      ]
+    },
+    {
+      "name": "pvml:textdata",
+      "global": true,
+      "types": [
+        "pvml:CT_Rel"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.5.2.2",
+          "title": "VML Diagram Text",
+          "page": 877,
+          "officeNotes": [
+            "2.1.1892"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pvml:CT_Empty",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [
+        "pvml:iscomment"
+      ]
+    },
+    {
+      "name": "pvml:CT_Rel",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "pvml:textdata"
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

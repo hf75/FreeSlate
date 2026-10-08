@@ -1,0 +1,478 @@
+{
+  "prefix": "s",
+  "uri": "http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes",
+  "area": "Packages and document properties",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema shared-commonSimpleTypes.xsd",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 28,
+    "enumValues": 50,
+    "specSections": 27,
+    "officeNotes": 8
+  },
+  "elements": [],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": [
+    {
+      "name": "s:ST_AlgClass",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "hash",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.1",
+          "title": "Cryptographic Algorithm Classes",
+          "page": 879
+        }
+      ]
+    },
+    {
+      "name": "s:ST_AlgType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "typeAny",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.2",
+          "title": "Cryptographic Algorithm Types",
+          "page": 880
+        }
+      ]
+    },
+    {
+      "name": "s:ST_CalendarType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "gregorian",
+        "gregorianUs",
+        "gregorianMeFrench",
+        "gregorianArabic",
+        "hijri",
+        "hebrew",
+        "taiwan",
+        "japan",
+        "thai",
+        "korea",
+        "saka",
+        "gregorianXlitEnglish",
+        "gregorianXlitFrench",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.1",
+          "title": "Calendar Types",
+          "page": 3800,
+          "officeNotes": [
+            "2.1.1742"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_ColorType",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.3",
+          "title": "Color Type",
+          "page": 881,
+          "officeNotes": [
+            "2.1.1893"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_ConformanceClass",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "strict",
+        "transitional"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.2",
+          "title": "Document Conformance Class Value",
+          "page": 3802
+        }
+      ]
+    },
+    {
+      "name": "s:ST_CryptProv",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "rsaAES",
+        "rsaFull",
+        "custom"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.4",
+          "title": "Cryptographic Provider Types",
+          "page": 882
+        }
+      ]
+    },
+    {
+      "name": "s:ST_FixedPercentage",
+      "definition": "restriction of s:ST_Percentage",
+      "facets": {
+        "pattern": "-?((100)|([0-9][0-9]?))(\\.[0-9][0-9]?)?%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.3",
+          "title": "Fixed Percentage Value with Sign",
+          "page": 3802
+        }
+      ]
+    },
+    {
+      "name": "s:ST_Guid",
+      "definition": "restriction of xsd:token",
+      "facets": {
+        "pattern": "\\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\\}"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.4",
+          "title": "128-Bit GUID",
+          "page": 3803
+        }
+      ]
+    },
+    {
+      "name": "s:ST_HexColorRGB",
+      "definition": "restriction of xsd:hexBinary",
+      "facets": {
+        "length": "3"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.5",
+          "title": "Hexadecimal Color Value",
+          "page": 3803
+        }
+      ]
+    },
+    {
+      "name": "s:ST_Lang",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.6",
+          "title": "Language Reference",
+          "page": 3804,
+          "officeNotes": [
+            "2.1.1743"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_OnOff",
+      "definition": "union of xsd:boolean, s:ST_OnOff1",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.7",
+          "title": "On/Off Value",
+          "page": 3804,
+          "officeNotes": [
+            "2.1.1744"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_OnOff1",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "on",
+        "off"
+      ]
+    },
+    {
+      "name": "s:ST_Panose",
+      "definition": "restriction of xsd:hexBinary",
+      "facets": {
+        "length": "10"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.8",
+          "title": "Panose-1 Number",
+          "page": 3804
+        }
+      ]
+    },
+    {
+      "name": "s:ST_Percentage",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "-?[0-9]+(\\.[0-9]+)?%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.9",
+          "title": "Percentage Value with Sign",
+          "page": 3805
+        }
+      ]
+    },
+    {
+      "name": "s:ST_PositiveFixedPercentage",
+      "definition": "restriction of s:ST_Percentage",
+      "facets": {
+        "pattern": "((100)|([0-9][0-9]?))(\\.[0-9][0-9]?)?%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.10",
+          "title": "Positive Fixed Percentage Value with Sign",
+          "page": 3806
+        }
+      ]
+    },
+    {
+      "name": "s:ST_PositivePercentage",
+      "definition": "restriction of s:ST_Percentage",
+      "facets": {
+        "pattern": "[0-9]+(\\.[0-9]+)?%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.11",
+          "title": "Positive Percentage Value with Sign",
+          "page": 3806
+        }
+      ]
+    },
+    {
+      "name": "s:ST_PositiveUniversalMeasure",
+      "definition": "restriction of s:ST_UniversalMeasure",
+      "facets": {
+        "pattern": "[0-9]+(\\.[0-9]+)?(mm|cm|in|pt|pc|pi)"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.12",
+          "title": "Positive Universal Measurement",
+          "page": 3807
+        }
+      ]
+    },
+    {
+      "name": "s:ST_String",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.13",
+          "title": "String",
+          "page": 3807
+        }
+      ]
+    },
+    {
+      "name": "s:ST_TrueFalse",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "t",
+        "f",
+        "true",
+        "false"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.5",
+          "title": "Boolean Value",
+          "page": 883
+        }
+      ]
+    },
+    {
+      "name": "s:ST_TrueFalseBlank",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "t",
+        "f",
+        "true",
+        "false",
+        "",
+        "True",
+        "False"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "20.1.2.6",
+          "title": "Boolean Value with Blank [False] State",
+          "page": 883,
+          "officeNotes": [
+            "2.1.1894"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_TwipsMeasure",
+      "definition": "union of s:ST_UnsignedDecimalNumber, s:ST_PositiveUniversalMeasure",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.14",
+          "title": "Measurement in Twentieths of a Point",
+          "page": 3807,
+          "officeNotes": [
+            "2.1.1745"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_UniversalMeasure",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "-?[0-9]+(\\.[0-9]+)?(mm|cm|in|pt|pc|pi)"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.15",
+          "title": "Universal Measurement",
+          "page": 3808
+        }
+      ]
+    },
+    {
+      "name": "s:ST_UnsignedDecimalNumber",
+      "definition": "restriction of xsd:unsignedLong",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.16",
+          "title": "Unsigned Decimal Number Value",
+          "page": 3808,
+          "officeNotes": [
+            "2.1.1746"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_VerticalAlignRun",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "baseline",
+        "superscript",
+        "subscript"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.17",
+          "title": "Vertical Positioning Location",
+          "page": 3809
+        }
+      ]
+    },
+    {
+      "name": "s:ST_XAlign",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "left",
+        "center",
+        "right",
+        "inside",
+        "outside"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.18",
+          "title": "Horizontal Alignment Location",
+          "page": 3810
+        }
+      ]
+    },
+    {
+      "name": "s:ST_XmlName",
+      "definition": "restriction of xsd:NCName",
+      "facets": {
+        "minLength": "1",
+        "maxLength": "255"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.21",
+          "title": "XML Name",
+          "page": 3813
+        }
+      ]
+    },
+    {
+      "name": "s:ST_Xstring",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.19",
+          "title": "Escaped String",
+          "page": 3811,
+          "officeNotes": [
+            "2.1.1747"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "s:ST_YAlign",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "inline",
+        "top",
+        "center",
+        "bottom",
+        "inside",
+        "outside"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "22.9.2.20",
+          "title": "Vertical Alignment Location",
+          "page": 3811
+        }
+      ]
+    }
+  ]
+}

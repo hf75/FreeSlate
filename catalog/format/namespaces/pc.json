@@ -1,0 +1,1345 @@
+{
+  "prefix": "pc",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2013/main/command",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-PPTX] v20240820 §5.3",
+  "counts": {
+    "elements": 23,
+    "attributes": 21,
+    "globalAttributes": 0,
+    "complexTypes": 21,
+    "simpleTypes": 13,
+    "enumValues": 124,
+    "specSections": 49,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "pc:chgData",
+      "types": [
+        "oac:CT_ChangesData"
+      ],
+      "attributes": [
+        {
+          "name": "actId",
+          "type": "xsd:int"
+        },
+        {
+          "name": "clId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "dt",
+          "type": "xsd:dateTime"
+        },
+        {
+          "name": "email",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_Guid"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string"
+        },
+        {
+          "name": "providerId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "userId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "v",
+          "type": "xsd:unsignedInt"
+        }
+      ],
+      "children": [
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:cmAuthorChg",
+        "pc:cmChg",
+        "pc:docChg",
+        "pc:docChgLst",
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.1",
+          "title": "CT_ChangesData",
+          "page": 275
+        }
+      ]
+    },
+    {
+      "name": "pc:chgInfo",
+      "global": true,
+      "types": [
+        "pc:CT_ChangesInfo"
+      ],
+      "attributes": [],
+      "children": [
+        "pc:docChgLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.1",
+          "title": "chgInfo",
+          "page": 81
+        }
+      ]
+    },
+    {
+      "name": "pc:cmAuthorChg",
+      "types": [
+        "pc:CT_CommentAuthorChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_CommentAuthorChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:cmAuthorMkLst",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:docChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.2",
+          "title": "CT_CommentAuthorChanges",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "pc:cmAuthorMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_CommentAuthorMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:cmAuthorChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.2",
+          "title": "cmAuthorMkLst",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "pc:cmChg",
+      "types": [
+        "pc:CT_CommentChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_CommentChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:cmMkLst",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:sldChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.5",
+          "title": "CT_CommentChanges",
+          "page": 86
+        }
+      ]
+    },
+    {
+      "name": "pc:cmMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_CommentMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:cmChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.3",
+          "title": "cmMkLst",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "pc:cxnChg",
+      "types": [
+        "oac:CT_ConnectorChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_ConnectorChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:cxnSpMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.2",
+          "title": "CT_ConnectorChanges",
+          "page": 276
+        }
+      ]
+    },
+    {
+      "name": "pc:docChg",
+      "types": [
+        "pc:CT_DocumentChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_DocumentChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:docMkLst",
+        "pc:sldChg",
+        "pc:sldMasterChg",
+        "pc:cmAuthorChg",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:docChgLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.8",
+          "title": "CT_DocumentChanges",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "pc:docChgLst",
+      "types": [
+        "pc:CT_DocumentChangesList"
+      ],
+      "attributes": [],
+      "children": [
+        "pc:chgData",
+        "pc:docChg",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:chgInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.9",
+          "title": "CT_DocumentChangesList",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "pc:docMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_DocumentMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:docChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.4",
+          "title": "docMkLst",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "pc:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "pc:cmAuthorChg",
+        "pc:cmChg",
+        "pc:docChg",
+        "pc:docChgLst",
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": []
+    },
+    {
+      "name": "pc:graphicFrameChg",
+      "types": [
+        "oac:CT_GraphicFrameChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_GraphicFrameChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:graphicFrameMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.19",
+          "title": "CT_GraphicFrameChanges",
+          "page": 284
+        }
+      ]
+    },
+    {
+      "name": "pc:grpChg",
+      "types": [
+        "oac:CT_GroupShapeChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_GroupShapeChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:grpSpMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.7",
+          "title": "CT_GroupShapeChanges",
+          "page": 278
+        }
+      ]
+    },
+    {
+      "name": "pc:inkChg",
+      "types": [
+        "oac:CT_InkChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_InkChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:inkMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.10",
+          "title": "CT_InkChanges",
+          "page": 279
+        }
+      ]
+    },
+    {
+      "name": "pc:picChg",
+      "types": [
+        "oac:CT_PictureChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_PictureChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:picMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.13",
+          "title": "CT_PictureChanges",
+          "page": 281
+        }
+      ]
+    },
+    {
+      "name": "pc:sldBaseMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_SlideBaseMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.5",
+          "title": "sldBaseMkLst",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "pc:sldChg",
+      "types": [
+        "pc:CT_SlideChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_SlideChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:sldMkLst",
+        "pc:spChg",
+        "pc:grpChg",
+        "pc:graphicFrameChg",
+        "pc:picChg",
+        "pc:inkChg",
+        "pc:cxnChg",
+        "pc:cmChg",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:docChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.16",
+          "title": "CT_SlideChanges",
+          "page": 92
+        }
+      ]
+    },
+    {
+      "name": "pc:sldLayoutChg",
+      "types": [
+        "pc:CT_SlideLayoutChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_SlideLayoutChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:sldLayoutMkLst",
+        "pc:spChg",
+        "pc:grpChg",
+        "pc:graphicFrameChg",
+        "pc:picChg",
+        "pc:inkChg",
+        "pc:cxnChg",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.17",
+          "title": "CT_SlideLayoutChanges",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "pc:sldLayoutMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_SlideLayoutMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:sldLayoutChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.6",
+          "title": "sldLayoutMkLst",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "pc:sldMasterChg",
+      "types": [
+        "pc:CT_MainMasterChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "pc:ST_MainMasterChangeBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "pc:chgData",
+        "pc:sldMasterMkLst",
+        "pc:spChg",
+        "pc:grpChg",
+        "pc:graphicFrameChg",
+        "pc:picChg",
+        "pc:inkChg",
+        "pc:cxnChg",
+        "pc:sldLayoutChg",
+        "pc:extLst"
+      ],
+      "parents": [
+        "pc:docChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.12",
+          "title": "CT_MainMasterChanges",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "pc:sldMasterMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_MainMasterMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.7",
+          "title": "sldMasterMkLst",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "pc:sldMkLst",
+      "global": true,
+      "types": [
+        "pc:CT_SlideMonikerList"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "p188:cm",
+        "pc:sldChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.1.8",
+          "title": "sldMkLst",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "pc:spChg",
+      "types": [
+        "oac:CT_ShapeChanges"
+      ],
+      "attributes": [
+        {
+          "name": "chg",
+          "type": "oac:ST_ShapeChangesBits",
+          "required": true
+        }
+      ],
+      "children": [
+        "oac:chgData",
+        "oac:spMkLst",
+        "oac:extLst"
+      ],
+      "parents": [
+        "pc:sldChg",
+        "pc:sldLayoutChg",
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.29.3.16",
+          "title": "CT_ShapeChanges",
+          "page": 282
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "pc:CT_ChangesInfo",
+      "content": "elements",
+      "model": "pc:docChgLst*",
+      "attributes": [],
+      "usedBy": [
+        "pc:chgInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.1",
+          "title": "CT_ChangesInfo",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentAuthorChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:cmAuthorMkLst, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:cmAuthorChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.2",
+          "title": "CT_CommentAuthorChanges",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentAuthorMoniker",
+      "content": "empty",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.3",
+          "title": "CT_CommentAuthorMoniker",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentAuthorMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:cmAuthorMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.4",
+          "title": "CT_CommentAuthorMonikerList",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:cmMkLst, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:cmChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.5",
+          "title": "CT_CommentChanges",
+          "page": 86
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentMoniker",
+      "content": "empty",
+      "attributes": [
+        "authorId",
+        "idx"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.6",
+          "title": "CT_CommentMoniker",
+          "page": 86
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_CommentMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:cmMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.7",
+          "title": "CT_CommentMonikerList",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_DocumentChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:docMkLst, pc:sldChg*, pc:sldMasterChg*, pc:cmAuthorChg*, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:docChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.8",
+          "title": "CT_DocumentChanges",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_DocumentChangesList",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:docChg*, pc:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "pc:docChgLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.9",
+          "title": "CT_DocumentChangesList",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_DocumentMoniker",
+      "content": "empty",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.10",
+          "title": "CT_DocumentMoniker",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_DocumentMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:docMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.11",
+          "title": "CT_DocumentMonikerList",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_MainMasterChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:sldMasterMkLst, pc:spChg*, pc:grpChg*, pc:graphicFrameChg*, pc:picChg*, pc:inkChg*, pc:cxnChg*, pc:sldLayoutChg*, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:sldMasterChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.12",
+          "title": "CT_MainMasterChanges",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_MainMasterMoniker",
+      "content": "empty",
+      "attributes": [
+        "cId",
+        "sldId"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.13",
+          "title": "CT_MainMasterMoniker",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_MainMasterMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:sldMasterMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.14",
+          "title": "CT_MainMasterMonikerList",
+          "page": 91
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideBaseMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:sldBaseMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.15",
+          "title": "CT_SlideBaseMonikerList",
+          "page": 91
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:sldMkLst, pc:spChg*, pc:grpChg*, pc:graphicFrameChg*, pc:picChg*, pc:inkChg*, pc:cxnChg*, pc:cmChg*, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:sldChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.16",
+          "title": "CT_SlideChanges",
+          "page": 92
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideLayoutChanges",
+      "content": "elements",
+      "model": "(pc:chgData?, pc:sldLayoutMkLst, pc:spChg*, pc:grpChg*, pc:graphicFrameChg*, pc:picChg*, pc:inkChg*, pc:cxnChg*, pc:extLst?)",
+      "attributes": [
+        "chg"
+      ],
+      "usedBy": [
+        "pc:sldLayoutChg"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.17",
+          "title": "CT_SlideLayoutChanges",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideLayoutMoniker",
+      "content": "empty",
+      "attributes": [
+        "cId",
+        "sldId"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.18",
+          "title": "CT_SlideLayoutMoniker",
+          "page": 94
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideLayoutMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:sldLayoutMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.19",
+          "title": "CT_SlideLayoutMonikerList",
+          "page": 94
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideMoniker",
+      "content": "empty",
+      "attributes": [
+        "cId",
+        "sldId"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.20",
+          "title": "CT_SlideMoniker",
+          "page": 95
+        }
+      ]
+    },
+    {
+      "name": "pc:CT_SlideMonikerList",
+      "content": "elements",
+      "model": "any(##any)*",
+      "attributes": [],
+      "usedBy": [
+        "pc:sldMkLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.3.21",
+          "title": "CT_SlideMonikerList",
+          "page": 95
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "pc:ST_CommentAuthorChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "replId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.1",
+          "title": "ST_CommentAuthorChangeBit",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_CommentAuthorChangeBits",
+      "definition": "list of pc:ST_CommentAuthorChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.2",
+          "title": "ST_CommentAuthorChangeBits",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_CommentChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "add",
+        "del",
+        "mod",
+        "replId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.3",
+          "title": "ST_CommentChangeBit",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_CommentChangeBits",
+      "definition": "list of pc:ST_CommentChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.4",
+          "title": "ST_CommentChangeBits",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_CreationId",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.5",
+          "title": "ST_CreationId",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_DocumentChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "undo",
+        "redo",
+        "ext",
+        "custSel",
+        "mod",
+        "addSld",
+        "delSld",
+        "modSld",
+        "sldOrd",
+        "addMainMaster",
+        "delMainMaster",
+        "modMainMaster",
+        "mainMasterOrd",
+        "addSection",
+        "delSection",
+        "modSection",
+        "addCmAuthor",
+        "delCmAuthor",
+        "modCmAuthor",
+        "replTag",
+        "delTag",
+        "addCustShow",
+        "delCustShow",
+        "modCustShow",
+        "modNotesMaster",
+        "modHandout",
+        "modShowInfo",
+        "addOsfTaskPaneApp",
+        "delOsfTaskPaneApp",
+        "setSldSz",
+        "modRtl",
+        "modChgInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.6",
+          "title": "ST_DocumentChangeBit",
+          "page": 98
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_DocumentChangeBits",
+      "definition": "list of pc:ST_DocumentChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.7",
+          "title": "ST_DocumentChangeBits",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_MainMasterChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "addSp",
+        "delSp",
+        "modSp",
+        "spOrd",
+        "new",
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "replId",
+        "modTransition",
+        "modMedia",
+        "setBg",
+        "setFolMasterAnim",
+        "setFolMasterObjs",
+        "modClrScheme",
+        "addAnim",
+        "delAnim",
+        "modAnim",
+        "replTag",
+        "delTag",
+        "setClrOvrMap",
+        "delDesignElem",
+        "modShow",
+        "addSldLayout",
+        "delSldLayout",
+        "modSldLayout",
+        "sldLayoutOrd"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.8",
+          "title": "ST_MainMasterChangeBit",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_MainMasterChangeBits",
+      "definition": "list of pc:ST_MainMasterChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.9",
+          "title": "ST_MainMasterChangeBits",
+          "page": 102
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_SlideChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "addSp",
+        "delSp",
+        "modSp",
+        "spOrd",
+        "new",
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "replId",
+        "modTransition",
+        "modMedia",
+        "setBg",
+        "setFolMasterAnim",
+        "setFolMasterObjs",
+        "modClrScheme",
+        "addAnim",
+        "delAnim",
+        "modAnim",
+        "replTag",
+        "delTag",
+        "setClrOvrMap",
+        "delDesignElem",
+        "modShow",
+        "addCm",
+        "delCm",
+        "modCm",
+        "chgLayout",
+        "modNotes",
+        "modNotesTx",
+        "setSldSyncInfo",
+        "newSectionLinks"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.10",
+          "title": "ST_SlideChangeBit",
+          "page": 102
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_SlideChangeBits",
+      "definition": "list of pc:ST_SlideChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.11",
+          "title": "ST_SlideChangeBits",
+          "page": 104
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_SlideLayoutChangeBit",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "addSp",
+        "delSp",
+        "modSp",
+        "spOrd",
+        "new",
+        "add",
+        "del",
+        "mod",
+        "ord",
+        "replId",
+        "modTransition",
+        "modMedia",
+        "setBg",
+        "setFolMasterAnim",
+        "setFolMasterObjs",
+        "modClrScheme",
+        "addAnim",
+        "delAnim",
+        "modAnim",
+        "replTag",
+        "delTag",
+        "setClrOvrMap",
+        "delDesignElem",
+        "modShow"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.12",
+          "title": "ST_SlideLayoutChangeBit",
+          "page": 104
+        }
+      ]
+    },
+    {
+      "name": "pc:ST_SlideLayoutChangeBits",
+      "definition": "list of pc:ST_SlideLayoutChangeBit",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.12.4.13",
+          "title": "ST_SlideLayoutChangeBits",
+          "page": 106
+        }
+      ]
+    }
+  ]
+}

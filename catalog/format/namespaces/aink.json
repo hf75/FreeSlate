@@ -1,0 +1,65 @@
+{
+  "prefix": "aink",
+  "uri": "http://schemas.microsoft.com/office/drawing/2016/ink",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2019",
+  "source": "[MS-ODRAWXML] v20261006 §5.28",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 2,
+    "enumValues": 14,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": [
+    {
+      "name": "aink:ST_ExtendedBrushPropertyName",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "inkEffects",
+        "anchorX",
+        "anchorY",
+        "scaleFactor"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.30.4.1",
+          "title": "ST_ExtendedBrushPropertyName",
+          "page": 294
+        }
+      ]
+    },
+    {
+      "name": "aink:ST_InkEffectsType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "pencil",
+        "rainbow",
+        "galaxy",
+        "gold",
+        "silver",
+        "lava",
+        "ocean",
+        "rosegold",
+        "bronze"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.30.4.2",
+          "title": "ST_InkEffectsType",
+          "page": 295
+        }
+      ]
+    }
+  ]
+}

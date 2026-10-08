@@ -1,0 +1,45 @@
+{
+  "prefix": "c16ac",
+  "uri": "http://schemas.microsoft.com/office/drawing/2014/chart/ac",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-ODRAWXML] v20261006 §5.21",
+  "counts": {
+    "elements": 1,
+    "attributes": 0,
+    "globalAttributes": 0,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c16ac:multiLvlStrLit",
+      "global": true,
+      "types": [
+        "c:CT_MultiLvlStrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:lvl",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.23.1.1",
+          "title": "multiLvlStrLit",
+          "page": 192
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [],
+  "simpleTypes": []
+}

@@ -1,0 +1,357 @@
+{
+  "prefix": "c14",
+  "uri": "http://schemas.microsoft.com/office/drawing/2007/8/2/chart",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.10",
+  "counts": {
+    "elements": 9,
+    "attributes": 7,
+    "globalAttributes": 0,
+    "complexTypes": 5,
+    "simpleTypes": 1,
+    "enumValues": 0,
+    "specSections": 9,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c14:dropZoneCategories",
+      "types": [
+        "c14:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:dropZoneData",
+      "types": [
+        "c14:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:dropZoneFilter",
+      "types": [
+        "c14:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:dropZoneSeries",
+      "types": [
+        "c14:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:dropZonesVisible",
+      "types": [
+        "c14:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:invertSolidFillFmt",
+      "global": true,
+      "types": [
+        "c14:CT_InvertSolidFillFmt"
+      ],
+      "attributes": [],
+      "children": [
+        "c14:spPr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.1.1",
+          "title": "invertSolidFillFmt",
+          "page": 113
+        }
+      ]
+    },
+    {
+      "name": "c14:pivotOptions",
+      "global": true,
+      "types": [
+        "c14:CT_PivotOptions"
+      ],
+      "attributes": [],
+      "children": [
+        "c14:dropZoneFilter",
+        "c14:dropZoneCategories",
+        "c14:dropZoneData",
+        "c14:dropZoneSeries",
+        "c14:dropZonesVisible"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.1.2",
+          "title": "pivotOptions",
+          "page": 113
+        }
+      ]
+    },
+    {
+      "name": "c14:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "c14:invertSolidFillFmt"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c14:style",
+      "global": true,
+      "types": [
+        "c14:CT_Style"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c14:ST_Style",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.1.3",
+          "title": "style",
+          "page": 114
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "c14:CT_BooleanFalse",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c14:dropZoneCategories",
+        "c14:dropZoneData",
+        "c14:dropZoneFilter",
+        "c14:dropZoneSeries",
+        "c14:dropZonesVisible"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:CT_BooleanTrue",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.2",
+          "title": "CT_BooleanTrue",
+          "page": 114
+        }
+      ]
+    },
+    {
+      "name": "c14:CT_InvertSolidFillFmt",
+      "content": "elements",
+      "model": "c14:spPr",
+      "attributes": [],
+      "usedBy": [
+        "c14:invertSolidFillFmt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.3",
+          "title": "CT_InvertSolidFillFmt",
+          "page": 115
+        }
+      ]
+    },
+    {
+      "name": "c14:CT_PivotOptions",
+      "content": "elements",
+      "model": "(c14:dropZoneFilter?, c14:dropZoneCategories?, c14:dropZoneData?, c14:dropZoneSeries?, c14:dropZonesVisible?)",
+      "attributes": [],
+      "usedBy": [
+        "c14:pivotOptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.4",
+          "title": "CT_PivotOptions",
+          "page": 115
+        }
+      ]
+    },
+    {
+      "name": "c14:CT_Style",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c14:style"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.3.5",
+          "title": "CT_Style",
+          "page": 116
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "c14:ST_Style",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "101",
+        "maxInclusive": "148"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.7.4.1",
+          "title": "ST_Style",
+          "page": 117
+        }
+      ]
+    }
+  ]
+}

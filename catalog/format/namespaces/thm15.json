@@ -1,0 +1,108 @@
+{
+  "prefix": "thm15",
+  "uri": "http://schemas.microsoft.com/office/thememl/2012/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-ODRAWXML] v20261006 §5.17",
+  "counts": {
+    "elements": 2,
+    "attributes": 3,
+    "globalAttributes": 1,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "thm15:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "thm15:themeFamily"
+      ],
+      "spec": []
+    },
+    {
+      "name": "thm15:themeFamily",
+      "global": true,
+      "types": [
+        "thm15:CT_ThemeFamily"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "a:ST_Guid",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "vid",
+          "type": "a:ST_Guid",
+          "required": true
+        }
+      ],
+      "children": [
+        "thm15:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.4.1.1",
+          "title": "themeFamily",
+          "page": 91
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "thm15:id",
+      "type": "a:ST_Guid",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.4.2.1",
+          "title": "id",
+          "page": 92
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "thm15:CT_ThemeFamily",
+      "content": "elements",
+      "model": "thm15:extLst?",
+      "attributes": [
+        "id",
+        "name",
+        "vid"
+      ],
+      "usedBy": [
+        "thm15:themeFamily"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.4.3.1",
+          "title": "CT_ThemeFamily",
+          "page": 92
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

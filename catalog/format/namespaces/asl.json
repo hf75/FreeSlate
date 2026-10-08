@@ -1,0 +1,82 @@
+{
+  "prefix": "asl",
+  "uri": "http://schemas.microsoft.com/office/drawing/2021/scriptlink",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-ODRAWXML] v20261006 §5.39",
+  "counts": {
+    "elements": 2,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "asl:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "asl:scriptLink"
+      ],
+      "spec": []
+    },
+    {
+      "name": "asl:scriptLink",
+      "global": true,
+      "types": [
+        "asl:CT_ScriptLink"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "asl:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.41.1.1",
+          "title": "scriptLink",
+          "page": 325
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "asl:CT_ScriptLink",
+      "content": "elements",
+      "model": "asl:extLst?",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "asl:scriptLink"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.41.3.1",
+          "title": "CT_ScriptLink",
+          "page": 326
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

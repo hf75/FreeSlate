@@ -1,0 +1,462 @@
+{
+  "prefix": "msink",
+  "uri": "http://schemas.microsoft.com/ink/2010/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "source": "[MS-ODRAWXML] v20261006 §5.7",
+  "counts": {
+    "elements": 4,
+    "attributes": 26,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 9,
+    "enumValues": 37,
+    "specSections": 13,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "msink:context",
+      "global": true,
+      "types": [
+        "msink:CT_CtxNode"
+      ],
+      "attributes": [
+        {
+          "name": "alignmentLevel",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "ascender",
+          "type": "msink:ST_Points",
+          "default": "0,0"
+        },
+        {
+          "name": "baseline",
+          "type": "msink:ST_Points",
+          "default": "0,0"
+        },
+        {
+          "name": "beginModifierType",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "centroid",
+          "type": "msink:ST_Point"
+        },
+        {
+          "name": "contentType",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "customRecognizerId",
+          "type": "msink:ST_Guid"
+        },
+        {
+          "name": "descender",
+          "type": "msink:ST_Points",
+          "default": "0,0"
+        },
+        {
+          "name": "endModifierType",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hotPoints",
+          "type": "msink:ST_Points"
+        },
+        {
+          "name": "id",
+          "type": "msink:ST_Guid"
+        },
+        {
+          "name": "mathML",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "mathStruct",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "mathSymbol",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "midline",
+          "type": "msink:ST_Points",
+          "default": "0,0"
+        },
+        {
+          "name": "rotatedBoundingBox",
+          "type": "msink:ST_Points"
+        },
+        {
+          "name": "rotationAngle",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "semanticType",
+          "type": "msink:ST_SemanticType",
+          "default": "none"
+        },
+        {
+          "name": "shapeGeometry",
+          "type": "msink:ST_Points"
+        },
+        {
+          "name": "shapeName",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "type",
+          "type": "msink:ST_CtxNodeType",
+          "required": true
+        }
+      ],
+      "children": [
+        "msink:property",
+        "msink:sourceLink",
+        "msink:destinationLink"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.1.1",
+          "title": "context",
+          "page": 142
+        }
+      ]
+    },
+    {
+      "name": "msink:destinationLink",
+      "types": [
+        "msink:CT_CtxLink"
+      ],
+      "attributes": [
+        {
+          "name": "direction",
+          "type": "msink:ST_Dir"
+        },
+        {
+          "name": "ref",
+          "type": "msink:ST_Ref"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "msink:context"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.1",
+          "title": "CT_CtxLink",
+          "page": 142
+        }
+      ]
+    },
+    {
+      "name": "msink:property",
+      "types": [
+        "msink:CT_Property"
+      ],
+      "text": "xsd:hexBinary",
+      "attributes": [
+        {
+          "name": "type",
+          "type": "msink:ST_Guid"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "msink:context"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.3",
+          "title": "CT_Property",
+          "page": 145
+        }
+      ]
+    },
+    {
+      "name": "msink:sourceLink",
+      "types": [
+        "msink:CT_CtxLink"
+      ],
+      "attributes": [
+        {
+          "name": "direction",
+          "type": "msink:ST_Dir"
+        },
+        {
+          "name": "ref",
+          "type": "msink:ST_Ref"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "msink:context"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.1",
+          "title": "CT_CtxLink",
+          "page": 142
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "msink:CT_CtxLink",
+      "content": "empty",
+      "attributes": [
+        "direction",
+        "ref"
+      ],
+      "usedBy": [
+        "msink:destinationLink",
+        "msink:sourceLink"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.1",
+          "title": "CT_CtxLink",
+          "page": 142
+        }
+      ]
+    },
+    {
+      "name": "msink:CT_CtxNode",
+      "content": "elements",
+      "model": "(msink:property*, msink:sourceLink*, msink:destinationLink*)",
+      "attributes": [
+        "alignmentLevel",
+        "ascender",
+        "baseline",
+        "beginModifierType",
+        "centroid",
+        "contentType",
+        "customRecognizerId",
+        "descender",
+        "endModifierType",
+        "hotPoints",
+        "id",
+        "mathML",
+        "mathStruct",
+        "mathSymbol",
+        "midline",
+        "rotatedBoundingBox",
+        "rotationAngle",
+        "semanticType",
+        "shapeGeometry",
+        "shapeName",
+        "type"
+      ],
+      "usedBy": [
+        "msink:context"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.2",
+          "title": "CT_CtxNode",
+          "page": 143
+        }
+      ]
+    },
+    {
+      "name": "msink:CT_Property",
+      "base": "xsd:hexBinary",
+      "content": "text",
+      "attributes": [
+        "type"
+      ],
+      "usedBy": [
+        "msink:property"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.3.3",
+          "title": "CT_Property",
+          "page": 145
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "msink:ST_CtxNodeType",
+      "definition": "union of msink:ST_KnownCtxNodeType, msink:ST_Guid",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.1",
+          "title": "ST_CtxNodeType",
+          "page": 146
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_Dir",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "to",
+        "from",
+        "with"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.2",
+          "title": "ST_Dir",
+          "page": 146
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_Guid",
+      "definition": "restriction of xsd:token",
+      "facets": {
+        "pattern": "\\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\\}"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.3",
+          "title": "ST_Guid",
+          "page": 147
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_KnownCtxNodeType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "root",
+        "unclassifiedInk",
+        "writingRegion",
+        "analysisHint",
+        "object",
+        "inkDrawing",
+        "image",
+        "paragraph",
+        "line",
+        "inkBullet",
+        "inkWord",
+        "textWord",
+        "customRecognizer",
+        "mathRegion",
+        "mathEquation",
+        "mathStruct",
+        "mathSymbol",
+        "mathIdentifier",
+        "mathOperator",
+        "mathNumber",
+        "nonInkDrawing",
+        "groupNode",
+        "mixedDrawing"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.4",
+          "title": "ST_KnownCtxNodeType",
+          "page": 147
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_KnownSemanticType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "underline",
+        "strikethrough",
+        "highlight",
+        "scratchOut",
+        "verticalRange",
+        "callout",
+        "enclosure",
+        "comment",
+        "container",
+        "connector"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.5",
+          "title": "ST_KnownSemanticType",
+          "page": 149
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_Point",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "-?[0-9]+,-?[0-9]+"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.6",
+          "title": "ST_Point",
+          "page": 150
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_Points",
+      "definition": "list of msink:ST_Point",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.7",
+          "title": "ST_Points",
+          "page": 150
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_Ref",
+      "definition": "union of msink:ST_Guid, xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.8",
+          "title": "ST_Ref",
+          "page": 150
+        }
+      ]
+    },
+    {
+      "name": "msink:ST_SemanticType",
+      "definition": "union of msink:ST_KnownSemanticType, xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.11.4.9",
+          "title": "ST_SemanticType",
+          "page": 151
+        }
+      ]
+    }
+  ]
+}

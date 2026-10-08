@@ -1,0 +1,2494 @@
+{
+  "prefix": "a14",
+  "uri": "http://schemas.microsoft.com/office/drawing/2010/main",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.1",
+  "counts": {
+    "elements": 50,
+    "attributes": 97,
+    "globalAttributes": 1,
+    "complexTypes": 42,
+    "simpleTypes": 7,
+    "enumValues": 0,
+    "specSections": 63,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "a14:artisticBlur",
+      "types": [
+        "a14:CT_PictureEffectBlur"
+      ],
+      "attributes": [
+        {
+          "name": "radius",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "10"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.12",
+          "title": "CT_PictureEffectBlur",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticCement",
+      "types": [
+        "a14:CT_PictureEffectCement"
+      ],
+      "attributes": [
+        {
+          "name": "crackSpacing",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "24"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.14",
+          "title": "CT_PictureEffectCement",
+          "page": 69
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticChalkSketch",
+      "types": [
+        "a14:CT_PictureEffectChalkSketch"
+      ],
+      "attributes": [
+        {
+          "name": "pressure",
+          "type": "a14:ST_ArtisticEffectParam4",
+          "default": "0"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.15",
+          "title": "CT_PictureEffectChalkSketch",
+          "page": 69
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticCrisscrossEtching",
+      "types": [
+        "a14:CT_PictureEffectCrisscrossEtching"
+      ],
+      "attributes": [
+        {
+          "name": "pressure",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "30"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "75"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.17",
+          "title": "CT_PictureEffectCrisscrossEtching",
+          "page": 71
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticCutout",
+      "types": [
+        "a14:CT_PictureEffectCutout"
+      ],
+      "attributes": [
+        {
+          "name": "numberOfShades",
+          "type": "a14:ST_ArtisticEffectParam6",
+          "default": "2"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.18",
+          "title": "CT_PictureEffectCutout",
+          "page": 71
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticFilmGrain",
+      "types": [
+        "a14:CT_PictureEffectFilmGrain"
+      ],
+      "attributes": [
+        {
+          "name": "grainSize",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "40"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.20",
+          "title": "CT_PictureEffectFilmGrain",
+          "page": 74
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticGlass",
+      "types": [
+        "a14:CT_PictureEffectGlass"
+      ],
+      "attributes": [
+        {
+          "name": "scaling",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "34"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.21",
+          "title": "CT_PictureEffectGlass",
+          "page": 75
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticGlowDiffused",
+      "types": [
+        "a14:CT_PictureEffectGlowDiffused"
+      ],
+      "attributes": [
+        {
+          "name": "intensity",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "5"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.22",
+          "title": "CT_PictureEffectGlowDiffused",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticGlowEdges",
+      "types": [
+        "a14:CT_PictureEffectGlowEdges"
+      ],
+      "attributes": [
+        {
+          "name": "smoothness",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "3"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "15"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.23",
+          "title": "CT_PictureEffectGlowEdges",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticLightScreen",
+      "types": [
+        "a14:CT_PictureEffectLightScreen"
+      ],
+      "attributes": [
+        {
+          "name": "gridSize",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "4"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.24",
+          "title": "CT_PictureEffectLightScreen",
+          "page": 77
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticLineDrawing",
+      "types": [
+        "a14:CT_PictureEffectLineDrawing"
+      ],
+      "attributes": [
+        {
+          "name": "pencilSize",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "0"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "25"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.25",
+          "title": "CT_PictureEffectLineDrawing",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticMarker",
+      "types": [
+        "a14:CT_PictureEffectMarker"
+      ],
+      "attributes": [
+        {
+          "name": "size",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "97"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.26",
+          "title": "CT_PictureEffectMarker",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticMosiaicBubbles",
+      "types": [
+        "a14:CT_PictureEffectMosiaicBubbles"
+      ],
+      "attributes": [
+        {
+          "name": "pressure",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "14"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.27",
+          "title": "CT_PictureEffectMosiaicBubbles",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPaintBrush",
+      "types": [
+        "a14:CT_PictureEffectPaintBrush"
+      ],
+      "attributes": [
+        {
+          "name": "brushSize",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "2"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.28",
+          "title": "CT_PictureEffectPaintBrush",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPaintStrokes",
+      "types": [
+        "a14:CT_PictureEffectPaintStrokes"
+      ],
+      "attributes": [
+        {
+          "name": "intensity",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "5"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.29",
+          "title": "CT_PictureEffectPaintStrokes",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPastelsSmooth",
+      "types": [
+        "a14:CT_PictureEffectPastelsSmooth"
+      ],
+      "attributes": [
+        {
+          "name": "scaling",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "34"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.30",
+          "title": "CT_PictureEffectPastelsSmooth",
+          "page": 81
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPencilGrayscale",
+      "types": [
+        "a14:CT_PictureEffectPencilGrayscale"
+      ],
+      "attributes": [
+        {
+          "name": "pencilSize",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "27"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.31",
+          "title": "CT_PictureEffectPencilGrayscale",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPencilSketch",
+      "types": [
+        "a14:CT_PictureEffectPencilSketch"
+      ],
+      "attributes": [
+        {
+          "name": "pressure",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "22"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.32",
+          "title": "CT_PictureEffectPencilSketch",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPhotocopy",
+      "types": [
+        "a14:CT_PictureEffectPhotocopy"
+      ],
+      "attributes": [
+        {
+          "name": "detail",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "3"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "30"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.33",
+          "title": "CT_PictureEffectPhotocopy",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticPlasticWrap",
+      "types": [
+        "a14:CT_PictureEffectPlasticWrap"
+      ],
+      "attributes": [
+        {
+          "name": "smoothness",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "5"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.34",
+          "title": "CT_PictureEffectPlasticWrap",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticTexturizer",
+      "types": [
+        "a14:CT_PictureEffectTexturizer"
+      ],
+      "attributes": [
+        {
+          "name": "scaling",
+          "type": "a14:ST_ArtisticEffectParam100",
+          "default": "34"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.37",
+          "title": "CT_PictureEffectTexturizer",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "a14:artisticWatercolorSponge",
+      "types": [
+        "a14:CT_PictureEffectWatercolorSponge"
+      ],
+      "attributes": [
+        {
+          "name": "brushSize",
+          "type": "a14:ST_ArtisticEffectParam10",
+          "default": "2"
+        },
+        {
+          "name": "trans",
+          "type": "a:ST_PositiveFixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.38",
+          "title": "CT_PictureEffectWatercolorSponge",
+          "page": 86
+        }
+      ]
+    },
+    {
+      "name": "a14:backgroundMark",
+      "types": [
+        "a14:CT_PictureEffectBackgroundRemovalBackgroundMark"
+      ],
+      "attributes": [
+        {
+          "name": "x1",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "x2",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "y1",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "y2",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:backgroundRemoval"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.10",
+          "title": "CT_PictureEffectBackgroundRemovalBackgroundMark",
+          "page": 66
+        }
+      ]
+    },
+    {
+      "name": "a14:backgroundRemoval",
+      "types": [
+        "a14:CT_PictureEffectBackgroundRemoval"
+      ],
+      "attributes": [
+        {
+          "name": "b",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "l",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "r",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "t",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [
+        "a14:foregroundMark",
+        "a14:backgroundMark"
+      ],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.9",
+          "title": "CT_PictureEffectBackgroundRemoval",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "a14:brightnessContrast",
+      "types": [
+        "a14:CT_PictureEffectBrightnessContrast"
+      ],
+      "attributes": [
+        {
+          "name": "bright",
+          "type": "a:ST_FixedPercentage",
+          "default": "0"
+        },
+        {
+          "name": "contrast",
+          "type": "a:ST_FixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.13",
+          "title": "CT_PictureEffectBrightnessContrast",
+          "page": 68
+        }
+      ]
+    },
+    {
+      "name": "a14:cNvContentPartPr",
+      "types": [
+        "a14:CT_NonVisualInkContentPartProperties"
+      ],
+      "attributes": [
+        {
+          "name": "isComment",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a14:cpLocks",
+        "a14:extLst"
+      ],
+      "parents": [
+        "a14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.7",
+          "title": "CT_NonVisualInkContentPartProperties",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "a14:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "a14:nvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "a14:cameraTool",
+      "global": true,
+      "types": [
+        "a14:CT_CameraTool"
+      ],
+      "attributes": [
+        {
+          "name": "cellRange",
+          "type": "xsd:string"
+        },
+        {
+          "name": "spid",
+          "type": "xsd:string",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.1",
+          "title": "cameraTool",
+          "page": 55
+        }
+      ]
+    },
+    {
+      "name": "a14:colorTemperature",
+      "types": [
+        "a14:CT_PictureEffectColorTemperature"
+      ],
+      "attributes": [
+        {
+          "name": "colorTemp",
+          "type": "a14:ST_ColorTemperature",
+          "default": "6500"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.16",
+          "title": "CT_PictureEffectColorTemperature",
+          "page": 70
+        }
+      ]
+    },
+    {
+      "name": "a14:compatExt",
+      "global": true,
+      "types": [
+        "a14:CT_CompatExt"
+      ],
+      "attributes": [
+        {
+          "name": "spid",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.2",
+          "title": "compatExt",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "a14:contentPart",
+      "global": true,
+      "types": [
+        "a14:CT_GvmlContentPart"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "a14:nvContentPartPr",
+        "a14:xfrm",
+        "a14:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.3",
+          "title": "contentPart",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "a14:cpLocks",
+      "types": [
+        "a14:CT_ContentPartLocking"
+      ],
+      "attributes": [
+        {
+          "name": "noAdjustHandles",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noChangeArrowheads",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noChangeAspect",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noChangeShapeType",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noEditPoints",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noGrp",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noMove",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noResize",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noRot",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "noSelect",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a14:extLst"
+      ],
+      "parents": [
+        "a14:cNvContentPartPr",
+        "cdr14:cNvContentPartPr",
+        "p14:cNvContentPartPr",
+        "w14:cNvContentPartPr",
+        "xdr14:cNvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.3",
+          "title": "CT_ContentPartLocking",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "a14:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "a14:cNvContentPartPr",
+        "a14:contentPart",
+        "a14:cpLocks",
+        "cdr14:cNvContentPartPr",
+        "p14:cNvContentPartPr",
+        "w14:cNvContentPartPr",
+        "xdr14:cNvContentPartPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "a14:foregroundMark",
+      "types": [
+        "a14:CT_PictureEffectBackgroundRemovalForegroundMark"
+      ],
+      "attributes": [
+        {
+          "name": "x1",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "x2",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "y1",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        },
+        {
+          "name": "y2",
+          "type": "a:ST_PositiveFixedPercentage",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:backgroundRemoval"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.11",
+          "title": "CT_PictureEffectBackgroundRemovalForegroundMark",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "a14:hiddenEffects",
+      "global": true,
+      "types": [
+        "a:CT_EffectProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.4",
+          "title": "hiddenEffects",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "name": "a14:hiddenFill",
+      "global": true,
+      "types": [
+        "a:CT_FillProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.5",
+          "title": "hiddenFill",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "a14:hiddenLine",
+      "global": true,
+      "types": [
+        "a:CT_LineProperties"
+      ],
+      "attributes": [
+        {
+          "name": "algn",
+          "type": "a:ST_PenAlignment"
+        },
+        {
+          "name": "cap",
+          "type": "a:ST_LineCap"
+        },
+        {
+          "name": "cmpd",
+          "type": "a:ST_CompoundLine"
+        },
+        {
+          "name": "w",
+          "type": "a:ST_LineWidth"
+        }
+      ],
+      "children": [
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:pattFill",
+        "a:prstDash",
+        "a:custDash",
+        "a:round",
+        "a:bevel",
+        "a:miter",
+        "a:headEnd",
+        "a:tailEnd",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.6",
+          "title": "hiddenLine",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "a14:hiddenScene3d",
+      "global": true,
+      "types": [
+        "a:CT_Scene3D"
+      ],
+      "attributes": [],
+      "children": [
+        "a:camera",
+        "a:lightRig",
+        "a:backdrop",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.7",
+          "title": "hiddenScene3d",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "a14:hiddenSp3d",
+      "global": true,
+      "types": [
+        "a:CT_Shape3D"
+      ],
+      "attributes": [
+        {
+          "name": "contourW",
+          "type": "a:ST_PositiveCoordinate",
+          "default": "0"
+        },
+        {
+          "name": "extrusionH",
+          "type": "a:ST_PositiveCoordinate",
+          "default": "0"
+        },
+        {
+          "name": "prstMaterial",
+          "type": "a:ST_PresetMaterialType",
+          "default": "warmMatte"
+        },
+        {
+          "name": "z",
+          "type": "a:ST_Coordinate",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:bevelT",
+        "a:bevelB",
+        "a:extrusionClr",
+        "a:contourClr",
+        "a:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.8",
+          "title": "hiddenSp3d",
+          "page": 57
+        }
+      ]
+    },
+    {
+      "name": "a14:imgEffect",
+      "types": [
+        "a14:CT_PictureEffect"
+      ],
+      "attributes": [
+        {
+          "name": "visible",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "a14:artisticBlur",
+        "a14:artisticCement",
+        "a14:artisticChalkSketch",
+        "a14:artisticCrisscrossEtching",
+        "a14:artisticCutout",
+        "a14:artisticFilmGrain",
+        "a14:artisticGlass",
+        "a14:artisticGlowDiffused",
+        "a14:artisticGlowEdges",
+        "a14:artisticLightScreen",
+        "a14:artisticLineDrawing",
+        "a14:artisticMarker",
+        "a14:artisticMosiaicBubbles",
+        "a14:artisticPaintStrokes",
+        "a14:artisticPaintBrush",
+        "a14:artisticPastelsSmooth",
+        "a14:artisticPencilGrayscale",
+        "a14:artisticPencilSketch",
+        "a14:artisticPhotocopy",
+        "a14:artisticPlasticWrap",
+        "a14:artisticTexturizer",
+        "a14:artisticWatercolorSponge",
+        "a14:backgroundRemoval",
+        "a14:brightnessContrast",
+        "a14:colorTemperature",
+        "a14:saturation",
+        "a14:sharpenSoften"
+      ],
+      "parents": [
+        "a14:imgLayer"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.19",
+          "title": "CT_PictureEffect",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "a14:imgLayer",
+      "types": [
+        "a14:CT_PictureLayer"
+      ],
+      "attributes": [
+        {
+          "name": "r:embed",
+          "type": "r:ST_RelationshipId",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a14:imgEffect"
+      ],
+      "parents": [
+        "a14:imgProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.39",
+          "title": "CT_PictureLayer",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "a14:imgProps",
+      "global": true,
+      "types": [
+        "a14:CT_Photo"
+      ],
+      "attributes": [],
+      "children": [
+        "a14:imgLayer"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.9",
+          "title": "imgProps",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "a14:isCanvas",
+      "global": true,
+      "types": [
+        "a14:CT_IsGvmlCanvas"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.10",
+          "title": "isCanvas",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "a14:m",
+      "global": true,
+      "types": [
+        "a14:CT_TextMath"
+      ],
+      "attributes": [],
+      "children": [
+        "m:oMath"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.11",
+          "title": "m",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "name": "a14:nvContentPartPr",
+      "types": [
+        "a14:CT_GvmlContentPartNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "a14:cNvPr",
+        "a14:cNvContentPartPr"
+      ],
+      "parents": [
+        "a14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.5",
+          "title": "CT_GvmlContentPartNonVisual",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "a14:saturation",
+      "types": [
+        "a14:CT_PictureEffectSaturation"
+      ],
+      "attributes": [
+        {
+          "name": "sat",
+          "type": "a14:ST_SaturationAmount",
+          "default": "100"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.35",
+          "title": "CT_PictureEffectSaturation",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "a14:shadowObscured",
+      "global": true,
+      "types": [
+        "a14:CT_ShadowObscured"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.12",
+          "title": "shadowObscured",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "name": "a14:sharpenSoften",
+      "types": [
+        "a14:CT_PictureEffectSharpenSoften"
+      ],
+      "attributes": [
+        {
+          "name": "amount",
+          "type": "a:ST_FixedPercentage",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.36",
+          "title": "CT_PictureEffectSharpenSoften",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "a14:useLocalDpi",
+      "global": true,
+      "types": [
+        "a14:CT_UseLocalDpi"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.1.13",
+          "title": "useLocalDpi",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "name": "a14:xfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "a14:contentPart"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [
+    {
+      "name": "a14:legacySpreadsheetColorIndex",
+      "type": "a14:ST_LegacySpreadsheetColorIndex",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.2.1",
+          "title": "legacySpreadsheetColorIndex",
+          "page": 59
+        }
+      ]
+    }
+  ],
+  "complexTypes": [
+    {
+      "name": "a14:CT_CameraTool",
+      "content": "empty",
+      "attributes": [
+        "cellRange",
+        "spid"
+      ],
+      "usedBy": [
+        "a14:cameraTool"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.1",
+          "title": "CT_CameraTool",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_CompatExt",
+      "content": "empty",
+      "attributes": [
+        "spid"
+      ],
+      "usedBy": [
+        "a14:compatExt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.2",
+          "title": "CT_CompatExt",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_ContentPartLocking",
+      "content": "elements",
+      "model": "a14:extLst?",
+      "attributes": [
+        "noAdjustHandles",
+        "noChangeArrowheads",
+        "noChangeAspect",
+        "noChangeShapeType",
+        "noEditPoints",
+        "noGrp",
+        "noMove",
+        "noResize",
+        "noRot",
+        "noSelect"
+      ],
+      "usedBy": [
+        "a14:cpLocks"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.3",
+          "title": "CT_ContentPartLocking",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_GvmlContentPart",
+      "content": "elements",
+      "model": "(a14:nvContentPartPr?, a14:xfrm?, a14:extLst?)",
+      "attributes": [
+        "bwMode",
+        "r:id"
+      ],
+      "usedBy": [
+        "a14:contentPart"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.4",
+          "title": "CT_GvmlContentPart",
+          "page": 62
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_GvmlContentPartNonVisual",
+      "content": "elements",
+      "model": "(a14:cNvPr, a14:cNvContentPartPr?)",
+      "attributes": [],
+      "usedBy": [
+        "a14:nvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.5",
+          "title": "CT_GvmlContentPartNonVisual",
+          "page": 63
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_IsGvmlCanvas",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "a14:isCanvas"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.6",
+          "title": "CT_IsGvmlCanvas",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_NonVisualInkContentPartProperties",
+      "content": "elements",
+      "model": "(a14:cpLocks?, a14:extLst?)",
+      "attributes": [
+        "isComment"
+      ],
+      "usedBy": [
+        "a14:cNvContentPartPr",
+        "cdr14:cNvContentPartPr",
+        "p14:cNvContentPartPr",
+        "w14:cNvContentPartPr",
+        "xdr14:cNvContentPartPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.7",
+          "title": "CT_NonVisualInkContentPartProperties",
+          "page": 64
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_Photo",
+      "content": "elements",
+      "model": "a14:imgLayer",
+      "attributes": [],
+      "usedBy": [
+        "a14:imgProps"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.8",
+          "title": "CT_Photo",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffect",
+      "content": "elements",
+      "model": "(a14:artisticBlur | a14:artisticCement | a14:artisticChalkSketch | a14:artisticCrisscrossEtching | a14:artisticCutout | a14:artisticFilmGrain | a14:artisticGlass | a14:artisticGlowDiffused | a14:artisticGlowEdges | a14:artisticLightScreen | a14:artisticLineDrawing | a14:artisticMarker | a14:artisticMosiaicBubbles | a14:artisticPaintStrokes | a14:artisticPaintBrush | a14:artisticPastelsSmooth | a14:artisticPencilGrayscale | a14:artisticPencilSketch | a14:artisticPhotocopy | a14:artisticPlasticWrap | a14:artisticTexturizer | a14:artisticWatercolorSponge | a14:backgroundRemoval | a14:brightnessContrast | a14:colorTemperature | a14:saturation | a14:sharpenSoften)",
+      "attributes": [
+        "visible"
+      ],
+      "usedBy": [
+        "a14:imgEffect"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.19",
+          "title": "CT_PictureEffect",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectBackgroundRemoval",
+      "content": "elements",
+      "model": "(a14:foregroundMark*, a14:backgroundMark*)",
+      "attributes": [
+        "b",
+        "l",
+        "r",
+        "t"
+      ],
+      "usedBy": [
+        "a14:backgroundRemoval"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.9",
+          "title": "CT_PictureEffectBackgroundRemoval",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectBackgroundRemovalBackgroundMark",
+      "content": "empty",
+      "attributes": [
+        "x1",
+        "x2",
+        "y1",
+        "y2"
+      ],
+      "usedBy": [
+        "a14:backgroundMark"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.10",
+          "title": "CT_PictureEffectBackgroundRemovalBackgroundMark",
+          "page": 66
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectBackgroundRemovalForegroundMark",
+      "content": "empty",
+      "attributes": [
+        "x1",
+        "x2",
+        "y1",
+        "y2"
+      ],
+      "usedBy": [
+        "a14:foregroundMark"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.11",
+          "title": "CT_PictureEffectBackgroundRemovalForegroundMark",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectBlur",
+      "content": "empty",
+      "attributes": [
+        "radius"
+      ],
+      "usedBy": [
+        "a14:artisticBlur"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.12",
+          "title": "CT_PictureEffectBlur",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectBrightnessContrast",
+      "content": "empty",
+      "attributes": [
+        "bright",
+        "contrast"
+      ],
+      "usedBy": [
+        "a14:brightnessContrast"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.13",
+          "title": "CT_PictureEffectBrightnessContrast",
+          "page": 68
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectCement",
+      "content": "empty",
+      "attributes": [
+        "crackSpacing",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticCement"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.14",
+          "title": "CT_PictureEffectCement",
+          "page": 69
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectChalkSketch",
+      "content": "empty",
+      "attributes": [
+        "pressure",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticChalkSketch"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.15",
+          "title": "CT_PictureEffectChalkSketch",
+          "page": 69
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectColorTemperature",
+      "content": "empty",
+      "attributes": [
+        "colorTemp"
+      ],
+      "usedBy": [
+        "a14:colorTemperature"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.16",
+          "title": "CT_PictureEffectColorTemperature",
+          "page": 70
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectCrisscrossEtching",
+      "content": "empty",
+      "attributes": [
+        "pressure",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticCrisscrossEtching"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.17",
+          "title": "CT_PictureEffectCrisscrossEtching",
+          "page": 71
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectCutout",
+      "content": "empty",
+      "attributes": [
+        "numberOfShades",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticCutout"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.18",
+          "title": "CT_PictureEffectCutout",
+          "page": 71
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectFilmGrain",
+      "content": "empty",
+      "attributes": [
+        "grainSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticFilmGrain"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.20",
+          "title": "CT_PictureEffectFilmGrain",
+          "page": 74
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectGlass",
+      "content": "empty",
+      "attributes": [
+        "scaling",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticGlass"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.21",
+          "title": "CT_PictureEffectGlass",
+          "page": 75
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectGlowDiffused",
+      "content": "empty",
+      "attributes": [
+        "intensity",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticGlowDiffused"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.22",
+          "title": "CT_PictureEffectGlowDiffused",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectGlowEdges",
+      "content": "empty",
+      "attributes": [
+        "smoothness",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticGlowEdges"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.23",
+          "title": "CT_PictureEffectGlowEdges",
+          "page": 76
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectLightScreen",
+      "content": "empty",
+      "attributes": [
+        "gridSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticLightScreen"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.24",
+          "title": "CT_PictureEffectLightScreen",
+          "page": 77
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectLineDrawing",
+      "content": "empty",
+      "attributes": [
+        "pencilSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticLineDrawing"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.25",
+          "title": "CT_PictureEffectLineDrawing",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectMarker",
+      "content": "empty",
+      "attributes": [
+        "size",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticMarker"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.26",
+          "title": "CT_PictureEffectMarker",
+          "page": 78
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectMosiaicBubbles",
+      "content": "empty",
+      "attributes": [
+        "pressure",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticMosiaicBubbles"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.27",
+          "title": "CT_PictureEffectMosiaicBubbles",
+          "page": 79
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPaintBrush",
+      "content": "empty",
+      "attributes": [
+        "brushSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPaintBrush"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.28",
+          "title": "CT_PictureEffectPaintBrush",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPaintStrokes",
+      "content": "empty",
+      "attributes": [
+        "intensity",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPaintStrokes"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.29",
+          "title": "CT_PictureEffectPaintStrokes",
+          "page": 80
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPastelsSmooth",
+      "content": "empty",
+      "attributes": [
+        "scaling",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPastelsSmooth"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.30",
+          "title": "CT_PictureEffectPastelsSmooth",
+          "page": 81
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPencilGrayscale",
+      "content": "empty",
+      "attributes": [
+        "pencilSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPencilGrayscale"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.31",
+          "title": "CT_PictureEffectPencilGrayscale",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPencilSketch",
+      "content": "empty",
+      "attributes": [
+        "pressure",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPencilSketch"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.32",
+          "title": "CT_PictureEffectPencilSketch",
+          "page": 82
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPhotocopy",
+      "content": "empty",
+      "attributes": [
+        "detail",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPhotocopy"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.33",
+          "title": "CT_PictureEffectPhotocopy",
+          "page": 83
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectPlasticWrap",
+      "content": "empty",
+      "attributes": [
+        "smoothness",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticPlasticWrap"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.34",
+          "title": "CT_PictureEffectPlasticWrap",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectSaturation",
+      "content": "empty",
+      "attributes": [
+        "sat"
+      ],
+      "usedBy": [
+        "a14:saturation"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.35",
+          "title": "CT_PictureEffectSaturation",
+          "page": 84
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectSharpenSoften",
+      "content": "empty",
+      "attributes": [
+        "amount"
+      ],
+      "usedBy": [
+        "a14:sharpenSoften"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.36",
+          "title": "CT_PictureEffectSharpenSoften",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectTexturizer",
+      "content": "empty",
+      "attributes": [
+        "scaling",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticTexturizer"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.37",
+          "title": "CT_PictureEffectTexturizer",
+          "page": 85
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureEffectWatercolorSponge",
+      "content": "empty",
+      "attributes": [
+        "brushSize",
+        "trans"
+      ],
+      "usedBy": [
+        "a14:artisticWatercolorSponge"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.38",
+          "title": "CT_PictureEffectWatercolorSponge",
+          "page": 86
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_PictureLayer",
+      "content": "elements",
+      "model": "a14:imgEffect*",
+      "attributes": [
+        "r:embed"
+      ],
+      "usedBy": [
+        "a14:imgLayer"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.39",
+          "title": "CT_PictureLayer",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_ShadowObscured",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "a14:shadowObscured"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.40",
+          "title": "CT_ShadowObscured",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_TextMath",
+      "content": "elements",
+      "model": "m:oMath",
+      "attributes": [],
+      "usedBy": [
+        "a14:m"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.41",
+          "title": "CT_TextMath",
+          "page": 88
+        }
+      ]
+    },
+    {
+      "name": "a14:CT_UseLocalDpi",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "a14:useLocalDpi"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.3.42",
+          "title": "CT_UseLocalDpi",
+          "page": 88
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "a14:ST_ArtisticEffectParam10",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "10"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.1",
+          "title": "ST_ArtisticEffectParam10",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_ArtisticEffectParam100",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "100"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.2",
+          "title": "ST_ArtisticEffectParam100",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_ArtisticEffectParam4",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "4"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.3",
+          "title": "ST_ArtisticEffectParam4",
+          "page": 89
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_ArtisticEffectParam6",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "6"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.4",
+          "title": "ST_ArtisticEffectParam6",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_ColorTemperature",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "1500",
+        "maxInclusive": "11500"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.5",
+          "title": "ST_ColorTemperature",
+          "page": 90
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_LegacySpreadsheetColorIndex",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "80"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.6",
+          "title": "ST_LegacySpreadsheetColorIndex",
+          "page": 91
+        }
+      ]
+    },
+    {
+      "name": "a14:ST_SaturationAmount",
+      "definition": "restriction of a:ST_PercentageDecimal",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "400000"
+      },
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.3.4.7",
+          "title": "ST_SaturationAmount",
+          "page": 91
+        }
+      ]
+    }
+  ]
+}

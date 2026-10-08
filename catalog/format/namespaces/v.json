@@ -1,0 +1,5100 @@
+{
+  "prefix": "v",
+  "uri": "urn:schemas-microsoft-com:vml",
+  "area": "VML (legacy drawing)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema vml-main.xsd",
+  "counts": {
+    "elements": 23,
+    "attributes": 733,
+    "globalAttributes": 0,
+    "complexTypes": 23,
+    "simpleTypes": 12,
+    "enumValues": 51,
+    "specSections": 37,
+    "officeNotes": 29
+  },
+  "elements": [
+    {
+      "name": "v:arc",
+      "global": true,
+      "types": [
+        "v:CT_Arc"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endAngle",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "startAngle",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.1",
+          "title": "Arc Segment",
+          "page": 314,
+          "officeNotes": [
+            "2.1.1790"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:background",
+      "global": true,
+      "types": [
+        "v:CT_Background"
+      ],
+      "attributes": [
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:targetscreensize",
+          "type": "o:ST_ScreenSize"
+        }
+      ],
+      "children": [
+        "v:fill"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.2",
+          "title": "Document Background",
+          "page": 341,
+          "officeNotes": [
+            "2.1.1791"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:curve",
+      "global": true,
+      "types": [
+        "v:CT_Curve"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "control1",
+          "type": "xsd:string"
+        },
+        {
+          "name": "control2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "from",
+          "type": "xsd:string"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "to",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.3",
+          "title": "Bezier Curve",
+          "page": 344,
+          "officeNotes": [
+            "2.1.1792"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:f",
+      "types": [
+        "v:CT_F"
+      ],
+      "attributes": [
+        {
+          "name": "eqn",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:formulas"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.4",
+          "title": "Single Formula",
+          "page": 371,
+          "officeNotes": [
+            "2.1.1793"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:fill",
+      "global": true,
+      "types": [
+        "v:CT_Fill"
+      ],
+      "attributes": [
+        {
+          "name": "alignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "angle",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "aspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "colors",
+          "type": "xsd:string"
+        },
+        {
+          "name": "focus",
+          "type": "xsd:string"
+        },
+        {
+          "name": "focusposition",
+          "type": "xsd:string"
+        },
+        {
+          "name": "focussize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "method",
+          "type": "v:ST_FillMethod"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:detectmouseclick",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:opacity2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:relid",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "origin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "position",
+          "type": "xsd:string"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "recolor",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "rotate",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "size",
+          "type": "xsd:string"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "type",
+          "type": "v:ST_FillType"
+        }
+      ],
+      "children": [
+        "o:fill"
+      ],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:background",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.5",
+          "title": "Shape Fill Properties",
+          "page": 375,
+          "officeNotes": [
+            "2.1.1794"
+          ]
+        },
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.2.13",
+          "title": "Shape Fill Extended Properties",
+          "page": 752,
+          "officeNotes": [
+            "2.1.1827"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:formulas",
+      "global": true,
+      "types": [
+        "v:CT_Formulas"
+      ],
+      "attributes": [],
+      "children": [
+        "v:f"
+      ],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.6",
+          "title": "Set of Formulas",
+          "page": 386,
+          "officeNotes": [
+            "2.1.1795"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:group",
+      "global": true,
+      "types": [
+        "v:CT_Group"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "editas",
+          "type": "v:ST_EditAs"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:tablelimits",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:tableproperties",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata",
+        "v:group",
+        "v:shape",
+        "v:shapetype",
+        "v:arc",
+        "v:curve",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "o:diagram"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.7",
+          "title": "Shape Group",
+          "page": 387,
+          "officeNotes": [
+            "2.1.1796"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:h",
+      "types": [
+        "v:CT_H"
+      ],
+      "attributes": [
+        {
+          "name": "invx",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "invy",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "map",
+          "type": "xsd:string"
+        },
+        {
+          "name": "polar",
+          "type": "xsd:string"
+        },
+        {
+          "name": "position",
+          "type": "xsd:string"
+        },
+        {
+          "name": "radiusrange",
+          "type": "xsd:string"
+        },
+        {
+          "name": "switch",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "xrange",
+          "type": "xsd:string"
+        },
+        {
+          "name": "yrange",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:handles"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.8",
+          "title": "Shape Handle",
+          "page": 409,
+          "officeNotes": [
+            "2.1.1797"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:handles",
+      "global": true,
+      "types": [
+        "v:CT_Handles"
+      ],
+      "attributes": [],
+      "children": [
+        "v:h"
+      ],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.9",
+          "title": "Set of Handles",
+          "page": 413,
+          "officeNotes": [
+            "2.1.1798"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:image",
+      "global": true,
+      "types": [
+        "v:CT_Image"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "bilevel",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "blacklevel",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cropbottom",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cropleft",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cropright",
+          "type": "xsd:string"
+        },
+        {
+          "name": "croptop",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "gain",
+          "type": "xsd:string"
+        },
+        {
+          "name": "gamma",
+          "type": "xsd:string"
+        },
+        {
+          "name": "grayscale",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.10",
+          "title": "Image File",
+          "page": 413,
+          "officeNotes": [
+            "2.1.1799"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:imagedata",
+      "global": true,
+      "types": [
+        "v:CT_ImageData"
+      ],
+      "attributes": [
+        {
+          "name": "bilevel",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "blacklevel",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "cropbottom",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cropleft",
+          "type": "xsd:string"
+        },
+        {
+          "name": "cropright",
+          "type": "xsd:string"
+        },
+        {
+          "name": "croptop",
+          "type": "xsd:string"
+        },
+        {
+          "name": "embosscolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "gain",
+          "type": "xsd:string"
+        },
+        {
+          "name": "gamma",
+          "type": "xsd:string"
+        },
+        {
+          "name": "grayscale",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:detectmouseclick",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:movie",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:oleid",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:relid",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "r:href",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "r:pict",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "recolortarget",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.11",
+          "title": "Image Data",
+          "page": 443,
+          "officeNotes": [
+            "2.1.1800"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:line",
+      "global": true,
+      "types": [
+        "v:CT_Line"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "from",
+          "type": "xsd:string"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "to",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.12",
+          "title": "Line",
+          "page": 451,
+          "officeNotes": [
+            "2.1.1801"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:oval",
+      "global": true,
+      "types": [
+        "v:CT_Oval"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.13",
+          "title": "Oval",
+          "page": 478,
+          "officeNotes": [
+            "2.1.1802"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:path",
+      "global": true,
+      "types": [
+        "v:CT_Path"
+      ],
+      "attributes": [
+        {
+          "name": "arrowok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "fillok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "gradientshapeok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpenok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "limo",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:connectangles",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:connectlocs",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:connecttype",
+          "type": "o:ST_ConnectType"
+        },
+        {
+          "name": "o:extrusionok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "shadowok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "textboxrect",
+          "type": "xsd:string"
+        },
+        {
+          "name": "textpathok",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "v",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.14",
+          "title": "Shape Path",
+          "page": 504,
+          "officeNotes": [
+            "2.1.1803"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:polyline",
+      "global": true,
+      "types": [
+        "v:CT_PolyLine"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "points",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata",
+        "o:ink"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.15",
+          "title": "Multiple Path Line",
+          "page": 512,
+          "officeNotes": [
+            "2.1.1804"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:rect",
+      "global": true,
+      "types": [
+        "v:CT_Rect"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.16",
+          "title": "Rectangle",
+          "page": 539,
+          "officeNotes": [
+            "2.1.1805"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:roundrect",
+      "global": true,
+      "types": [
+        "v:CT_RoundRect"
+      ],
+      "attributes": [
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "arcsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.17",
+          "title": "Rounded Rectangle",
+          "page": 565,
+          "officeNotes": [
+            "2.1.1806"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:shadow",
+      "global": true,
+      "types": [
+        "v:CT_Shadow"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "matrix",
+          "type": "xsd:string"
+        },
+        {
+          "name": "obscured",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "offset",
+          "type": "xsd:string"
+        },
+        {
+          "name": "offset2",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "origin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "type",
+          "type": "v:ST_ShadowType"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.18",
+          "title": "Shadow Effect",
+          "page": 591,
+          "officeNotes": [
+            "2.1.1807"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:shape",
+      "global": true,
+      "types": [
+        "v:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "adj",
+          "type": "xsd:string"
+        },
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "equationxml",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:gfxdata",
+          "type": "xsd:base64Binary"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "path",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "type",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata",
+        "o:ink",
+        "pvml:iscomment",
+        "o:equationxml"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.19",
+          "title": "Shape Definition",
+          "page": 597,
+          "officeNotes": [
+            "2.1.1808"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:shapetype",
+      "global": true,
+      "types": [
+        "v:CT_Shapetype"
+      ],
+      "attributes": [
+        {
+          "name": "adj",
+          "type": "xsd:string"
+        },
+        {
+          "name": "alt",
+          "type": "xsd:string"
+        },
+        {
+          "name": "chromakey",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "class",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordorigin",
+          "type": "xsd:string"
+        },
+        {
+          "name": "coordsize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "fillcolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "filled",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowincell",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:allowoverlap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:borderbottomcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderleftcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:borderrightcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bordertopcolor",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:bullet",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:button",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:bwmode",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwnormal",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:bwpure",
+          "type": "o:ST_BWMode"
+        },
+        {
+          "name": "o:clip",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:cliptowrap",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:connectortype",
+          "type": "o:ST_ConnectorType"
+        },
+        {
+          "name": "o:dgmlayout",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmlayoutmru",
+          "type": "o:ST_DiagramLayout"
+        },
+        {
+          "name": "o:dgmnodekind",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:doubleclicknotify",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hr",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hralign",
+          "type": "o:ST_HrAlign"
+        },
+        {
+          "name": "o:hrnoshade",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:hrpct",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:hrstd",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:master",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:ole",
+          "type": "s:ST_TrueFalseBlank"
+        },
+        {
+          "name": "o:oleicon",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:oned",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:preferrelative",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:regroupid",
+          "type": "xsd:integer"
+        },
+        {
+          "name": "o:spid",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:spt",
+          "type": "xsd:float"
+        },
+        {
+          "name": "o:userdrawn",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:userhidden",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "path",
+          "type": "xsd:string"
+        },
+        {
+          "name": "print",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokecolor",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "stroked",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "strokeweight",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "target",
+          "type": "xsd:string"
+        },
+        {
+          "name": "title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "wrapcoords",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "v:path",
+        "v:formulas",
+        "v:handles",
+        "v:fill",
+        "v:stroke",
+        "v:shadow",
+        "v:textbox",
+        "v:textpath",
+        "v:imagedata",
+        "o:skew",
+        "o:extrusion",
+        "o:callout",
+        "o:lock",
+        "o:clippath",
+        "o:signatureline",
+        "w10:wrap",
+        "w10:anchorlock",
+        "w10:bordertop",
+        "w10:borderbottom",
+        "w10:borderleft",
+        "w10:borderright",
+        "xvml:ClientData",
+        "pvml:textdata",
+        "o:complex"
+      ],
+      "parents": [
+        "v:group"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.20",
+          "title": "Shape Template",
+          "page": 625,
+          "officeNotes": [
+            "2.1.1809"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:stroke",
+      "global": true,
+      "types": [
+        "v:CT_Stroke"
+      ],
+      "attributes": [
+        {
+          "name": "color",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "color2",
+          "type": "s:ST_ColorType"
+        },
+        {
+          "name": "dashstyle",
+          "type": "xsd:string"
+        },
+        {
+          "name": "endarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "endarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "endarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "endcap",
+          "type": "v:ST_StrokeEndCap"
+        },
+        {
+          "name": "filltype",
+          "type": "v:ST_FillType"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "imagealignshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "imageaspect",
+          "type": "v:ST_ImageAspect"
+        },
+        {
+          "name": "imagesize",
+          "type": "xsd:string"
+        },
+        {
+          "name": "insetpen",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "joinstyle",
+          "type": "v:ST_StrokeJoinStyle"
+        },
+        {
+          "name": "linestyle",
+          "type": "v:ST_StrokeLineStyle"
+        },
+        {
+          "name": "miterlimit",
+          "type": "xsd:decimal"
+        },
+        {
+          "name": "o:althref",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:forcedash",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "o:href",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:relid",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "o:title",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "opacity",
+          "type": "xsd:string"
+        },
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "src",
+          "type": "xsd:string"
+        },
+        {
+          "name": "startarrow",
+          "type": "v:ST_StrokeArrowType"
+        },
+        {
+          "name": "startarrowlength",
+          "type": "v:ST_StrokeArrowLength"
+        },
+        {
+          "name": "startarrowwidth",
+          "type": "v:ST_StrokeArrowWidth"
+        },
+        {
+          "name": "weight",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "o:left",
+        "o:top",
+        "o:right",
+        "o:bottom",
+        "o:column"
+      ],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.21",
+          "title": "Line Stroke Settings",
+          "page": 653,
+          "officeNotes": [
+            "2.1.1810"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:textbox",
+      "global": true,
+      "types": [
+        "v:CT_Textbox"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "inset",
+          "type": "xsd:string"
+        },
+        {
+          "name": "o:insetmode",
+          "type": "o:ST_InsetMode"
+        },
+        {
+          "name": "o:singleclick",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "w:txbxContent",
+        "any(##local)"
+      ],
+      "parents": [
+        "o:shapedefaults",
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.22",
+          "title": "Text Box",
+          "page": 666,
+          "officeNotes": [
+            "2.1.1811"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:textpath",
+      "global": true,
+      "types": [
+        "v:CT_TextPath"
+      ],
+      "attributes": [
+        {
+          "name": "fitpath",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "fitshape",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "id",
+          "type": "xsd:string"
+        },
+        {
+          "name": "on",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "string",
+          "type": "xsd:string"
+        },
+        {
+          "name": "style",
+          "type": "xsd:string"
+        },
+        {
+          "name": "trim",
+          "type": "s:ST_TrueFalse"
+        },
+        {
+          "name": "xscale",
+          "type": "s:ST_TrueFalse"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "v:arc",
+        "v:curve",
+        "v:group",
+        "v:image",
+        "v:line",
+        "v:oval",
+        "v:polyline",
+        "v:rect",
+        "v:roundrect",
+        "v:shape",
+        "v:shapetype"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.2.23",
+          "title": "Text Layout Path",
+          "page": 677,
+          "officeNotes": [
+            "2.1.1812"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "v:CT_Arc",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "endAngle",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "startAngle",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:arc"
+      ]
+    },
+    {
+      "name": "v:CT_Background",
+      "content": "elements",
+      "model": "v:fill?",
+      "attributes": [
+        "fillcolor",
+        "filled",
+        "id",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:targetscreensize"
+      ],
+      "usedBy": [
+        "v:background"
+      ]
+    },
+    {
+      "name": "v:CT_Curve",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "control1",
+        "control2",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "from",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "to",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:curve"
+      ]
+    },
+    {
+      "name": "v:CT_F",
+      "content": "empty",
+      "attributes": [
+        "eqn"
+      ],
+      "usedBy": [
+        "v:f"
+      ]
+    },
+    {
+      "name": "v:CT_Fill",
+      "content": "elements",
+      "model": "o:fill?",
+      "attributes": [
+        "alignshape",
+        "angle",
+        "aspect",
+        "color",
+        "color2",
+        "colors",
+        "focus",
+        "focusposition",
+        "focussize",
+        "id",
+        "method",
+        "o:althref",
+        "o:detectmouseclick",
+        "o:href",
+        "o:opacity2",
+        "o:relid",
+        "o:title",
+        "on",
+        "opacity",
+        "origin",
+        "position",
+        "r:id",
+        "recolor",
+        "rotate",
+        "size",
+        "src",
+        "type"
+      ],
+      "usedBy": [
+        "v:fill"
+      ]
+    },
+    {
+      "name": "v:CT_Formulas",
+      "content": "elements",
+      "model": "v:f*",
+      "attributes": [],
+      "usedBy": [
+        "v:formulas"
+      ]
+    },
+    {
+      "name": "v:CT_Group",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata? | v:group | v:shape | v:shapetype | v:arc | v:curve | v:image | v:line | v:oval | v:polyline | v:rect | v:roundrect | o:diagram)+",
+      "attributes": [
+        "alt",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "editas",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:oned",
+        "o:regroupid",
+        "o:spid",
+        "o:tablelimits",
+        "o:tableproperties",
+        "o:userdrawn",
+        "o:userhidden",
+        "print",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:group"
+      ]
+    },
+    {
+      "name": "v:CT_H",
+      "content": "empty",
+      "attributes": [
+        "invx",
+        "invy",
+        "map",
+        "polar",
+        "position",
+        "radiusrange",
+        "switch",
+        "xrange",
+        "yrange"
+      ],
+      "usedBy": [
+        "v:h"
+      ]
+    },
+    {
+      "name": "v:CT_Handles",
+      "content": "elements",
+      "model": "v:h*",
+      "attributes": [],
+      "usedBy": [
+        "v:handles"
+      ]
+    },
+    {
+      "name": "v:CT_Image",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*",
+      "attributes": [
+        "alt",
+        "bilevel",
+        "blacklevel",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "cropbottom",
+        "cropleft",
+        "cropright",
+        "croptop",
+        "fillcolor",
+        "filled",
+        "gain",
+        "gamma",
+        "grayscale",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "src",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:image"
+      ]
+    },
+    {
+      "name": "v:CT_ImageData",
+      "content": "empty",
+      "attributes": [
+        "bilevel",
+        "blacklevel",
+        "chromakey",
+        "cropbottom",
+        "cropleft",
+        "cropright",
+        "croptop",
+        "embosscolor",
+        "gain",
+        "gamma",
+        "grayscale",
+        "id",
+        "o:althref",
+        "o:detectmouseclick",
+        "o:href",
+        "o:movie",
+        "o:oleid",
+        "o:relid",
+        "o:title",
+        "r:href",
+        "r:id",
+        "r:pict",
+        "recolortarget",
+        "src"
+      ],
+      "usedBy": [
+        "v:imagedata"
+      ]
+    },
+    {
+      "name": "v:CT_Line",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "from",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "to",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:line"
+      ]
+    },
+    {
+      "name": "v:CT_Oval",
+      "content": "elements",
+      "model": "((v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*)+",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:oval"
+      ]
+    },
+    {
+      "name": "v:CT_Path",
+      "content": "empty",
+      "attributes": [
+        "arrowok",
+        "fillok",
+        "gradientshapeok",
+        "id",
+        "insetpenok",
+        "limo",
+        "o:connectangles",
+        "o:connectlocs",
+        "o:connecttype",
+        "o:extrusionok",
+        "shadowok",
+        "strokeok",
+        "textboxrect",
+        "textpathok",
+        "v"
+      ],
+      "usedBy": [
+        "v:path"
+      ]
+    },
+    {
+      "name": "v:CT_PolyLine",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata? | o:ink)*",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "points",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:polyline"
+      ]
+    },
+    {
+      "name": "v:CT_Rect",
+      "content": "elements",
+      "model": "((v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*)+",
+      "attributes": [
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:rect"
+      ]
+    },
+    {
+      "name": "v:CT_RoundRect",
+      "content": "elements",
+      "model": "((v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*)+",
+      "attributes": [
+        "alt",
+        "arcsize",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:roundrect"
+      ]
+    },
+    {
+      "name": "v:CT_Shadow",
+      "content": "empty",
+      "attributes": [
+        "color",
+        "color2",
+        "id",
+        "matrix",
+        "obscured",
+        "offset",
+        "offset2",
+        "on",
+        "opacity",
+        "origin",
+        "type"
+      ],
+      "usedBy": [
+        "v:shadow"
+      ]
+    },
+    {
+      "name": "v:CT_Shape",
+      "content": "elements",
+      "model": "(v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata? | o:ink | pvml:iscomment | o:equationxml)+",
+      "attributes": [
+        "adj",
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "equationxml",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:gfxdata",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "path",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "type",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:shape"
+      ]
+    },
+    {
+      "name": "v:CT_Shapetype",
+      "content": "elements",
+      "model": "((v:path | v:formulas | v:handles | v:fill | v:stroke | v:shadow | v:textbox | v:textpath | v:imagedata | o:skew | o:extrusion | o:callout | o:lock | o:clippath | o:signatureline | w10:wrap | w10:anchorlock | w10:bordertop | w10:borderbottom | w10:borderleft | w10:borderright | xvml:ClientData? | pvml:textdata?)*, o:complex?)",
+      "attributes": [
+        "adj",
+        "alt",
+        "chromakey",
+        "class",
+        "coordorigin",
+        "coordsize",
+        "fillcolor",
+        "filled",
+        "href",
+        "id",
+        "insetpen",
+        "o:allowincell",
+        "o:allowoverlap",
+        "o:borderbottomcolor",
+        "o:borderleftcolor",
+        "o:borderrightcolor",
+        "o:bordertopcolor",
+        "o:bullet",
+        "o:button",
+        "o:bwmode",
+        "o:bwnormal",
+        "o:bwpure",
+        "o:clip",
+        "o:cliptowrap",
+        "o:connectortype",
+        "o:dgmlayout",
+        "o:dgmlayoutmru",
+        "o:dgmnodekind",
+        "o:doubleclicknotify",
+        "o:forcedash",
+        "o:hr",
+        "o:hralign",
+        "o:hrnoshade",
+        "o:hrpct",
+        "o:hrstd",
+        "o:insetmode",
+        "o:master",
+        "o:ole",
+        "o:oleicon",
+        "o:oned",
+        "o:preferrelative",
+        "o:regroupid",
+        "o:spid",
+        "o:spt",
+        "o:userdrawn",
+        "o:userhidden",
+        "opacity",
+        "path",
+        "print",
+        "strokecolor",
+        "stroked",
+        "strokeweight",
+        "style",
+        "target",
+        "title",
+        "wrapcoords"
+      ],
+      "usedBy": [
+        "v:shapetype"
+      ]
+    },
+    {
+      "name": "v:CT_Stroke",
+      "content": "elements",
+      "model": "(o:left?, o:top?, o:right?, o:bottom?, o:column?)",
+      "attributes": [
+        "color",
+        "color2",
+        "dashstyle",
+        "endarrow",
+        "endarrowlength",
+        "endarrowwidth",
+        "endcap",
+        "filltype",
+        "id",
+        "imagealignshape",
+        "imageaspect",
+        "imagesize",
+        "insetpen",
+        "joinstyle",
+        "linestyle",
+        "miterlimit",
+        "o:althref",
+        "o:forcedash",
+        "o:href",
+        "o:relid",
+        "o:title",
+        "on",
+        "opacity",
+        "r:id",
+        "src",
+        "startarrow",
+        "startarrowlength",
+        "startarrowwidth",
+        "weight"
+      ],
+      "usedBy": [
+        "v:stroke"
+      ]
+    },
+    {
+      "name": "v:CT_TextPath",
+      "content": "empty",
+      "attributes": [
+        "fitpath",
+        "fitshape",
+        "id",
+        "on",
+        "string",
+        "style",
+        "trim",
+        "xscale"
+      ],
+      "usedBy": [
+        "v:textpath"
+      ]
+    },
+    {
+      "name": "v:CT_Textbox",
+      "content": "elements",
+      "model": "(w:txbxContent? | any(##local))",
+      "attributes": [
+        "id",
+        "inset",
+        "o:insetmode",
+        "o:singleclick",
+        "style"
+      ],
+      "usedBy": [
+        "v:textbox"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "v:ST_EditAs",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "canvas",
+        "orgchart",
+        "radial",
+        "cycle",
+        "stacked",
+        "venn",
+        "bullseye"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.1",
+          "title": "Shape Grouping Types",
+          "page": 690
+        }
+      ]
+    },
+    {
+      "name": "v:ST_Ext",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "view",
+        "edit",
+        "backwardCompatible"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.2",
+          "title": "VML Extension Handling Behaviors",
+          "page": 690,
+          "officeNotes": [
+            "2.1.1813"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:ST_FillMethod",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "linear",
+        "sigma",
+        "any",
+        "linear sigma"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.3",
+          "title": "Gradient Fill Computation Type",
+          "page": 691,
+          "officeNotes": [
+            "2.1.1814"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:ST_FillType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "solid",
+        "gradient",
+        "gradientRadial",
+        "tile",
+        "pattern",
+        "frame"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.4",
+          "title": "Shape Fill Type",
+          "page": 692,
+          "officeNotes": [
+            "2.1.1815"
+          ]
+        },
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.2.3.14",
+          "title": "Shape Fill Type",
+          "page": 825,
+          "officeNotes": [
+            "2.1.1846"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:ST_ImageAspect",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "ignore",
+        "atMost",
+        "atLeast"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.5",
+          "title": "Image Scaling Behavior",
+          "page": 692
+        }
+      ]
+    },
+    {
+      "name": "v:ST_ShadowType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "single",
+        "double",
+        "emboss",
+        "perspective"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.6",
+          "title": "Shadow Type",
+          "page": 693,
+          "officeNotes": [
+            "2.1.1816"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeArrowLength",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "short",
+        "medium",
+        "long"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.7",
+          "title": "Stroke Arrowhead Length",
+          "page": 693
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeArrowType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "block",
+        "classic",
+        "oval",
+        "diamond",
+        "open"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.8",
+          "title": "Stroke Arrowhead Type",
+          "page": 694
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeArrowWidth",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "narrow",
+        "medium",
+        "wide"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.9",
+          "title": "Stroke Arrowhead Width",
+          "page": 694
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeEndCap",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "flat",
+        "square",
+        "round"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.10",
+          "title": "Stroke End Cap Type",
+          "page": 695
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeJoinStyle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "round",
+        "bevel",
+        "miter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.11",
+          "title": "Line Join Type",
+          "page": 695
+        }
+      ]
+    },
+    {
+      "name": "v:ST_StrokeLineStyle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "single",
+        "thinThin",
+        "thinThick",
+        "thickThin",
+        "thickBetweenThin"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "19.1.3.12",
+          "title": "Stroke Line Style",
+          "page": 696
+        }
+      ]
+    }
+  ]
+}

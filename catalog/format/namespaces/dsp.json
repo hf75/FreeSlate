@@ -1,0 +1,529 @@
+{
+  "prefix": "dsp",
+  "uri": "http://schemas.microsoft.com/office/drawing/2008/diagram",
+  "area": "Diagrams (SmartArt)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.6",
+  "counts": {
+    "elements": 16,
+    "attributes": 14,
+    "globalAttributes": 0,
+    "complexTypes": 6,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 8,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "dsp:cNvGrpSpPr",
+      "types": [
+        "a:CT_NonVisualGroupDrawingShapeProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:grpSpLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "dsp:nvGrpSpPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "dsp:nvGrpSpPr",
+        "dsp:nvSpPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:cNvSpPr",
+      "types": [
+        "a:CT_NonVisualDrawingShapeProps"
+      ],
+      "attributes": [
+        {
+          "name": "txBox",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a:spLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "dsp:nvSpPr"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:dataModelExt",
+      "global": true,
+      "types": [
+        "dsp:CT_DataModelExtBlock"
+      ],
+      "attributes": [
+        {
+          "name": "minVer",
+          "type": "xsd:anyURI"
+        },
+        {
+          "name": "relId",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.1.1",
+          "title": "dataModelExt",
+          "page": 137
+        }
+      ]
+    },
+    {
+      "name": "dsp:drawing",
+      "global": true,
+      "types": [
+        "dsp:CT_Drawing"
+      ],
+      "attributes": [],
+      "children": [
+        "dsp:spTree"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.1.2",
+          "title": "drawing",
+          "page": 138
+        }
+      ]
+    },
+    {
+      "name": "dsp:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "dsp:grpSp",
+        "dsp:sp",
+        "dsp:spTree"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:grpSp",
+      "types": [
+        "dsp:CT_GroupShape"
+      ],
+      "attributes": [],
+      "children": [
+        "dsp:nvGrpSpPr",
+        "dsp:grpSpPr",
+        "dsp:sp",
+        "dsp:grpSp",
+        "dsp:extLst"
+      ],
+      "parents": [
+        "dsp:grpSp",
+        "dsp:spTree"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.3",
+          "title": "CT_GroupShape",
+          "page": 139
+        }
+      ]
+    },
+    {
+      "name": "dsp:grpSpPr",
+      "types": [
+        "a:CT_GroupShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "dsp:grpSp",
+        "dsp:spTree"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:nvGrpSpPr",
+      "types": [
+        "dsp:CT_GroupShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "dsp:cNvPr",
+        "dsp:cNvGrpSpPr"
+      ],
+      "parents": [
+        "dsp:grpSp",
+        "dsp:spTree"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.4",
+          "title": "CT_GroupShapeNonVisual",
+          "page": 140
+        }
+      ]
+    },
+    {
+      "name": "dsp:nvSpPr",
+      "types": [
+        "dsp:CT_ShapeNonVisual"
+      ],
+      "attributes": [],
+      "children": [
+        "dsp:cNvPr",
+        "dsp:cNvSpPr"
+      ],
+      "parents": [
+        "dsp:sp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.6",
+          "title": "CT_ShapeNonVisual",
+          "page": 141
+        }
+      ]
+    },
+    {
+      "name": "dsp:sp",
+      "types": [
+        "dsp:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "modelId",
+          "type": "dgm:ST_ModelId",
+          "required": true
+        }
+      ],
+      "children": [
+        "dsp:nvSpPr",
+        "dsp:spPr",
+        "dsp:style",
+        "dsp:txBody",
+        "dsp:txXfrm",
+        "dsp:extLst"
+      ],
+      "parents": [
+        "dsp:grpSp",
+        "dsp:spTree"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.5",
+          "title": "CT_Shape",
+          "page": 140
+        }
+      ]
+    },
+    {
+      "name": "dsp:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "dsp:sp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:spTree",
+      "types": [
+        "dsp:CT_GroupShape"
+      ],
+      "attributes": [],
+      "children": [
+        "dsp:nvGrpSpPr",
+        "dsp:grpSpPr",
+        "dsp:sp",
+        "dsp:grpSp",
+        "dsp:extLst"
+      ],
+      "parents": [
+        "dsp:drawing"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.3",
+          "title": "CT_GroupShape",
+          "page": 139
+        }
+      ]
+    },
+    {
+      "name": "dsp:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "dsp:sp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:txBody",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "dsp:sp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "dsp:txXfrm",
+      "types": [
+        "a:CT_Transform2D"
+      ],
+      "attributes": [
+        {
+          "name": "flipH",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "flipV",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:off",
+        "a:ext"
+      ],
+      "parents": [
+        "dsp:sp"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "dsp:CT_DataModelExtBlock",
+      "content": "empty",
+      "attributes": [
+        "minVer",
+        "relId"
+      ],
+      "usedBy": [
+        "dsp:dataModelExt"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.1",
+          "title": "CT_DataModelExtBlock",
+          "page": 138
+        }
+      ]
+    },
+    {
+      "name": "dsp:CT_Drawing",
+      "content": "elements",
+      "model": "dsp:spTree",
+      "attributes": [],
+      "usedBy": [
+        "dsp:drawing"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.2",
+          "title": "CT_Drawing",
+          "page": 138
+        }
+      ]
+    },
+    {
+      "name": "dsp:CT_GroupShape",
+      "content": "elements",
+      "model": "(dsp:nvGrpSpPr, dsp:grpSpPr, (dsp:sp | dsp:grpSp)*, dsp:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "dsp:grpSp",
+        "dsp:spTree"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.3",
+          "title": "CT_GroupShape",
+          "page": 139
+        }
+      ]
+    },
+    {
+      "name": "dsp:CT_GroupShapeNonVisual",
+      "content": "elements",
+      "model": "(dsp:cNvPr, dsp:cNvGrpSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "dsp:nvGrpSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.4",
+          "title": "CT_GroupShapeNonVisual",
+          "page": 140
+        }
+      ]
+    },
+    {
+      "name": "dsp:CT_Shape",
+      "content": "elements",
+      "model": "(dsp:nvSpPr, dsp:spPr, dsp:style?, dsp:txBody?, dsp:txXfrm?, dsp:extLst?)",
+      "attributes": [
+        "modelId"
+      ],
+      "usedBy": [
+        "dsp:sp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.5",
+          "title": "CT_Shape",
+          "page": 140
+        }
+      ]
+    },
+    {
+      "name": "dsp:CT_ShapeNonVisual",
+      "content": "elements",
+      "model": "(dsp:cNvPr, dsp:cNvSpPr)",
+      "attributes": [],
+      "usedBy": [
+        "dsp:nvSpPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.10.3.6",
+          "title": "CT_ShapeNonVisual",
+          "page": 141
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

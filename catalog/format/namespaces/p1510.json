@@ -1,0 +1,199 @@
+{
+  "prefix": "p1510",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2015/10/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-PPTX] v20240820 §5.5",
+  "counts": {
+    "elements": 4,
+    "attributes": 4,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 2,
+    "enumValues": 0,
+    "specSections": 6,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p1510:client",
+      "types": [
+        "p1510:CT_ClientRevision"
+      ],
+      "attributes": [
+        {
+          "name": "dt",
+          "type": "xsd:dateTime",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "p1510:ST_ClientID",
+          "required": true
+        },
+        {
+          "name": "v",
+          "type": "p1510:ST_ClientRevisionNumber",
+          "default": "0"
+        },
+        {
+          "name": "vWet",
+          "type": "p1510:ST_ClientRevisionNumber",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p1510:revLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.3.1",
+          "title": "CT_ClientRevision",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "p1510:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p1510:revInfo"
+      ],
+      "spec": []
+    },
+    {
+      "name": "p1510:revInfo",
+      "global": true,
+      "types": [
+        "p1510:CT_RevisionInfo"
+      ],
+      "attributes": [],
+      "children": [
+        "p1510:revLst",
+        "p1510:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.1.1",
+          "title": "revInfo",
+          "page": 71
+        }
+      ]
+    },
+    {
+      "name": "p1510:revLst",
+      "types": [
+        "p1510:CT_ClientRevisionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p1510:client"
+      ],
+      "parents": [
+        "p1510:revInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.3.2",
+          "title": "CT_ClientRevisionList",
+          "page": 72
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p1510:CT_ClientRevision",
+      "content": "empty",
+      "attributes": [
+        "dt",
+        "id",
+        "v",
+        "vWet"
+      ],
+      "usedBy": [
+        "p1510:client"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.3.1",
+          "title": "CT_ClientRevision",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "p1510:CT_ClientRevisionList",
+      "content": "elements",
+      "model": "p1510:client*",
+      "attributes": [],
+      "usedBy": [
+        "p1510:revLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.3.2",
+          "title": "CT_ClientRevisionList",
+          "page": 72
+        }
+      ]
+    },
+    {
+      "name": "p1510:CT_RevisionInfo",
+      "content": "elements",
+      "model": "(p1510:revLst?, p1510:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "p1510:revInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.3.3",
+          "title": "CT_RevisionInfo",
+          "page": 73
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "p1510:ST_ClientID",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.4.1",
+          "title": "ST_ClientID",
+          "page": 73
+        }
+      ]
+    },
+    {
+      "name": "p1510:ST_ClientRevisionNumber",
+      "definition": "restriction of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.7.4.2",
+          "title": "ST_ClientRevisionNumber",
+          "page": 74
+        }
+      ]
+    }
+  ]
+}

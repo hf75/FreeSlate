@@ -1,0 +1,65 @@
+{
+  "prefix": "p16",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2015/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-PPTX] v20240820 §5.6",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p16:designElem",
+      "global": true,
+      "types": [
+        "p16:CT_DesignElement"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.5.1.1",
+          "title": "designElem",
+          "page": 69
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p16:CT_DesignElement",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "p16:designElem"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.5.3.1",
+          "title": "CT_DesignElement",
+          "page": 69
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

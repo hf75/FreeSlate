@@ -1,0 +1,65 @@
+{
+  "prefix": "aif",
+  "uri": "http://schemas.microsoft.com/office/drawing/2022/imageformula",
+  "area": "DrawingML",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-ODRAWXML] v20261006 §5.41",
+  "counts": {
+    "elements": 1,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "aif:imageFormula",
+      "global": true,
+      "types": [
+        "aif:CT_ImageFormula"
+      ],
+      "attributes": [
+        {
+          "name": "formula",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.43.1.1",
+          "title": "imageFormula",
+          "page": 330
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "aif:CT_ImageFormula",
+      "content": "empty",
+      "attributes": [
+        "formula"
+      ],
+      "usedBy": [
+        "aif:imageFormula"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.43.3.1",
+          "title": "CT_ImageFormula",
+          "page": 330
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

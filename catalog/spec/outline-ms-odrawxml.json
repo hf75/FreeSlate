@@ -1,0 +1,4147 @@
+[
+  {
+    "level": 0,
+    "title": "1 Introduction",
+    "page": 20
+  },
+  {
+    "level": 1,
+    "title": "1.1 Glossary",
+    "page": 20
+  },
+  {
+    "level": 1,
+    "title": "1.2 References",
+    "page": 21
+  },
+  {
+    "level": 2,
+    "title": "1.2.1 Normative References",
+    "page": 21
+  },
+  {
+    "level": 2,
+    "title": "1.2.2 Informative References",
+    "page": 22
+  },
+  {
+    "level": 1,
+    "title": "1.3 Overview",
+    "page": 22
+  },
+  {
+    "level": 2,
+    "title": "1.3.1 Charts",
+    "page": 22
+  },
+  {
+    "level": 2,
+    "title": "1.3.2 Content Parts and Ink",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "1.3.3 Pictures",
+    "page": 25
+  },
+  {
+    "level": 2,
+    "title": "1.3.4 Diagrams",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "1.3.5 Math",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "1.3.6 SpreadsheetML Drawing",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "1.3.7 WordprocessingML Drawing",
+    "page": 26
+  },
+  {
+    "level": 2,
+    "title": "1.3.8 Legacy Objects",
+    "page": 27
+  },
+  {
+    "level": 2,
+    "title": "1.3.9 Common Algorithms",
+    "page": 27
+  },
+  {
+    "level": 3,
+    "title": "1.3.9.1 Non-Null-Terminated Unicode String to Unsigned Integer Hash",
+    "page": 27
+  },
+  {
+    "level": 1,
+    "title": "1.4 Relationship to Protocols and Other Structures",
+    "page": 28
+  },
+  {
+    "level": 1,
+    "title": "1.5 Applicability Statement",
+    "page": 28
+  },
+  {
+    "level": 1,
+    "title": "1.6 Versioning and Localization",
+    "page": 28
+  },
+  {
+    "level": 1,
+    "title": "1.7 Vendor-Extensible Fields",
+    "page": 28
+  },
+  {
+    "level": 0,
+    "title": "2 Structures",
+    "page": 29
+  },
+  {
+    "level": 1,
+    "title": "2.1 Part Enumerations",
+    "page": 29
+  },
+  {
+    "level": 2,
+    "title": "2.1.1 Chart Colors",
+    "page": 29
+  },
+  {
+    "level": 2,
+    "title": "2.1.2 Chart Style",
+    "page": 29
+  },
+  {
+    "level": 2,
+    "title": "2.1.3 Diagram Layout",
+    "page": 29
+  },
+  {
+    "level": 2,
+    "title": "2.1.4 Ink Content Part",
+    "page": 30
+  },
+  {
+    "level": 2,
+    "title": "2.1.5 ChartEx",
+    "page": 36
+  },
+  {
+    "level": 1,
+    "title": "2.2 Extensions",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "2.2.1 Charts",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.2.1.1 Filtering",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.2.1.2 Datalabels",
+    "page": 43
+  },
+  {
+    "level": 3,
+    "title": "2.2.1.3 Datalabel",
+    "page": 43
+  },
+  {
+    "level": 2,
+    "title": "2.2.2 Content Parts and Ink",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "2.2.3 Pictures",
+    "page": 44
+  },
+  {
+    "level": 2,
+    "title": "2.2.4 Diagrams",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.2.4.1 Diagram Layout",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.2.4.2 Image Recoloring",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.2.4.3 Non-Visual Drawing Properties",
+    "page": 45
+  },
+  {
+    "level": 2,
+    "title": "2.2.5 Math",
+    "page": 45
+  },
+  {
+    "level": 2,
+    "title": "2.2.6 SpreadsheetML Drawing",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.2.6.1 Camera Tool",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.2.6.2 Legacy Object Wrapper",
+    "page": 47
+  },
+  {
+    "level": 2,
+    "title": "2.2.7 WordprocessingML Drawing",
+    "page": 48
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.1 ActiveX and OLE Objects",
+    "page": 49
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.2 Background Fill",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.3 DrawingML Shapes in WordprocessingML",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.4 DrawingML Groups in WordprocessingML",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.5 DrawingML Canvases in WordprocessingML",
+    "page": 52
+  },
+  {
+    "level": 3,
+    "title": "2.2.7.6 DrawingML Content Parts in WordprocessingML",
+    "page": 52
+  },
+  {
+    "level": 2,
+    "title": "2.2.8 Themes",
+    "page": 53
+  },
+  {
+    "level": 2,
+    "title": "2.2.9 Legacy Objects",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.2.9.1 Legacy Groups",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.2.9.2 Signature Lines",
+    "page": 54
+  },
+  {
+    "level": 2,
+    "title": "2.2.10 Tables",
+    "page": 55
+  },
+  {
+    "level": 1,
+    "title": "2.3 http://schemas.microsoft.com/office/drawing/2010/main",
+    "page": 55
+  },
+  {
+    "level": 2,
+    "title": "2.3.1 Elements",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.1 cameraTool",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.2 compatExt",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.3 contentPart",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.4 hiddenEffects",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.5 hiddenFill",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.6 hiddenLine",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.7 hiddenScene3d",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.8 hiddenSp3d",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.9 imgProps",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.10 isCanvas",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.11 m",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.12 shadowObscured",
+    "page": 59
+  },
+  {
+    "level": 3,
+    "title": "2.3.1.13 useLocalDpi",
+    "page": 59
+  },
+  {
+    "level": 2,
+    "title": "2.3.2 Attributes",
+    "page": 59
+  },
+  {
+    "level": 3,
+    "title": "2.3.2.1 legacySpreadsheetColorIndex",
+    "page": 59
+  },
+  {
+    "level": 2,
+    "title": "2.3.3 Complex Types",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.1 CT_CameraTool",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.2 CT_CompatExt",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.3 CT_ContentPartLocking",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.4 CT_GvmlContentPart",
+    "page": 62
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.5 CT_GvmlContentPartNonVisual",
+    "page": 63
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.6 CT_IsGvmlCanvas",
+    "page": 64
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.7 CT_NonVisualInkContentPartProperties",
+    "page": 64
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.8 CT_Photo",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.9 CT_PictureEffectBackgroundRemoval",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.10 CT_PictureEffectBackgroundRemovalBackgroundMark",
+    "page": 66
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.11 CT_PictureEffectBackgroundRemovalForegroundMark",
+    "page": 67
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.12 CT_PictureEffectBlur",
+    "page": 67
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.13 CT_PictureEffectBrightnessContrast",
+    "page": 68
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.14 CT_PictureEffectCement",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.15 CT_PictureEffectChalkSketch",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.16 CT_PictureEffectColorTemperature",
+    "page": 70
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.17 CT_PictureEffectCrisscrossEtching",
+    "page": 71
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.18 CT_PictureEffectCutout",
+    "page": 71
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.19 CT_PictureEffect",
+    "page": 72
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.20 CT_PictureEffectFilmGrain",
+    "page": 74
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.21 CT_PictureEffectGlass",
+    "page": 75
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.22 CT_PictureEffectGlowDiffused",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.23 CT_PictureEffectGlowEdges",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.24 CT_PictureEffectLightScreen",
+    "page": 77
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.25 CT_PictureEffectLineDrawing",
+    "page": 78
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.26 CT_PictureEffectMarker",
+    "page": 78
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.27 CT_PictureEffectMosiaicBubbles",
+    "page": 79
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.28 CT_PictureEffectPaintBrush",
+    "page": 80
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.29 CT_PictureEffectPaintStrokes",
+    "page": 80
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.30 CT_PictureEffectPastelsSmooth",
+    "page": 81
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.31 CT_PictureEffectPencilGrayscale",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.32 CT_PictureEffectPencilSketch",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.33 CT_PictureEffectPhotocopy",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.34 CT_PictureEffectPlasticWrap",
+    "page": 84
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.35 CT_PictureEffectSaturation",
+    "page": 84
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.36 CT_PictureEffectSharpenSoften",
+    "page": 85
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.37 CT_PictureEffectTexturizer",
+    "page": 85
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.38 CT_PictureEffectWatercolorSponge",
+    "page": 86
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.39 CT_PictureLayer",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.40 CT_ShadowObscured",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.41 CT_TextMath",
+    "page": 88
+  },
+  {
+    "level": 3,
+    "title": "2.3.3.42 CT_UseLocalDpi",
+    "page": 88
+  },
+  {
+    "level": 2,
+    "title": "2.3.4 Simple Types",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.1 ST_ArtisticEffectParam10",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.2 ST_ArtisticEffectParam100",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.3 ST_ArtisticEffectParam4",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.4 ST_ArtisticEffectParam6",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.5 ST_ColorTemperature",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.6 ST_LegacySpreadsheetColorIndex",
+    "page": 91
+  },
+  {
+    "level": 3,
+    "title": "2.3.4.7 ST_SaturationAmount",
+    "page": 91
+  },
+  {
+    "level": 1,
+    "title": "2.4 http://schemas.microsoft.com/office/thememl/2012/main",
+    "page": 91
+  },
+  {
+    "level": 2,
+    "title": "2.4.1 Elements",
+    "page": 91
+  },
+  {
+    "level": 3,
+    "title": "2.4.1.1 themeFamily",
+    "page": 91
+  },
+  {
+    "level": 2,
+    "title": "2.4.2 Attributes",
+    "page": 92
+  },
+  {
+    "level": 3,
+    "title": "2.4.2.1 id",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.4.3 Complex Types",
+    "page": 92
+  },
+  {
+    "level": 3,
+    "title": "2.4.3.1 CT_ThemeFamily",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.4.4 Simple Types",
+    "page": 93
+  },
+  {
+    "level": 1,
+    "title": "2.5 http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.5.1 Elements",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.1 contentPart",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.5.2 Attributes",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.5.3 Complex Types",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.1 CT_ApplicationNonVisualDrawingProps",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.2 CT_ContentPart",
+    "page": 94
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.3 CT_ContentPartNonVisual",
+    "page": 95
+  },
+  {
+    "level": 2,
+    "title": "2.5.4 Simple Types",
+    "page": 95
+  },
+  {
+    "level": 1,
+    "title": "2.6 http://schemas.microsoft.com/office/drawing/2012/chart",
+    "page": 95
+  },
+  {
+    "level": 2,
+    "title": "2.6.1 Elements",
+    "page": 95
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.1 autoCat",
+    "page": 95
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.2 categoryFilterExceptions",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.3 datalabelsRange",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.4 dlblFieldTable",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.5 filteredAreaSeries",
+    "page": 96
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.6 filteredBarSeries",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.7 filteredBubbleSeries",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.8 filteredCategoryTitle",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.9 filteredLineSeries",
+    "page": 97
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.10 filteredPieSeries",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.11 filteredRadarSeries",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.12 filteredScatterSeries",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.13 filteredSeriesTitle",
+    "page": 98
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.14 filteredSurfaceSeries",
+    "page": 99
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.15 formulaRef",
+    "page": 99
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.16 fullRef",
+    "page": 99
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.17 layout",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.18 leaderLines",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.19 levelRef",
+    "page": 100
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.20 numFmt",
+    "page": 101
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.21 pivotSource",
+    "page": 101
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.22 showDataLabelsRange",
+    "page": 101
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.23 showLeaderLines",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.24 spPr",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.25 tx",
+    "page": 102
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.26 xForSave",
+    "page": 102
+  },
+  {
+    "level": 2,
+    "title": "2.6.2 Attributes",
+    "page": 103
+  },
+  {
+    "level": 2,
+    "title": "2.6.3 Complex Types",
+    "page": 103
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.1 CT_CategoryFilterException",
+    "page": 103
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.2 CT_CategoryFilterExceptions",
+    "page": 104
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.3 CT_DataLabelFieldTable",
+    "page": 104
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.4 CT_DataLabelFieldTableEntry",
+    "page": 105
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.5 CT_FilteredAreaSer",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.6 CT_FilteredBarSer",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.7 CT_FilteredBubbleSer",
+    "page": 106
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.8 CT_FilteredCategoryTitle",
+    "page": 107
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.9 CT_FilteredLineSer",
+    "page": 107
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.10 CT_FilteredPieSer",
+    "page": 108
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.11 CT_FilteredRadarSer",
+    "page": 108
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.12 CT_FilteredScatterSer",
+    "page": 109
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.13 CT_FilteredSeriesTitle",
+    "page": 109
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.14 CT_FilteredSurfaceSer",
+    "page": 110
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.15 CT_FormulaRef",
+    "page": 110
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.16 CT_FullRef",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.17 CT_LevelRef",
+    "page": 111
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.18 CT_SeriesDataLabelsRange",
+    "page": 112
+  },
+  {
+    "level": 2,
+    "title": "2.6.4 Simple Types",
+    "page": 113
+  },
+  {
+    "level": 1,
+    "title": "2.7 http://schemas.microsoft.com/office/drawing/2007/8/2/chart",
+    "page": 113
+  },
+  {
+    "level": 2,
+    "title": "2.7.1 Elements",
+    "page": 113
+  },
+  {
+    "level": 3,
+    "title": "2.7.1.1 invertSolidFillFmt",
+    "page": 113
+  },
+  {
+    "level": 3,
+    "title": "2.7.1.2 pivotOptions",
+    "page": 113
+  },
+  {
+    "level": 3,
+    "title": "2.7.1.3 style",
+    "page": 114
+  },
+  {
+    "level": 2,
+    "title": "2.7.2 Attributes",
+    "page": 114
+  },
+  {
+    "level": 2,
+    "title": "2.7.3 Complex Types",
+    "page": 114
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.1 CT_BooleanFalse",
+    "page": 114
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.2 CT_BooleanTrue",
+    "page": 114
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.3 CT_InvertSolidFillFmt",
+    "page": 115
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.4 CT_PivotOptions",
+    "page": 115
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.5 CT_Style",
+    "page": 116
+  },
+  {
+    "level": 2,
+    "title": "2.7.4 Simple Types",
+    "page": 117
+  },
+  {
+    "level": 3,
+    "title": "2.7.4.1 ST_Style",
+    "page": 117
+  },
+  {
+    "level": 1,
+    "title": "2.8 http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.8.1 Elements",
+    "page": 118
+  },
+  {
+    "level": 3,
+    "title": "2.8.1.1 chartStyle",
+    "page": 118
+  },
+  {
+    "level": 3,
+    "title": "2.8.1.2 colorStyle",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.8.2 Attributes",
+    "page": 118
+  },
+  {
+    "level": 2,
+    "title": "2.8.3 Complex Types",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.1 CT_ChartStyle",
+    "page": 119
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.2 CT_ColorStyle",
+    "page": 121
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.3 CT_ColorStyleVariation",
+    "page": 122
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.4 CT_FontReference",
+    "page": 124
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.5 CT_MarkerLayout",
+    "page": 125
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.6 CT_StyleColor",
+    "page": 125
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.7 CT_StyleEntry",
+    "page": 128
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.8 CT_StyleReference",
+    "page": 129
+  },
+  {
+    "level": 2,
+    "title": "2.8.4 Simple Types",
+    "page": 130
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.1 ST_ColorStyleMethod",
+    "page": 130
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.2 ST_ColorStyleMethodEnum",
+    "page": 130
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.3 ST_MarkerSize",
+    "page": 131
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.4 ST_MarkerStyle",
+    "page": 131
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.5 ST_StyleColorEnum",
+    "page": 132
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.6 ST_StyleColorVal",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.7 ST_StyleEntryModifier",
+    "page": 133
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.8 ST_StyleEntryModifierEnum",
+    "page": 134
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.9 ST_StyleEntryModifierList",
+    "page": 134
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.10 ST_StyleReferenceModifier",
+    "page": 134
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.11 ST_StyleReferenceModifierEnum",
+    "page": 135
+  },
+  {
+    "level": 3,
+    "title": "2.8.4.12 ST_StyleReferenceModifierList",
+    "page": 135
+  },
+  {
+    "level": 1,
+    "title": "2.9 http://schemas.microsoft.com/office/drawing/2010/diagram",
+    "page": 136
+  },
+  {
+    "level": 2,
+    "title": "2.9.1 Elements",
+    "page": 136
+  },
+  {
+    "level": 3,
+    "title": "2.9.1.1 cNvPr",
+    "page": 136
+  },
+  {
+    "level": 3,
+    "title": "2.9.1.2 recolorImg",
+    "page": 136
+  },
+  {
+    "level": 2,
+    "title": "2.9.2 Attributes",
+    "page": 137
+  },
+  {
+    "level": 2,
+    "title": "2.9.3 Complex Types",
+    "page": 137
+  },
+  {
+    "level": 3,
+    "title": "2.9.3.1 CT_Boolean",
+    "page": 137
+  },
+  {
+    "level": 2,
+    "title": "2.9.4 Simple Types",
+    "page": 137
+  },
+  {
+    "level": 1,
+    "title": "2.10 http://schemas.microsoft.com/office/drawing/2008/diagram",
+    "page": 137
+  },
+  {
+    "level": 2,
+    "title": "2.10.1 Elements",
+    "page": 137
+  },
+  {
+    "level": 3,
+    "title": "2.10.1.1 dataModelExt",
+    "page": 137
+  },
+  {
+    "level": 3,
+    "title": "2.10.1.2 drawing",
+    "page": 138
+  },
+  {
+    "level": 2,
+    "title": "2.10.2 Attributes",
+    "page": 138
+  },
+  {
+    "level": 2,
+    "title": "2.10.3 Complex Types",
+    "page": 138
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.1 CT_DataModelExtBlock",
+    "page": 138
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.2 CT_Drawing",
+    "page": 138
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.3 CT_GroupShape",
+    "page": 139
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.4 CT_GroupShapeNonVisual",
+    "page": 140
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.5 CT_Shape",
+    "page": 140
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.6 CT_ShapeNonVisual",
+    "page": 141
+  },
+  {
+    "level": 2,
+    "title": "2.10.4 Simple Types",
+    "page": 142
+  },
+  {
+    "level": 1,
+    "title": "2.11 http://schemas.microsoft.com/ink/2010/main",
+    "page": 142
+  },
+  {
+    "level": 2,
+    "title": "2.11.1 Elements",
+    "page": 142
+  },
+  {
+    "level": 3,
+    "title": "2.11.1.1 context",
+    "page": 142
+  },
+  {
+    "level": 2,
+    "title": "2.11.2 Attributes",
+    "page": 142
+  },
+  {
+    "level": 2,
+    "title": "2.11.3 Complex Types",
+    "page": 142
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.1 CT_CtxLink",
+    "page": 142
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.2 CT_CtxNode",
+    "page": 143
+  },
+  {
+    "level": 3,
+    "title": "2.11.3.3 CT_Property",
+    "page": 145
+  },
+  {
+    "level": 2,
+    "title": "2.11.4 Simple Types",
+    "page": 146
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.1 ST_CtxNodeType",
+    "page": 146
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.2 ST_Dir",
+    "page": 146
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.3 ST_Guid",
+    "page": 147
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.4 ST_KnownCtxNodeType",
+    "page": 147
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.5 ST_KnownSemanticType",
+    "page": 149
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.6 ST_Point",
+    "page": 150
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.7 ST_Points",
+    "page": 150
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.8 ST_Ref",
+    "page": 150
+  },
+  {
+    "level": 3,
+    "title": "2.11.4.9 ST_SemanticType",
+    "page": 151
+  },
+  {
+    "level": 1,
+    "title": "2.12 http://schemas.microsoft.com/office/drawing/2012/main",
+    "page": 151
+  },
+  {
+    "level": 2,
+    "title": "2.12.1 Elements",
+    "page": 151
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.1 backgroundPr",
+    "page": 151
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.2 nonVisualGroupProps",
+    "page": 151
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.3 objectPr",
+    "page": 152
+  },
+  {
+    "level": 3,
+    "title": "2.12.1.4 signatureLine",
+    "page": 152
+  },
+  {
+    "level": 2,
+    "title": "2.12.2 Attributes",
+    "page": 152
+  },
+  {
+    "level": 2,
+    "title": "2.12.3 Complex Types",
+    "page": 152
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.1 CT_BackgroundPr",
+    "page": 152
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.2 CT_NonVisualGroupProps",
+    "page": 153
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.3 CT_ObjectPr",
+    "page": 153
+  },
+  {
+    "level": 3,
+    "title": "2.12.3.4 CT_SignatureLine",
+    "page": 154
+  },
+  {
+    "level": 2,
+    "title": "2.12.4 Simple Types",
+    "page": 155
+  },
+  {
+    "level": 3,
+    "title": "2.12.4.1 ST_TargetScreenSz",
+    "page": 155
+  },
+  {
+    "level": 1,
+    "title": "2.13 http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+    "page": 156
+  },
+  {
+    "level": 2,
+    "title": "2.13.1 Elements",
+    "page": 156
+  },
+  {
+    "level": 3,
+    "title": "2.13.1.1 wsp",
+    "page": 156
+  },
+  {
+    "level": 2,
+    "title": "2.13.2 Attributes",
+    "page": 157
+  },
+  {
+    "level": 2,
+    "title": "2.13.3 Complex Types",
+    "page": 157
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.1 CT_LinkedTextboxInformation",
+    "page": 157
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.2 CT_TextboxInfo",
+    "page": 157
+  },
+  {
+    "level": 3,
+    "title": "2.13.3.3 CT_WordprocessingShape",
+    "page": 158
+  },
+  {
+    "level": 2,
+    "title": "2.13.4 Simple Types",
+    "page": 159
+  },
+  {
+    "level": 1,
+    "title": "2.14 http://schemas.microsoft.com/office/drawing/2010/picture",
+    "page": 160
+  },
+  {
+    "level": 2,
+    "title": "2.14.1 Elements",
+    "page": 160
+  },
+  {
+    "level": 3,
+    "title": "2.14.1.1 extLst",
+    "page": 160
+  },
+  {
+    "level": 3,
+    "title": "2.14.1.2 style",
+    "page": 160
+  },
+  {
+    "level": 2,
+    "title": "2.14.2 Attributes",
+    "page": 160
+  },
+  {
+    "level": 2,
+    "title": "2.14.3 Complex Types",
+    "page": 160
+  },
+  {
+    "level": 2,
+    "title": "2.14.4 Simple Types",
+    "page": 160
+  },
+  {
+    "level": 1,
+    "title": "2.15 http://schemas.microsoft.com/office/word/2010/wordml",
+    "page": 161
+  },
+  {
+    "level": 2,
+    "title": "2.15.1 Elements",
+    "page": 161
+  },
+  {
+    "level": 3,
+    "title": "2.15.1.1 contentPart",
+    "page": 161
+  },
+  {
+    "level": 2,
+    "title": "2.15.2 Attributes",
+    "page": 161
+  },
+  {
+    "level": 2,
+    "title": "2.15.3 Complex Types",
+    "page": 161
+  },
+  {
+    "level": 3,
+    "title": "2.15.3.1 CT_WordContentPart",
+    "page": 161
+  },
+  {
+    "level": 3,
+    "title": "2.15.3.2 CT_WordContentPartNonVisual",
+    "page": 162
+  },
+  {
+    "level": 2,
+    "title": "2.15.4 Simple Types",
+    "page": 163
+  },
+  {
+    "level": 1,
+    "title": "2.16 http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+    "page": 163
+  },
+  {
+    "level": 2,
+    "title": "2.16.1 Elements",
+    "page": 163
+  },
+  {
+    "level": 3,
+    "title": "2.16.1.1 wgp",
+    "page": 163
+  },
+  {
+    "level": 2,
+    "title": "2.16.2 Attributes",
+    "page": 163
+  },
+  {
+    "level": 2,
+    "title": "2.16.3 Complex Types",
+    "page": 163
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.1 CT_GraphicFrame",
+    "page": 163
+  },
+  {
+    "level": 3,
+    "title": "2.16.3.2 CT_WordprocessingGroup",
+    "page": 164
+  },
+  {
+    "level": 2,
+    "title": "2.16.4 Simple Types",
+    "page": 165
+  },
+  {
+    "level": 1,
+    "title": "2.17 http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+    "page": 165
+  },
+  {
+    "level": 2,
+    "title": "2.17.1 Elements",
+    "page": 165
+  },
+  {
+    "level": 3,
+    "title": "2.17.1.1 wpc",
+    "page": 165
+  },
+  {
+    "level": 2,
+    "title": "2.17.2 Attributes",
+    "page": 165
+  },
+  {
+    "level": 2,
+    "title": "2.17.3 Complex Types",
+    "page": 165
+  },
+  {
+    "level": 3,
+    "title": "2.17.3.1 CT_WordprocessingCanvas",
+    "page": 165
+  },
+  {
+    "level": 2,
+    "title": "2.17.4 Simple Types",
+    "page": 166
+  },
+  {
+    "level": 1,
+    "title": "2.18 http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+    "page": 167
+  },
+  {
+    "level": 2,
+    "title": "2.18.1 Elements",
+    "page": 167
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.1 pctPosHOffset",
+    "page": 167
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.2 pctPosVOffset",
+    "page": 167
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.3 sizeRelH",
+    "page": 167
+  },
+  {
+    "level": 3,
+    "title": "2.18.1.4 sizeRelV",
+    "page": 168
+  },
+  {
+    "level": 2,
+    "title": "2.18.2 Attributes",
+    "page": 168
+  },
+  {
+    "level": 3,
+    "title": "2.18.2.1 anchorId",
+    "page": 168
+  },
+  {
+    "level": 3,
+    "title": "2.18.2.2 editId",
+    "page": 168
+  },
+  {
+    "level": 2,
+    "title": "2.18.3 Complex Types",
+    "page": 169
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.1 CT_SizeRelH",
+    "page": 169
+  },
+  {
+    "level": 3,
+    "title": "2.18.3.2 CT_SizeRelV",
+    "page": 169
+  },
+  {
+    "level": 2,
+    "title": "2.18.4 Simple Types",
+    "page": 170
+  },
+  {
+    "level": 3,
+    "title": "2.18.4.1 ST_EditId",
+    "page": 170
+  },
+  {
+    "level": 3,
+    "title": "2.18.4.2 ST_SizeRelFromH",
+    "page": 170
+  },
+  {
+    "level": 3,
+    "title": "2.18.4.3 ST_SizeRelFromV",
+    "page": 171
+  },
+  {
+    "level": 1,
+    "title": "2.19 http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing",
+    "page": 172
+  },
+  {
+    "level": 2,
+    "title": "2.19.1 Elements",
+    "page": 172
+  },
+  {
+    "level": 3,
+    "title": "2.19.1.1 webVideoPr",
+    "page": 172
+  },
+  {
+    "level": 2,
+    "title": "2.19.2 Attributes",
+    "page": 172
+  },
+  {
+    "level": 2,
+    "title": "2.19.3 Complex Types",
+    "page": 172
+  },
+  {
+    "level": 3,
+    "title": "2.19.3.1 CT_WebVideoPr",
+    "page": 172
+  },
+  {
+    "level": 2,
+    "title": "2.19.4 Simple Types",
+    "page": 173
+  },
+  {
+    "level": 1,
+    "title": "2.20 http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing",
+    "page": 173
+  },
+  {
+    "level": 2,
+    "title": "2.20.1 Elements",
+    "page": 173
+  },
+  {
+    "level": 3,
+    "title": "2.20.1.1 contentPart",
+    "page": 173
+  },
+  {
+    "level": 2,
+    "title": "2.20.2 Attributes",
+    "page": 173
+  },
+  {
+    "level": 2,
+    "title": "2.20.3 Complex Types",
+    "page": 173
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.1 CT_ApplicationNonVisualDrawingProps",
+    "page": 173
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.2 CT_ContentPart",
+    "page": 174
+  },
+  {
+    "level": 3,
+    "title": "2.20.3.3 CT_ContentPartNonVisual",
+    "page": 175
+  },
+  {
+    "level": 2,
+    "title": "2.20.4 Simple Types",
+    "page": 175
+  },
+  {
+    "level": 1,
+    "title": "2.21 http://schemas.microsoft.com/office/powerpoint/2014/inkAction",
+    "page": 175
+  },
+  {
+    "level": 2,
+    "title": "2.21.1 Elements",
+    "page": 175
+  },
+  {
+    "level": 3,
+    "title": "2.21.1.1 actions",
+    "page": 175
+  },
+  {
+    "level": 2,
+    "title": "2.21.2 Attributes",
+    "page": 176
+  },
+  {
+    "level": 2,
+    "title": "2.21.3 Complex Types",
+    "page": 176
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.1 CT_Action",
+    "page": 176
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.2 CT_ActionData",
+    "page": 177
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.3 CT_ActionDataGroup",
+    "page": 177
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.4 CT_ActionGroup",
+    "page": 178
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.5 CT_ActionProperty",
+    "page": 178
+  },
+  {
+    "level": 3,
+    "title": "2.21.3.6 CT_Actions",
+    "page": 179
+  },
+  {
+    "level": 2,
+    "title": "2.21.4 Simple Types",
+    "page": 180
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.1 ST_ActionType",
+    "page": 180
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.2 ST_ActionTypeReserved",
+    "page": 180
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.3 ST_ActionTypeUser",
+    "page": 181
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.4 ST_DataName",
+    "page": 181
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.5 ST_DataNameReserved",
+    "page": 181
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.6 ST_DataNameUser",
+    "page": 182
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.7 ST_PropertyName",
+    "page": 182
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.8 ST_PropertyNameReserved",
+    "page": 182
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.9 ST_PropertyNameUser",
+    "page": 183
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.10 ST_PropertyValue",
+    "page": 183
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.11 ST_PropertyValueReserved",
+    "page": 183
+  },
+  {
+    "level": 3,
+    "title": "2.21.4.12 ST_PropertyValueUser",
+    "page": 184
+  },
+  {
+    "level": 1,
+    "title": "2.22 http://schemas.microsoft.com/office/drawing/2014/chart",
+    "page": 184
+  },
+  {
+    "level": 2,
+    "title": "2.22.1 Elements",
+    "page": 184
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.1 bubble3D",
+    "page": 184
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.2 categoryFilterExceptions",
+    "page": 185
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.3 datapointuniqueidmap",
+    "page": 185
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.4 dLbl",
+    "page": 185
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.5 explosion",
+    "page": 186
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.6 invertIfNegative",
+    "page": 186
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.7 marker",
+    "page": 186
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.8 pivotOptions16",
+    "page": 186
+  },
+  {
+    "level": 3,
+    "title": "2.22.1.9 spPr",
+    "page": 187
+  },
+  {
+    "level": 2,
+    "title": "2.22.2 Attributes",
+    "page": 187
+  },
+  {
+    "level": 2,
+    "title": "2.22.3 Complex Types",
+    "page": 187
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.1 CT_BooleanFalse",
+    "page": 187
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.2 CT_CategoryFilterException",
+    "page": 188
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.3 CT_CategoryFilterExceptions",
+    "page": 188
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.4 CT_ChartDataPointUniqueIDMap",
+    "page": 189
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.5 CT_ChartDataPointUniqueIDMapEntry",
+    "page": 189
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.6 CT_ChartUniqueID",
+    "page": 190
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.7 CT_LiteralDataChart",
+    "page": 190
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.8 CT_MultiLvlStrFilteredLiteralCache",
+    "page": 190
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.9 CT_NumFilteredLiteralCache",
+    "page": 191
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.10 CT_PivotOptions16",
+    "page": 191
+  },
+  {
+    "level": 3,
+    "title": "2.22.3.11 CT_StrFilteredLiteralCache",
+    "page": 192
+  },
+  {
+    "level": 2,
+    "title": "2.22.4 Simple Types",
+    "page": 192
+  },
+  {
+    "level": 1,
+    "title": "2.23 http://schemas.microsoft.com/office/drawing/2014/chart/ac",
+    "page": 192
+  },
+  {
+    "level": 2,
+    "title": "2.23.1 Elements",
+    "page": 192
+  },
+  {
+    "level": 3,
+    "title": "2.23.1.1 multiLvlStrLit",
+    "page": 192
+  },
+  {
+    "level": 2,
+    "title": "2.23.2 Attributes",
+    "page": 193
+  },
+  {
+    "level": 2,
+    "title": "2.23.3 Complex Types",
+    "page": 193
+  },
+  {
+    "level": 2,
+    "title": "2.23.4 Simple Types",
+    "page": 193
+  },
+  {
+    "level": 1,
+    "title": "2.24 http://schemas.microsoft.com/office/drawing/2014/chartex",
+    "page": 193
+  },
+  {
+    "level": 2,
+    "title": "2.24.1 Elements",
+    "page": 193
+  },
+  {
+    "level": 3,
+    "title": "2.24.1.1 chart",
+    "page": 193
+  },
+  {
+    "level": 3,
+    "title": "2.24.1.2 chartSpace",
+    "page": 193
+  },
+  {
+    "level": 2,
+    "title": "2.24.2 Attributes",
+    "page": 193
+  },
+  {
+    "level": 2,
+    "title": "2.24.3 Complex Types",
+    "page": 194
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.1 CT_Address",
+    "page": 194
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.2 CT_Aggregation",
+    "page": 194
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.3 CT_Artifact",
+    "page": 195
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.4 CT_Artifacts",
+    "page": 195
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.5 CT_Axis",
+    "page": 196
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.6 CT_AxisTitle",
+    "page": 197
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.7 CT_AxisUnits",
+    "page": 198
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.8 CT_AxisUnitsLabel",
+    "page": 198
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.9 CT_Binding",
+    "page": 199
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.10 CT_Bindings",
+    "page": 199
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.11 CT_Binning",
+    "page": 200
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.12 CT_CategoryAxisScaling",
+    "page": 201
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.13 CT_Chart",
+    "page": 201
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.14 CT_ChartData",
+    "page": 202
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.15 CT_ChartSpace",
+    "page": 202
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.16 CT_ChartTitle",
+    "page": 203
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.17 CT_Clear",
+    "page": 204
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.18 CT_Copyrights",
+    "page": 205
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.19 CT_Dashboard",
+    "page": 205
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.20 CT_Data",
+    "page": 206
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.21 CT_DataId",
+    "page": 207
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.22 CT_DataLabel",
+    "page": 207
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.23 CT_DataLabelHidden",
+    "page": 208
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.24 CT_DataLabels",
+    "page": 208
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.25 CT_DataLabelVisibilities",
+    "page": 209
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.26 CT_DataPoint",
+    "page": 210
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.27 CT_Extension",
+    "page": 210
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.28 CT_ExtensionList",
+    "page": 211
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.29 CT_ExternalData",
+    "page": 211
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.30 CT_ExtremeValueColorPosition",
+    "page": 212
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.31 CT_FeatureExtension",
+    "page": 212
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.32 CT_FormatOverride",
+    "page": 213
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.33 CT_FormatOverrides",
+    "page": 213
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.34 CT_Formula",
+    "page": 214
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.35 CT_GeoCache",
+    "page": 214
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.36 CT_GeoChildEntities",
+    "page": 215
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.37 CT_GeoChildEntitiesQuery",
+    "page": 215
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.38 CT_GeoChildEntitiesQueryResult",
+    "page": 216
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.39 CT_GeoChildEntitiesQueryResults",
+    "page": 216
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.40 CT_GeoChildTypes",
+    "page": 217
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.41 CT_GeoData",
+    "page": 217
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.42 CT_GeoDataEntityQuery",
+    "page": 218
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.43 CT_GeoDataEntityQueryResult",
+    "page": 218
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.44 CT_GeoDataEntityQueryResults",
+    "page": 219
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.45 CT_GeoDataPointQuery",
+    "page": 219
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.46 CT_GeoDataPointToEntityQuery",
+    "page": 220
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.47 CT_GeoDataPointToEntityQueryResult",
+    "page": 220
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.48 CT_GeoDataPointToEntityQueryResults",
+    "page": 221
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.49 CT_GeoEntity",
+    "page": 221
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.50 CT_Geography",
+    "page": 222
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.51 CT_GeoHierarchyEntity",
+    "page": 223
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.52 CT_GeoLocation",
+    "page": 223
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.53 CT_GeoLocationQuery",
+    "page": 224
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.54 CT_GeoLocationQueryResult",
+    "page": 225
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.55 CT_GeoLocationQueryResults",
+    "page": 225
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.56 CT_GeoLocations",
+    "page": 226
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.57 CT_GeoParentEntitiesQuery",
+    "page": 226
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.58 CT_GeoParentEntitiesQueryResult",
+    "page": 227
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.59 CT_GeoParentEntitiesQueryResults",
+    "page": 227
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.60 CT_GeoParentEntity",
+    "page": 228
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.61 CT_GeoPolygon",
+    "page": 228
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.62 CT_GeoPolygons",
+    "page": 229
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.63 CT_Gridlines",
+    "page": 229
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.64 CT_HeaderFooter",
+    "page": 229
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.65 CT_Legend",
+    "page": 230
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.66 CT_NumberColorPosition",
+    "page": 231
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.67 CT_NumberFormat",
+    "page": 232
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.68 CT_NumericDimension",
+    "page": 232
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.69 CT_NumericLevel",
+    "page": 233
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.70 CT_NumericValue",
+    "page": 233
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.71 CT_Offset",
+    "page": 234
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.72 CT_PageMargins",
+    "page": 234
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.73 CT_PageSetup",
+    "page": 235
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.74 CT_ParentLabelLayout",
+    "page": 236
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.75 CT_PercentageColorPosition",
+    "page": 236
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.76 CT_PlotArea",
+    "page": 237
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.77 CT_PlotAreaRegion",
+    "page": 237
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.78 CT_PlotSurface",
+    "page": 238
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.79 CT_PrintSettings",
+    "page": 238
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.80 CT_RegionLabelLayout",
+    "page": 239
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.81 CT_RelId",
+    "page": 239
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.82 CT_Series",
+    "page": 239
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.83 CT_SeriesElementVisibilities",
+    "page": 241
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.84 CT_SeriesLayoutProperties",
+    "page": 241
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.85 CT_Statistics",
+    "page": 242
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.86 CT_StringDimension",
+    "page": 243
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.87 CT_StringLevel",
+    "page": 243
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.88 CT_StringValue",
+    "page": 244
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.89 CT_SubtotalIndex",
+    "page": 244
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.90 CT_Subtotals",
+    "page": 245
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.91 CT_Text",
+    "page": 245
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.92 CT_TextData",
+    "page": 246
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.93 CT_TickLabels",
+    "page": 246
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.94 CT_TickMarks",
+    "page": 247
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.95 CT_ValueAxisScaling",
+    "page": 247
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.96 CT_ValueColorEndPosition",
+    "page": 248
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.97 CT_ValueColorMiddlePosition",
+    "page": 248
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.98 CT_ValueColorPositions",
+    "page": 249
+  },
+  {
+    "level": 3,
+    "title": "2.24.3.99 CT_ValueColors",
+    "page": 249
+  },
+  {
+    "level": 2,
+    "title": "2.24.4 Simple Types",
+    "page": 250
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.1 ST_ArtifactType",
+    "page": 250
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.2 ST_AxisId",
+    "page": 250
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.3 ST_AxisUnit",
+    "page": 251
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.4 ST_BindingType",
+    "page": 252
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.5 ST_DataId",
+    "page": 252
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.6 ST_DataLabelPos",
+    "page": 252
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.7 ST_DoubleOrAutomatic",
+    "page": 253
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.8 ST_EntityType",
+    "page": 253
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.9 ST_ExtensionDropMode",
+    "page": 255
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.10 ST_FormulaDirection",
+    "page": 255
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.11 ST_GapWidthRatio",
+    "page": 256
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.12 ST_GeoMappingLevel",
+    "page": 256
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.13 ST_GeoProjectionType",
+    "page": 257
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.14 ST_IntervalClosedSide",
+    "page": 257
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.15 ST_NumericDimensionType",
+    "page": 258
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.16 ST_PageOrientation",
+    "page": 259
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.17 ST_ParentLabelLayout",
+    "page": 259
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.18 ST_PosAlign",
+    "page": 260
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.19 ST_QuartileMethod",
+    "page": 260
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.20 ST_RegionLabelLayout",
+    "page": 261
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.21 ST_SeriesLayout",
+    "page": 261
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.22 ST_SidePos",
+    "page": 262
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.23 ST_StringDimensionType",
+    "page": 263
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.24 ST_TickMarksType",
+    "page": 263
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.25 ST_ValueAxisUnit",
+    "page": 264
+  },
+  {
+    "level": 3,
+    "title": "2.24.4.26 ST_ValueColorPositionCount",
+    "page": 264
+  },
+  {
+    "level": 1,
+    "title": "2.25 http://schemas.microsoft.com/office/drawing/2014/main",
+    "page": 265
+  },
+  {
+    "level": 2,
+    "title": "2.25.1 Elements",
+    "page": 265
+  },
+  {
+    "level": 3,
+    "title": "2.25.1.1 colId",
+    "page": 265
+  },
+  {
+    "level": 3,
+    "title": "2.25.1.2 creationId",
+    "page": 265
+  },
+  {
+    "level": 3,
+    "title": "2.25.1.3 cxnDERefs",
+    "page": 265
+  },
+  {
+    "level": 3,
+    "title": "2.25.1.4 predDERef",
+    "page": 265
+  },
+  {
+    "level": 3,
+    "title": "2.25.1.5 rowId",
+    "page": 266
+  },
+  {
+    "level": 2,
+    "title": "2.25.2 Attributes",
+    "page": 266
+  },
+  {
+    "level": 2,
+    "title": "2.25.3 Complex Types",
+    "page": 266
+  },
+  {
+    "level": 3,
+    "title": "2.25.3.1 CT_Identifier",
+    "page": 266
+  },
+  {
+    "level": 3,
+    "title": "2.25.3.2 CT_CreationId",
+    "page": 266
+  },
+  {
+    "level": 3,
+    "title": "2.25.3.3 CT_ConnectableReferences",
+    "page": 267
+  },
+  {
+    "level": 3,
+    "title": "2.25.3.4 CT_PredecessorDrawingElementReference",
+    "page": 267
+  },
+  {
+    "level": 2,
+    "title": "2.25.4 Simple Types",
+    "page": 268
+  },
+  {
+    "level": 1,
+    "title": "2.26 http://schemas.microsoft.com/office/drawing/2016/SVG/main",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "2.26.1 Elements",
+    "page": 268
+  },
+  {
+    "level": 3,
+    "title": "2.26.1.1 svgBlip",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "2.26.2 Attributes",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "2.26.3 Complex Types",
+    "page": 268
+  },
+  {
+    "level": 3,
+    "title": "2.26.3.1 CT_SVGBlip",
+    "page": 268
+  },
+  {
+    "level": 2,
+    "title": "2.26.4 Simple Types",
+    "page": 269
+  },
+  {
+    "level": 1,
+    "title": "2.27 http://schemas.microsoft.com/office/drawing/2016/11/main",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "2.27.1 Elements",
+    "page": 269
+  },
+  {
+    "level": 3,
+    "title": "2.27.1.1 picAttrSrcUrl",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "2.27.2 Attributes",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "2.27.3 Complex Types",
+    "page": 269
+  },
+  {
+    "level": 3,
+    "title": "2.27.3.1 CT_PictureAttributionSourceURL",
+    "page": 269
+  },
+  {
+    "level": 2,
+    "title": "2.27.4 Simple Types",
+    "page": 270
+  },
+  {
+    "level": 1,
+    "title": "2.28 http://schemas.microsoft.com/office/drawing/2016/11/diagram",
+    "page": 270
+  },
+  {
+    "level": 2,
+    "title": "2.28.1 Elements",
+    "page": 270
+  },
+  {
+    "level": 3,
+    "title": "2.28.1.1 autoBuNodeInfoLst",
+    "page": 270
+  },
+  {
+    "level": 2,
+    "title": "2.28.2 Attributes",
+    "page": 270
+  },
+  {
+    "level": 2,
+    "title": "2.28.3 Complex Types",
+    "page": 270
+  },
+  {
+    "level": 3,
+    "title": "2.28.3.1 CT_DiagramAutoBullet",
+    "page": 270
+  },
+  {
+    "level": 3,
+    "title": "2.28.3.2 CT_NumberDiagramInfo",
+    "page": 271
+  },
+  {
+    "level": 3,
+    "title": "2.28.3.3 CT_NumberDiagramInfoList",
+    "page": 271
+  },
+  {
+    "level": 2,
+    "title": "2.28.4 Simple Types",
+    "page": 272
+  },
+  {
+    "level": 3,
+    "title": "2.28.4.1 ST_STorageType",
+    "page": 272
+  },
+  {
+    "level": 1,
+    "title": "2.29 http://schemas.microsoft.com/office/drawing/2013/main/command",
+    "page": 272
+  },
+  {
+    "level": 2,
+    "title": "2.29.1 Elements",
+    "page": 272
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.1 cxnSpMkLst",
+    "page": 272
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.2 deMkLst",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.3 graphicFrameMkLst",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.4 grpSpMkLst",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.5 inkMkLst",
+    "page": 273
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.6 picMkLst",
+    "page": 274
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.7 spMkLst",
+    "page": 274
+  },
+  {
+    "level": 3,
+    "title": "2.29.1.8 txMkLst",
+    "page": 274
+  },
+  {
+    "level": 2,
+    "title": "2.29.2 Attributes",
+    "page": 274
+  },
+  {
+    "level": 2,
+    "title": "2.29.3 Complex Types",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.1 CT_ChangesData",
+    "page": 275
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.2 CT_ConnectorChanges",
+    "page": 276
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.3 CT_ConnectorMoniker",
+    "page": 276
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.4 CT_ConnectorMonikerList",
+    "page": 277
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.5 CT_GraphicFrameMoniker",
+    "page": 277
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.6 CT_GraphicFrameMonikerList",
+    "page": 278
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.7 CT_GroupShapeChanges",
+    "page": 278
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.8 CT_GroupShapeMoniker",
+    "page": 279
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.9 CT_GroupShapeMonikerList",
+    "page": 279
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.10 CT_InkChanges",
+    "page": 279
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.11 CT_InkMoniker",
+    "page": 280
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.12 CT_InkMonikerList",
+    "page": 280
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.13 CT_PictureChanges",
+    "page": 281
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.14 CT_PictureMoniker",
+    "page": 282
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.15 CT_PictureMonikerList",
+    "page": 282
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.16 CT_ShapeChanges",
+    "page": 282
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.17 CT_ShapeMoniker",
+    "page": 283
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.18 CT_ShapeMonikerList",
+    "page": 283
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.19 CT_GraphicFrameChanges",
+    "page": 284
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.20 CT_DrawingElementMonikerList",
+    "page": 285
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.21 CT_TextCharRangeMonikerList",
+    "page": 285
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.22 CT_TextCharRangeContext",
+    "page": 286
+  },
+  {
+    "level": 3,
+    "title": "2.29.3.23 CT_TextCharRangeMoniker",
+    "page": 286
+  },
+  {
+    "level": 2,
+    "title": "2.29.4 Simple Types",
+    "page": 287
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.1 ST_ConnectorChangeBit",
+    "page": 287
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.2 ST_ConnectorChangesBits",
+    "page": 288
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.3 ST_GroupShapeChangeBit",
+    "page": 288
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.4 ST_GroupShapeChangesBits",
+    "page": 289
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.5 ST_InkChangeBit",
+    "page": 289
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.6 ST_InkChangesBits",
+    "page": 290
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.7 ST_PictureChangeBit",
+    "page": 290
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.8 ST_PictureChangesBits",
+    "page": 291
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.9 ST_ShapeChangeBit",
+    "page": 292
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.10 ST_ShapeChangesBits",
+    "page": 292
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.11 ST_GraphicFrameChangeBit",
+    "page": 293
+  },
+  {
+    "level": 3,
+    "title": "2.29.4.12 ST_GraphicFrameChangesBits",
+    "page": 294
+  },
+  {
+    "level": 1,
+    "title": "2.30 http://schemas.microsoft.com/office/drawing/2016/ink",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "2.30.1 Elements",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "2.30.2 Attributes",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "2.30.3 Complex Types",
+    "page": 294
+  },
+  {
+    "level": 2,
+    "title": "2.30.4 Simple Types",
+    "page": 294
+  },
+  {
+    "level": 3,
+    "title": "2.30.4.1 ST_ExtendedBrushPropertyName",
+    "page": 294
+  },
+  {
+    "level": 3,
+    "title": "2.30.4.2 ST_InkEffectsType",
+    "page": 295
+  },
+  {
+    "level": 1,
+    "title": "2.31 http://schemas.microsoft.com/office/drawing/2017/model3d",
+    "page": 297
+  },
+  {
+    "level": 2,
+    "title": "2.31.1 Elements",
+    "page": 297
+  },
+  {
+    "level": 3,
+    "title": "2.31.1.1 model3d",
+    "page": 297
+  },
+  {
+    "level": 2,
+    "title": "2.31.2 Attributes",
+    "page": 297
+  },
+  {
+    "level": 2,
+    "title": "2.31.3 Complex Types",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.1 CT_AmbientLight",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.2 CT_DirectionalLight",
+    "page": 298
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.3 CT_Model3D",
+    "page": 299
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.4 CT_Model3DCamera",
+    "page": 301
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.5 CT_Model3DRaster",
+    "page": 301
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.6 CT_Model3DTransform",
+    "page": 302
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.7 CT_ObjectViewport",
+    "page": 303
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.8 CT_OrthographicProjection",
+    "page": 303
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.9 CT_PerspectiveProjection",
+    "page": 304
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.10 CT_PointLight",
+    "page": 304
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.11 CT_Rotate3D",
+    "page": 305
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.12 CT_Scale3D",
+    "page": 306
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.13 CT_SpotLight",
+    "page": 306
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.14 CT_UnknownLight",
+    "page": 307
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.15 CT_WindowViewport",
+    "page": 308
+  },
+  {
+    "level": 3,
+    "title": "2.31.3.16 CT_PositiveRatio",
+    "page": 308
+  },
+  {
+    "level": 2,
+    "title": "2.31.4 Simple Types",
+    "page": 309
+  },
+  {
+    "level": 3,
+    "title": "2.31.4.1 ST_AngularRadius",
+    "page": 309
+  },
+  {
+    "level": 1,
+    "title": "2.32 http://schemas.microsoft.com/office/drawing/2016/12/diagram",
+    "page": 309
+  },
+  {
+    "level": 2,
+    "title": "2.32.1 Elements",
+    "page": 309
+  },
+  {
+    "level": 3,
+    "title": "2.32.1.1 lstStyle",
+    "page": 309
+  },
+  {
+    "level": 3,
+    "title": "2.32.1.2 spPr",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.32.2 Attributes",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.32.3 Complex Types",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.32.4 Simple Types",
+    "page": 310
+  },
+  {
+    "level": 1,
+    "title": "2.33 http://schemas.microsoft.com/office/drawing/2017/03/chart",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.33.1 Elements",
+    "page": 310
+  },
+  {
+    "level": 3,
+    "title": "2.33.1.1 dataDisplayOptions16",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.33.2 Attributes",
+    "page": 310
+  },
+  {
+    "level": 2,
+    "title": "2.33.3 Complex Types",
+    "page": 311
+  },
+  {
+    "level": 3,
+    "title": "2.33.3.1 CT_BooleanFalse",
+    "page": 311
+  },
+  {
+    "level": 3,
+    "title": "2.33.3.2 CT_DataDisplayOptions16",
+    "page": 311
+  },
+  {
+    "level": 2,
+    "title": "2.33.4 Simple Types",
+    "page": 311
+  },
+  {
+    "level": 1,
+    "title": "2.34 http://schemas.microsoft.com/office/drawing/2017/decorative",
+    "page": 312
+  },
+  {
+    "level": 2,
+    "title": "2.34.1 Elements",
+    "page": 312
+  },
+  {
+    "level": 3,
+    "title": "2.34.1.1 decorative",
+    "page": 312
+  },
+  {
+    "level": 2,
+    "title": "2.34.2 Attributes",
+    "page": 312
+  },
+  {
+    "level": 2,
+    "title": "2.34.3 Complex Types",
+    "page": 312
+  },
+  {
+    "level": 3,
+    "title": "2.34.3.1 CT_Decorative",
+    "page": 312
+  },
+  {
+    "level": 2,
+    "title": "2.34.4 Simple Types",
+    "page": 312
+  },
+  {
+    "level": 1,
+    "title": "2.35 http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor",
+    "page": 313
+  },
+  {
+    "level": 2,
+    "title": "2.35.1 Elements",
+    "page": 313
+  },
+  {
+    "level": 3,
+    "title": "2.35.1.1 hlinkClr",
+    "page": 313
+  },
+  {
+    "level": 2,
+    "title": "2.35.2 Attributes",
+    "page": 313
+  },
+  {
+    "level": 2,
+    "title": "2.35.3 Complex Types",
+    "page": 313
+  },
+  {
+    "level": 3,
+    "title": "2.35.3.1 CT_HyperlinkColor",
+    "page": 313
+  },
+  {
+    "level": 2,
+    "title": "2.35.4 Simple Types",
+    "page": 313
+  },
+  {
+    "level": 3,
+    "title": "2.35.4.1 ST_HyperlinkColor",
+    "page": 313
+  },
+  {
+    "level": 1,
+    "title": "2.36 http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+    "page": 314
+  },
+  {
+    "level": 2,
+    "title": "2.36.1 Elements",
+    "page": 314
+  },
+  {
+    "level": 3,
+    "title": "2.36.1.1 posterFrame",
+    "page": 314
+  },
+  {
+    "level": 3,
+    "title": "2.36.1.2 embedAnim",
+    "page": 314
+  },
+  {
+    "level": 2,
+    "title": "2.36.2 Attributes",
+    "page": 315
+  },
+  {
+    "level": 2,
+    "title": "2.36.3 Complex Types",
+    "page": 315
+  },
+  {
+    "level": 3,
+    "title": "2.36.3.1 CT_EmbeddedAnimation",
+    "page": 315
+  },
+  {
+    "level": 3,
+    "title": "2.36.3.2 CT_PosterFrame",
+    "page": 315
+  },
+  {
+    "level": 2,
+    "title": "2.36.4 Simple Types",
+    "page": 316
+  },
+  {
+    "level": 3,
+    "title": "2.36.4.1 ST_EmbeddedAnimationID",
+    "page": 316
+  },
+  {
+    "level": 1,
+    "title": "2.37 http://schemas.microsoft.com/office/drawing/2018/animation",
+    "page": 316
+  },
+  {
+    "level": 2,
+    "title": "2.37.1 Elements",
+    "page": 316
+  },
+  {
+    "level": 3,
+    "title": "2.37.1.1 animPr",
+    "page": 316
+  },
+  {
+    "level": 2,
+    "title": "2.37.2 Attributes",
+    "page": 317
+  },
+  {
+    "level": 2,
+    "title": "2.37.3 Complex Types",
+    "page": 317
+  },
+  {
+    "level": 3,
+    "title": "2.37.3.1 CT_AnimationProperties",
+    "page": 317
+  },
+  {
+    "level": 2,
+    "title": "2.37.4 Simple Types",
+    "page": 318
+  },
+  {
+    "level": 3,
+    "title": "2.37.4.1 ST_AnimationName",
+    "page": 318
+  },
+  {
+    "level": 3,
+    "title": "2.37.4.2 ST_Indefinite",
+    "page": 318
+  },
+  {
+    "level": 3,
+    "title": "2.37.4.3 ST_PlayCount",
+    "page": 319
+  },
+  {
+    "level": 3,
+    "title": "2.37.4.4 ST_UniversalTimeOffset",
+    "page": 319
+  },
+  {
+    "level": 1,
+    "title": "2.38 http://schemas.microsoft.com/office/drawing/2018/sketchyshapes",
+    "page": 320
+  },
+  {
+    "level": 2,
+    "title": "2.38.1 Elements",
+    "page": 320
+  },
+  {
+    "level": 3,
+    "title": "2.38.1.1 lineSketchStyleProps",
+    "page": 320
+  },
+  {
+    "level": 2,
+    "title": "2.38.2 Attributes",
+    "page": 320
+  },
+  {
+    "level": 2,
+    "title": "2.38.3 Complex Types",
+    "page": 320
+  },
+  {
+    "level": 3,
+    "title": "2.38.3.1 CT_Empty",
+    "page": 320
+  },
+  {
+    "level": 3,
+    "title": "2.38.3.2 CT_LineSketchStyleProperties",
+    "page": 321
+  },
+  {
+    "level": 3,
+    "title": "2.38.3.3 CT_LineSketchTypeProperties",
+    "page": 322
+  },
+  {
+    "level": 2,
+    "title": "2.38.4 Simple Types",
+    "page": 322
+  },
+  {
+    "level": 3,
+    "title": "2.38.4.1 ST_LineSketchSeed",
+    "page": 322
+  },
+  {
+    "level": 1,
+    "title": "2.39 http://schemas.microsoft.com/office/drawing/2020/classificationShape",
+    "page": 323
+  },
+  {
+    "level": 2,
+    "title": "2.39.1 Elements",
+    "page": 323
+  },
+  {
+    "level": 3,
+    "title": "2.39.1.1 classification",
+    "page": 323
+  },
+  {
+    "level": 2,
+    "title": "2.39.2 Attributes",
+    "page": 323
+  },
+  {
+    "level": 2,
+    "title": "2.39.3 Complex Types",
+    "page": 323
+  },
+  {
+    "level": 3,
+    "title": "2.39.3.1 CT_ClassificationOutcome",
+    "page": 323
+  },
+  {
+    "level": 2,
+    "title": "2.39.4 Simple Types",
+    "page": 323
+  },
+  {
+    "level": 3,
+    "title": "2.39.4.1 ST_ClassificationOutcomeType",
+    "page": 323
+  },
+  {
+    "level": 1,
+    "title": "2.40 http://schemas.microsoft.com/office/word/2020/oembed",
+    "page": 324
+  },
+  {
+    "level": 2,
+    "title": "2.40.1 Elements",
+    "page": 324
+  },
+  {
+    "level": 3,
+    "title": "2.40.1.1 oembed",
+    "page": 324
+  },
+  {
+    "level": 2,
+    "title": "2.40.2 Attributes",
+    "page": 324
+  },
+  {
+    "level": 2,
+    "title": "2.40.3 Complex Types",
+    "page": 325
+  },
+  {
+    "level": 3,
+    "title": "2.40.3.1 CT_OEmbed",
+    "page": 325
+  },
+  {
+    "level": 2,
+    "title": "2.40.4 Simple Types",
+    "page": 325
+  },
+  {
+    "level": 1,
+    "title": "2.41 http://schemas.microsoft.com/office/drawing/2021/scriptlink",
+    "page": 325
+  },
+  {
+    "level": 2,
+    "title": "2.41.1 Elements",
+    "page": 325
+  },
+  {
+    "level": 3,
+    "title": "2.41.1.1 scriptLink",
+    "page": 325
+  },
+  {
+    "level": 2,
+    "title": "2.41.2 Attributes",
+    "page": 326
+  },
+  {
+    "level": 2,
+    "title": "2.41.3 Complex Types",
+    "page": 326
+  },
+  {
+    "level": 3,
+    "title": "2.41.3.1 CT_ScriptLink",
+    "page": 326
+  },
+  {
+    "level": 2,
+    "title": "2.41.4 Simple Types",
+    "page": 326
+  },
+  {
+    "level": 1,
+    "title": "2.42 http://schemas.microsoft.com/office/drawing/2021/livefeed",
+    "page": 326
+  },
+  {
+    "level": 2,
+    "title": "2.42.1 Elements",
+    "page": 326
+  },
+  {
+    "level": 3,
+    "title": "2.42.1.1 liveFeedProps",
+    "page": 326
+  },
+  {
+    "level": 2,
+    "title": "2.42.2 Attributes",
+    "page": 327
+  },
+  {
+    "level": 2,
+    "title": "2.42.3 Complex Types",
+    "page": 327
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.1 CT_BackgroundBlurProperties",
+    "page": 327
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.2 CT_BackgroundCustomProperties",
+    "page": 327
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.3 CT_BackgroundNormalProperties",
+    "page": 328
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.4 CT_BackgroundRemovedProperties",
+    "page": 328
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.5 CT_LiveFeedBackgroundProperties",
+    "page": 328
+  },
+  {
+    "level": 3,
+    "title": "2.42.3.6 CT_LiveFeedProperties",
+    "page": 329
+  },
+  {
+    "level": 2,
+    "title": "2.42.4 Simple Types",
+    "page": 330
+  },
+  {
+    "level": 1,
+    "title": "2.43 http://schemas.microsoft.com/office/drawing/2022/imageformula",
+    "page": 330
+  },
+  {
+    "level": 2,
+    "title": "2.43.1 Elements",
+    "page": 330
+  },
+  {
+    "level": 3,
+    "title": "2.43.1.1 imageFormula",
+    "page": 330
+  },
+  {
+    "level": 2,
+    "title": "2.43.2 Attributes",
+    "page": 330
+  },
+  {
+    "level": 2,
+    "title": "2.43.3 Complex Types",
+    "page": 330
+  },
+  {
+    "level": 3,
+    "title": "2.43.3.1 CT_ImageFormula",
+    "page": 330
+  },
+  {
+    "level": 2,
+    "title": "2.43.4 Simple Types",
+    "page": 331
+  },
+  {
+    "level": 1,
+    "title": "2.44 http://schemas.microsoft.com/office/drawing/2015/06/chart",
+    "page": 331
+  },
+  {
+    "level": 2,
+    "title": "2.44.1 Elements",
+    "page": 331
+  },
+  {
+    "level": 3,
+    "title": "2.44.1.1 formatcode2",
+    "page": 331
+  },
+  {
+    "level": 2,
+    "title": "2.44.2 Attributes",
+    "page": 331
+  },
+  {
+    "level": 3,
+    "title": "2.44.2.1 formatcode2",
+    "page": 331
+  },
+  {
+    "level": 2,
+    "title": "2.44.3 Complex Types",
+    "page": 331
+  },
+  {
+    "level": 2,
+    "title": "2.44.4 Simple Types",
+    "page": 331
+  },
+  {
+    "level": 0,
+    "title": "3 Structure Examples",
+    "page": 332
+  },
+  {
+    "level": 1,
+    "title": "3.1 Chart",
+    "page": 332
+  },
+  {
+    "level": 2,
+    "title": "3.1.1 Chart Style",
+    "page": 332
+  },
+  {
+    "level": 1,
+    "title": "3.2 Content Parts and Ink",
+    "page": 332
+  },
+  {
+    "level": 1,
+    "title": "3.3 Pictures",
+    "page": 335
+  },
+  {
+    "level": 1,
+    "title": "3.4 Diagrams",
+    "page": 335
+  },
+  {
+    "level": 2,
+    "title": "3.4.1 Diagram Layout",
+    "page": 335
+  },
+  {
+    "level": 2,
+    "title": "3.4.2 Image Recoloring",
+    "page": 336
+  },
+  {
+    "level": 1,
+    "title": "3.5 Math",
+    "page": 336
+  },
+  {
+    "level": 1,
+    "title": "3.6 SpreadsheetML Drawing",
+    "page": 337
+  },
+  {
+    "level": 2,
+    "title": "3.6.1 Camera Tool",
+    "page": 337
+  },
+  {
+    "level": 2,
+    "title": "3.6.2 Legacy Object Wrapper",
+    "page": 338
+  },
+  {
+    "level": 1,
+    "title": "3.7 WordprocessingML Drawing",
+    "page": 338
+  },
+  {
+    "level": 2,
+    "title": "3.7.1 Grouped Graphical Objects",
+    "page": 338
+  },
+  {
+    "level": 2,
+    "title": "3.7.2 Group and Linked Shapes within a Canvas",
+    "page": 339
+  },
+  {
+    "level": 0,
+    "title": "4 Security",
+    "page": 341
+  },
+  {
+    "level": 1,
+    "title": "4.1 Security Considerations for Implementers",
+    "page": 341
+  },
+  {
+    "level": 1,
+    "title": "4.2 Index of Security Fields",
+    "page": 341
+  },
+  {
+    "level": 0,
+    "title": "5 Appendix A: Full XML Schemas",
+    "page": 342
+  },
+  {
+    "level": 1,
+    "title": "5.1 http://schemas.microsoft.com/office/drawing/2010/main Schema",
+    "page": 343
+  },
+  {
+    "level": 1,
+    "title": "5.2 http://schemas.microsoft.com/office/word/2010/wordprocessingShape Schema",
+    "page": 349
+  },
+  {
+    "level": 1,
+    "title": "5.3 http://schemas.microsoft.com/office/word/2010/wordml Schema",
+    "page": 350
+  },
+  {
+    "level": 1,
+    "title": "5.4 http://schemas.microsoft.com/office/word/2010/wordprocessingGroup Schema",
+    "page": 350
+  },
+  {
+    "level": 1,
+    "title": "5.5 http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas Schema",
+    "page": 351
+  },
+  {
+    "level": 1,
+    "title": "5.6 http://schemas.microsoft.com/office/drawing/2008/diagram Schema",
+    "page": 352
+  },
+  {
+    "level": 1,
+    "title": "5.7 http://schemas.microsoft.com/ink/2010/main Schema",
+    "page": 353
+  },
+  {
+    "level": 1,
+    "title": "5.8 http://schemas.microsoft.com/office/drawing/2010/chartDrawing Schema",
+    "page": 354
+  },
+  {
+    "level": 1,
+    "title": "5.9 http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing Schema",
+    "page": 355
+  },
+  {
+    "level": 1,
+    "title": "5.10 http://schemas.microsoft.com/office/drawing/2007/8/2/chart Schema",
+    "page": 356
+  },
+  {
+    "level": 1,
+    "title": "5.11 http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing Schema",
+    "page": 357
+  },
+  {
+    "level": 1,
+    "title": "5.12 http://schemas.microsoft.com/office/drawing/2010/picture Schema",
+    "page": 358
+  },
+  {
+    "level": 1,
+    "title": "5.13 http://schemas.microsoft.com/office/drawing/2012/chart Schema",
+    "page": 358
+  },
+  {
+    "level": 1,
+    "title": "5.14 http://schemas.microsoft.com/office/drawing/2012/main Schema",
+    "page": 360
+  },
+  {
+    "level": 1,
+    "title": "5.15 http://schemas.microsoft.com/office/drawing/2012/chartStyle Schema",
+    "page": 361
+  },
+  {
+    "level": 1,
+    "title": "5.16 http://schemas.microsoft.com/office/drawing/2010/diagram Schema",
+    "page": 363
+  },
+  {
+    "level": 1,
+    "title": "5.17 http://schemas.microsoft.com/office/thememl/2012/main Schema",
+    "page": 364
+  },
+  {
+    "level": 1,
+    "title": "5.18 http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing Schema",
+    "page": 364
+  },
+  {
+    "level": 1,
+    "title": "5.19 http://schemas.microsoft.com/office/powerpoint/2014/inkAction Schema",
+    "page": 364
+  },
+  {
+    "level": 1,
+    "title": "5.20 http://schemas.microsoft.com/office/drawing/2014/chart Schema",
+    "page": 366
+  },
+  {
+    "level": 1,
+    "title": "5.21 http://schemas.microsoft.com/office/drawing/2014/chart/ac Schema",
+    "page": 367
+  },
+  {
+    "level": 1,
+    "title": "5.22 http://schemas.microsoft.com/office/drawing/2014/chartex Schema",
+    "page": 368
+  },
+  {
+    "level": 1,
+    "title": "5.23 http://schemas.microsoft.com/office/drawing/2014/main Schema",
+    "page": 382
+  },
+  {
+    "level": 1,
+    "title": "5.24 http://schemas.microsoft.com/office/drawing/2016/SVG/main Schema",
+    "page": 382
+  },
+  {
+    "level": 1,
+    "title": "5.25 http://schemas.microsoft.com/office/drawing/2016/11/main Schema",
+    "page": 382
+  },
+  {
+    "level": 1,
+    "title": "5.26 http://schemas.microsoft.com/office/drawing/2016/11/diagram Schema",
+    "page": 383
+  },
+  {
+    "level": 1,
+    "title": "5.27 http://schemas.microsoft.com/office/drawing/2013/main/command Schema",
+    "page": 383
+  },
+  {
+    "level": 1,
+    "title": "5.28 http://schemas.microsoft.com/office/drawing/2016/ink Schema",
+    "page": 387
+  },
+  {
+    "level": 1,
+    "title": "5.29 http://schemas.microsoft.com/office/drawing/2017/model3d Schema",
+    "page": 388
+  },
+  {
+    "level": 1,
+    "title": "5.30 http://schemas.microsoft.com/office/drawing/2016/12/diagram Schema",
+    "page": 390
+  },
+  {
+    "level": 1,
+    "title": "5.31 http://schemas.microsoft.com/office/drawing/2017/03/chart Schema",
+    "page": 390
+  },
+  {
+    "level": 1,
+    "title": "5.32 http://schemas.microsoft.com/office/drawing/2017/decorative Schema",
+    "page": 391
+  },
+  {
+    "level": 1,
+    "title": "5.33 http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor Schema",
+    "page": 391
+  },
+  {
+    "level": 1,
+    "title": "5.34 http://schemas.microsoft.com/office/drawing/2018/animation/model3d Schema",
+    "page": 391
+  },
+  {
+    "level": 1,
+    "title": "5.35 http://schemas.microsoft.com/office/drawing/2018/animation Schema",
+    "page": 392
+  },
+  {
+    "level": 1,
+    "title": "5.36 http://schemas.microsoft.com/office/drawing/2018/sketchyshapes Schema",
+    "page": 392
+  },
+  {
+    "level": 1,
+    "title": "5.37 http://schemas.microsoft.com/office/drawing/2020/classificationShape Schema",
+    "page": 393
+  },
+  {
+    "level": 1,
+    "title": "5.38 http://schemas.microsoft.com/office/word/2020/oembed Schema",
+    "page": 393
+  },
+  {
+    "level": 1,
+    "title": "5.39 http://schemas.microsoft.com/office/drawing/2021/scriptlink Schema",
+    "page": 394
+  },
+  {
+    "level": 1,
+    "title": "5.40 http://schemas.microsoft.com/office/drawing/2021/livefeed Schema",
+    "page": 394
+  },
+  {
+    "level": 1,
+    "title": "5.41 http://schemas.microsoft.com/office/drawing/2022/imageformula Schema",
+    "page": 395
+  },
+  {
+    "level": 1,
+    "title": "5.42 http://schemas.microsoft.com/office/drawing/2015/06/chart Schema",
+    "page": 395
+  },
+  {
+    "level": 0,
+    "title": "6 Appendix B: Product Behavior",
+    "page": 396
+  },
+  {
+    "level": 0,
+    "title": "7 Change Tracking",
+    "page": 418
+  },
+  {
+    "level": 0,
+    "title": "8 Index",
+    "page": 419
+  }
+]

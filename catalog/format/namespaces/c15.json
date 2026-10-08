@@ -1,0 +1,1195 @@
+{
+  "prefix": "c15",
+  "uri": "http://schemas.microsoft.com/office/drawing/2012/chart",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2013",
+  "source": "[MS-ODRAWXML] v20261006 §5.13",
+  "counts": {
+    "elements": 40,
+    "attributes": 10,
+    "globalAttributes": 0,
+    "complexTypes": 18,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 44,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c15:autoCat",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.1",
+          "title": "autoCat",
+          "page": 95
+        }
+      ]
+    },
+    {
+      "name": "c15:bubble3D",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:cat",
+      "types": [
+        "c:CT_AxDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:multiLvlStrRef",
+        "c:numRef",
+        "c:numLit",
+        "c:strRef",
+        "c:strLit"
+      ],
+      "parents": [
+        "c15:filteredCategoryTitle"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:categoryFilterException",
+      "types": [
+        "c15:CT_CategoryFilterException"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:sqref",
+        "c15:spPr",
+        "c15:explosion",
+        "c15:invertIfNegative",
+        "c15:bubble3D",
+        "c15:marker",
+        "c15:dLbl"
+      ],
+      "parents": [
+        "c15:categoryFilterExceptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.1",
+          "title": "CT_CategoryFilterException",
+          "page": 103
+        }
+      ]
+    },
+    {
+      "name": "c15:categoryFilterExceptions",
+      "global": true,
+      "types": [
+        "c15:CT_CategoryFilterExceptions"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:categoryFilterException"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.2",
+          "title": "categoryFilterExceptions",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "c15:dLbl",
+      "types": [
+        "c:CT_DLbl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:delete",
+        "c:layout",
+        "c:tx",
+        "c:numFmt",
+        "c:spPr",
+        "c:txPr",
+        "c:dLblPos",
+        "c:showLegendKey",
+        "c:showVal",
+        "c:showCatName",
+        "c:showSerName",
+        "c:showPercent",
+        "c:showBubbleSize",
+        "c:separator",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:datalabelsRange",
+      "global": true,
+      "types": [
+        "c15:CT_SeriesDataLabelsRange"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:f",
+        "c15:dlblRangeCache"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.3",
+          "title": "datalabelsRange",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "c15:dlblFTEntry",
+      "types": [
+        "c15:CT_DataLabelFieldTableEntry"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:txfldGUID",
+        "c15:f",
+        "c15:dlblFieldTableCache"
+      ],
+      "parents": [
+        "c15:dlblFieldTable"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.4",
+          "title": "CT_DataLabelFieldTableEntry",
+          "page": 105
+        }
+      ]
+    },
+    {
+      "name": "c15:dlblFieldTable",
+      "global": true,
+      "types": [
+        "c15:CT_DataLabelFieldTable"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:dlblFTEntry"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.4",
+          "title": "dlblFieldTable",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "c15:dlblFieldTableCache",
+      "types": [
+        "c:CT_StrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:dlblFTEntry"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:dlblRangeCache",
+      "types": [
+        "c:CT_StrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:datalabelsRange"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:explosion",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:f",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:datalabelsRange",
+        "c15:dlblFTEntry"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:filteredAreaSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredAreaSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.5",
+          "title": "filteredAreaSeries",
+          "page": 96
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredBarSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredBarSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.6",
+          "title": "filteredBarSeries",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredBubbleSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredBubbleSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.7",
+          "title": "filteredBubbleSeries",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredCategoryTitle",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredCategoryTitle"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:cat"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.8",
+          "title": "filteredCategoryTitle",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredLineSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredLineSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.9",
+          "title": "filteredLineSeries",
+          "page": 97
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredPieSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredPieSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.10",
+          "title": "filteredPieSeries",
+          "page": 98
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredRadarSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredRadarSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.11",
+          "title": "filteredRadarSeries",
+          "page": 98
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredScatterSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredScatterSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.12",
+          "title": "filteredScatterSeries",
+          "page": 98
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredSeriesTitle",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredSeriesTitle"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:tx"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.13",
+          "title": "filteredSeriesTitle",
+          "page": 98
+        }
+      ]
+    },
+    {
+      "name": "c15:filteredSurfaceSeries",
+      "global": true,
+      "types": [
+        "c15:CT_FilteredSurfaceSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:ser"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.14",
+          "title": "filteredSurfaceSeries",
+          "page": 99
+        }
+      ]
+    },
+    {
+      "name": "c15:formulaRef",
+      "global": true,
+      "types": [
+        "c15:CT_FormulaRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:sqref"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.15",
+          "title": "formulaRef",
+          "page": 99
+        }
+      ]
+    },
+    {
+      "name": "c15:fullRef",
+      "global": true,
+      "types": [
+        "c15:CT_FullRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:sqref"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.16",
+          "title": "fullRef",
+          "page": 99
+        }
+      ]
+    },
+    {
+      "name": "c15:invertIfNegative",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:layout",
+      "global": true,
+      "types": [
+        "c:CT_Layout"
+      ],
+      "attributes": [],
+      "children": [
+        "c:manualLayout",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.17",
+          "title": "layout",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "name": "c15:leaderLines",
+      "global": true,
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.18",
+          "title": "leaderLines",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "name": "c15:levelRef",
+      "global": true,
+      "types": [
+        "c15:CT_LevelRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c15:sqref"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.19",
+          "title": "levelRef",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "name": "c15:marker",
+      "types": [
+        "c:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "c:symbol",
+        "c:size",
+        "c:spPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:numFmt",
+      "global": true,
+      "types": [
+        "c:CT_NumFmt"
+      ],
+      "attributes": [
+        {
+          "name": "formatCode",
+          "type": "s:ST_Xstring",
+          "required": true
+        },
+        {
+          "name": "sourceLinked",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.20",
+          "title": "numFmt",
+          "page": 101
+        }
+      ]
+    },
+    {
+      "name": "c15:pivotSource",
+      "global": true,
+      "types": [
+        "c:CT_PivotSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:name",
+        "c:fmtId",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.21",
+          "title": "pivotSource",
+          "page": 101
+        }
+      ]
+    },
+    {
+      "name": "c15:ser",
+      "types": [
+        "c:CT_AreaSer",
+        "c:CT_BarSer",
+        "c:CT_BubbleSer",
+        "c:CT_LineSer",
+        "c:CT_PieSer",
+        "c:CT_RadarSer",
+        "c:CT_ScatterSer",
+        "c:CT_SurfaceSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:order",
+        "c:tx",
+        "c:spPr",
+        "c:pictureOptions",
+        "c:dPt",
+        "c:dLbls",
+        "c:trendline",
+        "c:errBars",
+        "c:cat",
+        "c:val",
+        "c:extLst",
+        "c:invertIfNegative",
+        "c:shape",
+        "c:xVal",
+        "c:yVal",
+        "c:bubbleSize",
+        "c:bubble3D",
+        "c:marker",
+        "c:smooth",
+        "c:explosion"
+      ],
+      "parents": [
+        "c15:filteredAreaSeries",
+        "c15:filteredBarSeries",
+        "c15:filteredBubbleSeries",
+        "c15:filteredLineSeries",
+        "c15:filteredPieSeries",
+        "c15:filteredRadarSeries",
+        "c15:filteredScatterSeries",
+        "c15:filteredSurfaceSeries"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:showDataLabelsRange",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.22",
+          "title": "showDataLabelsRange",
+          "page": 101
+        }
+      ]
+    },
+    {
+      "name": "c15:showLeaderLines",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.23",
+          "title": "showLeaderLines",
+          "page": 102
+        }
+      ]
+    },
+    {
+      "name": "c15:spPr",
+      "global": true,
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "c15:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.24",
+          "title": "spPr",
+          "page": 102
+        }
+      ]
+    },
+    {
+      "name": "c15:sqref",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:categoryFilterException",
+        "c15:formulaRef",
+        "c15:fullRef",
+        "c15:levelRef"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:tx",
+      "global": true,
+      "types": [
+        "c:CT_Tx",
+        "c:CT_SerTx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:strRef",
+        "c:rich",
+        "c:v"
+      ],
+      "parents": [
+        "c15:filteredSeriesTitle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.25",
+          "title": "tx",
+          "page": 102
+        }
+      ]
+    },
+    {
+      "name": "c15:txfldGUID",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:dlblFTEntry"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c15:xForSave",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.1.26",
+          "title": "xForSave",
+          "page": 102
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "c15:CT_CategoryFilterException",
+      "content": "elements",
+      "model": "(c15:sqref, c15:spPr?, c15:explosion?, c15:invertIfNegative?, c15:bubble3D?, c15:marker?, c15:dLbl?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.1",
+          "title": "CT_CategoryFilterException",
+          "page": 103
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_CategoryFilterExceptions",
+      "content": "elements",
+      "model": "c15:categoryFilterException+",
+      "attributes": [],
+      "usedBy": [
+        "c15:categoryFilterExceptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.2",
+          "title": "CT_CategoryFilterExceptions",
+          "page": 104
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_DataLabelFieldTable",
+      "content": "elements",
+      "model": "c15:dlblFTEntry*",
+      "attributes": [],
+      "usedBy": [
+        "c15:dlblFieldTable"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.3",
+          "title": "CT_DataLabelFieldTable",
+          "page": 104
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_DataLabelFieldTableEntry",
+      "content": "elements",
+      "model": "(c15:txfldGUID, c15:f, c15:dlblFieldTableCache?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:dlblFTEntry"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.4",
+          "title": "CT_DataLabelFieldTableEntry",
+          "page": 105
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredAreaSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredAreaSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.5",
+          "title": "CT_FilteredAreaSer",
+          "page": 106
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredBarSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredBarSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.6",
+          "title": "CT_FilteredBarSer",
+          "page": 106
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredBubbleSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredBubbleSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.7",
+          "title": "CT_FilteredBubbleSer",
+          "page": 106
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredCategoryTitle",
+      "content": "elements",
+      "model": "c15:cat",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredCategoryTitle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.8",
+          "title": "CT_FilteredCategoryTitle",
+          "page": 107
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredLineSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredLineSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.9",
+          "title": "CT_FilteredLineSer",
+          "page": 107
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredPieSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredPieSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.10",
+          "title": "CT_FilteredPieSer",
+          "page": 108
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredRadarSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredRadarSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.11",
+          "title": "CT_FilteredRadarSer",
+          "page": 108
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredScatterSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredScatterSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.12",
+          "title": "CT_FilteredScatterSer",
+          "page": 109
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredSeriesTitle",
+      "content": "elements",
+      "model": "c15:tx",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredSeriesTitle"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.13",
+          "title": "CT_FilteredSeriesTitle",
+          "page": 109
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FilteredSurfaceSer",
+      "content": "elements",
+      "model": "c15:ser",
+      "attributes": [],
+      "usedBy": [
+        "c15:filteredSurfaceSeries"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.14",
+          "title": "CT_FilteredSurfaceSer",
+          "page": 110
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FormulaRef",
+      "content": "elements",
+      "model": "c15:sqref",
+      "attributes": [],
+      "usedBy": [
+        "c15:formulaRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.15",
+          "title": "CT_FormulaRef",
+          "page": 110
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_FullRef",
+      "content": "elements",
+      "model": "c15:sqref",
+      "attributes": [],
+      "usedBy": [
+        "c15:fullRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.16",
+          "title": "CT_FullRef",
+          "page": 111
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_LevelRef",
+      "content": "elements",
+      "model": "c15:sqref",
+      "attributes": [],
+      "usedBy": [
+        "c15:levelRef"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.17",
+          "title": "CT_LevelRef",
+          "page": 111
+        }
+      ]
+    },
+    {
+      "name": "c15:CT_SeriesDataLabelsRange",
+      "content": "elements",
+      "model": "(c15:f, c15:dlblRangeCache?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:datalabelsRange"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.6.3.18",
+          "title": "CT_SeriesDataLabelsRange",
+          "page": 112
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

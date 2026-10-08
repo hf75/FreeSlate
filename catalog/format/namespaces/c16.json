@@ -1,0 +1,628 @@
+{
+  "prefix": "c16",
+  "uri": "http://schemas.microsoft.com/office/drawing/2014/chart",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2016",
+  "source": "[MS-ODRAWXML] v20261006 §5.20",
+  "counts": {
+    "elements": 18,
+    "attributes": 7,
+    "globalAttributes": 0,
+    "complexTypes": 11,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 20,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "c16:bubble3D",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.1",
+          "title": "bubble3D",
+          "page": 184
+        }
+      ]
+    },
+    {
+      "name": "c16:categoryFilterException",
+      "types": [
+        "c16:CT_CategoryFilterException"
+      ],
+      "attributes": [],
+      "children": [
+        "c16:uniqueId",
+        "c16:spPr",
+        "c16:explosion",
+        "c16:invertIfNegative",
+        "c16:bubble3D",
+        "c16:marker",
+        "c16:dLbl"
+      ],
+      "parents": [
+        "c16:categoryFilterExceptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.2",
+          "title": "CT_CategoryFilterException",
+          "page": 188
+        }
+      ]
+    },
+    {
+      "name": "c16:categoryFilterExceptions",
+      "global": true,
+      "types": [
+        "c16:CT_CategoryFilterExceptions"
+      ],
+      "attributes": [],
+      "children": [
+        "c16:categoryFilterException"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.2",
+          "title": "categoryFilterExceptions",
+          "page": 185
+        }
+      ]
+    },
+    {
+      "name": "c16:dLbl",
+      "global": true,
+      "types": [
+        "c:CT_DLbl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:delete",
+        "c:layout",
+        "c:tx",
+        "c:numFmt",
+        "c:spPr",
+        "c:txPr",
+        "c:dLblPos",
+        "c:showLegendKey",
+        "c:showVal",
+        "c:showCatName",
+        "c:showSerName",
+        "c:showPercent",
+        "c:showBubbleSize",
+        "c:separator",
+        "c:extLst"
+      ],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.4",
+          "title": "dLbl",
+          "page": 185
+        }
+      ]
+    },
+    {
+      "name": "c16:datapointuniqueidmap",
+      "global": true,
+      "types": [
+        "c16:CT_ChartDataPointUniqueIDMap"
+      ],
+      "attributes": [],
+      "children": [
+        "c16:ptentry"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.3",
+          "title": "datapointuniqueidmap",
+          "page": 185
+        }
+      ]
+    },
+    {
+      "name": "c16:explosion",
+      "global": true,
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.5",
+          "title": "explosion",
+          "page": 186
+        }
+      ]
+    },
+    {
+      "name": "c16:invertIfNegative",
+      "global": true,
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.6",
+          "title": "invertIfNegative",
+          "page": 186
+        }
+      ]
+    },
+    {
+      "name": "c16:marker",
+      "global": true,
+      "types": [
+        "c:CT_Marker"
+      ],
+      "attributes": [],
+      "children": [
+        "c:symbol",
+        "c:size",
+        "c:spPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.7",
+          "title": "marker",
+          "page": 186
+        }
+      ]
+    },
+    {
+      "name": "c16:multiLvlStrCache",
+      "types": [
+        "c:CT_MultiLvlStrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:lvl",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "c16:numCache",
+      "types": [
+        "c:CT_NumData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:formatCode",
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "c16:pivotOptions16",
+      "global": true,
+      "types": [
+        "c16:CT_PivotOptions16"
+      ],
+      "attributes": [],
+      "children": [
+        "c16:showExpandCollapseFieldButtons"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.8",
+          "title": "pivotOptions16",
+          "page": 186
+        }
+      ]
+    },
+    {
+      "name": "c16:ptentry",
+      "types": [
+        "c16:CT_ChartDataPointUniqueIDMapEntry"
+      ],
+      "attributes": [],
+      "children": [
+        "c16:ptidx",
+        "c16:uniqueID"
+      ],
+      "parents": [
+        "c16:datapointuniqueidmap"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.5",
+          "title": "CT_ChartDataPointUniqueIDMapEntry",
+          "page": 189
+        }
+      ]
+    },
+    {
+      "name": "c16:ptidx",
+      "types": [
+        "xsd:unsignedInt"
+      ],
+      "text": "xsd:unsignedInt",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c16:ptentry"
+      ],
+      "spec": []
+    },
+    {
+      "name": "c16:showExpandCollapseFieldButtons",
+      "types": [
+        "c16:CT_BooleanFalse"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:pivotOptions16"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 187
+        }
+      ]
+    },
+    {
+      "name": "c16:spPr",
+      "global": true,
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.1.9",
+          "title": "spPr",
+          "page": 187
+        }
+      ]
+    },
+    {
+      "name": "c16:strCache",
+      "types": [
+        "c:CT_StrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": []
+    },
+    {
+      "name": "c16:uniqueID",
+      "types": [
+        "c16:CT_ChartUniqueID"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:ptentry"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.6",
+          "title": "CT_ChartUniqueID",
+          "page": 190
+        }
+      ]
+    },
+    {
+      "name": "c16:uniqueId",
+      "types": [
+        "c16:CT_ChartUniqueID"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.6",
+          "title": "CT_ChartUniqueID",
+          "page": 190
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "c16:CT_BooleanFalse",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c16:showExpandCollapseFieldButtons"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.1",
+          "title": "CT_BooleanFalse",
+          "page": 187
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_CategoryFilterException",
+      "content": "elements",
+      "model": "(c16:uniqueId, c16:spPr?, c16:explosion?, c16:invertIfNegative?, c16:bubble3D?, c16:marker?, c16:dLbl?)",
+      "attributes": [],
+      "usedBy": [
+        "c16:categoryFilterException"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.2",
+          "title": "CT_CategoryFilterException",
+          "page": 188
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_CategoryFilterExceptions",
+      "content": "elements",
+      "model": "c16:categoryFilterException+",
+      "attributes": [],
+      "usedBy": [
+        "c16:categoryFilterExceptions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.3",
+          "title": "CT_CategoryFilterExceptions",
+          "page": 188
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_ChartDataPointUniqueIDMap",
+      "content": "elements",
+      "model": "c16:ptentry*",
+      "attributes": [],
+      "usedBy": [
+        "c16:datapointuniqueidmap"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.4",
+          "title": "CT_ChartDataPointUniqueIDMap",
+          "page": 189
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_ChartDataPointUniqueIDMapEntry",
+      "content": "elements",
+      "model": "(c16:ptidx, c16:uniqueID)",
+      "attributes": [],
+      "usedBy": [
+        "c16:ptentry"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.5",
+          "title": "CT_ChartDataPointUniqueIDMapEntry",
+          "page": 189
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_ChartUniqueID",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c16:uniqueID",
+        "c16:uniqueId"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.6",
+          "title": "CT_ChartUniqueID",
+          "page": 190
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_LiteralDataChart",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.7",
+          "title": "CT_LiteralDataChart",
+          "page": 190
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_MultiLvlStrFilteredLiteralCache",
+      "content": "elements",
+      "model": "c16:multiLvlStrCache",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.8",
+          "title": "CT_MultiLvlStrFilteredLiteralCache",
+          "page": 190
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_NumFilteredLiteralCache",
+      "content": "elements",
+      "model": "c16:numCache",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.9",
+          "title": "CT_NumFilteredLiteralCache",
+          "page": 191
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_PivotOptions16",
+      "content": "elements",
+      "model": "c16:showExpandCollapseFieldButtons?",
+      "attributes": [],
+      "usedBy": [
+        "c16:pivotOptions16"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.10",
+          "title": "CT_PivotOptions16",
+          "page": 191
+        }
+      ]
+    },
+    {
+      "name": "c16:CT_StrFilteredLiteralCache",
+      "content": "elements",
+      "model": "c16:strCache",
+      "attributes": [],
+      "usedBy": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.22.3.11",
+          "title": "CT_StrFilteredLiteralCache",
+          "page": 192
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

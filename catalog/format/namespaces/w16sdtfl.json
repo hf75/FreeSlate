@@ -1,0 +1,35 @@
+{
+  "prefix": "w16sdtfl",
+  "uri": "http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-DOCX] v20260818 §5.9",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 1,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 0
+  },
+  "elements": [],
+  "globalAttributes": [
+    {
+      "name": "w16sdtfl:formattingAllowed",
+      "type": "w:ST_OnOff",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.13.2.1",
+          "title": "formattingAllowed",
+          "page": 93
+        }
+      ]
+    }
+  ],
+  "complexTypes": [],
+  "simpleTypes": []
+}

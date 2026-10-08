@@ -1,0 +1,9349 @@
+{
+  "prefix": "c",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/chart",
+  "area": "Charts",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-chart.xsd",
+  "counts": {
+    "elements": 221,
+    "attributes": 161,
+    "globalAttributes": 0,
+    "complexTypes": 136,
+    "simpleTypes": 68,
+    "enumValues": 122,
+    "specSections": 306,
+    "officeNotes": 172
+  },
+  "elements": [
+    {
+      "name": "c:applyToEnd",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:pictureOptions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.1",
+          "title": "Apply to End",
+          "page": 3381
+        }
+      ]
+    },
+    {
+      "name": "c:applyToFront",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:pictureOptions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.2",
+          "title": "Apply To Front",
+          "page": 3382,
+          "officeNotes": [
+            "2.1.1428"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:applyToSides",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:pictureOptions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.3",
+          "title": "Apply To Sides",
+          "page": 3382,
+          "officeNotes": [
+            "2.1.1429"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:area3DChart",
+      "types": [
+        "c:CT_Area3DChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:dropLines",
+        "c:gapDepth",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.4",
+          "title": "3D Area Charts",
+          "page": 3382
+        }
+      ]
+    },
+    {
+      "name": "c:areaChart",
+      "types": [
+        "c:CT_AreaChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:dropLines",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.5",
+          "title": "Area Charts",
+          "page": 3383,
+          "officeNotes": [
+            "2.1.1430"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:auto",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.6",
+          "title": "Automatic Category Axis",
+          "page": 3383
+        }
+      ]
+    },
+    {
+      "name": "c:autoTitleDeleted",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.7",
+          "title": "Auto Title Is Deleted",
+          "page": 3383,
+          "officeNotes": [
+            "2.1.1431"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:autoUpdate",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:externalData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.8",
+          "title": "Update Automatically",
+          "page": 3384
+        }
+      ]
+    },
+    {
+      "name": "c:axId",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:area3DChart",
+        "c:areaChart",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:bubbleChart",
+        "c:catAx",
+        "c:dateAx",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:radarChart",
+        "c:scatterChart",
+        "c:serAx",
+        "c:stockChart",
+        "c:surface3DChart",
+        "c:surfaceChart",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.9",
+          "title": "Axis ID",
+          "page": 3384,
+          "officeNotes": [
+            "2.1.1432"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:axPos",
+      "types": [
+        "c:CT_AxPos"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_AxPos",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.10",
+          "title": "Axis Position",
+          "page": 3384,
+          "officeNotes": [
+            "2.1.1433"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:backWall",
+      "types": [
+        "c:CT_Surface"
+      ],
+      "attributes": [],
+      "children": [
+        "c:thickness",
+        "c:spPr",
+        "c:pictureOptions",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.11",
+          "title": "Back Wall",
+          "page": 3385,
+          "officeNotes": [
+            "2.1.1434"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:backward",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.12",
+          "title": "Backward",
+          "page": 3385,
+          "officeNotes": [
+            "2.1.1435"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:bandFmt",
+      "types": [
+        "c:CT_BandFmt"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:spPr"
+      ],
+      "parents": [
+        "c:bandFmts"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.13",
+          "title": "Band Format",
+          "page": 3385
+        }
+      ]
+    },
+    {
+      "name": "c:bandFmts",
+      "types": [
+        "c:CT_BandFmts"
+      ],
+      "attributes": [],
+      "children": [
+        "c:bandFmt"
+      ],
+      "parents": [
+        "c:surface3DChart",
+        "c:surfaceChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.14",
+          "title": "Band Formats",
+          "page": 3385,
+          "officeNotes": [
+            "2.1.1436"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:bar3DChart",
+      "types": [
+        "c:CT_Bar3DChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:barDir",
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:gapWidth",
+        "c:gapDepth",
+        "c:shape",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.15",
+          "title": "3D Bar Charts",
+          "page": 3386,
+          "officeNotes": [
+            "2.1.1437"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:barChart",
+      "types": [
+        "c:CT_BarChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:barDir",
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:gapWidth",
+        "c:overlap",
+        "c:serLines",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.16",
+          "title": "Bar Charts",
+          "page": 3386,
+          "officeNotes": [
+            "2.1.1438"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:barDir",
+      "types": [
+        "c:CT_BarDir"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_BarDir",
+          "default": "col"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:bar3DChart",
+        "c:barChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.17",
+          "title": "Bar Direction",
+          "page": 3386,
+          "officeNotes": [
+            "2.1.1439"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:baseTimeUnit",
+      "types": [
+        "c:CT_TimeUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TimeUnit",
+          "default": "days"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dateAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.18",
+          "title": "Base Time Unit",
+          "page": 3386
+        }
+      ]
+    },
+    {
+      "name": "c:bubble3D",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:bubbleChart",
+        "c:dPt",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.19",
+          "title": "3D Bubble",
+          "page": 3386,
+          "officeNotes": [
+            "2.1.1440"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:bubbleChart",
+      "types": [
+        "c:CT_BubbleChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:bubble3D",
+        "c:bubbleScale",
+        "c:showNegBubbles",
+        "c:sizeRepresents",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.20",
+          "title": "Bubble Charts",
+          "page": 3387,
+          "officeNotes": [
+            "2.1.1441"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:bubbleScale",
+      "types": [
+        "c:CT_BubbleScale"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_BubbleScale",
+          "default": "100%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:bubbleChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.21",
+          "title": "Bubble Scale",
+          "page": 3387
+        }
+      ]
+    },
+    {
+      "name": "c:bubbleSize",
+      "types": [
+        "c:CT_NumDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:numRef",
+        "c:numLit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.22",
+          "title": "Bubble Size",
+          "page": 3387
+        }
+      ]
+    },
+    {
+      "name": "c:builtInUnit",
+      "types": [
+        "c:CT_BuiltInUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_BuiltInUnit",
+          "default": "thousands"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dispUnits"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.23",
+          "title": "Built in Display Unit Value",
+          "page": 3387,
+          "officeNotes": [
+            "2.1.1442"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:cat",
+      "types": [
+        "c:CT_AxDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:multiLvlStrRef",
+        "c:numRef",
+        "c:numLit",
+        "c:strRef",
+        "c:strLit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.24",
+          "title": "Category Axis Data",
+          "page": 3388,
+          "officeNotes": [
+            "2.1.1443"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:catAx",
+      "types": [
+        "c:CT_CatAx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:axId",
+        "c:scaling",
+        "c:delete",
+        "c:axPos",
+        "c:majorGridlines",
+        "c:minorGridlines",
+        "c:title",
+        "c:numFmt",
+        "c:majorTickMark",
+        "c:minorTickMark",
+        "c:tickLblPos",
+        "c:spPr",
+        "c:txPr",
+        "c:crossAx",
+        "c:crosses",
+        "c:crossesAt",
+        "c:auto",
+        "c:lblAlgn",
+        "c:lblOffset",
+        "c:tickLblSkip",
+        "c:tickMarkSkip",
+        "c:noMultiLvlLbl",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.25",
+          "title": "Category Axis Data",
+          "page": 3388,
+          "officeNotes": [
+            "2.1.1444"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:chart",
+      "global": true,
+      "types": [
+        "c:CT_RelId",
+        "c:CT_Chart"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "c:title",
+        "c:autoTitleDeleted",
+        "c:pivotFmts",
+        "c:view3D",
+        "c:floor",
+        "c:sideWall",
+        "c:backWall",
+        "c:plotArea",
+        "c:legend",
+        "c:plotVisOnly",
+        "c:dispBlanksAs",
+        "c:showDLblsOverMax",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.26",
+          "title": "Reference to Chart Part",
+          "page": 3388
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.27",
+          "title": "Chart",
+          "page": 3388
+        }
+      ]
+    },
+    {
+      "name": "c:chartObject",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:protection"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.28",
+          "title": "Chart Object",
+          "page": 3389,
+          "officeNotes": [
+            "2.1.1445"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:chartSpace",
+      "global": true,
+      "types": [
+        "c:CT_ChartSpace"
+      ],
+      "attributes": [],
+      "children": [
+        "c:date1904",
+        "c:lang",
+        "c:roundedCorners",
+        "c:style",
+        "c:clrMapOvr",
+        "c:pivotSource",
+        "c:protection",
+        "c:chart",
+        "c:spPr",
+        "c:txPr",
+        "c:externalData",
+        "c:printSettings",
+        "c:userShapes",
+        "c:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.29",
+          "title": "Chart Space",
+          "page": 3389
+        }
+      ]
+    },
+    {
+      "name": "c:clrMapOvr",
+      "types": [
+        "a:CT_ColorMapping"
+      ],
+      "attributes": [
+        {
+          "name": "accent1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent3",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent4",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent5",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "accent6",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "bg1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "bg2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "folHlink",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "hlink",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "tx1",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        },
+        {
+          "name": "tx2",
+          "type": "a:ST_ColorSchemeIndex",
+          "required": true
+        }
+      ],
+      "children": [
+        "a:extLst"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.30",
+          "title": "Color Map Override",
+          "page": 3389
+        }
+      ]
+    },
+    {
+      "name": "c:crossAx",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.31",
+          "title": "Crossing Axis ID",
+          "page": 3391,
+          "officeNotes": [
+            "2.1.1446"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:crossBetween",
+      "types": [
+        "c:CT_CrossBetween"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_CrossBetween",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.32",
+          "title": "Cross Between",
+          "page": 3391
+        }
+      ]
+    },
+    {
+      "name": "c:crosses",
+      "types": [
+        "c:CT_Crosses"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Crosses",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.33",
+          "title": "Crosses",
+          "page": 3392
+        }
+      ]
+    },
+    {
+      "name": "c:crossesAt",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.34",
+          "title": "Crossing Value",
+          "page": 3392,
+          "officeNotes": [
+            "2.1.1447"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:custSplit",
+      "types": [
+        "c:CT_CustSplit"
+      ],
+      "attributes": [],
+      "children": [
+        "c:secondPiePt"
+      ],
+      "parents": [
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.35",
+          "title": "Custom Split",
+          "page": 3393
+        }
+      ]
+    },
+    {
+      "name": "c:custUnit",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dispUnits"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.36",
+          "title": "Custom Display Unit",
+          "page": 3393,
+          "officeNotes": [
+            "2.1.1448"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dLbl",
+      "types": [
+        "c:CT_DLbl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:delete",
+        "c:layout",
+        "c:tx",
+        "c:numFmt",
+        "c:spPr",
+        "c:txPr",
+        "c:dLblPos",
+        "c:showLegendKey",
+        "c:showVal",
+        "c:showCatName",
+        "c:showSerName",
+        "c:showPercent",
+        "c:showBubbleSize",
+        "c:separator",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:dLbls",
+        "c:pivotFmt"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.47",
+          "title": "Data Label",
+          "page": 3396,
+          "officeNotes": [
+            "2.1.1455"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dLblPos",
+      "types": [
+        "c:CT_DLblPos"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_DLblPos",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.48",
+          "title": "Data Label Position",
+          "page": 3397,
+          "officeNotes": [
+            "2.1.1456"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dLbls",
+      "types": [
+        "c:CT_DLbls"
+      ],
+      "attributes": [],
+      "children": [
+        "c:dLbl",
+        "c:delete",
+        "c:numFmt",
+        "c:spPr",
+        "c:txPr",
+        "c:dLblPos",
+        "c:showLegendKey",
+        "c:showVal",
+        "c:showCatName",
+        "c:showSerName",
+        "c:showPercent",
+        "c:showBubbleSize",
+        "c:separator",
+        "c:showLeaderLines",
+        "c:leaderLines",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:area3DChart",
+        "c:areaChart",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:bubbleChart",
+        "c:doughnutChart",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:ofPieChart",
+        "c:pie3DChart",
+        "c:pieChart",
+        "c:radarChart",
+        "c:scatterChart",
+        "c:ser",
+        "c:stockChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.49",
+          "title": "Data Labels",
+          "page": 3397,
+          "officeNotes": [
+            "2.1.1457"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dPt",
+      "types": [
+        "c:CT_DPt"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:invertIfNegative",
+        "c:marker",
+        "c:bubble3D",
+        "c:explosion",
+        "c:spPr",
+        "c:pictureOptions",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.52",
+          "title": "Data Point",
+          "page": 3397
+        }
+      ]
+    },
+    {
+      "name": "c:dTable",
+      "types": [
+        "c:CT_DTable"
+      ],
+      "attributes": [],
+      "children": [
+        "c:showHorzBorder",
+        "c:showVertBorder",
+        "c:showOutline",
+        "c:showKeys",
+        "c:spPr",
+        "c:txPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.54",
+          "title": "Data Table",
+          "page": 3398
+        }
+      ]
+    },
+    {
+      "name": "c:data",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:protection"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.37",
+          "title": "Data Cannot Be Changed",
+          "page": 3393,
+          "officeNotes": [
+            "2.1.1449"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:date1904",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.38",
+          "title": "1904 Date System",
+          "page": 3394
+        }
+      ]
+    },
+    {
+      "name": "c:dateAx",
+      "types": [
+        "c:CT_DateAx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:axId",
+        "c:scaling",
+        "c:delete",
+        "c:axPos",
+        "c:majorGridlines",
+        "c:minorGridlines",
+        "c:title",
+        "c:numFmt",
+        "c:majorTickMark",
+        "c:minorTickMark",
+        "c:tickLblPos",
+        "c:spPr",
+        "c:txPr",
+        "c:crossAx",
+        "c:crosses",
+        "c:crossesAt",
+        "c:auto",
+        "c:lblOffset",
+        "c:baseTimeUnit",
+        "c:majorUnit",
+        "c:majorTimeUnit",
+        "c:minorUnit",
+        "c:minorTimeUnit",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.39",
+          "title": "Date Axis",
+          "page": 3394,
+          "officeNotes": [
+            "2.1.1450"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:delete",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:catAx",
+        "c:dLbl",
+        "c:dLbls",
+        "c:dateAx",
+        "c:legendEntry",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.40",
+          "title": "Delete",
+          "page": 3394
+        }
+      ]
+    },
+    {
+      "name": "c:depthPercent",
+      "types": [
+        "c:CT_DepthPercent"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_DepthPercent",
+          "default": "100%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.41",
+          "title": "Depth Percent",
+          "page": 3395,
+          "officeNotes": [
+            "2.1.1451"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dispBlanksAs",
+      "types": [
+        "c:CT_DispBlanksAs"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_DispBlanksAs",
+          "default": "zero"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.42",
+          "title": "Display Blanks As",
+          "page": 3395,
+          "officeNotes": [
+            "2.1.1452"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dispEq",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.43",
+          "title": "Display Equation",
+          "page": 3395,
+          "officeNotes": [
+            "2.1.1453"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dispRSqr",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.44",
+          "title": "Display R Squared Value",
+          "page": 3396,
+          "officeNotes": [
+            "2.1.1454"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:dispUnits",
+      "types": [
+        "c:CT_DispUnits"
+      ],
+      "attributes": [],
+      "children": [
+        "c:custUnit",
+        "c:builtInUnit",
+        "c:dispUnitsLbl",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.45",
+          "title": "Display Units",
+          "page": 3396
+        }
+      ]
+    },
+    {
+      "name": "c:dispUnitsLbl",
+      "types": [
+        "c:CT_DispUnitsLbl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:layout",
+        "c:tx",
+        "c:spPr",
+        "c:txPr"
+      ],
+      "parents": [
+        "c:dispUnits"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.46",
+          "title": "Display Units Label",
+          "page": 3396
+        }
+      ]
+    },
+    {
+      "name": "c:doughnutChart",
+      "types": [
+        "c:CT_DoughnutChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:firstSliceAng",
+        "c:holeSize",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.50",
+          "title": "Doughnut Charts",
+          "page": 3397,
+          "officeNotes": [
+            "2.1.1458"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:downBars",
+      "types": [
+        "c:CT_UpDownBar"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:upDownBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.51",
+          "title": "Down Bars",
+          "page": 3397
+        }
+      ]
+    },
+    {
+      "name": "c:dropLines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:area3DChart",
+        "c:areaChart",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:stockChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.53",
+          "title": "Drop Lines",
+          "page": 3397
+        }
+      ]
+    },
+    {
+      "name": "c:errBarType",
+      "types": [
+        "c:CT_ErrBarType"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_ErrBarType",
+          "default": "both"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.56",
+          "title": "Error Bar Type",
+          "page": 3398,
+          "officeNotes": [
+            "2.1.1460"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:errBars",
+      "types": [
+        "c:CT_ErrBars"
+      ],
+      "attributes": [],
+      "children": [
+        "c:errDir",
+        "c:errBarType",
+        "c:errValType",
+        "c:noEndCap",
+        "c:plus",
+        "c:minus",
+        "c:val",
+        "c:spPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.55",
+          "title": "Error Bars",
+          "page": 3398,
+          "officeNotes": [
+            "2.1.1459"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:errDir",
+      "types": [
+        "c:CT_ErrDir"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_ErrDir",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.57",
+          "title": "Error Bar Direction",
+          "page": 3398,
+          "officeNotes": [
+            "2.1.1461"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:errValType",
+      "types": [
+        "c:CT_ErrValType"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_ErrValType",
+          "default": "fixedVal"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.58",
+          "title": "Error Bar Value Type",
+          "page": 3398,
+          "officeNotes": [
+            "2.1.1462"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:evenFooter",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.59",
+          "title": "Even Footer",
+          "page": 3399,
+          "officeNotes": [
+            "2.1.1463"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:evenHeader",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.60",
+          "title": "Even Header",
+          "page": 3399,
+          "officeNotes": [
+            "2.1.1464"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:explosion",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:dPt",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.61",
+          "title": "Explosion",
+          "page": 3400,
+          "officeNotes": [
+            "2.1.1465"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ext",
+      "types": [
+        "c:CT_Extension"
+      ],
+      "attributes": [
+        {
+          "name": "uri",
+          "type": "xsd:token"
+        }
+      ],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "c:extLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.62",
+          "title": "Extension",
+          "page": 3400
+        }
+      ]
+    },
+    {
+      "name": "c:extLst",
+      "types": [
+        "c:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ext"
+      ],
+      "parents": [
+        "c15:dLbl",
+        "c15:dlblFieldTableCache",
+        "c15:dlblRangeCache",
+        "c15:layout",
+        "c15:marker",
+        "c15:pivotSource",
+        "c15:ser",
+        "c16:dLbl",
+        "c16:marker",
+        "c16:multiLvlStrCache",
+        "c16:numCache",
+        "c16:strCache",
+        "c16ac:multiLvlStrLit",
+        "c:area3DChart",
+        "c:areaChart",
+        "c:backWall",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:bubbleChart",
+        "c:catAx",
+        "c:chart",
+        "c:chartSpace",
+        "c:dLbl",
+        "c:dLbls",
+        "c:dPt",
+        "c:dTable",
+        "c:dateAx",
+        "c:dispUnits",
+        "c:doughnutChart",
+        "c:errBars",
+        "c:floor",
+        "c:layout",
+        "c:legend",
+        "c:legendEntry",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:manualLayout",
+        "c:marker",
+        "c:multiLvlStrCache",
+        "c:multiLvlStrRef",
+        "c:numCache",
+        "c:numLit",
+        "c:numRef",
+        "c:ofPieChart",
+        "c:pie3DChart",
+        "c:pieChart",
+        "c:pivotFmt",
+        "c:pivotSource",
+        "c:plotArea",
+        "c:radarChart",
+        "c:scaling",
+        "c:scatterChart",
+        "c:ser",
+        "c:serAx",
+        "c:sideWall",
+        "c:stockChart",
+        "c:strCache",
+        "c:strLit",
+        "c:strRef",
+        "c:surface3DChart",
+        "c:surfaceChart",
+        "c:title",
+        "c:trendline",
+        "c:trendlineLbl",
+        "c:upDownBars",
+        "c:valAx",
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.64",
+          "title": "Chart Extensibility",
+          "page": 3401
+        }
+      ]
+    },
+    {
+      "name": "c:externalData",
+      "types": [
+        "c:CT_ExternalData"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "c:autoUpdate"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.63",
+          "title": "External Data Relationship",
+          "page": 3401,
+          "officeNotes": [
+            "2.1.1466"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:f",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:multiLvlStrRef",
+        "c:numRef",
+        "c:strRef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.65",
+          "title": "Formula",
+          "page": 3401,
+          "officeNotes": [
+            "2.1.1467"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:firstFooter",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.66",
+          "title": "First Footer",
+          "page": 3402,
+          "officeNotes": [
+            "2.1.1468"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:firstHeader",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.67",
+          "title": "First Header",
+          "page": 3402,
+          "officeNotes": [
+            "2.1.1469"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:firstSliceAng",
+      "types": [
+        "c:CT_FirstSliceAng"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_FirstSliceAng",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:doughnutChart",
+        "c:pieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.68",
+          "title": "First Slice Angle",
+          "page": 3403
+        }
+      ]
+    },
+    {
+      "name": "c:floor",
+      "types": [
+        "c:CT_Surface"
+      ],
+      "attributes": [],
+      "children": [
+        "c:thickness",
+        "c:spPr",
+        "c:pictureOptions",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.69",
+          "title": "Floor",
+          "page": 3403,
+          "officeNotes": [
+            "2.1.1470"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:fmtId",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:pivotSource",
+        "c:pivotSource"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.70",
+          "title": "Format ID",
+          "page": 3403,
+          "officeNotes": [
+            "2.1.1471"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:formatCode",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c16:numCache",
+        "c:numCache",
+        "c:numLit"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.71",
+          "title": "Format Code",
+          "page": 3404
+        }
+      ]
+    },
+    {
+      "name": "c:formatting",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:protection"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.72",
+          "title": "Formatting",
+          "page": 3404,
+          "officeNotes": [
+            "2.1.1472"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:forward",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.73",
+          "title": "Forward",
+          "page": 3404,
+          "officeNotes": [
+            "2.1.1473"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:gapDepth",
+      "types": [
+        "c:CT_GapAmount"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_GapAmount",
+          "default": "150%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:area3DChart",
+        "c:bar3DChart",
+        "c:line3DChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.74",
+          "title": "Gap Depth",
+          "page": 3405,
+          "officeNotes": [
+            "2.1.1474"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:gapWidth",
+      "types": [
+        "c:CT_GapAmount"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_GapAmount",
+          "default": "150%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:bar3DChart",
+        "c:barChart",
+        "c:ofPieChart",
+        "c:upDownBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.75",
+          "title": "Gap Width",
+          "page": 3405,
+          "officeNotes": [
+            "2.1.1475"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:grouping",
+      "types": [
+        "c:CT_Grouping",
+        "c:CT_BarGrouping"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Grouping",
+          "default": "standard"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:area3DChart",
+        "c:areaChart",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:line3DChart",
+        "c:lineChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.76",
+          "title": "Grouping",
+          "page": 3405,
+          "officeNotes": [
+            "2.1.1476"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.77",
+          "title": "Bar Grouping",
+          "page": 3406
+        }
+      ]
+    },
+    {
+      "name": "c:h",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.78",
+          "title": "Height",
+          "page": 3406,
+          "officeNotes": [
+            "2.1.1477"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:hMode",
+      "types": [
+        "c:CT_LayoutMode"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LayoutMode",
+          "default": "factor"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.81",
+          "title": "Height Mode",
+          "page": 3407,
+          "officeNotes": [
+            "2.1.1479"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:hPercent",
+      "types": [
+        "c:CT_HPercent"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_HPercent",
+          "default": "100%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.83",
+          "title": "Height Percent",
+          "page": 3408,
+          "officeNotes": [
+            "2.1.1481"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:headerFooter",
+      "types": [
+        "c:CT_HeaderFooter"
+      ],
+      "attributes": [
+        {
+          "name": "alignWithMargins",
+          "type": "xsd:boolean",
+          "default": "true"
+        },
+        {
+          "name": "differentFirst",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "differentOddEven",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "c:oddHeader",
+        "c:oddFooter",
+        "c:evenHeader",
+        "c:evenFooter",
+        "c:firstHeader",
+        "c:firstFooter"
+      ],
+      "parents": [
+        "c:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.79",
+          "title": "Header and Footer",
+          "page": 3406,
+          "officeNotes": [
+            "2.1.1478"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:hiLowLines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:lineChart",
+        "c:stockChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.80",
+          "title": "High Low Lines",
+          "page": 3407
+        }
+      ]
+    },
+    {
+      "name": "c:holeSize",
+      "types": [
+        "c:CT_HoleSize"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_HoleSize",
+          "default": "10%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:doughnutChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.82",
+          "title": "Hole Size",
+          "page": 3408,
+          "officeNotes": [
+            "2.1.1480"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:idx",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c15:ser",
+        "c16:dLbl",
+        "c:bandFmt",
+        "c:dLbl",
+        "c:dPt",
+        "c:legendEntry",
+        "c:pivotFmt",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.84",
+          "title": "Index",
+          "page": 3408,
+          "officeNotes": [
+            "2.1.1482"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:intercept",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.85",
+          "title": "Intercept",
+          "page": 3409,
+          "officeNotes": [
+            "2.1.1483"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:invertIfNegative",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:dPt",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.86",
+          "title": "Invert if Negative",
+          "page": 3409,
+          "officeNotes": [
+            "2.1.1484"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:lang",
+      "types": [
+        "c:CT_TextLanguageID"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "s:ST_Lang",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.87",
+          "title": "Editing Language",
+          "page": 3410
+        }
+      ]
+    },
+    {
+      "name": "c:layout",
+      "types": [
+        "c:CT_Layout"
+      ],
+      "attributes": [],
+      "children": [
+        "c:manualLayout",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dispUnitsLbl",
+        "c:legend",
+        "c:plotArea",
+        "c:title",
+        "c:trendlineLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.88",
+          "title": "Layout",
+          "page": 3410,
+          "officeNotes": [
+            "2.1.1485"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:layoutTarget",
+      "types": [
+        "c:CT_LayoutTarget"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LayoutTarget",
+          "default": "outer"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.89",
+          "title": "Layout Target",
+          "page": 3410,
+          "officeNotes": [
+            "2.1.1486"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:lblAlgn",
+      "types": [
+        "c:CT_LblAlgn"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LblAlgn",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.90",
+          "title": "Label Alignment",
+          "page": 3410
+        }
+      ]
+    },
+    {
+      "name": "c:lblOffset",
+      "types": [
+        "c:CT_LblOffset"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LblOffset",
+          "default": "100%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.91",
+          "title": "Label Offset",
+          "page": 3411
+        }
+      ]
+    },
+    {
+      "name": "c:leaderLines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.92",
+          "title": "Leader Lines",
+          "page": 3411,
+          "officeNotes": [
+            "2.1.1487"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:legacyDrawingHF",
+      "types": [
+        "c:CT_RelId"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.2.1",
+          "title": "Legacy Drawing for Headers and Footers",
+          "page": 295
+        }
+      ]
+    },
+    {
+      "name": "c:legend",
+      "types": [
+        "c:CT_Legend"
+      ],
+      "attributes": [],
+      "children": [
+        "c:legendPos",
+        "c:legendEntry",
+        "c:layout",
+        "c:overlay",
+        "c:spPr",
+        "c:txPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.93",
+          "title": "Legend",
+          "page": 3411
+        }
+      ]
+    },
+    {
+      "name": "c:legendEntry",
+      "types": [
+        "c:CT_LegendEntry"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:delete",
+        "c:txPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:legend"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.94",
+          "title": "Legend Entry",
+          "page": 3411
+        }
+      ]
+    },
+    {
+      "name": "c:legendPos",
+      "types": [
+        "c:CT_LegendPos"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LegendPos",
+          "default": "r"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:legend"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.95",
+          "title": "Legend Position",
+          "page": 3411,
+          "officeNotes": [
+            "2.1.1488"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:line3DChart",
+      "types": [
+        "c:CT_Line3DChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:dropLines",
+        "c:gapDepth",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.96",
+          "title": "3D Line Charts",
+          "page": 3412,
+          "officeNotes": [
+            "2.1.1489"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:lineChart",
+      "types": [
+        "c:CT_LineChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:grouping",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:dropLines",
+        "c:hiLowLines",
+        "c:upDownBars",
+        "c:marker",
+        "c:smooth",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.97",
+          "title": "Line Charts",
+          "page": 3412,
+          "officeNotes": [
+            "2.1.1490"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:logBase",
+      "types": [
+        "c:CT_LogBase"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LogBase",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:scaling"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.98",
+          "title": "Logarithmic Base",
+          "page": 3412
+        }
+      ]
+    },
+    {
+      "name": "c:lvl",
+      "types": [
+        "c:CT_Lvl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:pt"
+      ],
+      "parents": [
+        "c16:multiLvlStrCache",
+        "c16ac:multiLvlStrLit",
+        "c:multiLvlStrCache"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.99",
+          "title": "Level",
+          "page": 3412,
+          "officeNotes": [
+            "2.1.1491"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:majorGridlines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.100",
+          "title": "Major Gridlines",
+          "page": 3412
+        }
+      ]
+    },
+    {
+      "name": "c:majorTickMark",
+      "types": [
+        "c:CT_TickMark"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TickMark",
+          "default": "cross"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.101",
+          "title": "Major Tick Mark",
+          "page": 3413,
+          "officeNotes": [
+            "2.1.1492"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:majorTimeUnit",
+      "types": [
+        "c:CT_TimeUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TimeUnit",
+          "default": "days"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dateAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.102",
+          "title": "Major Time Unit",
+          "page": 3413
+        }
+      ]
+    },
+    {
+      "name": "c:majorUnit",
+      "types": [
+        "c:CT_AxisUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_AxisUnit",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dateAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.103",
+          "title": "Major Unit",
+          "page": 3413,
+          "officeNotes": [
+            "2.1.1493"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:manualLayout",
+      "types": [
+        "c:CT_ManualLayout"
+      ],
+      "attributes": [],
+      "children": [
+        "c:layoutTarget",
+        "c:xMode",
+        "c:yMode",
+        "c:wMode",
+        "c:hMode",
+        "c:x",
+        "c:y",
+        "c:w",
+        "c:h",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:layout",
+        "c:layout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.104",
+          "title": "Manual Layout",
+          "page": 3413,
+          "officeNotes": [
+            "2.1.1494"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:marker",
+      "types": [
+        "c:CT_Marker",
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [
+        "c:symbol",
+        "c:size",
+        "c:spPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:dPt",
+        "c:lineChart",
+        "c:pivotFmt",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.105",
+          "title": "Show Marker",
+          "page": 3414,
+          "officeNotes": [
+            "2.1.1495"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.106",
+          "title": "Marker",
+          "page": 3414,
+          "officeNotes": [
+            "2.1.1496"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:max",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:scaling"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.107",
+          "title": "Maximum",
+          "page": 3414,
+          "officeNotes": [
+            "2.1.1497"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:min",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:scaling"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.108",
+          "title": "Minimum",
+          "page": 3415,
+          "officeNotes": [
+            "2.1.1498"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:minorGridlines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.109",
+          "title": "Minor Gridlines",
+          "page": 3415
+        }
+      ]
+    },
+    {
+      "name": "c:minorTickMark",
+      "types": [
+        "c:CT_TickMark"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TickMark",
+          "default": "cross"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.110",
+          "title": "Minor Tick Mark",
+          "page": 3415
+        }
+      ]
+    },
+    {
+      "name": "c:minorTimeUnit",
+      "types": [
+        "c:CT_TimeUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TimeUnit",
+          "default": "days"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dateAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.111",
+          "title": "Minor Time Unit",
+          "page": 3415
+        }
+      ]
+    },
+    {
+      "name": "c:minorUnit",
+      "types": [
+        "c:CT_AxisUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_AxisUnit",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dateAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.112",
+          "title": "Minor Unit",
+          "page": 3416,
+          "officeNotes": [
+            "2.1.1499"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:minus",
+      "types": [
+        "c:CT_NumDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:numRef",
+        "c:numLit"
+      ],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.113",
+          "title": "Minus",
+          "page": 3416,
+          "officeNotes": [
+            "2.1.1500"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:multiLvlStrCache",
+      "types": [
+        "c:CT_MultiLvlStrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:lvl",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:multiLvlStrRef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.114",
+          "title": "Multi Level String Cache",
+          "page": 3416,
+          "officeNotes": [
+            "2.1.1501"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:multiLvlStrRef",
+      "types": [
+        "c:CT_MultiLvlStrRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c:f",
+        "c:multiLvlStrCache",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:cat",
+        "c:cat",
+        "c:xVal"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.115",
+          "title": "Multi Level String Reference",
+          "page": 3416,
+          "officeNotes": [
+            "2.1.1502"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:name",
+      "types": [
+        "s:ST_Xstring",
+        "xsd:string"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:pivotSource",
+        "c:pivotSource",
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.116",
+          "title": "Trendline Name",
+          "page": 3416
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.117",
+          "title": "Pivot Name",
+          "page": 3416,
+          "officeNotes": [
+            "2.1.1503"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:noEndCap",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.118",
+          "title": "No End Cap",
+          "page": 3417
+        }
+      ]
+    },
+    {
+      "name": "c:noMultiLvlLbl",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.119",
+          "title": "No Multi-level Labels",
+          "page": 3417
+        }
+      ]
+    },
+    {
+      "name": "c:numCache",
+      "types": [
+        "c:CT_NumData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:formatCode",
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:numRef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.120",
+          "title": "Number Cache",
+          "page": 3418
+        }
+      ]
+    },
+    {
+      "name": "c:numFmt",
+      "types": [
+        "c:CT_NumFmt"
+      ],
+      "attributes": [
+        {
+          "name": "formatCode",
+          "type": "s:ST_Xstring",
+          "required": true
+        },
+        {
+          "name": "sourceLinked",
+          "type": "xsd:boolean"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:catAx",
+        "c:dLbl",
+        "c:dLbls",
+        "c:dateAx",
+        "c:serAx",
+        "c:trendlineLbl",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.121",
+          "title": "Number Format",
+          "page": 3418,
+          "officeNotes": [
+            "2.1.1504"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:numLit",
+      "types": [
+        "c:CT_NumData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:formatCode",
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:cat",
+        "c:bubbleSize",
+        "c:cat",
+        "c:minus",
+        "c:plus",
+        "c:val",
+        "c:xVal",
+        "c:yVal"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.122",
+          "title": "Number Literal",
+          "page": 3418
+        }
+      ]
+    },
+    {
+      "name": "c:numRef",
+      "types": [
+        "c:CT_NumRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c:f",
+        "c:numCache",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:cat",
+        "c:bubbleSize",
+        "c:cat",
+        "c:minus",
+        "c:plus",
+        "c:val",
+        "c:xVal",
+        "c:yVal"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.123",
+          "title": "Number Reference",
+          "page": 3418
+        }
+      ]
+    },
+    {
+      "name": "c:oddFooter",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.124",
+          "title": "Odd Footer",
+          "page": 3418,
+          "officeNotes": [
+            "2.1.1505"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:oddHeader",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c:headerFooter"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.125",
+          "title": "Odd Header",
+          "page": 3419,
+          "officeNotes": [
+            "2.1.1506"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ofPieChart",
+      "types": [
+        "c:CT_OfPieChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ofPieType",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:gapWidth",
+        "c:splitType",
+        "c:splitPos",
+        "c:custSplit",
+        "c:secondPieSize",
+        "c:serLines",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.126",
+          "title": "Pie of Pie or Bar of Pie Charts",
+          "page": 3419,
+          "officeNotes": [
+            "2.1.1507"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ofPieType",
+      "types": [
+        "c:CT_OfPieType"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_OfPieType",
+          "default": "pie"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.127",
+          "title": "Pie of Pie or Bar of Pie Type",
+          "page": 3420,
+          "officeNotes": [
+            "2.1.1508"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:order",
+      "types": [
+        "c:CT_Order",
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Order",
+          "default": "2"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:ser",
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.128",
+          "title": "Order",
+          "page": 3420,
+          "officeNotes": [
+            "2.1.1509"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.129",
+          "title": "Polynomial Trendline Order",
+          "page": 3420,
+          "officeNotes": [
+            "2.1.1510"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:orientation",
+      "types": [
+        "c:CT_Orientation"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Orientation",
+          "default": "minMax"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:scaling"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.130",
+          "title": "Axis Orientation",
+          "page": 3420,
+          "officeNotes": [
+            "2.1.1511"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:overlap",
+      "types": [
+        "c:CT_Overlap"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Overlap",
+          "default": "0%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:barChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.131",
+          "title": "Overlap",
+          "page": 3421,
+          "officeNotes": [
+            "2.1.1512"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:overlay",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:legend",
+        "c:title"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.132",
+          "title": "Overlay",
+          "page": 3421
+        }
+      ]
+    },
+    {
+      "name": "c:pageMargins",
+      "types": [
+        "c:CT_PageMargins"
+      ],
+      "attributes": [
+        {
+          "name": "b",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "footer",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "header",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "l",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "r",
+          "type": "xsd:double",
+          "required": true
+        },
+        {
+          "name": "t",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.133",
+          "title": "Page Margins",
+          "page": 3422,
+          "officeNotes": [
+            "2.1.1513"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pageSetup",
+      "types": [
+        "c:CT_PageSetup"
+      ],
+      "attributes": [
+        {
+          "name": "blackAndWhite",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "copies",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "draft",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "firstPageNumber",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "horizontalDpi",
+          "type": "xsd:int",
+          "default": "600"
+        },
+        {
+          "name": "orientation",
+          "type": "c:ST_PageSetupOrientation",
+          "default": "default"
+        },
+        {
+          "name": "paperHeight",
+          "type": "s:ST_PositiveUniversalMeasure"
+        },
+        {
+          "name": "paperSize",
+          "type": "xsd:unsignedInt",
+          "default": "1"
+        },
+        {
+          "name": "paperWidth",
+          "type": "s:ST_PositiveUniversalMeasure"
+        },
+        {
+          "name": "useFirstPageNumber",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "verticalDpi",
+          "type": "xsd:int",
+          "default": "600"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:printSettings"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.134",
+          "title": "Page Setup",
+          "page": 3422,
+          "officeNotes": [
+            "2.1.1514"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:period",
+      "types": [
+        "c:CT_Period"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Period",
+          "default": "2"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.135",
+          "title": "Period",
+          "page": 3426,
+          "officeNotes": [
+            "2.1.1515"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:perspective",
+      "types": [
+        "c:CT_Perspective"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Perspective",
+          "default": "30"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.136",
+          "title": "Perspective",
+          "page": 3426,
+          "officeNotes": [
+            "2.1.1516"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pictureFormat",
+      "types": [
+        "c:CT_PictureFormat"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_PictureFormat",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:pictureOptions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.137",
+          "title": "Picture Format",
+          "page": 3427
+        }
+      ]
+    },
+    {
+      "name": "c:pictureOptions",
+      "types": [
+        "c:CT_PictureOptions"
+      ],
+      "attributes": [],
+      "children": [
+        "c:applyToFront",
+        "c:applyToSides",
+        "c:applyToEnd",
+        "c:pictureFormat",
+        "c:pictureStackUnit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:backWall",
+        "c:dPt",
+        "c:floor",
+        "c:ser",
+        "c:sideWall"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.138",
+          "title": "Picture Options",
+          "page": 3427,
+          "officeNotes": [
+            "2.1.1517"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pictureStackUnit",
+      "types": [
+        "c:CT_PictureStackUnit"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_PictureStackUnit",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:pictureOptions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.139",
+          "title": "Picture Stack Unit",
+          "page": 3427
+        }
+      ]
+    },
+    {
+      "name": "c:pie3DChart",
+      "types": [
+        "c:CT_Pie3DChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.140",
+          "title": "3D Pie Charts",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1518"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pieChart",
+      "types": [
+        "c:CT_PieChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:firstSliceAng",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.141",
+          "title": "Pie Charts",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1519"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pivotFmt",
+      "types": [
+        "c:CT_PivotFmt"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:spPr",
+        "c:txPr",
+        "c:marker",
+        "c:dLbl",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:pivotFmts"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.142",
+          "title": "Pivot Format",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1520"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pivotFmts",
+      "types": [
+        "c:CT_PivotFmts"
+      ],
+      "attributes": [],
+      "children": [
+        "c:pivotFmt"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.143",
+          "title": "Pivot Formats",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1521"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pivotSource",
+      "types": [
+        "c:CT_PivotSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:name",
+        "c:fmtId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.144",
+          "title": "Pivot Source",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1522"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:plotArea",
+      "types": [
+        "c:CT_PlotArea"
+      ],
+      "attributes": [],
+      "children": [
+        "c:layout",
+        "c:areaChart",
+        "c:area3DChart",
+        "c:lineChart",
+        "c:line3DChart",
+        "c:stockChart",
+        "c:radarChart",
+        "c:scatterChart",
+        "c:pieChart",
+        "c:pie3DChart",
+        "c:doughnutChart",
+        "c:barChart",
+        "c:bar3DChart",
+        "c:ofPieChart",
+        "c:surfaceChart",
+        "c:surface3DChart",
+        "c:bubbleChart",
+        "c:valAx",
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:dTable",
+        "c:spPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.145",
+          "title": "Plot Area",
+          "page": 3428,
+          "officeNotes": [
+            "2.1.1523"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:plotVisOnly",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.146",
+          "title": "Plot Visible Only",
+          "page": 3428
+        }
+      ]
+    },
+    {
+      "name": "c:plus",
+      "types": [
+        "c:CT_NumDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:numRef",
+        "c:numLit"
+      ],
+      "parents": [
+        "c:errBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.147",
+          "title": "Plus",
+          "page": 3429,
+          "officeNotes": [
+            "2.1.1524"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:printSettings",
+      "types": [
+        "c:CT_PrintSettings"
+      ],
+      "attributes": [],
+      "children": [
+        "c:headerFooter",
+        "c:pageMargins",
+        "c:pageSetup",
+        "c:legacyDrawingHF"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.148",
+          "title": "Print Settings",
+          "page": 3429,
+          "officeNotes": [
+            "2.1.1525"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:protection",
+      "types": [
+        "c:CT_Protection"
+      ],
+      "attributes": [],
+      "children": [
+        "c:chartObject",
+        "c:data",
+        "c:formatting",
+        "c:selection",
+        "c:userInterface"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.149",
+          "title": "Protection",
+          "page": 3429,
+          "officeNotes": [
+            "2.1.1526"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:pt",
+      "types": [
+        "c:CT_NumVal",
+        "c:CT_StrVal"
+      ],
+      "attributes": [
+        {
+          "name": "formatCode",
+          "type": "s:ST_Xstring"
+        },
+        {
+          "name": "idx",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [
+        "c:v"
+      ],
+      "parents": [
+        "c15:dlblFieldTableCache",
+        "c15:dlblRangeCache",
+        "c16:numCache",
+        "c16:strCache",
+        "c:lvl",
+        "c:numCache",
+        "c:numLit",
+        "c:strCache",
+        "c:strLit"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.150",
+          "title": "Numeric Point",
+          "page": 3429,
+          "officeNotes": [
+            "2.1.1527"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.151",
+          "title": "String Point",
+          "page": 3430,
+          "officeNotes": [
+            "2.1.1528"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ptCount",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dlblFieldTableCache",
+        "c15:dlblRangeCache",
+        "c16:multiLvlStrCache",
+        "c16:numCache",
+        "c16:strCache",
+        "c16ac:multiLvlStrLit",
+        "c:multiLvlStrCache",
+        "c:numCache",
+        "c:numLit",
+        "c:strCache",
+        "c:strLit"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.152",
+          "title": "Point Count",
+          "page": 3430,
+          "officeNotes": [
+            "2.1.1529"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:rAngAx",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.155",
+          "title": "Right Angle Axes",
+          "page": 3431,
+          "officeNotes": [
+            "2.1.1532"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:radarChart",
+      "types": [
+        "c:CT_RadarChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:radarStyle",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.153",
+          "title": "Radar Charts",
+          "page": 3430,
+          "officeNotes": [
+            "2.1.1530"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:radarStyle",
+      "types": [
+        "c:CT_RadarStyle"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_RadarStyle",
+          "default": "standard"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:radarChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.154",
+          "title": "Radar Style",
+          "page": 3430,
+          "officeNotes": [
+            "2.1.1531"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:rich",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "c15:tx",
+        "c:tx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.156",
+          "title": "Rich Text",
+          "page": 3431,
+          "officeNotes": [
+            "2.1.1533"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:rotX",
+      "types": [
+        "c:CT_RotX"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_RotX",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.157",
+          "title": "X Rotation",
+          "page": 3431
+        }
+      ]
+    },
+    {
+      "name": "c:rotY",
+      "types": [
+        "c:CT_RotY"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_RotY",
+          "default": "0"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:view3D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.158",
+          "title": "Y Rotation",
+          "page": 3432
+        }
+      ]
+    },
+    {
+      "name": "c:roundedCorners",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.159",
+          "title": "Rounded Corners",
+          "page": 3432
+        }
+      ]
+    },
+    {
+      "name": "c:scaling",
+      "types": [
+        "c:CT_Scaling"
+      ],
+      "attributes": [],
+      "children": [
+        "c:logBase",
+        "c:orientation",
+        "c:max",
+        "c:min",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.160",
+          "title": "Scaling",
+          "page": 3432
+        }
+      ]
+    },
+    {
+      "name": "c:scatterChart",
+      "types": [
+        "c:CT_ScatterChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:scatterStyle",
+        "c:varyColors",
+        "c:ser",
+        "c:dLbls",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.161",
+          "title": "Scatter Charts",
+          "page": 3433,
+          "officeNotes": [
+            "2.1.1534"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:scatterStyle",
+      "types": [
+        "c:CT_ScatterStyle"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_ScatterStyle",
+          "default": "marker"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:scatterChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.162",
+          "title": "Scatter Style",
+          "page": 3433
+        }
+      ]
+    },
+    {
+      "name": "c:secondPiePt",
+      "types": [
+        "c:CT_UnsignedInt"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:unsignedInt",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:custSplit"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.163",
+          "title": "Second Pie Point",
+          "page": 3433,
+          "officeNotes": [
+            "2.1.1535"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:secondPieSize",
+      "types": [
+        "c:CT_SecondPieSize"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_SecondPieSize",
+          "default": "75%"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.164",
+          "title": "Second Pie Size",
+          "page": 3433
+        }
+      ]
+    },
+    {
+      "name": "c:selection",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:protection"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.165",
+          "title": "Selection",
+          "page": 3434
+        }
+      ]
+    },
+    {
+      "name": "c:separator",
+      "types": [
+        "xsd:string"
+      ],
+      "text": "xsd:string",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.166",
+          "title": "Separator",
+          "page": 3434,
+          "officeNotes": [
+            "2.1.1536"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ser",
+      "types": [
+        "c:CT_LineSer",
+        "c:CT_ScatterSer",
+        "c:CT_RadarSer",
+        "c:CT_BarSer",
+        "c:CT_AreaSer",
+        "c:CT_PieSer",
+        "c:CT_BubbleSer",
+        "c:CT_SurfaceSer"
+      ],
+      "attributes": [],
+      "children": [
+        "c:idx",
+        "c:order",
+        "c:tx",
+        "c:spPr",
+        "c:marker",
+        "c:dPt",
+        "c:dLbls",
+        "c:trendline",
+        "c:errBars",
+        "c:cat",
+        "c:val",
+        "c:smooth",
+        "c:extLst",
+        "c:xVal",
+        "c:yVal",
+        "c:invertIfNegative",
+        "c:pictureOptions",
+        "c:shape",
+        "c:explosion",
+        "c:bubbleSize",
+        "c:bubble3D"
+      ],
+      "parents": [
+        "c:area3DChart",
+        "c:areaChart",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:bubbleChart",
+        "c:doughnutChart",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:ofPieChart",
+        "c:pie3DChart",
+        "c:pieChart",
+        "c:radarChart",
+        "c:scatterChart",
+        "c:stockChart",
+        "c:surface3DChart",
+        "c:surfaceChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.167",
+          "title": "Scatter Chart Series",
+          "page": 3434,
+          "officeNotes": [
+            "2.1.1537"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.168",
+          "title": "Area Chart Series",
+          "page": 3434,
+          "officeNotes": [
+            "2.1.1538"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.169",
+          "title": "Radar Chart Series",
+          "page": 3434,
+          "officeNotes": [
+            "2.1.1539"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.170",
+          "title": "Bar Chart Series",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1540"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.171",
+          "title": "Line Chart Series",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1541"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.172",
+          "title": "Pie Chart Series",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1542"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.173",
+          "title": "Surface Chart Series",
+          "page": 3435
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.174",
+          "title": "Bubble Chart Series",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1543"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:serAx",
+      "types": [
+        "c:CT_SerAx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:axId",
+        "c:scaling",
+        "c:delete",
+        "c:axPos",
+        "c:majorGridlines",
+        "c:minorGridlines",
+        "c:title",
+        "c:numFmt",
+        "c:majorTickMark",
+        "c:minorTickMark",
+        "c:tickLblPos",
+        "c:spPr",
+        "c:txPr",
+        "c:crossAx",
+        "c:crosses",
+        "c:crossesAt",
+        "c:tickLblSkip",
+        "c:tickMarkSkip",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.175",
+          "title": "Series Axis",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1544"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:serLines",
+      "types": [
+        "c:CT_ChartLines"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:barChart",
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.176",
+          "title": "Series Lines",
+          "page": 3435,
+          "officeNotes": [
+            "2.1.1545"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:shape",
+      "types": [
+        "c:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Shape",
+          "default": "box"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:bar3DChart",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.177",
+          "title": "Shape",
+          "page": 3436,
+          "officeNotes": [
+            "2.1.1546"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showBubbleSize",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.178",
+          "title": "Show Bubble Size",
+          "page": 3436,
+          "officeNotes": [
+            "2.1.1547"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showCatName",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.179",
+          "title": "Show Category Name",
+          "page": 3436
+        }
+      ]
+    },
+    {
+      "name": "c:showDLblsOverMax",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.180",
+          "title": "Show Data Labels over Maximum",
+          "page": 3437,
+          "officeNotes": [
+            "2.1.1548"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showHorzBorder",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dTable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.181",
+          "title": "Show Horizontal Border",
+          "page": 3437
+        }
+      ]
+    },
+    {
+      "name": "c:showKeys",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dTable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.182",
+          "title": "Show Legend Keys",
+          "page": 3438
+        }
+      ]
+    },
+    {
+      "name": "c:showLeaderLines",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.183",
+          "title": "Show Leader Lines",
+          "page": 3438,
+          "officeNotes": [
+            "2.1.1549"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showLegendKey",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.184",
+          "title": "Show Legend Key",
+          "page": 3438,
+          "officeNotes": [
+            "2.1.1550"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showNegBubbles",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:bubbleChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.185",
+          "title": "Show Negative Bubbles",
+          "page": 3439
+        }
+      ]
+    },
+    {
+      "name": "c:showOutline",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dTable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.186",
+          "title": "Show Outline Border",
+          "page": 3439
+        }
+      ]
+    },
+    {
+      "name": "c:showPercent",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.187",
+          "title": "Show Percent",
+          "page": 3440,
+          "officeNotes": [
+            "2.1.1551"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:showSerName",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.188",
+          "title": "Show Series Name",
+          "page": 3440
+        }
+      ]
+    },
+    {
+      "name": "c:showVal",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dLbls"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.189",
+          "title": "Show Value",
+          "page": 3441
+        }
+      ]
+    },
+    {
+      "name": "c:showVertBorder",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:dTable"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.190",
+          "title": "Show Vertical Border",
+          "page": 3441
+        }
+      ]
+    },
+    {
+      "name": "c:sideWall",
+      "types": [
+        "c:CT_Surface"
+      ],
+      "attributes": [],
+      "children": [
+        "c:thickness",
+        "c:spPr",
+        "c:pictureOptions",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.191",
+          "title": "Side Wall",
+          "page": 3441,
+          "officeNotes": [
+            "2.1.1552"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:size",
+      "types": [
+        "c:CT_MarkerSize"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_MarkerSize",
+          "default": "5"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:marker",
+        "c16:marker",
+        "c:marker"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.192",
+          "title": "Size",
+          "page": 3442
+        }
+      ]
+    },
+    {
+      "name": "c:sizeRepresents",
+      "types": [
+        "c:CT_SizeRepresents"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_SizeRepresents",
+          "default": "area"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:bubbleChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.193",
+          "title": "Size Represents",
+          "page": 3442
+        }
+      ]
+    },
+    {
+      "name": "c:smooth",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:ser",
+        "c:lineChart",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.194",
+          "title": "Smoothing",
+          "page": 3442
+        }
+      ]
+    },
+    {
+      "name": "c:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "c15:dLbl",
+        "c15:leaderLines",
+        "c15:marker",
+        "c15:ser",
+        "c16:dLbl",
+        "c16:marker",
+        "c:backWall",
+        "c:bandFmt",
+        "c:catAx",
+        "c:chartSpace",
+        "c:dLbl",
+        "c:dLbls",
+        "c:dPt",
+        "c:dTable",
+        "c:dateAx",
+        "c:dispUnitsLbl",
+        "c:downBars",
+        "c:dropLines",
+        "c:errBars",
+        "c:floor",
+        "c:hiLowLines",
+        "c:leaderLines",
+        "c:legend",
+        "c:majorGridlines",
+        "c:marker",
+        "c:minorGridlines",
+        "c:pivotFmt",
+        "c:plotArea",
+        "c:ser",
+        "c:serAx",
+        "c:serLines",
+        "c:sideWall",
+        "c:title",
+        "c:trendline",
+        "c:trendlineLbl",
+        "c:upBars",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.197",
+          "title": "Shape Properties",
+          "page": 3443,
+          "officeNotes": [
+            "2.1.1555"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:splitPos",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.195",
+          "title": "Split Position",
+          "page": 3443,
+          "officeNotes": [
+            "2.1.1553"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:splitType",
+      "types": [
+        "c:CT_SplitType"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_SplitType",
+          "default": "auto"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:ofPieChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.196",
+          "title": "Split Type",
+          "page": 3443,
+          "officeNotes": [
+            "2.1.1554"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:stockChart",
+      "types": [
+        "c:CT_StockChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ser",
+        "c:dLbls",
+        "c:dropLines",
+        "c:hiLowLines",
+        "c:upDownBars",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.198",
+          "title": "Stock Charts",
+          "page": 3444
+        }
+      ]
+    },
+    {
+      "name": "c:strCache",
+      "types": [
+        "c:CT_StrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:strRef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.199",
+          "title": "String Cache",
+          "page": 3444
+        }
+      ]
+    },
+    {
+      "name": "c:strLit",
+      "types": [
+        "c:CT_StrData"
+      ],
+      "attributes": [],
+      "children": [
+        "c:ptCount",
+        "c:pt",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:cat",
+        "c:cat",
+        "c:xVal"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.200",
+          "title": "String Literal",
+          "page": 3444
+        }
+      ]
+    },
+    {
+      "name": "c:strRef",
+      "types": [
+        "c:CT_StrRef"
+      ],
+      "attributes": [],
+      "children": [
+        "c:f",
+        "c:strCache",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:cat",
+        "c15:tx",
+        "c:cat",
+        "c:tx",
+        "c:xVal"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.201",
+          "title": "String Reference",
+          "page": 3444
+        }
+      ]
+    },
+    {
+      "name": "c:style",
+      "types": [
+        "c:CT_Style"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Style",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.202",
+          "title": "Style",
+          "page": 3444
+        }
+      ]
+    },
+    {
+      "name": "c:surface3DChart",
+      "types": [
+        "c:CT_Surface3DChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:wireframe",
+        "c:ser",
+        "c:bandFmts",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.203",
+          "title": "3D Surface Charts",
+          "page": 3445,
+          "officeNotes": [
+            "2.1.1556"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:surfaceChart",
+      "types": [
+        "c:CT_SurfaceChart"
+      ],
+      "attributes": [],
+      "children": [
+        "c:wireframe",
+        "c:ser",
+        "c:bandFmts",
+        "c:axId",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.204",
+          "title": "Surface Charts",
+          "page": 3445,
+          "officeNotes": [
+            "2.1.1557"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:symbol",
+      "types": [
+        "c:CT_MarkerStyle"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_MarkerStyle",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c15:marker",
+        "c16:marker",
+        "c:marker"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.205",
+          "title": "Symbol",
+          "page": 3445
+        }
+      ]
+    },
+    {
+      "name": "c:thickness",
+      "types": [
+        "c:CT_Thickness"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Thickness",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:backWall",
+        "c:floor",
+        "c:sideWall"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.206",
+          "title": "Thickness",
+          "page": 3445,
+          "officeNotes": [
+            "2.1.1558"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:tickLblPos",
+      "types": [
+        "c:CT_TickLblPos"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TickLblPos",
+          "default": "nextTo"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.207",
+          "title": "Tick Label Position",
+          "page": 3446
+        }
+      ]
+    },
+    {
+      "name": "c:tickLblSkip",
+      "types": [
+        "c:CT_Skip"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Skip",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:serAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.208",
+          "title": "Tick Label Skip",
+          "page": 3446,
+          "officeNotes": [
+            "2.1.1559"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:tickMarkSkip",
+      "types": [
+        "c:CT_Skip"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_Skip",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:catAx",
+        "c:serAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.209",
+          "title": "Tick Mark Skip",
+          "page": 3446,
+          "officeNotes": [
+            "2.1.1560"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:title",
+      "types": [
+        "c:CT_Title"
+      ],
+      "attributes": [],
+      "children": [
+        "c:tx",
+        "c:layout",
+        "c:overlay",
+        "c:spPr",
+        "c:txPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:catAx",
+        "c:chart",
+        "c:dateAx",
+        "c:serAx",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.210",
+          "title": "Title",
+          "page": 3446,
+          "officeNotes": [
+            "2.1.1561"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:trendline",
+      "types": [
+        "c:CT_Trendline"
+      ],
+      "attributes": [],
+      "children": [
+        "c:name",
+        "c:spPr",
+        "c:trendlineType",
+        "c:order",
+        "c:period",
+        "c:forward",
+        "c:backward",
+        "c:intercept",
+        "c:dispRSqr",
+        "c:dispEq",
+        "c:trendlineLbl",
+        "c:extLst"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.211",
+          "title": "Trendlines",
+          "page": 3446,
+          "officeNotes": [
+            "2.1.1562"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:trendlineLbl",
+      "types": [
+        "c:CT_TrendlineLbl"
+      ],
+      "attributes": [],
+      "children": [
+        "c:layout",
+        "c:tx",
+        "c:numFmt",
+        "c:spPr",
+        "c:txPr",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.212",
+          "title": "Trendline Label",
+          "page": 3447,
+          "officeNotes": [
+            "2.1.1563"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:trendlineType",
+      "types": [
+        "c:CT_TrendlineType"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_TrendlineType",
+          "default": "linear"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:trendline"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.213",
+          "title": "Trendline Type",
+          "page": 3447,
+          "officeNotes": [
+            "2.1.1564"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:tx",
+      "types": [
+        "c:CT_Tx",
+        "c:CT_SerTx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:strRef",
+        "c:rich",
+        "c:v"
+      ],
+      "parents": [
+        "c15:dLbl",
+        "c15:ser",
+        "c16:dLbl",
+        "c:dLbl",
+        "c:dispUnitsLbl",
+        "c:ser",
+        "c:title",
+        "c:trendlineLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.214",
+          "title": "Chart Text",
+          "page": 3447
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.215",
+          "title": "Series Text",
+          "page": 3447,
+          "officeNotes": [
+            "2.1.1565"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:txPr",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:catAx",
+        "c:chartSpace",
+        "c:dLbl",
+        "c:dLbls",
+        "c:dTable",
+        "c:dateAx",
+        "c:dispUnitsLbl",
+        "c:legend",
+        "c:legendEntry",
+        "c:pivotFmt",
+        "c:serAx",
+        "c:title",
+        "c:trendlineLbl",
+        "c:valAx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.216",
+          "title": "Text Properties",
+          "page": 3447,
+          "officeNotes": [
+            "2.1.1566"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:upBars",
+      "types": [
+        "c:CT_UpDownBar"
+      ],
+      "attributes": [],
+      "children": [
+        "c:spPr"
+      ],
+      "parents": [
+        "c:upDownBars"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.217",
+          "title": "Up Bars",
+          "page": 3447
+        }
+      ]
+    },
+    {
+      "name": "c:upDownBars",
+      "types": [
+        "c:CT_UpDownBars"
+      ],
+      "attributes": [],
+      "children": [
+        "c:gapWidth",
+        "c:upBars",
+        "c:downBars",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:lineChart",
+        "c:stockChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.218",
+          "title": "Up/Down Bars",
+          "page": 3448
+        }
+      ]
+    },
+    {
+      "name": "c:userInterface",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:protection"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.219",
+          "title": "User Interface",
+          "page": 3448,
+          "officeNotes": [
+            "2.1.1567"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:userShapes",
+      "global": true,
+      "types": [
+        "cdr:CT_Drawing",
+        "c:CT_RelId"
+      ],
+      "attributes": [
+        {
+          "name": "r:id",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [
+        "cdr:relSizeAnchor",
+        "cdr:absSizeAnchor"
+      ],
+      "parents": [
+        "c:chartSpace"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.220",
+          "title": "User Shapes",
+          "page": 3448
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.221",
+          "title": "Reference to Chart Drawing Part",
+          "page": 3448
+        }
+      ]
+    },
+    {
+      "name": "c:v",
+      "types": [
+        "s:ST_Xstring"
+      ],
+      "text": "s:ST_Xstring",
+      "attributes": [],
+      "children": [],
+      "parents": [
+        "c15:tx",
+        "c:pt",
+        "c:tx"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.222",
+          "title": "Numeric Value",
+          "page": 3449,
+          "officeNotes": [
+            "2.1.1568"
+          ]
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.223",
+          "title": "Text Value",
+          "page": 3449
+        }
+      ]
+    },
+    {
+      "name": "c:val",
+      "types": [
+        "c:CT_Double",
+        "c:CT_NumDataSource"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [
+        "c:numRef",
+        "c:numLit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:errBars",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.224",
+          "title": "Values",
+          "page": 3449
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.225",
+          "title": "Error Bar Value",
+          "page": 3449,
+          "officeNotes": [
+            "2.1.1569"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:valAx",
+      "types": [
+        "c:CT_ValAx"
+      ],
+      "attributes": [],
+      "children": [
+        "c:axId",
+        "c:scaling",
+        "c:delete",
+        "c:axPos",
+        "c:majorGridlines",
+        "c:minorGridlines",
+        "c:title",
+        "c:numFmt",
+        "c:majorTickMark",
+        "c:minorTickMark",
+        "c:tickLblPos",
+        "c:spPr",
+        "c:txPr",
+        "c:crossAx",
+        "c:crosses",
+        "c:crossesAt",
+        "c:crossBetween",
+        "c:majorUnit",
+        "c:minorUnit",
+        "c:dispUnits",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:plotArea"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.226",
+          "title": "Value Axis",
+          "page": 3449,
+          "officeNotes": [
+            "2.1.1570"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:varyColors",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:area3DChart",
+        "c:areaChart",
+        "c:bar3DChart",
+        "c:barChart",
+        "c:bubbleChart",
+        "c:doughnutChart",
+        "c:line3DChart",
+        "c:lineChart",
+        "c:ofPieChart",
+        "c:pie3DChart",
+        "c:pieChart",
+        "c:radarChart",
+        "c:scatterChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.227",
+          "title": "Vary Colors by Point",
+          "page": 3450,
+          "officeNotes": [
+            "2.1.1571"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:view3D",
+      "types": [
+        "c:CT_View3D"
+      ],
+      "attributes": [],
+      "children": [
+        "c:rotX",
+        "c:hPercent",
+        "c:rotY",
+        "c:depthPercent",
+        "c:rAngAx",
+        "c:perspective",
+        "c:extLst"
+      ],
+      "parents": [
+        "c:chart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.228",
+          "title": "View In 3D",
+          "page": 3450,
+          "officeNotes": [
+            "2.1.1572"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:w",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.229",
+          "title": "Width",
+          "page": 3450,
+          "officeNotes": [
+            "2.1.1573"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:wMode",
+      "types": [
+        "c:CT_LayoutMode"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LayoutMode",
+          "default": "factor"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.231",
+          "title": "Width Mode",
+          "page": 3451,
+          "officeNotes": [
+            "2.1.1574"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:wireframe",
+      "types": [
+        "c:CT_Boolean"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "true"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:surface3DChart",
+        "c:surfaceChart"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.230",
+          "title": "Wireframe",
+          "page": 3451
+        }
+      ]
+    },
+    {
+      "name": "c:x",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.232",
+          "title": "Left",
+          "page": 3451,
+          "officeNotes": [
+            "2.1.1575"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:xMode",
+      "types": [
+        "c:CT_LayoutMode"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LayoutMode",
+          "default": "factor"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.233",
+          "title": "Left Mode",
+          "page": 3452,
+          "officeNotes": [
+            "2.1.1576"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:xVal",
+      "types": [
+        "c:CT_AxDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:multiLvlStrRef",
+        "c:numRef",
+        "c:numLit",
+        "c:strRef",
+        "c:strLit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.234",
+          "title": "X Values",
+          "page": 3452
+        }
+      ]
+    },
+    {
+      "name": "c:y",
+      "types": [
+        "c:CT_Double"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.235",
+          "title": "Top",
+          "page": 3452,
+          "officeNotes": [
+            "2.1.1577"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:yMode",
+      "types": [
+        "c:CT_LayoutMode"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "c:ST_LayoutMode",
+          "default": "factor"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "c:manualLayout"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.236",
+          "title": "Top Mode",
+          "page": 3452,
+          "officeNotes": [
+            "2.1.1578"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:yVal",
+      "types": [
+        "c:CT_NumDataSource"
+      ],
+      "attributes": [],
+      "children": [
+        "c:numRef",
+        "c:numLit"
+      ],
+      "parents": [
+        "c15:ser",
+        "c:ser"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.2.237",
+          "title": "Y Values",
+          "page": 3453
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "c:CT_Area3DChart",
+      "content": "elements",
+      "model": "(c:grouping?, c:varyColors?, c:ser*, c:dLbls?, c:dropLines?, c:gapDepth?, c:axId{2,3}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:area3DChart"
+      ]
+    },
+    {
+      "name": "c:CT_AreaChart",
+      "content": "elements",
+      "model": "(c:grouping?, c:varyColors?, c:ser*, c:dLbls?, c:dropLines?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:areaChart"
+      ]
+    },
+    {
+      "name": "c:CT_AreaSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:pictureOptions?, c:dPt*, c:dLbls?, c:trendline*, c:errBars{0,2}, c:cat?, c:val?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_AxDataSource",
+      "content": "elements",
+      "model": "(c:multiLvlStrRef | c:numRef | c:numLit | c:strRef | c:strLit)",
+      "attributes": [],
+      "usedBy": [
+        "c15:cat",
+        "c:cat",
+        "c:xVal"
+      ]
+    },
+    {
+      "name": "c:CT_AxPos",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:axPos"
+      ]
+    },
+    {
+      "name": "c:CT_AxisUnit",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:majorUnit",
+        "c:minorUnit"
+      ]
+    },
+    {
+      "name": "c:CT_BandFmt",
+      "content": "elements",
+      "model": "(c:idx, c:spPr?)",
+      "attributes": [],
+      "usedBy": [
+        "c:bandFmt"
+      ]
+    },
+    {
+      "name": "c:CT_BandFmts",
+      "content": "elements",
+      "model": "c:bandFmt*",
+      "attributes": [],
+      "usedBy": [
+        "c:bandFmts"
+      ]
+    },
+    {
+      "name": "c:CT_Bar3DChart",
+      "content": "elements",
+      "model": "(c:barDir, c:grouping?, c:varyColors?, c:ser*, c:dLbls?, c:gapWidth?, c:gapDepth?, c:shape?, c:axId{2,3}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:bar3DChart"
+      ]
+    },
+    {
+      "name": "c:CT_BarChart",
+      "content": "elements",
+      "model": "(c:barDir, c:grouping?, c:varyColors?, c:ser*, c:dLbls?, c:gapWidth?, c:overlap?, c:serLines*, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:barChart"
+      ]
+    },
+    {
+      "name": "c:CT_BarDir",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:barDir"
+      ]
+    },
+    {
+      "name": "c:CT_BarGrouping",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:grouping"
+      ]
+    },
+    {
+      "name": "c:CT_BarSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:invertIfNegative?, c:pictureOptions?, c:dPt*, c:dLbls?, c:trendline*, c:errBars?, c:cat?, c:val?, c:shape?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_Boolean",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c15:autoCat",
+        "c15:bubble3D",
+        "c15:invertIfNegative",
+        "c15:showDataLabelsRange",
+        "c15:showLeaderLines",
+        "c15:xForSave",
+        "c16:bubble3D",
+        "c16:invertIfNegative",
+        "c:applyToEnd",
+        "c:applyToFront",
+        "c:applyToSides",
+        "c:auto",
+        "c:autoTitleDeleted",
+        "c:autoUpdate",
+        "c:bubble3D",
+        "c:chartObject",
+        "c:data",
+        "c:date1904",
+        "c:delete",
+        "c:dispEq",
+        "c:dispRSqr",
+        "c:formatting",
+        "c:invertIfNegative",
+        "c:marker",
+        "c:noEndCap",
+        "c:noMultiLvlLbl",
+        "c:overlay",
+        "c:plotVisOnly",
+        "c:rAngAx",
+        "c:roundedCorners",
+        "c:selection",
+        "c:showBubbleSize",
+        "c:showCatName",
+        "c:showDLblsOverMax",
+        "c:showHorzBorder",
+        "c:showKeys",
+        "c:showLeaderLines",
+        "c:showLegendKey",
+        "c:showNegBubbles",
+        "c:showOutline",
+        "c:showPercent",
+        "c:showSerName",
+        "c:showVal",
+        "c:showVertBorder",
+        "c:smooth",
+        "c:userInterface",
+        "c:varyColors",
+        "c:wireframe"
+      ]
+    },
+    {
+      "name": "c:CT_BubbleChart",
+      "content": "elements",
+      "model": "(c:varyColors?, c:ser*, c:dLbls?, c:bubble3D?, c:bubbleScale?, c:showNegBubbles?, c:sizeRepresents?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:bubbleChart"
+      ]
+    },
+    {
+      "name": "c:CT_BubbleScale",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:bubbleScale"
+      ]
+    },
+    {
+      "name": "c:CT_BubbleSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:invertIfNegative?, c:dPt*, c:dLbls?, c:trendline*, c:errBars{0,2}, c:xVal?, c:yVal?, c:bubbleSize?, c:bubble3D?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_BuiltInUnit",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:builtInUnit"
+      ]
+    },
+    {
+      "name": "c:CT_CatAx",
+      "content": "elements",
+      "model": "(c:axId, c:scaling, c:delete?, c:axPos, c:majorGridlines?, c:minorGridlines?, c:title?, c:numFmt?, c:majorTickMark?, c:minorTickMark?, c:tickLblPos?, c:spPr?, c:txPr?, c:crossAx, (c:crosses | c:crossesAt)?, c:auto?, c:lblAlgn?, c:lblOffset?, c:tickLblSkip?, c:tickMarkSkip?, c:noMultiLvlLbl?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:catAx"
+      ]
+    },
+    {
+      "name": "c:CT_Chart",
+      "content": "elements",
+      "model": "(c:title?, c:autoTitleDeleted?, c:pivotFmts?, c:view3D?, c:floor?, c:sideWall?, c:backWall?, c:plotArea, c:legend?, c:plotVisOnly?, c:dispBlanksAs?, c:showDLblsOverMax?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:chart"
+      ]
+    },
+    {
+      "name": "c:CT_ChartLines",
+      "content": "elements",
+      "model": "c:spPr?",
+      "attributes": [],
+      "usedBy": [
+        "c15:leaderLines",
+        "c:dropLines",
+        "c:hiLowLines",
+        "c:leaderLines",
+        "c:majorGridlines",
+        "c:minorGridlines",
+        "c:serLines"
+      ]
+    },
+    {
+      "name": "c:CT_ChartSpace",
+      "content": "elements",
+      "model": "(c:date1904?, c:lang?, c:roundedCorners?, c:style?, c:clrMapOvr?, c:pivotSource?, c:protection?, c:chart, c:spPr?, c:txPr?, c:externalData?, c:printSettings?, c:userShapes?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:chartSpace"
+      ]
+    },
+    {
+      "name": "c:CT_CrossBetween",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:crossBetween"
+      ]
+    },
+    {
+      "name": "c:CT_Crosses",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:crosses"
+      ]
+    },
+    {
+      "name": "c:CT_CustSplit",
+      "content": "elements",
+      "model": "c:secondPiePt*",
+      "attributes": [],
+      "usedBy": [
+        "c:custSplit"
+      ]
+    },
+    {
+      "name": "c:CT_DLbl",
+      "content": "elements",
+      "model": "(c:idx, (c:delete | (c:layout?, c:tx?, c:numFmt?, c:spPr?, c:txPr?, c:dLblPos?, c:showLegendKey?, c:showVal?, c:showCatName?, c:showSerName?, c:showPercent?, c:showBubbleSize?, c:separator?)), c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:dLbl",
+        "c16:dLbl",
+        "c:dLbl"
+      ]
+    },
+    {
+      "name": "c:CT_DLblPos",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:dLblPos"
+      ]
+    },
+    {
+      "name": "c:CT_DLbls",
+      "content": "elements",
+      "model": "(c:dLbl*, (c:delete | (c:numFmt?, c:spPr?, c:txPr?, c:dLblPos?, c:showLegendKey?, c:showVal?, c:showCatName?, c:showSerName?, c:showPercent?, c:showBubbleSize?, c:separator?, c:showLeaderLines?, c:leaderLines?)), c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dLbls"
+      ]
+    },
+    {
+      "name": "c:CT_DPt",
+      "content": "elements",
+      "model": "(c:idx, c:invertIfNegative?, c:marker?, c:bubble3D?, c:explosion?, c:spPr?, c:pictureOptions?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dPt"
+      ]
+    },
+    {
+      "name": "c:CT_DTable",
+      "content": "elements",
+      "model": "(c:showHorzBorder?, c:showVertBorder?, c:showOutline?, c:showKeys?, c:spPr?, c:txPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dTable"
+      ]
+    },
+    {
+      "name": "c:CT_DateAx",
+      "content": "elements",
+      "model": "(c:axId, c:scaling, c:delete?, c:axPos, c:majorGridlines?, c:minorGridlines?, c:title?, c:numFmt?, c:majorTickMark?, c:minorTickMark?, c:tickLblPos?, c:spPr?, c:txPr?, c:crossAx, (c:crosses | c:crossesAt)?, c:auto?, c:lblOffset?, c:baseTimeUnit?, c:majorUnit?, c:majorTimeUnit?, c:minorUnit?, c:minorTimeUnit?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dateAx"
+      ]
+    },
+    {
+      "name": "c:CT_DepthPercent",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:depthPercent"
+      ]
+    },
+    {
+      "name": "c:CT_DispBlanksAs",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:dispBlanksAs"
+      ]
+    },
+    {
+      "name": "c:CT_DispUnits",
+      "content": "elements",
+      "model": "((c:custUnit | c:builtInUnit), c:dispUnitsLbl?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dispUnits"
+      ]
+    },
+    {
+      "name": "c:CT_DispUnitsLbl",
+      "content": "elements",
+      "model": "(c:layout?, c:tx?, c:spPr?, c:txPr?)",
+      "attributes": [],
+      "usedBy": [
+        "c:dispUnitsLbl"
+      ]
+    },
+    {
+      "name": "c:CT_Double",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:backward",
+        "c:crossesAt",
+        "c:custUnit",
+        "c:forward",
+        "c:h",
+        "c:intercept",
+        "c:max",
+        "c:min",
+        "c:splitPos",
+        "c:val",
+        "c:w",
+        "c:x",
+        "c:y"
+      ]
+    },
+    {
+      "name": "c:CT_DoughnutChart",
+      "content": "elements",
+      "model": "(c:varyColors?, c:ser*, c:dLbls?, c:firstSliceAng?, c:holeSize?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:doughnutChart"
+      ]
+    },
+    {
+      "name": "c:CT_ErrBarType",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:errBarType"
+      ]
+    },
+    {
+      "name": "c:CT_ErrBars",
+      "content": "elements",
+      "model": "(c:errDir?, c:errBarType, c:errValType, c:noEndCap?, c:plus?, c:minus?, c:val?, c:spPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:errBars"
+      ]
+    },
+    {
+      "name": "c:CT_ErrDir",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:errDir"
+      ]
+    },
+    {
+      "name": "c:CT_ErrValType",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:errValType"
+      ]
+    },
+    {
+      "name": "c:CT_Extension",
+      "content": "elements",
+      "model": "any(##any)",
+      "attributes": [
+        "uri"
+      ],
+      "usedBy": [
+        "c:ext"
+      ]
+    },
+    {
+      "name": "c:CT_ExtensionList",
+      "content": "elements",
+      "model": "c:ext*",
+      "attributes": [],
+      "usedBy": [
+        "c:extLst"
+      ]
+    },
+    {
+      "name": "c:CT_ExternalData",
+      "content": "elements",
+      "model": "c:autoUpdate?",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "c:externalData"
+      ]
+    },
+    {
+      "name": "c:CT_FirstSliceAng",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:firstSliceAng"
+      ]
+    },
+    {
+      "name": "c:CT_GapAmount",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:gapDepth",
+        "c:gapWidth"
+      ]
+    },
+    {
+      "name": "c:CT_Grouping",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:grouping"
+      ]
+    },
+    {
+      "name": "c:CT_HPercent",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:hPercent"
+      ]
+    },
+    {
+      "name": "c:CT_HeaderFooter",
+      "content": "elements",
+      "model": "(c:oddHeader?, c:oddFooter?, c:evenHeader?, c:evenFooter?, c:firstHeader?, c:firstFooter?)",
+      "attributes": [
+        "alignWithMargins",
+        "differentFirst",
+        "differentOddEven"
+      ],
+      "usedBy": [
+        "c:headerFooter"
+      ]
+    },
+    {
+      "name": "c:CT_HoleSize",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:holeSize"
+      ]
+    },
+    {
+      "name": "c:CT_Layout",
+      "content": "elements",
+      "model": "(c:manualLayout?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:layout",
+        "c:layout"
+      ]
+    },
+    {
+      "name": "c:CT_LayoutMode",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:hMode",
+        "c:wMode",
+        "c:xMode",
+        "c:yMode"
+      ]
+    },
+    {
+      "name": "c:CT_LayoutTarget",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:layoutTarget"
+      ]
+    },
+    {
+      "name": "c:CT_LblAlgn",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:lblAlgn"
+      ]
+    },
+    {
+      "name": "c:CT_LblOffset",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:lblOffset"
+      ]
+    },
+    {
+      "name": "c:CT_Legend",
+      "content": "elements",
+      "model": "(c:legendPos?, c:legendEntry*, c:layout?, c:overlay?, c:spPr?, c:txPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:legend"
+      ]
+    },
+    {
+      "name": "c:CT_LegendEntry",
+      "content": "elements",
+      "model": "(c:idx, (c:delete | c:txPr?), c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:legendEntry"
+      ]
+    },
+    {
+      "name": "c:CT_LegendPos",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:legendPos"
+      ]
+    },
+    {
+      "name": "c:CT_Line3DChart",
+      "content": "elements",
+      "model": "(c:grouping, c:varyColors?, c:ser*, c:dLbls?, c:dropLines?, c:gapDepth?, c:axId{3,3}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:line3DChart"
+      ]
+    },
+    {
+      "name": "c:CT_LineChart",
+      "content": "elements",
+      "model": "(c:grouping, c:varyColors?, c:ser*, c:dLbls?, c:dropLines?, c:hiLowLines?, c:upDownBars?, c:marker?, c:smooth?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:lineChart"
+      ]
+    },
+    {
+      "name": "c:CT_LineSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:marker?, c:dPt*, c:dLbls?, c:trendline*, c:errBars?, c:cat?, c:val?, c:smooth?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_LogBase",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:logBase"
+      ]
+    },
+    {
+      "name": "c:CT_Lvl",
+      "content": "elements",
+      "model": "c:pt*",
+      "attributes": [],
+      "usedBy": [
+        "c:lvl"
+      ]
+    },
+    {
+      "name": "c:CT_ManualLayout",
+      "content": "elements",
+      "model": "(c:layoutTarget?, c:xMode?, c:yMode?, c:wMode?, c:hMode?, c:x?, c:y?, c:w?, c:h?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:manualLayout"
+      ]
+    },
+    {
+      "name": "c:CT_Marker",
+      "content": "elements",
+      "model": "(c:symbol?, c:size?, c:spPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:marker",
+        "c16:marker",
+        "c:marker"
+      ]
+    },
+    {
+      "name": "c:CT_MarkerSize",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:size"
+      ]
+    },
+    {
+      "name": "c:CT_MarkerStyle",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:symbol"
+      ]
+    },
+    {
+      "name": "c:CT_MultiLvlStrData",
+      "content": "elements",
+      "model": "(c:ptCount?, c:lvl*, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c16:multiLvlStrCache",
+        "c16ac:multiLvlStrLit",
+        "c:multiLvlStrCache"
+      ]
+    },
+    {
+      "name": "c:CT_MultiLvlStrRef",
+      "content": "elements",
+      "model": "(c:f, c:multiLvlStrCache?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:multiLvlStrRef"
+      ]
+    },
+    {
+      "name": "c:CT_NumData",
+      "content": "elements",
+      "model": "(c:formatCode?, c:ptCount?, c:pt*, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c16:numCache",
+        "c:numCache",
+        "c:numLit"
+      ]
+    },
+    {
+      "name": "c:CT_NumDataSource",
+      "content": "elements",
+      "model": "(c:numRef | c:numLit)",
+      "attributes": [],
+      "usedBy": [
+        "c:bubbleSize",
+        "c:minus",
+        "c:plus",
+        "c:val",
+        "c:yVal"
+      ]
+    },
+    {
+      "name": "c:CT_NumFmt",
+      "content": "empty",
+      "attributes": [
+        "formatCode",
+        "sourceLinked"
+      ],
+      "usedBy": [
+        "c15:numFmt",
+        "c:numFmt"
+      ]
+    },
+    {
+      "name": "c:CT_NumRef",
+      "content": "elements",
+      "model": "(c:f, c:numCache?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:numRef"
+      ]
+    },
+    {
+      "name": "c:CT_NumVal",
+      "content": "elements",
+      "model": "c:v",
+      "attributes": [
+        "formatCode",
+        "idx"
+      ],
+      "usedBy": [
+        "c:pt"
+      ]
+    },
+    {
+      "name": "c:CT_OfPieChart",
+      "content": "elements",
+      "model": "(c:ofPieType, c:varyColors?, c:ser*, c:dLbls?, c:gapWidth?, c:splitType?, c:splitPos?, c:custSplit?, c:secondPieSize?, c:serLines*, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:ofPieChart"
+      ]
+    },
+    {
+      "name": "c:CT_OfPieType",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:ofPieType"
+      ]
+    },
+    {
+      "name": "c:CT_Order",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:order"
+      ]
+    },
+    {
+      "name": "c:CT_Orientation",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:orientation"
+      ]
+    },
+    {
+      "name": "c:CT_Overlap",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:overlap"
+      ]
+    },
+    {
+      "name": "c:CT_PageMargins",
+      "content": "empty",
+      "attributes": [
+        "b",
+        "footer",
+        "header",
+        "l",
+        "r",
+        "t"
+      ],
+      "usedBy": [
+        "c:pageMargins"
+      ]
+    },
+    {
+      "name": "c:CT_PageSetup",
+      "content": "empty",
+      "attributes": [
+        "blackAndWhite",
+        "copies",
+        "draft",
+        "firstPageNumber",
+        "horizontalDpi",
+        "orientation",
+        "paperHeight",
+        "paperSize",
+        "paperWidth",
+        "useFirstPageNumber",
+        "verticalDpi"
+      ],
+      "usedBy": [
+        "c:pageSetup"
+      ]
+    },
+    {
+      "name": "c:CT_Period",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:period"
+      ]
+    },
+    {
+      "name": "c:CT_Perspective",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:perspective"
+      ]
+    },
+    {
+      "name": "c:CT_PictureFormat",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:pictureFormat"
+      ]
+    },
+    {
+      "name": "c:CT_PictureOptions",
+      "content": "elements",
+      "model": "(c:applyToFront?, c:applyToSides?, c:applyToEnd?, c:pictureFormat?, c:pictureStackUnit?)",
+      "attributes": [],
+      "usedBy": [
+        "c:pictureOptions"
+      ]
+    },
+    {
+      "name": "c:CT_PictureStackUnit",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:pictureStackUnit"
+      ]
+    },
+    {
+      "name": "c:CT_Pie3DChart",
+      "content": "elements",
+      "model": "(c:varyColors?, c:ser*, c:dLbls?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:pie3DChart"
+      ]
+    },
+    {
+      "name": "c:CT_PieChart",
+      "content": "elements",
+      "model": "(c:varyColors?, c:ser*, c:dLbls?, c:firstSliceAng?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:pieChart"
+      ]
+    },
+    {
+      "name": "c:CT_PieSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:explosion?, c:dPt*, c:dLbls?, c:cat?, c:val?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_PivotFmt",
+      "content": "elements",
+      "model": "(c:idx, c:spPr?, c:txPr?, c:marker?, c:dLbl?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:pivotFmt"
+      ]
+    },
+    {
+      "name": "c:CT_PivotFmts",
+      "content": "elements",
+      "model": "c:pivotFmt*",
+      "attributes": [],
+      "usedBy": [
+        "c:pivotFmts"
+      ]
+    },
+    {
+      "name": "c:CT_PivotSource",
+      "content": "elements",
+      "model": "(c:name, c:fmtId, c:extLst*)",
+      "attributes": [],
+      "usedBy": [
+        "c15:pivotSource",
+        "c:pivotSource"
+      ]
+    },
+    {
+      "name": "c:CT_PlotArea",
+      "content": "elements",
+      "model": "(c:layout?, (c:areaChart | c:area3DChart | c:lineChart | c:line3DChart | c:stockChart | c:radarChart | c:scatterChart | c:pieChart | c:pie3DChart | c:doughnutChart | c:barChart | c:bar3DChart | c:ofPieChart | c:surfaceChart | c:surface3DChart | c:bubbleChart)+, (c:valAx | c:catAx | c:dateAx | c:serAx)*, c:dTable?, c:spPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:plotArea"
+      ]
+    },
+    {
+      "name": "c:CT_PrintSettings",
+      "content": "elements",
+      "model": "(c:headerFooter?, c:pageMargins?, c:pageSetup?, c:legacyDrawingHF?)",
+      "attributes": [],
+      "usedBy": [
+        "c:printSettings"
+      ]
+    },
+    {
+      "name": "c:CT_Protection",
+      "content": "elements",
+      "model": "(c:chartObject?, c:data?, c:formatting?, c:selection?, c:userInterface?)",
+      "attributes": [],
+      "usedBy": [
+        "c:protection"
+      ]
+    },
+    {
+      "name": "c:CT_RadarChart",
+      "content": "elements",
+      "model": "(c:radarStyle, c:varyColors?, c:ser*, c:dLbls?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:radarChart"
+      ]
+    },
+    {
+      "name": "c:CT_RadarSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:marker?, c:dPt*, c:dLbls?, c:cat?, c:val?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_RadarStyle",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:radarStyle"
+      ]
+    },
+    {
+      "name": "c:CT_RelId",
+      "content": "empty",
+      "attributes": [
+        "r:id"
+      ],
+      "usedBy": [
+        "c:chart",
+        "c:legacyDrawingHF",
+        "c:userShapes"
+      ]
+    },
+    {
+      "name": "c:CT_RotX",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:rotX"
+      ]
+    },
+    {
+      "name": "c:CT_RotY",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:rotY"
+      ]
+    },
+    {
+      "name": "c:CT_Scaling",
+      "content": "elements",
+      "model": "(c:logBase?, c:orientation?, c:max?, c:min?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:scaling"
+      ]
+    },
+    {
+      "name": "c:CT_ScatterChart",
+      "content": "elements",
+      "model": "(c:scatterStyle, c:varyColors?, c:ser*, c:dLbls?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:scatterChart"
+      ]
+    },
+    {
+      "name": "c:CT_ScatterSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:marker?, c:dPt*, c:dLbls?, c:trendline*, c:errBars{0,2}, c:xVal?, c:yVal?, c:smooth?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_ScatterStyle",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:scatterStyle"
+      ]
+    },
+    {
+      "name": "c:CT_SecondPieSize",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:secondPieSize"
+      ]
+    },
+    {
+      "name": "c:CT_SerAx",
+      "content": "elements",
+      "model": "(c:axId, c:scaling, c:delete?, c:axPos, c:majorGridlines?, c:minorGridlines?, c:title?, c:numFmt?, c:majorTickMark?, c:minorTickMark?, c:tickLblPos?, c:spPr?, c:txPr?, c:crossAx, (c:crosses | c:crossesAt)?, c:tickLblSkip?, c:tickMarkSkip?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:serAx"
+      ]
+    },
+    {
+      "name": "c:CT_SerTx",
+      "content": "elements",
+      "model": "(c:strRef | c:v)",
+      "attributes": [],
+      "usedBy": [
+        "c15:tx",
+        "c:tx"
+      ]
+    },
+    {
+      "name": "c:CT_Shape",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:shape"
+      ]
+    },
+    {
+      "name": "c:CT_SizeRepresents",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:sizeRepresents"
+      ]
+    },
+    {
+      "name": "c:CT_Skip",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:tickLblSkip",
+        "c:tickMarkSkip"
+      ]
+    },
+    {
+      "name": "c:CT_SplitType",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:splitType"
+      ]
+    },
+    {
+      "name": "c:CT_StockChart",
+      "content": "elements",
+      "model": "(c:ser{3,4}, c:dLbls?, c:dropLines?, c:hiLowLines?, c:upDownBars?, c:axId{2,2}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:stockChart"
+      ]
+    },
+    {
+      "name": "c:CT_StrData",
+      "content": "elements",
+      "model": "(c:ptCount?, c:pt*, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:dlblFieldTableCache",
+        "c15:dlblRangeCache",
+        "c16:strCache",
+        "c:strCache",
+        "c:strLit"
+      ]
+    },
+    {
+      "name": "c:CT_StrRef",
+      "content": "elements",
+      "model": "(c:f, c:strCache?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:strRef"
+      ]
+    },
+    {
+      "name": "c:CT_StrVal",
+      "content": "elements",
+      "model": "c:v",
+      "attributes": [
+        "idx"
+      ],
+      "usedBy": [
+        "c:pt"
+      ]
+    },
+    {
+      "name": "c:CT_Style",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:style"
+      ]
+    },
+    {
+      "name": "c:CT_Surface",
+      "content": "elements",
+      "model": "(c:thickness?, c:spPr?, c:pictureOptions?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:backWall",
+        "c:floor",
+        "c:sideWall"
+      ]
+    },
+    {
+      "name": "c:CT_Surface3DChart",
+      "content": "elements",
+      "model": "(c:wireframe?, c:ser*, c:bandFmts?, c:axId{3,3}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:surface3DChart"
+      ]
+    },
+    {
+      "name": "c:CT_SurfaceChart",
+      "content": "elements",
+      "model": "(c:wireframe?, c:ser*, c:bandFmts?, c:axId{2,3}, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:surfaceChart"
+      ]
+    },
+    {
+      "name": "c:CT_SurfaceSer",
+      "content": "elements",
+      "model": "(c:idx, c:order, c:tx?, c:spPr?, c:cat?, c:val?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c15:ser",
+        "c:ser"
+      ]
+    },
+    {
+      "name": "c:CT_TextLanguageID",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:lang"
+      ]
+    },
+    {
+      "name": "c:CT_Thickness",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:thickness"
+      ]
+    },
+    {
+      "name": "c:CT_TickLblPos",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:tickLblPos"
+      ]
+    },
+    {
+      "name": "c:CT_TickMark",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:majorTickMark",
+        "c:minorTickMark"
+      ]
+    },
+    {
+      "name": "c:CT_TimeUnit",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:baseTimeUnit",
+        "c:majorTimeUnit",
+        "c:minorTimeUnit"
+      ]
+    },
+    {
+      "name": "c:CT_Title",
+      "content": "elements",
+      "model": "(c:tx?, c:layout?, c:overlay?, c:spPr?, c:txPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:title"
+      ]
+    },
+    {
+      "name": "c:CT_Trendline",
+      "content": "elements",
+      "model": "(c:name?, c:spPr?, c:trendlineType, c:order?, c:period?, c:forward?, c:backward?, c:intercept?, c:dispRSqr?, c:dispEq?, c:trendlineLbl?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:trendline"
+      ]
+    },
+    {
+      "name": "c:CT_TrendlineLbl",
+      "content": "elements",
+      "model": "(c:layout?, c:tx?, c:numFmt?, c:spPr?, c:txPr?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:trendlineLbl"
+      ]
+    },
+    {
+      "name": "c:CT_TrendlineType",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c:trendlineType"
+      ]
+    },
+    {
+      "name": "c:CT_Tx",
+      "content": "elements",
+      "model": "(c:strRef | c:rich)",
+      "attributes": [],
+      "usedBy": [
+        "c15:tx",
+        "c:tx"
+      ]
+    },
+    {
+      "name": "c:CT_UnsignedInt",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "c15:explosion",
+        "c16:explosion",
+        "c:axId",
+        "c:crossAx",
+        "c:explosion",
+        "c:fmtId",
+        "c:idx",
+        "c:order",
+        "c:ptCount",
+        "c:secondPiePt"
+      ]
+    },
+    {
+      "name": "c:CT_UpDownBar",
+      "content": "elements",
+      "model": "c:spPr?",
+      "attributes": [],
+      "usedBy": [
+        "c:downBars",
+        "c:upBars"
+      ]
+    },
+    {
+      "name": "c:CT_UpDownBars",
+      "content": "elements",
+      "model": "(c:gapWidth?, c:upBars?, c:downBars?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:upDownBars"
+      ]
+    },
+    {
+      "name": "c:CT_ValAx",
+      "content": "elements",
+      "model": "(c:axId, c:scaling, c:delete?, c:axPos, c:majorGridlines?, c:minorGridlines?, c:title?, c:numFmt?, c:majorTickMark?, c:minorTickMark?, c:tickLblPos?, c:spPr?, c:txPr?, c:crossAx, (c:crosses | c:crossesAt)?, c:crossBetween?, c:majorUnit?, c:minorUnit?, c:dispUnits?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:valAx"
+      ]
+    },
+    {
+      "name": "c:CT_View3D",
+      "content": "elements",
+      "model": "(c:rotX?, c:hPercent?, c:rotY?, c:depthPercent?, c:rAngAx?, c:perspective?, c:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "c:view3D"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "c:ST_AxPos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "b",
+        "l",
+        "r",
+        "t"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.2",
+          "title": "Axis Position",
+          "page": 3453
+        }
+      ]
+    },
+    {
+      "name": "c:ST_AxisUnit",
+      "definition": "restriction of xsd:double",
+      "facets": {
+        "minExclusive": "0"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.1",
+          "title": "Axis Unit",
+          "page": 3453,
+          "officeNotes": [
+            "2.1.1579"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BarDir",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "bar",
+        "col"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.3",
+          "title": "Bar Direction",
+          "page": 3454,
+          "officeNotes": [
+            "2.1.1580"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BarGrouping",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "percentStacked",
+        "clustered",
+        "standard",
+        "stacked"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.4",
+          "title": "Bar Grouping",
+          "page": 3454,
+          "officeNotes": [
+            "2.1.1581"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BubbleScale",
+      "definition": "union of c:ST_BubbleScalePercent, c:ST_BubbleScaleUInt",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.5",
+          "title": "Bubble Scale",
+          "page": 3455
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BubbleScalePercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([0-9])|([1-9][0-9])|([1-2][0-9][0-9])|300)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.58",
+          "title": "Bubble Scale Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BubbleScaleUInt",
+      "definition": "restriction of xsd:unsignedInt",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "300"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.16",
+          "title": "Bubble Scale UnsignedInt",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "c:ST_BuiltInUnit",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "hundreds",
+        "thousands",
+        "tenThousands",
+        "hundredThousands",
+        "millions",
+        "tenMillions",
+        "hundredMillions",
+        "billions",
+        "trillions"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.6",
+          "title": "Built-In Unit",
+          "page": 3455,
+          "officeNotes": [
+            "2.1.1582"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_CrossBetween",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "between",
+        "midCat"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.7",
+          "title": "Cross Between",
+          "page": 3455
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Crosses",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "autoZero",
+        "max",
+        "min"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.8",
+          "title": "Crosses",
+          "page": 3456,
+          "officeNotes": [
+            "2.1.1583"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_DLblPos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "bestFit",
+        "b",
+        "ctr",
+        "inBase",
+        "inEnd",
+        "l",
+        "outEnd",
+        "r",
+        "t"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.11",
+          "title": "Data Label Position",
+          "page": 3457
+        }
+      ]
+    },
+    {
+      "name": "c:ST_DepthPercent",
+      "definition": "union of c:ST_DepthPercentWithSymbol, c:ST_DepthPercentUShort",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.9",
+          "title": "Depth Percent",
+          "page": 3456
+        }
+      ]
+    },
+    {
+      "name": "c:ST_DepthPercentUShort",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "20",
+        "maxInclusive": "2000"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.2",
+          "title": "Depth Percent UnsignedShort) (Part 1, §21.2.3.9",
+          "page": 295
+        }
+      ]
+    },
+    {
+      "name": "c:ST_DepthPercentWithSymbol",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([2-9][0-9])|([1-9][0-9][0-9])|(1[0-9][0-9][0-9])|2000)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.51",
+          "title": "Depth Percent with Symbol",
+          "page": 3481
+        }
+      ]
+    },
+    {
+      "name": "c:ST_DispBlanksAs",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "span",
+        "gap",
+        "zero"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.10",
+          "title": "Display Blanks As",
+          "page": 3456
+        }
+      ]
+    },
+    {
+      "name": "c:ST_ErrBarType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "both",
+        "minus",
+        "plus"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.12",
+          "title": "Error Bar Type",
+          "page": 3458
+        }
+      ]
+    },
+    {
+      "name": "c:ST_ErrDir",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "x",
+        "y"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.13",
+          "title": "Error Bar Direction",
+          "page": 3458
+        }
+      ]
+    },
+    {
+      "name": "c:ST_ErrValType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "cust",
+        "fixedVal",
+        "percentage",
+        "stdDev",
+        "stdErr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.14",
+          "title": "Error Value Type",
+          "page": 3458,
+          "officeNotes": [
+            "2.1.1584"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_FirstSliceAng",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "360"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.15",
+          "title": "First Slice Angle",
+          "page": 3459
+        }
+      ]
+    },
+    {
+      "name": "c:ST_GapAmount",
+      "definition": "union of c:ST_GapAmountPercent, c:ST_GapAmountUShort",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.16",
+          "title": "Gap Amount",
+          "page": 3459
+        }
+      ]
+    },
+    {
+      "name": "c:ST_GapAmountPercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([0-9])|([1-9][0-9])|([1-4][0-9][0-9])|500)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.53",
+          "title": "Gap Amount Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_GapAmountUShort",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "500"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.6",
+          "title": "Gap Amount UnsignedShort",
+          "page": 296
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Grouping",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "percentStacked",
+        "standard",
+        "stacked"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.17",
+          "title": "Grouping",
+          "page": 3459,
+          "officeNotes": [
+            "2.1.1585"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HPercent",
+      "definition": "union of c:ST_HPercentWithSymbol, c:ST_HPercentUShort",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.19",
+          "title": "Height Percent",
+          "page": 3460
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HPercentUShort",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "5",
+        "maxInclusive": "500"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.4",
+          "title": "Depth Percent UnsignedShort",
+          "page": 296
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HPercentWithSymbol",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([5-9])|([1-9][0-9])|([1-4][0-9][0-9])|500)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.52",
+          "title": "Height Percent with Symbol",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HoleSize",
+      "definition": "union of c:ST_HoleSizePercent, c:ST_HoleSizeUByte",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.18",
+          "title": "Hole Size",
+          "page": 3460,
+          "officeNotes": [
+            "2.1.1586"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HoleSizePercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*([1-9]|([1-8][0-9])|90)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.55",
+          "title": "Hole Size Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_HoleSizeUByte",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "1",
+        "maxInclusive": "90"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.10",
+          "title": "Hole Size UnsignedByte",
+          "page": 297
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LayoutMode",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "edge",
+        "factor"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.20",
+          "title": "Layout Mode",
+          "page": 3460,
+          "officeNotes": [
+            "2.1.1587"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LayoutTarget",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "inner",
+        "outer"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.21",
+          "title": "Layout Target",
+          "page": 3461
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LblAlgn",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "ctr",
+        "l",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.22",
+          "title": "Label Alignment",
+          "page": 3461
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LblOffset",
+      "definition": "union of c:ST_LblOffsetPercent, c:ST_LblOffsetUShort",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.23",
+          "title": "Label Offset",
+          "page": 3461
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LblOffsetPercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([0-9])|([1-9][0-9])|([1-9][0-9][0-9])|1000)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.56",
+          "title": "Label Offset Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LblOffsetUShort",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "1000"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.12",
+          "title": "Label Offset UnsignedShort",
+          "page": 297
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LegendPos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "b",
+        "tr",
+        "l",
+        "r",
+        "t"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.24",
+          "title": "Legend Position",
+          "page": 3462
+        }
+      ]
+    },
+    {
+      "name": "c:ST_LogBase",
+      "definition": "restriction of xsd:double",
+      "facets": {
+        "minInclusive": "2",
+        "maxInclusive": "1000"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.25",
+          "title": "Logarithmic Base",
+          "page": 3462
+        }
+      ]
+    },
+    {
+      "name": "c:ST_MarkerSize",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "2",
+        "maxInclusive": "72"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.26",
+          "title": "Marker Size",
+          "page": 3462
+        }
+      ]
+    },
+    {
+      "name": "c:ST_MarkerStyle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "circle",
+        "dash",
+        "diamond",
+        "dot",
+        "none",
+        "picture",
+        "plus",
+        "square",
+        "star",
+        "triangle",
+        "x",
+        "auto"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.27",
+          "title": "Marker Style",
+          "page": 3463,
+          "officeNotes": [
+            "2.1.1588"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_OfPieType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "pie",
+        "bar"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.28",
+          "title": "Pie of Pie or Bar of Pie Type",
+          "page": 3464
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Order",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "2",
+        "maxInclusive": "6"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.29",
+          "title": "Order",
+          "page": 3464
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Orientation",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "maxMin",
+        "minMax"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.30",
+          "title": "Orientation",
+          "page": 3464,
+          "officeNotes": [
+            "2.1.1589"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Overlap",
+      "definition": "union of c:ST_OverlapPercent, c:ST_OverlapByte",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.31",
+          "title": "Overlap",
+          "page": 3465
+        }
+      ]
+    },
+    {
+      "name": "c:ST_OverlapByte",
+      "definition": "restriction of xsd:byte",
+      "facets": {
+        "minInclusive": "-100",
+        "maxInclusive": "100"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.14",
+          "title": "Overlap Byte",
+          "page": 298
+        }
+      ]
+    },
+    {
+      "name": "c:ST_OverlapPercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "(-?0*(([0-9])|([1-9][0-9])|100))%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.57",
+          "title": "Overlap Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_PageSetupOrientation",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "default",
+        "portrait",
+        "landscape"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.32",
+          "title": "Printed Page Orientation",
+          "page": 3465
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Period",
+      "definition": "restriction of xsd:unsignedInt",
+      "facets": {
+        "minInclusive": "2"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.33",
+          "title": "Period",
+          "page": 3465,
+          "officeNotes": [
+            "2.1.1590"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Perspective",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "240"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.34",
+          "title": "Perspective",
+          "page": 3466,
+          "officeNotes": [
+            "2.1.1591"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_PictureFormat",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "stretch",
+        "stack",
+        "stackScale"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.35",
+          "title": "Picture Format",
+          "page": 3466,
+          "officeNotes": [
+            "2.1.1592"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_PictureStackUnit",
+      "definition": "restriction of xsd:double",
+      "facets": {
+        "minExclusive": "0"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.36",
+          "title": "Picture Stack Unit",
+          "page": 3466
+        }
+      ]
+    },
+    {
+      "name": "c:ST_RadarStyle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "standard",
+        "marker",
+        "filled"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.37",
+          "title": "Radar Style",
+          "page": 3467,
+          "officeNotes": [
+            "2.1.1593"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_RotX",
+      "definition": "restriction of xsd:byte",
+      "facets": {
+        "minInclusive": "-90",
+        "maxInclusive": "90"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.38",
+          "title": "X Rotation",
+          "page": 3467
+        }
+      ]
+    },
+    {
+      "name": "c:ST_RotY",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "0",
+        "maxInclusive": "360"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.39",
+          "title": "Y Rotation",
+          "page": 3468
+        }
+      ]
+    },
+    {
+      "name": "c:ST_ScatterStyle",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "none",
+        "line",
+        "lineMarker",
+        "marker",
+        "smooth",
+        "smoothMarker"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.40",
+          "title": "Scatter Style",
+          "page": 3468,
+          "officeNotes": [
+            "2.1.1594"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_SecondPieSize",
+      "definition": "union of c:ST_SecondPieSizePercent, c:ST_SecondPieSizeUShort",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.41",
+          "title": "Second Pie Size",
+          "page": 3469
+        }
+      ]
+    },
+    {
+      "name": "c:ST_SecondPieSizePercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "0*(([5-9])|([1-9][0-9])|(1[0-9][0-9])|200)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.54",
+          "title": "Second Pie Size Percentage",
+          "page": 3482
+        }
+      ]
+    },
+    {
+      "name": "c:ST_SecondPieSizeUShort",
+      "definition": "restriction of xsd:unsignedShort",
+      "facets": {
+        "minInclusive": "5",
+        "maxInclusive": "200"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-4",
+          "section": "18.1.3.8",
+          "title": "Second Pie Size UnsignedShort",
+          "page": 296
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Shape",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "cone",
+        "coneToMax",
+        "box",
+        "cylinder",
+        "pyramid",
+        "pyramidToMax"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.42",
+          "title": "Shape",
+          "page": 3469,
+          "officeNotes": [
+            "2.1.1595"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_SizeRepresents",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "area",
+        "w"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.43",
+          "title": "Size Represents",
+          "page": 3469
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Skip",
+      "definition": "restriction of xsd:unsignedInt",
+      "facets": {
+        "minInclusive": "1"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.44",
+          "title": "Skip",
+          "page": 3470,
+          "officeNotes": [
+            "2.1.1596"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_SplitType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "auto",
+        "cust",
+        "percent",
+        "pos",
+        "val"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.45",
+          "title": "Split Type",
+          "page": 3470,
+          "officeNotes": [
+            "2.1.1597"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Style",
+      "definition": "restriction of xsd:unsignedByte",
+      "facets": {
+        "minInclusive": "1",
+        "maxInclusive": "48"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.46",
+          "title": "Style",
+          "page": 3471,
+          "officeNotes": [
+            "2.1.1598"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "c:ST_Thickness",
+      "definition": "union of c:ST_ThicknessPercent, xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.59",
+          "title": "Thickness Percentage",
+          "page": 3483
+        }
+      ]
+    },
+    {
+      "name": "c:ST_ThicknessPercent",
+      "definition": "restriction of xsd:string",
+      "facets": {
+        "pattern": "([0-9]+)%"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.60",
+          "title": "Thickness Percentage",
+          "page": 3483
+        }
+      ]
+    },
+    {
+      "name": "c:ST_TickLblPos",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "high",
+        "low",
+        "nextTo",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.47",
+          "title": "Tick Label Position",
+          "page": 3480
+        }
+      ]
+    },
+    {
+      "name": "c:ST_TickMark",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "cross",
+        "in",
+        "none",
+        "out"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.48",
+          "title": "Tick Mark",
+          "page": 3480
+        }
+      ]
+    },
+    {
+      "name": "c:ST_TimeUnit",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "days",
+        "months",
+        "years"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.49",
+          "title": "Time Unit",
+          "page": 3480
+        }
+      ]
+    },
+    {
+      "name": "c:ST_TrendlineType",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "exp",
+        "linear",
+        "log",
+        "movingAvg",
+        "poly",
+        "power"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.2.3.50",
+          "title": "Trendline Type",
+          "page": 3481,
+          "officeNotes": [
+            "2.1.1599"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "prefix": "w16cei",
+  "uri": "http://schemas.microsoft.com/office/word/2026/wordml/cei",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "source": "[MS-DOCX] v20260818 §5.10",
+  "counts": {
+    "elements": 2,
+    "attributes": 1,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 3,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "w16cei:commentEntityInfo",
+      "global": true,
+      "types": [
+        "w16cei:CT_CommentEntityInfo"
+      ],
+      "attributes": [
+        {
+          "name": "w16cei:entityType",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "w16cei:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.14.1.1",
+          "title": "commentEntityInfo",
+          "page": 93
+        }
+      ]
+    },
+    {
+      "name": "w16cei:extLst",
+      "types": [
+        "w16cur:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "w16cur:ext"
+      ],
+      "parents": [
+        "w16cei:commentEntityInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.9.3.2",
+          "title": "CT_ExtensionList",
+          "page": 89
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "w16cei:CT_CommentEntityInfo",
+      "content": "elements",
+      "model": "w16cei:extLst?",
+      "attributes": [
+        "w16cei:entityType"
+      ],
+      "usedBy": [
+        "w16cei:commentEntityInfo"
+      ],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.14.3.1",
+          "title": "CT_CommentEntityInfo",
+          "page": 94
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

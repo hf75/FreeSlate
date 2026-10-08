@@ -1,0 +1,1177 @@
+[
+  {
+    "level": 0,
+    "title": "1 Introduction",
+    "page": 10
+  },
+  {
+    "level": 1,
+    "title": "1.1 Glossary",
+    "page": 10
+  },
+  {
+    "level": 1,
+    "title": "1.2 References",
+    "page": 11
+  },
+  {
+    "level": 2,
+    "title": "1.2.1 Normative References",
+    "page": 11
+  },
+  {
+    "level": 2,
+    "title": "1.2.2 Informative References",
+    "page": 12
+  },
+  {
+    "level": 1,
+    "title": "1.3 Structure Overview (Synopsis)",
+    "page": 12
+  },
+  {
+    "level": 1,
+    "title": "1.4 Relationship to Protocols and Other Structures",
+    "page": 12
+  },
+  {
+    "level": 1,
+    "title": "1.5 Applicability Statement",
+    "page": 13
+  },
+  {
+    "level": 1,
+    "title": "1.6 Versioning and Localization",
+    "page": 13
+  },
+  {
+    "level": 1,
+    "title": "1.7 Vendor-Extensible Fields",
+    "page": 13
+  },
+  {
+    "level": 0,
+    "title": "2 Structures",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "2.1 Part Enumerations",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.1.1 stylesWithEffects",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.1.2 commentsExtended",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.1.3 people",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.1.4 commentsIds",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.1.5 commentsExtensible",
+    "page": 14
+  },
+  {
+    "level": 1,
+    "title": "2.2 Extensions",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.2.1 rPr Extensions",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.2.2 Settings Extensions",
+    "page": 14
+  },
+  {
+    "level": 2,
+    "title": "2.2.3 sdtPr Extensions",
+    "page": 15
+  },
+  {
+    "level": 2,
+    "title": "2.2.4 p and tr Extensions",
+    "page": 15
+  },
+  {
+    "level": 2,
+    "title": "2.2.5 Conflict Extensions",
+    "page": 15
+  },
+  {
+    "level": 2,
+    "title": "2.2.6 Pict and Object Extensions",
+    "page": 15
+  },
+  {
+    "level": 2,
+    "title": "2.2.7 Calendar Type Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.8 sectPr Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.9 pPr Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.10 Numbering Definition Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.11 r Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.12 dataBinding Extensions",
+    "page": 16
+  },
+  {
+    "level": 2,
+    "title": "2.2.13 commentsExtensible Extensions",
+    "page": 16
+  },
+  {
+    "level": 1,
+    "title": "2.3 compatSetting elements",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.3.1 overrideTableStyleFontSizeAndJustification",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.3.2 doNotFlipMirrorIndents",
+    "page": 17
+  },
+  {
+    "level": 2,
+    "title": "2.3.3 enableOpenTypeFeatures",
+    "page": 18
+  },
+  {
+    "level": 2,
+    "title": "2.3.4 differentiateMultirowTableHeaders",
+    "page": 18
+  },
+  {
+    "level": 2,
+    "title": "2.3.5 compatibilityMode",
+    "page": 18
+  },
+  {
+    "level": 2,
+    "title": "2.3.6 allowTextAfterFloatingTableBreak",
+    "page": 19
+  },
+  {
+    "level": 2,
+    "title": "2.3.7 allowHyphenationAtTrackBottom",
+    "page": 20
+  },
+  {
+    "level": 2,
+    "title": "2.3.8 useWord2013TrackBottomHyphenation",
+    "page": 20
+  },
+  {
+    "level": 2,
+    "title": "2.3.9 usePre2018iOSMacLayout",
+    "page": 21
+  },
+  {
+    "level": 1,
+    "title": "2.4 numFmt Extensions",
+    "page": 21
+  },
+  {
+    "level": 1,
+    "title": "2.5 http://schemas.microsoft.com/office/word/2012/wordml",
+    "page": 28
+  },
+  {
+    "level": 2,
+    "title": "2.5.1 Elements",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.1 appearance",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.2 chartTrackingRefBased",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.3 collapsed",
+    "page": 28
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.4 color",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.5 commentsEx",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.6 dataBinding",
+    "page": 29
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.7 docId",
+    "page": 30
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.8 footnoteColumns",
+    "page": 30
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.9 people",
+    "page": 31
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.10 repeatingSection",
+    "page": 31
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.11 repeatingSectionItem",
+    "page": 31
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.12 webExtensionCreated",
+    "page": 32
+  },
+  {
+    "level": 3,
+    "title": "2.5.1.13 webExtensionLinked",
+    "page": 32
+  },
+  {
+    "level": 2,
+    "title": "2.5.2 Attributes",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.5.2.1 restartNumberingAfterBreak",
+    "page": 33
+  },
+  {
+    "level": 2,
+    "title": "2.5.3 Complex Types",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.1 CT_CommentEx",
+    "page": 33
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.2 CT_CommentsEx",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.3 CT_Guid",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.4 CT_People",
+    "page": 34
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.5 CT_Person",
+    "page": 35
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.6 CT_PresenceInfo",
+    "page": 35
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.7 CT_SdtAppearance",
+    "page": 36
+  },
+  {
+    "level": 3,
+    "title": "2.5.3.8 CT_SdtRepeatedSection",
+    "page": 36
+  },
+  {
+    "level": 2,
+    "title": "2.5.4 Simple Types",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.5.4.1 ST_Guid",
+    "page": 37
+  },
+  {
+    "level": 3,
+    "title": "2.5.4.2 ST_SdtAppearance",
+    "page": 37
+  },
+  {
+    "level": 1,
+    "title": "2.6 http://schemas.microsoft.com/office/word/2010/wordml",
+    "page": 38
+  },
+  {
+    "level": 2,
+    "title": "2.6.1 Elements",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.1 checkbox",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.2 cntxtAlts",
+    "page": 38
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.3 conflictDel",
+    "page": 39
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.4 conflictDel",
+    "page": 39
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.5 conflictIns",
+    "page": 39
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.6 conflictIns",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.7 conflictMode",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.8 customXmlConflictDelRangeEnd",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.9 customXmlConflictDelRangeStart",
+    "page": 40
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.10 customXmlConflictInsRangeEnd",
+    "page": 41
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.11 customXmlConflictInsRangeStart",
+    "page": 41
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.12 defaultImageDpi",
+    "page": 41
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.13 discardImageEditingData",
+    "page": 42
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.14 docId",
+    "page": 42
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.15 entityPicker",
+    "page": 42
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.16 glow",
+    "page": 44
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.17 ligatures",
+    "page": 44
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.18 numForm",
+    "page": 44
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.19 numSpacing",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.20 props3d",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.21 reflection",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.22 scene3d",
+    "page": 45
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.23 shadow",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.24 stylisticSets",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.25 textFill",
+    "page": 46
+  },
+  {
+    "level": 3,
+    "title": "2.6.1.26 textOutline",
+    "page": 47
+  },
+  {
+    "level": 2,
+    "title": "2.6.2 Attributes",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.6.2.1 anchorId",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.6.2.2 noSpellErr",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.6.2.3 paraId",
+    "page": 47
+  },
+  {
+    "level": 3,
+    "title": "2.6.2.4 textId",
+    "page": 48
+  },
+  {
+    "level": 2,
+    "title": "2.6.3 Complex Types",
+    "page": 48
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.1 CT_Bevel",
+    "page": 48
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.2 CT_Camera",
+    "page": 49
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.3 CT_Color",
+    "page": 49
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.4 CT_DefaultImageDpi",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.5 CT_FillTextEffect",
+    "page": 50
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.6 CT_Glow",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.7 CT_GradientFillProperties",
+    "page": 51
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.8 CT_GradientStop",
+    "page": 52
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.9 CT_GradientStopList",
+    "page": 52
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.10 CT_Ligatures",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.11 CT_LightRig",
+    "page": 53
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.12 CT_LinearShadeProperties",
+    "page": 54
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.13 CT_LineJoinMiterProperties",
+    "page": 54
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.14 CT_LongHexNumber",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.15 CT_NumForm",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.16 CT_NumSpacing",
+    "page": 55
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.17 CT_OnOff",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.18 CT_PathShadeProperties",
+    "page": 56
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.19 CT_Percentage",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.20 CT_PositiveFixedPercentage",
+    "page": 57
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.21 CT_PositivePercentage",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.22 CT_PresetLineDashProperties",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.23 CT_Props3D",
+    "page": 58
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.24 CT_Reflection",
+    "page": 59
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.25 CT_RelativeRect",
+    "page": 60
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.26 CT_Scene3D",
+    "page": 61
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.27 CT_SchemeColor",
+    "page": 62
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.28 CT_SdtCheckbox",
+    "page": 63
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.29 CT_SdtCheckboxSymbol",
+    "page": 63
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.30 CT_Shadow",
+    "page": 64
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.31 CT_SolidColorFillProperties",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.32 CT_SphereCoords",
+    "page": 65
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.33 CT_SRgbColor",
+    "page": 66
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.34 CT_StyleSet",
+    "page": 67
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.35 CT_StylisticSets",
+    "page": 67
+  },
+  {
+    "level": 3,
+    "title": "2.6.3.36 CT_TextOutlineEffect",
+    "page": 68
+  },
+  {
+    "level": 2,
+    "title": "2.6.4 Simple Types",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.1 ST_BevelPresetType",
+    "page": 69
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.2 ST_CompoundLine",
+    "page": 70
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.3 ST_Ligatures",
+    "page": 70
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.4 ST_LightRigDirection",
+    "page": 72
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.5 ST_LightRigType",
+    "page": 73
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.6 ST_LineCap",
+    "page": 74
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.7 ST_NumForm",
+    "page": 75
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.8 ST_NumSpacing",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.9 ST_OnOff",
+    "page": 76
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.10 ST_PathShadeType",
+    "page": 77
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.11 ST_PenAlignment",
+    "page": 77
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.12 ST_PresetCameraType",
+    "page": 78
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.13 ST_PresetLineDashVal",
+    "page": 81
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.14 ST_PresetMaterialType",
+    "page": 82
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.15 ST_RectAlignment",
+    "page": 83
+  },
+  {
+    "level": 3,
+    "title": "2.6.4.16 ST_SchemeColorVal",
+    "page": 84
+  },
+  {
+    "level": 1,
+    "title": "2.7 http://schemas.microsoft.com/office/word/2015/wordml/symex",
+    "page": 86
+  },
+  {
+    "level": 2,
+    "title": "2.7.1 Elements",
+    "page": 86
+  },
+  {
+    "level": 3,
+    "title": "2.7.1.1 symEx",
+    "page": 86
+  },
+  {
+    "level": 2,
+    "title": "2.7.2 Attributes",
+    "page": 86
+  },
+  {
+    "level": 2,
+    "title": "2.7.3 Complex Types",
+    "page": 86
+  },
+  {
+    "level": 3,
+    "title": "2.7.3.1 CT_SymEx",
+    "page": 86
+  },
+  {
+    "level": 2,
+    "title": "2.7.4 Simple Types",
+    "page": 87
+  },
+  {
+    "level": 1,
+    "title": "2.8 http://schemas.microsoft.com/office/word/2016/wordml/cid",
+    "page": 87
+  },
+  {
+    "level": 2,
+    "title": "2.8.1 Elements",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.8.1.1 commentsIds",
+    "page": 87
+  },
+  {
+    "level": 2,
+    "title": "2.8.2 Attributes",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.8.2.1 durableId",
+    "page": 87
+  },
+  {
+    "level": 3,
+    "title": "2.8.2.2 durableId",
+    "page": 87
+  },
+  {
+    "level": 2,
+    "title": "2.8.3 Complex Types",
+    "page": 88
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.1 CT_CommentId",
+    "page": 88
+  },
+  {
+    "level": 3,
+    "title": "2.8.3.2 CT_CommentsIds",
+    "page": 88
+  },
+  {
+    "level": 2,
+    "title": "2.8.4 Simple Types",
+    "page": 89
+  },
+  {
+    "level": 1,
+    "title": "2.9 http://schemas.microsoft.com/office/word/2018/wordml",
+    "page": 89
+  },
+  {
+    "level": 2,
+    "title": "2.9.1 Elements",
+    "page": 89
+  },
+  {
+    "level": 2,
+    "title": "2.9.2 Attributes",
+    "page": 89
+  },
+  {
+    "level": 2,
+    "title": "2.9.3 Complex Types",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.9.3.1 CT_Extension",
+    "page": 89
+  },
+  {
+    "level": 3,
+    "title": "2.9.3.2 CT_ExtensionList",
+    "page": 89
+  },
+  {
+    "level": 2,
+    "title": "2.9.4 Simple Types",
+    "page": 90
+  },
+  {
+    "level": 1,
+    "title": "2.10 http://schemas.microsoft.com/office/word/2018/wordml/cex",
+    "page": 90
+  },
+  {
+    "level": 2,
+    "title": "2.10.1 Elements",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.10.1.1 commentsExtensible",
+    "page": 90
+  },
+  {
+    "level": 2,
+    "title": "2.10.2 Attributes",
+    "page": 90
+  },
+  {
+    "level": 2,
+    "title": "2.10.3 Complex Types",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.1 CT_CommentExtensible",
+    "page": 90
+  },
+  {
+    "level": 3,
+    "title": "2.10.3.2 CT_CommentsExtensible",
+    "page": 91
+  },
+  {
+    "level": 2,
+    "title": "2.10.4 Simple Types",
+    "page": 91
+  },
+  {
+    "level": 1,
+    "title": "2.11 http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.11.1 Elements",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.11.2 Attributes",
+    "page": 92
+  },
+  {
+    "level": 3,
+    "title": "2.11.2.1 storeItemChecksum",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.11.3 Complex Types",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.11.4 Simple Types",
+    "page": 92
+  },
+  {
+    "level": 1,
+    "title": "2.12 http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.12.1 Elements",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.12.2 Attributes",
+    "page": 92
+  },
+  {
+    "level": 3,
+    "title": "2.12.2.1 dateUtc",
+    "page": 92
+  },
+  {
+    "level": 2,
+    "title": "2.12.3 Complex Types",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.12.4 Simple Types",
+    "page": 93
+  },
+  {
+    "level": 1,
+    "title": "2.13 http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.13.1 Elements",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.13.2 Attributes",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.13.2.1 formattingAllowed",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.13.3 Complex Types",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.13.4 Simple Types",
+    "page": 93
+  },
+  {
+    "level": 1,
+    "title": "2.14 http://schemas.microsoft.com/office/word/2026/wordml/cei",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.14.1 Elements",
+    "page": 93
+  },
+  {
+    "level": 3,
+    "title": "2.14.1.1 commentEntityInfo",
+    "page": 93
+  },
+  {
+    "level": 2,
+    "title": "2.14.2 Attributes",
+    "page": 94
+  },
+  {
+    "level": 2,
+    "title": "2.14.3 Complex Types",
+    "page": 94
+  },
+  {
+    "level": 3,
+    "title": "2.14.3.1 CT_CommentEntityInfo",
+    "page": 94
+  },
+  {
+    "level": 2,
+    "title": "2.14.4 Simple Types",
+    "page": 94
+  },
+  {
+    "level": 0,
+    "title": "3 Structure Examples",
+    "page": 95
+  },
+  {
+    "level": 1,
+    "title": "3.1 Glowing Text",
+    "page": 95
+  },
+  {
+    "level": 1,
+    "title": "3.2 Stylistic Sets",
+    "page": 95
+  },
+  {
+    "level": 0,
+    "title": "4 Security Considerations",
+    "page": 97
+  },
+  {
+    "level": 1,
+    "title": "4.1 Security Considerations for Implementers",
+    "page": 97
+  },
+  {
+    "level": 1,
+    "title": "4.2 Index of Security Fields",
+    "page": 97
+  },
+  {
+    "level": 0,
+    "title": "5 Appendix A: Full XML Schemas",
+    "page": 98
+  },
+  {
+    "level": 1,
+    "title": "5.1 http://schemas.microsoft.com/office/word/2010/wordml Schema",
+    "page": 98
+  },
+  {
+    "level": 1,
+    "title": "5.2 http://schemas.microsoft.com/office/word/2012/wordml Schema",
+    "page": 106
+  },
+  {
+    "level": 1,
+    "title": "5.3 http://schemas.microsoft.com/office/word/2015/wordml/symex Schema",
+    "page": 108
+  },
+  {
+    "level": 1,
+    "title": "5.4 http://schemas.microsoft.com/office/word/2016/wordml/cid Schema",
+    "page": 108
+  },
+  {
+    "level": 1,
+    "title": "5.5 http://schemas.microsoft.com/office/word/2018/wordml Schema",
+    "page": 108
+  },
+  {
+    "level": 1,
+    "title": "5.6 http://schemas.microsoft.com/office/word/2018/wordml/cex Schema",
+    "page": 109
+  },
+  {
+    "level": 1,
+    "title": "5.7 http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash Schema",
+    "page": 109
+  },
+  {
+    "level": 1,
+    "title": "5.8 http://schemas.microsoft.com/office/word/2023/wordml/word16du Schema",
+    "page": 109
+  },
+  {
+    "level": 1,
+    "title": "5.9 http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock Schema",
+    "page": 109
+  },
+  {
+    "level": 1,
+    "title": "5.10 http://schemas.microsoft.com/office/word/2026/wordml/cei Schema",
+    "page": 110
+  },
+  {
+    "level": 0,
+    "title": "6 Appendix B: Product Behavior",
+    "page": 111
+  },
+  {
+    "level": 0,
+    "title": "7 Change Tracking",
+    "page": 114
+  },
+  {
+    "level": 0,
+    "title": "8 Index",
+    "page": 115
+  }
+]

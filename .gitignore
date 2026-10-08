@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+
+# Specification sources: large; restore with `dotnet run --project tools/SpecTools -- fetch`
+spec/downloads/
+spec/ecma-376/

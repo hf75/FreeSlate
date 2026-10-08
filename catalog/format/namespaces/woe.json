@@ -1,0 +1,78 @@
+{
+  "prefix": "woe",
+  "uri": "http://schemas.microsoft.com/office/word/2020/oembed",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Microsoft365",
+  "source": "[MS-ODRAWXML] v20261006 §5.38",
+  "counts": {
+    "elements": 1,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 1,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 2,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "woe:oembed",
+      "global": true,
+      "types": [
+        "woe:CT_OEmbed"
+      ],
+      "attributes": [
+        {
+          "name": "mediaType",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "oEmbedUrl",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "picLocksAutoForOEmbed",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.40.1.1",
+          "title": "oembed",
+          "page": 324
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "woe:CT_OEmbed",
+      "content": "empty",
+      "attributes": [
+        "mediaType",
+        "oEmbedUrl",
+        "picLocksAutoForOEmbed"
+      ],
+      "usedBy": [
+        "woe:oembed"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.40.3.1",
+          "title": "CT_OEmbed",
+          "page": 325
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

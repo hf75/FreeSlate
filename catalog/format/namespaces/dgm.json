@@ -1,0 +1,4482 @@
+{
+  "prefix": "dgm",
+  "uri": "http://schemas.openxmlformats.org/drawingml/2006/diagram",
+  "area": "Diagrams (SmartArt)",
+  "inScope": true,
+  "officeVersion": "Office2007",
+  "source": "ECMA-376-4 transitional schema dml-diagram.xsd",
+  "counts": {
+    "elements": 65,
+    "attributes": 159,
+    "globalAttributes": 0,
+    "complexTypes": 58,
+    "simpleTypes": 66,
+    "enumValues": 331,
+    "specSections": 140,
+    "officeNotes": 27
+  },
+  "elements": [
+    {
+      "name": "dgm:adj",
+      "types": [
+        "dgm:CT_Adj"
+      ],
+      "attributes": [
+        {
+          "name": "idx",
+          "type": "dgm:ST_Index1",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:adjLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.1",
+          "title": "Shape Adjust",
+          "page": 3508,
+          "officeNotes": [
+            "2.1.1615"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:adjLst",
+      "types": [
+        "dgm:CT_AdjLst"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:adj"
+      ],
+      "parents": [
+        "dgm:shape"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.2",
+          "title": "Shape Adjust List",
+          "page": 3508
+        }
+      ]
+    },
+    {
+      "name": "dgm:alg",
+      "types": [
+        "dgm:CT_Algorithm"
+      ],
+      "attributes": [
+        {
+          "name": "rev",
+          "type": "xsd:unsignedInt",
+          "default": "0"
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_AlgorithmType",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:param",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.3",
+          "title": "Algorithm",
+          "page": 3509
+        }
+      ]
+    },
+    {
+      "name": "dgm:animLvl",
+      "types": [
+        "dgm:CT_AnimLvl"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_AnimLvlStr",
+          "default": "none"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.1",
+          "title": "Level Animation",
+          "page": 3566
+        }
+      ]
+    },
+    {
+      "name": "dgm:animOne",
+      "types": [
+        "dgm:CT_AnimOne"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_AnimOneStr",
+          "default": "one"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.2",
+          "title": "One by One Animation String",
+          "page": 3566
+        }
+      ]
+    },
+    {
+      "name": "dgm:bg",
+      "types": [
+        "a:CT_BackgroundFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "dgm:dataModel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.1",
+          "title": "Background Formatting",
+          "page": 3536
+        }
+      ]
+    },
+    {
+      "name": "dgm:bulletEnabled",
+      "types": [
+        "dgm:CT_BulletEnabled"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.3",
+          "title": "Show Insert Node",
+          "page": 3567
+        }
+      ]
+    },
+    {
+      "name": "dgm:cat",
+      "types": [
+        "dgm:CT_CTCategory",
+        "dgm:CT_Category",
+        "dgm:CT_SDCategory"
+      ],
+      "attributes": [
+        {
+          "name": "pri",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "xsd:anyURI",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:catLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.4",
+          "title": "Category",
+          "page": 3509
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.1",
+          "title": "Color Transform Category",
+          "page": 3546
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.1",
+          "title": "Category",
+          "page": 3557
+        }
+      ]
+    },
+    {
+      "name": "dgm:catLst",
+      "types": [
+        "dgm:CT_CTCategories",
+        "dgm:CT_Categories",
+        "dgm:CT_SDCategories"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:cat"
+      ],
+      "parents": [
+        "dgm:colorsDef",
+        "dgm:colorsDefHdr",
+        "dgm:layoutDef",
+        "dgm:layoutDefHdr",
+        "dgm:styleDef",
+        "dgm:styleDefHdr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.5",
+          "title": "Category List",
+          "page": 3510
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.2",
+          "title": "Color Transform Category List",
+          "page": 3547
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.2",
+          "title": "Category List",
+          "page": 3558
+        }
+      ]
+    },
+    {
+      "name": "dgm:chMax",
+      "types": [
+        "dgm:CT_ChildMax"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_NodeCount",
+          "default": "-1"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.4",
+          "title": "Maximum Children",
+          "page": 3568
+        }
+      ]
+    },
+    {
+      "name": "dgm:chPref",
+      "types": [
+        "dgm:CT_ChildPref"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_NodeCount",
+          "default": "-1"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.5",
+          "title": "Preferred Number of Children",
+          "page": 3568
+        }
+      ]
+    },
+    {
+      "name": "dgm:choose",
+      "types": [
+        "dgm:CT_Choose"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:if",
+        "dgm:else"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.6",
+          "title": "Choose Element",
+          "page": 3510
+        }
+      ]
+    },
+    {
+      "name": "dgm:clrData",
+      "types": [
+        "dgm:CT_SampleData"
+      ],
+      "attributes": [
+        {
+          "name": "useDef",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "dgm:dataModel"
+      ],
+      "parents": [
+        "dgm:layoutDef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.7",
+          "title": "Color Transform Sample Data",
+          "page": 3511,
+          "officeNotes": [
+            "2.1.1616"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:colorsDef",
+      "global": true,
+      "types": [
+        "dgm:CT_ColorTransform"
+      ],
+      "attributes": [
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:styleLbl",
+        "dgm:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.3",
+          "title": "Color Transform Definitions",
+          "page": 3547,
+          "officeNotes": [
+            "2.1.1628"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:colorsDefHdr",
+      "global": true,
+      "types": [
+        "dgm:CT_ColorTransformHeader"
+      ],
+      "attributes": [
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "resId",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:colorsDefHdrLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.4",
+          "title": "Color Transform Definition Header",
+          "page": 3548
+        }
+      ]
+    },
+    {
+      "name": "dgm:colorsDefHdrLst",
+      "global": true,
+      "types": [
+        "dgm:CT_ColorTransformHeaderLst"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:colorsDefHdr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.5",
+          "title": "Color Transform Header List",
+          "page": 3549
+        }
+      ]
+    },
+    {
+      "name": "dgm:constr",
+      "types": [
+        "dgm:CT_Constraint"
+      ],
+      "attributes": [
+        {
+          "name": "fact",
+          "type": "xsd:double",
+          "default": "1"
+        },
+        {
+          "name": "for",
+          "type": "dgm:ST_ConstraintRelationship",
+          "default": "self"
+        },
+        {
+          "name": "forName",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "op",
+          "type": "dgm:ST_BoolOperator",
+          "default": "none"
+        },
+        {
+          "name": "ptType",
+          "type": "dgm:ST_ElementType",
+          "default": "all"
+        },
+        {
+          "name": "refFor",
+          "type": "dgm:ST_ConstraintRelationship",
+          "default": "self"
+        },
+        {
+          "name": "refForName",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "refPtType",
+          "type": "dgm:ST_ElementType",
+          "default": "all"
+        },
+        {
+          "name": "refType",
+          "type": "dgm:ST_ConstraintType",
+          "default": "none"
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_ConstraintType",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:constrLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.8",
+          "title": "Constraint",
+          "page": 3512
+        }
+      ]
+    },
+    {
+      "name": "dgm:constrLst",
+      "types": [
+        "dgm:CT_Constraints"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:constr"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.9",
+          "title": "Constraint List",
+          "page": 3516
+        }
+      ]
+    },
+    {
+      "name": "dgm:cxn",
+      "types": [
+        "dgm:CT_Cxn"
+      ],
+      "attributes": [
+        {
+          "name": "destId",
+          "type": "dgm:ST_ModelId",
+          "required": true
+        },
+        {
+          "name": "destOrd",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "modelId",
+          "type": "dgm:ST_ModelId",
+          "required": true
+        },
+        {
+          "name": "parTransId",
+          "type": "dgm:ST_ModelId",
+          "default": "0"
+        },
+        {
+          "name": "presId",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "sibTransId",
+          "type": "dgm:ST_ModelId",
+          "default": "0"
+        },
+        {
+          "name": "srcId",
+          "type": "dgm:ST_ModelId",
+          "required": true
+        },
+        {
+          "name": "srcOrd",
+          "type": "xsd:unsignedInt",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_CxnType",
+          "default": "parOf"
+        }
+      ],
+      "children": [
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:cxnLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.2",
+          "title": "Connection",
+          "page": 3536,
+          "officeNotes": [
+            "2.1.1623"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:cxnLst",
+      "types": [
+        "dgm:CT_CxnList"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:cxn"
+      ],
+      "parents": [
+        "dgm:dataModel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.3",
+          "title": "Connection List",
+          "page": 3539
+        }
+      ]
+    },
+    {
+      "name": "dgm:dataModel",
+      "global": true,
+      "types": [
+        "dgm:CT_DataModel"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:ptLst",
+        "dgm:cxnLst",
+        "dgm:bg",
+        "dgm:whole",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:clrData",
+        "dgm:sampData",
+        "dgm:styleData"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.10",
+          "title": "Data Model",
+          "page": 3516
+        }
+      ]
+    },
+    {
+      "name": "dgm:desc",
+      "types": [
+        "dgm:CT_CTDescription",
+        "dgm:CT_Description",
+        "dgm:CT_SDDescription"
+      ],
+      "attributes": [
+        {
+          "name": "lang",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:colorsDef",
+        "dgm:colorsDefHdr",
+        "dgm:layoutDef",
+        "dgm:layoutDefHdr",
+        "dgm:styleDef",
+        "dgm:styleDefHdr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.11",
+          "title": "Description",
+          "page": 3516
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.6",
+          "title": "Description",
+          "page": 3549
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.3",
+          "title": "Style Label Description",
+          "page": 3558
+        }
+      ]
+    },
+    {
+      "name": "dgm:dir",
+      "types": [
+        "dgm:CT_Direction"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_Direction",
+          "default": "norm"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.6",
+          "title": "Diagram Direction",
+          "page": 3569
+        }
+      ]
+    },
+    {
+      "name": "dgm:effectClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.7",
+          "title": "Effect Color List",
+          "page": 3550,
+          "officeNotes": [
+            "2.1.1629"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:else",
+      "types": [
+        "dgm:CT_Otherwise"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:alg",
+        "dgm:shape",
+        "dgm:presOf",
+        "dgm:constrLst",
+        "dgm:ruleLst",
+        "dgm:forEach",
+        "dgm:layoutNode",
+        "dgm:choose",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:choose"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.12",
+          "title": "Else",
+          "page": 3517
+        }
+      ]
+    },
+    {
+      "name": "dgm:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "dgm:alg",
+        "dgm:colorsDef",
+        "dgm:colorsDefHdr",
+        "dgm:constr",
+        "dgm:cxn",
+        "dgm:dataModel",
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutDef",
+        "dgm:layoutDefHdr",
+        "dgm:layoutNode",
+        "dgm:presOf",
+        "dgm:pt",
+        "dgm:rule",
+        "dgm:shape",
+        "dgm:styleDef",
+        "dgm:styleDefHdr",
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.13",
+          "title": "Extension List",
+          "page": 3518,
+          "officeNotes": [
+            "2.1.1617"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:fillClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.8",
+          "title": "Fill Color List",
+          "page": 3551,
+          "officeNotes": [
+            "2.1.1630"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:forEach",
+      "types": [
+        "dgm:CT_ForEach"
+      ],
+      "attributes": [
+        {
+          "name": "axis",
+          "type": "dgm:ST_AxisTypes",
+          "default": "none"
+        },
+        {
+          "name": "cnt",
+          "type": "dgm:ST_UnsignedInts",
+          "default": "0"
+        },
+        {
+          "name": "hideLastTrans",
+          "type": "dgm:ST_Booleans",
+          "default": "true"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "ptType",
+          "type": "dgm:ST_ElementTypes",
+          "default": "all"
+        },
+        {
+          "name": "ref",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "st",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        },
+        {
+          "name": "step",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        }
+      ],
+      "children": [
+        "dgm:alg",
+        "dgm:shape",
+        "dgm:presOf",
+        "dgm:constrLst",
+        "dgm:ruleLst",
+        "dgm:forEach",
+        "dgm:layoutNode",
+        "dgm:choose",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.14",
+          "title": "For Each",
+          "page": 3518,
+          "officeNotes": [
+            "2.1.1618"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:hierBranch",
+      "types": [
+        "dgm:CT_HierBranchStyle"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_HierBranchStyle",
+          "default": "std"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.7",
+          "title": "Organization Chart Branch Style",
+          "page": 3569
+        }
+      ]
+    },
+    {
+      "name": "dgm:if",
+      "types": [
+        "dgm:CT_When"
+      ],
+      "attributes": [
+        {
+          "name": "arg",
+          "type": "dgm:ST_FunctionArgument",
+          "default": "none"
+        },
+        {
+          "name": "axis",
+          "type": "dgm:ST_AxisTypes",
+          "default": "none"
+        },
+        {
+          "name": "cnt",
+          "type": "dgm:ST_UnsignedInts",
+          "default": "0"
+        },
+        {
+          "name": "func",
+          "type": "dgm:ST_FunctionType",
+          "required": true
+        },
+        {
+          "name": "hideLastTrans",
+          "type": "dgm:ST_Booleans",
+          "default": "true"
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "op",
+          "type": "dgm:ST_FunctionOperator",
+          "required": true
+        },
+        {
+          "name": "ptType",
+          "type": "dgm:ST_ElementTypes",
+          "default": "all"
+        },
+        {
+          "name": "st",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        },
+        {
+          "name": "step",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        },
+        {
+          "name": "val",
+          "type": "dgm:ST_FunctionValue",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:alg",
+        "dgm:shape",
+        "dgm:presOf",
+        "dgm:constrLst",
+        "dgm:ruleLst",
+        "dgm:forEach",
+        "dgm:layoutNode",
+        "dgm:choose",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:choose"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.15",
+          "title": "If",
+          "page": 3520
+        }
+      ]
+    },
+    {
+      "name": "dgm:layoutDef",
+      "global": true,
+      "types": [
+        "dgm:CT_DiagramDefinition"
+      ],
+      "attributes": [
+        {
+          "name": "defStyle",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:sampData",
+        "dgm:styleData",
+        "dgm:clrData",
+        "dgm:layoutNode",
+        "dgm:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.16",
+          "title": "Layout Definition",
+          "page": 3523
+        }
+      ]
+    },
+    {
+      "name": "dgm:layoutDefHdr",
+      "global": true,
+      "types": [
+        "dgm:CT_DiagramDefinitionHeader"
+      ],
+      "attributes": [
+        {
+          "name": "defStyle",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "resId",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:layoutDefHdrLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.17",
+          "title": "Layout Definition Header",
+          "page": 3524
+        }
+      ]
+    },
+    {
+      "name": "dgm:layoutDefHdrLst",
+      "global": true,
+      "types": [
+        "dgm:CT_DiagramDefinitionHeaderLst"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:layoutDefHdr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.18",
+          "title": "Diagram Layout Header List",
+          "page": 3525
+        }
+      ]
+    },
+    {
+      "name": "dgm:layoutNode",
+      "types": [
+        "dgm:CT_LayoutNode"
+      ],
+      "attributes": [
+        {
+          "name": "chOrder",
+          "type": "dgm:ST_ChildOrderType",
+          "default": "b"
+        },
+        {
+          "name": "moveWith",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "styleLbl",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:alg",
+        "dgm:shape",
+        "dgm:presOf",
+        "dgm:constrLst",
+        "dgm:ruleLst",
+        "dgm:varLst",
+        "dgm:forEach",
+        "dgm:layoutNode",
+        "dgm:choose",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutDef",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.19",
+          "title": "Layout Node",
+          "page": 3525
+        }
+      ]
+    },
+    {
+      "name": "dgm:linClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.9",
+          "title": "Line Color List",
+          "page": 3552,
+          "officeNotes": [
+            "2.1.1631"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:orgChart",
+      "types": [
+        "dgm:CT_OrgChart"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.6.8",
+          "title": "Show Organization Chart User Interface",
+          "page": 3570
+        }
+      ]
+    },
+    {
+      "name": "dgm:param",
+      "types": [
+        "dgm:CT_Parameter"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "dgm:ST_ParameterId",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "dgm:ST_ParameterVal",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:alg"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.20",
+          "title": "Parameter",
+          "page": 3526,
+          "officeNotes": [
+            "2.1.1619"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:prSet",
+      "types": [
+        "dgm:CT_ElemPropSet"
+      ],
+      "attributes": [
+        {
+          "name": "coherent3DOff",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "csCatId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "csTypeId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "custAng",
+          "type": "xsd:int"
+        },
+        {
+          "name": "custFlipHor",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "custFlipVert",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "custLinFactNeighborX",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custLinFactNeighborY",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custLinFactX",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custLinFactY",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custRadScaleInc",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custRadScaleRad",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custScaleX",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custScaleY",
+          "type": "dgm:ST_PrSetCustVal"
+        },
+        {
+          "name": "custSzX",
+          "type": "xsd:int"
+        },
+        {
+          "name": "custSzY",
+          "type": "xsd:int"
+        },
+        {
+          "name": "custT",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "loCatId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "loTypeId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "phldr",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "phldrT",
+          "type": "xsd:string"
+        },
+        {
+          "name": "presAssocID",
+          "type": "dgm:ST_ModelId"
+        },
+        {
+          "name": "presName",
+          "type": "xsd:string"
+        },
+        {
+          "name": "presStyleCnt",
+          "type": "xsd:int"
+        },
+        {
+          "name": "presStyleIdx",
+          "type": "xsd:int"
+        },
+        {
+          "name": "presStyleLbl",
+          "type": "xsd:string"
+        },
+        {
+          "name": "qsCatId",
+          "type": "xsd:string"
+        },
+        {
+          "name": "qsTypeId",
+          "type": "xsd:string"
+        }
+      ],
+      "children": [
+        "dgm:presLayoutVars",
+        "dgm:style"
+      ],
+      "parents": [
+        "dgm:pt"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.4",
+          "title": "Property Set",
+          "page": 3540,
+          "officeNotes": [
+            "2.1.1624"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:presLayoutVars",
+      "types": [
+        "dgm:CT_LayoutVariablePropertySet"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:orgChart",
+        "dgm:chMax",
+        "dgm:chPref",
+        "dgm:bulletEnabled",
+        "dgm:dir",
+        "dgm:hierBranch",
+        "dgm:animOne",
+        "dgm:animLvl",
+        "dgm:resizeHandles"
+      ],
+      "parents": [
+        "dgm:prSet"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.4",
+          "title": "Presentation Layout Variables",
+          "page": 3559
+        }
+      ]
+    },
+    {
+      "name": "dgm:presOf",
+      "types": [
+        "dgm:CT_PresentationOf"
+      ],
+      "attributes": [
+        {
+          "name": "axis",
+          "type": "dgm:ST_AxisTypes",
+          "default": "none"
+        },
+        {
+          "name": "cnt",
+          "type": "dgm:ST_UnsignedInts",
+          "default": "0"
+        },
+        {
+          "name": "hideLastTrans",
+          "type": "dgm:ST_Booleans",
+          "default": "true"
+        },
+        {
+          "name": "ptType",
+          "type": "dgm:ST_ElementTypes",
+          "default": "all"
+        },
+        {
+          "name": "st",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        },
+        {
+          "name": "step",
+          "type": "dgm:ST_Ints",
+          "default": "1"
+        }
+      ],
+      "children": [
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.21",
+          "title": "Presentation Of",
+          "page": 3526
+        }
+      ]
+    },
+    {
+      "name": "dgm:pt",
+      "types": [
+        "dgm:CT_Pt"
+      ],
+      "attributes": [
+        {
+          "name": "cxnId",
+          "type": "dgm:ST_ModelId",
+          "default": "0"
+        },
+        {
+          "name": "modelId",
+          "type": "dgm:ST_ModelId",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_PtType",
+          "default": "node"
+        }
+      ],
+      "children": [
+        "dgm:prSet",
+        "dgm:spPr",
+        "dgm:t",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:ptLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.5",
+          "title": "Point",
+          "page": 3543,
+          "officeNotes": [
+            "2.1.1625"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ptLst",
+      "types": [
+        "dgm:CT_PtList"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:pt"
+      ],
+      "parents": [
+        "dgm:dataModel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.6",
+          "title": "Point List",
+          "page": 3545
+        }
+      ]
+    },
+    {
+      "name": "dgm:relIds",
+      "global": true,
+      "types": [
+        "dgm:CT_RelIds"
+      ],
+      "attributes": [
+        {
+          "name": "r:cs",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        },
+        {
+          "name": "r:dm",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        },
+        {
+          "name": "r:lo",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        },
+        {
+          "name": "r:qs",
+          "type": "r:ST_RelationshipId",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.22",
+          "title": "Explicit Relationships to Diagram Parts",
+          "page": 3528
+        }
+      ]
+    },
+    {
+      "name": "dgm:resizeHandles",
+      "types": [
+        "dgm:CT_ResizeHandles"
+      ],
+      "attributes": [
+        {
+          "name": "val",
+          "type": "dgm:ST_ResizeHandlesStr",
+          "default": "rel"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.23",
+          "title": "Shape Resize Style",
+          "page": 3529
+        }
+      ]
+    },
+    {
+      "name": "dgm:rule",
+      "types": [
+        "dgm:CT_NumericRule"
+      ],
+      "attributes": [
+        {
+          "name": "fact",
+          "type": "xsd:double",
+          "default": "NaN"
+        },
+        {
+          "name": "for",
+          "type": "dgm:ST_ConstraintRelationship",
+          "default": "self"
+        },
+        {
+          "name": "forName",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "max",
+          "type": "xsd:double",
+          "default": "NaN"
+        },
+        {
+          "name": "ptType",
+          "type": "dgm:ST_ElementType",
+          "default": "all"
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_ConstraintType",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "xsd:double",
+          "default": "NaN"
+        }
+      ],
+      "children": [
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:ruleLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.24",
+          "title": "Rule",
+          "page": 3530
+        }
+      ]
+    },
+    {
+      "name": "dgm:ruleLst",
+      "types": [
+        "dgm:CT_Rules"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:rule"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.25",
+          "title": "Rule List",
+          "page": 3532
+        }
+      ]
+    },
+    {
+      "name": "dgm:sampData",
+      "types": [
+        "dgm:CT_SampleData"
+      ],
+      "attributes": [
+        {
+          "name": "useDef",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "dgm:dataModel"
+      ],
+      "parents": [
+        "dgm:layoutDef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.26",
+          "title": "Sample Data",
+          "page": 3532,
+          "officeNotes": [
+            "2.1.1620"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:scene3d",
+      "types": [
+        "a:CT_Scene3D"
+      ],
+      "attributes": [],
+      "children": [
+        "a:camera",
+        "a:lightRig",
+        "a:backdrop",
+        "a:extLst"
+      ],
+      "parents": [
+        "dgm:styleDef",
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.5",
+          "title": "3-D Scene",
+          "page": 3559
+        }
+      ]
+    },
+    {
+      "name": "dgm:shape",
+      "types": [
+        "dgm:CT_Shape"
+      ],
+      "attributes": [
+        {
+          "name": "blipPhldr",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "hideGeom",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "lkTxEntry",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "r:blip",
+          "type": "r:ST_RelationshipId"
+        },
+        {
+          "name": "rot",
+          "type": "xsd:double",
+          "default": "0"
+        },
+        {
+          "name": "type",
+          "type": "dgm:ST_LayoutShapeType",
+          "default": "none"
+        },
+        {
+          "name": "zOrderOff",
+          "type": "xsd:int",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "dgm:adjLst",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:else",
+        "dgm:forEach",
+        "dgm:if",
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.27",
+          "title": "Shape",
+          "page": 3533,
+          "officeNotes": [
+            "2.1.1621"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:sp3d",
+      "types": [
+        "a:CT_Shape3D"
+      ],
+      "attributes": [
+        {
+          "name": "contourW",
+          "type": "a:ST_PositiveCoordinate",
+          "default": "0"
+        },
+        {
+          "name": "extrusionH",
+          "type": "a:ST_PositiveCoordinate",
+          "default": "0"
+        },
+        {
+          "name": "prstMaterial",
+          "type": "a:ST_PresetMaterialType",
+          "default": "warmMatte"
+        },
+        {
+          "name": "z",
+          "type": "a:ST_Coordinate",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "a:bevelT",
+        "a:bevelB",
+        "a:extrusionClr",
+        "a:contourClr",
+        "a:extLst"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.6",
+          "title": "3-D Shape Properties",
+          "page": 3559,
+          "officeNotes": [
+            "2.1.1635"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "dgm:pt"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.7",
+          "title": "Shape Properties",
+          "page": 3545,
+          "officeNotes": [
+            "2.1.1626"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "dgm:prSet",
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.28",
+          "title": "Shape Style",
+          "page": 3534
+        }
+      ]
+    },
+    {
+      "name": "dgm:styleData",
+      "types": [
+        "dgm:CT_SampleData"
+      ],
+      "attributes": [
+        {
+          "name": "useDef",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "dgm:dataModel"
+      ],
+      "parents": [
+        "dgm:layoutDef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.29",
+          "title": "Style Data",
+          "page": 3534,
+          "officeNotes": [
+            "2.1.1622"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:styleDef",
+      "global": true,
+      "types": [
+        "dgm:CT_StyleDefinition"
+      ],
+      "attributes": [
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:scene3d",
+        "dgm:styleLbl",
+        "dgm:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.7",
+          "title": "Style Definition",
+          "page": 3561
+        }
+      ]
+    },
+    {
+      "name": "dgm:styleDefHdr",
+      "global": true,
+      "types": [
+        "dgm:CT_StyleDefinitionHeader"
+      ],
+      "attributes": [
+        {
+          "name": "minVer",
+          "type": "xsd:string"
+        },
+        {
+          "name": "resId",
+          "type": "xsd:int",
+          "default": "0"
+        },
+        {
+          "name": "uniqueId",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:title",
+        "dgm:desc",
+        "dgm:catLst",
+        "dgm:extLst"
+      ],
+      "parents": [
+        "dgm:styleDefHdrLst"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.8",
+          "title": "Style Definition Header",
+          "page": 3563
+        }
+      ]
+    },
+    {
+      "name": "dgm:styleDefHdrLst",
+      "global": true,
+      "types": [
+        "dgm:CT_StyleDefinitionHeaderLst"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:styleDefHdr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.9",
+          "title": "List of Style Definition Headers",
+          "page": 3564
+        }
+      ]
+    },
+    {
+      "name": "dgm:styleLbl",
+      "types": [
+        "dgm:CT_CTStyleLabel",
+        "dgm:CT_StyleLabel"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [
+        "dgm:fillClrLst",
+        "dgm:linClrLst",
+        "dgm:effectClrLst",
+        "dgm:txLinClrLst",
+        "dgm:txFillClrLst",
+        "dgm:txEffectClrLst",
+        "dgm:extLst",
+        "dgm:scene3d",
+        "dgm:sp3d",
+        "dgm:txPr",
+        "dgm:style"
+      ],
+      "parents": [
+        "dgm:colorsDef",
+        "dgm:styleDef"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.10",
+          "title": "Style Label",
+          "page": 3553
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.10",
+          "title": "Style Label",
+          "page": 3564,
+          "officeNotes": [
+            "2.1.1636"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:t",
+      "types": [
+        "a:CT_TextBody"
+      ],
+      "attributes": [],
+      "children": [
+        "a:bodyPr",
+        "a:lstStyle",
+        "a:p"
+      ],
+      "parents": [
+        "dgm:pt"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.8",
+          "title": "Text Body",
+          "page": 3546,
+          "officeNotes": [
+            "2.1.1627"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:title",
+      "types": [
+        "dgm:CT_CTName",
+        "dgm:CT_Name",
+        "dgm:CT_SDName"
+      ],
+      "attributes": [
+        {
+          "name": "lang",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "dgm:colorsDef",
+        "dgm:colorsDefHdr",
+        "dgm:layoutDef",
+        "dgm:layoutDefHdr",
+        "dgm:styleDef",
+        "dgm:styleDefHdr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.30",
+          "title": "Title",
+          "page": 3535
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.11",
+          "title": "Title",
+          "page": 3554
+        },
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.11",
+          "title": "Title",
+          "page": 3565
+        }
+      ]
+    },
+    {
+      "name": "dgm:txEffectClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.12",
+          "title": "Text Effect Color List",
+          "page": 3554,
+          "officeNotes": [
+            "2.1.1632"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:txFillClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.13",
+          "title": "Text Fill Color List",
+          "page": 3555,
+          "officeNotes": [
+            "2.1.1633"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:txLinClrLst",
+      "types": [
+        "dgm:CT_Colors"
+      ],
+      "attributes": [
+        {
+          "name": "hueDir",
+          "type": "dgm:ST_HueDir",
+          "default": "cw"
+        },
+        {
+          "name": "meth",
+          "type": "dgm:ST_ClrAppMethod",
+          "default": "span"
+        }
+      ],
+      "children": [
+        "a:scrgbClr",
+        "a:srgbClr",
+        "a:hslClr",
+        "a:sysClr",
+        "a:schemeClr",
+        "a:prstClr"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.4.14",
+          "title": "Text Line Color List",
+          "page": 3556,
+          "officeNotes": [
+            "2.1.1634"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:txPr",
+      "types": [
+        "dgm:CT_TextProps"
+      ],
+      "attributes": [],
+      "children": [
+        "a:sp3d",
+        "a:flatTx"
+      ],
+      "parents": [
+        "dgm:styleLbl"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.5.12",
+          "title": "Text Properties",
+          "page": 3566
+        }
+      ]
+    },
+    {
+      "name": "dgm:varLst",
+      "types": [
+        "dgm:CT_LayoutVariablePropertySet"
+      ],
+      "attributes": [],
+      "children": [
+        "dgm:orgChart",
+        "dgm:chMax",
+        "dgm:chPref",
+        "dgm:bulletEnabled",
+        "dgm:dir",
+        "dgm:hierBranch",
+        "dgm:animOne",
+        "dgm:animLvl",
+        "dgm:resizeHandles"
+      ],
+      "parents": [
+        "dgm:layoutNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.2.31",
+          "title": "Variable List",
+          "page": 3535
+        }
+      ]
+    },
+    {
+      "name": "dgm:whole",
+      "types": [
+        "a:CT_WholeE2oFormatting"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag"
+      ],
+      "parents": [
+        "dgm:dataModel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.3.9",
+          "title": "Whole E2O Formatting",
+          "page": 3546
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "dgm:CT_Adj",
+      "content": "empty",
+      "attributes": [
+        "idx",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:adj"
+      ]
+    },
+    {
+      "name": "dgm:CT_AdjLst",
+      "content": "elements",
+      "model": "dgm:adj*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:adjLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Algorithm",
+      "content": "elements",
+      "model": "(dgm:param*, dgm:extLst?)",
+      "attributes": [
+        "rev",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:alg"
+      ]
+    },
+    {
+      "name": "dgm:CT_AnimLvl",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:animLvl"
+      ]
+    },
+    {
+      "name": "dgm:CT_AnimOne",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:animOne"
+      ]
+    },
+    {
+      "name": "dgm:CT_BulletEnabled",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:bulletEnabled"
+      ]
+    },
+    {
+      "name": "dgm:CT_CTCategories",
+      "content": "elements",
+      "model": "(dgm:cat*)*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:catLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_CTCategory",
+      "content": "empty",
+      "attributes": [
+        "pri",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:cat"
+      ]
+    },
+    {
+      "name": "dgm:CT_CTDescription",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:desc"
+      ]
+    },
+    {
+      "name": "dgm:CT_CTName",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:title"
+      ]
+    },
+    {
+      "name": "dgm:CT_CTStyleLabel",
+      "content": "elements",
+      "model": "(dgm:fillClrLst?, dgm:linClrLst?, dgm:effectClrLst?, dgm:txLinClrLst?, dgm:txFillClrLst?, dgm:txEffectClrLst?, dgm:extLst?)",
+      "attributes": [
+        "name"
+      ],
+      "usedBy": [
+        "dgm:styleLbl"
+      ]
+    },
+    {
+      "name": "dgm:CT_Categories",
+      "content": "elements",
+      "model": "dgm:cat*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:catLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Category",
+      "content": "empty",
+      "attributes": [
+        "pri",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:cat"
+      ]
+    },
+    {
+      "name": "dgm:CT_ChildMax",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:chMax"
+      ]
+    },
+    {
+      "name": "dgm:CT_ChildPref",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:chPref"
+      ]
+    },
+    {
+      "name": "dgm:CT_Choose",
+      "content": "elements",
+      "model": "(dgm:if+, dgm:else?)",
+      "attributes": [
+        "name"
+      ],
+      "usedBy": [
+        "dgm:choose"
+      ]
+    },
+    {
+      "name": "dgm:CT_ColorTransform",
+      "content": "elements",
+      "model": "(dgm:title*, dgm:desc*, dgm:catLst?, dgm:styleLbl*, dgm:extLst?)",
+      "attributes": [
+        "minVer",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:colorsDef"
+      ]
+    },
+    {
+      "name": "dgm:CT_ColorTransformHeader",
+      "content": "elements",
+      "model": "(dgm:title+, dgm:desc+, dgm:catLst?, dgm:extLst?)",
+      "attributes": [
+        "minVer",
+        "resId",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:colorsDefHdr"
+      ]
+    },
+    {
+      "name": "dgm:CT_ColorTransformHeaderLst",
+      "content": "elements",
+      "model": "dgm:colorsDefHdr*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:colorsDefHdrLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Colors",
+      "content": "elements",
+      "model": "(a:scrgbClr | a:srgbClr | a:hslClr | a:sysClr | a:schemeClr | a:prstClr)*",
+      "attributes": [
+        "hueDir",
+        "meth"
+      ],
+      "usedBy": [
+        "dgm:effectClrLst",
+        "dgm:fillClrLst",
+        "dgm:linClrLst",
+        "dgm:txEffectClrLst",
+        "dgm:txFillClrLst",
+        "dgm:txLinClrLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Constraint",
+      "content": "elements",
+      "model": "dgm:extLst?",
+      "attributes": [
+        "fact",
+        "for",
+        "forName",
+        "op",
+        "ptType",
+        "refFor",
+        "refForName",
+        "refPtType",
+        "refType",
+        "type",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:constr"
+      ]
+    },
+    {
+      "name": "dgm:CT_Constraints",
+      "content": "elements",
+      "model": "dgm:constr*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:constrLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Cxn",
+      "content": "elements",
+      "model": "dgm:extLst?",
+      "attributes": [
+        "destId",
+        "destOrd",
+        "modelId",
+        "parTransId",
+        "presId",
+        "sibTransId",
+        "srcId",
+        "srcOrd",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:cxn"
+      ]
+    },
+    {
+      "name": "dgm:CT_CxnList",
+      "content": "elements",
+      "model": "dgm:cxn*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:cxnLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_DataModel",
+      "content": "elements",
+      "model": "(dgm:ptLst, dgm:cxnLst?, dgm:bg?, dgm:whole?, dgm:extLst?)",
+      "attributes": [],
+      "usedBy": [
+        "dgm:dataModel"
+      ]
+    },
+    {
+      "name": "dgm:CT_Description",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:desc"
+      ]
+    },
+    {
+      "name": "dgm:CT_DiagramDefinition",
+      "content": "elements",
+      "model": "(dgm:title*, dgm:desc*, dgm:catLst?, dgm:sampData?, dgm:styleData?, dgm:clrData?, dgm:layoutNode, dgm:extLst?)",
+      "attributes": [
+        "defStyle",
+        "minVer",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:layoutDef"
+      ]
+    },
+    {
+      "name": "dgm:CT_DiagramDefinitionHeader",
+      "content": "elements",
+      "model": "(dgm:title+, dgm:desc+, dgm:catLst?, dgm:extLst?)",
+      "attributes": [
+        "defStyle",
+        "minVer",
+        "resId",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:layoutDefHdr"
+      ]
+    },
+    {
+      "name": "dgm:CT_DiagramDefinitionHeaderLst",
+      "content": "elements",
+      "model": "dgm:layoutDefHdr*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:layoutDefHdrLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Direction",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:dir"
+      ]
+    },
+    {
+      "name": "dgm:CT_ElemPropSet",
+      "content": "elements",
+      "model": "(dgm:presLayoutVars?, dgm:style?)",
+      "attributes": [
+        "coherent3DOff",
+        "csCatId",
+        "csTypeId",
+        "custAng",
+        "custFlipHor",
+        "custFlipVert",
+        "custLinFactNeighborX",
+        "custLinFactNeighborY",
+        "custLinFactX",
+        "custLinFactY",
+        "custRadScaleInc",
+        "custRadScaleRad",
+        "custScaleX",
+        "custScaleY",
+        "custSzX",
+        "custSzY",
+        "custT",
+        "loCatId",
+        "loTypeId",
+        "phldr",
+        "phldrT",
+        "presAssocID",
+        "presName",
+        "presStyleCnt",
+        "presStyleIdx",
+        "presStyleLbl",
+        "qsCatId",
+        "qsTypeId"
+      ],
+      "usedBy": [
+        "dgm:prSet"
+      ]
+    },
+    {
+      "name": "dgm:CT_ForEach",
+      "content": "elements",
+      "model": "(dgm:alg? | dgm:shape? | dgm:presOf? | dgm:constrLst? | dgm:ruleLst? | dgm:forEach | dgm:layoutNode | dgm:choose | dgm:extLst?)*",
+      "attributes": [
+        "axis",
+        "cnt",
+        "hideLastTrans",
+        "name",
+        "ptType",
+        "ref",
+        "st",
+        "step"
+      ],
+      "usedBy": [
+        "dgm:forEach"
+      ]
+    },
+    {
+      "name": "dgm:CT_HierBranchStyle",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:hierBranch"
+      ]
+    },
+    {
+      "name": "dgm:CT_LayoutNode",
+      "content": "elements",
+      "model": "(dgm:alg? | dgm:shape? | dgm:presOf? | dgm:constrLst? | dgm:ruleLst? | dgm:varLst? | dgm:forEach | dgm:layoutNode | dgm:choose | dgm:extLst?)*",
+      "attributes": [
+        "chOrder",
+        "moveWith",
+        "name",
+        "styleLbl"
+      ],
+      "usedBy": [
+        "dgm:layoutNode"
+      ]
+    },
+    {
+      "name": "dgm:CT_LayoutVariablePropertySet",
+      "content": "elements",
+      "model": "(dgm:orgChart?, dgm:chMax?, dgm:chPref?, dgm:bulletEnabled?, dgm:dir?, dgm:hierBranch?, dgm:animOne?, dgm:animLvl?, dgm:resizeHandles?)",
+      "attributes": [],
+      "usedBy": [
+        "dgm:presLayoutVars",
+        "dgm:varLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_Name",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:title"
+      ]
+    },
+    {
+      "name": "dgm:CT_NumericRule",
+      "content": "elements",
+      "model": "dgm:extLst?",
+      "attributes": [
+        "fact",
+        "for",
+        "forName",
+        "max",
+        "ptType",
+        "type",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:rule"
+      ]
+    },
+    {
+      "name": "dgm:CT_OrgChart",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:orgChart"
+      ]
+    },
+    {
+      "name": "dgm:CT_Otherwise",
+      "content": "elements",
+      "model": "(dgm:alg? | dgm:shape? | dgm:presOf? | dgm:constrLst? | dgm:ruleLst? | dgm:forEach | dgm:layoutNode | dgm:choose | dgm:extLst?)*",
+      "attributes": [
+        "name"
+      ],
+      "usedBy": [
+        "dgm:else"
+      ]
+    },
+    {
+      "name": "dgm:CT_Parameter",
+      "content": "empty",
+      "attributes": [
+        "type",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:param"
+      ]
+    },
+    {
+      "name": "dgm:CT_PresentationOf",
+      "content": "elements",
+      "model": "dgm:extLst?",
+      "attributes": [
+        "axis",
+        "cnt",
+        "hideLastTrans",
+        "ptType",
+        "st",
+        "step"
+      ],
+      "usedBy": [
+        "dgm:presOf"
+      ]
+    },
+    {
+      "name": "dgm:CT_Pt",
+      "content": "elements",
+      "model": "(dgm:prSet?, dgm:spPr?, dgm:t?, dgm:extLst?)",
+      "attributes": [
+        "cxnId",
+        "modelId",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:pt"
+      ]
+    },
+    {
+      "name": "dgm:CT_PtList",
+      "content": "elements",
+      "model": "dgm:pt*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:ptLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_RelIds",
+      "content": "empty",
+      "attributes": [
+        "r:cs",
+        "r:dm",
+        "r:lo",
+        "r:qs"
+      ],
+      "usedBy": [
+        "dgm:relIds"
+      ]
+    },
+    {
+      "name": "dgm:CT_ResizeHandles",
+      "content": "empty",
+      "attributes": [
+        "val"
+      ],
+      "usedBy": [
+        "dgm:resizeHandles"
+      ]
+    },
+    {
+      "name": "dgm:CT_Rules",
+      "content": "elements",
+      "model": "dgm:rule*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:ruleLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_SDCategories",
+      "content": "elements",
+      "model": "(dgm:cat*)*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:catLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_SDCategory",
+      "content": "empty",
+      "attributes": [
+        "pri",
+        "type"
+      ],
+      "usedBy": [
+        "dgm:cat"
+      ]
+    },
+    {
+      "name": "dgm:CT_SDDescription",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:desc"
+      ]
+    },
+    {
+      "name": "dgm:CT_SDName",
+      "content": "empty",
+      "attributes": [
+        "lang",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:title"
+      ]
+    },
+    {
+      "name": "dgm:CT_SampleData",
+      "content": "elements",
+      "model": "dgm:dataModel?",
+      "attributes": [
+        "useDef"
+      ],
+      "usedBy": [
+        "dgm:clrData",
+        "dgm:sampData",
+        "dgm:styleData"
+      ]
+    },
+    {
+      "name": "dgm:CT_Shape",
+      "content": "elements",
+      "model": "(dgm:adjLst?, dgm:extLst?)",
+      "attributes": [
+        "blipPhldr",
+        "hideGeom",
+        "lkTxEntry",
+        "r:blip",
+        "rot",
+        "type",
+        "zOrderOff"
+      ],
+      "usedBy": [
+        "dgm:shape"
+      ]
+    },
+    {
+      "name": "dgm:CT_StyleDefinition",
+      "content": "elements",
+      "model": "(dgm:title*, dgm:desc*, dgm:catLst?, dgm:scene3d?, dgm:styleLbl+, dgm:extLst?)",
+      "attributes": [
+        "minVer",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:styleDef"
+      ]
+    },
+    {
+      "name": "dgm:CT_StyleDefinitionHeader",
+      "content": "elements",
+      "model": "(dgm:title+, dgm:desc+, dgm:catLst?, dgm:extLst?)",
+      "attributes": [
+        "minVer",
+        "resId",
+        "uniqueId"
+      ],
+      "usedBy": [
+        "dgm:styleDefHdr"
+      ]
+    },
+    {
+      "name": "dgm:CT_StyleDefinitionHeaderLst",
+      "content": "elements",
+      "model": "dgm:styleDefHdr*",
+      "attributes": [],
+      "usedBy": [
+        "dgm:styleDefHdrLst"
+      ]
+    },
+    {
+      "name": "dgm:CT_StyleLabel",
+      "content": "elements",
+      "model": "(dgm:scene3d?, dgm:sp3d?, dgm:txPr?, dgm:style?, dgm:extLst?)",
+      "attributes": [
+        "name"
+      ],
+      "usedBy": [
+        "dgm:styleLbl"
+      ]
+    },
+    {
+      "name": "dgm:CT_TextProps",
+      "content": "elements",
+      "model": "(a:sp3d | a:flatTx)?",
+      "attributes": [],
+      "usedBy": [
+        "dgm:txPr"
+      ]
+    },
+    {
+      "name": "dgm:CT_When",
+      "content": "elements",
+      "model": "(dgm:alg? | dgm:shape? | dgm:presOf? | dgm:constrLst? | dgm:ruleLst? | dgm:forEach | dgm:layoutNode | dgm:choose | dgm:extLst?)*",
+      "attributes": [
+        "arg",
+        "axis",
+        "cnt",
+        "func",
+        "hideLastTrans",
+        "name",
+        "op",
+        "ptType",
+        "st",
+        "step",
+        "val"
+      ],
+      "usedBy": [
+        "dgm:if"
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "dgm:ST_AlgorithmType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "composite",
+        "conn",
+        "cycle",
+        "hierChild",
+        "hierRoot",
+        "pyra",
+        "lin",
+        "sp",
+        "tx",
+        "snake"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.1",
+          "title": "Algorithm Types",
+          "page": 3570
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_AnimLvlStr",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "lvl",
+        "ctr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.2",
+          "title": "Animation Level String Definition",
+          "page": 3571
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_AnimOneStr",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "one",
+        "branch"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.3",
+          "title": "One by One Animation Value Definition",
+          "page": 3572,
+          "officeNotes": [
+            "2.1.1637"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ArrowheadStyle",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "auto",
+        "arr",
+        "noArr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.4",
+          "title": "Arrowhead Styles",
+          "page": 3572
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_AutoTextRotation",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "upr",
+        "grav"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.5",
+          "title": "Auto Text Rotation",
+          "page": 3573
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_AxisType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "self",
+        "ch",
+        "des",
+        "desOrSelf",
+        "par",
+        "ancst",
+        "ancstOrSelf",
+        "followSib",
+        "precedSib",
+        "follow",
+        "preced",
+        "root",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.6",
+          "title": "Axis Type",
+          "page": 3573,
+          "officeNotes": [
+            "2.1.1638"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_AxisTypes",
+      "definition": "list of dgm:ST_AxisType",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.7",
+          "title": "Axis Type List",
+          "page": 3579
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_BendPoint",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "beg",
+        "def",
+        "end"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.8",
+          "title": "Bend Point",
+          "page": 3579
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_BoolOperator",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "equ",
+        "gte",
+        "lte"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.10",
+          "title": "Boolean Constraint",
+          "page": 3580
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Booleans",
+      "definition": "list of xsd:boolean",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.9",
+          "title": "Boolean List.",
+          "page": 3580
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Breakpoint",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "endCnv",
+        "bal",
+        "fixed"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.11",
+          "title": "Breakpoint",
+          "page": 3580
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_CenterShapeMapping",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "fNode"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.12",
+          "title": "Center Shape Mapping",
+          "page": 3581
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ChildAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "t",
+        "b",
+        "l",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.13",
+          "title": "Child Alignment",
+          "page": 3581
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ChildDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "horz",
+        "vert"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.14",
+          "title": "Child Direction",
+          "page": 3581
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ChildOrderType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "b",
+        "t"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.15",
+          "title": "Child Order",
+          "page": 3582
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ClrAppMethod",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "span",
+        "cycle",
+        "repeat"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.16",
+          "title": "Color Application Method Type",
+          "page": 3582
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ConnectorDimension",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "1D",
+        "2D",
+        "cust"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.17",
+          "title": "Connector Dimension",
+          "page": 3584
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ConnectorPoint",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "auto",
+        "bCtr",
+        "ctr",
+        "midL",
+        "midR",
+        "tCtr",
+        "bL",
+        "bR",
+        "tL",
+        "tR",
+        "radial"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.18",
+          "title": "Connector Point",
+          "page": 3584
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ConnectorRouting",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "stra",
+        "bend",
+        "curve",
+        "longCurve"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.19",
+          "title": "Connector Routing",
+          "page": 3585
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ConstraintRelationship",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "self",
+        "ch",
+        "des"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.20",
+          "title": "Constraint Relationship",
+          "page": 3586
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ConstraintType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "alignOff",
+        "begMarg",
+        "bendDist",
+        "begPad",
+        "b",
+        "bMarg",
+        "bOff",
+        "ctrX",
+        "ctrXOff",
+        "ctrY",
+        "ctrYOff",
+        "connDist",
+        "diam",
+        "endMarg",
+        "endPad",
+        "h",
+        "hArH",
+        "hOff",
+        "l",
+        "lMarg",
+        "lOff",
+        "r",
+        "rMarg",
+        "rOff",
+        "primFontSz",
+        "pyraAcctRatio",
+        "secFontSz",
+        "sibSp",
+        "secSibSp",
+        "sp",
+        "stemThick",
+        "t",
+        "tMarg",
+        "tOff",
+        "userA",
+        "userB",
+        "userC",
+        "userD",
+        "userE",
+        "userF",
+        "userG",
+        "userH",
+        "userI",
+        "userJ",
+        "userK",
+        "userL",
+        "userM",
+        "userN",
+        "userO",
+        "userP",
+        "userQ",
+        "userR",
+        "userS",
+        "userT",
+        "userU",
+        "userV",
+        "userW",
+        "userX",
+        "userY",
+        "userZ",
+        "w",
+        "wArH",
+        "wOff"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.21",
+          "title": "Constraint Type",
+          "page": 3586
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ContinueDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "revDir",
+        "sameDir"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.22",
+          "title": "Continue Direction",
+          "page": 3588
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_CxnType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "parOf",
+        "presOf",
+        "presParOf",
+        "unknownRelationship"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.23",
+          "title": "Connection Type",
+          "page": 3589
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_DiagramHorizontalAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "l",
+        "ctr",
+        "r",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.24",
+          "title": "Horizontal Alignment",
+          "page": 3590
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_DiagramTextAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "l",
+        "ctr",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.25",
+          "title": "Text Alignment",
+          "page": 3590
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Direction",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "norm",
+        "rev"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.26",
+          "title": "Diagram Direction Definition",
+          "page": 3591
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ElementType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "all",
+        "doc",
+        "node",
+        "norm",
+        "nonNorm",
+        "asst",
+        "nonAsst",
+        "parTrans",
+        "pres",
+        "sibTrans"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.27",
+          "title": "Data Point Type",
+          "page": 3591
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ElementTypes",
+      "definition": "list of dgm:ST_ElementType",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.28",
+          "title": "Diagream Layout Node Type List",
+          "page": 3592
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FallbackDimension",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "1D",
+        "2D"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.29",
+          "title": "Fallback Dimension",
+          "page": 3592
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FlowDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "row",
+        "col"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.30",
+          "title": "Flow Direction",
+          "page": 3592
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FunctionArgument",
+      "definition": "union of dgm:ST_VariableType",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.31",
+          "title": "Function Argument",
+          "page": 3593
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FunctionOperator",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "equ",
+        "neq",
+        "gt",
+        "lt",
+        "gte",
+        "lte"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.32",
+          "title": "Function Operator",
+          "page": 3593
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FunctionType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "cnt",
+        "pos",
+        "revPos",
+        "posEven",
+        "posOdd",
+        "var",
+        "depth",
+        "maxDepth"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.33",
+          "title": "Function Type",
+          "page": 3593
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_FunctionValue",
+      "definition": "union of xsd:int, xsd:boolean, dgm:ST_Direction, dgm:ST_HierBranchStyle, dgm:ST_AnimOneStr, dgm:ST_AnimLvlStr, dgm:ST_ResizeHandlesStr",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.34",
+          "title": "Function Value",
+          "page": 3594
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_GrowDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "tL",
+        "tR",
+        "bL",
+        "bR"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.35",
+          "title": "Grow Direction",
+          "page": 3594
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_HierBranchStyle",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "l",
+        "r",
+        "hang",
+        "std",
+        "init"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.37",
+          "title": "Hierarchy Branch Style Definition",
+          "page": 3596
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_HierarchyAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "tL",
+        "tR",
+        "tCtrCh",
+        "tCtrDes",
+        "bL",
+        "bR",
+        "bCtrCh",
+        "bCtrDes",
+        "lT",
+        "lB",
+        "lCtrCh",
+        "lCtrDes",
+        "rT",
+        "rB",
+        "rCtrCh",
+        "rCtrDes"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.36",
+          "title": "Hierarchy Alignment",
+          "page": 3595
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_HueDir",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "cw",
+        "ccw"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.38",
+          "title": "Hue Direction",
+          "page": 3598
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Index1",
+      "definition": "restriction of xsd:unsignedInt",
+      "facets": {
+        "minInclusive": "1"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.39",
+          "title": "1-Based Index",
+          "page": 3598
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Ints",
+      "definition": "list of xsd:int",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.40",
+          "title": "Integer List",
+          "page": 3598
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_LayoutShapeType",
+      "definition": "union of a:ST_ShapeType, dgm:ST_OutputShapeType",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.41",
+          "title": "Layout Shape Type",
+          "page": 3598
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_LinearDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "fromL",
+        "fromR",
+        "fromT",
+        "fromB"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.42",
+          "title": "Linear Direction",
+          "page": 3599
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ModelId",
+      "definition": "union of xsd:int, s:ST_Guid",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.43",
+          "title": "Model Identifier",
+          "page": 3599
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_NodeCount",
+      "definition": "restriction of xsd:int",
+      "facets": {
+        "minInclusive": "-1"
+      },
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.44",
+          "title": "Number of Nodes Definition",
+          "page": 3599
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_NodeHorizontalAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "l",
+        "ctr",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.45",
+          "title": "Node Horizontal Alignment",
+          "page": 3600
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_NodeVerticalAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "t",
+        "mid",
+        "b"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.46",
+          "title": "Node Vertical Alignment",
+          "page": 3600
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_Offset",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "ctr",
+        "off"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.47",
+          "title": "Offset",
+          "page": 3600
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_OutputShapeType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "conn"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.48",
+          "title": "Output Shape Type",
+          "page": 3601
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ParameterId",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "horzAlign",
+        "vertAlign",
+        "chDir",
+        "chAlign",
+        "secChAlign",
+        "linDir",
+        "secLinDir",
+        "stElem",
+        "bendPt",
+        "connRout",
+        "begSty",
+        "endSty",
+        "dim",
+        "rotPath",
+        "ctrShpMap",
+        "nodeHorzAlign",
+        "nodeVertAlign",
+        "fallback",
+        "txDir",
+        "pyraAcctPos",
+        "pyraAcctTxMar",
+        "txBlDir",
+        "txAnchorHorz",
+        "txAnchorVert",
+        "txAnchorHorzCh",
+        "txAnchorVertCh",
+        "parTxLTRAlign",
+        "parTxRTLAlign",
+        "shpTxLTRAlignCh",
+        "shpTxRTLAlignCh",
+        "autoTxRot",
+        "grDir",
+        "flowDir",
+        "contDir",
+        "bkpt",
+        "off",
+        "hierAlign",
+        "bkPtFixedVal",
+        "stBulletLvl",
+        "stAng",
+        "spanAng",
+        "ar",
+        "lnSpPar",
+        "lnSpAfParP",
+        "lnSpCh",
+        "lnSpAfChP",
+        "rtShortDist",
+        "alignTx",
+        "pyraLvlNode",
+        "pyraAcctBkgdNode",
+        "pyraAcctTxNode",
+        "srcNode",
+        "dstNode",
+        "begPts",
+        "endPts"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.49",
+          "title": "Parameter Identifier",
+          "page": 3601,
+          "officeNotes": [
+            "2.1.1639"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ParameterVal",
+      "definition": "union of dgm:ST_DiagramHorizontalAlignment, dgm:ST_VerticalAlignment, dgm:ST_ChildDirection, dgm:ST_ChildAlignment, dgm:ST_SecondaryChildAlignment, dgm:ST_LinearDirection, dgm:ST_SecondaryLinearDirection, dgm:ST_StartingElement, dgm:ST_BendPoint, dgm:ST_ConnectorRouting, dgm:ST_ArrowheadStyle, dgm:ST_ConnectorDimension, dgm:ST_RotationPath, dgm:ST_CenterShapeMapping, dgm:ST_NodeHorizontalAlignment, dgm:ST_NodeVerticalAlignment, dgm:ST_FallbackDimension, dgm:ST_TextDirection, dgm:ST_PyramidAccentPosition, dgm:ST_PyramidAccentTextMargin, dgm:ST_TextBlockDirection, dgm:ST_TextAnchorHorizontal, dgm:ST_TextAnchorVertical, dgm:ST_DiagramTextAlignment, dgm:ST_AutoTextRotation, dgm:ST_GrowDirection, dgm:ST_FlowDirection, dgm:ST_ContinueDirection, dgm:ST_Breakpoint, dgm:ST_Offset, dgm:ST_HierarchyAlignment, xsd:int, xsd:double, xsd:boolean, xsd:string, dgm:ST_ConnectorPoint",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.50",
+          "title": "Parameter Values",
+          "page": 3604
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_PrSetCustVal",
+      "definition": "union of s:ST_Percentage, xsd:int",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.66",
+          "title": "Property Set Customized Value",
+          "page": 3612
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_PtType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "node",
+        "asst",
+        "doc",
+        "pres",
+        "parTrans",
+        "sibTrans"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.51",
+          "title": "Point Type",
+          "page": 3606
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_PyramidAccentPosition",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "bef",
+        "aft"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.52",
+          "title": "Pyramid Accent Position",
+          "page": 3606
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_PyramidAccentTextMargin",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "step",
+        "stack"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.53",
+          "title": "Pyramid Accent Text Margin",
+          "page": 3606
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_ResizeHandlesStr",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "exact",
+        "rel"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.54",
+          "title": "Resize Handle",
+          "page": 3608
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_RotationPath",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "alongPath"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.55",
+          "title": "Rotation Path",
+          "page": 3608
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_SecondaryChildAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "t",
+        "b",
+        "l",
+        "r"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.56",
+          "title": "Secondary Child Alignment",
+          "page": 3608,
+          "officeNotes": [
+            "2.1.1640"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_SecondaryLinearDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "fromL",
+        "fromR",
+        "fromT",
+        "fromB"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.57",
+          "title": "Secondary Linear Direction",
+          "page": 3609,
+          "officeNotes": [
+            "2.1.1641"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_StartingElement",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "node",
+        "trans"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.58",
+          "title": "Starting Element",
+          "page": 3609
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_TextAnchorHorizontal",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "ctr"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.59",
+          "title": "Text Anchor Horizontal",
+          "page": 3610
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_TextAnchorVertical",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "t",
+        "mid",
+        "b"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.60",
+          "title": "Text Anchor Vertical",
+          "page": 3610
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_TextBlockDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "horz",
+        "vert"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.61",
+          "title": "Text Block Direction",
+          "page": 3610
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_TextDirection",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "fromT",
+        "fromB"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.62",
+          "title": "Text Direction",
+          "page": 3611
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_UnsignedInts",
+      "definition": "list of xsd:unsignedInt",
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.63",
+          "title": "Unsigned Integer List",
+          "page": 3611
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_VariableType",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "none",
+        "orgChart",
+        "chMax",
+        "chPref",
+        "bulEnabled",
+        "dir",
+        "hierBranch",
+        "animOne",
+        "animLvl",
+        "resizeHandles"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.64",
+          "title": "Variable Type",
+          "page": 3611
+        }
+      ]
+    },
+    {
+      "name": "dgm:ST_VerticalAlignment",
+      "definition": "restriction of xsd:token",
+      "values": [
+        "t",
+        "mid",
+        "b",
+        "none"
+      ],
+      "spec": [
+        {
+          "doc": "ECMA-376-1",
+          "section": "21.4.7.65",
+          "title": "Vertical Alignment",
+          "page": 3612
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,650 @@
+[
+  {
+    "prefix": "w14",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+    "file": "w14.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.1",
+    "page": 98
+  },
+  {
+    "prefix": "w15",
+    "namespace": "http://schemas.microsoft.com/office/word/2012/wordml",
+    "file": "w15.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.2",
+    "page": 106
+  },
+  {
+    "prefix": "w16se",
+    "namespace": "http://schemas.microsoft.com/office/word/2015/wordml/symex",
+    "file": "w16se.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.3",
+    "page": 108
+  },
+  {
+    "prefix": "w16cid",
+    "namespace": "http://schemas.microsoft.com/office/word/2016/wordml/cid",
+    "file": "w16cid.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.4",
+    "page": 108
+  },
+  {
+    "prefix": "w16cur",
+    "namespace": "http://schemas.microsoft.com/office/word/2018/wordml",
+    "file": "w16cur.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.5",
+    "page": 108
+  },
+  {
+    "prefix": "w16cex",
+    "namespace": "http://schemas.microsoft.com/office/word/2018/wordml/cex",
+    "file": "w16cex.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.6",
+    "page": 109
+  },
+  {
+    "prefix": "w16sdtdh",
+    "namespace": "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
+    "file": "w16sdtdh.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.7",
+    "page": 109
+  },
+  {
+    "prefix": "w16du",
+    "namespace": "http://schemas.microsoft.com/office/word/2023/wordml/word16du",
+    "file": "w16du.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.8",
+    "page": 109
+  },
+  {
+    "prefix": "w16sdtfl",
+    "namespace": "http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock",
+    "file": "w16sdtfl.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.9",
+    "page": 109
+  },
+  {
+    "prefix": "w16cei",
+    "namespace": "http://schemas.microsoft.com/office/word/2026/wordml/cei",
+    "file": "w16cei.xsd",
+    "document": "MS-DOCX",
+    "version": "20260818",
+    "section": "5.10",
+    "page": 110
+  },
+  {
+    "prefix": "p14",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2010/main",
+    "file": "p14.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.1",
+    "page": 142
+  },
+  {
+    "prefix": "p15",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2012/main",
+    "file": "p15.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.2",
+    "page": 146
+  },
+  {
+    "prefix": "pc",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2013/main/command",
+    "file": "pc.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.3",
+    "page": 147
+  },
+  {
+    "prefix": "p159",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
+    "file": "p159.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.4",
+    "page": 153
+  },
+  {
+    "prefix": "p1510",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2015/10/main",
+    "file": "p1510.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.5",
+    "page": 153
+  },
+  {
+    "prefix": "p16",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2015/main",
+    "file": "p16.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.6",
+    "page": 154
+  },
+  {
+    "prefix": "p166",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2016/6/main",
+    "file": "p166.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.7",
+    "page": 154
+  },
+  {
+    "prefix": "psez",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2016/sectionzoom",
+    "file": "psez.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.8",
+    "page": 155
+  },
+  {
+    "prefix": "pslz",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2016/slidezoom",
+    "file": "pslz.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.9",
+    "page": 155
+  },
+  {
+    "prefix": "psuz",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2016/summaryzoom",
+    "file": "psuz.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.10",
+    "page": 156
+  },
+  {
+    "prefix": "p1710",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2017/10/main",
+    "file": "p1710.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.11",
+    "page": 156
+  },
+  {
+    "prefix": "p173",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2017/3/main",
+    "file": "p173.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.12",
+    "page": 157
+  },
+  {
+    "prefix": "p184",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2018/4/main",
+    "file": "p184.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.13",
+    "page": 157
+  },
+  {
+    "prefix": "p188",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2018/8/main",
+    "file": "p188.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.14",
+    "page": 158
+  },
+  {
+    "prefix": "pc2",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2019/9/main/command",
+    "file": "pc2.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.15",
+    "page": 159
+  },
+  {
+    "prefix": "p202",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2020/02/main",
+    "file": "p202.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.16",
+    "page": 160
+  },
+  {
+    "prefix": "p223",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2022/03/main",
+    "file": "p223.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.17",
+    "page": 160
+  },
+  {
+    "prefix": "pc226",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2022/06/main/command",
+    "file": "pc226.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.18",
+    "page": 161
+  },
+  {
+    "prefix": "p228",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2022/08/main",
+    "file": "p228.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.19",
+    "page": 162
+  },
+  {
+    "prefix": "p232",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2023/02/main",
+    "file": "p232.xsd",
+    "document": "MS-PPTX",
+    "version": "20240820",
+    "section": "5.20",
+    "page": 163
+  },
+  {
+    "prefix": "a14",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2010/main",
+    "file": "a14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.1",
+    "page": 343
+  },
+  {
+    "prefix": "wps",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+    "file": "wps.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.2",
+    "page": 349
+  },
+  {
+    "prefix": "w14",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordml",
+    "file": "w14.MS-ODRAWXML.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.3",
+    "page": 350
+  },
+  {
+    "prefix": "wpg",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+    "file": "wpg.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.4",
+    "page": 350
+  },
+  {
+    "prefix": "wpc",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+    "file": "wpc.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.5",
+    "page": 351
+  },
+  {
+    "prefix": "dsp",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2008/diagram",
+    "file": "dsp.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.6",
+    "page": 352
+  },
+  {
+    "prefix": "msink",
+    "namespace": "http://schemas.microsoft.com/ink/2010/main",
+    "file": "msink.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.7",
+    "page": 353
+  },
+  {
+    "prefix": "cdr14",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2010/chartDrawing",
+    "file": "cdr14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.8",
+    "page": 354
+  },
+  {
+    "prefix": "xdr14",
+    "namespace": "http://schemas.microsoft.com/office/excel/2010/spreadsheetDrawing",
+    "file": "xdr14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.9",
+    "page": 355
+  },
+  {
+    "prefix": "c14",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2007/8/2/chart",
+    "file": "c14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.10",
+    "page": 356
+  },
+  {
+    "prefix": "wp14",
+    "namespace": "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+    "file": "wp14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.11",
+    "page": 357
+  },
+  {
+    "prefix": "pic14",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2010/picture",
+    "file": "pic14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.12",
+    "page": 358
+  },
+  {
+    "prefix": "c15",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2012/chart",
+    "file": "c15.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.13",
+    "page": 358
+  },
+  {
+    "prefix": "a15",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2012/main",
+    "file": "a15.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.14",
+    "page": 360
+  },
+  {
+    "prefix": "cs",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2012/chartStyle",
+    "file": "cs.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.15",
+    "page": 361
+  },
+  {
+    "prefix": "dgm14",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2010/diagram",
+    "file": "dgm14.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.16",
+    "page": 363
+  },
+  {
+    "prefix": "thm15",
+    "namespace": "http://schemas.microsoft.com/office/thememl/2012/main",
+    "file": "thm15.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.17",
+    "page": 364
+  },
+  {
+    "prefix": "wp15",
+    "namespace": "http://schemas.microsoft.com/office/word/2012/wordprocessingDrawing",
+    "file": "wp15.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.18",
+    "page": 364
+  },
+  {
+    "prefix": "iact",
+    "namespace": "http://schemas.microsoft.com/office/powerpoint/2014/inkAction",
+    "file": "iact.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.19",
+    "page": 364
+  },
+  {
+    "prefix": "c16",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2014/chart",
+    "file": "c16.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.20",
+    "page": 366
+  },
+  {
+    "prefix": "c16ac",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2014/chart/ac",
+    "file": "c16ac.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.21",
+    "page": 367
+  },
+  {
+    "prefix": "cx",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2014/chartex",
+    "file": "cx.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.22",
+    "page": 368
+  },
+  {
+    "prefix": "a16",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2014/main",
+    "file": "a16.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.23",
+    "page": 382
+  },
+  {
+    "prefix": "asvg",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2016/SVG/main",
+    "file": "asvg.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.24",
+    "page": 382
+  },
+  {
+    "prefix": "a1611",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2016/11/main",
+    "file": "a1611.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.25",
+    "page": 382
+  },
+  {
+    "prefix": "dgm1611",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2016/11/diagram",
+    "file": "dgm1611.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.26",
+    "page": 383
+  },
+  {
+    "prefix": "oac",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2013/main/command",
+    "file": "oac.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.27",
+    "page": 383
+  },
+  {
+    "prefix": "aink",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2016/ink",
+    "file": "aink.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.28",
+    "page": 387
+  },
+  {
+    "prefix": "am3d",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2017/model3d",
+    "file": "am3d.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.29",
+    "page": 388
+  },
+  {
+    "prefix": "dgm1612",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2016/12/diagram",
+    "file": "dgm1612.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.30",
+    "page": 390
+  },
+  {
+    "prefix": "c16r3",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2017/03/chart",
+    "file": "c16r3.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.31",
+    "page": 390
+  },
+  {
+    "prefix": "adec",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2017/decorative",
+    "file": "adec.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.32",
+    "page": 391
+  },
+  {
+    "prefix": "ahyp",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor",
+    "file": "ahyp.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.33",
+    "page": 391
+  },
+  {
+    "prefix": "a3danim",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2018/animation/model3d",
+    "file": "a3danim.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.34",
+    "page": 391
+  },
+  {
+    "prefix": "aanim",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2018/animation",
+    "file": "aanim.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.35",
+    "page": 392
+  },
+  {
+    "prefix": "ask",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2018/sketchyshapes",
+    "file": "ask.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.36",
+    "page": 392
+  },
+  {
+    "prefix": "aclsh",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2020/classificationShape",
+    "file": "aclsh.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.37",
+    "page": 393
+  },
+  {
+    "prefix": "woe",
+    "namespace": "http://schemas.microsoft.com/office/word/2020/oembed",
+    "file": "woe.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.38",
+    "page": 393
+  },
+  {
+    "prefix": "asl",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2021/scriptlink",
+    "file": "asl.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.39",
+    "page": 394
+  },
+  {
+    "prefix": "alf",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2021/livefeed",
+    "file": "alf.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.40",
+    "page": 394
+  },
+  {
+    "prefix": "aif",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2022/imageformula",
+    "file": "aif.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.41",
+    "page": 395
+  },
+  {
+    "prefix": "c16r2",
+    "namespace": "http://schemas.microsoft.com/office/drawing/2015/06/chart",
+    "file": "c16r2.xsd",
+    "document": "MS-ODRAWXML",
+    "version": "20261006",
+    "section": "5.42",
+    "page": 395
+  }
+]

@@ -1,0 +1,172 @@
+{
+  "prefix": "p202",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2020/02/main",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-PPTX] v20240820 §5.16",
+  "counts": {
+    "elements": 4,
+    "attributes": 3,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 5,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "p202:designPr",
+      "global": true,
+      "types": [
+        "p202:CT_DesignerDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "edtDesignElem",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "p202:designTagLst",
+        "p202:extLst"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.1.1",
+          "title": "designPr",
+          "page": 118
+        }
+      ]
+    },
+    {
+      "name": "p202:designTag",
+      "types": [
+        "p202:CT_DesignerTag"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "val",
+          "type": "xsd:string",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [
+        "p202:designTagLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.3.2",
+          "title": "CT_DesignerTag",
+          "page": 119
+        }
+      ]
+    },
+    {
+      "name": "p202:designTagLst",
+      "global": true,
+      "types": [
+        "p202:CT_DesignerTagList"
+      ],
+      "attributes": [],
+      "children": [
+        "p202:designTag"
+      ],
+      "parents": [
+        "p202:designPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.1.2",
+          "title": "designTagLst",
+          "page": 118
+        }
+      ]
+    },
+    {
+      "name": "p202:extLst",
+      "types": [
+        "p:CT_ExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "p:ext"
+      ],
+      "parents": [
+        "p202:designPr"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "p202:CT_DesignerDrawingProps",
+      "content": "elements",
+      "model": "(p202:designTagLst?, p202:extLst?)",
+      "attributes": [
+        "edtDesignElem"
+      ],
+      "usedBy": [
+        "p202:designPr"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.3.1",
+          "title": "CT_DesignerDrawingProps",
+          "page": 119
+        }
+      ]
+    },
+    {
+      "name": "p202:CT_DesignerTag",
+      "content": "empty",
+      "attributes": [
+        "name",
+        "val"
+      ],
+      "usedBy": [
+        "p202:designTag"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.3.2",
+          "title": "CT_DesignerTag",
+          "page": 119
+        }
+      ]
+    },
+    {
+      "name": "p202:CT_DesignerTagList",
+      "content": "elements",
+      "model": "p202:designTag*",
+      "attributes": [],
+      "usedBy": [
+        "p202:designTagLst"
+      ],
+      "spec": [
+        {
+          "doc": "MS-PPTX",
+          "section": "2.17.3.3",
+          "title": "CT_DesignerTagList",
+          "page": 120
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

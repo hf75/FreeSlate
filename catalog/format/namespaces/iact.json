@@ -1,0 +1,537 @@
+{
+  "prefix": "iact",
+  "uri": "http://schemas.microsoft.com/office/powerpoint/2014/inkAction",
+  "area": "PresentationML (PPTX)",
+  "inScope": true,
+  "source": "[MS-ODRAWXML] v20261006 §5.19",
+  "counts": {
+    "elements": 7,
+    "attributes": 16,
+    "globalAttributes": 0,
+    "complexTypes": 6,
+    "simpleTypes": 12,
+    "enumValues": 12,
+    "specSections": 19,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "iact:action",
+      "types": [
+        "iact:CT_Action"
+      ],
+      "attributes": [
+        {
+          "name": "startTime",
+          "type": "xsd:decimal",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "iact:ST_ActionType",
+          "required": true
+        },
+        {
+          "name": "xml:id",
+          "type": "xsd:ID"
+        }
+      ],
+      "children": [
+        "iact:property",
+        "iact:actionData",
+        "iact:actionDataGroup"
+      ],
+      "parents": [
+        "iact:actionGroup",
+        "iact:actions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.1",
+          "title": "CT_Action",
+          "page": 176
+        }
+      ]
+    },
+    {
+      "name": "iact:actionData",
+      "types": [
+        "iact:CT_ActionData"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "iact:ST_DataName",
+          "default": "stroke"
+        },
+        {
+          "name": "ref",
+          "type": "xsd:anyURI",
+          "default": ""
+        },
+        {
+          "name": "xml:id",
+          "type": "xsd:ID"
+        }
+      ],
+      "children": [
+        "iact:transform",
+        "inkml:trace",
+        "inkml:traceView"
+      ],
+      "parents": [
+        "iact:action",
+        "iact:actionDataGroup"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.2",
+          "title": "CT_ActionData",
+          "page": 177
+        }
+      ]
+    },
+    {
+      "name": "iact:actionDataGroup",
+      "types": [
+        "iact:CT_ActionDataGroup"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "iact:ST_DataName",
+          "default": "stroke"
+        },
+        {
+          "name": "xml:id",
+          "type": "xsd:ID"
+        }
+      ],
+      "children": [
+        "iact:actionData"
+      ],
+      "parents": [
+        "iact:action"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.3",
+          "title": "CT_ActionDataGroup",
+          "page": 177
+        }
+      ]
+    },
+    {
+      "name": "iact:actionGroup",
+      "types": [
+        "iact:CT_ActionGroup"
+      ],
+      "attributes": [
+        {
+          "name": "startTime",
+          "type": "xsd:decimal",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "iact:ST_ActionType",
+          "required": true
+        },
+        {
+          "name": "xml:id",
+          "type": "xsd:ID"
+        }
+      ],
+      "children": [
+        "iact:action"
+      ],
+      "parents": [
+        "iact:actions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.4",
+          "title": "CT_ActionGroup",
+          "page": 178
+        }
+      ]
+    },
+    {
+      "name": "iact:actions",
+      "global": true,
+      "types": [
+        "iact:CT_Actions"
+      ],
+      "attributes": [
+        {
+          "name": "lengthUnit",
+          "type": "inkml:ST_StandardLengthUnits",
+          "required": true
+        },
+        {
+          "name": "timeUnit",
+          "type": "inkml:ST_StandardTimeUnits",
+          "required": true
+        },
+        {
+          "name": "xml:id",
+          "type": "xsd:ID"
+        }
+      ],
+      "children": [
+        "inkml:definitions",
+        "iact:actionGroup",
+        "iact:action"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.1.1",
+          "title": "actions",
+          "page": 175
+        }
+      ]
+    },
+    {
+      "name": "iact:property",
+      "types": [
+        "iact:CT_ActionProperty"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "iact:ST_PropertyName",
+          "required": true
+        },
+        {
+          "name": "value",
+          "type": "iact:ST_PropertyValue",
+          "default": "ink"
+        }
+      ],
+      "children": [],
+      "parents": [
+        "iact:action"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.5",
+          "title": "CT_ActionProperty",
+          "page": 178
+        }
+      ]
+    },
+    {
+      "name": "iact:transform",
+      "types": [
+        "inkml:CT_Matrix"
+      ],
+      "attributes": [],
+      "children": [
+        "any(##any)"
+      ],
+      "parents": [
+        "iact:actionData"
+      ],
+      "spec": []
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "iact:CT_Action",
+      "content": "elements",
+      "model": "(iact:property*, (iact:actionData | iact:actionDataGroup)*)",
+      "attributes": [
+        "startTime",
+        "type",
+        "xml:id"
+      ],
+      "usedBy": [
+        "iact:action"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.1",
+          "title": "CT_Action",
+          "page": 176
+        }
+      ]
+    },
+    {
+      "name": "iact:CT_ActionData",
+      "content": "elements",
+      "model": "(iact:transform?, (inkml:trace | inkml:traceView)*)",
+      "attributes": [
+        "name",
+        "ref",
+        "xml:id"
+      ],
+      "usedBy": [
+        "iact:actionData"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.2",
+          "title": "CT_ActionData",
+          "page": 177
+        }
+      ]
+    },
+    {
+      "name": "iact:CT_ActionDataGroup",
+      "content": "elements",
+      "model": "iact:actionData+",
+      "attributes": [
+        "name",
+        "xml:id"
+      ],
+      "usedBy": [
+        "iact:actionDataGroup"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.3",
+          "title": "CT_ActionDataGroup",
+          "page": 177
+        }
+      ]
+    },
+    {
+      "name": "iact:CT_ActionGroup",
+      "content": "elements",
+      "model": "iact:action+",
+      "attributes": [
+        "startTime",
+        "type",
+        "xml:id"
+      ],
+      "usedBy": [
+        "iact:actionGroup"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.4",
+          "title": "CT_ActionGroup",
+          "page": 178
+        }
+      ]
+    },
+    {
+      "name": "iact:CT_ActionProperty",
+      "content": "empty",
+      "attributes": [
+        "name",
+        "value"
+      ],
+      "usedBy": [
+        "iact:property"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.5",
+          "title": "CT_ActionProperty",
+          "page": 178
+        }
+      ]
+    },
+    {
+      "name": "iact:CT_Actions",
+      "content": "elements",
+      "model": "(inkml:definitions?, (iact:actionGroup | iact:action)*)",
+      "attributes": [
+        "lengthUnit",
+        "timeUnit",
+        "xml:id"
+      ],
+      "usedBy": [
+        "iact:actions"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.3.6",
+          "title": "CT_Actions",
+          "page": 179
+        }
+      ]
+    }
+  ],
+  "simpleTypes": [
+    {
+      "name": "iact:ST_ActionType",
+      "definition": "union of iact:ST_ActionTypeReserved, iact:ST_ActionTypeUser",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.1",
+          "title": "ST_ActionType",
+          "page": 180
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_ActionTypeReserved",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "add",
+        "remove",
+        "transform"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.2",
+          "title": "ST_ActionTypeReserved",
+          "page": 180
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_ActionTypeUser",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.3",
+          "title": "ST_ActionTypeUser",
+          "page": 181
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_DataName",
+      "definition": "union of iact:ST_DataNameReserved, iact:ST_DataNameUser",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.4",
+          "title": "ST_DataName",
+          "page": 181
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_DataNameReserved",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "stroke",
+        "path",
+        "target"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.5",
+          "title": "ST_DataNameReserved",
+          "page": 181
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_DataNameUser",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.6",
+          "title": "ST_DataNameUser",
+          "page": 182
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyName",
+      "definition": "union of iact:ST_PropertyNameReserved, iact:ST_PropertyNameUser",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.7",
+          "title": "ST_PropertyName",
+          "page": 182
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyNameReserved",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "dataType",
+        "style"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.8",
+          "title": "ST_PropertyNameReserved",
+          "page": 182
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyNameUser",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.9",
+          "title": "ST_PropertyNameUser",
+          "page": 183
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyValue",
+      "definition": "union of iact:ST_PropertyValueReserved, iact:ST_PropertyValueUser",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.10",
+          "title": "ST_PropertyValue",
+          "page": 183
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyValueReserved",
+      "definition": "restriction of xsd:string",
+      "values": [
+        "ink",
+        "pointEraser",
+        "strokeEraser",
+        "instant"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.11",
+          "title": "ST_PropertyValueReserved",
+          "page": 183
+        }
+      ]
+    },
+    {
+      "name": "iact:ST_PropertyValueUser",
+      "definition": "restriction of xsd:string",
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.21.4.12",
+          "title": "ST_PropertyValueUser",
+          "page": 184
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,426 @@
+{
+  "prefix": "wps",
+  "uri": "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2010",
+  "source": "[MS-ODRAWXML] v20261006 §5.2",
+  "counts": {
+    "elements": 10,
+    "attributes": 30,
+    "globalAttributes": 0,
+    "complexTypes": 3,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 4,
+    "officeNotes": 0
+  },
+  "elements": [
+    {
+      "name": "wps:bodyPr",
+      "types": [
+        "a:CT_TextBodyProperties"
+      ],
+      "attributes": [
+        {
+          "name": "anchor",
+          "type": "a:ST_TextAnchoringType"
+        },
+        {
+          "name": "anchorCtr",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "bIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "compatLnSpc",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "forceAA",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "fromWordArt",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "horzOverflow",
+          "type": "a:ST_TextHorzOverflowType"
+        },
+        {
+          "name": "lIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "numCol",
+          "type": "a:ST_TextColumnCount"
+        },
+        {
+          "name": "rIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "rot",
+          "type": "a:ST_Angle"
+        },
+        {
+          "name": "rtlCol",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "spcCol",
+          "type": "a:ST_PositiveCoordinate32"
+        },
+        {
+          "name": "spcFirstLastPara",
+          "type": "xsd:boolean"
+        },
+        {
+          "name": "tIns",
+          "type": "a:ST_Coordinate32"
+        },
+        {
+          "name": "upright",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "vert",
+          "type": "a:ST_TextVerticalType"
+        },
+        {
+          "name": "vertOverflow",
+          "type": "a:ST_TextVertOverflowType"
+        },
+        {
+          "name": "wrap",
+          "type": "a:ST_TextWrappingType"
+        }
+      ],
+      "children": [
+        "a:prstTxWarp",
+        "a:noAutofit",
+        "a:normAutofit",
+        "a:spAutoFit",
+        "a:scene3d",
+        "a:sp3d",
+        "a:flatTx",
+        "a:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:cNvCnPr",
+      "types": [
+        "a:CT_NonVisualConnectorProperties"
+      ],
+      "attributes": [],
+      "children": [
+        "a:cxnSpLocks",
+        "a:stCxn",
+        "a:endCxn",
+        "a:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:cNvPr",
+      "types": [
+        "a:CT_NonVisualDrawingProps"
+      ],
+      "attributes": [
+        {
+          "name": "descr",
+          "type": "xsd:string",
+          "default": ""
+        },
+        {
+          "name": "hidden",
+          "type": "xsd:boolean",
+          "default": "false"
+        },
+        {
+          "name": "id",
+          "type": "a:ST_DrawingElementId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "xsd:string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "xsd:string",
+          "default": ""
+        }
+      ],
+      "children": [
+        "a:hlinkClick",
+        "a:hlinkHover",
+        "a:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:cNvSpPr",
+      "types": [
+        "a:CT_NonVisualDrawingShapeProps"
+      ],
+      "attributes": [
+        {
+          "name": "txBox",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "a:spLocks",
+        "a:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:extLst",
+      "types": [
+        "a:CT_OfficeArtExtensionList"
+      ],
+      "attributes": [],
+      "children": [
+        "a:ext"
+      ],
+      "parents": [
+        "wps:linkedTxbx",
+        "wps:txbx",
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:linkedTxbx",
+      "types": [
+        "wps:CT_LinkedTextboxInformation"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedShort",
+          "required": true
+        },
+        {
+          "name": "seq",
+          "type": "xsd:unsignedShort",
+          "required": true
+        }
+      ],
+      "children": [
+        "wps:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.3.1",
+          "title": "CT_LinkedTextboxInformation",
+          "page": 157
+        }
+      ]
+    },
+    {
+      "name": "wps:spPr",
+      "types": [
+        "a:CT_ShapeProperties"
+      ],
+      "attributes": [
+        {
+          "name": "bwMode",
+          "type": "a:ST_BlackWhiteMode"
+        }
+      ],
+      "children": [
+        "a:xfrm",
+        "a:custGeom",
+        "a:prstGeom",
+        "a:noFill",
+        "a:solidFill",
+        "a:gradFill",
+        "a:blipFill",
+        "a:pattFill",
+        "a:grpFill",
+        "a:ln",
+        "a:effectLst",
+        "a:effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "a:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:style",
+      "types": [
+        "a:CT_ShapeStyle"
+      ],
+      "attributes": [],
+      "children": [
+        "a:lnRef",
+        "a:fillRef",
+        "a:effectRef",
+        "a:fontRef"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": []
+    },
+    {
+      "name": "wps:txbx",
+      "types": [
+        "wps:CT_TextboxInfo"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "xsd:unsignedShort",
+          "default": "0"
+        }
+      ],
+      "children": [
+        "w:txbxContent",
+        "wne:txbxContent",
+        "wps:extLst"
+      ],
+      "parents": [
+        "wps:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.3.2",
+          "title": "CT_TextboxInfo",
+          "page": 157
+        }
+      ]
+    },
+    {
+      "name": "wps:wsp",
+      "global": true,
+      "types": [
+        "wps:CT_WordprocessingShape"
+      ],
+      "attributes": [
+        {
+          "name": "normalEastAsianFlow",
+          "type": "xsd:boolean",
+          "default": "false"
+        }
+      ],
+      "children": [
+        "wps:cNvPr",
+        "wps:cNvSpPr",
+        "wps:cNvCnPr",
+        "wps:spPr",
+        "wps:style",
+        "wps:extLst",
+        "wps:txbx",
+        "wps:linkedTxbx",
+        "wps:bodyPr"
+      ],
+      "parents": [
+        "wpc:wpc",
+        "wpg:grpSp",
+        "wpg:wgp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.1.1",
+          "title": "wsp",
+          "page": 156
+        }
+      ]
+    }
+  ],
+  "globalAttributes": [],
+  "complexTypes": [
+    {
+      "name": "wps:CT_LinkedTextboxInformation",
+      "content": "elements",
+      "model": "wps:extLst?",
+      "attributes": [
+        "id",
+        "seq"
+      ],
+      "usedBy": [
+        "wps:linkedTxbx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.3.1",
+          "title": "CT_LinkedTextboxInformation",
+          "page": 157
+        }
+      ]
+    },
+    {
+      "name": "wps:CT_TextboxInfo",
+      "content": "elements",
+      "model": "(w:txbxContent?, wne:txbxContent?, wps:extLst?)",
+      "attributes": [
+        "id"
+      ],
+      "usedBy": [
+        "wps:txbx"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.3.2",
+          "title": "CT_TextboxInfo",
+          "page": 157
+        }
+      ]
+    },
+    {
+      "name": "wps:CT_WordprocessingShape",
+      "content": "elements",
+      "model": "(wps:cNvPr?, (wps:cNvSpPr | wps:cNvCnPr), wps:spPr, wps:style?, wps:extLst?, (wps:txbx | wps:linkedTxbx)?, wps:bodyPr)",
+      "attributes": [
+        "normalEastAsianFlow"
+      ],
+      "usedBy": [
+        "wps:wsp"
+      ],
+      "spec": [
+        {
+          "doc": "MS-ODRAWXML",
+          "section": "2.13.3.3",
+          "title": "CT_WordprocessingShape",
+          "page": 158
+        }
+      ]
+    }
+  ],
+  "simpleTypes": []
+}

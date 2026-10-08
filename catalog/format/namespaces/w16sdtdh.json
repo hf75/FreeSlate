@@ -1,0 +1,35 @@
+{
+  "prefix": "w16sdtdh",
+  "uri": "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash",
+  "area": "WordprocessingML (DOCX)",
+  "inScope": true,
+  "officeVersion": "Office2021",
+  "source": "[MS-DOCX] v20260818 §5.7",
+  "counts": {
+    "elements": 0,
+    "attributes": 0,
+    "globalAttributes": 1,
+    "complexTypes": 0,
+    "simpleTypes": 0,
+    "enumValues": 0,
+    "specSections": 1,
+    "officeNotes": 0
+  },
+  "elements": [],
+  "globalAttributes": [
+    {
+      "name": "w16sdtdh:storeItemChecksum",
+      "type": "w:ST_String",
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.11.2.1",
+          "title": "storeItemChecksum",
+          "page": 92
+        }
+      ]
+    }
+  ],
+  "complexTypes": [],
+  "simpleTypes": []
+}
