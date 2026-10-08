@@ -12,6 +12,7 @@ public static class Ns
     public static readonly XNamespace Asvg = "http://schemas.microsoft.com/office/drawing/2016/SVG/main";
     public static readonly XNamespace C = "http://schemas.openxmlformats.org/drawingml/2006/chart";
     public static readonly XNamespace Cs = "http://schemas.microsoft.com/office/drawing/2012/chartStyle";
+    public static readonly XNamespace Ask = "http://schemas.microsoft.com/office/drawing/2018/sketchyshapes";
 
     public static long? Long(this XElement? element, string attribute) =>
         element?.Attribute(attribute) is { } a && long.TryParse(a.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;

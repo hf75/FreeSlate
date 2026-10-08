@@ -3409,6 +3409,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "The same formula engine. arcTo angles have to be converted to SVG arcs; path fill modes darken/lighten shade the fill; paths with their own w/h are scaled to the shape. Handles and connection sites are editor-only.",
+      "office": "PowerPoint fills all paths of a geometry before it strokes any of them (measured with overlapping paths: the outline of the first path lies on the fill of the second, also for an outline-only path saved before a fill-only one); the document does the same where the order matters (presets chartPlus, chartStar, chartX, sketched shapes).",
       "elements": [
         "a:ahLst",
         "a:ahPolar",
@@ -3817,8 +3818,9 @@
       "title": "Sketched outlines",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "The hand-drawn outline styles (curved, freehand, scribble) perturb the geometry with a seeded random function; matching PowerPoint needs its exact algorithm, a close look-alike is easy.",
+      "office": "PowerPoint saves a sketched shape as the hand-drawn paths it derives from the original geometry and the seed: a custom geometry with an outline-only path (fill=none) followed by a fill-only path (stroke=0), and keeps the original geometry, the style and the seed (sd) in ask:lineSketchStyleProps in the outline's extension list. Opening a file it draws the sketch anew from those, which gives the saved paths again (checked through PowerPoint's own saved and re-exported decks), so the document draws the saved paths, fills before outlines, and lays out the text in the text rectangle of the original geometry (triangles and ellipses keep their inset text). A sketch on a preset geometry is dropped by PowerPoint, which then draws the sketch's original geometry (nothing if it has none); a sketch of the style none or without an original geometry leaves the custom geometry. Paths of a custom geometry that a third party saved with sketch properties but other than PowerPoint's are drawn as saved, while PowerPoint replaces them with its own (unpublished, seeded) sketch. Checked with generated/sketched (curved, freehand and scribble on five presets with text, without fill, with gradient fill, dashes, shadow, rotation and flips).",
       "elements": [
         "ask:extLst",
         "ask:lineSketchCurved",

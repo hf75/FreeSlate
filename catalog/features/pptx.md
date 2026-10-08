@@ -19,7 +19,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 5 | 10 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 3 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
-| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 4 |
+| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 6 | 5 |
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 2 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **50** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **51** |
 
 <a id="package"></a>
 
@@ -521,7 +521,7 @@ p:sld/@show="0".
 | [Connectors](#shape.connectors) | P1 | ●●○○○ | partial | 8 | 3 |
 | [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | partial | 8 | 2 |
 | [Locks](#shape.locks) | P3 | ●○○○○ | done | 6 | 5 |
-| [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | todo | 8 | 0 |
+| [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | done | 8 | 0 |
 | [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="shape.basic"></a>
@@ -610,6 +610,8 @@ p:sld/@show="0".
 
 **Rendering:** The same formula engine. arcTo angles have to be converted to SVG arcs; path fill modes darken/lighten shade the fill; paths with their own w/h are scaled to the shape. Handles and connection sites are editor-only.
 
+**Office behaviour:** PowerPoint fills all paths of a geometry before it strokes any of them (measured with overlapping paths: the outline of the first path lies on the fill of the second, also for an outline-only path saved before a fill-only one); the document does the same where the order matters (presets chartPlus, chartStar, chartX, sketched shapes).
+
 **Elements (18):** [`a:ahLst`](../format/namespaces/a.md#aahlst), [`a:ahPolar`](../format/namespaces/a.md#aahpolar), [`a:ahXY`](../format/namespaces/a.md#aahxy), [`a:arcTo`](../format/namespaces/a.md#aarcto), [`a:close`](../format/namespaces/a.md#aclose), [`a:cubicBezTo`](../format/namespaces/a.md#acubicbezto), [`a:custGeom`](../format/namespaces/a.md#acustgeom), [`a:cxn`](../format/namespaces/a.md#acxn), [`a:cxnLst`](../format/namespaces/a.md#acxnlst), [`a:gdLst`](../format/namespaces/a.md#agdlst), [`a:lnTo`](../format/namespaces/a.md#alnto), [`a:moveTo`](../format/namespaces/a.md#amoveto), [`a:path`](../format/namespaces/a.md#apath), [`a:pathLst`](../format/namespaces/a.md#apathlst), [`a:pos`](../format/namespaces/a.md#apos), [`a:pt`](../format/namespaces/a.md#apt), [`a:quadBezTo`](../format/namespaces/a.md#aquadbezto), [`a:rect`](../format/namespaces/a.md#arect)
 
 **Specification:** §20.1.8.46 Path Gradient (p.2885); §20.1.9.1 List of Shape Adjust Handles (p.2897); §20.1.9.2 Polar Adjust Handle (p.2897); §20.1.9.3 XY Adjust Handle (p.2898); §20.1.9.4 Draw Arc To (p.2899); §20.1.9.6 Close Shape Path (p.2902) and 13 more
@@ -662,9 +664,11 @@ p:sld/@show="0".
 
 ### Sketched outlines
 
-`shape.sketched` · P2 · difficulty 4 · todo
+`shape.sketched` · P2 · difficulty 4 · done
 
 **Rendering:** The hand-drawn outline styles (curved, freehand, scribble) perturb the geometry with a seeded random function; matching PowerPoint needs its exact algorithm, a close look-alike is easy.
+
+**Office behaviour:** PowerPoint saves a sketched shape as the hand-drawn paths it derives from the original geometry and the seed: a custom geometry with an outline-only path (fill=none) followed by a fill-only path (stroke=0), and keeps the original geometry, the style and the seed (sd) in ask:lineSketchStyleProps in the outline's extension list. Opening a file it draws the sketch anew from those, which gives the saved paths again (checked through PowerPoint's own saved and re-exported decks), so the document draws the saved paths, fills before outlines, and lays out the text in the text rectangle of the original geometry (triangles and ellipses keep their inset text). A sketch on a preset geometry is dropped by PowerPoint, which then draws the sketch's original geometry (nothing if it has none); a sketch of the style none or without an original geometry leaves the custom geometry. Paths of a custom geometry that a third party saved with sketch properties but other than PowerPoint's are drawn as saved, while PowerPoint replaces them with its own (unpublished, seeded) sketch. Checked with generated/sketched (curved, freehand and scribble on five presets with text, without fill, with gradient fill, dashes, shadow, rotation and flips).
 
 **Elements (8):** [`ask:extLst`](../format/namespaces/ask.md#askextlst), [`ask:lineSketchCurved`](../format/namespaces/ask.md#asklinesketchcurved), [`ask:lineSketchFreehand`](../format/namespaces/ask.md#asklinesketchfreehand), [`ask:lineSketchNone`](../format/namespaces/ask.md#asklinesketchnone), [`ask:lineSketchScribble`](../format/namespaces/ask.md#asklinesketchscribble), [`ask:lineSketchStyleProps`](../format/namespaces/ask.md#asklinesketchstyleprops), [`ask:seed`](../format/namespaces/ask.md#askseed), [`ask:type`](../format/namespaces/ask.md#asktype)
 

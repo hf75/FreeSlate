@@ -69,6 +69,7 @@ public static class CorpusGenerator
         ("encrypted-standard", EncryptedDecks.Build, false),
         ("laser", LaserDeck.Build, false),
         ("charts-3d", Charts3DDeck.Build, true),
+        ("sketched", SketchedDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -85,7 +86,11 @@ public static class CorpusGenerator
         ["comments"] = CommentsDeck.Patch,
         ["encrypted-standard"] = EncryptedDecks.EncryptStandard,
         ["laser"] = LaserDeck.Patch,
+        ["sketched"] = SketchedDeck.Patch,
     };
+
+    /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>
+    static readonly HashSet<string> Resaved = ["sketched"];
 
     /// <summary>Generates the named decks, or all of them.</summary>
     public static void Run(string outputDir, IReadOnlyCollection<string> only)
@@ -100,6 +105,8 @@ public static class CorpusGenerator
                 Generate(session, path, build, window);
                 if (Patches.TryGetValue(name, out var patch))
                     patch(path);
+                if (Resaved.Contains(name))
+                    Resave(session, path);
             }
         }
     }
@@ -201,6 +208,15 @@ public static class CorpusGenerator
         PowerPointSession.SaveAndClose(presentation, path);
         Anonymize(path);
         Console.WriteLine($"  {Path.GetFileName(path)}");
+    }
+
+    /// <summary>Opens the deck in PowerPoint and saves it again in place.</summary>
+    static void Resave(PowerPointSession session, string path)
+    {
+        var temporary = Path.ChangeExtension(path, ".resaved.pptx");
+        PowerPointSession.SaveAndClose(session.Open(path), temporary);
+        File.Move(temporary, path, overwrite: true);
+        Anonymize(path);
     }
 
     /// <summary>PowerPoint writes the Office user name as author; the decks are published, so it is replaced.</summary>

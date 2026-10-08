@@ -113,6 +113,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         var (definition, adjustments) = Geometry(chain);
         var geometry = GeometryEvaluator.Evaluate(definition, bw, bh, adjustments);
+        // A sketched outline (catalog: shape.sketched) is saved as its hand-drawn paths; the text keeps the text
+        // rectangle of the original geometry, which the sketch properties hold.
+        if (SketchedGeometry(chain) is var (original, originalAdjustments))
+        {
+            var text = GeometryEvaluator.Evaluate(original, bw, bh, originalAdjustments);
+            geometry = geometry with { TextLeft = text.TextLeft, TextTop = text.TextTop, TextRight = text.TextRight, TextBottom = text.TextBottom };
+        }
         if (shape.Element(Ns.P + "txXfrm") is { } txXfrm && txXfrm.Element(Ns.A + "ext") != null)
         {
             // SmartArt shapes carry their own text rectangle, in the same coordinates as the shape.
@@ -155,6 +162,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // A picture can have a fill of its own behind it, visible through its transparent parts.
         var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, style, placement.GroupFill) : Fill.None;
         var axisAligned = IsAxisAligned(ToPx(matrix));
+        // PowerPoint fills all paths of a geometry before it strokes them (measured: the outline of a first path
+        // lies on the fill of a second one); while no stroked path comes before a filled one, that is the same as
+        // drawing path after path. Sketched shapes save their outline before their fill (catalog: shape.sketched).
+        var lastFilled = geometry.Paths.FindLastIndex(p => p.Fill != "none");
+        var strokesLast = outline is { Visible: true } && geometry.Paths.Take(Math.Max(0, lastFilled)).Any(p => p.Stroke);
+        var strokes = new StringBuilder();
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
@@ -165,21 +178,30 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
             var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin) : " stroke=\"none\"";
+            var strokeTarget = strokesLast ? strokes : paths;
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
                 var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
                 paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
                 if (stroke != " stroke=\"none\"")
-                    paths.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
+                    strokeTarget.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
+            }
+            else if (strokesLast)
+            {
+                if (pathFill is not NoFill)
+                    paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+                if (stroke != " stroke=\"none\"")
+                    strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else
             {
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}{crisp}/>");
             }
             if (compound)
-                paths.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
+                strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
         }
+        paths.Append(strokes);
         if (outsetBorder)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
@@ -793,18 +815,56 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         foreach (var s in chain)
         {
             var spPr = SpPr(s.Element);
-            if (spPr?.Element(Ns.A + "prstGeom") is { } preset)
-            {
-                var definition = PresetGeometries.Get(preset.Str("prst") ?? "rect") ?? PresetGeometries.Get("rect")!;
-                var adjustments = preset.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
-                    .Select(g => new Guide(g.Str("name") ?? "", g.Str("fmla") ?? "val 0")) ?? [];
-                return (definition, adjustments.ToList());
-            }
-            if (spPr?.Element(Ns.A + "custGeom") is { } custom)
-                return (GeometryDefinition.Parse(custom), []);
+            if (Geometry(spPr) is not { } geometry)
+                continue;
+            // PowerPoint keeps a sketch only on a custom geometry; on a preset it draws the sketch's original
+            // geometry without the sketch, and nothing if the sketch has none (catalog: shape.sketched).
+            if (spPr!.Element(Ns.A + "prstGeom") != null && Sketch(spPr) is { } sketch)
+                return Geometry(sketch) ?? (GeometryDefinition.Parse(new XElement(Ns.A + "custGeom")), []);
+            return geometry;
         }
         return (PresetGeometries.Get("rect")!, []);
     }
+
+    /// <summary>The preset or custom geometry among the children of <paramref name="parent"/>, or null.</summary>
+    static (GeometryDefinition Definition, IEnumerable<Guide> Adjustments)? Geometry(XElement? parent)
+    {
+        if (parent?.Element(Ns.A + "prstGeom") is { } preset)
+        {
+            var definition = PresetGeometries.Get(preset.Str("prst") ?? "rect") ?? PresetGeometries.Get("rect")!;
+            var adjustments = preset.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
+                .Select(g => new Guide(g.Str("name") ?? "", g.Str("fmla") ?? "val 0")) ?? [];
+            return (definition, adjustments.ToList());
+        }
+        return parent?.Element(Ns.A + "custGeom") is { } custom ? (GeometryDefinition.Parse(custom), []) : null;
+    }
+
+    /// <summary>
+    /// The original geometry of a sketched shape (catalog: shape.sketched): PowerPoint saves the hand-drawn paths it
+    /// derives from the original geometry and a seed as the shape's custom geometry and keeps the original in the
+    /// sketch properties of the outline (ask:lineSketchStyleProps), and only on a custom geometry.
+    /// </summary>
+    static (GeometryDefinition Definition, IEnumerable<Guide> Adjustments)? SketchedGeometry(List<PartElement> chain)
+    {
+        foreach (var s in chain)
+        {
+            var spPr = SpPr(s.Element);
+            if (spPr?.Element(Ns.A + "prstGeom") != null)
+                return null;
+            if (spPr?.Element(Ns.A + "custGeom") == null)
+                continue;
+            // A sketch of the style none, or without its original geometry, leaves the custom geometry as it is.
+            var sketch = Sketch(spPr);
+            var style = sketch?.Element(Ns.Ask + "type")?.Elements().FirstOrDefault()?.Name.LocalName;
+            return style is null or "lineSketchNone" ? null : Geometry(sketch);
+        }
+        return null;
+    }
+
+    /// <summary>The sketch properties of a shape's outline (ask:lineSketchStyleProps), or null.</summary>
+    static XElement? Sketch(XElement spPr) =>
+        spPr.Element(Ns.A + "ln")?.Element(Ns.A + "extLst")?.Elements(Ns.A + "ext")
+            .FirstOrDefault(e => e.Str("uri") == "{C807C97D-BFC1-408E-A445-0C87EB9F89A2}")?.Element(Ns.Ask + "lineSketchStyleProps");
 
     XElement? Effects(List<PartElement> chain, XElement? style)
     {
