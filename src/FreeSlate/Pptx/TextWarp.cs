@@ -10,7 +10,9 @@ namespace FreeSlate.Pptx;
 /// preset (ECMA-376 presetTextWarpDefinitions). Paths come in pairs that form envelopes: the text's ink box is
 /// stretched between the upper and the lower path, measured in arc length (measured in PowerPoint: the glyphs
 /// fill the envelope from their tops to their baselines). Presets with an odd number of paths (arch, circle,
-/// button) carry one line per path: the baseline follows the path, glyph heights stay.
+/// button) carry one line per path: the baseline follows the path with every glyph rigid at its size, placed along
+/// it by the line's alignment; text converted from old WordArt (bodyPr fromWordArt) is scaled evenly to the path's
+/// length instead (measured with textArchUp).
 /// </summary>
 public static class TextWarp
 {
@@ -28,9 +30,13 @@ public static class TextWarp
     /// <summary>A glyph outline as closed contours in pixels, with the line it belongs to and that line's baseline.</summary>
     public sealed record Glyph(List<List<(double X, double Y)>> Contours, int Line, double Baseline);
 
-    /// <summary>Warps the glyphs into the preset's paths laid into <paramref name="box"/> (pixels).</summary>
+    /// <summary>
+    /// Warps the glyphs into the preset's paths laid into <paramref name="box"/> (pixels); <paramref name="align"/> gives
+    /// each line's paragraph alignment, its free space at the start and end of the text box and its width (pixels).
+    /// </summary>
     public static List<List<List<(double X, double Y)>>> Apply(GeometryDefinition definition, IEnumerable<Guide> adjustments,
-        (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs)
+        (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs, bool fromWordArt = false,
+        Func<int, (string Align, double Before, double After, double Width)>? align = null)
     {
         var geometry = GeometryEvaluator.Evaluate(definition, box.W * Units.EmuPerPixel, box.H * Units.EmuPerPixel, adjustments);
         var paths = geometry.Paths
@@ -78,17 +84,35 @@ public static class TextWarp
             var path = paths[lines == 1 ? paths.Count / 2 : Math.Min(line, paths.Count - 1)];
             var (minX, _, maxX, _) = Bounds(members.SelectMany(i => glyphs[i].Contours));
             var baseline = glyphs[members[0]].Baseline;
+            // The line by its advances (its ink without the outer side bearings when unknown).
+            var (mode, before, after, advance) = align?.Invoke(line) ?? ("l", minX - box.L, box.L + box.W - maxX, maxX - minX);
+            var width = Math.Max(1e-6, advance);
+            var lineStart = box.L + before;
+            // Old WordArt fills the path, scaled evenly; otherwise the glyphs keep their size and the alignment places
+            // them along the path.
+            var scale = fromWordArt ? path.Length / width : 1;
+            var start = fromWordArt ? 0 : mode switch
+            {
+                "ctr" => (path.Length - width) / 2,
+                "r" => path.Length - width - after,
+                _ => before,
+            };
             foreach (var i in members)
             {
+                // Each glyph stays rigid: placed at the point of the path its middle falls on and turned with the
+                // path there (measured: wide glyphs at the steep ends of an arch keep their shape).
+                var (glyphLeft, _, glyphRight, _) = Bounds(glyphs[i].Contours);
+                var middle = (glyphLeft + glyphRight) / 2;
+                var u = path.Length > 0 ? (start + (middle - lineStart) * scale) / path.Length : 0.5;
+                var (p, tangent) = path.At(u);
                 foreach (var contour in result[i])
                 {
                     for (var k = 0; k < contour.Count; k++)
                     {
-                        var u = maxX > minX ? (contour[k].X - minX) / (maxX - minX) : 0.5;
-                        var height = baseline - contour[k].Y;
-                        var (p, tangent) = path.At(u);
+                        var along = (contour[k].X - middle) * scale;
+                        var height = (baseline - contour[k].Y) * scale;
                         // The normal to the left of the direction points up for left-to-right paths.
-                        contour[k] = (p.X + tangent.Y * height, p.Y - tangent.X * height);
+                        contour[k] = (p.X + tangent.X * along + tangent.Y * height, p.Y + tangent.Y * along - tangent.X * height);
                     }
                 }
             }

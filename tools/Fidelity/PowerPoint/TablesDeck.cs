@@ -84,5 +84,47 @@ static class TablesDeck
         formatted.Cell(3, 2).Shape.TextFrame.TextRange.ParagraphFormat.Alignment = 3;   // right
         formatted.Rows[2].Height = 120f;
         formatted.Rows[3].Height = 110f;
+
+        // A right-to-left table (its first column on the right, borders mirrored) next to the same table left to
+        // right, and cells whose text block is centered (anchorCtr, patched).
+        var directions = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        foreach (var (left, rtl) in new[] { (30f, true), (500f, false) })
+        {
+            var shape = directions.Shapes.AddTable(3, 3, left, 30, 420, 150);
+            var table = shape.Table;
+            for (var r = 1; r <= 3; r++)
+                for (var c = 1; c <= 3; c++)
+                    table.Cell(r, c).Shape.TextFrame.TextRange.Text = $"R{r} C{c}";
+            var topBorder = table.Cell(2, 1).Borders[1];   // ppBorderTop
+            topBorder.Weight = 4f;
+            topBorder.ForeColor.RGB = CorpusGenerator.Rgb(220, 0, 0);
+            var leftBorder = table.Cell(2, 1).Borders[2];   // ppBorderLeft
+            leftBorder.Weight = 4f;
+            leftBorder.ForeColor.RGB = CorpusGenerator.Rgb(0, 200, 0);
+            if (rtl)
+                table.TableDirection = 2;   // ppDirectionRightToLeft
+        }
+        var centered = directions.Shapes.AddTable(2, 2, 30, 280, 420, 160);
+        centered.Name = "anchorCtr-cells";
+        for (var r = 1; r <= 2; r++)
+        {
+            for (var c = 1; c <= 2; c++)
+            {
+                var range = centered.Table.Cell(r, c).Shape.TextFrame.TextRange;
+                range.Text = "Short\rlonger second line";
+                range.ParagraphFormat.Alignment = c == 1 ? 1 : 3;   // left, right
+            }
+        }
     }
+
+    /// <summary>The cells of the first row of "anchorCtr-cells" center their text block (tcPr anchorCtr).</summary>
+    public static void Patch(string path) => ShapePatch.Apply(path, new Dictionary<string, Action<System.Xml.Linq.XElement>>
+    {
+        ["anchorCtr-cells"] = shape =>
+        {
+            var row = shape.Descendants(ShapePatch.A + "tr").First();
+            foreach (var tcPr in row.Elements(ShapePatch.A + "tc").Select(tc => tc.Element(ShapePatch.A + "tcPr")))
+                tcPr?.SetAttributeValue("anchorCtr", "1");
+        },
+    });
 }

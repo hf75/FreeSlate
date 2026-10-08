@@ -84,12 +84,15 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         if (background is not NoFill)
             fills.Append($"<rect width=\"{Px(xs[^1])}\" height=\"{Px(ys[^1])}\"{paint.Fill(background, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs)}/>");
 
+        // A right-to-left table (tblPr rtl) puts its first column on the right: every cell is mirrored with its left
+        // and right borders, the text in it is not (measured).
+        var rtl = tblPr.Bool("rtl") == true;
         foreach (var cell in cells)
         {
             var parts = Parts(cell, rows.Count, columns.Count, tblPr).Select(p => style?.Element(Ns.A + p)).Where(p => p != null).Cast<XElement>().ToList();
-            var x = xs[cell.Column];
-            var y = ys[cell.Row];
             var w = Span(xs, cell.Column, cell.ColumnSpan);
+            var x = rtl ? xs[^1] - xs[cell.Column] - w : xs[cell.Column];
+            var y = ys[cell.Row];
             var h = Math.Max(0, ys[Math.Min(rows.Count, cell.Row + cell.RowSpan)] - y);
             var tcPr = cell.Element.Element(Ns.A + "tcPr");
 
@@ -116,14 +119,19 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
                 if (!edges.TryGetValue(key, out var existing) || priority >= existing.Priority)
                     edges[key] = (outline, priority, x1, y1, x2, y2);
             }
-            Edge("lnL", part => Side(part, "left", cell.Column == 0, false), x, y, x, y + h);
-            Edge("lnR", part => Side(part, "right", lastColumn, false), x + w, y, x + w, y + h);
+            var (leftX, rightX) = rtl ? (x + w, x) : (x, x + w);
+            Edge("lnL", part => Side(part, "left", cell.Column == 0, false), leftX, y, leftX, y + h);
+            Edge("lnR", part => Side(part, "right", lastColumn, false), rightX, y, rightX, y + h);
             Edge("lnT", part => Side(part, "top", cell.Row == 0, true), x, y, x + w, y);
             Edge("lnB", part => Side(part, "bottom", lastRow, true), x, y + h, x + w, y + h);
             Edge("lnTlToBr", _ => "tl2br", x, y, x + w, y + h);
             Edge("lnBlToTr", _ => "tr2bl", x, y + h, x + w, y);
 
             var (marL, marR, marT, marB) = Margins(cell.Element);
+            if (rtl)
+                (marL, marR) = (marR, marL);
+            if (tcPr.Bool("anchorCtr") == true)
+                TextLayout.CenterBlock(layouts[cell], w - marL - marR);
             texts.Append(Turned(cell) is { } mode
                 ? text.EmitTurned(layouts[cell], mode, x + marL, y + marT, w - marL - marR, h - marT - marB, tcPr.Str("anchor") ?? "t")
                 : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));

@@ -66,6 +66,9 @@ public sealed class ParagraphInput
     public ParagraphSpace SpaceAfter { get; init; } = ParagraphSpace.None;
     public Bullet? Bullet { get; init; }
     public double DefaultTabSize { get; init; } = 72;
+
+    /// <summary>How runs of different sizes line up (a:pPr/@fontAlgn): base (and auto), t, ctr or b.</summary>
+    public string FontAlign { get; init; } = "auto";
 }
 
 /// <summary>A run placed on a line: X from the left edge of the text area, in points.</summary>
@@ -78,6 +81,9 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
     public bool Upright { get; init; }
 
     public double PictureHeight { get; init; }
+
+    /// <summary>How far the run is raised above the line's baseline (points): fontAlgn t, ctr and b.</summary>
+    public double Lift { get; init; }
 }
 
 public sealed class LaidOutLine
@@ -93,6 +99,9 @@ public sealed class LaidOutLine
 
     /// <summary>The paragraph's alignment (l, ctr, r, just …).</summary>
     public string Align { get; init; } = "l";
+
+    /// <summary>Where the line's text would start without its alignment, from the left of the text area (points).</summary>
+    public double Start { get; init; }
 
     public List<PlacedRun> Runs { get; } = [];
 }
@@ -113,14 +122,15 @@ public sealed class LaidOutText
 /// <item>At single spacing the baseline sits at S × ascent ratio of the font. Above single spacing it sits at
 /// H × min(0.75, ascent ratio); below, at max(S × ratio − (S − H), H × min(0.75, ratio)).</item>
 /// <item>Each line takes the largest ascent and descent of its runs; bullets do not count.</item>
-/// <item>Space before is ignored for the first paragraph; percentages refer to 1.2 × font size.</item>
+/// <item>Space before is ignored for the first paragraph, space after for the last, unless the body asks for them
+/// (bodyPr spcFirstLastPara); percentages refer to 1.2 × font size.</item>
 /// <item>Widths add up glyph advances rounded to PowerPoint's master units (1/8 point), see
 /// <see cref="FontData.LayoutAdvances"/>.</item>
 /// </list>
 /// </summary>
 public static class TextLayout
 {
-    public static LaidOutText Layout(IReadOnlyList<ParagraphInput> paragraphs, double width, bool wrap)
+    public static LaidOutText Layout(IReadOnlyList<ParagraphInput> paragraphs, double width, bool wrap, bool spaceFirstLast = false)
     {
         var result = new LaidOutText();
         double cursor = 0;
@@ -130,7 +140,7 @@ public static class TextLayout
         {
             var paragraph = paragraphs[p];
             var firstSize = paragraph.Runs.FirstOrDefault(r => r.Text != "\n")?.Style.Size ?? paragraph.EndStyle.Size;
-            if (p > 0)
+            if (p > 0 || spaceFirstLast)
                 cursor += pendingAfter + paragraph.SpaceBefore.Points(firstSize);
             pendingAfter = paragraph.SpaceAfter.Points(firstSize);
 
@@ -142,7 +152,7 @@ public static class TextLayout
                 result.Lines.Add(line);
             }
         }
-        result.Height = cursor;
+        result.Height = cursor + (spaceFirstLast ? pendingAfter : 0);
         return result;
     }
 
@@ -314,7 +324,7 @@ public static class TextLayout
         if (justify && available > lineWidth && CountInnerSpaces(all, pieces) is var spaces and > 0)
             spaceExtra = (available - lineWidth) / spaces;
 
-        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align };
+        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align, Start = lineStart };
         if (first && paragraph.Bullet is { } bullet)
             line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, EffectiveMargin(paragraph) + paragraph.Indent + offset, bulletWidth)
             {
@@ -336,13 +346,79 @@ public static class TextLayout
                     continue;
                 var text = all[runStart..i];
                 var w = Measure(all, styles, runStart, i);
-                line.Runs.Add(new PlacedRun(text, styles[runStart], runX, w));
+                line.Runs.Add(new PlacedRun(text, styles[runStart], runX, w) { Lift = Lift(styles[runStart], paragraph, ascent, descent) });
                 runX += w;
                 runStart = i;
             }
             shift += spaceExtra * all[start..end].Count(c => c == ' ');
         }
         return line;
+    }
+
+    /// <summary>
+    /// How far fontAlgn raises a run above the baseline: t lines up the tops of the runs with the line's, b their
+    /// bottoms, ctr their middles (measured); base and auto keep the baselines.
+    /// </summary>
+    static double Lift(TextStyle style, ParagraphInput paragraph, double lineAscent, double lineDescent)
+    {
+        if (paragraph.FontAlign is not ("t" or "ctr" or "b"))
+            return 0;
+        var (ascent, descent) = Metrics(style, paragraph.Spacing);
+        return paragraph.FontAlign switch
+        {
+            "t" => lineAscent - ascent,
+            "b" => descent - lineDescent,
+            _ => (lineAscent - lineDescent - ascent + descent) / 2,
+        };
+    }
+
+    /// <summary>
+    /// The line cut to fit <paramref name="limit"/> points with an ellipsis: whole words come off its end until the
+    /// text and the ellipsis fit (bodyPr vertOverflow ellipsis on the last line that fits).
+    /// </summary>
+    public static void Ellipsize(LaidOutLine line, double limit)
+    {
+        var runs = line.Runs.Where(r => r.Picture == null).ToList();
+        if (runs.Count == 0)
+            return;
+        var last = runs[^1];
+        var text = string.Concat(runs.Select(r => r.Text)).TrimEnd();
+        double Width(string value) => last.Style.Font.Data.LayoutWidth(value, last.Style.Size, last.Style.Kerning, last.Style.LetterSpacing);
+        var start = runs[0].X;
+        var cut = text;
+        while (cut.Length > 0 && start + Width(cut + "\u2026") > limit + 0.01)
+        {
+            var space = cut.TrimEnd().LastIndexOf(' ');
+            cut = space > 0 ? cut[..space].TrimEnd() : cut[..^1];
+        }
+        foreach (var run in runs)
+            line.Runs.Remove(run);
+        // The shorter line keeps its paragraph's alignment.
+        var shorter = line.Width - Width(cut + "\u2026");
+        start += line.Align switch { "ctr" => shorter / 2, "r" => shorter, _ => 0 };
+        line.Runs.Add(new PlacedRun(cut + "\u2026", last.Style, start, Width(cut + "\u2026")));
+    }
+
+    /// <summary>
+    /// anchorCtr: the smallest box around the text is centered in the text area <paramref name="width"/> points wide,
+    /// the paragraphs keep their alignment within it (measured on text boxes and table cells).
+    /// </summary>
+    public static void CenterBlock(LaidOutText layout, double width)
+    {
+        if (layout.Lines.Count == 0)
+            return;
+        var free = (width - layout.Lines.Max(l => l.Start + l.Width)) / 2;
+        if (free <= 0.005)
+            return;
+        foreach (var line in layout.Lines)
+        {
+            var shift = line.Align switch { "ctr" => 0, "r" => -free, _ => free };
+            if (shift == 0)
+                continue;
+            var runs = line.Runs.Select(r => r with { X = r.X + shift }).ToList();
+            line.Runs.Clear();
+            line.Runs.AddRange(runs);
+        }
     }
 
     /// <summary>The left margin, moved right so that the first line does not start left of the text area.</summary>

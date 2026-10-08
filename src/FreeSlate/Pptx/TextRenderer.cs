@@ -86,17 +86,44 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var columns = Math.Clamp(int.TryParse(Body("numCol"), out var columnCount) ? columnCount : 1, 1, 16);
         var columnGap = (long.TryParse(Body("spcCol"), out var gap) ? gap : 0) / Units.EmuPerPoint;
         var columnWidth = columns > 1 ? Math.Max(0, (width - (columns - 1) * columnGap) / columns) : width;
-        var layout = Layout(txBody, sources, Math.Max(0, columnWidth), Body("wrap") != "none", fontScale, spacingReduction);
+        var wrap = Body("wrap") != "none";
+        // Space before the first paragraph and after the last counts only when the body asks for it (measured).
+        var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
+        var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
         if (columns > 1)
             layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true");
+        else if (Body("anchorCtr") is "1" or "true")
+            TextLayout.CenterBlock(layout, width);
+        // Text that does not fit the height loses its last lines with vertOverflow ellipsis (an ellipsis ends the
+        // last line kept) or clip; the remaining lines are anchored as usual (measured).
+        if (Body("vertOverflow") is "ellipsis" or "clip" && layout.Height > height + 0.01 && layout.Lines.Count > 1)
+        {
+            var kept = layout.Lines.TakeWhile((l, i) => i == 0 || l.Baseline + l.Descent <= height + 0.01).ToList();
+            if (kept.Count < layout.Lines.Count)
+            {
+                var trimmed = new LaidOutText { Height = kept[^1].Baseline + kept[^1].Descent };
+                trimmed.Lines.AddRange(kept);
+                if (Body("vertOverflow") == "ellipsis")
+                    TextLayout.Ellipsize(kept[^1], width);
+                layout = trimmed;
+            }
+        }
         // WordArt transforms bend the glyph outlines into the preset's paths in the shape's text rectangle.
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
         if (warp?.Str("prst") is { } preset && TextWarp.Definition(preset) is { } definition)
         {
             var box = (geometry.TextLeft, geometry.TextTop, geometry.TextRight - geometry.TextLeft, geometry.TextBottom - geometry.TextTop);
-            return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box);
+            return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box, Body("fromWordArt") is "1" or "true", width);
         }
-        return Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+        var markup = Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+        // horzOverflow clip cuts the text at the sides of the text rectangle (measured: not at the insets).
+        if (Body("horzOverflow") == "clip" && markup.Length > 0)
+        {
+            var id = $"hc{++nextClip}";
+            markup = $"<defs><clipPath id=\"{id}\"><rect x=\"{Units.Css(geometry.TextLeft)}\" y=\"-100000\" width=\"{Units.Css(geometry.TextRight - geometry.TextLeft)}\" height=\"200000\"/></clipPath></defs>" +
+                     $"<g clip-path=\"url(#{id})\">{markup}</g>";
+        }
+        return markup;
     }
 
     /// <summary>
@@ -290,7 +317,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <see cref="TextWarp"/>, one path per run style; the text stays transparent on top for selection.
     /// </summary>
     string EmitWarped(LaidOutText layout, double left, double top, double height, string anchor, XElement warp,
-        Drawing.Geometry.GeometryDefinition definition, (double L, double T, double W, double H) box)
+        Drawing.Geometry.GeometryDefinition definition, (double L, double T, double W, double H) box, bool fromWordArt, double width)
     {
         var offset = anchor switch { "ctr" => (height - layout.Height) / 2, "b" => height - layout.Height, _ => 0 };
         var glyphs = new List<TextWarp.Glyph>();
@@ -327,7 +354,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }
         var adjustments = warp.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
             .Select(gd => new Drawing.Geometry.Guide(gd.Str("name") ?? "", gd.Str("fmla") ?? "val 0")).ToList() ?? [];
-        var warped = TextWarp.Apply(definition, adjustments, box, glyphs);
+        // Each line's alignment with the free space before and after it in the text box (pixels, insets included).
+        (string, double, double, double) Alignment(int index)
+        {
+            var line = layout.Lines[index];
+            var start = line.Runs.Count > 0 ? line.Runs.Min(r => r.X) : 0;
+            return (line.Align, (left + start) * PxPerPt - box.L, box.L + box.W - (left + start + line.Width) * PxPerPt, line.Width * PxPerPt);
+        }
+        var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment);
 
         var svg = new StringBuilder("<g data-tx=\"\">");
         var defs = new StringBuilder();
@@ -414,7 +448,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var filter = run.Style.Effects is { } effects
                     ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true)
                     : null;
-                var shifted = run.Style.BaselineShift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size);
+                var shifted = run.Style.BaselineShift == 0 && run.Lift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
                 // gradient anew, from the line's start to its end and from its ascent to its descent).
                 var box = (left + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
@@ -474,13 +508,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return svg.ToString();
     }
 
-    LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction)
+    LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,
+        bool spaceFirstLast = false)
     {
         var counters = new int[9];
         var paragraphs = txBody.Elements(Ns.A + "p")
             .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
             .ToList();
-        return TextLayout.Layout(paragraphs, width, wrap);
+        return TextLayout.Layout(paragraphs, width, wrap, spaceFirstLast);
     }
 
     static string Px(double points) => Units.Css(points * PxPerPt);
@@ -807,6 +842,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             SpaceBefore = Space(ParagraphElement(pPr, sources, level, "spcBef")),
             SpaceAfter = Space(ParagraphElement(pPr, sources, level, "spcAft")),
             DefaultTabSize = long.TryParse(P("defTabSz"), out var tab) ? tab / Units.EmuPerPoint : 72,
+            FontAlign = P("fontAlgn") ?? "auto",
             Bullet = hasText
                 ? Bullet(pPr, sources, level, runs.FirstOrDefault(r => r.Text != "\n")?.Style ?? endStyle, counters)
                 : ResetBullet(level, counters),
