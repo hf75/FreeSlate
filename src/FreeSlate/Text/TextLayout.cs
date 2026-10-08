@@ -16,7 +16,11 @@ public sealed record TextStyle(
     double BaselineShift = 0,
     RgbColor? Highlight = null,
     bool AllCaps = false,
-    System.Xml.Linq.XElement? Effects = null);
+    System.Xml.Linq.XElement? Effects = null,
+    TextLink? Link = null);
+
+/// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
+public sealed record TextLink(string? Href, string? Action, string? Tooltip);
 
 /// <summary>A piece of text with one style; Text "\n" is a line break (a:br).</summary>
 public sealed record TextRun(string Text, TextStyle Style);
@@ -62,6 +66,9 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
 
 public sealed class LaidOutLine
 {
+    /// <summary>Index of the paragraph the line belongs to (animations address paragraphs).</summary>
+    public int Paragraph { get; set; }
+
     /// <summary>Baseline from the top of the text area, in points.</summary>
     public double Baseline { get; set; }
     public double Ascent { get; init; }
@@ -109,6 +116,7 @@ public static class TextLayout
 
             foreach (var line in BreakLines(paragraph, width, wrap))
             {
+                line.Paragraph = p;
                 line.Baseline = cursor + line.Ascent;
                 cursor = line.Baseline + line.Descent;
                 result.Lines.Add(line);

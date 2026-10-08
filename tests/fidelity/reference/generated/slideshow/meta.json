@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/slideshow.pptx",
+  "sha256": "d76fd0b5737944d82ec922058d164fd21b1949860235afe1ef8ec9135b7a4591",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 6
+}

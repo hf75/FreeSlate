@@ -32,7 +32,24 @@ public static class PptxConverter
         .sp text{white-space:pre;font-variant-ligatures:none}
         .sp text.sel{fill-opacity:0}
         .glyphs{position:absolute;left:0;top:0}
+        .fs-play{position:fixed;right:16px;bottom:16px;width:44px;height:44px;border:0;border-radius:50%;background:#c43e1c;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
+        body:has(.slide:target) .fs-play{display:none}
+        .fs-show{position:fixed;inset:0;background:#000;z-index:2147483647;overflow:hidden;user-select:none}
+        .fs-stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
+        .fs-stage>.slide{position:absolute!important;left:0;top:0;margin:0!important;display:block!important;opacity:1;outline:none!important}
+        .fs-cover{position:absolute;inset:0;opacity:0;pointer-events:none;background:#000}
+        .fs-end{display:none;position:absolute;left:0;right:0;top:12px;color:#fff;font:16px system-ui,sans-serif;text-align:center}
+        @media print{.fs-play{display:none}}
         """;
+
+    /// <summary>The slide show player (catalog: interactivity.player), embedded in every document.</summary>
+    static readonly Lazy<string> Player = new(() =>
+    {
+        using var stream = typeof(PptxConverter).Assembly.GetManifestResourceStream("player.js")
+                           ?? throw new InvalidOperationException("Missing resource player.js");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd().Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase);
+    });
 
     public static string ToHtml(string pptxPath, FontLocator? fonts = null)
     {
@@ -58,7 +75,13 @@ public static class PptxConverter
             if (slideSection != null) attributes.Append($" data-section=\"{WebUtility.HtmlEncode(slideSection)}\"");
             var notes = deck.NotesHtml(part) is { } n ? $"<aside class=\"notes\">{n}</aside>" : "";
             slides.Append(new SlideRenderer(new SlideContext(context, part, number), paint).Render(attributes.ToString(), notes)).Append('\n');
-            data.Add(new SlideData { Number = number, Hidden = hidden, Section = slideSection });
+            var slideData = new SlideData { Number = number, Hidden = hidden, Section = slideSection };
+            var slideContext = new SlideContext(context, part, number);
+            if (SlideShow.Transition(slideContext) is { } transition)
+                slideData.Members.Add($"\"transition\":{transition.ToJsonString()}");
+            if (SlideShow.Timing(slideContext) is { } timing)
+                slideData.Members.Add($"\"timing\":{timing.ToJsonString()}");
+            data.Add(slideData);
         }
 
         var properties = deck.Properties;
@@ -82,6 +105,7 @@ public static class PptxConverter
         html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"deck\">\n").Append(slides).Append("</main>\n");
         html.Append("<script type=\"application/json\" id=\"freeslate-data\">").Append(deck.Json(data)).Append("</script>\n");
+        html.Append("<script>").Append(Player.Value).Append("</script>\n");
         html.Append("</body>\n</html>\n");
         return html.ToString();
     }

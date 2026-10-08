@@ -20,6 +20,17 @@ public static class MarkupCompatibility
         "http://schemas.openxmlformats.org/markup-compatibility/2006",
     ];
 
+    /// <summary>
+    /// Namespaces of slide transitions and timing that the player handles (Office 2010, 2013 and morph
+    /// transitions; unknown ones degrade to a fade there), chosen only for p:transition and p:timing.
+    /// </summary>
+    static readonly HashSet<string> SlideShow =
+    [
+        "http://schemas.microsoft.com/office/powerpoint/2010/main",
+        "http://schemas.microsoft.com/office/powerpoint/2012/main",
+        "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
+    ];
+
     public static void Process(XDocument document)
     {
         foreach (var alternate in document.Descendants(Mc + "AlternateContent").ToList())
@@ -27,12 +38,20 @@ public static class MarkupCompatibility
             if (alternate.Parent == null)
                 continue;   // inside an alternative that was already removed
             var chosen = alternate.Elements(Mc + "Choice").FirstOrDefault(IsSupported)
+                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Element(Mc + "Fallback");
             if (chosen == null)
                 alternate.Remove();
             else
                 alternate.ReplaceWith(chosen.Elements());
         }
+    }
+
+    static bool IsSlideShow(XElement choice)
+    {
+        var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return choice.Elements().Any() && choice.Elements().All(e => e.Name.LocalName is "transition" or "timing")
+               && requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns && (Supported.Contains(ns.NamespaceName) || SlideShow.Contains(ns.NamespaceName)));
     }
 
     static bool IsSupported(XElement choice)

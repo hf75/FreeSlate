@@ -136,7 +136,7 @@ areas:
         description: p:sld/@show="0".
         priority: P1
         difficulty: 1
-        status: partial
+        status: done
         strategy: Skipped in the slide show, shown dimmed in the overview.
 
       - id: presentation.masters
@@ -232,7 +232,7 @@ areas:
                    p14:discardImageEditData]
         priority: P3
         difficulty: 1
-        status: partial
+        status: done
         strategy: Loop, kiosk mode, slide range and pen color configure the player; print and web settings are ignored.
 
       - id: presentation.viewSettings
@@ -1257,6 +1257,7 @@ areas:
         elements: [p:transition, p:sndAc, p:stSnd, p:endSnd, p:snd]
         priority: P1
         difficulty: 2
+        status: done
         strategy: Duration from spd or p14:dur; advance on click and/or after advTm; optional sound.
 
       - id: transition.classic
@@ -1265,6 +1266,7 @@ areas:
                    p:plus, p:pull, p:push, p:random, p:randomBar, p:split, p:strips, p:wedge, p:wheel, p:wipe, p:zoom]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: Web Animations on two stacked slide layers (clip-path, transforms, opacity).
 
       - id: transition.office2010
@@ -1274,6 +1276,7 @@ areas:
                    p14:vortex, p14:warp, p14:wheelReverse, p14:window]
         priority: P2
         difficulty: 4
+        status: partial
         strategy: 3D transitions with CSS 3D transforms; particle-like ones (vortex, shred, honeycomb, glitter) with WebGL.
         office: Written as mc:AlternateContent with a p:fade fallback.
 
@@ -1282,6 +1285,7 @@ areas:
         elements: [p15:prstTrans]
         priority: P2
         difficulty: 5
+        status: partial
         strategy: Curtains, wind, prestige, fracture, crush, peel off, page curl, airplane, origami in WebGL.
 
       - id: transition.morph
@@ -1289,6 +1293,7 @@ areas:
         elements: [p159:morph]
         priority: P2
         difficulty: 5
+        status: partial
         strategy: >-
           Match objects between the two slides (same name, names starting with !!, similar content), then interpolate
           position, size, rotation, fill and geometry; words or characters for text.
@@ -1304,6 +1309,7 @@ areas:
                    p:tmPct]
         priority: P1
         difficulty: 4
+        status: partial
         strategy: >-
           A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous,
           triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.
@@ -1314,6 +1320,7 @@ areas:
                    p:subSp, a:dgm, a:chart]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: >-
           Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must
           keep those addressable.
@@ -1325,6 +1332,7 @@ areas:
                    p:clrVal, p:by, p:from, p:to, p:rgb, p:hsl, p:rCtr, p:progress]
         priority: P1
         difficulty: 4
+        status: partial
         strategy: >-
           Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …)
           map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become
@@ -1336,6 +1344,7 @@ areas:
                    a:bldChart, a:bldDgm]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: Build text by paragraph and level, charts by series or category, SmartArt by node.
 
       - id: animation.presets
@@ -1343,6 +1352,7 @@ areas:
         description: presetClass, presetID and presetSubtype on p:cTn.
         priority: P1
         difficulty: 3
+        status: done
         strategy: The timing tree already contains the behaviours; presets only name PowerPoint's effects (Fade, Fly In, Wipe …) for the editor.
 
       - id: animation.media
@@ -1374,6 +1384,7 @@ areas:
         title: Slide show player
         priority: P1
         difficulty: 2
+        status: partial
         strategy: Navigation by click, keys and swipe; advance timings; loop and kiosk mode; full screen; presenter view with notes.
 
       - id: interactivity.hyperlinks
@@ -1381,6 +1392,7 @@ areas:
         elements: [a:hlinkClick, a:hlinkHover, a:hlinkMouseOver, a:snd, ahyp:hlinkClr]
         priority: P1
         difficulty: 2
+        status: partial
         strategy: >-
           Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom
           show) handled by the player; hover actions and sounds.

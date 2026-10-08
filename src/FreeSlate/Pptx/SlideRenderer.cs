@@ -166,6 +166,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
+        // A hyperlink or action on the whole shape (catalog: interactivity.hyperlinks).
+        var shapeLink = Links.Resolve(NonVisual(shape)?.Element(Ns.A + "hlinkClick"), part, slide.Presentation);
+        if (shapeLink != null)
+            html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
         var effectFilter = SvgEffects.Filter(Effects(chain, style), slide.Colors, pw, ph, defs);
@@ -173,6 +177,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
         var shapeMarkup = paths.ToString() + ends;
+        // The shape's own drawing is a group of its own when it has text: animations can build the background and
+        // the text separately (catalog: animation.build).
+        var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
+        if (hasText && shapeMarkup.Length > 0)
+            shapeMarkup = $"<g data-bg=\"\">{shapeMarkup}</g>";
         html.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
         if (shape.Name.LocalName == "sp")
         {
@@ -183,8 +192,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 FontRef = style?.Element(Ns.A + "fontRef"),
             }, geometry, pw, flipH ^ flipV);
+            if (shapeLink != null)
+                textMarkup = UnlinkText(textMarkup);   // links cannot nest
             html.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
+        if (shapeLink != null)
+            html.Append("</a>");
         html.Append("</svg>");
         html.Append("</div>");
     }
@@ -352,6 +365,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     static readonly XNamespace Adec = "http://schemas.microsoft.com/office/drawing/2017/decorative";
+
+    /// <summary>Text markup without its run links (inside a linked shape).</summary>
+    static string UnlinkText(string markup) =>
+        System.Text.RegularExpressions.Regex.Replace(markup, "<a(?: [^>]*)?>(?:<title>[^<]*</title>)?|</a>", "");
 
     static XElement? NonVisual(XElement shape) =>
         shape.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("nv", StringComparison.Ordinal))?.Elements().FirstOrDefault(e => e.Name.LocalName == "cNvPr");

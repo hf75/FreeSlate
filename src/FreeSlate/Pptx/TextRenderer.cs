@@ -28,6 +28,11 @@ public sealed class TextChain
 /// </summary>
 public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 {
+    /// <summary>The part whose relationships the runs' hyperlinks refer to.</summary>
+    string? linkPart;
+
+    static readonly XNamespace HyperlinkColor = "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor";
+
     const double PxPerPt = 96.0 / 72;
     static readonly string[] FillNames = ["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"];
 
@@ -55,6 +60,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var spacingReduction = autofit?.Name.LocalName == "normAutofit" ? (autofit.Long("lnSpcReduction") ?? 0) / 100000.0 : 0;
 
         var sources = BuildSources(chain);
+        linkPart = chain.Shapes[0].Part;
         var left = geometry.TextLeft / PxPerPt + Inset("lIns", 91440);
         var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
@@ -87,9 +93,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var svg = new StringBuilder();
         var defs = new StringBuilder();
         var filters = new Dictionary<XElement, string?>();
-        svg.Append(unflipWidth is { } w ? $"<g transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g>");
+        svg.Append(unflipWidth is { } w ? $"<g data-tx=\"\" transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g data-tx=\"\">");
+        var paragraph = -1;
         foreach (var line in layout.Lines)
         {
+            // Every paragraph is a group of its own: animations build text by paragraph (catalog: animation.targets).
+            if (line.Paragraph != paragraph)
+            {
+                if (paragraph >= 0) svg.Append("</g>");
+                paragraph = line.Paragraph;
+                svg.Append($"<g data-p=\"{paragraph}\">");
+            }
             // Baselines and glyphs sit on whole pixels counted from the top of the text area and from the start of
             // each format run (measured with the text-snap deck; see Snap and Text).
             var baseline = top + Snap(offset + line.Baseline);
@@ -116,6 +130,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 svg.Append(Text(run, left + run.X, shifted, filter, left + formatOrigin));
             }
         }
+        if (paragraph >= 0) svg.Append("</g>");
         svg.Append("</g>");
         return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
     }
@@ -278,7 +293,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
         }
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
-        return sb.ToString();
+        return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
     }
 
     /// <summary>
@@ -564,20 +579,33 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         // kern: kerning applies from this size (hundredths of a point) up; without it PowerPoint does not kern.
         var kern = double.TryParse(R("kern"), out var k) ? k / 100 : double.MaxValue;
+        // Hyperlinked text takes the theme's hyperlink color and an underline, unless ahyp:hlinkClr keeps the
+        // text color (catalog: interactivity.hyperlinks; measured).
+        var hlink = rPr?.Element(Ns.A + "hlinkClick");
+        var link = hlink != null && linkPart != null ? Links.Resolve(hlink, linkPart, slide.Presentation) : null;
+        var color = RunColor(rPr, sources, level);
+        var underline = R("u") is { } u && u != "none" ? u : null;
+        if (link != null)
+        {
+            if (hlink!.Descendants(HyperlinkColor + "hlinkClr").FirstOrDefault()?.Str("val") != "tx")
+                color = slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "hlink")));
+            if (rPr!.Attribute("u") == null) underline = "sng";
+        }
         return new TextStyle(
             fonts.Resolve(family, bold, italic),
             size,
-            RunColor(rPr, sources, level),
+            color,
             bold,
             italic,
             size >= kern,
             int.TryParse(R("spc"), out var spc) ? spc / 100.0 : 0,
-            R("u") is { } u && u != "none" ? u : null,
+            underline,
             R("strike") is "sngStrike" or "dblStrike" ? R("strike") : null,
             int.TryParse(R("baseline"), out var b) ? b / 100000.0 : 0,
             RunElement(rPr, sources, level, "highlight") is { } h ? slide.Colors.ResolveChild(h) : null,
             R("cap") == "all",
-            RunElement(rPr, sources, level, "effectLst"));
+            RunElement(rPr, sources, level, "effectLst"),
+            link);
     }
 
     RgbColor RunColor(XElement? rPr, List<Source> sources, int level)

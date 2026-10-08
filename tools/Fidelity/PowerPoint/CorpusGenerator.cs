@@ -49,6 +49,7 @@ public static class CorpusGenerator
         ("metafiles", MetafilesDeck.Build, true),
         ("pictures", PicturesDeck.Build, true),
         ("text-snap", TextSnapDeck.Build, false),
+        ("slideshow", SlideshowDeck.Build, true),
     ];
 
     /// <summary>Generates the named decks, or all of them.</summary>
