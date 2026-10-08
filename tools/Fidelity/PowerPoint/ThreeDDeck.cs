@@ -81,6 +81,40 @@ static class ThreeDDeck
             try { shape.ThreeD.PresetMaterial = presets[i]; } catch (Exception) { }
         }
 
+        // Bevels on pictures (their texture stays on the bevel) and gradients.
+        var textured = Slide(presentation);
+        var images = TestImages.Write(Path.Combine(Path.GetTempPath(), "fidelity-images"));
+        int[] pictureBevels = [3, 7, 4];
+        for (var i = 0; i < pictureBevels.Length; i++)
+        {
+            var picture = ((dynamic)textured).Shapes.AddPicture(i == 1 ? images.Png : images.Jpeg, PowerPointSession.MsoFalse, PowerPointSession.MsoTrue, 40 + i * 300, 40, 260, 180);
+            picture.ThreeD.BevelTopType = pictureBevels[i];
+            picture.ThreeD.BevelTopInset = 14f;
+            picture.ThreeD.BevelTopDepth = 10f;
+        }
+        for (var i = 0; i < 3; i++)
+        {
+            var shape = Box(textured, i == 1 ? Oval : Rectangle, 40 + i * 300, 290, 260, 180, $"Gradient {i + 1}");
+            shape.Fill.TwoColorGradient(i + 1, 1);   // horizontal, vertical, diagonal up
+            shape.Fill.ForeColor.RGB = CorpusGenerator.Rgb(68, 114, 196);
+            shape.Fill.BackColor.RGB = CorpusGenerator.Rgb(255, 192, 0);
+            shape.ThreeD.BevelTopType = 3;
+            shape.ThreeD.BevelTopInset = 16f;
+            shape.ThreeD.BevelTopDepth = 10f;
+        }
+
+        // Light angles: the rig turned about the view axis.
+        var angles = Slide(presentation);
+        float[] lightAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+        for (var i = 0; i < lightAngles.Length; i++)
+        {
+            var shape = Box(angles, Oval, 40 + (i % 4) * 230, 50 + (i / 4) * 240, 190, 190, $"Angle {lightAngles[i]}");
+            shape.ThreeD.BevelTopType = 6;   // angle
+            shape.ThreeD.BevelTopInset = 40f;
+            shape.ThreeD.BevelTopDepth = 40f;
+            shape.ThreeD.LightAngle = lightAngles[i];
+        }
+
         // Light rigs (MsoLightRigType) on a beveled, tilted shape.
         var lights = Slide(presentation);
         for (var rig = 1; rig <= 15; rig++)

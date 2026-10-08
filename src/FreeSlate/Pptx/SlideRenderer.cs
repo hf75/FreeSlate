@@ -181,14 +181,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
         // shape's unturned box (the player animates it) and holds the extruded body, an inner div projects the
         // front face with the camera.
-        var camera = Camera.Read(Scene3D(chain, style));
+        var scene3d = Scene3D(chain, style);
+        var camera = Camera.Read(scene3d);
         var shape3d = camera != null ? Shape3D(chain, style) : null;
+        var lighting = Lighting.For(scene3d, shape3d);
         // A top bevel is at most half the shape's smaller side wide (measured).
         var bevel = shape3d?.Element(Ns.A + "bevelT");
         var bevelWidth = bevel != null ? Math.Min(Units.ToPx(bevel.Long("w") ?? 76200), Math.Min(pw, ph) / 2) : 0;
         var bevelHeight = bevel != null ? Units.ToPx(bevel.Long("h") ?? 76200) : 0;
         var beveled = bevelWidth > 0.01 && bevelHeight > 0.01;
         List<List<(double X, double Y)>>? solidOutlines = null;
+        var texturedBevel = false;
+        var bevelShading = "";
         if (camera is { Flat: false } || camera != null && beveled)
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
@@ -200,16 +204,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 _ => RgbColor.FromHex("808080"),
             };
             var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
-            var solid = new Solid(camera, pw, ph, rotation, flipH, flipV);
+            var solid = new Solid(camera, lighting, pw, ph, rotation, flipH, flipV);
             solidOutlines = Solid.Outlines(geometry);
             var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
             if (depth > 0.01 && !camera.Flat)
                 solid.Extrusion(solidOutlines, -bevelHeight, -bevelHeight - depth, extrusionColor ?? faceColor);
+            // Pictures and gradients keep their texture on the bevel: it is shaded over the unclipped front face.
+            texturedBevel = beveled && fill is not (SolidFill or NoFill);
             if (beveled)
-                solid.Bevel(solidOutlines, bevelWidth, bevelHeight, BevelProfiles.Get(bevel!.Str("prst")), faceColor);
+                solid.Bevel(solidOutlines, bevelWidth, bevelHeight, BevelProfiles.Get(bevel!.Str("prst")), texturedBevel ? null : faceColor);
             var solidMarkup = solid.Markup();
             if (solidMarkup.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidMarkup}</svg>");
+            bevelShading = solid.OverlayMarkup();
             html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}\">");
         }
         else
@@ -229,7 +236,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = paths.ToString() + ends;
-        if (beveled && solidOutlines != null && shapeMarkup.Length > 0)
+        if (beveled && !texturedBevel && solidOutlines != null && shapeMarkup.Length > 0)
         {
             // The fill shows on the front face inside the bevel; the outline stays at the edge.
             var clip = $"bf{++litFilters}";
@@ -279,10 +286,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (camera != null && content.Length > 0)
         {
             // The front face is lit like the rest of the 3D shape (its normal faces the front).
-            var (diffuse, specular) = Lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
+            var (diffuse, specular) = lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
             var lit = $"l{++litFilters}";
             defs.Append($"<filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
-                        $"{Units.Css4(diffuse)} 0 0 0 {Units.Css4(specular)} 0 {Units.Css4(diffuse)} 0 0 {Units.Css4(specular)} 0 0 {Units.Css4(diffuse)} 0 {Units.Css4(specular)} 0 0 0 1 0\"/></filter>");
+                        $"{Units.Css4(diffuse.R)} 0 0 0 {Units.Css4(specular.R)} 0 {Units.Css4(diffuse.G)} 0 0 {Units.Css4(specular.G)} 0 0 {Units.Css4(diffuse.B)} 0 {Units.Css4(specular.B)} 0 0 0 1 0\"/></filter>");
             content = $"<g filter=\"url(#{lit})\">{content}</g>";
         }
         if (defs.Length > 0)
@@ -293,7 +300,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
             html.Append(Media(shape, part));
-        html.Append(camera is { Flat: false } || camera != null && beveled ? "</div></div>" : "</div>");
+        if (camera is { Flat: false } || camera != null && beveled)
+        {
+            html.Append("</div>");
+            if (bevelShading.Length > 0)
+                html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
+            html.Append("</div>");
+        }
+        else
+        {
+            html.Append("</div>");
+        }
     }
 
     /// <summary>

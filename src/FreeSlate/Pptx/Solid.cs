@@ -12,7 +12,7 @@ namespace FreeSlate.Pptx;
 /// scene (relative to the box center, turned and flipped in the plane); output is in the pixels of the shape's
 /// unturned box. The front face itself is drawn by the caller.
 /// </summary>
-sealed class Solid(Camera camera, double w, double h, double rotation, bool flipH, bool flipV)
+sealed class Solid(Camera camera, Lighting lighting, double w, double h, double rotation, bool flipH, bool flipV)
 {
     readonly Matrix plane = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
     readonly List<(double Depth, string Markup)> faces = [];
@@ -119,11 +119,11 @@ sealed class Solid(Camera camera, double w, double h, double rotation, bool flip
         var view = camera.View(center);
         if (normal.X * view.X + normal.Y * view.Y + normal.Z * view.Z <= 1e-9)
             return;
-        var lit = Lighting.Apply(color, Lighting.Shade(normal, view)).ToHex();
+        var lit = Lighting.Apply(color, lighting.Shade(normal, view)).ToHex();
         var fill = $"fill=\"{lit}\"";
         if (smooth is var (na, nb))
         {
-            var (ca, cb) = (Lighting.Apply(color, Lighting.Shade(na, view)).ToHex(), Lighting.Apply(color, Lighting.Shade(nb, view)).ToHex());
+            var (ca, cb) = (Lighting.Apply(color, lighting.Shade(na, view)).ToHex(), Lighting.Apply(color, lighting.Shade(nb, view)).ToHex());
             if (ca != cb)
             {
                 var (pa, pb) = (Screen(polygon[0]), Screen(polygon[1]));
@@ -187,7 +187,12 @@ sealed class Solid(Camera camera, double w, double h, double rotation, bool flip
     /// pixels from the outline (behind) to the front face (z = 0) along the preset's profile; strips of one color are
     /// merged along the outline.
     /// </summary>
-    public void Bevel(List<List<(double X, double Y)>> outlines, double width, double height, double[] profile, RgbColor color)
+    /// <remarks>
+    /// Without a color (pictures, gradients) the bevel is drawn as shading over the front face, which then must not be
+    /// clipped: a multiplied gray for the diffuse light and an added gray for the specular (and for diffuse light above
+    /// one), see <see cref="OverlayMarkup"/>.
+    /// </remarks>
+    public void Bevel(List<List<(double X, double Y)>> outlines, double width, double height, double[] profile, RgbColor? color)
     {
         if (width < 0.01 || height < 0.01)
             return;
@@ -212,7 +217,10 @@ sealed class Solid(Camera camera, double w, double h, double rotation, bool flip
                     if (run == null)
                         return;
                     back!.Reverse();
-                    Face([.. run, .. back], runNormal, color);
+                    if (color is { } solid)
+                        Face([.. run, .. back], runNormal, solid);
+                    else
+                        Overlay([.. run, .. back], runNormal);
                     run = null;
                 }
                 for (var i = 0; i < outer.Count; i++)
@@ -222,7 +230,8 @@ sealed class Solid(Camera camera, double w, double h, double rotation, bool flip
                     if (inward == (0, 0))
                         continue;
                     var normal = Normalize((-inward.X * slope, -inward.Y * slope, 1));
-                    var hex = Lighting.Apply(color, Lighting.Shade(normal, camera.View((outer[i].X, outer[i].Y, z0)))).ToHex();
+                    var shade = lighting.Shade(normal, camera.View((outer[i].X, outer[i].Y, z0)));
+                    var hex = color is { } c ? Lighting.Apply(c, shade).ToHex() : $"{shade.Diffuse.R:F2}/{shade.Specular.R:F2}";
                     if (run != null && hex != runColor)
                         Flush();
                     if (run == null)
@@ -239,6 +248,39 @@ sealed class Solid(Camera camera, double w, double h, double rotation, bool flip
             }
         }
     }
+
+    readonly List<(double Depth, string Markup)> overlays = [];
+
+    /// <summary>Shading of a scene polygon over a textured front face (multiplied diffuse, added specular).</summary>
+    void Overlay(List<(double X, double Y, double Z)> polygon, (double X, double Y, double Z) normal)
+    {
+        var center = (X: polygon.Average(p => p.X), Y: polygon.Average(p => p.Y), Z: polygon.Average(p => p.Z));
+        var view = camera.View(center);
+        if (normal.X * view.X + normal.Y * view.Y + normal.Z * view.Z <= 1e-9)
+            return;
+        var shade = lighting.Shade(normal, view);
+        // Textures are shaded in gray: the mean of the channels.
+        var diffuse = (shade.Diffuse.R + shade.Diffuse.G + shade.Diffuse.B) / 3;
+        var specular = (shade.Specular.R + shade.Specular.G + shade.Specular.B) / 3;
+        var d = new StringBuilder();
+        for (var i = 0; i < polygon.Count; i++)
+        {
+            var (x, y) = Screen(polygon[i]);
+            d.Append(i == 0 ? 'M' : 'L').Append(Units.Css(x)).Append(' ').Append(Units.Css(y));
+        }
+        var markup = new StringBuilder();
+        var multiply = new RgbColor(Math.Min(1, diffuse), Math.Min(1, diffuse), Math.Min(1, diffuse)).ToHex();
+        if (diffuse < 0.999)
+            markup.Append($"<path d=\"{d}Z\" fill=\"{multiply}\" style=\"mix-blend-mode:multiply\"/>");
+        var add = Math.Clamp(specular + Math.Max(0, diffuse - 1) * 0.6, 0, 1);
+        if (add > 0.004)
+            markup.Append($"<path d=\"{d}Z\" fill=\"{new RgbColor(add, add, add).ToHex()}\" style=\"mix-blend-mode:plus-lighter\"/>");
+        if (markup.Length > 0)
+            overlays.Add((camera.Turn(center).Z, markup.ToString()));
+    }
+
+    /// <summary>The shading drawn over a textured front face, farthest first.</summary>
+    public string OverlayMarkup() => string.Concat(overlays.OrderBy(f => f.Depth).Select(f => f.Markup));
 
     /// <summary>The faces collected so far as SVG, farthest first.</summary>
     public string Markup() => (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + string.Concat(faces.OrderBy(f => f.Depth).Select(f => f.Markup));
