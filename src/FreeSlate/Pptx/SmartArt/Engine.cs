@@ -318,8 +318,10 @@ public static class Engine
     }
 
     /// <summary>
-    /// The snake algorithm: the nodes in rows (or columns) of equal cells, as many per row as make them largest (more
-    /// per row when equal), the spacing sp between them, each row centered, the grid centered in the node.
+    /// The snake algorithm: the nodes in rows (or columns, flowDir col) of equal cells, as many per row as make them
+    /// largest (more per row when equal); within a row the cells keep the room of the spacers between them (the
+    /// transitions' nodes, measured with bList2), else sp, and the rows sp apart; each row centered, the grid centered in
+    /// the node, growing from the corner grDir names, every other row reversed with contDir revDir.
     /// </summary>
     static void Snake(LayoutNode node, Pins pins)
     {
@@ -330,14 +332,18 @@ public static class Engine
         var (cw, ch) = (extents.Max(e => e.W), extents.Max(e => e.H));
         if (cw <= 0 || ch <= 0)
             return;
-        var gap = Value(node, "sp");
         var columns = node.Param("flowDir") == "col";
+        var spacers = node.Children.Where(c => IsTransition(c) && c.AlgorithmType != "conn").Select(Extent).ToList();
+        var lineGap = Value(node, "sp");
+        var gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
         var n = cells.Count;
         var best = (Factor: 0.0, Count: 1);
         for (var count = 1; count <= n; count++)
         {
             var lines = (n + count - 1) / count;
-            var (gw, gh) = columns ? (lines * cw + (lines - 1) * gap, count * ch + (count - 1) * gap) : (count * cw + (count - 1) * gap, lines * ch + (lines - 1) * gap);
+            var (gw, gh) = columns
+                ? (lines * cw + (lines - 1) * lineGap, count * ch + (count - 1) * gap)
+                : (count * cw + (count - 1) * gap, lines * ch + (lines - 1) * lineGap);
             var factor = Math.Min(node.W / gw, node.H / gh);
             if (factor > best.Factor * (1 + 1e-9))
                 best = (factor, count);
@@ -345,12 +351,12 @@ public static class Engine
         var k = best.Factor;
         // As many cells per line as fit at that size.
         var perLine = columns
-            ? Math.Max(1, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-9))
-            : Math.Max(1, (int)Math.Floor((node.W + gap * k) / ((cw + gap) * k) + 1e-9));
+            ? Math.Max(best.Count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
+            : Math.Max(best.Count, (int)Math.Floor((node.W + gap * k) / ((cw + gap) * k) + 1e-6));
         perLine = Math.Min(perLine, n);
         var lineCount = (n + perLine - 1) / perLine;
-        var (scw, sch, sgap) = (cw * k, ch * k, gap * k);
-        var gridAcross = lineCount * (columns ? scw : sch) + (lineCount - 1) * sgap;
+        var (scw, sch, sgap, slineGap) = (cw * k, ch * k, gap * k, lineGap * k);
+        var gridAcross = lineCount * (columns ? scw : sch) + (lineCount - 1) * slineGap;
         var start = ((columns ? node.W : node.H) - gridAcross) / 2;
         var grow = node.Param("grDir") ?? "tL";
         var reverse = node.Param("contDir") == "revDir";
@@ -362,7 +368,7 @@ public static class Engine
                 index = inLine - 1 - index;
             var lineLength = inLine * (columns ? sch : scw) + (inLine - 1) * sgap;
             var offset = ((columns ? node.H : node.W) - lineLength) / 2 + index * ((columns ? sch : scw) + sgap);
-            var across = start + line * ((columns ? scw : sch) + sgap);
+            var across = start + line * ((columns ? scw : sch) + slineGap);
             double x, y;
             if (columns)
                 (x, y) = (across, offset);

@@ -76,7 +76,9 @@ public static class Constraints
             node.FromAncestors.Clear();
             for (var ancestor = node.Parent; ancestor != null; ancestor = ancestor.Parent)
             {
-                foreach (var constraint in ancestor.Constraints.Where(c => !Own(c) && !Bound(c)))
+                // Only constraints that give a value (not those that make values equal or give 0 where none is set).
+                foreach (var constraint in ancestor.Constraints.Where(c => !Own(c) && !Bound(c)
+                             && (c.Attribute("val") != null || (string?)c.Attribute("refType") is { Length: > 0 } and not "none")))
                 {
                     if (Targets(ancestor, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(node))
                         node.FromAncestors.Add((string?)constraint.Attribute("type") ?? "");
@@ -98,7 +100,12 @@ public static class Constraints
             foreach (var node in nodes)
             {
                 foreach (var constraint in node.Constraints.Where(c => Own(c) && !Bound(c)))
-                    Apply(node, constraint, pins, null);
+                {
+                    // A value an ancestor sets is the ancestor's: the node's own would only stand in for it meanwhile
+                    // (bList2's composite, w = 1 of its own, takes its height from the width its parent gives).
+                    if (!node.FromAncestors.Contains((string?)constraint.Attribute("type") ?? ""))
+                        Apply(node, constraint, pins, null);
+                }
             }
             foreach (var node in nodes)
             {
