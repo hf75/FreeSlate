@@ -7,12 +7,14 @@ namespace FreeSlate.Text;
 public sealed record ResolvedFont(FontData Data, bool SyntheticBold, bool SyntheticItalic);
 
 /// <summary>
-/// Maps a typeface and style to a font file. Missing families fall back to a metric-neutral sans serif that is
-/// also written into the CSS, so the browser draws with the font the layout was measured with.
+/// Maps a typeface and style to a font file. Missing families fall back to Calibri like in PowerPoint, whatever
+/// their panose or pitch family say (measured: serif, monospaced, script and unknown fonts all become Calibri), else
+/// to its metric twin Carlito or a common sans serif; the fallback is written into the CSS, so the browser draws
+/// with the font the layout was measured with.
 /// </summary>
 public sealed class FontResolver(FontLocator locator)
 {
-    static readonly string[] Fallbacks = ["Arial", "Liberation Sans", "DejaVu Sans"];
+    static readonly string[] Fallbacks = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
 
     readonly ConcurrentDictionary<string, FontData> loaded = new(StringComparer.OrdinalIgnoreCase);
     readonly ConcurrentDictionary<(string, bool, bool), ResolvedFont?> cache = new();
@@ -29,8 +31,12 @@ public sealed class FontResolver(FontLocator locator)
     /// </summary>
     public ResolvedFont ResolveCovering(string family, bool bold, bool italic, string text, IEnumerable<string> candidates)
     {
-        if (Find(family, bold, italic) is { } found && found.Data.Covers(text))
+        var found = Find(family, bold, italic);
+        if (found != null && found.Data.Covers(text))
             return found;
+        // A family that is not there at all is replaced like PowerPoint replaces it, if the substitute has the glyphs.
+        if (found == null && Fallbacks.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null) is { } substitute && substitute.Data.Covers(text))
+            return substitute;
         foreach (var candidate in candidates)
         {
             if (Find(candidate, bold, italic) is { } alternative && alternative.Data.Covers(text))

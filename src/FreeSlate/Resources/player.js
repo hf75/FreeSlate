@@ -1299,6 +1299,25 @@
     if (!show.kiosk) next();
   });
 
+  // Mouse-over actions (a:hlinkHover): run once each time the pointer enters the shape.
+  let hovered = null;
+  document.addEventListener('mouseover', e => {
+    if (!show || !show.overlay.contains(e.target)) return;
+    const shape = e.target.closest('[data-hover-action],[data-hover-href]');
+    if (shape === hovered) return;
+    hovered = shape;
+    if (!shape) return;
+    const value = shape.getAttribute('data-hover-action');
+    if (value) {
+      const proxy = document.createElement('a');
+      proxy.setAttribute('data-action', value);
+      action(proxy);
+    } else if (shape.getAttribute('data-hover-href')) {
+      const href = shape.getAttribute('data-hover-href');
+      if (href.startsWith('#')) location.hash = href; else window.open(href, '_blank', 'noopener');
+    }
+  });
+
   let touchX = null;
   document.addEventListener('touchstart', e => { if (show) touchX = e.touches[0].clientX; }, { passive: true });
   document.addEventListener('touchend', e => {

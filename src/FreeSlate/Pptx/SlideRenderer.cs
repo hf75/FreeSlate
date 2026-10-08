@@ -216,7 +216,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (solidBody)
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
-            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
             var faceColor = Fill.MainColor(fill) ?? RgbColor.FromHex("808080");
             var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
             var solid = new Solid(camera!, lighting, pw, ph, rotation, flipH, flipV);
@@ -259,7 +259,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         else
         {
-            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
         }
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
@@ -497,7 +497,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, 0, false, false));
             var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
             var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, true, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
             return;
         }
@@ -508,7 +508,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
             var (svg, width, height) = Tables.Render(table);
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
+            html.Append($"<div class=\"sp\"{Accessibility(frame, true, part)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
     }
@@ -624,7 +624,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             chOff.Long("x") ?? x,
             chOff.Long("y") ?? y,
             groupFill ?? placement.GroupFill);
-        html.Append($"<div class=\"grp\"{Accessibility(group, isSlide)}>");
+        html.Append($"<div class=\"grp\"{Accessibility(group, isSlide, part)}>");
         RenderTree(group, part, html, child, isSlide);
         html.Append("</div>");
     }
@@ -644,7 +644,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// Shape id for the player (slide shapes only; ids repeat across master and layout) and accessibility
     /// attributes: alt text, title, decorative shapes hidden from assistive technology (catalog: shape.accessibility).
     /// </summary>
-    static string Accessibility(XElement shape, bool isSlide)
+    string Accessibility(XElement shape, bool isSlide, string part)
     {
         var c = NonVisual(shape);
         if (c == null)
@@ -652,6 +652,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var sb = new StringBuilder();
         if (isSlide && c.Str("id") is { } id)
             sb.Append($" data-id=\"{System.Net.WebUtility.HtmlEncode(id)}\"");
+        // Mouse-over actions (a:hlinkHover, catalog: interactivity.hyperlinks): the player runs them when the pointer
+        // enters the shape during the show.
+        if (Links.Resolve(c.Element(Ns.A + "hlinkHover"), part, slide.Presentation) is { } hover)
+        {
+            if (hover.Action != null) sb.Append($" data-hover-action=\"{System.Net.WebUtility.HtmlEncode(hover.Action)}\"");
+            if (hover.Href != null) sb.Append($" data-hover-href=\"{System.Net.WebUtility.HtmlEncode(hover.Href)}\"");
+        }
         if (c.Descendants(Adec + "decorative").Any(d => d.Bool("val") != false))
             return sb.Append(" aria-hidden=\"true\"").ToString();
         if (c.Str("descr") is { Length: > 0 } descr)
