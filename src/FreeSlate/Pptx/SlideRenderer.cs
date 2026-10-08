@@ -184,40 +184,66 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var scene3d = Scene3D(chain, style);
         var camera = Camera.Read(scene3d);
         var shape3d = camera != null ? Shape3D(chain, style) : null;
+        if (camera != null && shape3d.Long("z") is { } offset)
+            camera = camera with { Offset = Units.ToPx(offset) };
         var lighting = Lighting.For(scene3d, shape3d);
-        // A top bevel is at most half the shape's smaller side wide (measured).
-        var bevel = shape3d?.Element(Ns.A + "bevelT");
-        var bevelWidth = bevel != null ? Math.Min(Units.ToPx(bevel.Long("w") ?? 76200), Math.Min(pw, ph) / 2) : 0;
-        var bevelHeight = bevel != null ? Units.ToPx(bevel.Long("h") ?? 76200) : 0;
-        var beveled = bevelWidth > 0.01 && bevelHeight > 0.01;
+        var (topWidth, topHeight, topProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelT"), pw, ph);
+        var (bottomWidth, bottomHeight, bottomProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelB"), pw, ph);
+        var beveled = topWidth > 0;
+        var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
+        var contourWidth = Units.ToPx(shape3d.Long("contourW") ?? 0);
+        // The contour does not reach in front of the shape's plane: unless the top bevel is as high as the contour's
+        // radius, the body moves back by the difference (measured).
+        if (camera != null && contourWidth / 2 > topHeight)
+            camera = camera with { Offset = camera.Offset - (contourWidth / 2 - topHeight) };
+        // The shape's line is part of the 3D body (measured): the body reaches to the line's outer edge, and the line
+        // colors the sides (unless the extrusion has a color of its own), the outer band of the bevels and the back.
+        var lineWidth = outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0;
+        var lineColor = lineWidth > 0 ? Fill.MainColor(outline!.Fill) : null;
         List<List<(double X, double Y)>>? solidOutlines = null;
         var texturedBevel = false;
         var bevelShading = "";
-        if (camera is { Flat: false } || camera != null && beveled)
+        // The legacyWireframe material draws the body's edges instead of its faces (the text stays).
+        var wireframe = shape3d?.Str("prstMaterial") == "legacyWireframe";
+        var solidBody = camera is { Flat: false } || camera != null && (beveled || contourWidth > 0.01 || wireframe);
+        if (solidBody)
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
             html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
-            var faceColor = fill switch
-            {
-                SolidFill solidFill => solidFill.Color,
-                GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
-                _ => RgbColor.FromHex("808080"),
-            };
+            var faceColor = Fill.MainColor(fill) ?? RgbColor.FromHex("808080");
             var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
-            var solid = new Solid(camera, lighting, pw, ph, rotation, flipH, flipV);
-            solidOutlines = Solid.Outlines(geometry);
-            var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
-            if (depth > 0.01 && !camera.Flat)
-                solid.Extrusion(solidOutlines, -bevelHeight, -bevelHeight - depth, extrusionColor ?? faceColor);
+            var solid = new Solid(camera!, lighting, pw, ph, rotation, flipH, flipV);
+            solidOutlines = Solid.Outlines(geometry, lineWidth / 2);
+            // The extrusion runs from the top bevel's outer edge backwards; the bottom bevel closes it at the back.
+            var (front, back) = (-topHeight, -topHeight - depth);
+            if (wireframe)
+                solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back);
+            else if (!camera!.Flat)
+            {
+                if (depth > 0.01)
+                    solid.Extrusion(solidOutlines, front, back, extrusionColor ?? lineColor ?? faceColor);
+                if (bottomWidth > 0)
+                    solid.Bevel(solidOutlines, bottomWidth, bottomHeight, bottomProfile, faceColor, back, bottom: true, lineColor, lineWidth);
+                if (depth > 0.01 || beveled || bottomWidth > 0)
+                {
+                    var backOutlines = bottomWidth > 0 ? solidOutlines.Select(o => Solid.Inset(o, bottomWidth)).ToList() : solidOutlines;
+                    solid.Back(backOutlines, back - bottomHeight, faceColor, lineWidth > bottomWidth ? lineColor : null, lineWidth - bottomWidth);
+                }
+            }
             // Pictures and gradients keep their texture on the bevel: it is shaded over the unclipped front face.
             texturedBevel = beveled && fill is not (SolidFill or NoFill);
-            if (beveled)
-                solid.Bevel(solidOutlines, bevelWidth, bevelHeight, BevelProfiles.Get(bevel!.Str("prst")), texturedBevel ? null : faceColor);
+            if (beveled && !wireframe)
+                solid.Bevel(solidOutlines, topWidth, topHeight, topProfile, texturedBevel ? null : faceColor, line: lineColor, lineWidth: lineWidth);
+            if (contourWidth > 0.01 && !wireframe)
+                solid.Contour(solidOutlines, front, back, contourWidth, Solid.Rise(topWidth, topHeight, topProfile), Solid.Rise(bottomWidth, bottomHeight, bottomProfile));
             var solidMarkup = solid.Markup();
             if (solidMarkup.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidMarkup}</svg>");
-            bevelShading = solid.OverlayMarkup();
-            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}\">");
+            var contourColor = shape3d?.Element(Ns.A + "contourClr") is { } contourClr ? slide.Colors.ResolveChild(contourClr) : null;
+            bevelShading = solid.OverlayMarkup(contourColor ?? RgbColor.Black);
+            // A solid body hides its front face from behind: the back face shows there.
+            var hidden = (depth > 0.01 || beveled || bottomWidth > 0) && !wireframe ? ";backface-visibility:hidden" : "";
+            html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}{hidden}\">");
         }
         else
         {
@@ -235,19 +261,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
-        var shapeMarkup = paths.ToString() + ends;
+        var shapeMarkup = wireframe && solidBody ? "" : paths.ToString() + ends;
         if (beveled && !texturedBevel && solidOutlines != null && shapeMarkup.Length > 0)
         {
-            // The fill shows on the front face inside the bevel; the outline stays at the edge.
+            // The fill shows on the front face inside the bevel; the line lies on the bevel.
             var clip = $"bf{++litFilters}";
-            defs.Append($"<clipPath id=\"{clip}\"><path d=\"{Solid.PathData(solidOutlines.Select(o => Solid.Inset(o, bevelWidth)))}\"/></clipPath>");
-            var strokes = new StringBuilder();
-            if (outline is { Visible: true })
-            {
-                foreach (var path in geometry.Paths.Where(p => p.Stroke))
-                    strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin)}/>");
-            }
-            shapeMarkup = $"<g clip-path=\"url(#{clip})\">{shapeMarkup}</g>{strokes}";
+            defs.Append($"<clipPath id=\"{clip}\"><path d=\"{Solid.PathData(solidOutlines.Select(o => Solid.Inset(o, topWidth)))}\"/></clipPath>");
+            shapeMarkup = $"<g clip-path=\"url(#{clip})\">{shapeMarkup}</g>";
         }
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
@@ -300,7 +320,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
             html.Append(Media(shape, part));
-        if (camera is { Flat: false } || camera != null && beveled)
+        if (solidBody)
         {
             html.Append("</div>");
             if (bevelShading.Length > 0)
@@ -340,6 +360,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     static int litFilters;
+
+    /// <summary>A bevel's width, height and profile in pixels: at most half the shape's smaller side wide (measured).</summary>
+    static (double Width, double Height, double[] Profile) Bevel3D(XElement? bevel, double w, double h)
+    {
+        var profile = BevelProfiles.Get(bevel?.Str("prst"));
+        if (bevel == null)
+            return (0, 0, profile);
+        var width = Math.Min(Units.ToPx(bevel.Long("w") ?? 76200), Math.Min(w, h) / 2);
+        var height = Units.ToPx(bevel.Long("h") ?? 76200);
+        return width > 0.01 && height > 0.01 ? (width, height, profile) : (0, 0, profile);
+    }
 
     /// <summary>The 3D shape properties: its own a:sp3d, else the ones of the theme effect style it refers to.</summary>
     XElement? Shape3D(List<PartElement> chain, XElement? style)

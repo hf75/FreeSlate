@@ -129,6 +129,93 @@ static class ThreeDDeck
             shape.ThreeD.RotationY = 15;
             try { shape.ThreeD.PresetLighting = rig; } catch (Exception) { }
         }
+
+        // Bottom bevels and contours: the contour is a tube around the body's rims and edges.
+        var contours = Slide(presentation);
+        var yellow = CorpusGenerator.Rgb(255, 192, 0);
+        dynamic Contoured(int type, int column, int row, float width)
+        {
+            var shape = Box(contours, type, 40 + column * 235, 60 + row * 250, 160, 110, "");
+            shape.ThreeD.ContourWidth = width;
+            shape.ThreeD.ContourColor.RGB = yellow;
+            return shape;
+        }
+        var bottom = Box(contours, Rectangle, 40, 60, 160, 110, "");
+        bottom.ThreeD.SetPresetCamera(IsometricLeftDown);
+        bottom.ThreeD.Depth = 20;
+        bottom.ThreeD.BevelBottomType = 3;
+        bottom.ThreeD.BevelBottomInset = 12f;
+        bottom.ThreeD.BevelBottomDepth = 12f;
+        var both = Box(contours, Rectangle, 275, 60, 160, 110, "");
+        both.ThreeD.SetPresetCamera(IsometricLeftDown);
+        both.ThreeD.Depth = 20;
+        both.ThreeD.BevelTopType = 3;
+        both.ThreeD.BevelTopInset = 12f;
+        both.ThreeD.BevelTopDepth = 12f;
+        both.ThreeD.BevelBottomType = 6;
+        both.ThreeD.BevelBottomInset = 12f;
+        both.ThreeD.BevelBottomDepth = 12f;
+        Contoured(Rectangle, 2, 0, 8);
+        var beveledOval = Contoured(Oval, 3, 0, 6);
+        beveledOval.ThreeD.BevelTopType = 3;
+        beveledOval.ThreeD.BevelTopInset = 15f;
+        beveledOval.ThreeD.BevelTopDepth = 10f;
+        var box = Contoured(Rectangle, 0, 1, 6);
+        box.ThreeD.SetPresetCamera(IsometricLeftDown);
+        box.ThreeD.Depth = 30;
+        var puck = Contoured(Oval, 1, 1, 6);
+        puck.ThreeD.SetPresetCamera(IsometricLeftDown);
+        puck.ThreeD.Depth = 40;
+        var angled = Contoured(Rectangle, 2, 1, 6);
+        angled.ThreeD.BevelTopType = 6;
+        angled.ThreeD.BevelTopInset = 20f;
+        angled.ThreeD.BevelTopDepth = 10f;
+        var star = Contoured(Star5, 3, 1, 5);
+        star.ThreeD.SetPresetCamera(OrthographicFront);
+        star.ThreeD.RotationX = 40;
+
+        // Lines on 3D bodies (the line colors the sides, the bevels' outer band and the back) and offsets along z.
+        var lined = Slide(presentation);
+        dynamic Lined(int type, int column, int row)
+        {
+            var shape = Box(lined, type, 40 + column * 235, 60 + row * 250, 160, 110, "");
+            shape.Line.Visible = PowerPointSession.MsoTrue;
+            shape.Line.Weight = 8;
+            shape.Line.ForeColor.RGB = CorpusGenerator.Rgb(220, 0, 0);
+            return shape;
+        }
+        var walls = Lined(Rectangle, 0, 0);
+        walls.ThreeD.SetPresetCamera(IsometricLeftDown);
+        walls.ThreeD.Depth = 40;
+        var colored = Lined(Rectangle, 1, 0);
+        colored.ThreeD.SetPresetCamera(IsometricLeftDown);
+        colored.ThreeD.Depth = 40;
+        colored.ThreeD.ExtrusionColor.RGB = CorpusGenerator.Rgb(0, 176, 0);
+        var beveledLine = Lined(Rectangle, 2, 0);
+        beveledLine.ThreeD.BevelTopType = 3;
+        beveledLine.ThreeD.BevelTopInset = 15f;
+        beveledLine.ThreeD.BevelTopDepth = 10f;
+        var deep = Lined(Rectangle, 3, 0);
+        deep.ThreeD.SetPresetCamera(IsometricLeftDown);
+        deep.ThreeD.Depth = 30;
+        deep.ThreeD.BevelTopType = 3;
+        deep.ThreeD.BevelTopInset = 15f;
+        deep.ThreeD.BevelTopDepth = 10f;
+        var nearer = Box(lined, Rectangle, 40, 310, 160, 110, "z 120");
+        nearer.ThreeD.SetPresetCamera(PerspectiveFront);
+        nearer.ThreeD.Z = 120;
+        var farther = Box(lined, Rectangle, 275, 310, 160, 110, "z -150");
+        farther.ThreeD.SetPresetCamera(PerspectiveFront);
+        farther.ThreeD.Z = -150;
+        var shifted = Box(lined, Rectangle, 510, 260, 160, 110, "z 100");
+        shifted.ThreeD.SetPresetCamera(OrthographicFront);
+        shifted.ThreeD.RotationY = 40;
+        shifted.ThreeD.Z = 100;
+        var behind = Lined(Rectangle, 3, 1);
+        behind.ThreeD.SetPresetCamera(OrthographicFront);
+        behind.ThreeD.RotationX = 150;
+        behind.ThreeD.RotationY = 20;
+        behind.ThreeD.Depth = 30;
     }
 
     static dynamic Slide(object deck) => CorpusGenerator.AddSlide((dynamic)deck, CorpusGenerator.LayoutBlank);

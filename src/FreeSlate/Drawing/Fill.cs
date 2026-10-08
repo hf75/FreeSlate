@@ -6,6 +6,15 @@ namespace FreeSlate.Drawing;
 public abstract record Fill
 {
     public static readonly Fill None = new NoFill();
+
+    /// <summary>The one color standing for a fill (3D sides and backs): its color, first stop or foreground.</summary>
+    public static RgbColor? MainColor(Fill fill) => fill switch
+    {
+        SolidFill solid => solid.Color,
+        GradientFill gradient when gradient.Stops.Count > 0 => gradient.Stops[0].Color,
+        PatternFill pattern => pattern.Foreground,
+        _ => null,
+    };
 }
 
 public sealed record NoFill : Fill;

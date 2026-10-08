@@ -20,6 +20,12 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// </summary>
     public (double X, double Y) Shear { get; init; }
 
+    /// <summary>
+    /// How far the shape stands in front of its plane (a:sp3d/@z, pixels): it moves along its own z axis before the
+    /// camera turns it, so perspective cameras enlarge it about its center and turned ones shift it (measured).
+    /// </summary>
+    public double Offset { get; init; }
+
     const double ViewSize = 907.5;   // points
 
     static readonly Dictionary<string, (double X, double Y, double Z, double Fov)> Presets = new()
@@ -98,7 +104,7 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     }
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
-    public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0;
+    public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9);
 
     static double Normalized(double degrees) => Math.Abs(Math.IEEERemainder(degrees, 360)) < 1e-9 ? 0 : degrees;
 
@@ -133,6 +139,12 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         return (r[0] * p.X + r[1] * p.Y + r[2] * p.Z, r[3] * p.X + r[4] * p.Y + r[5] * p.Z, r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
     }
 
+    /// <summary>A point of the scene (relative to the shape's center) turned into the view, standing at the shape's offset.</summary>
+    public (double X, double Y, double Z) Place((double X, double Y, double Z) p) => Turn((p.X, p.Y, p.Z + Offset));
+
+    /// <summary>How much a turned point is enlarged on the picture plane (perspective cameras).</summary>
+    public double Scale((double X, double Y, double Z) q) => Perspective ? Distance / Math.Max(1e-6, Distance - q.Z) : 1;
+
     /// <summary>A turned point on the picture plane (relative to the shape's center).</summary>
     public (double X, double Y) Flatten((double X, double Y, double Z) q)
     {
@@ -143,7 +155,7 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     }
 
     /// <summary>A point relative to the shape's center (pixels, z towards the viewer) on the picture plane.</summary>
-    public (double X, double Y) Project(double x, double y, double z) => Flatten(Turn((x, y, z)));
+    public (double X, double Y) Project(double x, double y, double z) => Flatten(Place((x, y, z)));
 
     /// <summary>
     /// The direction towards the eye in the scene seen from a scene point: straight ahead for parallel projections,
@@ -161,7 +173,7 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         // The eye sits at (0, 0, d) in view coordinates; turned back into the scene with the transpose.
         var (ex, ey, ez) = Perspective ? (0.0, 0.0, Distance) : (0.0, 0.0, 1.0);
         var eye = (X: r[0] * ex + r[3] * ey + r[6] * ez, Y: r[1] * ex + r[4] * ey + r[7] * ez, Z: r[2] * ex + r[5] * ey + r[8] * ez);
-        return Perspective ? (eye.X - scenePoint.X, eye.Y - scenePoint.Y, eye.Z - scenePoint.Z) : eye;
+        return Perspective ? (eye.X - scenePoint.X, eye.Y - scenePoint.Y, eye.Z - scenePoint.Z - Offset) : eye;
     }
 
     /// <summary>
@@ -170,15 +182,20 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// </summary>
     public double[] Matrix3D()
     {
+        var o = Offset;
+        if (Oblique)
+            return [1, 0, 0, 0, 0, 1, 0, 0, -Shear.X, -Shear.Y, 1, 0, -o * Shear.X, -o * Shear.Y, 0, 1];
         var r = Rotation();
-        // Rows of the 4×4 matrix: x' = r0 x + r1 y, y' = r3 x + r4 y, z' = 0, w = 1 - (r6 x + r7 y) / d.
+        // Rows of the 4×4 matrix: x' = r0 x + r1 y + r2 (z + o), y' = r3 x + r4 y + r5 (z + o), z' = r8 z (the
+        // plane keeps z = 0; the turned z axis tells the browser which side faces the eye),
+        // w = 1 - (r6 x + r7 y + r8 (z + o)) / d.
         var w = Perspective ? 1 / Distance : 0;
         return
         [
-            r[0], r[3], 0, -r[6] * w,
-            r[1], r[4], 0, -r[7] * w,
-            0, 0, 1, 0,
-            0, 0, 0, 1,
+            r[0], r[3], r[6], -r[6] * w,
+            r[1], r[4], r[7], -r[7] * w,
+            r[2], r[5], r[8], -r[8] * w,
+            r[2] * o, r[5] * o, 0, 1 - r[8] * o * w,
         ];
     }
 }

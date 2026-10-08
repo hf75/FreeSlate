@@ -7,8 +7,10 @@ namespace FreeSlate.Drawing;
 /// stay with the scene while the camera turns about the shape, so a face's diffuse light depends only on its normal in
 /// the scene. Every light rig and material was fitted to PowerPoint's rendering of extruded cubes and cylinders and of
 /// tilted bevels seen from many sides, rendered in two base colors so that diffuse and specular separate per channel:
-/// Lambert diffuse and Phong specular with one shininess per material. Normals use x right, y down and z towards the
-/// front. The rig turns with a:lightRig/@dir (45° steps clockwise from t) and a:lightRig/a:rot.
+/// Lambert diffuse and Phong highlights with one shininess per material; materials add highlights tinted by the
+/// surface (metals), darken the diffuse light towards the silhouette (dkEdge, powders) and add white there (powders).
+/// Normals use x right, y down and z towards the front. The rig turns with a:lightRig/@dir (45° steps clockwise from
+/// t) and a:lightRig/a:rot.
 /// </summary>
 public sealed record Lighting
 {
@@ -17,6 +19,18 @@ public sealed record Lighting
     public required IReadOnlyList<Light> Lights { get; init; }
     public required (double R, double G, double B) Ambient { get; init; }
     public required double Shininess { get; init; }
+
+    /// <summary>How much of the highlights is white (added) and how much tinted by the surface color (multiplied).</summary>
+    public double White { get; init; } = 1;
+
+    /// <summary>See <see cref="White"/>.</summary>
+    public double Tint { get; init; }
+
+    /// <summary>The diffuse light fades towards the silhouette: it is multiplied by 1 − Strength · (1 − n·v)^Power.</summary>
+    public (double Strength, double Power) Edge { get; init; } = (0, 1);
+
+    /// <summary>White added to every face, and more towards the silhouette: Base + Rim · (1 − n·v).</summary>
+    public (double Base, double Rim) Sheen { get; init; }
 
     /// <summary>threePt from the top with warmMatte: key light upper left front, fill lower right front, back light lower left behind.</summary>
     public static readonly Lighting Default = new()
@@ -70,7 +84,7 @@ public sealed record Lighting
         n = Normalize(n);
         v = Normalize(v);
         var diffuse = Ambient;
-        (double R, double G, double B) specular = (0, 0, 0);
+        (double R, double G, double B) highlight = (0, 0, 0);
         foreach (var light in Lights)
         {
             var (x, y, z) = light.Direction;
@@ -80,10 +94,14 @@ public sealed record Lighting
             diffuse = (diffuse.R + light.Diffuse.R * nl, diffuse.G + light.Diffuse.G * nl, diffuse.B + light.Diffuse.B * nl);
             // Phong: the light reflected about the normal, against the direction to the eye.
             var (rx, ry, rz) = (2 * nl * n.X - x, 2 * nl * n.Y - y, 2 * nl * n.Z - z);
-            var highlight = Math.Pow(Math.Max(0, rx * v.X + ry * v.Y + rz * v.Z), Shininess);
-            specular = (specular.R + light.Specular.R * highlight, specular.G + light.Specular.G * highlight, specular.B + light.Specular.B * highlight);
+            var lobe = Math.Pow(Math.Max(0, rx * v.X + ry * v.Y + rz * v.Z), Shininess);
+            highlight = (highlight.R + light.Specular.R * lobe, highlight.G + light.Specular.G * lobe, highlight.B + light.Specular.B * lobe);
         }
-        return (diffuse, specular);
+        var facing = Math.Clamp(n.X * v.X + n.Y * v.Y + n.Z * v.Z, 0, 1);
+        var edge = Edge.Strength == 0 ? 1 : Math.Max(0, 1 - Edge.Strength * Math.Pow(1 - facing, Edge.Power));
+        var sheen = Sheen.Base + Sheen.Rim * (1 - facing);
+        return ((diffuse.R * edge + Tint * highlight.R, diffuse.G * edge + Tint * highlight.G, diffuse.B * edge + Tint * highlight.B),
+            (White * highlight.R + sheen, White * highlight.G + sheen, White * highlight.B + sheen));
     }
 
     /// <summary>A color lit by a shade.</summary>
