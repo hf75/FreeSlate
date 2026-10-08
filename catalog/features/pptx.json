@@ -8565,7 +8565,7 @@
       "title": "Chart part and settings",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Read chart settings and render from cached data; print settings are ignored.",
       "elements": [
         "c16r3:dataDisplayOptions16",
@@ -8897,7 +8897,7 @@
       "title": "Series and data caches",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Series values, categories (multi-level), number format codes; filtered series stay hidden.",
       "elements": [
         "c15:autoCat",
@@ -9430,7 +9430,7 @@
       "title": "Bar and column charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Clustered, stacked and 100 % stacked bars as SVG rectangles.",
       "elements": [
         "c14:invertSolidFillFmt",
@@ -9565,7 +9565,7 @@
       "title": "Line charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Polylines with markers; smoothed lines need Office's Bézier construction.",
       "elements": [
         "c15:marker",
@@ -9687,7 +9687,7 @@
       "title": "Pie and doughnut charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Arcs as SVG paths; pie-of-pie and bar-of-pie with series lines.",
       "elements": [
         "c15:explosion",
@@ -9852,7 +9852,7 @@
       "title": "Area charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Filled SVG polygons, stacked or 100 % stacked.",
       "elements": [
         "c:area3DChart",
@@ -9885,7 +9885,7 @@
       "title": "Scatter and bubble charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Value axes on both sides; bubble size by area or width.",
       "elements": [
         "c15:bubble3D",
@@ -10089,8 +10089,9 @@
       "title": "Axes, gridlines and number formats",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Reproduce Office's automatic minimum, maximum and major unit; number formats need an Excel number-format engine; date axes, logarithmic and reversed scales.",
+      "office": "Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets 5 % headroom; the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least 1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 (\"m/d/yyyy\") shows the locale's short date. Category labels that do not fit rotate by -45 degrees, with the end of their middle line at the category; labels of an axis crossing inside the plot area stay at the axis.",
       "elements": [
         "c15:numFmt",
         "c:auto",
@@ -10446,7 +10447,7 @@
       "title": "Data labels",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Label text from values, categories, series names, percentages or cell ranges; automatic placement and leader lines.",
       "elements": [
         "c15:dLbl",
@@ -10648,8 +10649,9 @@
       "title": "Titles, legend and layout",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Automatic layout of title, legend and plot area like Office; manual layouts are fractions of the chart area.",
+      "office": "Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend sit 6 pt from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may reach 4.5 pt into that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as wide as their entries ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus 30 pt and then wrap into balanced rows; rows are one line height plus 5.85 pt. Pies with data labels shrink by 1.785 × label size.",
       "elements": [
         "c:h",
         "c:hMode",
@@ -10898,8 +10900,9 @@
       "title": "Chart formatting, chart styles and colors",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "spPr and txPr of every chart element use the shared DrawingML fill, line, effect and text code; the chart style and color parts (cs) only matter where a property is not set directly.",
+      "office": "PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.",
       "elements": [
         "c14:spPr",
         "c14:style",
@@ -12522,7 +12525,7 @@
       "title": "Saved SmartArt drawing",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Draw the shapes from the diagram's drawing part like normal shapes.",
       "office": "PowerPoint stores the laid-out shapes of every SmartArt in a drawing part (dsp:drawing), so files saved by PowerPoint need no SmartArt layout engine.",
       "elements": [

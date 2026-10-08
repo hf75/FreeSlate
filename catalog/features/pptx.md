@@ -26,15 +26,15 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 2 | 0 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 0 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 0 |
-| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 0 |
+| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 1 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 0 | 0 |
 | [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 0 | 0 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 0 | 0 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **46** | **5** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **57** | **6** |
 
 <a id="package"></a>
 
@@ -1552,21 +1552,21 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Chart part and settings](#chart.part) | P1 | ●●○○○ | todo | 33 | 20 |
-| [Series and data caches](#chart.data) | P1 | ●●○○○ | todo | 58 | 22 |
-| [Bar and column charts](#chart.barColumn) | P1 | ●●●○○ | todo | 12 | 9 |
-| [Line charts](#chart.line) | P1 | ●●●○○ | todo | 13 | 4 |
-| [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | todo | 16 | 11 |
-| [Area charts](#chart.area) | P1 | ●●●○○ | todo | 2 | 1 |
-| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | todo | 9 | 3 |
+| [Chart part and settings](#chart.part) | P1 | ●●○○○ | partial | 33 | 20 |
+| [Series and data caches](#chart.data) | P1 | ●●○○○ | partial | 58 | 22 |
+| [Bar and column charts](#chart.barColumn) | P1 | ●●●○○ | partial | 12 | 9 |
+| [Line charts](#chart.line) | P1 | ●●●○○ | partial | 13 | 4 |
+| [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | partial | 16 | 11 |
+| [Area charts](#chart.area) | P1 | ●●●○○ | partial | 2 | 1 |
+| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | partial | 9 | 3 |
 | [Radar charts](#chart.radar) | P2 | ●●●○○ | todo | 2 | 2 |
 | [Stock charts](#chart.stock) | P2 | ●●●○○ | todo | 1 | 0 |
 | [Surface charts](#chart.surface) | P3 | ●●●●○ | todo | 5 | 3 |
-| [Axes, gridlines and number formats](#chart.axes) | P1 | ●●●●○ | todo | 38 | 19 |
-| [Data labels](#chart.labels) | P1 | ●●●●○ | todo | 25 | 9 |
-| [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | todo | 18 | 15 |
+| [Axes, gridlines and number formats](#chart.axes) | P1 | ●●●●○ | partial | 38 | 19 |
+| [Data labels](#chart.labels) | P1 | ●●●●○ | partial | 25 | 9 |
+| [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | partial | 18 | 15 |
 | [Data tables](#chart.dataTable) | P3 | ●●●○○ | todo | 5 | 0 |
-| [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | todo | 56 | 5 |
+| [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | partial | 56 | 5 |
 | [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
 | [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | todo | 16 | 15 |
 | [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | todo | 30 | 15 |
@@ -1577,7 +1577,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Chart part and settings
 
-`chart.part` · P1 · difficulty 2 · todo
+`chart.part` · P1 · difficulty 2 · partial
 
 **Rendering:** Read chart settings and render from cached data; print settings are ignored.
 
@@ -1591,7 +1591,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Series and data caches
 
-`chart.data` · P1 · difficulty 2 · todo
+`chart.data` · P1 · difficulty 2 · partial
 
 **Rendering:** Series values, categories (multi-level), number format codes; filtered series stay hidden.
 
@@ -1605,7 +1605,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Bar and column charts
 
-`chart.barColumn` · P1 · difficulty 3 · todo
+`chart.barColumn` · P1 · difficulty 3 · partial
 
 **Rendering:** Clustered, stacked and 100 % stacked bars as SVG rectangles.
 
@@ -1619,7 +1619,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Line charts
 
-`chart.line` · P1 · difficulty 3 · todo
+`chart.line` · P1 · difficulty 3 · partial
 
 **Rendering:** Polylines with markers; smoothed lines need Office's Bézier construction.
 
@@ -1633,7 +1633,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Pie and doughnut charts
 
-`chart.pie` · P1 · difficulty 3 · todo
+`chart.pie` · P1 · difficulty 3 · partial
 
 **Rendering:** Arcs as SVG paths; pie-of-pie and bar-of-pie with series lines.
 
@@ -1647,7 +1647,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Area charts
 
-`chart.area` · P1 · difficulty 3 · todo
+`chart.area` · P1 · difficulty 3 · partial
 
 **Rendering:** Filled SVG polygons, stacked or 100 % stacked.
 
@@ -1661,7 +1661,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Scatter and bubble charts
 
-`chart.scatterBubble` · P1 · difficulty 3 · todo
+`chart.scatterBubble` · P1 · difficulty 3 · partial
 
 **Rendering:** Value axes on both sides; bubble size by area or width.
 
@@ -1715,9 +1715,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Axes, gridlines and number formats
 
-`chart.axes` · P1 · difficulty 4 · todo
+`chart.axes` · P1 · difficulty 4 · partial
 
 **Rendering:** Reproduce Office's automatic minimum, maximum and major unit; number formats need an Excel number-format engine; date axes, logarithmic and reversed scales.
+
+**Office behaviour:** Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets 5 % headroom; the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least 1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy") shows the locale's short date. Category labels that do not fit rotate by -45 degrees, with the end of their middle line at the category; labels of an axis crossing inside the plot area stay at the axis.
 
 **Elements (38):** [`c15:numFmt`](../format/namespaces/c15.md#c15numfmt), [`c:auto`](../format/namespaces/c.md#cauto), [`c:axId`](../format/namespaces/c.md#caxid), [`c:axPos`](../format/namespaces/c.md#caxpos), [`c:baseTimeUnit`](../format/namespaces/c.md#cbasetimeunit), [`c:builtInUnit`](../format/namespaces/c.md#cbuiltinunit), [`c:catAx`](../format/namespaces/c.md#ccatax), [`c:crossAx`](../format/namespaces/c.md#ccrossax), [`c:crossBetween`](../format/namespaces/c.md#ccrossbetween), [`c:crosses`](../format/namespaces/c.md#ccrosses), [`c:crossesAt`](../format/namespaces/c.md#ccrossesat), [`c:custUnit`](../format/namespaces/c.md#ccustunit), [`c:dateAx`](../format/namespaces/c.md#cdateax), [`c:delete`](../format/namespaces/c.md#cdelete), [`c:dispUnits`](../format/namespaces/c.md#cdispunits), [`c:dispUnitsLbl`](../format/namespaces/c.md#cdispunitslbl), [`c:lblAlgn`](../format/namespaces/c.md#clblalgn), [`c:lblOffset`](../format/namespaces/c.md#clbloffset), [`c:logBase`](../format/namespaces/c.md#clogbase), [`c:majorGridlines`](../format/namespaces/c.md#cmajorgridlines), [`c:majorTickMark`](../format/namespaces/c.md#cmajortickmark), [`c:majorTimeUnit`](../format/namespaces/c.md#cmajortimeunit), [`c:majorUnit`](../format/namespaces/c.md#cmajorunit), [`c:max`](../format/namespaces/c.md#cmax), [`c:min`](../format/namespaces/c.md#cmin), [`c:minorGridlines`](../format/namespaces/c.md#cminorgridlines), [`c:minorTickMark`](../format/namespaces/c.md#cminortickmark), [`c:minorTimeUnit`](../format/namespaces/c.md#cminortimeunit), [`c:minorUnit`](../format/namespaces/c.md#cminorunit), [`c:noMultiLvlLbl`](../format/namespaces/c.md#cnomultilvllbl), [`c:numFmt`](../format/namespaces/c.md#cnumfmt), [`c:orientation`](../format/namespaces/c.md#corientation), [`c:scaling`](../format/namespaces/c.md#cscaling), [`c:serAx`](../format/namespaces/c.md#cserax), [`c:tickLblPos`](../format/namespaces/c.md#cticklblpos), [`c:tickLblSkip`](../format/namespaces/c.md#cticklblskip), [`c:tickMarkSkip`](../format/namespaces/c.md#ctickmarkskip), [`c:valAx`](../format/namespaces/c.md#cvalax)
 
@@ -1729,7 +1731,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Data labels
 
-`chart.labels` · P1 · difficulty 4 · todo
+`chart.labels` · P1 · difficulty 4 · partial
 
 **Rendering:** Label text from values, categories, series names, percentages or cell ranges; automatic placement and leader lines.
 
@@ -1743,9 +1745,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Titles, legend and layout
 
-`chart.titleLegend` · P1 · difficulty 3 · todo
+`chart.titleLegend` · P1 · difficulty 3 · partial
 
 **Rendering:** Automatic layout of title, legend and plot area like Office; manual layouts are fractions of the chart area.
+
+**Office behaviour:** Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend sit 6 pt from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may reach 4.5 pt into that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as wide as their entries ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus 30 pt and then wrap into balanced rows; rows are one line height plus 5.85 pt. Pies with data labels shrink by 1.785 × label size.
 
 **Elements (18):** [`c:h`](../format/namespaces/c.md#ch), [`c:hMode`](../format/namespaces/c.md#chmode), [`c:layout`](../format/namespaces/c.md#clayout), [`c:layoutTarget`](../format/namespaces/c.md#clayouttarget), [`c:legend`](../format/namespaces/c.md#clegend), [`c:legendEntry`](../format/namespaces/c.md#clegendentry), [`c:legendPos`](../format/namespaces/c.md#clegendpos), [`c:manualLayout`](../format/namespaces/c.md#cmanuallayout), [`c:overlay`](../format/namespaces/c.md#coverlay), [`c:plotArea`](../format/namespaces/c.md#cplotarea), [`c:rich`](../format/namespaces/c.md#crich), [`c:title`](../format/namespaces/c.md#ctitle), [`c:w`](../format/namespaces/c.md#cw), [`c:wMode`](../format/namespaces/c.md#cwmode), [`c:x`](../format/namespaces/c.md#cx), [`c:xMode`](../format/namespaces/c.md#cxmode), [`c:y`](../format/namespaces/c.md#cy), [`c:yMode`](../format/namespaces/c.md#cymode)
 
@@ -1769,9 +1773,11 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 ### Chart formatting, chart styles and colors
 
-`chart.formatting` · P1 · difficulty 3 · todo
+`chart.formatting` · P1 · difficulty 3 · partial
 
 **Rendering:** spPr and txPr of every chart element use the shared DrawingML fill, line, effect and text code; the chart style and color parts (cs) only matter where a property is not set directly.
+
+**Office behaviour:** PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
 
 **Elements (56):** [`c14:spPr`](../format/namespaces/c14.md#c14sppr), [`c14:style`](../format/namespaces/c14.md#c14style), [`c16:spPr`](../format/namespaces/c16.md#c16sppr), [`c:applyToEnd`](../format/namespaces/c.md#capplytoend), [`c:applyToFront`](../format/namespaces/c.md#capplytofront), [`c:applyToSides`](../format/namespaces/c.md#capplytosides), [`c:dPt`](../format/namespaces/c.md#cdpt), [`c:pictureFormat`](../format/namespaces/c.md#cpictureformat), [`c:pictureOptions`](../format/namespaces/c.md#cpictureoptions), [`c:pictureStackUnit`](../format/namespaces/c.md#cpicturestackunit), [`c:spPr`](../format/namespaces/c.md#csppr), [`c:txPr`](../format/namespaces/c.md#ctxpr), [`cs:axisTitle`](../format/namespaces/cs.md#csaxistitle), [`cs:bodyPr`](../format/namespaces/cs.md#csbodypr), [`cs:categoryAxis`](../format/namespaces/cs.md#cscategoryaxis), [`cs:chartArea`](../format/namespaces/cs.md#cschartarea), [`cs:chartStyle`](../format/namespaces/cs.md#cschartstyle), [`cs:colorStyle`](../format/namespaces/cs.md#cscolorstyle), [`cs:dataLabel`](../format/namespaces/cs.md#csdatalabel), [`cs:dataLabelCallout`](../format/namespaces/cs.md#csdatalabelcallout), [`cs:dataPoint`](../format/namespaces/cs.md#csdatapoint), [`cs:dataPoint3D`](../format/namespaces/cs.md#csdatapoint3d), [`cs:dataPointLine`](../format/namespaces/cs.md#csdatapointline), [`cs:dataPointMarker`](../format/namespaces/cs.md#csdatapointmarker), [`cs:dataPointMarkerLayout`](../format/namespaces/cs.md#csdatapointmarkerlayout), [`cs:dataPointWireframe`](../format/namespaces/cs.md#csdatapointwireframe), [`cs:dataTable`](../format/namespaces/cs.md#csdatatable), [`cs:defRPr`](../format/namespaces/cs.md#csdefrpr), [`cs:downBar`](../format/namespaces/cs.md#csdownbar), [`cs:dropLine`](../format/namespaces/cs.md#csdropline), [`cs:effectRef`](../format/namespaces/cs.md#cseffectref), [`cs:errorBar`](../format/namespaces/cs.md#cserrorbar), [`cs:extLst`](../format/namespaces/cs.md#csextlst), [`cs:fillRef`](../format/namespaces/cs.md#csfillref), [`cs:floor`](../format/namespaces/cs.md#csfloor), [`cs:fontRef`](../format/namespaces/cs.md#csfontref), [`cs:gridlineMajor`](../format/namespaces/cs.md#csgridlinemajor), [`cs:gridlineMinor`](../format/namespaces/cs.md#csgridlineminor), [`cs:hiLoLine`](../format/namespaces/cs.md#cshiloline), [`cs:leaderLine`](../format/namespaces/cs.md#csleaderline), [`cs:legend`](../format/namespaces/cs.md#cslegend), [`cs:lineWidthScale`](../format/namespaces/cs.md#cslinewidthscale), [`cs:lnRef`](../format/namespaces/cs.md#cslnref), [`cs:plotArea`](../format/namespaces/cs.md#csplotarea), [`cs:plotArea3D`](../format/namespaces/cs.md#csplotarea3d), [`cs:seriesAxis`](../format/namespaces/cs.md#csseriesaxis), [`cs:seriesLine`](../format/namespaces/cs.md#csseriesline), [`cs:spPr`](../format/namespaces/cs.md#cssppr), [`cs:styleClr`](../format/namespaces/cs.md#csstyleclr), [`cs:title`](../format/namespaces/cs.md#cstitle), [`cs:trendline`](../format/namespaces/cs.md#cstrendline), [`cs:trendlineLabel`](../format/namespaces/cs.md#cstrendlinelabel), [`cs:upBar`](../format/namespaces/cs.md#csupbar), [`cs:valueAxis`](../format/namespaces/cs.md#csvalueaxis), [`cs:variation`](../format/namespaces/cs.md#csvariation), [`cs:wall`](../format/namespaces/cs.md#cswall)
 
@@ -1855,7 +1861,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | todo | 17 | 0 |
+| [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | done | 17 | 0 |
 | [SmartArt data model](#smartart.data) | P2 | ●●●○○ | todo | 27 | 5 |
 | [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | todo | 24 | 7 |
 | [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | todo | 13 | 9 |
@@ -1864,7 +1870,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Saved SmartArt drawing
 
-`smartart.drawing` · P1 · difficulty 2 · todo
+`smartart.drawing` · P1 · difficulty 2 · done
 
 **Rendering:** Draw the shapes from the diagram's drawing part like normal shapes.
 

@@ -147,7 +147,12 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 case "t": top = legend.Box.Bottom; break;
                 case "l": left = legend.Box.Right; break;
                 case "r": right = legend.Box.X; break;
-                case "tr": right = legend.Box.X; top = legend.Box.Bottom - (PlotGap - 5); break;
+                case "tr":
+                    // Next to a corner legend the plot area starts 5 pt below it and ends 17 pt above the bottom.
+                    right = legend.Box.X;
+                    top = legend.Box.Bottom - 6;
+                    bottom = height - 6;
+                    break;
             }
         }
         var outer = new Box(left + PlotGap, top + PlotGap, Math.Max(0, right - left - 2 * PlotGap), Math.Max(0, bottom - top - 2 * PlotGap));
@@ -585,7 +590,7 @@ public sealed class ChartRenderer(SlideContext slide, SvgPaint paint, TextRender
                 var x = gap + Enumerable.Range(row * columns, col).Sum(j => widths[j] + gap);
                 layout.Placed.Add((entries[i], x, rowHeight * (row + 0.5)));
             }
-            var h = rows * rowHeight;
+            var h = rows * rowHeight - (rows - 1) * 1.5;   // measured: wrapped legends are 1.5 pt shorter per extra row
             var y = position == "b" ? height - EdgeGap - h : (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
             box = new Box((width - w) / 2, y, w, h);
         }
