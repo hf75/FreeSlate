@@ -58,6 +58,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     sealed record TableTextSource(XElement Style) : Source;
 
     /// <summary>SVG markup for the text of a shape (shape-local pixel coordinates), or "".</summary>
+    /// <summary>
+    /// When set, the outlines of the glyphs drawn (pixels, one entry per glyph) with their color are collected: 3D text
+    /// (catalog: text.threeD) gives them a body.
+    /// </summary>
+    public List<(List<List<(double X, double Y)>> Contours, RgbColor Color)>? Outlines { get; set; }
+
     public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
@@ -365,6 +371,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return (line.Align, (left + start) * PxPerPt - box.L, box.L + box.W - (left + start + line.Width) * PxPerPt, line.Width * PxPerPt);
         }
         var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment);
+        for (var i = 0; i < warped.Count && Outlines != null; i++)
+            Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color));
 
         var svg = new StringBuilder("<g data-tx=\"\">");
         var defs = new StringBuilder();
@@ -593,6 +601,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             {
                 if (slide.Presentation.Glyphs.Id(data, glyphs[i].Id) is not { } id)
                     continue;
+                Outlines?.Add((TextWarp.Contours(data.Outline(glyphs[i].Id), startPx + glyphX[i] + glyphs[i].OffsetX * style.Size * PxPerPt,
+                    y * PxPerPt - glyphs[i].OffsetY * style.Size * PxPerPt, scale), (style.Paint is { } glyphPaint ? Fill.MainColor(glyphPaint) : null) ?? style.Color));
                 var gx = glyphX[i] / scale + glyphs[i].OffsetX * data.UnitsPerEm;
                 var gy = -glyphs[i].OffsetY * data.UnitsPerEm;
                 units.Append($"<use href=\"#{id}\"");

@@ -24,7 +24,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 2 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 8 | 3 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 7 | 5 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 4 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 15 | 5 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 13 | 7 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 2 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **54** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **87** | **55** |
 
 <a id="package"></a>
 
@@ -1237,7 +1237,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [Text columns](#text.columns) | P2 | ●●●○○ | partial | 0 | 0 |
 | [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | done | 0 | 0 |
 | [WordArt transforms](#text.warp) | P2 | ●●●●● | partial | 1 | 0 |
-| [3D text](#text.threeD) | P3 | ●●●●● | todo | 1 | 1 |
+| [3D text](#text.threeD) | P3 | ●●●●● | done | 1 | 1 |
 | [Equations](#text.math) | P2 | ●●●●○ | partial | 125 | 69 |
 | [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | done | 1 | 0 |
 | [East Asian typography](#text.eastAsian) | P2 | ●●●●○ | done | 1 | 1 |
@@ -1486,9 +1486,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 ### 3D text
 
-`text.threeD` · P3 · difficulty 5 · todo
+`text.threeD` · P3 · difficulty 5 · done
 
 **Rendering:** scene3d/sp3d on the text body; same approach as 3D shapes.
+
+**Office behaviour:** A scene of the text body's own (a:bodyPr/a:scene3d, a:sp3d; Format Shape, Text Options) gives the glyphs a body while the shape stays flat: the glyph outlines are extruded, beveled, backed and contoured like a 3D shape's (extrusion in the text's color unless extrusionClr), the text itself is the front face inside the top bevel, lit like it, and the scene turns about the center of the glyphs, not of the shape (measured). A bevel wider than half a glyph stroke is cut at the ridge with its height in proportion; PowerPoint shades such ridges somewhat differently (thin beveled text looks lighter there). Text in a 3D-turned shape turns with the shape's front face; a:flatTx keeps it out of the scene, facing the viewer at the shape's place (measured). Checked with generated/text-3d (97.1 %): extruded and beveled under a legacy perspective, turned only, beveled in a shape, extruded in a color of its own, flat text.
 
 **Elements (1):** [`a:flatTx`](../format/namespaces/a.md#aflattx)
 

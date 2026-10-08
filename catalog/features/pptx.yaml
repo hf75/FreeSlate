@@ -1092,7 +1092,19 @@ areas:
         elements: [a:flatTx]
         priority: P3
         difficulty: 5
+        status: done
         strategy: scene3d/sp3d on the text body; same approach as 3D shapes.
+        office: >-
+          A scene of the text body's own (a:bodyPr/a:scene3d, a:sp3d; Format Shape, Text Options) gives the
+          glyphs a body while the shape stays flat: the glyph outlines are extruded, beveled, backed and
+          contoured like a 3D shape's (extrusion in the text's color unless extrusionClr), the text itself is
+          the front face inside the top bevel, lit like it, and the scene turns about the center of the
+          glyphs, not of the shape (measured). A bevel wider than half a glyph stroke is cut at the ridge with
+          its height in proportion; PowerPoint shades such ridges somewhat differently (thin beveled text
+          looks lighter there). Text in a 3D-turned shape turns with the shape's front face; a:flatTx keeps it
+          out of the scene, facing the viewer at the shape's place (measured). Checked with generated/text-3d
+          (97.1 %): extruded and beveled under a legacy perspective, turned only, beveled in a shape, extruded
+          in a color of its own, flat text.
 
       - id: text.math
         title: Equations

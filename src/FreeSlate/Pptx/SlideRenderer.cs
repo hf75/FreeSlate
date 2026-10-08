@@ -166,6 +166,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var effects = Effects(chain, style);
         var dag = EffectContainer(chain, style) is { Name.LocalName: "effectDag" } effectGraph ? effectGraph : null;
         var dagText = "";
+        Camera? textCamera = null;
+        var flatText = false;
+        var textLayer = "";
         var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
             ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
             : ((Fill Fill, string Blend)?)null;
@@ -342,6 +345,22 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 var (halfWidth, halfHeight) = ((geometry.TextBottom - geometry.TextTop) / 2, (geometry.TextRight - geometry.TextLeft) / 2);
                 textGeometry = geometry with { TextLeft = cx - halfWidth, TextRight = cx + halfWidth, TextTop = cy - halfHeight, TextBottom = cy + halfHeight };
             }
+            // 3D text (catalog: text.threeD): a camera of the text body's own turns the text, an extrusion and bevels of its
+            // own give the glyphs a body like a 3D shape's (the shape stays flat); flat text (a:flatTx) in a 3D shape
+            // keeps out of the scene, facing the viewer (measured).
+            var bodyPrs = chain.Select(s => s.Element.Element(Ns.P + "txBody")?.Element(Ns.A + "bodyPr")).Where(b => b != null).ToList();
+            var textScene = bodyPrs.Select(b => b!.Element(Ns.A + "scene3d")).FirstOrDefault(e => e != null);
+            var textShape3d = bodyPrs.Select(b => b!.Element(Ns.A + "sp3d")).FirstOrDefault(e => e != null);
+            textCamera = solidBody ? null : Camera.Read(textScene);
+            if (textCamera != null && textShape3d.Long("z") is { } textOffset)
+                textCamera = textCamera with { Offset = Units.ToPx(textOffset) };
+            var textSolid = textCamera != null && (!textCamera.Flat || textShape3d?.Element(Ns.A + "bevelT") != null || textShape3d?.Element(Ns.A + "bevelB") != null
+                                                  || (textShape3d.Long("extrusionH") ?? 0) > 0 || (textShape3d.Long("contourW") ?? 0) > 0);
+            if (!textSolid)
+                textCamera = null;
+            flatText = solidBody && bodyPrs.Any(b => b!.Element(Ns.A + "flatTx") != null);
+            if (textCamera != null)
+                text.Outlines = [];
             var textMarkup = text.Render(new TextChain
             {
                 Shapes = chain,
@@ -349,11 +368,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 Defaults = textDefaults,
                 FontRef = style?.Element(Ns.A + "fontRef"),
             }, textGeometry, pw, flipH ^ flipV);
+            var glyphOutlines = text.Outlines;
+            text.Outlines = null;
             if (upright && turn != 0 && textMarkup.Length > 0)
                 textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
-            if (dag != null)
+            if (textCamera != null && glyphOutlines is { Count: > 0 })
+                textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d), textShape3d, glyphOutlines, textMarkup, pw, ph);
+            else if (flatText)
+                textLayer = textMarkup.Length > 0
+                    ? $"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><g transform=\"rotate({Units.Css(rotation)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g></svg>"
+                    : "";
+            else if (dag != null)
                 dagText = textMarkup;
             else
                 body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
@@ -398,11 +425,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append("</div>");
             if (bevelShading.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
-            html.Append("</div>");
+            html.Append(textLayer).Append("</div>");
         }
         else
         {
-            html.Append("</div>");
+            html.Append(textLayer).Append("</div>");
         }
     }
 
@@ -433,6 +460,90 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     static int litFilters;
+
+    /// <summary>
+    /// 3D text (catalog: text.threeD): the glyphs' body in the text body's own scene (a:bodyPr/a:scene3d, a:sp3d), drawn
+    /// like a 3D shape's along the glyph outlines (extrusion, bevels, back, contour; the extrusion in the text's color
+    /// unless it has one of its own), and the text itself projected as the front face, inside the top bevel and lit
+    /// like it. The scene turns about the center of the text, not of the shape (measured). A bevel wider than half the
+    /// glyph's strokes meets the opposite one in a ridge: it is cut there, with its height in proportion.
+    /// </summary>
+    string Text3D(Camera camera, Lighting lighting, XElement? shape3d, List<(List<List<(double X, double Y)>> Contours, RgbColor Color)> glyphs,
+        string textMarkup, double pw, double ph)
+    {
+        // The scene's center: the center of the glyphs' box; Solid and Projection turn about the middle of the box given.
+        var points = glyphs.SelectMany(g => g.Contours).SelectMany(c => c).ToList();
+        var (cx, cy) = points.Count > 0 ? ((points.Min(p => p.X) + points.Max(p => p.X)) / 2, (points.Min(p => p.Y) + points.Max(p => p.Y)) / 2) : (pw / 2, ph / 2);
+        var (sceneWidth, sceneHeight) = (2 * cx, 2 * cy);
+        var solid = new Solid(camera, lighting, sceneWidth, sceneHeight, 0, false, false);
+        var (topWidth, topHeight, topProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelT"), pw, ph);
+        var (bottomWidth, bottomHeight, bottomProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelB"), pw, ph);
+        var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
+        var contourWidth = Units.ToPx(shape3d.Long("contourW") ?? 0);
+        var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
+        var (front, back) = (-topHeight, -topHeight - depth);
+        var face = new List<List<(double X, double Y)>>();
+        foreach (var (contours, color) in glyphs)
+        {
+            var outlines = contours.Where(c => c.Count >= 3).ToList();
+            if (outlines.Count == 0)
+                continue;
+            // The thickness of the glyph's strokes: twice its area over its perimeter.
+            var area = Math.Abs(outlines.Sum(Area));
+            var perimeter = outlines.Sum(o => o.Select((p, i) => Math.Sqrt(Math.Pow(o[(i + 1) % o.Count].X - p.X, 2) + Math.Pow(o[(i + 1) % o.Count].Y - p.Y, 2))).Sum());
+            var limit = perimeter > 0 ? area / perimeter : 0;
+            var (top, bottom) = (Math.Min(topWidth, limit), Math.Min(bottomWidth, limit));
+            var topRise = topWidth > 0.01 ? topHeight * top / topWidth : 0;
+            var bottomRise = bottomWidth > 0.01 ? bottomHeight * bottom / bottomWidth : 0;
+            if (depth > 0.01)
+                solid.Extrusion(outlines, front, back, extrusionColor ?? color);
+            if (bottom > 0.01)
+                solid.Bevel(outlines, bottom, bottomRise, bottomProfile, color, back, bottom: true);
+            if (depth > 0.01 || top > 0.01 || bottom > 0.01)
+                solid.Back(bottom > 0.01 ? outlines.Select(o => Solid.Inset(o, bottom)).ToList() : outlines, back - bottomRise, color, null, 0);
+            if (top > 0.01)
+                solid.Bevel(outlines, top, topRise, topProfile, color);
+            if (contourWidth > 0.01)
+                solid.Contour(outlines, front, back, contourWidth, Solid.Rise(top, topRise, topProfile), Solid.Rise(bottom, bottomRise, bottomProfile));
+            face.AddRange(top > 0.01 ? outlines.Select(o => Solid.Inset(o, top)) : outlines);
+        }
+        var (sw, sh) = (Units.Css(Math.Max(pw, 1)), Units.Css(Math.Max(ph, 1)));
+        var result = new StringBuilder();
+        var markup = solid.Markup();
+        if (markup.Length > 0)
+            result.Append($"<svg class=\"sp\" width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{markup}</svg>");
+        // The front face: the text inside its top bevel, projected by the camera.
+        var clip = "";
+        if (topWidth > 0.01)
+        {
+            var id = $"t3{++litFilters}";
+            clip = $"<defs><clipPath id=\"{id}\"><path d=\"{Solid.PathData(face)}\" fill-rule=\"evenodd\"/></clipPath></defs>";
+            textMarkup = $"{clip}<g clip-path=\"url(#{id})\">{textMarkup}</g>";
+        }
+        // The front face is lit like the rest of the body (its normal faces the front).
+        var (diffuse, specular) = lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
+        var lit = $"l{++litFilters}";
+        textMarkup = $"<defs><filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
+                     $"{Units.Css4(diffuse.R)} 0 0 0 {Units.Css4(specular.R)} 0 {Units.Css4(diffuse.G)} 0 0 {Units.Css4(specular.G)} 0 0 {Units.Css4(diffuse.B)} 0 {Units.Css4(specular.B)} 0 0 0 1 0\"/></filter></defs>" +
+                     $"<g filter=\"url(#{lit})\">{textMarkup}</g>";
+        result.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, sceneWidth, sceneHeight, 0, false, false)}\">" +
+                      $"<svg width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{textMarkup}</svg></div>");
+        var contourColor = shape3d?.Element(Ns.A + "contourClr") is { } contourClr ? slide.Colors.ResolveChild(contourClr) : null;
+        if (solid.OverlayMarkup(contourColor ?? RgbColor.Black) is { Length: > 0 } overlay)
+            result.Append($"<svg class=\"sp\" width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{overlay}</svg>");
+        return result.ToString();
+
+        static double Area(List<(double X, double Y)> outline)
+        {
+            var sum = 0.0;
+            for (var i = 0; i < outline.Count; i++)
+            {
+                var (a, b) = (outline[i], outline[(i + 1) % outline.Count]);
+                sum += a.X * b.Y - b.X * a.Y;
+            }
+            return sum / 2;
+        }
+    }
 
     /// <summary>A bevel's width, height and profile in pixels: at most half the shape's smaller side wide (measured).</summary>
     static (double Width, double Height, double[] Profile) Bevel3D(XElement? bevel, double w, double h)
