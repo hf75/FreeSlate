@@ -1,13 +1,13 @@
-# Office documents to HTML (working title)
+# FreeSlate
 
-Goal: an open-source, cross-platform engine in C# that renders PPTX and DOCX as HTML/CSS/JS with about 99 % fidelity,
+An open-source, cross-platform engine in C# that renders PPTX and DOCX as HTML/CSS/JS with about 99 % fidelity,
 and later the foundation of an editor.
 
 ## Repository layout
 
 | Path | Content |
 |---|---|
-| `src/Engine/` | the rendering engine (PPTX → HTML for now) |
+| `src/FreeSlate/` | the rendering engine (PPTX → HTML for now) |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog and checks the feature catalogs |
 | `tools/Fidelity/` | measures fidelity: our HTML against PowerPoint's rendering, slide by slide |
 | `catalog/format/` | format catalog, level 1: every element, attribute and type of DOCX and PPTX, linked to the specification |
@@ -21,7 +21,7 @@ and later the foundation of an editor.
 ## Converting a presentation
 
 ```csharp
-Engine.PptxConverter.ToFile("deck.pptx", "deck.html");
+FreeSlate.PptxConverter.ToFile("deck.pptx", "deck.html");
 ```
 
 The HTML is self-contained: all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
