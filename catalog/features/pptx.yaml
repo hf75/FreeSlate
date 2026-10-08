@@ -809,8 +809,10 @@ areas:
           part's top left corner; a part as large as its points plus the last brush's width (its natural size,
           as PowerPoint writes it) keeps the ink's scale, any other size stretches the points to fill it;
           stroke widths never scale; a part with a highlighter (rasterOp maskPen) is half transparent as a
-          whole (measured with generated/ink). Not yet: pressure-dependent widths (channel F) and fitToCurve
-          smoothing.
+          whole. With a pressure channel (F) the width follows the pen: (0.25 + 1.5 F/max) times the brush
+          width, tapering smoothly between points, ignorePressure keeps the brush width (measured with
+          generated/ink). Not yet: fitToCurve, which PowerPoint draws as fitted cubic Beziers with cusps
+          (visible only on sparse points; dense ink stays within half a pixel of its polyline).
 
       - id: picture.model3d
         title: 3D models

@@ -21,7 +21,7 @@ static class Ink
     /// <summary>Whether a part is ink: InkML, or InkActionML (ink recorded for replay).</summary>
     public static bool IsInk(XDocument part) => part.Root?.Name == InkMl + "ink" || part.Root?.Name == InkAction + "actions";
 
-    sealed record Brush(double Width, RgbColor Color, double Opacity, bool Rectangle, bool Highlighter = false);
+    sealed record Brush(double Width, RgbColor Color, double Opacity, bool Rectangle, bool Highlighter = false, bool IgnorePressure = false);
 
     /// <summary>SVG markup of an InkML part drawn into a box of <paramref name="width"/> × <paramref name="height"/> pixels.</summary>
     public static string Render(XDocument ink, double width, double height)
@@ -37,8 +37,9 @@ static class Ink
             .Where(c => c.Attribute(XNamespace.Xml + "id") != null)
             .ToDictionary(c => "#" + c.Attribute(XNamespace.Xml + "id")!.Value, c => c);
 
-        // Traces with their brushes, points in the ink's units (channels X and Y wherever they stand).
-        var traces = new List<(List<(double X, double Y)> Points, Brush Brush)>();
+        // Traces with their brushes, points in the ink's units (channels X and Y wherever they stand) and the pen's
+        // pressure as a fraction (1 without a pressure channel).
+        var traces = new List<(List<(double X, double Y)> Points, List<double> Pressure, Brush Brush)>();
         Brush? previousBrush = null;
         // InkActionML adds strokes and may remove them again; the strokes still there are drawn.
         var removed = root.Descendants(InkAction + "action").Where(a => a.Attribute("type")?.Value == "remove")
@@ -52,12 +53,18 @@ static class Ink
             var brush = trace.Attribute("brushRef")?.Value is { } brushRef && brushes.TryGetValue(brushRef, out var b) ? b : previousBrush ?? new Brush(0.05, RgbColor.Black, 1, false);
             previousBrush = brush;
             var context = trace.Attribute("contextRef")?.Value is { } contextRef && contexts.TryGetValue(contextRef, out var c) ? c : contexts.Values.FirstOrDefault();
-            var channels = context?.Descendants(InkMl + "channel").Select(ch => ch.Attribute("name")?.Value ?? "").ToList() ?? ["X", "Y"];
+            var channelElements = context?.Descendants(InkMl + "channel").ToList() ?? [];
+            var channels = channelElements.Count > 0 ? channelElements.Select(ch => ch.Attribute("name")?.Value ?? "").ToList() : ["X", "Y"];
             var (ix, iy) = (Math.Max(0, channels.IndexOf("X")), Math.Max(0, channels.IndexOf("Y")));
             if (iy == ix) iy = ix + 1;
-            var points = Points(trace.Value, Math.Max(channels.Count, Math.Max(ix, iy) + 1)).Select(p => (p[ix], p[iy])).ToList();
+            var force = channels.IndexOf("F");
+            var maxForce = force >= 0 && double.TryParse(channelElements[force].Attribute("max")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var m) && m > 0 ? m : 0;
+            var raw = Points(trace.Value, Math.Max(channels.Count, Math.Max(ix, iy) + 1));
+            var points = raw.Select(p => (p[ix], p[iy])).ToList();
+            // Without a pressure channel (or with ignorePressure) every point has the nominal pressure (half).
+            var pressure = raw.Select(p => maxForce > 0 && !brush.IgnorePressure ? Math.Clamp(p[force] / maxForce, 0, 1) : 0.5).ToList();
             if (points.Count > 0)
-                traces.Add((points, brush));
+                traces.Add((points, pressure, brush));
         }
         if (traces.Count == 0)
             return "";
@@ -77,8 +84,36 @@ static class Ink
         var highlighter = traces.Any(t => t.Brush.Highlighter);
 
         var svg = new StringBuilder();
-        foreach (var (points, brush) in traces)
+        foreach (var (points, pressure, brush) in traces)
         {
+            var nominal = brush.Width * 96 / 2.54;
+            var opacityOf = highlighter ? Math.Min(brush.Opacity, 0.5) : brush.Opacity;
+            // With the pen's pressure the width follows it: (0.25 + 1.5 pressure) times the brush width, so half
+            // pressure draws the brush's width and full pressure 1.75 times it, tapering smoothly between points
+            // (measured); the stroke is drawn as tapered pieces with round joints.
+            if (pressure.Any(f => Math.Abs(f - 0.5) > 0.001) && !brush.Rectangle)
+            {
+                svg.Append($"<g fill=\"{brush.Color.ToHex()}\"{(opacityOf < 0.999 ? $" opacity=\"{Units.Css4(opacityOf)}\"" : "")}>");
+                var screen = points.Select(p => (X: ox + (p.X - minX) * sx, Y: oy + (p.Y - minY) * sy)).ToList();
+                var radius = pressure.Select(f => nominal * (0.25 + 1.5 * f) / 2).ToList();
+                var shape = new StringBuilder();
+                for (var i = 0; i < screen.Count; i++)
+                {
+                    var (x, y) = screen[i];
+                    shape.Append($"M{Units.Css(x - radius[i])} {Units.Css(y)}a{Units.Css(radius[i])} {Units.Css(radius[i])} 0 1 0 {Units.Css(2 * radius[i])} 0a{Units.Css(radius[i])} {Units.Css(radius[i])} 0 1 0 {Units.Css(-2 * radius[i])} 0Z");
+                    if (i + 1 >= screen.Count)
+                        continue;
+                    var (x2, y2) = screen[i + 1];
+                    var length = Math.Sqrt((x2 - x) * (x2 - x) + (y2 - y) * (y2 - y));
+                    if (length < 1e-6)
+                        continue;
+                    var (nx, ny) = (-(y2 - y) / length, (x2 - x) / length);
+                    shape.Append($"M{Units.Css(x + nx * radius[i])} {Units.Css(y + ny * radius[i])}L{Units.Css(x2 + nx * radius[i + 1])} {Units.Css(y2 + ny * radius[i + 1])}" +
+                                 $"L{Units.Css(x2 - nx * radius[i + 1])} {Units.Css(y2 - ny * radius[i + 1])}L{Units.Css(x - nx * radius[i])} {Units.Css(y - ny * radius[i])}Z");
+                }
+                svg.Append($"<path d=\"{shape}\" fill-rule=\"nonzero\"/></g>");
+                continue;
+            }
             var d = new StringBuilder();
             for (var i = 0; i < points.Count; i++)
             {
@@ -111,7 +146,7 @@ static class Ink
         // transparency: 0 (opaque) to 255; highlighters (maskPen) show half.
         var opacity = 1 - Math.Clamp(Number(Property("transparency"), 0), 0, 255) / 255;
         var highlighter = Property("rasterOp") == "maskPen";
-        return new Brush(width, color, opacity, Property("tip") == "rectangle", highlighter);
+        return new Brush(width, color, opacity, Property("tip") == "rectangle", highlighter, Property("ignorePressure") is "1" or "true");
     }
 
     /// <summary>Points per centimeter of the context's X channel (1000 by default).</summary>
