@@ -16,7 +16,7 @@ public static class SmartArtCheck
     static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
     static readonly XNamespace Dsp = "http://schemas.microsoft.com/office/drawing/2008/diagram";
 
-    public sealed record Diagram(int Slide, string Layout, DataModel Model, XElement LayoutDef, XElement? Drawing, (double W, double H) Size, XElement? Style, XElement? Colors);
+    public sealed record Diagram(int Slide, string SlidePart, string Layout, DataModel Model, XElement LayoutDef, XElement? Drawing, (double W, double H) Size, XElement? Style, XElement? Colors);
 
     /// <summary>The diagrams of a deck with their parts.</summary>
     public static IEnumerable<Diagram> Diagrams(string path)
@@ -45,7 +45,7 @@ public static class SmartArtCheck
                 var drawing = drawingId != null && package.Relationship(slidePart, drawingId)?.Target is { } drawingPart ? package.ReadXml(drawingPart).Root : null;
                 var ext = frame.Element(P + "xfrm")!.Element(A + "ext")!;
                 var size = ((long)ext.Attribute("cx")! / 12700.0, (long)ext.Attribute("cy")! / 12700.0);
-                result.Add(new Diagram(slideNumber, (string?)layout.Attribute("uniqueId") ?? "", new DataModel(data), layout, drawing, size, style, colors));
+                result.Add(new Diagram(slideNumber, slidePart, (string?)layout.Attribute("uniqueId") ?? "", new DataModel(data), layout, drawing, size, style, colors));
             }
         }
         return result;
@@ -75,4 +75,76 @@ public static class SmartArtCheck
     }
 
     static string Short(string uid) => uid[(uid.LastIndexOf('/') + 1)..];
+
+    /// <summary>
+    /// Compares the engine's layout with PowerPoint's drawing: for every drawing shape the node of its presentation
+    /// point; a shape is good when its box is within 1 % of the diagram's size.
+    /// </summary>
+    public static void Geometry(IEnumerable<string> files, bool verbose)
+    {
+        foreach (var file in files)
+        {
+            var (good, shapes) = (0, 0);
+            var results = new List<(string Layout, int Good, int Count, double Mean)>();
+            using var context = new FreeSlate.Pptx.PresentationContext(OpcPackage.Open(file));
+            foreach (var diagram in Diagrams(file))
+            {
+                if (diagram.Drawing == null)
+                    continue;
+                LayoutNode root;
+                try
+                {
+                    var text = new FreeSlate.Pptx.TextRenderer(new FreeSlate.Pptx.SlideContext(context, diagram.SlidePart, diagram.Slide), FreeSlate.Text.FontResolver.Default);
+                    root = Engine.Layout(diagram.LayoutDef, diagram.Model, diagram.Size.W, diagram.Size.H, (body, width) => text.LayoutCell(body, [], width));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"  slide {diagram.Slide,3} {Short(diagram.Layout)}: {e.GetType().Name} {e.Message}");
+                    continue;
+                }
+                var nodes = root.Descendants().Prepend(root).GroupBy(n => (n.Point.Id, n.Name)).ToDictionary(g => g.Key, g => g.First());
+                var scale = Math.Max(diagram.Size.W, diagram.Size.H);
+                var (diagramGood, count, sum) = (0, 0, 0.0);
+                var lines = new List<string>();
+                foreach (var sp in diagram.Drawing.Descendants(Dsp + "sp"))
+                {
+                    var id = (string?)sp.Attribute("modelId") ?? "";
+                    if (!diagram.Model.Points.TryGetValue(id, out var pres) || pres.Prop("presAssocID") is not { } assoc || pres.Prop("presName") is not { } name)
+                        continue;
+                    var xfrm = sp.Descendants(A + "xfrm").First();
+                    var off = xfrm.Element(A + "off")!;
+                    var ext = xfrm.Element(A + "ext")!;
+                    var (px, py, pw, ph) = ((long)off.Attribute("x")! / 12700.0, (long)off.Attribute("y")! / 12700.0, (long)ext.Attribute("cx")! / 12700.0, (long)ext.Attribute("cy")! / 12700.0);
+                    count++;
+                    if (!nodes.TryGetValue((assoc, name), out var node))
+                    {
+                        sum += 1;
+                        lines.Add($"      {name,-20} missing");
+                        continue;
+                    }
+                    var k = Engine.PtPerMm;
+                    var error = new[] { node.X * k - px, node.Y * k - py, node.W * k - pw, node.H * k - ph }.Max(Math.Abs) / scale;
+                    sum += Math.Min(error, 1);
+                    if (error < 0.01)
+                        diagramGood++;
+                    var size = sp.Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz")?.Value;
+                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({node.X * k,7:0.0} {node.Y * k,7:0.0} {node.W * k,7:0.0} {node.H * k,7:0.0})  {error * 100,5:0.0} %  {node.Note}"));
+                }
+                if (count == 0)
+                    continue;
+                good += diagramGood;
+                shapes += count;
+                results.Add((Short(diagram.Layout), diagramGood, count, sum / count));
+                if (verbose)
+                {
+                    Console.WriteLine($"  slide {diagram.Slide,3} {Short(diagram.Layout)}: {diagramGood}/{count}");
+                    foreach (var line in lines)
+                        Console.WriteLine(line);
+                }
+            }
+            foreach (var r in results.OrderByDescending(r => r.Mean))
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"  {r.Layout,-36} {r.Good,3}/{r.Count,-3} mean error {r.Mean * 100,5:0.0} %"));
+            Console.WriteLine($"{Path.GetFileName(file)}: {good} of {shapes} shapes within 1 %, {results.Count(r => r.Good == r.Count)} of {results.Count} diagrams exact");
+        }
+    }
 }

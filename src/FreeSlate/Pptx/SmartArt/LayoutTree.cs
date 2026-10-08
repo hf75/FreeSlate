@@ -59,6 +59,9 @@ public sealed class LayoutNode(XElement definition, DataPoint point, LayoutNode?
     public double H { get; set; }
     public double Rotation { get; set; }
 
+    /// <summary>Notes of the layout for diagnostics (text fitting).</summary>
+    public string Note { get; set; } = "";
+
     /// <summary>Constraint values resolved for this node (w, h, primFontSz, lMarg …).</summary>
     public Dictionary<string, double> Values { get; } = new(StringComparer.Ordinal);
 

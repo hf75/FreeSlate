@@ -1,0 +1,97 @@
+using System.Globalization;
+using System.Xml.Linq;
+
+namespace FreeSlate.Pptx.SmartArt;
+
+/// <summary>
+/// The text of a SmartArt shape the way PowerPoint writes it into its drawing (measured from saved drawings): the
+/// node's own text at the primary font size, centered unless parTxLTRAlign says otherwise, with 90 % line spacing and
+/// 35 % after; the text of its descendants as bullets (•) 22.5 pt in, at the secondary font size, space after from
+/// lnSpAfChP (15 % by default); margins in points as insets (0.56 em when not constrained); tabs every 3.5 em.
+/// </summary>
+public static class TextBody
+{
+    static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
+    const double EmuPerPt = 12700;
+
+    /// <summary>The paragraphs of a node: (text, level), levels counted from the node's own point.</summary>
+    public static List<(XElement Paragraph, int Level)> Paragraphs(LayoutNode node)
+    {
+        var result = new List<(XElement, int)>();
+        if (node.Text.Count == 0)
+            return result;
+        var baseDepth = DataModel.Depth(node.Point);
+        var firstBullet = int.TryParse(node.Param("stBulletLvl"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? b : 1;
+        foreach (var point in node.Text)
+        {
+            var level = Math.Max(0, DataModel.Depth(point) - baseDepth);
+            // A node showing only the text of its descendants starts them at the first bullet level.
+            if (node.Text.All(p => p != node.Point) && level > 0 && firstBullet <= 1)
+                level = Math.Max(1, level);
+            var body = point.Element.Element(DataModel.Dgm + "t");
+            var paragraphs = body?.Elements(A + "p").ToList() ?? [];
+            if (paragraphs.Count == 0)
+                paragraphs.Add(new XElement(A + "p"));
+            foreach (var p in paragraphs)
+                result.Add((p, level));
+        }
+        return result;
+    }
+
+    /// <summary>The margin of a side in points: the constraint's value, else 0.56 × the primary font size.</summary>
+    public static double Margin(LayoutNode node, string side, double primary) =>
+        node.Values.TryGetValue(side, out var value) && double.IsFinite(value) ? value : 0.56 * primary;
+
+    /// <summary>The text body of a node at the given font sizes (points).</summary>
+    public static XElement Build(LayoutNode node, double primary, double secondary)
+    {
+        var paragraphs = Paragraphs(node);
+        var hasChildren = paragraphs.Any(p => p.Level > 0);
+        var anchor = hasChildren && paragraphs.All(p => p.Level > 0)
+            ? Anchor(node.Param("txAnchorVertCh") ?? "t")
+            : Anchor(node.Param("txAnchorVert") ?? "mid");
+        static string Emu(double points) => ((long)Math.Round(points * EmuPerPt)).ToString(CultureInfo.InvariantCulture);
+        var bodyPr = new XElement(A + "bodyPr",
+            new XAttribute("spcFirstLastPara", "0"), new XAttribute("vert", "horz"), new XAttribute("wrap", "square"),
+            new XAttribute("lIns", Emu(Margin(node, "lMarg", primary))), new XAttribute("tIns", Emu(Margin(node, "tMarg", primary))),
+            new XAttribute("rIns", Emu(Margin(node, "rMarg", primary))), new XAttribute("bIns", Emu(Margin(node, "bMarg", primary))),
+            new XAttribute("numCol", "1"), new XAttribute("spcCol", "1270"), new XAttribute("anchor", anchor), new XAttribute("anchorCtr", "0"),
+            new XElement(A + "noAutofit"));
+        var body = new XElement(A + "txBody", bodyPr, new XElement(A + "lstStyle"));
+        var parentAlign = Align(node.Param("parTxLTRAlign") ?? (hasChildren ? "l" : "ctr"));
+        var childAlign = Align(node.Param("shpTxLTRAlignCh") ?? "l");
+        var after = double.TryParse(node.Param("lnSpAfChP"), NumberStyles.Float, CultureInfo.InvariantCulture, out var a) ? a : 15;
+        var afterParent = double.TryParse(node.Param("lnSpAfParP"), NumberStyles.Float, CultureInfo.InvariantCulture, out var ap) ? ap : 35;
+        foreach (var (source, level) in paragraphs)
+        {
+            var size = level == 0 ? primary : secondary;
+            var pPr = new XElement(A + "pPr",
+                new XAttribute("marL", level == 0 ? "0" : Emu(22.5 * level)), new XAttribute("lvl", level),
+                new XAttribute("indent", level == 0 ? "0" : Emu(-22.5)), new XAttribute("algn", level == 0 ? parentAlign : childAlign),
+                new XAttribute("defTabSz", Emu(3.5 * size)),
+                new XElement(A + "lnSpc", new XElement(A + "spcPct", new XAttribute("val", "90000"))),
+                new XElement(A + "spcBef", new XElement(A + "spcPct", new XAttribute("val", "0"))),
+                new XElement(A + "spcAft", new XElement(A + "spcPct", new XAttribute("val", ((long)((level == 0 ? afterParent : after) * 1000)).ToString(CultureInfo.InvariantCulture)))),
+                level == 0 ? new XElement(A + "buNone") : new XElement(A + "buChar", new XAttribute("char", "•")));
+            var paragraph = new XElement(A + "p", pPr);
+            foreach (var run in source.Elements().Where(e => e.Name.LocalName is "r" or "fld" or "br"))
+            {
+                var copy = new XElement(run);
+                if (copy.Element(A + "rPr") is not { } rPr)
+                {
+                    rPr = new XElement(A + "rPr");
+                    copy.AddFirst(rPr);
+                }
+                rPr.SetAttributeValue("sz", ((long)Math.Round(size * 100)).ToString(CultureInfo.InvariantCulture));
+                rPr.SetAttributeValue("kern", "1200");
+                paragraph.Add(copy);
+            }
+            body.Add(paragraph);
+        }
+        return body;
+    }
+
+    static string Anchor(string value) => value switch { "t" => "t", "b" => "b", _ => "ctr" };
+
+    static string Align(string value) => value switch { "l" => "l", "r" => "r", "just" => "just", _ => "ctr" };
+}

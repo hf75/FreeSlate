@@ -45,6 +45,7 @@ switch (command)
         break;
     case "smartart":
         SmartArtCheck.Run(rest);
+        SmartArtCheck.Geometry(rest, args.Contains("--verbose"));
         break;
     case "animate":
         var animated = Animations.Run(decks);
