@@ -335,7 +335,21 @@ public static class Output
                 Math.Abs(geometry.Rotation) > 1e-9 ? new XAttribute("rot", Angle(geometry.Rotation)) : null,
                 new XElement(A + "off", new XAttribute("x", Emu(geometry.X)), new XAttribute("y", Emu(geometry.Y))),
                 new XElement(A + "ext", new XAttribute("cx", Emu(Math.Max(0, geometry.W))), new XAttribute("cy", Emu(Math.Max(0, geometry.H))))));
-        if (geometry.Line)
+        if (geometry.Line && (Connector(node) ?? node).Values.ContainsKey("elbowX4"))
+        {
+            // A bent connector: its path in its box (EMU), from the start through its corners to the end.
+            var v = (Connector(node) ?? node).Values;
+            static XElement Pt(double x, double y) => new(A + "pt", new XAttribute("x", Emu(x)), new XAttribute("y", Emu(y)));
+            var path = new XElement(A + "path", new XAttribute("w", Emu(geometry.W)), new XAttribute("h", Emu(geometry.H)), new XAttribute("fill", "none"),
+                new XElement(A + "moveTo", Pt(v["elbowX1"], v["elbowY1"])),
+                new XElement(A + "lnTo", Pt(v["elbowX2"], v["elbowY2"])),
+                new XElement(A + "lnTo", Pt(v["elbowX3"], v["elbowY3"])),
+                new XElement(A + "lnTo", Pt(v["elbowX4"], v["elbowY4"])));
+            spPr.Add(new XElement(A + "custGeom", new XElement(A + "avLst"), new XElement(A + "gdLst"), new XElement(A + "ahLst"), new XElement(A + "cxnLst"),
+                new XElement(A + "rect", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0)),
+                new XElement(A + "pathLst", path)));
+        }
+        else if (geometry.Line)
         {
             spPr.Add(new XElement(A + "custGeom", new XElement(A + "avLst"), new XElement(A + "gdLst"), new XElement(A + "ahLst"), new XElement(A + "cxnLst"),
                 new XElement(A + "rect", new XAttribute("l", "l"), new XAttribute("t", "t"), new XAttribute("r", "r"), new XAttribute("b", "b")),

@@ -97,13 +97,19 @@ public static class Engine
             case "cycle":
                 Cycle(node, pins);
                 break;
+            case "hierRoot" or "hierChild":
+                Hierarchy(node, pins);
+                break;
             default:
                 Composite(node, pins);
                 break;
         }
-        // Connectors are placed between the nodes their parent placed.
-        foreach (var child in node.Children.Where(c => c.AlgorithmType == "conn"))
-            Connector(child, pins);
+        // Connectors are placed between the nodes their parent placed (a hierarchy places its own).
+        if (node.AlgorithmType is not ("hierRoot" or "hierChild"))
+        {
+            foreach (var child in node.Children.Where(c => c.AlgorithmType == "conn"))
+                Connector(child, pins);
+        }
     }
 
     /// <summary>A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; the parent's size where none is given).</summary>
@@ -390,6 +396,175 @@ public static class Engine
         }
     }
 
+    static bool IsHierarchy(LayoutNode node) => node.AlgorithmType is "hierRoot" or "hierChild";
+
+    /// <summary>
+    /// A hierarchy (hierRoot and hierChild, catalog: smartart.layout): the tree arranged in the units of its constraints
+    /// (each node's shape above its children's row, sp between the levels, sibSp between siblings, assistants on a level
+    /// of their own beside the line down to the children), its connectors drawn, and the whole fitted into the top
+    /// node's box, uniformly scaled and centered (measured with orgChart1 and hierarchy1: a parent centered over its
+    /// first and last child, levels sp apart).
+    /// </summary>
+    static void Hierarchy(LayoutNode node, Pins pins)
+    {
+        var (bx, by, bw, bh) = (node.X, node.Y, node.W, node.H);
+        var box = Arrange(node, pins);
+        foreach (var connector in node.Descendants().Where(c => c.AlgorithmType == "conn"))
+            Connector(connector, pins);
+        box = Union(box, node.Descendants().Where(c => c.AlgorithmType == "conn" && c.W + c.H > 0).Select(c => (c.X, c.Y, c.W, c.H)));
+        var factor = Math.Min(box.W > 0 ? bw / box.W : 1, box.H > 0 ? bh / box.H : 1);
+        if (!double.IsFinite(factor) || factor <= 0)
+            factor = 1;
+        var (ox, oy) = (bx + (bw - box.W * factor) / 2, by + (bh - box.H * factor) / 2);
+        foreach (var n in node.Descendants())
+        {
+            n.X = ox + (n.X - box.X) * factor;
+            n.Y = oy + (n.Y - box.Y) * factor;
+            n.W *= factor;
+            n.H *= factor;
+            n.Scale *= factor;
+            for (var i = 1; i <= 4; i++)
+            {
+                foreach (var key in new[] { $"elbowX{i}", $"elbowY{i}" })
+                {
+                    if (n.Values.TryGetValue(key, out var v))
+                        n.Values[key] = v * factor;
+                }
+            }
+        }
+        (node.X, node.Y, node.W, node.H) = (bx, by, bw, bh);
+    }
+
+    static (double X, double Y, double W, double H) Union((double X, double Y, double W, double H) a, IEnumerable<(double X, double Y, double W, double H)> boxes)
+    {
+        var (minX, minY, maxX, maxY) = (a.X, a.Y, a.X + a.W, a.Y + a.H);
+        foreach (var b in boxes)
+        {
+            minX = Math.Min(minX, b.X);
+            minY = Math.Min(minY, b.Y);
+            maxX = Math.Max(maxX, b.X + b.W);
+            maxY = Math.Max(maxY, b.Y + b.H);
+        }
+        return (minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>Arranges a node of a hierarchy at the origin in the units of its constraints; its room afterwards.</summary>
+    static (double X, double Y, double W, double H) Arrange(LayoutNode node, Pins pins)
+    {
+        if (node.AlgorithmType == "hierRoot")
+            return ArrangeRoot(node, pins);
+        if (node.AlgorithmType == "hierChild")
+            return ArrangeRow(node, pins);
+        var e = Extent(node);
+        var (w, h) = (Finite(node, "w") ?? e.X + e.W, Finite(node, "h") ?? e.Y + e.H);
+        if (node.AlgorithmType == "composite" && h > 100 * Math.Max(w, 1e-6))
+            h = e.Y + e.H;
+        Place(node, 0, 0, w, h, pins);
+        return Bounds(node);
+    }
+
+    /// <summary>
+    /// A hierarchy root: its own shape (the first child that is not a hierarchy), below it the assistants' row (right of
+    /// center: to the left of the line down) and the children's row, sp apart; the shape centered over the row's first
+    /// and last shapes (hierAlign tCtr), at its left or right (tL, tR) or beside a column of children (lCtrCh, rCtrCh).
+    /// </summary>
+    static (double X, double Y, double W, double H) ArrangeRoot(LayoutNode node, Pins pins)
+    {
+        Constraints.EvaluateList(node, pins);
+        (node.X, node.Y) = (0, 0);
+        var own = node.Children.FirstOrDefault(c => !IsHierarchy(c) && c.AlgorithmType != "conn");
+        var rows = node.Children.Where(c => c.AlgorithmType == "hierChild").ToList();
+        var assistants = rows.FirstOrDefault(r => r.Children.Any(c => c.Point.Type == "asst"));
+        var sp = Value(node, "sp");
+        var align = node.Param("hierAlign") ?? "tCtr";
+        var horizontal = align is "lCtrCh" or "rCtrCh" or "lT" or "lB" or "rT" or "rB";
+        if (own != null)
+            Arrange(own, pins);
+        // Rows hang from the root's own box (a composite's, not the union of its shapes).
+        (double X, double Y, double W, double H) shape = own != null ? (own.X, own.Y, own.W, own.H) : (0, 0, 0, 0);
+        var (centerX, centerY) = (shape.X + shape.W / 2, shape.Y + shape.H / 2);
+        var next = horizontal ? (align.StartsWith('l') ? shape.X + shape.W + sp : shape.X - sp) : shape.Y + shape.H + sp;
+        if (assistants != null && assistants.Children.Count > 0)
+        {
+            var a = ArrangeRow(assistants, pins);
+            Translate(assistants, centerX - sp / 2 - (a.X + a.W), next - a.Y);
+            next += a.H + sp;
+        }
+        foreach (var row in rows.Where(r => r != assistants))
+        {
+            var r = ArrangeRow(row, pins);
+            if (r.W <= 0 && r.H <= 0)
+                continue;
+            var heads = row.Children.Where(c => c.AlgorithmType != "conn").Select(Head).Where(h => h != null).ToList();
+            if (horizontal)
+            {
+                // Children in a column beside the shape, centered on it by their first and last shapes.
+                var middle = heads.Count > 0 ? (heads[0]!.Y + heads[0]!.H / 2 + heads[^1]!.Y + heads[^1]!.H / 2) / 2 : r.Y + r.H / 2;
+                var dy = align.EndsWith('T') ? shape.Y - r.Y : align.EndsWith('B') ? shape.Y + shape.H - (r.Y + r.H) : centerY - middle;
+                var dx = align.StartsWith('l') ? next - r.X : next - (r.X + r.W);
+                Translate(row, dx, dy);
+                next = align.StartsWith('l') ? next + r.W + sp : next - r.W - sp;
+            }
+            else
+            {
+                var middle = heads.Count > 0 ? (heads[0]!.X + heads[0]!.W / 2 + heads[^1]!.X + heads[^1]!.W / 2) / 2 : r.X + r.W / 2;
+                var offset = Value(node, "alignOff") * shape.W;
+                var dx = align switch
+                {
+                    "tL" => shape.X + offset - r.X,
+                    "tR" => shape.X + shape.W - offset - (r.X + r.W),
+                    _ => centerX - middle,
+                };
+                Translate(row, dx, next - r.Y);
+                next += r.H + sp;
+            }
+        }
+        return Bounds(node);
+    }
+
+    /// <summary>The own box of a hierarchy subtree's root (its composite), over which a parent centers.</summary>
+    static LayoutNode? Head(LayoutNode node)
+    {
+        if (node.AlgorithmType == "hierRoot")
+        {
+            return node.Children.FirstOrDefault(c => !IsHierarchy(c) && c.AlgorithmType != "conn");
+        }
+        return node.Descendants().Prepend(node).FirstOrDefault(Draws) ?? node;
+    }
+
+    /// <summary>
+    /// A hierarchy's row of children (hierChild): the subtrees one after another (linDir) sibSp apart, aligned across
+    /// by chAlign (top or left by default).
+    /// </summary>
+    static (double X, double Y, double W, double H) ArrangeRow(LayoutNode node, Pins pins)
+    {
+        Constraints.EvaluateList(node, pins);
+        (node.X, node.Y) = (0, 0);
+        var children = node.Children.Where(c => c.AlgorithmType != "conn").ToList();
+        if (children.Count == 0)
+            return (0, 0, 0, 0);
+        var direction = node.Param("linDir") ?? "fromL";
+        var horizontal = direction is "fromL" or "fromR";
+        var gap = Value(node, "sibSp");
+        var alignment = node.Param("chAlign") ?? (horizontal ? "t" : "l");
+        var boxes = children.Select(c => Arrange(c, pins)).ToList();
+        var across = boxes.Max(b => horizontal ? b.H : b.W);
+        var order = direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count);
+        var position = 0.0;
+        foreach (var i in order)
+        {
+            var b = boxes[i];
+            var size = horizontal ? b.W : b.H;
+            var cross = Align(alignment switch { "b" or "r" => "b", "ctr" or "mid" => "ctr", _ => "t" }, across, horizontal ? b.H : b.W);
+            if (horizontal)
+                Translate(children[i], position - b.X, cross - b.Y);
+            else
+                Translate(children[i], cross - b.X, position - b.Y);
+            position += size + gap;
+        }
+        return Bounds(node);
+    }
+
     /// <summary>
     /// The layout nodes a connector joins: those showing the transition's nodes (a sibling transition from its node to
     /// the next, the first after the last; a parent transition from the parent to its node), by name where srcNode and
@@ -464,6 +639,11 @@ public static class Engine
             Arc(connector, start, end, pins);
             return;
         }
+        if (connector.Param("connRout") == "bend")
+        {
+            Elbow(connector, start, end, pins);
+            return;
+        }
         var (ax, ay) = (start.X + start.W / 2, start.Y + start.H / 2);
         var (bx, by) = (end.X + end.W / 2, end.Y + end.H / 2);
         var (dx, dy) = (bx - ax, by - ay);
@@ -498,6 +678,81 @@ public static class Engine
         PlaceConnector(connector, cx - span / 2, cy - thickness / 2, span, thickness, pins);
         var angle = Math.Atan2(uy, ux) * 180 / Math.PI;
         connector.Rotation = Math.Abs(angle) < 1e-9 ? 0 : (angle % 360 + 360) % 360;
+    }
+
+    /// <summary>A connection point of a node's box (tL, tCtr, tR, midL, ctr, midR, bL, bCtr, bR).</summary>
+    static (double X, double Y) Point(LayoutNode node, string name) => name switch
+    {
+        "tL" => (node.X, node.Y),
+        "tCtr" => (node.X + node.W / 2, node.Y),
+        "tR" => (node.X + node.W, node.Y),
+        "midL" => (node.X, node.Y + node.H / 2),
+        "midR" => (node.X + node.W, node.Y + node.H / 2),
+        "bL" => (node.X, node.Y + node.H),
+        "bCtr" => (node.X + node.W / 2, node.Y + node.H),
+        "bR" => (node.X + node.W, node.Y + node.H),
+        _ => (node.X + node.W / 2, node.Y + node.H / 2),
+    };
+
+    /// <summary>
+    /// A bent connector (connRout bend): from one of the first node's begPts points to one of the second's endPts points
+    /// (the nearest pair; by default the facing sides' centers), leaving and arriving straight: across bendDist before
+    /// the end when both run the same way (half the way by default; measured with hierarchy1), with a single corner when
+    /// one runs down and the other across (an organization chart's assistant). A line without width gets a box of 7.2 pt.
+    /// </summary>
+    static void Elbow(LayoutNode connector, LayoutNode start, LayoutNode end, Pins pins)
+    {
+        var (sx, sy) = (start.X + start.W / 2, start.Y + start.H / 2);
+        var (ex, ey) = (end.X + end.W / 2, end.Y + end.H / 2);
+        var down = Math.Abs(ey - sy) >= Math.Abs(ex - sx);
+        IEnumerable<string> Names(string? points, string fallback)
+        {
+            var names = points?.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).Where(p => p != "auto").ToList() ?? [];
+            return names.Count > 0 ? names : [fallback];
+        }
+        var begins = Names(connector.Param("begPts"), down ? (ey > sy ? "bCtr" : "tCtr") : (ex > sx ? "midR" : "midL"));
+        var ends = Names(connector.Param("endPts"), down ? (ey > sy ? "tCtr" : "bCtr") : (ex > sx ? "midL" : "midR"));
+        var (from, to) = begins.SelectMany(b => ends.Select(e => (B: b, E: e)))
+            .MinBy(pair =>
+            {
+                var (p, q) = (Point(start, pair.B), Point(end, pair.E));
+                return Math.Abs(q.X - p.X) + Math.Abs(q.Y - p.Y);
+            });
+        var a = Point(start, from);
+        var b = Point(end, to);
+        static bool Vertical(string point) => point is "tCtr" or "bCtr" or "tL" or "tR" or "bL" or "bR";
+        var points = new List<(double X, double Y)> { a };
+        if (Vertical(from) && Vertical(to))
+        {
+            var bend = Finite(connector, "bendDist") is { } d ? b.Y - Math.Sign(b.Y - a.Y) * d : (a.Y + b.Y) / 2;
+            points.Add((a.X, bend));
+            points.Add((b.X, bend));
+        }
+        else if (!Vertical(from) && !Vertical(to))
+        {
+            var bend = Finite(connector, "bendDist") is { } d ? b.X - Math.Sign(b.X - a.X) * d : (a.X + b.X) / 2;
+            points.Add((bend, a.Y));
+            points.Add((bend, b.Y));
+        }
+        else
+            points.Add(Vertical(from) ? (a.X, b.Y) : (b.X, a.Y));
+        points.Add(b);
+        var (minX, minY) = (points.Min(p => p.X), points.Min(p => p.Y));
+        var (w, h) = (points.Max(p => p.X) - minX, points.Max(p => p.Y) - minY);
+        const double Thin = 2.54;   // 7.2 pt
+        if (w < 1e-6)
+            (minX, w) = (minX - Thin / 2, Thin);
+        if (h < 1e-6)
+            (minY, h) = (minY - Thin / 2, Thin);
+        PlaceConnector(connector, minX, minY, w, h, pins);
+        connector.Rotation = 0;
+        while (points.Count < 4)
+            points.Insert(points.Count - 1, points[^1]);
+        for (var i = 0; i < 4; i++)
+        {
+            connector.Values[$"elbowX{i + 1}"] = points[i].X - minX;
+            connector.Values[$"elbowY{i + 1}"] = points[i].Y - minY;
+        }
     }
 
     /// <summary>The point of a circle at a DrawingML angle (degrees clockwise from the x axis).</summary>
