@@ -25,6 +25,8 @@ FreeSlate.PptxConverter.ToFile("deck.pptx", "deck.html");
 ```
 
 The HTML is self-contained: all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
+A password-protected presentation needs its password (`ToFile("deck.pptx", "deck.html", password: "…")`); without
+it, or with a wrong one, `FreeSlate.Opc.PasswordException` says which.
 
 ## Measuring fidelity
 

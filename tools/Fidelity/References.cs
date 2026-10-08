@@ -47,7 +47,7 @@ public static class References
                         File.Delete(old);
                 }
 
-                var files = session.ExportSlides(source, dir);
+                var files = session.ExportSlides(source, dir, password: Repo.DeckPassword(deck));
                 using var first = SkiaSharp.SKBitmap.Decode(files[0]);
                 var info = new ReferenceInfo(
                     Path.GetRelativePath(Repo.Root, source).Replace('\\', '/'), hash, session.Version, first.Width, first.Height, files.Count);

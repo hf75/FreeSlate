@@ -41,7 +41,26 @@ public sealed class OpcPackage : IDisposable
         }
     }
 
-    public static OpcPackage Open(string path) => new(File.OpenRead(path));
+    /// <summary>
+    /// Opens a package file; a password-protected one (a compound file with an encrypted package) is decrypted
+    /// first with the password, or with Office's default password when none is given (catalog: package.encryption).
+    /// </summary>
+    /// <exception cref="PasswordException">The file needs a password, or the password is wrong.</exception>
+    public static OpcPackage Open(string path, string? password = null)
+    {
+        var stream = File.OpenRead(path);
+        Span<byte> head = stackalloc byte[8];
+        if (stream.Read(head) < 8 || head[0] != 0xD0 || head[1] != 0xCF)
+        {
+            stream.Position = 0;
+            return new OpcPackage(stream);
+        }
+        stream.Dispose();
+        var file = new CompoundFile(File.ReadAllBytes(path));
+        if (!OfficeCrypto.IsEncrypted(file))
+            throw new InvalidDataException("The file is a compound file without an encrypted package (a binary .ppt?).");
+        return new OpcPackage(new MemoryStream(OfficeCrypto.Decrypt(file, password)));
+    }
 
     public bool Exists(string partName) => entries.ContainsKey(partName);
 

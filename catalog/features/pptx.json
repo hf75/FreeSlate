@@ -254,8 +254,9 @@
       "title": "Encrypted and write-protected files",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Password-protected files are OLE compound files with an EncryptedPackage stream ([MS-OFFCRYPTO], agile encryption): ask for the password and decrypt before parsing. Write protection only matters to an editor.",
+      "office": "A password-protected presentation is a compound file ([MS-CFB]) with an EncryptedPackage stream that EncryptionInfo describes ([MS-OFFCRYPTO]). Agile encryption (version 4.4: spun SHA-1 to SHA-512 password hash, a package key sealed with it, AES-CBC in 4096-byte segments) and standard encryption (version x.2: AES-128/192/256 keyed by 50 000 SHA-1 spins, ECB) are decrypted with the password given to the converter; without one, Office's default password VelvetSweatshop is tried, and PasswordException tells a missing password from a wrong one. Write protection (p:modifyVerifier) and the read-only recommendation (p1710:readonlyRecommended) do not change how the presentation shows and only matter to an editor. Checked with generated/encrypted-agile (encrypted by PowerPoint) and generated/encrypted-standard (written by the fidelity tool, opened by PowerPoint).",
       "elements": [
         "p1710:readonlyRecommended",
         "p:modifyVerifier"

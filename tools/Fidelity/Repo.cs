@@ -26,6 +26,10 @@ public static class Repo
 
     public static string DeckFile(string deck) => Path.Combine(Corpus, deck + ".pptx");
 
+    /// <summary>The password of a protected deck: the contents of its .password file next to it, or null.</summary>
+    public static string? DeckPassword(string deck) =>
+        File.Exists(Path.Combine(Corpus, deck + ".password")) ? File.ReadAllText(Path.Combine(Corpus, deck + ".password")).Trim() : null;
+
     static string FindRoot()
     {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

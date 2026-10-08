@@ -65,6 +65,8 @@ public static class CorpusGenerator
         ("text-eastasian", EastAsianDeck.Build, false),
         ("ink", InkDeck.Build, false),
         ("comments", CommentsDeck.Build, false),
+        ("encrypted-agile", EncryptedDecks.BuildAgile, false),
+        ("encrypted-standard", EncryptedDecks.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -79,6 +81,7 @@ public static class CorpusGenerator
         ["text-eastasian"] = EastAsianDeck.Patch,
         ["ink"] = InkDeck.Patch,
         ["comments"] = CommentsDeck.Patch,
+        ["encrypted-standard"] = EncryptedDecks.EncryptStandard,
     };
 
     /// <summary>Generates the named decks, or all of them.</summary>
@@ -200,6 +203,12 @@ public static class CorpusGenerator
     /// <summary>PowerPoint writes the Office user name as author; the decks are published, so it is replaced.</summary>
     static void Anonymize(string path)
     {
+        // An encrypted deck (a compound file) is anonymized by PowerPoint itself (RemovePersonalInformation).
+        using (var file = File.OpenRead(path))
+        {
+            if (file.ReadByte() != 'P' || file.ReadByte() != 'K')
+                return;
+        }
         using var zip = ZipFile.Open(path, ZipArchiveMode.Update);
         var entry = zip.GetEntry("docProps/core.xml");
         if (entry == null)

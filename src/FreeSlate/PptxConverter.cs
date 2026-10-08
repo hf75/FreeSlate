@@ -73,9 +73,11 @@ public static class PptxConverter
         return reader.ReadToEnd().Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase);
     });
 
-    public static string ToHtml(string pptxPath, FontLocator? fonts = null)
+    /// <summary>The HTML document of a presentation; a password-protected one needs its password.</summary>
+    /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
+    public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null)
     {
-        using var context = new PresentationContext(OpcPackage.Open(pptxPath));
+        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password));
         var deck = new DeckInfo(context);
         var paint = new SvgPaint();
         var width = Units.ToPx(context.SlideWidth);
@@ -134,10 +136,10 @@ public static class PptxConverter
         return html.ToString();
     }
 
-    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null)
+    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts));
+        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password));
     }
 
     /// <summary>@font-face rules for used fonts that the browser cannot find by name (e.g. Office cloud fonts).</summary>

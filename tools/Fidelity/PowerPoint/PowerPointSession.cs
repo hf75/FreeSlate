@@ -30,8 +30,9 @@ public sealed class PowerPointSession : IDisposable
     /// <summary>PowerPoint version and build, e.g. "16.0.20430".</summary>
     public string Version { get; }
 
-    public dynamic Open(string path) =>
-        app.Presentations.Open(Path.GetFullPath(path), MsoTrue, MsoFalse, MsoFalse);
+    /// <summary>Opens a presentation read-only; a protected one with its password ("path::password::").</summary>
+    public dynamic Open(string path, string? password = null) =>
+        app.Presentations.Open(Path.GetFullPath(path) + (password != null ? $"::{password}::" : ""), MsoTrue, MsoFalse, MsoFalse);
 
     /// <summary>A new presentation; some galleries (SmartArt, charts) need a document window, which is then minimized.</summary>
     public dynamic Create(bool window = false)
@@ -61,10 +62,10 @@ public sealed class PowerPointSession : IDisposable
     }
 
     /// <summary>Exports every slide as PNG; the size follows the slide size at 96 dpi unless a width is given.</summary>
-    public List<string> ExportSlides(string pptxPath, string outputDir, int? width = null)
+    public List<string> ExportSlides(string pptxPath, string outputDir, int? width = null, string? password = null)
     {
         Directory.CreateDirectory(outputDir);
-        var presentation = Open(pptxPath);
+        var presentation = Open(pptxPath, password);
         try
         {
             double slideWidth = presentation.PageSetup.SlideWidth;   // points

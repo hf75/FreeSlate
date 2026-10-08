@@ -15,7 +15,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 4 |
+| [Package and compatibility](#package) | 7 | 2 | 0 | 1 | 4 | 1.4 | 2 | 5 |
 | [Presentation and slide structure](#presentation) | 15 | 5 | 2 | 2 | 6 | 1.7 | 5 | 10 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 3 | 3 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 2 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **48** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **86** | **49** |
 
 <a id="package"></a>
 
@@ -47,7 +47,7 @@ ZIP container, relationships, markup compatibility and metadata.
 | [Package, content types and relationships](#package.opc) | P0 | ●○○○○ | partial | 5 | 0 |
 | [Markup compatibility and extension lists](#package.mce) | P0 | ●●○○○ | partial | 34 | 4 |
 | [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | done | 9 | 0 |
-| [Encrypted and write-protected files](#package.encryption) | P2 | ●●●○○ | todo | 2 | 1 |
+| [Encrypted and write-protected files](#package.encryption) | P2 | ●●●○○ | done | 2 | 1 |
 | [Document properties](#package.properties) | P3 | ●○○○○ | done | 73 | 16 |
 | [Custom XML parts](#package.customXml) | P3 | ●○○○○ | done | 3 | 0 |
 | [Object ids and co-authoring revisions](#package.ids) | P3 | ●○○○○ | done | 51 | 0 |
@@ -98,9 +98,11 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Encrypted and write-protected files
 
-`package.encryption` · P2 · difficulty 3 · todo
+`package.encryption` · P2 · difficulty 3 · done
 
 **Rendering:** Password-protected files are OLE compound files with an EncryptedPackage stream ([MS-OFFCRYPTO], agile encryption): ask for the password and decrypt before parsing. Write protection only matters to an editor.
+
+**Office behaviour:** A password-protected presentation is a compound file ([MS-CFB]) with an EncryptedPackage stream that EncryptionInfo describes ([MS-OFFCRYPTO]). Agile encryption (version 4.4: spun SHA-1 to SHA-512 password hash, a package key sealed with it, AES-CBC in 4096-byte segments) and standard encryption (version x.2: AES-128/192/256 keyed by 50 000 SHA-1 spins, ECB) are decrypted with the password given to the converter; without one, Office's default password VelvetSweatshop is tried, and PasswordException tells a missing password from a wrong one. Write protection (p:modifyVerifier) and the read-only recommendation (p1710:readonlyRecommended) do not change how the presentation shows and only matter to an editor. Checked with generated/encrypted-agile (encrypted by PowerPoint) and generated/encrypted-standard (written by the fidelity tool, opened by PowerPoint).
 
 **Elements (2):** [`p1710:readonlyRecommended`](../format/namespaces/p1710.md#p1710readonlyrecommended), [`p:modifyVerifier`](../format/namespaces/p.md#pmodifyverifier)
 

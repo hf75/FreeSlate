@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/encrypted-agile.pptx",
+  "sha256": "df3550f31dab53d2e3776c07395470e1a4da5cb9882479db772a0eebc019d75e",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 2
+}
