@@ -27,6 +27,9 @@ switch (command)
     case "generate" or "reference" or "calibrate":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
         return 1;
+    case "harvest-patterns":
+        PatternHarvest.Run();
+        break;
     case "render":
         Pipeline.Render(decks);
         break;

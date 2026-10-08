@@ -3,8 +3,35 @@ using System.Text;
 
 namespace Engine.Drawing.Geometry;
 
-/// <summary>A path of an evaluated geometry as SVG path data in pixels.</summary>
-public sealed record EvaluatedPath(string Data, string Fill, bool Stroke);
+/// <summary>One SVG path command with its numbers in pixels (A: rx ry rotation large-arc sweep x y).</summary>
+public sealed record PathSegment(char Command, double[] Values)
+{
+    /// <summary>The point the segment ends at (none for Z).</summary>
+    public (double X, double Y)? End => Command == 'Z' || Values.Length < 2 ? null : (Values[^2], Values[^1]);
+}
+
+/// <summary>A path of an evaluated geometry in pixels.</summary>
+public sealed record EvaluatedPath(List<PathSegment> Segments, string Fill, bool Stroke)
+{
+    public string Data => Serialize(Segments);
+
+    public static string Serialize(IEnumerable<PathSegment> segments)
+    {
+        var sb = new StringBuilder();
+        foreach (var segment in segments)
+        {
+            sb.Append(segment.Command);
+            for (var i = 0; i < segment.Values.Length; i++)
+            {
+                if (i > 0) sb.Append(' ');
+                sb.Append(segment.Command == 'A' && i is 2 or 3 or 4
+                    ? ((int)segment.Values[i]).ToString(CultureInfo.InvariantCulture)
+                    : Units.Css(segment.Values[i]));
+            }
+        }
+        return sb.ToString();
+    }
+}
 
 /// <summary>Paths and text rectangle of a geometry evaluated for one shape size (pixels, shape-local).</summary>
 public sealed record EvaluatedGeometry(List<EvaluatedPath> Paths, double TextLeft, double TextTop, double TextRight, double TextBottom);
@@ -31,7 +58,7 @@ public static class GeometryEvaluator
         foreach (var gd in definition.Guides)
             vars[gd.Name] = Eval(gd.Formula, vars);
 
-        var paths = definition.Paths.Select(p => new EvaluatedPath(PathData(p, widthEmu, heightEmu, vars), p.Fill, p.Stroke)).ToList();
+        var paths = definition.Paths.Select(p => new EvaluatedPath(Path(p, widthEmu, heightEmu, vars), p.Fill, p.Stroke)).ToList();
 
         double Px(string arg) => Units.ToPx(Value(arg, vars));
         var rect = definition.TextRect;
@@ -96,22 +123,14 @@ public static class GeometryEvaluator
         };
     }
 
-    static string PathData(PathDefinition path, double w, double h, Dictionary<string, double> vars)
+    static List<PathSegment> Path(PathDefinition path, double w, double h, Dictionary<string, double> vars)
     {
         var sx = path.W is { } pw ? w / pw : 1;
         var sy = path.H is { } ph ? h / ph : 1;
-        var sb = new StringBuilder();
+        var segments = new List<PathSegment>();
         double curX = 0, curY = 0, startX = 0, startY = 0;
 
-        void Emit(char command, params double[] coordinates)
-        {
-            sb.Append(command);
-            for (var i = 0; i < coordinates.Length; i++)
-            {
-                if (i > 0) sb.Append(' ');
-                sb.Append(Units.Css(Units.ToPx(coordinates[i])));
-            }
-        }
+        void Emit(char command, params double[] emu) => segments.Add(new PathSegment(command, emu.Select(Units.ToPx).ToArray()));
 
         foreach (var cmd in path.Commands)
         {
@@ -138,22 +157,22 @@ public static class GeometryEvaluator
                 case "arcTo":
                     var wR = Value(cmd.Args[0], vars) * sx;
                     var hR = Value(cmd.Args[1], vars) * sy;
-                    (curX, curY) = Arc(sb, curX, curY, wR, hR, Value(cmd.Args[2], vars), Value(cmd.Args[3], vars));
+                    (curX, curY) = Arc(segments, curX, curY, wR, hR, Value(cmd.Args[2], vars), Value(cmd.Args[3], vars));
                     break;
                 case "close":
-                    sb.Append('Z');
+                    segments.Add(new PathSegment('Z', []));
                     (curX, curY) = (startX, startY);
                     break;
             }
         }
-        return sb.ToString();
+        return segments;
     }
 
     /// <summary>
     /// arcTo: the current point lies on the ellipse at the visual angle stAng. Visual angles map to the ellipse
     /// parameter via t = atan2(wR·sin a, hR·cos a); sweeps are split into pieces of at most 180°.
     /// </summary>
-    static (double X, double Y) Arc(StringBuilder sb, double x, double y, double wR, double hR, double stAng, double swAng)
+    static (double X, double Y) Arc(List<PathSegment> segments, double x, double y, double wR, double hR, double stAng, double swAng)
     {
         double Param(double a) => Math.Atan2(wR * Math.Sin(a), hR * Math.Cos(a));
         var start = Rad(stAng);
@@ -166,7 +185,7 @@ public static class GeometryEvaluator
         {
             var t = Param(start + sweep);
             var (ex, ey) = (cx + wR * Math.Cos(t), cy + hR * Math.Sin(t));
-            sb.Append('L').Append(Units.Css(Units.ToPx(ex))).Append(' ').Append(Units.Css(Units.ToPx(ey)));
+            segments.Add(new PathSegment('L', [Units.ToPx(ex), Units.ToPx(ey)]));
             return (ex, ey);
         }
 
@@ -176,9 +195,7 @@ public static class GeometryEvaluator
         {
             var t = Param(start + sweep * i / pieces);
             (endX, endY) = (cx + wR * Math.Cos(t), cy + hR * Math.Sin(t));
-            sb.Append('A').Append(Units.Css(Units.ToPx(wR))).Append(' ').Append(Units.Css(Units.ToPx(hR)))
-              .Append(" 0 0 ").Append(sweep > 0 ? '1' : '0').Append(' ')
-              .Append(Units.Css(Units.ToPx(endX))).Append(' ').Append(Units.Css(Units.ToPx(endY)));
+            segments.Add(new PathSegment('A', [Units.ToPx(wR), Units.ToPx(hR), 0, 0, sweep > 0 ? 1 : 0, Units.ToPx(endX), Units.ToPx(endY)]));
         }
         return (endX, endY);
     }

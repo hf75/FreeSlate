@@ -10,15 +10,40 @@ public sealed class SvgPaint
 
     string NewId(string prefix) => $"{prefix}{++nextId}";
 
-    /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels.</summary>
-    public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0) => fill switch
+    /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
+    public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0, (double X, double Y) origin = default) => fill switch
     {
         SolidFill s => Color("fill", s.Color),
         GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation)})\"",
-        PatternFill p => Color("fill", RgbColor.Mix(p.Background, p.Foreground, PatternDensity(p.Preset))),
+        PatternFill p => $" fill=\"url(#{Pattern(p, defs, origin)})\"",
         PictureFill p => $" fill=\"url(#{Picture(p, w, h, defs)})\"",
         _ => " fill=\"none\"",
     };
+
+    /// <summary>
+    /// A preset pattern as an 8×8 pixel tile. PowerPoint aligns the tiles to the slide, so the pattern is shifted
+    /// by the shape's position (harvested and verified: tools/Fidelity harvest-patterns).
+    /// </summary>
+    string Pattern(PatternFill p, StringBuilder defs, (double X, double Y) origin)
+    {
+        var id = NewId("t");
+        var tile = PatternPresets.Tiles.GetValueOrDefault(p.Preset) ?? PatternPresets.Tiles["pct50"];
+        var bits = new StringBuilder();
+        for (var row = 0; row < 8; row++)
+        {
+            for (var column = 0; column < 8; column++)
+            {
+                if ((tile[row] & (0x80 >> column)) != 0)
+                    bits.Append($"M{column} {row}h1v1h-1z");
+            }
+        }
+        double Phase(double v) => ((-v % 8) + 8) % 8;
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"translate({Units.Css(Phase(origin.X))} {Units.Css(Phase(origin.Y))})\">" +
+                    $"<rect width=\"8\" height=\"8\"{Color("fill", p.Background)} shape-rendering=\"crispEdges\"/>" +
+                    (bits.Length > 0 ? $"<path d=\"{bits}\"{Color("fill", p.Foreground)} shape-rendering=\"crispEdges\"/>" : "") +
+                    "</pattern>");
+        return id;
+    }
 
     public string Stroke(Outline? outline, double w, double h, StringBuilder defs)
     {

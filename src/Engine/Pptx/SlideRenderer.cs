@@ -103,10 +103,14 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         var defs = new StringBuilder();
         var paths = new StringBuilder();
+        var ends = outline is { Visible: true }
+            ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs))
+            : "";
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
-            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation)}{(path.Stroke ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"")}/>");
+            var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
+            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{(path.Stroke ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"")}/>");
         }
 
         html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
@@ -115,7 +119,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
-        html.Append(paths);
+        html.Append(paths).Append(ends);
         if (shape.Name.LocalName == "sp")
         {
             var placeholder = Placeholders.Ph(shape);
