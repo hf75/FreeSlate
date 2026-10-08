@@ -105,7 +105,7 @@ static class TextVerticalDeck
         {
             XDocument slide;
             using (var stream = entry.Open())
-                slide = XDocument.Load(stream);
+                slide = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
             var changed = false;
             foreach (var shape in slide.Descendants(p + "sp"))
             {
@@ -120,7 +120,7 @@ static class TextVerticalDeck
                 continue;
             entry.Delete();
             using var output = zip.CreateEntry(entry.FullName).Open();
-            slide.Save(output);
+            slide.Save(output, SaveOptions.DisableFormatting);
         }
     }
 

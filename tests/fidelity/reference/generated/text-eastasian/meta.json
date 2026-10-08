@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-eastasian.pptx",
+  "sha256": "f1ced2a8cfff1b740816fa1dfc836c4205a0991f28249055e5fbd12300a6b6f0",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 1
+}

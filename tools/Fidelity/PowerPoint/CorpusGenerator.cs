@@ -62,6 +62,7 @@ public static class CorpusGenerator
         ("three-d", ThreeDDeck.Build, false),
         ("colormap", ColorMapDeck.Build, true),
         ("text-rtl", RtlDeck.Build, false),
+        ("text-eastasian", EastAsianDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -73,6 +74,7 @@ public static class CorpusGenerator
         ["text-body"] = TextBodyDeck.Patch,
         ["tables"] = TablesDeck.Patch,
         ["effects"] = EffectsDeck.Patch,
+        ["text-eastasian"] = EastAsianDeck.Patch,
     };
 
     /// <summary>Generates the named decks, or all of them.</summary>
@@ -200,12 +202,12 @@ public static class CorpusGenerator
             return;
         XDocument core;
         using (var stream = entry.Open())
-            core = XDocument.Load(stream);
+            core = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
         foreach (var e in core.Root!.Elements().Where(e => e.Name.LocalName is "creator" or "lastModifiedBy"))
             e.Value = "Fidelity generator";
         entry.Delete();
         using var output = zip.CreateEntry("docProps/core.xml").Open();
-        core.Save(output);
+        core.Save(output, SaveOptions.DisableFormatting);
     }
 
     internal static dynamic AddSlide(dynamic presentation, int layout) =>

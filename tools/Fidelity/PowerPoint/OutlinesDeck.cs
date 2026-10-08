@@ -79,7 +79,7 @@ static class OutlinesDeck
         {
             XDocument slide;
             using (var stream = entry.Open())
-                slide = XDocument.Load(stream);
+                slide = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
             foreach (var shape in slide.Descendants().Where(e => e.Name == P + "sp" || e.Name == P + "cxnSp"))
             {
                 var name = shape.Descendants(P + "cNvPr").FirstOrDefault()?.Attribute("name")?.Value ?? "";
@@ -99,7 +99,7 @@ static class OutlinesDeck
             }
             entry.Delete();
             using var output = zip.CreateEntry(entry.FullName).Open();
-            slide.Save(output);
+            slide.Save(output, SaveOptions.DisableFormatting);
         }
     }
 

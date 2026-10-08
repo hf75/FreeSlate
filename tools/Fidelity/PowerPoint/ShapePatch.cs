@@ -17,7 +17,7 @@ static class ShapePatch
         {
             XDocument slide;
             using (var stream = entry.Open())
-                slide = XDocument.Load(stream);
+                slide = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
             var changed = false;
             foreach (var shape in slide.Descendants().Where(e => e.Name.LocalName is "sp" or "graphicFrame" or "pic" or "cxnSp").ToList())
             {
@@ -31,7 +31,7 @@ static class ShapePatch
                 continue;
             entry.Delete();
             using var output = zip.CreateEntry(entry.FullName).Open();
-            slide.Save(output);
+            slide.Save(output, SaveOptions.DisableFormatting);
         }
     }
 

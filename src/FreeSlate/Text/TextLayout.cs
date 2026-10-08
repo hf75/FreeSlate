@@ -20,7 +20,8 @@ public sealed record TextStyle(
     TextLink? Link = null,
     Fill? Paint = null,
     Outline? Line = null,
-    bool? RightToLeft = null);
+    bool? RightToLeft = null,
+    string? Language = null);
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
 public sealed record TextLink(string? Href, string? Action, string? Tooltip);
@@ -73,6 +74,18 @@ public sealed class ParagraphInput
 
     /// <summary>A right-to-left paragraph (a:pPr/@rtl): its margins, indent and bullet start on the right.</summary>
     public bool RightToLeft { get; init; }
+
+    /// <summary>The East Asian line breaking rules (a:pPr/@eaLnBrk, on by default).</summary>
+    public bool Kinsoku { get; init; } = true;
+
+    /// <summary>Latin words may break anywhere to fill a line (a:pPr/@latinLnBrk).</summary>
+    public bool LatinBreak { get; init; }
+
+    /// <summary>Commas and full stops may hang past the end of a line (a:pPr/@hangingPunct, with the kinsoku rules).</summary>
+    public bool HangingPunctuation { get; init; }
+
+    /// <summary>The presentation's own kinsoku characters (p:kinsoku): may not start, may not end a line.</summary>
+    public (string NotFirst, string NotLast)? KinsokuCharacters { get; init; }
 }
 
 /// <summary>A run placed on a line: X from the left edge of the text area, in points.</summary>
@@ -198,7 +211,7 @@ public static class TextLayout
             styles.AddRange(Enumerable.Repeat(run.Style, text.Length));
         }
         var all = chars.ToString();
-        var breaks = LineBreaker.Opportunities(all);
+        var breaks = LineBreaker.Opportunities(all, paragraph.Kinsoku, paragraph.KinsokuCharacters);
         // Bidi levels of the paragraph (catalog: text.rtl); neutrals the rules leave open follow their run's language.
         var levels = Bidi.Levels(all, paragraph.RightToLeft, i => i < styles.Count ? styles[i].RightToLeft : null);
 
@@ -271,10 +284,15 @@ public static class TextLayout
             }
 
             var content = segment.Width - segment.TrailingWidth;
-            if (wrap && current.Count > 0 && x + content > limit + 0.01)
+            // Hanging punctuation stays on the line even past its end (measured: 、 and 。 hang, the character before
+            // them is not pushed to the next line).
+            var hanging = paragraph.HangingPunctuation && paragraph.Kinsoku ? HangingWidth(all, styles, segment) : 0;
+            // latinLnBrk: a Latin word that does not fit is broken to fill the line (measured).
+            var breakWord = paragraph.LatinBreak && current.Count > 0 && x + content > limit + 0.01 && IsLatinWord(all, segment);
+            if (wrap && current.Count > 0 && x + content - hanging > limit + 0.01 && !breakWord)
                 Finish(false);
 
-            if (wrap && x + content > limit + 0.01 && current.Count == 0 && segment.End - segment.Start > 1)
+            if (wrap && x + content - hanging > limit + 0.01 && (current.Count == 0 || breakWord) && segment.End - segment.Start > 1)
             {
                 // A word longer than the line: break it between characters.
                 var start = segment.Start;
@@ -531,6 +549,32 @@ public static class TextLayout
             line.Runs.Clear();
             line.Runs.AddRange(runs);
         }
+    }
+
+    /// <summary>The width of the hanging punctuation at the end of a segment (before its trailing spaces).</summary>
+    static double HangingWidth(string all, List<TextStyle> styles, Segment segment)
+    {
+        var end = segment.End;
+        while (end > segment.Start && all[end - 1] == ' ') end--;
+        var start = end;
+        while (start > segment.Start && LineBreaker.Hanging.Contains(all[start - 1])) start--;
+        return start < end ? Measure(all, styles, start, end) : 0;
+    }
+
+    /// <summary>Whether a segment is a Latin word (letters and digits of non-East Asian scripts).</summary>
+    static bool IsLatinWord(string all, Segment segment)
+    {
+        var any = false;
+        for (var i = segment.Start; i < segment.End; i++)
+        {
+            var c = all[i];
+            if (c == ' ')
+                continue;
+            if (!char.IsLetterOrDigit(c) || LineBreaker.IsIdeographic(c) || c > '\u024F')
+                return false;
+            any = true;
+        }
+        return any;
     }
 
     /// <summary>The left margin, moved right so that the first line does not start left of the text area.</summary>

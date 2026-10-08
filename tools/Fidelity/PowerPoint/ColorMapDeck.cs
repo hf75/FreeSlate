@@ -112,11 +112,11 @@ static class ColorMapDeck
             var entry = zip.GetEntry(name) ?? throw new InvalidOperationException($"{name} missing");
             XDocument doc;
             using (var stream = entry.Open())
-                doc = XDocument.Load(stream);
+                doc = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
             change(doc);
             entry.Delete();
             using var output = zip.CreateEntry(name).Open();
-            doc.Save(output);
+            doc.Save(output, SaveOptions.DisableFormatting);
         }
         Update("ppt/slideMasters/slideMaster1.xml", doc =>
         {

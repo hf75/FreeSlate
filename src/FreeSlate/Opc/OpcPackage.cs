@@ -53,10 +53,14 @@ public sealed class OpcPackage : IDisposable
         return buffer.ToArray();
     }
 
+    /// <summary>
+    /// A part as XML, whitespace kept: a run of spaces (&lt;a:t&gt; &lt;/a:t&gt;) is text, and dropping it joins the words
+    /// around it.
+    /// </summary>
     public XDocument ReadXml(string partName)
     {
         using var stream = entries[partName].Open();
-        return XDocument.Load(stream);
+        return XDocument.Load(stream, LoadOptions.PreserveWhitespace);
     }
 
     public string ContentType(string partName)

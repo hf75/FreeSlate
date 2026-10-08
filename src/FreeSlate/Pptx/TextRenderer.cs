@@ -840,6 +840,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             EndStyle = endStyle,
             Align = P("algn") ?? "l",
             RightToLeft = P("rtl") is "1" or "true",
+            Kinsoku = P("eaLnBrk") is not ("0" or "false"),
+            LatinBreak = P("latinLnBrk") is "1" or "true",
+            HangingPunctuation = P("hangingPunct") is "1" or "true",
+            KinsokuCharacters = slide.Presentation.Kinsoku(runs.FirstOrDefault(r => r.Text.Trim().Length > 0)?.Style.Language),
             MarginLeft = Points(P("marL")),
             MarginRight = Points(P("marR")),
             Indent = Points(P("indent")),
@@ -1043,7 +1047,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             paint,
             line,
             // The run's own direction (a:rtl), else its language's.
-            RunElement(rPr, sources, level, "rtl") is { } rtl ? rtl.Bool("val") ?? true : RightToLeftLanguage(R("lang")));
+            RunElement(rPr, sources, level, "rtl") is { } rtl ? rtl.Bool("val") ?? true : RightToLeftLanguage(R("lang")),
+            R("lang"));
     }
 
     /// <summary>Whether a language is written right to left; null without a language.</summary>
