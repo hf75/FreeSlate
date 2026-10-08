@@ -51,4 +51,7 @@ public sealed class SlideContext
 
     /// <summary>The image resolver for shapes of the given part (relationship ids are per part).</summary>
     public Func<string, string?> Images(string part) => id => Presentation.Image(part, id);
+
+    /// <summary>Picture sizes for tiled fills of the given part.</summary>
+    public Func<string, (double W, double H)> ImageSizes(string part) => id => Presentation.ImageSize(part, id);
 }

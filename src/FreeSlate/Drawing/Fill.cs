@@ -27,7 +27,20 @@ public sealed record GradientFill(
 public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill;
 
 /// <summary>A picture fill; Image is a data URI, SourceRect the crop in fractions (negative values pad).</summary>
-public sealed record PictureFill(string Image, (double L, double T, double R, double B) SourceRect, (double L, double T, double R, double B) FillRect, bool Tile) : Fill;
+public sealed record PictureFill(string Image, (double L, double T, double R, double B) SourceRect, (double L, double T, double R, double B) FillRect, bool Tile) : Fill
+{
+    /// <summary>SVG filter primitives for the blip's color effects (catalog: picture.effects), or null.</summary>
+    public string? Filter { get; init; }
+
+    /// <summary>Tile placement (a:tile): offset in points, scale, flip and alignment; null when stretched.</summary>
+    public TileSpec? Tiling { get; init; }
+
+    /// <summary>The picture's own size in pixels at its resolution (tiles are sized from it).</summary>
+    public (double W, double H) NaturalSize { get; init; }
+}
+
+/// <summary>a:tile: offsets in points, scales as factors, flip x/y/xy/none and alignment (tl, ctr, br …).</summary>
+public sealed record TileSpec(double Tx, double Ty, double Sx, double Sy, string Flip, string Align);
 
 /// <summary>Use the fill of the parent group.</summary>
 public sealed record GroupFill : Fill;
@@ -41,7 +54,7 @@ public static class FillReader
         container?.Elements().FirstOrDefault(e => FillElements.Contains(e.Name.LocalName) && e.Name.Namespace == Ns.A);
 
     /// <param name="images">Resolves an r:embed id to a data URI.</param>
-    public static Fill Read(XElement fill, ColorContext colors, Func<string, string?>? images = null)
+    public static Fill Read(XElement fill, ColorContext colors, Func<string, string?>? images = null, Func<string, (double W, double H)>? sizes = null)
     {
         switch (fill.Name.LocalName)
         {
@@ -73,11 +86,22 @@ public static class FillReader
                     colors.ResolveChild(fill.Element(Ns.A + "bgClr")) ?? RgbColor.White);
             case "blipFill":
                 var blip = fill.Element(Ns.A + "blip");
-                var image = blip?.Attribute(Ns.R + "embed") is { } id ? images?.Invoke(id.Value) : null;
+                // SVG pictures keep the SVG in an extension and may have no bitmap fallback at all.
+                var reference = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed") ?? blip?.Attribute(Ns.R + "embed");
+                var image = reference != null ? images?.Invoke(reference.Value) : null;
                 if (image == null)
                     return Fill.None;
                 var stretch = fill.Element(Ns.A + "stretch");
-                return new PictureFill(image, Rect(fill.Element(Ns.A + "srcRect")), Rect(stretch?.Element(Ns.A + "fillRect")), fill.Element(Ns.A + "tile") != null);
+                var tile = fill.Element(Ns.A + "tile");
+                return new PictureFill(image, Rect(fill.Element(Ns.A + "srcRect")), Rect(stretch?.Element(Ns.A + "fillRect")), tile != null)
+                {
+                    Filter = Html.BlipEffects.Filter(blip, colors),
+                    Tiling = tile == null ? null : new TileSpec(
+                        (tile.Long("tx") ?? 0) / Units.EmuPerPoint, (tile.Long("ty") ?? 0) / Units.EmuPerPoint,
+                        (tile.Long("sx") ?? 100000) / 100000.0, (tile.Long("sy") ?? 100000) / 100000.0,
+                        tile.Str("flip") ?? "none", tile.Str("algn") ?? "tl"),
+                    NaturalSize = blip?.Attribute(Ns.R + "embed") is { } embed && sizes != null ? sizes(embed.Value) : default,
+                };
             case "grpFill":
                 return new GroupFill();
             default:

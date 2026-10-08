@@ -665,6 +665,7 @@ areas:
         title: EMF and WMF pictures
         priority: P1
         difficulty: 5
+        status: partial
         strategy: Our own EMF/EMF+/WMF interpreter that emits SVG ([MS-EMF], [MS-EMFPLUS], [MS-WMF]).
         office: EMF and WMF are frequent in real decks (icons, content pasted from Excel or Visio, older charts).
 
@@ -683,6 +684,7 @@ areas:
                    a:tint]
         priority: P1
         difficulty: 3
+        status: partial
         strategy: >-
           SVG filters (feColorMatrix, feComponentTransfer) or pre-processing in C#. Recolor presets (grayscale,
           washout, duotone with theme colors) and transparency (alphaModFix) are the common ones.
@@ -694,6 +696,7 @@ areas:
                    a14:foregroundMark]
         priority: P1
         difficulty: 1
+        status: done
         strategy: Draw the main blip.
         office: >-
           PowerPoint saves the processed picture as the main blip and keeps the original in a14:imgLayer, so the
@@ -715,6 +718,7 @@ areas:
         elements: [p:oleObj, p:embed, p:link, p:controls, p:control, a15:objectPr, a15:signatureLine]
         priority: P1
         difficulty: 1
+        status: done
         strategy: Draw the fallback picture stored with the object.
 
       - id: picture.ink
@@ -726,6 +730,7 @@ areas:
         namespaces: [msink, iact]
         priority: P2
         difficulty: 3
+        status: partial
         strategy: Use the mc:Fallback picture first; later draw the InkML traces as SVG paths with pressure-dependent width.
 
       - id: picture.model3d
@@ -733,6 +738,7 @@ areas:
         namespaces: [am3d, a3danim]
         priority: P2
         difficulty: 1
+        status: done
         strategy: Show the fallback picture; real 3D (glTF with WebGL) is an option for later.
         office: PowerPoint saves a rendered picture of the model as mc:Fallback.
 
@@ -741,6 +747,7 @@ areas:
         namespaces: [alf, p232]
         priority: P3
         difficulty: 2
+        status: done
         strategy: Show the stored picture; a live camera (getUserMedia) only in the player.
 
       - id: picture.sources

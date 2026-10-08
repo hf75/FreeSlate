@@ -42,6 +42,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             RenderTree(Tree(slide.Layout), slide.LayoutPart!, html, Placement.Root, isSlide: false);
         RenderTree(Tree(slide.Slide), slide.SlidePart, html, Placement.Root, isSlide: true);
 
+        // ActiveX controls are drawn from their stored pictures (catalog: picture.ole).
+        foreach (var control in slide.Slide.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "controls")?.Elements(Ns.P + "control") ?? [])
+        {
+            if (control.Element(Ns.P + "pic") is { } preview)
+                RenderShape(preview, slide.SlidePart, html, Placement.Root, isSlide: true);
+        }
+
         html.Append(appendix).Append("</section>");
         return html.ToString();
     }
@@ -128,11 +135,23 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var ends = outline is { Visible: true }
             ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs))
             : "";
+        // Picture borders lie outside the picture (measured: a 6 pt border ends where the picture begins).
+        var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
+        // A picture can have a fill of its own behind it, visible through its transparent parts.
+        var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, style, placement.GroupFill) : Fill.None;
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
             var origin = (Units.ToPx(matrix.E), Units.ToPx(matrix.F));
-            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{(path.Stroke ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"")}/>");
+            if (background is not NoFill && path.Fill != "none")
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"/>");
+            var stroke = path.Stroke && !outsetBorder ? paint.Stroke(outline, pw, ph, defs) : " stroke=\"none\"";
+            paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}/>");
+        }
+        if (outsetBorder)
+        {
+            var half = Units.ToPx(outline!.WidthEmu) / 2;
+            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs)}/>");
         }
 
         html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
@@ -176,6 +195,14 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
         }
 
+        // OLE objects (catalog: picture.ole): PowerPoint stores a picture of the object, usually an EMF.
+        if (data.Element(Ns.P + "oleObj") is { } ole)
+        {
+            if (ole.Element(Ns.P + "pic") is { } preview)
+                RenderShape(WithFrameTransform(preview, xfrm), part, html, placement, isSlide: true);
+            return;
+        }
+
         if (data.Element(Ns.C + "chart")?.Attribute(Ns.R + "id") is { } chartId
             && slide.Presentation.Package.Relationship(part, chartId.Value) is { External: false } chartRel)
         {
@@ -198,6 +225,23 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append($"<div class=\"sp\"{Accessibility(frame, true)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
             html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
         }
+    }
+
+    /// <summary>A picture that takes the frame's position when it has none of its own (OLE and control previews).</summary>
+    static XElement WithFrameTransform(XElement pic, XElement frameXfrm)
+    {
+        if (pic.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext") != null)
+            return pic;
+        var copy = new XElement(pic);
+        var spPr = copy.Element(Ns.P + "spPr");
+        if (spPr == null)
+        {
+            spPr = new XElement(Ns.P + "spPr");
+            copy.Add(spPr);
+        }
+        spPr.Element(Ns.A + "xfrm")?.Remove();
+        spPr.AddFirst(new XElement(Ns.A + "xfrm", frameXfrm.Attributes(), frameXfrm.Elements()));
+        return copy;
     }
 
     static readonly XNamespace Dsp = "http://schemas.microsoft.com/office/drawing/2008/diagram";
@@ -350,7 +394,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             if (FillReader.FindFill(SpPr(s.Element)) is { } f)
             {
-                var fill = FillReader.Read(f, slide.Colors, slide.Images(s.Part));
+                var fill = FillReader.Read(f, slide.Colors, slide.Images(s.Part), slide.ImageSizes(s.Part));
                 return fill is GroupFill ? groupFill ?? Fill.None : fill;
             }
         }
@@ -385,10 +429,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var svg = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value;
         var embed = blip?.Attribute(Ns.R + "embed")?.Value;
         var image = (svg != null ? slide.Presentation.Image(part, svg) : null) ?? (embed != null ? slide.Presentation.Image(part, embed, displayWidth) : null);
-        if (image == null)
+        if (image == null || blipFill == null)
             return Fill.None;
-        var stretch = blipFill!.Element(Ns.A + "stretch");
-        return new PictureFill(image, FillReader.Rect(blipFill.Element(Ns.A + "srcRect")), FillReader.Rect(stretch?.Element(Ns.A + "fillRect")), blipFill.Element(Ns.A + "tile") != null);
+        // The blip's color effects and tiling come with the fill; the picture itself is the SVG or the bitmap.
+        return FillReader.Read(blipFill, slide.Colors, _ => image, slide.ImageSizes(part)) is PictureFill fill ? fill : Fill.None;
     }
 
     /// <summary>Path fill modes of preset geometries that shade the fill (e.g. the top of a cylinder).</summary>

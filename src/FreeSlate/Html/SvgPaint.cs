@@ -177,6 +177,17 @@ public sealed class SvgPaint
     string Picture(PictureFill p, double w, double h, StringBuilder defs)
     {
         var id = NewId("p");
+        var filter = "";
+        if (p.Filter != null)
+        {
+            var filterId = NewId("bf");
+            defs.Append($"<filter id=\"{filterId}\" x=\"0\" y=\"0\" width=\"1\" height=\"1\" color-interpolation-filters=\"sRGB\">{p.Filter}</filter>");
+            filter = $" filter=\"url(#{filterId})\"";
+        }
+
+        if (p.Tiling is { } tile && p.NaturalSize.W > 0 && p.NaturalSize.H > 0)
+            return Tiled(p, tile, id, w, h, filter, defs);
+
         var (fl, ft, fr, fb) = p.FillRect;
         var (sl, st, sr, sb) = p.SourceRect;
         var innerX = w * fl;
@@ -187,7 +198,40 @@ public sealed class SvgPaint
         var fullH = innerH / Math.Max(1e-6, 1 - st - sb);
         defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">" +
                     $"<image href=\"{p.Image}\" x=\"{Units.Css(innerX - sl * fullW)}\" y=\"{Units.Css(innerY - st * fullH)}\" " +
-                    $"width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"/></pattern>");
+                    $"width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"{filter}/></pattern>");
+        return id;
+    }
+
+    /// <summary>
+    /// A tiled picture (catalog: fill.picture): tiles of the picture's own size times the scale, aligned to a box
+    /// corner, edge or center and offset; flips mirror every other tile.
+    /// </summary>
+    string Tiled(PictureFill p, TileSpec tile, string id, double w, double h, string filter, StringBuilder defs)
+    {
+        const double PxPerPt = 96.0 / 72;
+        var tw = p.NaturalSize.W * tile.Sx;
+        var th = p.NaturalSize.H * tile.Sy;
+        var flipX = tile.Flip is "x" or "xy";
+        var flipY = tile.Flip is "y" or "xy";
+        var cellW = flipX ? 2 * tw : tw;
+        var cellH = flipY ? 2 * th : th;
+        var ax = tile.Align switch { "t" or "ctr" or "b" => (w - tw) / 2, "tr" or "r" or "br" => w - tw, _ => 0 };
+        var ay = tile.Align switch { "l" or "ctr" or "r" => (h - th) / 2, "bl" or "b" or "br" => h - th, _ => 0 };
+        var ox = ax + tile.Tx * PxPerPt;
+        var oy = ay + tile.Ty * PxPerPt;
+        var images = new StringBuilder();
+        void Add(bool mirrorX, bool mirrorY, double x, double y)
+        {
+            var transform = mirrorX || mirrorY
+                ? $" transform=\"translate({Units.Css(x + (mirrorX ? tw : 0))} {Units.Css(y + (mirrorY ? th : 0))}) scale({(mirrorX ? -1 : 1)} {(mirrorY ? -1 : 1)})\""
+                : $" transform=\"translate({Units.Css(x)} {Units.Css(y)})\"";
+            images.Append($"<image href=\"{p.Image}\" width=\"{Units.Css(tw)}\" height=\"{Units.Css(th)}\" preserveAspectRatio=\"none\"{transform}{filter}/>");
+        }
+        Add(false, false, 0, 0);
+        if (flipX) Add(true, false, tw, 0);
+        if (flipY) Add(false, true, 0, th);
+        if (flipX && flipY) Add(true, true, tw, th);
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"{Units.Css(ox)}\" y=\"{Units.Css(oy)}\" width=\"{Units.Css(cellW)}\" height=\"{Units.Css(cellH)}\">{images}</pattern>");
         return id;
     }
 }

@@ -23,7 +23,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 3 | 2 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 4 | 0 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 4 | 0 |
-| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 3 | 1 |
+| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 6 | 5 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 10 | 1 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 3 | 0 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 11 | 0 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 0 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 0 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 4 | 0 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **63** | **23** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **66** | **27** |
 
 <a id="package"></a>
 
@@ -1017,15 +1017,15 @@ gradFill and pattFill inside a:ln.
 |---|---|---|---|---:|---:|
 | [Pictures](#picture.basic) | P0 | ●●○○○ | partial | 11 | 1 |
 | [Raster image formats](#picture.formats) | P1 | ●●●○○ | partial | 0 | 0 |
-| [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | todo | 0 | 0 |
+| [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | partial | 0 | 0 |
 | [SVG pictures](#picture.svg) | P0 | ●○○○○ | partial | 1 | 0 |
-| [Picture color effects](#picture.effects) | P1 | ●●●○○ | todo | 18 | 11 |
-| [Artistic effects and picture corrections](#picture.artistic) | P1 | ●○○○○ | todo | 32 | 0 |
+| [Picture color effects](#picture.effects) | P1 | ●●●○○ | partial | 18 | 11 |
+| [Artistic effects and picture corrections](#picture.artistic) | P1 | ●○○○○ | done | 32 | 0 |
 | [Audio and video](#picture.media) | P1 | ●●●○○ | todo | 16 | 4 |
-| [OLE objects, ActiveX controls and signature lines](#picture.ole) | P1 | ●○○○○ | todo | 7 | 4 |
-| [Ink](#picture.ink) | P2 | ●●●○○ | todo | 28 | 0 |
-| [3D models](#picture.model3d) | P2 | ●○○○○ | todo | 35 | 0 |
-| [Cameo and live camera feeds](#picture.liveFeed) | P3 | ●●○○○ | todo | 11 | 0 |
+| [OLE objects, ActiveX controls and signature lines](#picture.ole) | P1 | ●○○○○ | done | 7 | 4 |
+| [Ink](#picture.ink) | P2 | ●●●○○ | partial | 28 | 0 |
+| [3D models](#picture.model3d) | P2 | ●○○○○ | done | 35 | 0 |
+| [Cameo and live camera feeds](#picture.liveFeed) | P3 | ●●○○○ | done | 11 | 0 |
 | [Picture sources and formulas](#picture.sources) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="picture.basic"></a>
@@ -1056,7 +1056,7 @@ The content type behind a:blip/@r:embed.
 
 ### EMF and WMF pictures
 
-`picture.metafiles` · P1 · difficulty 5 · todo
+`picture.metafiles` · P1 · difficulty 5 · partial
 
 **Rendering:** Our own EMF/EMF+/WMF interpreter that emits SVG ([MS-EMF], [MS-EMFPLUS], [MS-WMF]).
 
@@ -1078,7 +1078,7 @@ The content type behind a:blip/@r:embed.
 
 ### Picture color effects
 
-`picture.effects` · P1 · difficulty 3 · todo
+`picture.effects` · P1 · difficulty 3 · partial
 
 **Rendering:** SVG filters (feColorMatrix, feComponentTransfer) or pre-processing in C#. Recolor presets (grayscale, washout, duotone with theme colors) and transparency (alphaModFix) are the common ones.
 
@@ -1092,7 +1092,7 @@ The content type behind a:blip/@r:embed.
 
 ### Artistic effects and picture corrections
 
-`picture.artistic` · P1 · difficulty 1 · todo
+`picture.artistic` · P1 · difficulty 1 · done
 
 **Rendering:** Draw the main blip.
 
@@ -1120,7 +1120,7 @@ The content type behind a:blip/@r:embed.
 
 ### OLE objects, ActiveX controls and signature lines
 
-`picture.ole` · P1 · difficulty 1 · todo
+`picture.ole` · P1 · difficulty 1 · done
 
 **Rendering:** Draw the fallback picture stored with the object.
 
@@ -1134,7 +1134,7 @@ The content type behind a:blip/@r:embed.
 
 ### Ink
 
-`picture.ink` · P2 · difficulty 3 · todo
+`picture.ink` · P2 · difficulty 3 · partial
 
 **Rendering:** Use the mc:Fallback picture first; later draw the InkML traces as SVG paths with pressure-dependent width.
 
@@ -1146,7 +1146,7 @@ The content type behind a:blip/@r:embed.
 
 ### 3D models
 
-`picture.model3d` · P2 · difficulty 1 · todo
+`picture.model3d` · P2 · difficulty 1 · done
 
 **Rendering:** Show the fallback picture; real 3D (glTF with WebGL) is an option for later.
 
@@ -1160,7 +1160,7 @@ The content type behind a:blip/@r:embed.
 
 ### Cameo and live camera feeds
 
-`picture.liveFeed` · P3 · difficulty 2 · todo
+`picture.liveFeed` · P3 · difficulty 2 · done
 
 **Rendering:** Show the stored picture; a live camera (getUserMedia) only in the player.
 
