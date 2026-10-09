@@ -173,9 +173,46 @@ public static class Engine
                 Constraints.EvaluateOwn(child, pins);
             }
             first = false;
-            var (cx, cy, cw, ch) = ChildRect(child, node.W, node.H);
+            var (cx, cy, cw, ch) = KeepRatioBounds(node, child, ChildRect(child, node.W, node.H));
             Place(child, node.X + cx, node.Y + cy, cw, ch, pins);
         }
+    }
+
+    /// <summary>
+    /// A child that takes its composite's box keeps the bounds the composite sets between the child's width and height
+    /// by giving up room across, centered: w ≥ 2 h leaves a box as wide as the composite and half as high (measured:
+    /// CircularPictureCallout's callouts, 840 × 420 in the middle of an 840 × 460 diagram).
+    /// </summary>
+    static (double X, double Y, double W, double H) KeepRatioBounds(LayoutNode node, LayoutNode child, (double X, double Y, double W, double H) rect)
+    {
+        if (child.Values.ContainsKey("w") || child.Values.ContainsKey("h"))
+            return rect;
+        foreach (var constraint in node.Constraints)
+        {
+            var op = (string?)constraint.Attribute("op");
+            var (type, refType) = ((string?)constraint.Attribute("type"), (string?)constraint.Attribute("refType"));
+            if (op is not ("gte" or "lte") || (string?)constraint.Attribute("for") != "ch" || (string?)constraint.Attribute("refFor") != "ch"
+                || (string?)constraint.Attribute("forName") != (string?)constraint.Attribute("refForName")
+                || !(type == "w" && refType == "h" || type == "h" && refType == "w")
+                || !Constraints.Targets(node, "ch", (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(child))
+                continue;
+            var fact = Number((string?)constraint.Attribute("fact")) ?? 1;
+            if (fact <= 0)
+                continue;
+            var (value, reference) = type == "w" ? (rect.W, rect.H) : (rect.H, rect.W);
+            if (op == "gte" && value < fact * reference - 1e-9)
+            {
+                // The value cannot outgrow the box: what it refers to shrinks.
+                var shrunk = value / fact;
+                rect = type == "w" ? rect with { Y = rect.Y + (rect.H - shrunk) / 2, H = shrunk } : rect with { X = rect.X + (rect.W - shrunk) / 2, W = shrunk };
+            }
+            else if (op == "lte" && value > fact * reference + 1e-9)
+            {
+                var limited = fact * reference;
+                rect = type == "w" ? rect with { X = rect.X + (rect.W - limited) / 2, W = limited } : rect with { Y = rect.Y + (rect.H - limited) / 2, H = limited };
+            }
+        }
+        return rect;
     }
 
     /// <summary>
@@ -213,7 +250,7 @@ public static class Engine
             double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
             foreach (var child in children)
             {
-                var (cx, cy, cw, ch) = ChildRect(child, pw, ph);
+                var (cx, cy, cw, ch) = KeepRatioBounds(node, child, ChildRect(child, pw, ph));
                 var e = child.Children.Count > 0 ? Extent(child) : (0, 0, cw, ch);
                 // A lin child without a size of its own takes the composite's box and shrinks its children into it
                 // (measured: lProcess2's inner lists, as high as their composites, their items shrunk to fit).
