@@ -1641,10 +1641,14 @@
    * with the document's styles and the shared glyphs, in an SVG foreignObject, which the browser draws like the
    * page itself.
    */
-  function rasterize(slide) {
+  function rasterize(slide, layer = 'all') {
     const copy = slide.cloneNode(true);
     copy.removeAttribute('id');
+    // Only the content (no background, transparent) or only the background.
+    if (layer === 'content') { copy.querySelectorAll(':scope > .bg').forEach(e => e.remove()); copy.style.background = 'transparent'; }
+    if (layer === 'background') copy.querySelectorAll(':scope > :not(.bg)').forEach(e => e.remove());
     for (const k of ['transform', 'opacity', 'clipPath', 'maskImage', 'zIndex', 'visibility', 'filter']) copy.style[k] = '';
+    if (layer === 'content') copy.style.background = 'transparent';
     Object.assign(copy.style, { margin: '0', position: 'relative', left: '0', top: '0', display: 'block' });
     const css = [...document.querySelectorAll('style')].map(e => e.textContent).join('\n');
     const glyphs = [...document.querySelectorAll('svg.glyphs')].map(e => new XMLSerializer().serializeToString(e)).join('');
@@ -1711,9 +1715,10 @@
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Colors mix by the source's alpha; the canvas stays opaque where something opaque lies beneath.
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         // Perspective: the slide plane (z = 0) fills the view; a point at z comes nearer by D / (D - z).
-        const D = eye * H, Z = 4 * H;
+        const D = eye * H, Z = 20 * H;
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'projection'), false, new Float32Array([
           2 / W, 0, 0, 0, 0, -2 / H, 0, 0, 0, 0, -1 / Z, -1 / D, -1, 1, 0, 1]));
         for (const mesh of meshes) {
@@ -1730,7 +1735,9 @@
           gl.uniform1i(gl.getUniformLocation(program, 'tex'), 0);
           gl.uniform1f(gl.getUniformLocation(program, 'alpha'), mesh.alpha === undefined ? 1 : mesh.alpha);
           gl.uniform4fv(gl.getUniformLocation(program, 'tint'), mesh.tint || [0, 0, 0, 0]);
+          gl.depthMask(!mesh.flat);
           gl.drawArrays(gl.TRIANGLES, 0, n);
+          gl.depthMask(true);
         }
       },
       remove() { canvas.remove(); },
@@ -1758,18 +1765,19 @@
    * A 3D transition: the slides as images, drawn by draw(p, old, new) into a WebGL scene over the stage while the
    * slides themselves hide; without WebGL the new slide fades in.
    */
-  function glTransition(a, b, draw, reset) {
+  function glTransition(a, b, draw, reset, layers = ['all']) {
     let scene = null, images = null;
     return {
       async prepare() {
-        images = await Promise.all([rasterize(a), rasterize(b)]);
-        if (!images[0] || !images[1]) return;
+        // Per slide: the whole slide, or its content and its background apart (old ones first).
+        images = await Promise.all(layers.flatMap(layer => [rasterize(a, layer), rasterize(b, layer)]));
+        if (images.some(image => !image)) return;
         scene = glScene(a.parentNode);
       },
       frame(p) {
         if (!scene) { b.style.zIndex = 2; b.style.opacity = String(p); return; }
         a.style.visibility = b.style.visibility = 'hidden';
-        draw(scene, p, images[0], images[1]);
+        draw(scene, p, ...images);
       },
       end() {
         if (scene) scene.remove();
@@ -1861,6 +1869,22 @@
         const [x1, y1, sx, sy] = { lu: [W, H, -1, -1], ru: [0, H, 1, -1], ld: [W, 0, -1, 1], rd: [0, 0, 1, 1] }[dir || 'lu'] || [W, H, -1, -1];
         const k = 2 / (W * W + H * H);
         linear(all, [x1, y1, x1 + sx * k * W * H * H, y1 + sy * k * W * W * H], 0, 1, 1);
+        break;
+      }
+      case 'ripple': {
+        // From the middle, or from the corner the direction leaves (ru: from the bottom left), a soft circle grows at a
+        // steady pace and covers the slide as the transition ends (measured with PowerPoint's video: its middle at
+        // 680 p − 40 px of a 1280-wide slide, 185 px soft; from a corner at 1440 p − 163, 294 px soft).
+        const corner = { ru: [0, H], lu: [W, H], ld: [W, 0], rd: [0, 0] }[dir];
+        const [ox, oy] = corner || [cx, cy], k = W / 1280;
+        const [mid, soft] = corner ? [(1440 * p - 163) * k, 294 * k] : [(680 * p - 40) * k, 185 * k];
+        const outer = Math.max(1, mid + soft / 2), at = r => Math.min(1, Math.max(0, 0.5 - (r - mid) / soft));
+        const knee = Math.max(0, (mid - soft / 2) / outer);
+        const gid = `tg${id++}`;
+        defs.push(`<radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="${num(ox)}" cy="${num(oy)}" r="${num(outer)}">` +
+          `<stop offset="0" stop-color="#fff" stop-opacity="${num(at(0))}"/><stop offset="${num(knee)}" stop-color="#fff" stop-opacity="${num(at(knee * outer))}"/>` +
+          `<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`);
+        parts.push(`<path d="${all}" fill="url(#${gid})"/>`);
         break;
       }
       case 'circle': {
@@ -2200,6 +2224,357 @@
     o.path.setAttribute('fill', c0 && c1 ? `rgb(${c0.map((v, i) => Math.round(v + (c1[i] - v) * e)).join(',')})` : o.fill);
   }
 
+  /**
+   * Cube, Box, Rotate and Orbit (p14:prism; measured with PowerPoint's videos): the slides are faces of a pentagonal
+   * prism turning by 72° with a sine ease, seen from 1.49 slide heights in front (at the middle each face is turned by
+   * 36°). From outside (Cube) the prism keeps its nearest edge in the slide plane (silhouettes within 0.3 %); from
+   * inside (isInverted: Box) its sides are 7 % wider than the slides, which sit in their middles, and its axis comes
+   * from the old slide's apothem in front of it to 0.3 of that and back (sin²). isContent turns only the content
+   * while the backgrounds crossfade. A face turned by φ darkens to 1 - 0.19 (1 - cos φ).
+   */
+  function prismTransition(spec, a, b, reset) {
+    const vertical = spec.dir === 'u' || spec.dir === 'd';
+    const sign = spec.dir === 'r' || spec.dir === 'd' ? -1 : 1;
+    const inverted = !!spec.isInverted, content = !!spec.isContent;
+    const ext = 72 * Math.PI / 180, eye = 1.493;
+    return glTransition(a, b, (scene, p, oldImage, newImage, oldGround, newGround) => {
+      const r = ext * sineInOut(p);
+      const span = vertical ? H : W;
+      const side = inverted ? span * 1.0703 : span;
+      const apothem = side / (2 * Math.tan(ext / 2)), radius = side / (2 * Math.sin(ext / 2));
+      const axis = inverted ? apothem * (1 - 0.704 * Math.sin(Math.PI * p) ** 2) : -radius * Math.cos(ext / 2 - r);
+      const meshes = [];
+      if (content) {
+        meshes.push({ tex: oldGround, ...quad([0, 0, 0], [W, 0, 0], [W, H, 0], [0, H, 0]), flat: true });
+        meshes.push({ tex: newGround, ...quad([0, 0, 0], [W, 0, 0], [W, H, 0], [0, H, 0]), flat: true, alpha: sineInOut(p) });
+      }
+      // Faces: the old one turning away, the new one coming from the side (angles of their normals).
+      for (const [image, angle] of [[content ? oldImage : oldImage, -r], [newImage, ext - r]]) {
+        const phi = sign * (inverted ? -angle : angle);
+        const [n, t] = [Math.sin(phi), Math.cos(phi)];
+        // Face middle and its direction along the slide's width (or height), in the turning plane (across, depth).
+        const [cu, cz] = inverted ? [-apothem * n, axis - apothem * t] : [apothem * n, axis + apothem * t];
+        const [du, dz] = [t, -n];
+        // Faces the eye sees from behind are left out (the eye stands eye · H in front of the slide's middle).
+        if ((-cu) * n + (eye * H - cz) * t <= 0) continue;
+        const corner = (k, v) => {
+          const u = (k - 0.5) * span;
+          const across = span / 2 + cu + u * du, depth = cz + u * dz;
+          return vertical ? [v * W, across, depth] : [across, v * H, depth];
+        };
+        const q = vertical
+          ? quad(corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0), [0, 0, 1, 1])
+          : quad(corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1));
+        if (vertical) q.uv = [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1];
+        meshes.push({ tex: image, ...q, shade: 1 - 0.19 * (1 - Math.abs(t)) });
+      }
+      scene.draw(meshes, eye, [0, 0, 0, 1]);
+    }, reset, content ? ['content', 'background'] : ['all']);
+  }
+
+  /**
+   * Flip (p14:flip; measured with PowerPoint's video, per-frame poses within 0.5 %): the old slide turns about its
+   * vertical middle, its far side going back first (dir l: the left one), the new slide on its back; the turn
+   * follows a quartic ease centered at 0.465, the slide going back up to 0.44 slide heights at the middle.
+   */
+  function flipTransition(spec, a, b, reset) {
+    const sign = spec.dir === 'r' ? -1 : 1, eye = 1.493;
+    const quart = powInOut(4);
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const theta = Math.PI * quart(Math.min(1, Math.max(0, (p + 0.033) / 0.984)));
+      const depth = -0.439 * H * Math.max(0, 1 - 2 * Math.abs(p - 0.465)) ** 2.35;
+      const [c, sn] = [Math.cos(theta), sign * Math.sin(theta)];
+      const corner = (u, v) => [W / 2 + u * c, v, depth + u * sn];
+      const back = c < 0;
+      const q = quad(corner(-W / 2, 0), corner(W / 2, 0), corner(W / 2, H), corner(-W / 2, H), back ? [1, 0, 0, 1] : [0, 0, 1, 1]);
+      scene.draw([{ tex: back ? newImage : oldImage, ...q, shade: 1 - 0.19 * (1 - Math.abs(c)) }], eye, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  /** Values between keyframes [p, v1, v2 …] (straight between them, flat beyond). */
+  function keyframes(frames, p) {
+    if (p <= frames[0][0]) return frames[0].slice(1);
+    for (let i = 1; i < frames.length; i++) {
+      const [p1, ...v1] = frames[i];
+      if (p <= p1) {
+        const [p0, ...v0] = frames[i - 1], t = (p - p0) / (p1 - p0);
+        return v0.map((v, k) => v + (v1[k] - v) * t);
+      }
+    }
+    return frames[frames.length - 1].slice(1);
+  }
+
+  /** A slide's quad turned about its vertical middle (degrees, its right side coming forward), moved by (x, z). */
+  function standing(theta, x, z, y = 0, uv) {
+    const r = theta * Math.PI / 180, [c, sn] = [Math.cos(r), Math.sin(r)];
+    const corner = (u, v) => [W / 2 + x + u * c, v + y, z + u * sn];
+    return quad(corner(-W / 2, 0), corner(W / 2, 0), corner(W / 2, H), corner(-W / 2, H), uv);
+  }
+
+  /**
+   * Switch (p14:switch; poses fitted frame by frame to PowerPoint's video): the old slide moves aside turning away
+   * while the new one waits behind it on the other side, turned toward it; at the middle they change places in depth,
+   * the new one comes forward and straightens, the old one leaves behind it.
+   */
+  function switchTransition(spec, a, b, reset) {
+    const sign = spec.dir === 'r' ? -1 : 1;
+    // p: old turn, across, depth | new turn, across, depth (pixels of a 1280-wide slide)
+    const frames = [[0, 0, 0, 0, 60, 900, -900], [0.2, -10, -200, 0, 25, 440, -300], [0.46, -22, -590, -10, 22, 430, -190],
+      [0.53, -20, -480, -150, 20, 590, -95], [0.66, -21, -430, -170, 17, 490, -90], [0.79, -27, -480, -240, 12, 220, -55],
+      [0.92, -35, -1500, -250, 4, 60, 0], [1, -35, -2000, -300, 0, 0, 0]];
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const [t0, x0, z0, t1, x1, z1] = keyframes(frames, p);
+      const k = W / 1280;
+      scene.draw([
+        { tex: oldImage, ...standing(sign * t0, sign * x0 * k, z0 * k), shade: 1 - 0.19 * (1 - Math.cos(t0 * Math.PI / 180)) },
+        { tex: newImage, ...standing(sign * t1, sign * x1 * k, z1 * k), shade: 1 - 0.19 * (1 - Math.cos(t1 * Math.PI / 180)) },
+      ], 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  /** A slide's quad scaled about a point (cx, cy) and turned about z there, at depth z. */
+  function flatQuad(scale, cx = W / 2, cy = H / 2, z = 0, turnDeg = 0, uv) {
+    const r = turnDeg * Math.PI / 180, [c, sn] = [Math.cos(r), Math.sin(r)];
+    const corner = (x, y) => {
+      const [dx, dy] = [(x - W / 2) * scale, (y - H / 2) * scale];
+      return [cx + dx * c - dy * sn, cy + dx * sn + dy * c, z];
+    };
+    return quad(corner(0, 0), corner(W, 0), corner(W, H), corner(0, H), uv);
+  }
+
+  /** The backgrounds of a content transition: the old one, the new one over it fading in by fade (0 … 1). */
+  function grounds(fade, oldGround, newGround) {
+    return [
+      { tex: oldGround, ...quad([0, 0, -1], [W, 0, -1], [W, H, -1], [0, H, -1]), flat: true },
+      { tex: newGround, ...quad([0, 0, -1], [W, 0, -1], [W, H, -1], [0, H, -1]), flat: true, alpha: fade },
+    ];
+  }
+
+  // Fly Through with a bounce: the new content's depth (share of the eye's distance; toward the viewer for out)
+  // arrives early and springs back (measured with PowerPoint's video).
+  const flyBounce = measured([[0, -1.78], [0.462, -0.776], [0.528, -0.658], [0.593, -0.522], [0.659, -0.348], [0.692, -0.263],
+    [0.725, -0.166], [0.757, -0.066], [0.79, 0.013], [0.823, 0.029], [0.856, 0.018], [0.889, -0.001], [0.921, -0.018], [0.954, -0.012],
+    [0.987, -0.003], [1, 0]]);
+  // Ferris Wheel from the left: the new content's turn (degrees), scale and offset (pixels of a 1280 × 720 slide) as
+  // it comes down from the top left (measured with PowerPoint's video).
+  const ferrisArrival = [[0.45, -20, 0.64, -410, -620], [0.528, -17.9, 0.649, -332, -516], [0.593, -14.5, 0.66, -268, -417],
+    [0.659, -14.5, 0.652, -225, -324], [0.725, -11, 0.691, -164, -237], [0.79, -5.8, 0.758, -88, -152], [0.856, -3.4, 0.857, -45, -82],
+    [0.921, -1.1, 0.952, -12, -24], [1, 0, 1, 0, 0]];
+
+  /**
+   * The Office 2010 transitions that move the slides' content while their backgrounds crossfade (catalog:
+   * transition.office2010; poses fitted frame by frame to PowerPoint's videos, depths in shares of the eye's
+   * distance D):
+   * - Pan slides the content across at PowerPoint's ease (accelerating for 0.12, slowing down for 0.8), the
+   *   backgrounds crossfading at the same pace;
+   * - Conveyor turns the content's plane (its far side away, up to 14.8°) and moves it back until 0.36, a belt on it
+   *   carries the old content off and the new one on (0.36 … 0.66), then the plane comes back;
+   * - Ferris Wheel swings the old content down and forward about an axis above it (112.5° p^1.82) and brings the new
+   *   one down from the top left, growing and turning straight;
+   * - Fly Through flies the old content toward the viewer (out: away; 2.4 D p², with a bounce 1.95 D p²) fading as
+   *   it goes, while the new one comes from the other side (2.4 D (1 − p)², or arriving early and springing back),
+   *   fading in linearly;
+   * - Window opens the old content in two halves turning their outer edges toward the viewer (200° p²) as they come
+   *   forward (1.8 D p²) and fade, while the new one comes from 1.9 D behind at a steady pace until 0.72, fading in.
+   * The other backgrounds crossfade along a sine.
+   */
+  function contentTransition(type, spec, a, b, reset) {
+    const dir = spec.dir || 'l';
+    const [vx, vy] = offsets[dir] || offsets.l;
+    const k = W / 1280, D = 1.493 * H;
+    const clamp = x => Math.min(1, Math.max(0, x));
+    const panEase = p => ease(clamp(p), { accel: 0.12, decel: 0.8 });
+    return glTransition(a, b, (scene, p, oldContent, newContent, oldGround, newGround) => {
+      const meshes = grounds(type === 'pan' ? panEase(p) : sineInOut(p), oldGround, newGround);
+      // The content, drawn far to near over the backgrounds: [depth, mesh].
+      const content = [];
+      if (type === 'pan') {
+        const e = panEase(p);
+        content.push([0, { tex: oldContent, ...flatQuad(1, W / 2 + vx * e * W, H / 2 + vy * e * H) }]);
+        content.push([0, { tex: newContent, ...flatQuad(1, W / 2 - vx * (1 - e) * W, H / 2 - vy * (1 - e) * H) }]);
+      } else if (type === 'conveyor') {
+        const sign = dir === 'r' ? -1 : 1;
+        const tilt = p < 0.66 ? Math.min(1, p / 0.33) : (1 - p) / 0.34;
+        const theta = sign * (p < 0.66 ? Math.min(14.8, 43 * p) : 14.8 * (1 - p) / 0.34);
+        const back = -155 * k * tilt, r = theta * Math.PI / 180;
+        const e = smooth((p - 0.36) / 0.3), span = 1.108 * W;
+        // Along the belt: s across it, the plane turned by theta.
+        const onBelt = s => standing(theta, s * Math.cos(r), back + s * Math.sin(r));
+        content.push([back, { tex: oldContent, ...onBelt(-sign * e * span) }]);
+        content.push([back, { tex: newContent, ...onBelt(sign * (1 - e) * span) }]);
+      } else if (type === 'ferris') {
+        const sign = dir === 'r' ? -1 : 1;
+        if (p < 0.6) {
+          // The old content swings down and forward about an axis above it and in front (pixels of a 1280 × 720
+          // slide), turning and drifting a little sideways.
+          const t = p ** 1.82, [ya, za] = [-896 * k, 1171 * k];
+          const psi = 112.5 * t * Math.PI / 180, roll = sign * 17.3 * t * Math.PI / 180, drift = sign * 467 * t * k;
+          const swing = (x, y) => {
+            const [dy, dz] = [y - H / 2 - ya, -za];
+            const [Y, Z] = [ya + dy * Math.cos(psi) - dz * Math.sin(psi), za + dy * Math.sin(psi) + dz * Math.cos(psi)];
+            const X = x - W / 2;
+            return [W / 2 + drift + X * Math.cos(roll) - Y * Math.sin(roll), H / 2 + X * Math.sin(roll) + Y * Math.cos(roll), Z];
+          };
+          content.push([0, { tex: oldContent, ...quad(swing(0, 0), swing(W, 0), swing(W, H), swing(0, H)) }]);
+        }
+        if (p > ferrisArrival[0][0]) {
+          const [turnDeg, scale, x, y] = keyframes(ferrisArrival, p);
+          content.push([0, { tex: newContent, ...flatQuad(scale, W / 2 + sign * x * k, H / 2 + y * k, 0, sign * turnDeg) }]);
+        }
+      } else if (type === 'flythrough') {
+        const out = spec.dir === 'out' ? -1 : 1, bounce = !!spec.hasBounce;
+        const zOld = out * (bounce ? 1.95 : 2.4) * p * p;
+        const zNew = bounce ? out * flyBounce(p) : -out * 2.4 * (1 - p) * (1 - p);
+        content.push([zOld, { tex: oldContent, ...flatQuad(1, W / 2, H / 2, zOld * D), alpha: clamp(1 - Math.abs(zOld)) }]);
+        content.push([zNew, { tex: newContent, ...flatQuad(1, W / 2, H / 2, zNew * D), alpha: clamp(p) }]);
+      } else if (type === 'window') {
+        const vertical = spec.dir === 'vert', q = p * p;
+        const phi = 200 * q * Math.PI / 180, forward = 1.8 * q * D, apart = 220 * q * k;
+        const [c, sn] = [Math.cos(phi), Math.sin(phi)];
+        for (const half of [0, 1]) {
+          const side = half ? 1 : -1;
+          const uv = vertical ? [half / 2, 0, (half + 1) / 2, 1] : [0, half / 2, 1, (half + 1) / 2];
+          // Each half turns about its own middle line, its outer edge coming forward.
+          const place = (x, y) => {
+            if (vertical) {
+              const mid = (half ? 3 : 1) * W / 4, u = x - mid;
+              return [mid + side * apart + u * c, y, forward + side * u * sn];
+            }
+            const mid = (half ? 3 : 1) * H / 4, v = y - mid;
+            return [x, mid + side * apart + v * c, forward + side * v * sn];
+          };
+          const [x0, y0, x1, y1] = [uv[0] * W, uv[1] * H, uv[2] * W, uv[3] * H];
+          content.push([forward / D, { tex: oldContent, ...quad(place(x0, y0), place(x1, y0), place(x1, y1), place(x0, y1), uv), alpha: clamp(1 - 2.3 * q) }]);
+        }
+        const zNew = -1.9 * Math.max(0, 1 - p / 0.72);
+        content.push([zNew, { tex: newContent, ...flatQuad(1, W / 2, H / 2, zNew * D), alpha: clamp(p) }]);
+      }
+      content.sort((m, n) => m[0] - n[0]);
+      scene.draw([...meshes, ...content.map(([, mesh]) => ({ ...mesh, flat: true }))], 1.493, [0, 0, 0, 1]);
+    }, reset, ['content', 'background']);
+  }
+
+  /**
+   * Doors and Warp (catalog: transition.office2010; from PowerPoint's videos): Doors opens the old slide in two
+   * halves swinging toward the viewer about their outer edges while the new one comes forward from behind; Warp in
+   * lets the old slide sink into black while the new one grows from the middle, Warp out shrinks the old slide into
+   * the middle over the new one.
+   */
+  function doorsTransition(type, spec, a, b, reset) {
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const e = sineInOut(p), meshes = [];
+      if (type === 'doors') {
+        const vertical = spec.dir === 'vert';
+        meshes.push({ tex: newImage, ...flatQuad(0.6 + 0.4 * e, W / 2, H / 2, -0.01), alpha: Math.min(1, p / 0.7) });
+        const swing = 100 * e;
+        for (const half of [0, 1]) {
+          const r = swing * Math.PI / 180 * (half ? 1 : -1);
+          const [c, sn] = [Math.cos(r), Math.abs(Math.sin(r))];
+          const uv = vertical ? [half / 2, 0, (half + 1) / 2, 1] : [0, half / 2, 1, (half + 1) / 2];
+          // Hinged at the outer edge, the inner edge coming toward the viewer.
+          const place = (x, y) => {
+            if (vertical) {
+              const hinge = half ? W : 0, d = x - hinge;
+              return [hinge + d * c * (half ? 1 : 1), y, Math.abs(d) * sn];
+            }
+            const hinge = half ? H : 0, d = y - hinge;
+            return [x, hinge + d * c, Math.abs(d) * sn];
+          };
+          const [x0, y0, x1, y1] = [uv[0] * W, uv[1] * H, uv[2] * W, uv[3] * H];
+          if (Math.cos(r) <= 0.05) continue;
+          meshes.push({ tex: oldImage, ...quad(place(x0, y0), place(x1, y0), place(x1, y1), place(x0, y1), uv), shade: 1 - 0.5 * e });
+        }
+      } else {
+        // Warp
+        const into = spec.dir === 'in';
+        if (into) {
+          meshes.push({ tex: oldImage, ...flatQuad(1 + 0.3 * e), shade: 1 - Math.min(1, p / 0.5) });
+          meshes.push({ tex: newImage, ...flatQuad(0.6 + 0.4 * e, W / 2, H / 2, 1), alpha: Math.min(1, Math.max(0, (p - 0.3) / 0.4)) });
+        } else {
+          meshes.push({ tex: newImage, ...flatQuad(1.3 - 0.3 * e), alpha: Math.min(1, p / 0.5) });
+          meshes.push({ tex: oldImage, ...flatQuad(1 - 0.5 * e, W / 2, H / 2, 1), alpha: 1 - Math.min(1, Math.max(0, (p - 0.2) / 0.6)) });
+        }
+      }
+      scene.draw(meshes, 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  /**
+   * Gallery (p14:gallery; from PowerPoint's video): the slides hang side by side on a wall that turns a little
+   * (right side forward) and moves back while the old one slides off and the new one into place; a floor below
+   * mirrors them, darkening.
+   */
+  function galleryTransition(spec, a, b, reset) {
+    const sign = spec.dir === 'r' ? -1 : 1;
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const e = sineInOut(p), wave = Math.sin(Math.PI * p);
+      const angle = sign * 18 * wave * Math.PI / 180, depth = -0.45 * W * wave, gap = 0.12 * W;
+      const [c, sn] = [Math.cos(angle), Math.sin(angle)];
+      const meshes = [];
+      const hang = (image, along) => {
+        const corner = (u, y) => { const t = along + u; return [W / 2 + t * c, y, depth + t * sn]; };
+        const [l, r] = [-W / 2, W / 2];
+        meshes.push({ tex: image, ...quad(corner(l, 0), corner(r, 0), corner(r, H), corner(l, H)) });
+        // The floor's mirror image beneath, fading into the dark.
+        const q = quad(corner(l, H), corner(r, H), corner(r, 2 * H), corner(l, 2 * H), [0, 1, 1, 0]);
+        meshes.push({ tex: image, ...q, shade: [0.25, 0.25, 0, 0.25, 0, 0] });
+      };
+      hang(oldImage, -sign * (W + gap) * e);
+      hang(newImage, sign * (W + gap) * (1 - e));
+      scene.draw(meshes, 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  /** A random number generator from a seed (Park–Miller), the same numbers for every frame of a transition. */
+  function seeded(seed) {
+    let state = Math.max(1, Math.floor(seed) % 2147483647);
+    return () => (state = (state * 16807) % 2147483647) / 2147483647;
+  }
+
+  /**
+   * Glitter (p14:glitter; measured with PowerPoint's video): the slide in diamonds (30 across, 15 down, staggered)
+   * or hexagons (pointy, 36 × 30 px of a 1280 × 720 slide, rows 22.5 px apart) that turn over about their vertical
+   * middles, the new slide on their backs, darker as they turn edge on; from the side the direction names (r: from
+   * the right) each starts at 0.057 + 0.569 d (d: its distance from that side, 0 … 1) give or take 0.1 and turns
+   * evenly for 0.32.
+   */
+  function glitterTransition(spec, a, b, reset) {
+    const hex = spec.pattern === 'hexagon', dir = spec.dir || 'l', random = seeded(4711);
+    const tiles = [];
+    if (hex) {
+      const [w, h] = [36 * W / 1280, 30 * H / 720];
+      const shape = [[0, -h / 2], [w / 2, -h / 4], [w / 2, h / 4], [0, h / 2], [-w / 2, h / 4], [-w / 2, -h / 4]];
+      for (let j = -1; j * 0.75 * h < H + h; j++) for (let i = -1; i * w < W + w; i++) tiles.push({ x: i * w + (j & 1 ? w / 2 : 0), y: j * 0.75 * h, shape });
+    } else {
+      const [w, h] = [W / 30, H / 15];
+      const shape = [[0, -h / 2], [w / 2, 0], [0, h / 2], [-w / 2, 0]];
+      for (let j = -1; j * h / 2 < H + h; j++) for (let i = -1; i * w < W + w; i++) tiles.push({ x: i * w + (j & 1 ? w / 2 : 0), y: j * h / 2, shape });
+    }
+    for (const t of tiles) {
+      const d = { l: t.x / W, r: 1 - t.x / W, u: t.y / H, d: 1 - t.y / H }[dir] ?? t.x / W;
+      t.start = 0.057 + 0.569 * Math.min(1, Math.max(0, d)) + 0.197 * (random() - 0.5);
+    }
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const front = { tex: oldImage, pos: [], uv: [], shade: [] }, back = { tex: newImage, pos: [], uv: [], shade: [] };
+      for (const t of tiles) {
+        const theta = Math.PI * Math.min(1, Math.max(0, (p - t.start) / 0.32));
+        const [c, sn] = [Math.cos(theta), Math.sin(theta)];
+        // The old slide on the front; the back mirrored, so that it shows the new slide in place when turned over.
+        const [mesh, mirror] = c >= 0 ? [front, 1] : [back, -1];
+        const shade = 0.15 + 0.85 * Math.abs(c) ** 0.6;
+        const n = t.shape.length;
+        for (let k = 0; k < n; k++) {
+          for (const [lx, ly] of [[0, 0], t.shape[k], t.shape[(k + 1) % n]]) {
+            mesh.pos.push(t.x + lx * c, t.y + ly, lx * sn);
+            mesh.uv.push((t.x + mirror * lx) / W, (t.y + ly) / H);
+            mesh.shade.push(shade);
+          }
+        }
+      }
+      scene.draw([front, back], 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
   /** A CSS filter blurring across only (an SVG filter in the document, made once), or none for nothing. */
   function acrossBlur(deviation) {
     if (deviation < 0.5) return '';
@@ -2279,12 +2654,18 @@
           }, end: reset };
         }
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(sineInOut(p)); }, end: reset };
-      case 'glitter': case 'honeycomb': case 'shred':
+      case 'glitter':
+        return glitterTransition(spec, a, b, reset);
+      case 'honeycomb': case 'shred':
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
       case 'wipe': case 'split': case 'strips': case 'circle': case 'diamond': case 'plus': case 'wedge': case 'wheel':
-      case 'wheelReverse': case 'randomBar': case 'dissolve':
+      case 'wheelReverse': case 'randomBar': case 'dissolve': case 'ripple':
         return masked;
-      case 'push': case 'pan': case 'conveyor':
+      case 'pan': case 'conveyor': case 'flythrough':
+        return contentTransition(type, spec, a, b, reset);
+      case 'warp':
+        return doorsTransition('warp', spec, a, b, reset);
+      case 'push':
         return { frame: p => {
           const q = quadInOut(p);
           a.style.transform = `translate(${vector[0] * q * W}px,${vector[1] * q * H}px)`;
@@ -2377,16 +2758,6 @@
           el.style.maskComposite = 'intersect';
         }, end: reset };
       }
-      case 'warp': case 'flythrough': {
-        const inward = spec.dir !== 'out';
-        return { frame: p => {
-          b.style.zIndex = 2;
-          b.style.opacity = String(p);
-          const s = inward ? 0.3 + 0.7 * p : 1.6 - 0.6 * p;
-          b.style.transform = `scale(${s})`;
-          b.style.transformOrigin = '50% 50%';
-        }, end: reset };
-      }
       case 'newsflash':
         // The new slide grows from the middle (scale p) turning 400° anticlockwise into place (measured).
         return { frame: p => {
@@ -2395,7 +2766,7 @@
           b.style.opacity = p > 0 ? '' : '0';
           b.style.transform = `rotate(${40 - 400 * p}deg) scale(${Math.max(p, 1e-4)})`;
         }, end: reset };
-      case 'vortex': case 'ripple':
+      case 'vortex':
         return { frame: p => {
           b.style.zIndex = 2;
           b.style.transformOrigin = '50% 50%';
@@ -2411,7 +2782,19 @@
           const contrast = gain / (gain + 2 * lift), brightness = gain + 2 * lift;
           b.style.filter = left > 0 ? `contrast(${contrast.toFixed(4)}) brightness(${brightness.toFixed(4)})` : '';
         }, end: reset };
-      case 'flip': case 'switch': case 'gallery': case 'prism': case 'doors': case 'window': case 'ferris': case 'cube': case 'rotate': case 'box': case 'orbit':
+      case 'prism':
+        return prismTransition(spec, a, b, reset);
+      case 'flip':
+        return flipTransition(spec, a, b, reset);
+      case 'switch':
+        return switchTransition(spec, a, b, reset);
+      case 'gallery':
+        return galleryTransition(spec, a, b, reset);
+      case 'doors':
+        return doorsTransition('doors', spec, a, b, reset);
+      case 'window': case 'ferris':
+        return contentTransition(type, spec, a, b, reset);
+      case 'cube': case 'rotate': case 'box': case 'orbit':
         return three(p => {
           const sign = dir === 'r' || dir === 'd' ? -1 : 1;
           const vertical = dir === 'u' || dir === 'd';
