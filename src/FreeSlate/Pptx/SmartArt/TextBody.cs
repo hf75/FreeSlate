@@ -25,10 +25,12 @@ public static class TextBody
         var baseDepth = DataModel.Depth(node.Point);
         var firstBullet = int.TryParse(node.Param("stBulletLvl"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? b : 1;
         // A node showing only its descendants' text starts it at the top level, unbulleted at the primary size, unless
-        // its algorithm starts bullets at a deeper level (stBulletLvl 1 and more; measured: MeetTheTeam's roles,
-        // VerticalAccentList's and VerticalActionList's children at the top level, vList2's children bulleted).
-        var unbulleted = node.Text.All(p => p != node.Point) && !(node.Param("stBulletLvl") is { } start && int.TryParse(start, NumberStyles.Integer, CultureInfo.InvariantCulture, out var level0) && level0 >= 1);
+        // its algorithm starts bullets (stBulletLvl 1 and more) at that text's depth or above (measured: MeetTheTeam's
+        // roles, VerticalAccentList's and VerticalActionList's children and TitledPictureBlocks', stBulletLvl 2, at the
+        // top level; vList2's children, stBulletLvl 1, bulleted).
         var shallowest = node.Text.Count > 0 ? node.Text.Min(p => Math.Max(0, DataModel.Depth(p) - baseDepth)) : 0;
+        var unbulleted = node.Text.All(p => p != node.Point)
+            && !(node.Param("stBulletLvl") is { } start && int.TryParse(start, NumberStyles.Integer, CultureInfo.InvariantCulture, out var level0) && level0 >= 1 && shallowest >= level0);
         foreach (var point in node.Text)
         {
             var level = Math.Max(0, DataModel.Depth(point) - baseDepth);
