@@ -363,6 +363,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
         // A hyperlink or action on the whole shape (catalog: interactivity.hyperlinks).
         var shapeLink = Links.Resolve(NonVisual(shape)?.Element(Ns.A + "hlinkClick"), part, slide.Presentation);
+        // A zoom object's picture: its slides, whether the show returns to it, the zoom transition's duration.
+        if (shapeLink != null && (string?)shape.Attribute(Opc.MarkupCompatibility.Annotation + "zoom") is { } zoom && slide.Presentation.ZoomTarget(zoom) is { } range)
+        {
+            var back = (string?)shape.Attribute(Opc.MarkupCompatibility.Annotation + "zoomReturn") == "0" ? 0 : 1;
+            var duration = (string?)shape.Attribute(Opc.MarkupCompatibility.Annotation + "zoomDur") ?? "";
+            shapeLink = shapeLink with { Zoom = $"{range.First},{range.Last},{back},{duration}" };
+        }
         if (shapeLink != null)
             html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible

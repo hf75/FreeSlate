@@ -27,8 +27,29 @@ public sealed class PresentationContext : IDisposable
         foreach (var id in root.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId") ?? [])
         {
             if (id.Attribute(Ns.R + "id") is { } rid && package.Relationship(PresentationPart, rid.Value) is { External: false } rel && package.Exists(rel.Target))
+            {
                 SlideParts.Add(rel.Target);
+                slideIds.Add(id.Str("id") ?? "");
+            }
         }
+    }
+
+    readonly List<string> slideIds = [];
+
+    /// <summary>
+    /// The slides (first and last, numbered from 1) a zoom object leads to: "slide:" and a slide id (p:sldId/@id),
+    /// or "section:" and a section id (p14:section/@id, its slides); null if there is no such slide or section.
+    /// </summary>
+    public (int First, int Last)? ZoomTarget(string target)
+    {
+        if (target.StartsWith("slide:", StringComparison.Ordinal))
+            return slideIds.IndexOf(target[6..]) is var index and >= 0 ? (index + 1, index + 1) : null;
+        if (!target.StartsWith("section:", StringComparison.Ordinal))
+            return null;
+        XNamespace p14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
+        var section = Presentation.Root!.Descendants(p14 + "section").FirstOrDefault(s => string.Equals(s.Str("id"), target[8..], StringComparison.OrdinalIgnoreCase));
+        var slides = section?.Element(p14 + "sldIdLst")?.Elements(p14 + "sldId").Select(s => slideIds.IndexOf(s.Str("id") ?? "") + 1).Where(n => n > 0).ToList();
+        return slides is { Count: > 0 } ? (slides.Min(), slides.Max()) : null;
     }
 
     public OpcPackage Package { get; }

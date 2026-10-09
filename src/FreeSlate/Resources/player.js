@@ -2765,6 +2765,31 @@
     }, reset);
   }
 
+  /**
+   * The zoom transition of a zoom object (catalog: interactivity.zoom): the view closes in on the zoom's frame (rect,
+   * slide pixels) on its slide until the slide it leads to, growing out of the frame, fills the screen; out: the
+   * other way round, back into the frame. The zoom grows evenly in scale.
+   */
+  function zoomObjectTransition(spec, a, b, reset) {
+    const [rx, ry, rw, rh] = spec.rect;
+    const k = W / Math.max(1, rw);
+    // The point the zoom leaves in place: the one the slide and its frame share.
+    const [fx, fy] = k > 1.0001 ? [rx / (1 - rw / W), ry / (1 - rh / H)] : [0, 0];
+    const [host, target] = spec.out ? [b, a] : [a, b];
+    return {
+      frame(p) {
+        const e = sineInOut(spec.out ? 1 - p : p), z = Math.pow(k, e);
+        host.style.transformOrigin = target.style.transformOrigin = '0 0';
+        host.style.transform = `translate(${fx * (1 - z)}px,${fy * (1 - z)}px) scale(${z})`;
+        target.style.transform = `translate(${fx + (rx - fx) * z}px,${fy + (ry - fy) * z}px) scale(${rw * z / W},${rh * z / H})`;
+        target.style.zIndex = 2;
+        // The frame shows the slide already: the slide itself takes over at once.
+        target.style.opacity = String(Math.min(1, e * 8));
+      },
+      end: reset,
+    };
+  }
+
   /** A CSS filter blurring across only (an SVG filter in the document, made once), or none for nothing. */
   function acrossBlur(deviation) {
     if (deviation < 0.5) return '';
@@ -3010,6 +3035,8 @@
         return presetTransition(spec, a, b, reset);
       case 'morph':
         return morphTransition(spec, a, b, reset);
+      case 'zoomObject':
+        return zoomObjectTransition(spec, a, b, reset);
       default:
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
     }
@@ -3122,7 +3149,7 @@
     const animated = !deck.show || deck.show.animation !== false;
     if (!animated) options.atEnd = true;
     if (options.atEnd) animation.finish(); else animation.render(null, 0);
-    const spec = info(index).transition;
+    const spec = options.zoom ? { type: 'zoomObject', ...options.zoom } : info(index).transition;
     if (previous && options.transition !== false && spec) {
       playSound(spec);
       await transition(spec, previous, slide, show.cover);
@@ -3239,6 +3266,15 @@
     if (!show || show.busy) return;
     if (show.end.style.display === 'block') { stop(); return; }
     if (show.animation && show.animation.next()) { setTimeout(updatePresenter, 0); return; }
+    const zoom = show.zooms && show.zooms[show.zooms.length - 1];
+    if (zoom && zoom.last === show.index) {
+      show.zooms.pop();
+      show.history.push(show.position);
+      const at = show.sequence.indexOf(zoom.index);
+      if (at >= 0) show.position = at;
+      goTo(zoom.index, { atEnd: true, zoom: zoom.zoom && { ...zoom.zoom, out: true } });
+      return;
+    }
     if (show.position < show.sequence.length - 1) {
       show.history.push(show.position);
       goTo(show.sequence[++show.position]);
@@ -3259,12 +3295,32 @@
     if (show.position > 0) goTo(show.sequence[--show.position], { transition: false, atEnd: true });
   }
 
-  function jump(index, transitionToo = true) {
+  function jump(index, transitionToo = true, zoom = null) {
     if (!show) return;
     const at = show.sequence.indexOf(index);
     if (at >= 0) show.position = at;
     else { show.sequence.splice(show.position + 1, 0, index); show.position++; }   // hidden slides by link
-    goTo(index, { transition: transitionToo });
+    goTo(index, { transition: transitionToo, zoom });
+  }
+
+  /**
+   * A click on a zoom object (catalog: interactivity.zoom) goes to its slide, or the first of its section, with the
+   * zoom transition from the zoom's frame (transitionDur long; without one the slide's own transition plays) and,
+   * returning to the zoom, comes back to the zoom's slide after the last of them, zooming out into the frame.
+   */
+  function zoomTo(link) {
+    const [first, last, back, duration] = (link.getAttribute('data-zoom') || '').split(',');
+    const index = parseInt(first, 10) - 1;
+    if (!show || !(index >= 0 && index < slides.length)) return false;
+    const box = link.closest('.sp'), slide = show.current;
+    let zoom = null;
+    if (box && slide && duration) {
+      const [r, b] = [slide.getBoundingClientRect(), box.getBoundingClientRect()], k = (r.width / W) || 1;
+      zoom = { rect: [(b.left - r.left) / k, (b.top - r.top) / k, b.width / k, b.height / k], dur: parseFloat(duration) };
+    }
+    if (back === '1') (show.zooms = show.zooms || []).push({ index: show.index, last: parseInt(last, 10) - 1, zoom });
+    jump(index, true, zoom);
+    return true;
   }
 
   /** Actions of hyperlinks and action settings (ppaction://hlinkshowjump?jump=…, slide links, custom shows). */
@@ -3405,6 +3461,7 @@
     }
     if (!show.overlay.contains(e.target)) return;
     const link = e.target.closest('[data-action]');
+    if (link && link.hasAttribute('data-zoom') && zoomTo(link)) { e.preventDefault(); return; }
     if (link && action(link)) { e.preventDefault(); return; }
     const href = e.target.closest('a[href]');
     if (href) return;   // ordinary links open as usual

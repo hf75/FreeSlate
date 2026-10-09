@@ -31,6 +31,9 @@ public static class MarkupCompatibility
         "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
     ];
 
+    /// <summary>Attributes the engine adds to fallback content about the alternative it replaces.</summary>
+    public static readonly XNamespace Annotation = "urn:freeslate:annotation";
+
     public static void Process(XDocument document)
     {
         foreach (var alternate in document.Descendants(Mc + "AlternateContent").ToList())
@@ -41,9 +44,38 @@ public static class MarkupCompatibility
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Element(Mc + "Fallback");
             if (chosen == null)
+            {
                 alternate.Remove();
-            else
-                alternate.ReplaceWith(chosen.Elements());
+                continue;
+            }
+            if (chosen.Name == Mc + "Fallback")
+                AnnotateZooms(alternate, chosen);
+            alternate.ReplaceWith(chosen.Elements());
+        }
+    }
+
+    /// <summary>
+    /// Zoom objects (catalog: interactivity.zoom; slide, section and summary zooms of PowerPoint 2016) fall back to
+    /// pictures linked to their slides: each picture, in order, gets its zoom's target (slide:sldId or
+    /// section:sectionId), whether the show returns to the zoom (returnToParent, default true) and the duration of
+    /// its zoom transition (transitionDur; none: the target slide's own transition).
+    /// </summary>
+    static void AnnotateZooms(XElement alternate, XElement fallback)
+    {
+        var objects = alternate.Elements(Mc + "Choice").Descendants()
+            .Where(e => e.Name.LocalName is "sldZmObj" or "sectionZmObj" or "summaryZmObj").ToList();
+        if (objects.Count == 0)
+            return;
+        var pictures = fallback.Descendants().Where(e => e.Name.LocalName == "pic").ToList();
+        for (var i = 0; i < objects.Count && i < pictures.Count; i++)
+        {
+            var obj = objects[i];
+            var target = obj.Name.LocalName == "sldZmObj" ? "slide:" + (string?)obj.Attribute("sldId") : "section:" + (string?)obj.Attribute("sectionId");
+            var properties = obj.Elements().FirstOrDefault(e => e.Name.LocalName == "zmPr");
+            pictures[i].SetAttributeValue(Annotation + "zoom", target);
+            pictures[i].SetAttributeValue(Annotation + "zoomReturn", (string?)properties?.Attribute("returnToParent") is "0" or "false" ? "0" : "1");
+            if ((string?)properties?.Attribute("transitionDur") is { Length: > 0 } duration)
+                pictures[i].SetAttributeValue(Annotation + "zoomDur", duration);
         }
     }
 

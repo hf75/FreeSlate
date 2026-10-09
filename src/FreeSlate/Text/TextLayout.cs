@@ -43,7 +43,8 @@ public sealed record TextStyle(
 }
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
-public sealed record TextLink(string? Href, string? Action, string? Tooltip);
+/// <summary>A hyperlink; Zoom: "first,last,return,duration" of a zoom object's slides (catalog: interactivity.zoom).</summary>
+public sealed record TextLink(string? Href, string? Action, string? Tooltip, string? Zoom = null);
 
 /// <summary>A piece of text with one style; Text "\n" is a line break (a:br).</summary>
 public sealed record TextRun(string Text, TextStyle Style);

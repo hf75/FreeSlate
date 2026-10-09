@@ -2095,11 +2095,16 @@ areas:
         namespaces: [psez, pslz, psuz, p166]
         priority: P2
         difficulty: 3
-        status: partial
-        strategy: Draw the zoom's picture and link it to the target slide or section; the zoom animation comes later.
+        status: done
+        strategy: Draw the zoom's picture and link it to the target slide or section; the player zooms in and back out.
         office: >-
-          Zoom objects are drawn from mc:Fallback: a picture with a link to the target slide, so clicking it
-          jumps there. The zoom transition and the return to the zoom slide are not implemented yet.
+          Zoom objects (slide, section and summary zooms) are drawn from their mc:Fallback pictures, linked to
+          their slides (local/zoom: 99.6 %). In the slide show a click zooms into the target: the view closes
+          in on the zoom's frame until the slide, growing out of it, fills the screen, over transitionDur (an
+          even zoom in scale with a sine ease; without transitionDur the slide's own transition plays). With
+          returnToParent (the default) the show zooms back out to the zoom's slide after the target slide or
+          the last slide of the section. The zoom's motion is not measured against PowerPoint: its video
+          export follows the slide order and a live show would need a real click.
 
   - id: review
     title: Comments and review

@@ -62,6 +62,7 @@ public static class Links
             if (link.Action == null) tag += " target=\"_blank\" rel=\"noopener\"";
         }
         if (link.Action != null) tag += $" data-action=\"{WebUtility.HtmlEncode(link.Action)}\"";
+        if (link.Zoom != null) tag += $" data-zoom=\"{WebUtility.HtmlEncode(link.Zoom)}\"";
         if (link.Tooltip is { Length: > 0 } tooltip) tag += $"><title>{WebUtility.HtmlEncode(tooltip)}</title";
         return tag + ">";
     }
