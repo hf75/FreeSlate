@@ -1118,7 +1118,9 @@ gradFill and pattFill inside a:ln.
 
 The content type behind a:blip/@r:embed.
 
-**Rendering:** PNG, JPEG, GIF and BMP natively; TIFF and JPEG XR (wdp) are converted to PNG.
+**Rendering:** PNG, JPEG, GIF, BMP, SVG and WebP natively (also when the package names another content type); TIFF decoded (strips or tiles; uncompressed, PackBits, LZW, Deflate with prediction, CCITT group 3/4, JPEG; bilevel, gray, palette, RGB(A), CMYK; 1-16 bit) and converted to PNG, JPEG-compressed TIFF merged into one JPEG (Huffman re-coding where strips use different tables); color profiles carried along; JPEG XR (.jxr) to do.
+
+**Office behaviour:** PowerPoint keeps TIFF pictures as inserted (also CCITT and JPEG compressed ones) and honors embedded ICC profiles (PNG, JPEG, TIFF; verified with a swapped-primaries profile); profile-less CMYK shows through a 9^4 table measured from PowerPoint's rendering (harvest-cmyk). Pattern tiles of stretched pictures reach a margin with the edge pixels repeated, so edges no longer blend with the opposite edge. Inserted .jxr/.wdp pictures stay JPEG XR (image/vnd.ms-photo): not decoded yet. hdphoto parts of artistic effects (a14:imgLayer) are originals; the blip holds the rendered result. Deck: picture-formats 99.9 %.
 
 <a id="picture.metafiles"></a>
 

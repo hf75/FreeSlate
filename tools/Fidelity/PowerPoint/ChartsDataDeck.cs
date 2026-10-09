@@ -7,8 +7,8 @@ namespace Fidelity.PowerPoint;
 /// Chart data and the rest of the chart settings (catalog: chart.part, chart.data, chart.axes, chart.formatting,
 /// chart.threeD, chart.labels, chart.titleLegend): blank cells shown as gaps, zero or spanned, a hidden row and a
 /// filtered series, multi-level categories with and without their levels, date axes counting days and months, pictures
-/// stretched and stacked in columns, labels of values above the axis maximum, thick 3D walls, category labels aligned
-/// left and right, and a plot area placed by its outer edges.
+/// stretched and stacked in columns, labels of values above the axis maximum, thick 3D walls, smoothed lines, category
+/// labels aligned left and right, and a plot area placed by its outer edges.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class ChartsDataDeck
@@ -76,6 +76,13 @@ static class ChartsDataDeck
         capped.Axes(Value).MaximumScale = 6;
         capped.SeriesCollection(1).HasDataLabels = true;
         Add(limits, Column3DClustered, 490, 110, 460, 410);
+
+        object smooth = Slide(presentation, "Smoothed lines");
+        var smoothLine = Add(smooth, LineMarkers, 20, 110, 460, 410, c => SetData((object)c, ["A", "B", "C", "D", "E", "F", "G"],
+            [("Up and down", [2, 8, 3, 9, 1, 7, 4]), ("Steps", [1, 1, 6, 6, 2, 2, 5])]));
+        smoothLine.SeriesCollection(1).Smooth = true;
+        smoothLine.SeriesCollection(2).Smooth = true;
+        var smoothScatter = Add(smooth, 73, 490, 110, 460, 410, c => SetScatter((object)c, [0, 1, 1.5, 4, 4.5, 8, 9], [3, 7, 2, 8, 1, 6, 4]));   // xlXYScatterSmooth
 
         object align = Slide(presentation, "Label alignment and an outer plot layout");
         string[] regions = ["North\nregion", "South", "East\nregion", "West"];
@@ -150,7 +157,7 @@ static class ChartsDataDeck
         });
 
         // Category labels aligned left and right (c:lblAlgn follows c:auto in c:catAx).
-        var aligned = Charts(7);
+        var aligned = Charts(8);
         foreach (var (part, alignment) in new[] { (aligned[0], "l"), (aligned[1], "r") })
         {
             Edit(part, document =>
@@ -211,6 +218,25 @@ static class ChartsDataDeck
         if ((int)sheet.ListObjects.Count > 0)
             sheet.ListObjects[1].Resize(sheet.Range[range]);
         chart.SetSourceData($"='{sheet.Name}'!{range}", 2);   // xlColumns
+    }
+
+    /// <summary>One scatter series: x values in the first column, y values in the second.</summary>
+    static void SetScatter(object target, double[] xs, double[] ys)
+    {
+        dynamic chart = target;
+        var sheet = chart.ChartData.Workbook.Worksheets[1];
+        sheet.Range["A1:Z100"].ClearContents();
+        sheet.Cells[1, 1].Value2 = "X";
+        sheet.Cells[1, 2].Value2 = "Y";
+        for (var i = 0; i < xs.Length; i++)
+        {
+            sheet.Cells[i + 2, 1].Value2 = xs[i];
+            sheet.Cells[i + 2, 2].Value2 = ys[i];
+        }
+        var range = $"$A$1:$B${xs.Length + 1}";
+        if ((int)sheet.ListObjects.Count > 0)
+            sheet.ListObjects[1].Resize(sheet.Range[range]);
+        chart.SetSourceData($"='{sheet.Name}'!{range}", 2);
     }
 
     /// <summary>Two category levels (years over quarters) and one series.</summary>

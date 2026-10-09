@@ -371,9 +371,35 @@ public sealed class SvgPaint
         var innerH = h * (1 - ft - fb);
         var fullW = innerW / Math.Max(1e-6, 1 - sl - sr);
         var fullH = innerH / Math.Max(1e-6, 1 - st - sb);
-        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">" +
-                    $"<image href=\"{p.Image}\" x=\"{Units.Css(innerX - sl * fullW)}\" y=\"{Units.Css(innerY - st * fullH)}\" " +
-                    $"width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"{filter}/></pattern>");
+        var (x, y) = (innerX - sl * fullW, innerY - st * fullH);
+
+        // Pattern tiles repeat: a picture ending at the tile's edge blends with its opposite edge where the browser
+        // samples across the seam. The tile reaches a margin beyond the box, and on the sides where the picture meets
+        // the box's edge, bands repeat its outermost pixels over the margin (a sliver of the picture stretched), as
+        // PowerPoint's picture edges keep their pixels' color. Filters act on the whole tile, not on the stretched
+        // slivers.
+        const double Margin = 4, Overlap = 0.5, Sliver = 0.01, Touch = 0.01;
+        var imageId = NewId("pi");
+        defs.Append($"<image id=\"{imageId}\" href=\"{p.Image}\" width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"/>");
+        var content = new StringBuilder();
+        void Band(double bx, double by, double bw, double bh, double vx, double vy, double vw, double vh) =>
+            content.Append($"<svg x=\"{Units.Css(bx + Margin)}\" y=\"{Units.Css(by + Margin)}\" width=\"{Units.Css(bw)}\" height=\"{Units.Css(bh)}\" " +
+                        $"viewBox=\"{Units.Css4(vx)} {Units.Css4(vy)} {Units.Css4(vw)} {Units.Css4(vh)}\" preserveAspectRatio=\"none\"><use href=\"#{imageId}\"/></svg>");
+        var (l, t) = (x <= Touch, y <= Touch);
+        var (r, b) = (x + fullW >= w - Touch, y + fullH >= h - Touch);
+        var (band, far) = (Margin + Overlap, (X: x + fullW - Overlap, Y: y + fullH - Overlap));
+        if (t) Band(x, y - Margin, fullW, band, 0, 0, fullW, Sliver);
+        if (b) Band(x, far.Y, fullW, band, 0, fullH - Sliver, fullW, Sliver);
+        if (l) Band(x - Margin, y, band, fullH, 0, 0, Sliver, fullH);
+        if (r) Band(far.X, y, band, fullH, fullW - Sliver, 0, Sliver, fullH);
+        if (t && l) Band(x - Margin, y - Margin, band, band, 0, 0, Sliver, Sliver);
+        if (t && r) Band(far.X, y - Margin, band, band, fullW - Sliver, 0, Sliver, Sliver);
+        if (b && l) Band(x - Margin, far.Y, band, band, 0, fullH - Sliver, Sliver, Sliver);
+        if (b && r) Band(far.X, far.Y, band, band, fullW - Sliver, fullH - Sliver, Sliver, Sliver);
+        content.Append($"<use href=\"#{imageId}\" transform=\"translate({Units.Css(x + Margin)} {Units.Css(y + Margin)})\"/>");
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"{Units.Css(-Margin)}\" y=\"{Units.Css(-Margin)}\" " +
+                    $"width=\"{Units.Css(w + 2 * Margin)}\" height=\"{Units.Css(h + 2 * Margin)}\">" +
+                    (filter.Length > 0 ? $"<g{filter}>{content}</g>" : content.ToString()) + "</pattern>");
         return id;
     }
 

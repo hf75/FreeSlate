@@ -10,6 +10,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\*.xml" LogicalName="%(Filename)%(Extension)" />
     <EmbeddedResource Include="Resources\*.js" LogicalName="%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Resources\*.bin" LogicalName="%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

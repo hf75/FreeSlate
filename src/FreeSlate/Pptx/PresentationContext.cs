@@ -84,11 +84,32 @@ public sealed class PresentationContext : IDisposable
                 "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml" or "image/webp" =>
                     $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
                 _ when metafile => Metafiles.MetafileConverter.ToDataUri(Package.ReadBytes(rel.Target), $"mf{images.Count}_", displayWidth),
-                _ => null,   // TIFF and others need converters (catalog: picture.formats)
+                _ => Converted(Package.ReadBytes(rel.Target)),
             };
             images[key] = uri;
         }
         return uri;
+    }
+
+    /// <summary>
+    /// A picture of another content type as data URI by its bytes (catalog: picture.formats): TIFF converted to PNG
+    /// or JPEG, formats browsers show under a content type the package names otherwise; null for formats without
+    /// converter.
+    /// </summary>
+    static string? Converted(byte[] data)
+    {
+        if (Html.Tiff.IsTiff(data))
+            return Html.Tiff.ToWeb(data) is var (tiffType, web) ? $"data:{tiffType};base64,{Convert.ToBase64String(web)}" : null;
+        var type = data switch
+        {
+            [0x89, 0x50, 0x4E, 0x47, ..] => "image/png",
+            [0xFF, 0xD8, 0xFF, ..] => "image/jpeg",
+            [0x47, 0x49, 0x46, 0x38, ..] => "image/gif",
+            [0x42, 0x4D, ..] => "image/bmp",
+            [0x52, 0x49, 0x46, 0x46, _, _, _, _, 0x57, 0x45, 0x42, 0x50, ..] => "image/webp",
+            _ => null,
+        };
+        return type != null ? $"data:{type};base64,{Convert.ToBase64String(data)}" : null;
     }
 
     /// <summary>

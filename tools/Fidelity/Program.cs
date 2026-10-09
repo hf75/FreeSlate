@@ -27,7 +27,10 @@ switch (command)
     case "animate-reference" when OperatingSystem.IsWindows():
         Animations.Reference(decks, force);
         break;
-    case "generate" or "reference" or "calibrate" or "animate-reference":
+    case "harvest-cmyk" when OperatingSystem.IsWindows():
+        CmykHarvest.Run();
+        break;
+    case "generate" or "reference" or "calibrate" or "animate-reference" or "harvest-cmyk":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
         return 1;
     case "harvest-patterns":
@@ -63,6 +66,8 @@ switch (command)
               reference [deck…]    render reference images with PowerPoint (Windows); --force re-renders
               animate [deck…]      compare the player's animation frames with PowerPoint's videos
               animate-reference [deck…]  sample PowerPoint's videos of animated slides (Windows, ffmpeg); --force
+              harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
+              harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
             """);
         break;
 }
