@@ -29,11 +29,17 @@ public sealed partial class ChartRenderer
         }
     }
 
+    /// <summary>
+    /// How far thick walls (c:thickness) reach past the box: the side wall left or right of it, the floor below or
+    /// above it, the back wall behind it.
+    /// </summary>
+    readonly record struct Slabs(double Left, double Right, double Below, double Above, double Behind);
+
     /// <summary>How the box of a 3D chart (x right, y up, z away from the viewer; 0…w, 0…h, 0…d) lands on the chart.</summary>
     abstract class Projection3D
     {
-        /// <summary>Scales and places the projected box in the plot box.</summary>
-        public abstract void Fit(double w, double h, double d, Box plot);
+        /// <summary>Scales and places the projected box, with its thick walls, in the plot box.</summary>
+        public abstract void Fit(double w, double h, double d, Box plot, Slabs slabs = default);
 
         /// <summary>A point of the box on the chart, in points.</summary>
         public abstract (double X, double Y) Map(double x, double y, double z);
@@ -70,10 +76,11 @@ public sealed partial class ChartRenderer
 
         public override (double X, double Y) Map(double x, double y, double z) => (offsetX + (x + z * Sx) * scale, offsetY - (y + z * Sy) * scale);
 
-        public override void Fit(double w, double h, double d, Box plot)
+        public override void Fit(double w, double h, double d, Box plot, Slabs slabs = default)
         {
-            var (u0, u1) = (Math.Min(0, d * Sx), w + Math.Max(0, d * Sx));
-            var (v0, v1) = (Math.Min(0, d * Sy), h + Math.Max(0, d * Sy));
+            var depth = d + slabs.Behind;
+            var (u0, u1) = (-slabs.Left + Math.Min(0, depth * Sx), w + slabs.Right + Math.Max(0, depth * Sx));
+            var (v0, v1) = (-slabs.Below + Math.Min(0, depth * Sy), h + slabs.Above + Math.Max(0, depth * Sy));
             scale = Math.Min(plot.W / Math.Max(1e-9, u1 - u0), plot.H / Math.Max(1e-9, v1 - v0));
             offsetX = plot.X + (plot.W - (u1 - u0) * scale) / 2 - u0 * scale;
             offsetY = plot.Y + (plot.H - (v1 - v0) * scale) / 2 + v1 * scale;
@@ -98,13 +105,15 @@ public sealed partial class ChartRenderer
         readonly Perspective camera = new(view.RotX, view.RotY);
         double cx, cy, cz;
 
-        public override void Fit(double w, double h, double d, Box plot)
+        public override void Fit(double w, double h, double d, Box plot, Slabs slabs = default)
         {
-            (cx, cy, cz) = (w / 2, h / 2, d / 2);
+            var (x0, x1, y0, y1, z1) = (-slabs.Left, w + slabs.Right, -slabs.Below, h + slabs.Above, d + slabs.Behind);
+            (cx, cy, cz) = ((x0 + x1) / 2, (y0 + y1) / 2, z1 / 2);
+            var (hx, hy, hz) = ((x1 - x0) / 2, (y1 - y0) / 2, z1 / 2);
             var volume = new List<(double X, double Y, double Z)>();
-            foreach (var x in new[] { -cx, cx })
-                foreach (var y in new[] { -cy, cy })
-                    foreach (var z in new[] { -cz, cz })
+            foreach (var x in new[] { -hx, hx })
+                foreach (var y in new[] { -hy, hy })
+                    foreach (var z in new[] { -hz, hz })
                         volume.Add(camera.View(x * 1.025, y * 1.025, z * 1.025));
             camera.Fit(volume, plot, view.Perspective / 2);
         }
@@ -251,6 +260,12 @@ public sealed partial class ChartRenderer
         };
         var d = frame.Depth;
 
+        // Thick walls (c:thickness, a percentage of the box's smaller side across the value axis, measured: 10 % of a
+        // 0.82 high box reach 0.083 of its width) are slabs outside the box: the side wall beside it on the side the
+        // viewer sees, the floor below it, the back wall behind it.
+        double Thickness(string wall) => (ChartModel.Number(model.Chart.Element(Ns.C + wall), "thickness") ?? 0) / 100;
+        var (fromRight, fromAbove) = (Math.Sin(view.RotY * Math.PI / 180) >= 0, Math.Sin(view.RotX * Math.PI / 180) >= 0);
+        var slabs = default(Slabs);
         var plot = outer;
         for (var pass = 0; pass < 3; pass++)
         {
@@ -261,7 +276,10 @@ public sealed partial class ChartRenderer
                 (frame.W, frame.H) = (1, rows ? ratio * c * Math.Floor((nCat + nSer) / 2.0) : ratio);
             else
                 (frame.W, frame.H) = (1 / Math.Max(1e-9, ratio), 1);
-            projection.Fit(frame.W, frame.H, d, plot);
+            var unit = Math.Min(frame.W, frame.H);
+            var (side, floor, back) = (Thickness("sideWall") * unit, Thickness("floor") * unit, Thickness("backWall") * unit);
+            slabs = new Slabs(fromRight ? side : 0, fromRight ? 0 : side, fromAbove ? floor : 0, fromAbove ? 0 : floor, back);
+            projection.Fit(frame.W, frame.H, d, plot, slabs);
             // The value scale follows the box's edge halfway back (in perspective the front edge looks longer).
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
@@ -273,19 +291,36 @@ public sealed partial class ChartRenderer
         var (w, h) = (frame.W, frame.H);
         var sideX = frame.SideX;
         var floorY = frame.FloorY;
+        // The outer faces of thick walls, where labels and axis lines go, and the far ends of the walls.
+        var sideOuter = sideX == 0 ? -slabs.Left : w + slabs.Right;
+        var floorOuter = floorY == 0 ? -slabs.Below : h + slabs.Above;
+        var (farX, topY) = (sideX == 0 ? w : 0, floorY == 0 ? h : 0);
 
         var svg = new StringBuilder();
         string Quad(params (double X, double Y, double Z)[] corners) =>
             string.Concat(corners.Select((p, i) => (i == 0 ? "M" : "L") + XY(projection.Map(p.X, p.Y, p.Z)))) + "Z";
         // The walls are lit like the faces of a box: the back wall like a front, the side wall like a side, the
         // floor like a top.
-        svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, d), (w, 0, d), (w, h, d), (0, h, d)), 1));
-        svg.Append(Wall(model.Chart.Element(Ns.C + "sideWall"), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), SideShade));
-        svg.Append(Wall(model.Chart.Element(Ns.C + "floor"), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), TopShade));
+        if (slabs.Behind > 0)
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + "backWall"), projection, (0, 0, d), (w, h, d + slabs.Behind)));
+        else
+            svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, d), (w, 0, d), (w, h, d), (0, h, d)), 1));
+        if (sideOuter != sideX)
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + "sideWall"), projection, (Math.Min(sideX, sideOuter), 0, 0), (Math.Max(sideX, sideOuter), h, d)));
+        else
+            svg.Append(Wall(model.Chart.Element(Ns.C + "sideWall"), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), SideShade));
+        if (floorOuter != floorY)
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + "floor"), projection, (0, Math.Min(floorY, floorOuter), 0), (w, Math.Max(floorY, floorOuter), d)));
+        else
+            svg.Append(Wall(model.Chart.Element(Ns.C + "floor"), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), TopShade));
 
-        // Gridlines on the back wall and on the wall or floor beside the value axis.
-        string Line(Outline outline, params (double X, double Y, double Z)[] points) =>
-            $"<path d=\"{string.Concat(points.Select((p, i) => (i == 0 ? "M" : "L") + XY(projection.Map(p.X, p.Y, p.Z))))}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>";
+        // Gridlines on the back wall and on the wall or floor beside the value axis; on thick walls they also cross
+        // the side wall's (or floor's) front face and the back wall's end (measured).
+        string Line(Outline outline, params (double X, double Y, double Z)[] points)
+        {
+            var kept = points.Where((p, i) => i == 0 || p != points[i - 1]).ToList();
+            return $"<path d=\"{string.Concat(kept.Select((p, i) => (i == 0 ? "M" : "L") + XY(projection.Map(p.X, p.Y, p.Z))))}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>";
+        }
         foreach (var (element, minor) in new[] { (valueAxis.MinorGridlines, true), (valueAxis.MajorGridlines, false) })
         {
             if (element == null)
@@ -295,8 +330,8 @@ public sealed partial class ChartRenderer
             {
                 var p = frame.ValuePos(t);
                 svg.Append(columns
-                    ? Line(outline, (sideX, p, 0), (sideX, p, d), (sideX == 0 ? w : 0, p, d))
-                    : Line(outline, (p, floorY, 0), (p, floorY, d), (p, floorY == 0 ? h : 0, d)));
+                    ? Line(outline, (sideOuter, p, 0), (sideX, p, 0), (sideX, p, d), (farX, p, d), (farX, p, d + slabs.Behind))
+                    : Line(outline, (p, floorOuter, 0), (p, floorY, 0), (p, floorY, d), (p, topY, d), (p, topY, d + slabs.Behind)));
             }
         }
         if (categoryAxis.MajorGridlines is { } categoryGrid)
@@ -306,8 +341,8 @@ public sealed partial class ChartRenderer
             {
                 var p = frame.CategoryPos(frame.Between ? i * c : Math.Min(i, nCat - 1) / (double)Math.Max(1, nCat - 1));
                 svg.Append(columns
-                    ? Line(outline, (p, floorY, 0), (p, floorY, d), (p, floorY == 0 ? h : 0, d))
-                    : Line(outline, (sideX, p, 0), (sideX, p, d), (sideX == 0 ? w : 0, p, d)));
+                    ? Line(outline, (p, floorOuter, 0), (p, floorY, 0), (p, floorY, d), (p, topY, d), (p, topY, d + slabs.Behind))
+                    : Line(outline, (sideOuter, p, 0), (sideX, p, 0), (sideX, p, d), (farX, p, d), (farX, p, d + slabs.Behind)));
             }
         }
 
@@ -324,17 +359,17 @@ public sealed partial class ChartRenderer
         // axis along the floor's far side.
         var categoryOutline = AxisOutline(categoryAxis);
         if (AxisOutline(valueAxis) is { Visible: true } valueLine && !valueAxis.Deleted)
-            svg.Append(columns ? Line(valueLine, (sideX, 0, 0), (sideX, h, 0)) : Line(valueLine, (0, floorY, 0), (w, floorY, 0)));
+            svg.Append(columns ? Line(valueLine, (sideOuter, 0, 0), (sideOuter, h, 0)) : Line(valueLine, (0, floorOuter, 0), (w, floorOuter, 0)));
         if (categoryOutline is { Visible: true } && !categoryAxis.Deleted)
         {
-            svg.Append(columns ? Line(categoryOutline, (0, floorY, 0), (w, floorY, 0)) : Line(categoryOutline, (sideX, 0, 0), (sideX, h, 0)));
+            svg.Append(columns ? Line(categoryOutline, (0, floorOuter, 0), (w, floorOuter, 0)) : Line(categoryOutline, (sideOuter, 0, 0), (sideOuter, h, 0)));
             if (categoryAxis.MajorTickMark is "out" or "cross" && columns)
             {
                 // Ticks run 5 px down from the floor's front edge at the category boundaries (or points).
                 for (var i = 0; i <= (frame.Between ? nCat : nCat - 1); i++)
                 {
                     var p = frame.CategoryPos(frame.Between ? i * c : i / (double)Math.Max(1, nCat - 1));
-                    var (x, y) = projection.Map(p, floorY, 0);
+                    var (x, y) = projection.Map(p, floorOuter, 0);
                     svg.Append(GridLine(categoryOutline, x, y, x, y + TickLength));
                 }
             }
@@ -359,7 +394,7 @@ public sealed partial class ChartRenderer
         if (value.HasLabels)
         {
             for (var i = 0; i < value.Labels.Count && i < valuePositions.Count; i++)
-                svg.Append(columns ? SideLabel(value, value.Labels[i], projection.Map(sideX, valuePositions[i], 0)) : FloorLabel(value, value.Labels[i], projection.Map(valuePositions[i], floorY, 0)));
+                svg.Append(columns ? SideLabel(value, value.Labels[i], projection.Map(sideOuter, valuePositions[i], 0)) : FloorLabel(value, value.Labels[i], projection.Map(valuePositions[i], floorOuter, 0)));
         }
         if (category.HasLabels)
         {
@@ -367,7 +402,7 @@ public sealed partial class ChartRenderer
             for (var i = 0; i < nCat; i++)
             {
                 var p = frame.CategoryCenter(i);
-                var at = columns ? projection.Map(p, floorY, 0) : projection.Map(sideX, p, 0);
+                var at = columns ? projection.Map(p, floorOuter, 0) : projection.Map(sideOuter, p, 0);
                 svg.Append(columns ? FloorLabel(category, category.Labels[i], (at.X, at.Y + tickRoom)) : SideLabel(category, category.Labels[i], at));
             }
         }
@@ -970,6 +1005,15 @@ public sealed partial class ChartRenderer
     }
 
     static string XY((double X, double Y) p) => $"{Px(p.X)} {Px(p.Y)}";
+
+    /// <summary>A thick wall or floor: a box in its c:spPr fill and line, none by default.</summary>
+    string WallSlab(XElement? wall, Projection3D projection, (double X, double Y, double Z) from, (double X, double Y, double Z) to)
+    {
+        var spPr = wall?.Element(Ns.C + "spPr");
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : Fill.None;
+        var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
+        return fill is NoFill && outline is not { Visible: true } ? "" : Box3D(projection, from.X, from.Y, from.Z, to.X, to.Y, to.Z, fill, outline);
+    }
 
     /// <summary>A wall or the floor: its c:spPr fill (shaded) and line, none by default.</summary>
     string Wall(XElement? wall, string path, double shade)

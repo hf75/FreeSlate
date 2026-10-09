@@ -1722,8 +1722,12 @@ areas:
           end face, centered on the front face (ctr, inEnd, inBase on it), on areas halfway up their band on the
           front, beside the points of lines, on pies inside the top as far out as they fit (outEnd beyond the
           rim), a labelled pie fitting at 89 % of its size; horizontal value axes keep a label and three font
-          sizes per interval. Checked with generated/charts-3d (85 %, 18 slides). Not yet: the placement of
-          clustered bars in perspective (shifted against PowerPoint's at 40°), wall thickness.
+          sizes per interval. Thick walls (c:thickness, a percentage of the box's smaller side: 10 % of a 0.82
+          high box reach 0.083 of its width) are slabs beside, below and behind the box that take their room
+          in the fit, carry the labels on their outer faces and the gridlines across their front and end
+          faces (generated/charts-data slide 6: 94.8 %, 57.7 % before). Checked with generated/charts-3d (85 %,
+          18 slides). Not yet: the placement of clustered bars in strong perspective (rotY 40°, perspective
+          60: PowerPoint's box is 2.4 % narrower and not centred, local persp2).
 
       - id: chart.analysis
         title: Trendlines and error bars
