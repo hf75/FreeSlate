@@ -155,6 +155,7 @@ public sealed class EmfPlayer
             case 24: s.TextColor = U32(o + 8); break;
             case 25: s.BkColor = U32(o + 8); break;
             case 27: gdi.MoveTo(I32(o + 8), I32(o + 12)); break;
+            case 26: gdi.OffsetClip(I32(o + 8), I32(o + 12)); break;   // OFFSETCLIPRGN
             case 28: gdi.SetMetaRegion(); break;
             case 29: gdi.ExcludeClipRect(I32(o + 8), I32(o + 12), I32(o + 16), I32(o + 20)); break;
             case 30: gdi.IntersectClipRect(I32(o + 8), I32(o + 12), I32(o + 16), I32(o + 20)); break;
@@ -251,6 +252,33 @@ public sealed class EmfPlayer
             case 76 or 77:   // BITBLT, STRETCHBLT
                 Blt(o, size, stretch: type == 77);
                 break;
+            case 78:   // MASKBLT: the source where the mask is set (the foreground operation), the destination elsewhere
+            {
+                var source = Dib.Decode(Span(o + I32(o + 84), I32(o + 88)), Span(o + I32(o + 92), I32(o + 96)));
+                if (source == null)
+                    break;
+                var mask = MaskBits(o, o + 112);
+                var (cx, cy) = (I32(o + 32), I32(o + 36));
+                gdi.Image(mask != null ? Masked(source, mask) : source, I32(o + 24), I32(o + 28), cx, cy, (I32(o + 44), I32(o + 48), cx, cy));
+                break;
+            }
+            case 79:   // PLGBLT: the source rectangle mapped onto a parallelogram, masked like MASKBLT
+            {
+                var source = Dib.Decode(Span(o + I32(o + 96), I32(o + 100)), Span(o + I32(o + 104), I32(o + 108)));
+                if (source == null)
+                    break;
+                var mask = MaskBits(o, o + 124);
+                gdi.Image(mask != null ? Masked(source, mask) : source, (I32(o + 24), I32(o + 28)), (I32(o + 32), I32(o + 36)), (I32(o + 40), I32(o + 44)),
+                    (I32(o + 48), I32(o + 52), I32(o + 56), I32(o + 60)));
+                break;
+            }
+            case 56 or 92:   // POLYDRAW, POLYDRAW16: points with their kinds (move, line, Bézier, closing)
+            {
+                var count = I32(o + 24);
+                var points = type == 56 ? PointsL(o + 28, count) : PointsS(o + 28, count);
+                PolyDraw(points, o + 28 + count * (type == 56 ? 8 : 4));
+                break;
+            }
             case 80:   // SETDIBITSTODEVICE
             {
                 var bitmap = Dib.Decode(Span(o + I32(o + 48), I32(o + 52)), Span(o + I32(o + 56), I32(o + 60)));
@@ -309,6 +337,76 @@ public sealed class EmfPlayer
             case 118:   // GRADIENTFILL
                 GradientFill(o);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// The monochrome mask of MaskBlt and PlgBlt (offBmiMask, cbBmiMask, offBitsMask, cbBitsMask at
+    /// <paramref name="field"/>, offsets from the record) as white where its bits are set: masks come without a color
+    /// table, the bits decide.
+    /// </summary>
+    Bitmap? MaskBits(int record, int field)
+    {
+        var (offBmi, cbBmi, offBits, cbBits) = (I32(field), I32(field + 4), I32(field + 8), I32(field + 12));
+        return cbBmi < 16 || cbBits <= 0 ? null : MaskFrom(record + offBmi, record + offBits, cbBits);
+    }
+
+    Bitmap? MaskFrom(int header, int bits, int length)
+    {
+        var width = I32(header + 4);
+        var height = I32(header + 8);
+        if (width <= 0 || height == 0 || I16(header + 14) != 1)
+            return null;
+        var rows = Math.Abs(height);
+        var stride = (width + 31) / 32 * 4;
+        if (stride * rows > length || bits + stride * rows > data.Length)
+            return null;
+        var rgba = new byte[width * rows * 4];
+        for (var y = 0; y < rows; y++)
+        {
+            var row = bits + (height > 0 ? rows - 1 - y : y) * stride;
+            for (var x = 0; x < width; x++)
+            {
+                var value = (data[row + x / 8] & (0x80 >> (x % 8))) != 0 ? (byte)255 : (byte)0;
+                var i = (y * width + x) * 4;
+                (rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) = (value, value, value, 255);
+            }
+        }
+        return new Bitmap { Width = width, Height = rows, Rgba = rgba };
+    }
+
+    /// <summary>
+    /// PolyDraw: every point moves (PT_MOVETO), draws a line (PT_LINETO) or is one of three Bézier points
+    /// (PT_BEZIERTO); PT_CLOSEFIGURE closes the figure after its point (in a path, else with a line to its start).
+    /// </summary>
+    void PolyDraw(List<(double X, double Y)> points, int types)
+    {
+        var start = gdi.State.Position;
+        for (var i = 0; i < points.Count && types + i < data.Length; i++)
+        {
+            var kind = data[types + i];
+            switch (kind & 0x06)
+            {
+                case 0x06:
+                    gdi.MoveTo(points[i].X, points[i].Y);
+                    start = points[i];
+                    break;
+                case 0x02:
+                    gdi.LineTo(points[i].X, points[i].Y);
+                    break;
+                case 0x04 when i + 2 < points.Count && types + i + 2 < data.Length:
+                    gdi.PolyBezier([points[i], points[i + 1], points[i + 2]], fromCurrent: true);
+                    i += 2;
+                    kind = data[types + i];
+                    break;
+            }
+            if ((kind & 0x01) == 0)
+                continue;
+            if (gdi.InPath)
+                gdi.CloseFigure();
+            else
+                gdi.LineTo(start.X, start.Y);
+            gdi.State.Position = start;
         }
     }
 

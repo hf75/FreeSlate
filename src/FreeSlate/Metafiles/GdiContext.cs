@@ -218,6 +218,17 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         State.MetaClip = State.Clip;
     }
 
+    /// <summary>OffsetClipRgn: the clipping region (not the meta region) moves by a logical offset.</summary>
+    public void OffsetClip(double dx, double dy)
+    {
+        var (ox, oy) = ToDevice(0, 0);
+        var (ex, ey) = ToDevice(dx, dy);
+        Clip? Moved(Clip? clip) => clip == null || ReferenceEquals(clip, State.MetaClip)
+            ? clip
+            : new Clip { Parent = Moved(clip.Parent), Path = clip.Path, EvenOdd = clip.EvenOdd, Exclusion = clip.Exclusion, Shift = (clip.Shift.X + ex - ox, clip.Shift.Y + ey - oy) };
+        State.Clip = Moved(State.Clip);
+    }
+
     /// <summary>A logical rectangle as device path data (it may be rotated by the transform).</summary>
     public string RectPath(double l, double t, double r, double b)
     {
@@ -442,20 +453,21 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
     string HatchPattern(GdiBrush brush)
     {
         var id = Svg.NewId();
-        var color = SvgWriter.Color(brush.Color);
-        var background = State.BkMode == 2 ? $"<rect width=\"8\" height=\"8\" fill=\"{SvgWriter.Color(State.BkColor)}\"/>" : "";
-        var lines = brush.Hatch switch
+        static (byte, byte, byte, byte) Rgba(uint colorRef) => ((byte)(colorRef & 0xFF), (byte)((colorRef >> 8) & 0xFF), (byte)((colorRef >> 16) & 0xFF), 255);
+        // The hatch's pixels in its 8 × 8 tile (HS_HORIZONTAL … HS_DIAGCROSS); the background shows when opaque.
+        bool Set(int x, int y) => brush.Hatch switch
         {
-            0 => "M0 3.5H8",
-            1 => "M3.5 0V8",
-            2 => "M0 0L8 8M-1 7L1 9M7 -1L9 1",
-            3 => "M0 8L8 0M-1 1L1 -1M7 9L9 7",
-            4 => "M0 3.5H8M3.5 0V8",
-            _ => "M0 0L8 8M0 8L8 0",
+            0 => y == 3,
+            1 => x == 3,
+            2 => x == y,
+            3 => x == 7 - y,
+            4 => x == 3 || y == 3,
+            _ => x == y || x == 7 - y,
         };
+        var tile = SvgWriter.HatchTile(Set, Rgba(brush.Color), State.BkMode == 2 ? Rgba(State.BkColor) : null);
         // Hatches are 8 × 8 pixels of the output device, not of the reference device.
         var scale = SvgWriter.Num(UnitsPerPixel);
-        Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({scale})\">{background}<path d=\"{lines}\" stroke=\"{color}\" stroke-width=\"1\" fill=\"none\"/></pattern>");
+        Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({scale})\">{tile}</pattern>");
         return id;
     }
 
@@ -606,6 +618,20 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         var local = Xform.Scale(flipX ? -1 : 1, flipY ? -1 : 1).Then(Xform.Translate(flipX ? -w : 0, flipY ? -h : 0));
         var matrix = local.Then(t);
         Svg.Add($"<image width=\"{SvgWriter.Num(Math.Abs(w))}\" height=\"{SvgWriter.Num(Math.Abs(h))}\" transform=\"{matrix.Svg()}\" preserveAspectRatio=\"none\" href=\"{image.DataUri()}\"/>", State.Clip);
+    }
+
+    /// <summary>
+    /// A bitmap mapped onto a parallelogram (PlgBlt): the source rectangle's upper-left, upper-right and lower-left
+    /// corners go to <paramref name="a"/>, <paramref name="b"/> and <paramref name="c"/> (logical units).
+    /// </summary>
+    public void Image(Bitmap bitmap, (double X, double Y) a, (double X, double Y) b, (double X, double Y) c, (int X, int Y, int W, int H) source)
+    {
+        if (SuppressDrawing || source.W == 0 || source.H == 0)
+            return;
+        var image = bitmap.Rgba != null && (source.X != 0 || source.Y != 0 || source.W != bitmap.Width || source.H != bitmap.Height) ? Crop(bitmap, source) : bitmap;
+        var (w, h) = ((double)Math.Abs(source.W), (double)Math.Abs(source.H));
+        var map = new Xform((b.X - a.X) / w, (b.Y - a.Y) / w, (c.X - a.X) / h, (c.Y - a.Y) / h, a.X, a.Y).Then(Total);
+        Svg.Add($"<image width=\"{SvgWriter.Num(w)}\" height=\"{SvgWriter.Num(h)}\" transform=\"{map.Svg()}\" preserveAspectRatio=\"none\" href=\"{image.DataUri()}\"/>", State.Clip);
     }
 
     static Bitmap Crop(Bitmap bitmap, (int X, int Y, int W, int H) src)

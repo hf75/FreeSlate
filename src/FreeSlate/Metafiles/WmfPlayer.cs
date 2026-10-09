@@ -192,6 +192,7 @@ public sealed class WmfPlayer
                 break;
             case 0x0213: gdi.LineTo(I16(p + 2), I16(p)); break;
             case 0x0214: gdi.MoveTo(I16(p + 2), I16(p)); break;
+            case 0x0220: gdi.OffsetClip(I16(p + 2), I16(p)); break;   // OFFSETCLIPRGN
             case 0x0415: gdi.ExcludeClipRect(I16(p + 6), I16(p + 4), I16(p + 2), I16(p)); break;
             case 0x0416: gdi.IntersectClipRect(I16(p + 6), I16(p + 4), I16(p + 2), I16(p)); break;
             case 0x0817 or 0x081A or 0x0830:

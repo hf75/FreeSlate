@@ -62,6 +62,9 @@ public sealed class Clip
     /// <summary>An exclusion clip (far rectangle plus excluded areas, even-odd); consecutive exclusions merge into it.</summary>
     public bool Exclusion { get; init; }
 
+    /// <summary>How far the path is moved (device units; OffsetClipRgn).</summary>
+    public (double X, double Y) Shift { get; init; }
+
     internal string? Id { get; set; }
 
     /// <summary>The clip has been written; later changes need a new clip.</summary>
@@ -101,7 +104,8 @@ public sealed class SvgWriter(string idPrefix)
             return clip.Id;
         var parent = clip.Parent != null ? $" clip-path=\"url(#{ClipId(clip.Parent)})\"" : "";
         clip.Id = NewId();
-        defs.Append($"<clipPath id=\"{clip.Id}\" clipPathUnits=\"userSpaceOnUse\"{parent}><path d=\"{clip.Path}\"{(clip.EvenOdd ? " clip-rule=\"evenodd\"" : "")}/></clipPath>");
+        var shift = clip.Shift == default ? "" : $" transform=\"translate({Num(clip.Shift.X)} {Num(clip.Shift.Y)})\"";
+        defs.Append($"<clipPath id=\"{clip.Id}\" clipPathUnits=\"userSpaceOnUse\"{parent}><path d=\"{clip.Path}\"{(clip.EvenOdd ? " clip-rule=\"evenodd\"" : "")}{shift}/></clipPath>");
         return clip.Id;
     }
 
@@ -124,6 +128,27 @@ public sealed class SvgWriter(string idPrefix)
     }
 
     public static string Color(uint colorRef) => $"#{colorRef & 0xFF:x2}{(colorRef >> 8) & 0xFF:x2}{(colorRef >> 16) & 0xFF:x2}";
+
+    /// <summary>
+    /// An 8 × 8 hatch tile as a pixelated image: the pixels <paramref name="set"/> names in the foreground color, the
+    /// others in the background (transparent when null). GDI and GDI+ set whole device pixels (measured: crisp
+    /// diagonal crosses in PowerPoint's rendering), which vector squares blur once the picture is scaled.
+    /// </summary>
+    public static string HatchTile(Func<int, int, bool> set, (byte R, byte G, byte B, byte A) foreground, (byte R, byte G, byte B, byte A)? background)
+    {
+        var rgba = new byte[8 * 8 * 4];
+        for (var y = 0; y < 8; y++)
+        {
+            for (var x = 0; x < 8; x++)
+            {
+                var (r, g, b, a) = set(x, y) ? foreground : background ?? (0, 0, 0, 0);
+                var i = (y * 8 + x) * 4;
+                (rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) = (r, g, b, a);
+            }
+        }
+        var uri = "data:image/png;base64," + Convert.ToBase64String(Png.Encode(8, 8, rgba));
+        return $"<image width=\"8\" height=\"8\" href=\"{uri}\" style=\"image-rendering:pixelated\"/>";
+    }
 
     public static string Escape(string text)
     {

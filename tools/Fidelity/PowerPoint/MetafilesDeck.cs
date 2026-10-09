@@ -90,6 +90,11 @@ static class MetafilesDeck
         Record(gdiOnly, EmfType.EmfOnly, images.Png);
         gdiplus.Shapes.AddPicture(dual, MsoFalse, MsoTrue, 40, 130, 420, 315);
         gdiplus.Shapes.AddPicture(gdiOnly, MsoFalse, MsoTrue, 500, 130, 420, 315);
+
+        var records = Slide(presentation, "GDI records: PolyDraw, MaskBlt, PlgBlt");
+        var gdiRecords = Path.Combine(directory, "gdi-records.emf");
+        GdiRecords.Write(gdiRecords);
+        records.Shapes.AddPicture(gdiRecords, MsoFalse, MsoTrue, 40, 130, 600, 300);
     }
 
     static dynamic Slide(object deck, string title)
@@ -132,5 +137,97 @@ static class MetafilesDeck
                 g.DrawImage(image, new Rectangle(230, 220, 160, 75));
             g.DrawCurve(Pens.Black, [new PointF(200, 290), new PointF(215, 230), new PointF(230, 280)]);
         }
+    }
+
+    /// <summary>A GDI-only metafile with records GDI+ never writes: PolyDraw (stroked and as a filled path), MaskBlt and PlgBlt.</summary>
+    static class GdiRecords
+    {
+        const byte MoveTo = 6, LineTo = 2, BezierTo = 4, Close = 1;
+
+        public static void Write(string file)
+        {
+            var screen = GetDC(IntPtr.Zero);
+            // 600 × 300 pixels at the screen's resolution, the frame in hundredths of a millimeter.
+            var (dpiX, dpiY) = (GetDeviceCaps(screen, 88), GetDeviceCaps(screen, 90));
+            var frame = new Rect { Left = 0, Top = 0, Right = 600 * 2540 / dpiX, Bottom = 300 * 2540 / dpiY };
+            var dc = CreateEnhMetaFileW(screen, file, ref frame, null);
+            try
+            {
+                var pen = CreatePen(0, 4, 0x00A05000);
+                var brush = CreateSolidBrush(0x0060C0F0);
+                SelectObject(dc, pen);
+                SelectObject(dc, brush);
+                // A stroked figure of lines and a Bézier, closed; then the same shape as a filled path.
+                Point[] points = [new(20, 40), new(120, 20), new(180, 80), new(220, 140), new(160, 180), new(60, 160)];
+                byte[] kinds = [MoveTo, LineTo, BezierTo, BezierTo, BezierTo, LineTo | Close];
+                PolyDraw(dc, points, kinds, points.Length);
+                var shifted = points.Select(p => new Point(p.X + 220, p.Y + 20)).ToArray();
+                BeginPath(dc);
+                PolyDraw(dc, shifted, kinds, shifted.Length);
+                EndPath(dc);
+                StrokeAndFillPath(dc);
+
+                // A 96 × 64 bitmap of colored bands, shown through a circular mask, then mapped onto a sheared parallelogram.
+                var source = CreateCompatibleDC(screen);
+                var bitmap = CreateCompatibleBitmap(screen, 96, 64);
+                var previous = SelectObject(source, bitmap);
+                for (var y = 0; y < 64; y++)
+                    for (var x = 0; x < 96; x++)
+                        SetPixel(source, x, y, (uint)((x * 255 / 95) | ((y * 255 / 63) << 8) | ((((x / 16 + y / 16) % 2) * 255) << 16)));
+                // CreateBitmap rows are padded to 16-bit words.
+                var stride = (96 + 15) / 16 * 2;
+                var maskBits = new byte[stride * 64];
+                for (var y = 0; y < 64; y++)
+                    for (var x = 0; x < 96; x++)
+                        if ((x - 48) * (x - 48) / (44.0 * 44.0) + (y - 32) * (y - 32) / (30.0 * 30.0) <= 1)
+                            maskBits[y * stride + x / 8] |= (byte)(0x80 >> (x % 8));
+                var mask = CreateBitmap(96, 64, 1, 1, maskBits);
+                MaskBlt(dc, 440, 30, 96, 64, source, 0, 0, mask, 0, 0, 0xAACC0020);   // MAKEROP4(SRCCOPY, destination)
+                Point[] corners = [new(440, 150), new(560, 170), new(420, 260)];
+                PlgBlt(dc, corners, source, 0, 0, 96, 64, IntPtr.Zero, 0, 0);
+                SelectObject(source, previous);
+                DeleteObject(mask);
+                DeleteObject(bitmap);
+                DeleteDC(source);
+                DeleteObject(pen);
+                DeleteObject(brush);
+            }
+            finally
+            {
+                DeleteEnhMetaFile(CloseEnhMetaFile(dc));
+                ReleaseDC(IntPtr.Zero, screen);
+            }
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct Rect { public int Left, Top, Right, Bottom; }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        readonly struct Point(int x, int y) { public readonly int X = x, Y = y; }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr window);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int ReleaseDC(IntPtr window, IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern int GetDeviceCaps(IntPtr dc, int index);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr CreateEnhMetaFileW(IntPtr reference, string file, ref Rect frame, string? description);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CloseEnhMetaFile(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool DeleteEnhMetaFile(IntPtr metafile);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CreatePen(int style, int width, uint color);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CreateSolidBrush(uint color);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr SelectObject(IntPtr dc, IntPtr item);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr item);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool PolyDraw(IntPtr dc, Point[] points, byte[] kinds, int count);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool BeginPath(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool EndPath(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool StrokeAndFillPath(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleDC(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleBitmap(IntPtr dc, int width, int height);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern IntPtr CreateBitmap(int width, int height, uint planes, uint bitsPerPixel, byte[] bits);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern uint SetPixel(IntPtr dc, int x, int y, uint color);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        static extern bool MaskBlt(IntPtr dest, int x, int y, int width, int height, IntPtr source, int sourceX, int sourceY, IntPtr mask, int maskX, int maskY, uint rop);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        static extern bool PlgBlt(IntPtr dest, Point[] corners, IntPtr source, int sourceX, int sourceY, int width, int height, IntPtr mask, int maskX, int maskY);
     }
 }

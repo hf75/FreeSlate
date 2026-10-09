@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/metafiles.pptx",
-  "sha256": "d7f99d7025e1c56a63b2305e7f0e1a450917e1f7641b8654ae3098de6bb0c388",
+  "sha256": "5fc8b2ae52b5ad718f1ba812b4e7f0beb15800f8c41b45bc1edfc8ac5fe4fb1c",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 3
+  "slides": 4
 }

@@ -974,12 +974,10 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
                 var id = svg.NewId();
                 var preset = HatchPreset(b.Hatch);
                 var tile = PatternPresets.Tiles.GetValueOrDefault(preset) ?? PatternPresets.Tiles["pct50"];
-                var bits = new StringBuilder();
-                for (var row = 0; row < 8; row++)
-                    for (var column = 0; column < 8; column++)
-                        if ((tile[row] & (0x80 >> column)) != 0) bits.Append($"M{column} {row}h1v1h-1z");
+                static (byte, byte, byte, byte) Rgba(uint argb) => ((byte)((argb >> 16) & 0xFF), (byte)((argb >> 8) & 0xFF), (byte)(argb & 0xFF), (byte)(argb >> 24));
+                var image = SvgWriter.HatchTile((x, y) => (tile[y] & (0x80 >> x)) != 0, Rgba(b.Color), Rgba(b.Color2));
                 // Hatches are 8 × 8 pixels of the output device, not of the 600 dpi reference device.
-                svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({SvgWriter.Num(UnitsPerPixel)})\"><rect width=\"8\" height=\"8\" fill=\"{Rgb(b.Color2)}\"{Opacity(b.Color2, "fill")}/><path d=\"{bits}\" fill=\"{Rgb(b.Color)}\"{Opacity(b.Color, "fill")}/></pattern>");
+                svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({SvgWriter.Num(UnitsPerPixel)})\">{image}</pattern>");
                 return $" {attribute}=\"url(#{id})\"";
             }
             case 2 when b.Texture != null:
