@@ -154,7 +154,22 @@ public static class Constraints
             foreach (var constraint in node.Constraints.Where(c => Bound(c) && Own(c)))
                 Apply(node, constraint, pins, node);
         }
+        // The list's bounds on other nodes once more, until they hold together (measured: hList2's pictures, w and h each
+        // at most the other and a third of their composite's, square at a third of its width).
+        var bounds = node.Constraints.Where(c => Bound(c) && !Own(c)).ToList();
+        for (var pass = 0; pass < 4 && bounds.Count > 0; pass++)
+        {
+            var before = Snapshot(node);
+            foreach (var constraint in bounds)
+                Apply(node, constraint, pins, node);
+            if (Snapshot(node).SequenceEqual(before))
+                break;
+        }
     }
+
+    /// <summary>The values of a node's subtree, in order, to tell whether evaluating changed any.</summary>
+    static List<double> Snapshot(LayoutNode node) =>
+        node.Descendants().Prepend(node).SelectMany(n => n.Values.OrderBy(v => v.Key, StringComparer.Ordinal).Select(v => v.Value)).ToList();
 
     /// <summary>
     /// Applies a node's constraints on itself again once its parent's list has given it new values: those its ancestors
