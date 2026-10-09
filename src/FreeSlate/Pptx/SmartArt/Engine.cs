@@ -939,14 +939,46 @@ public static class Engine
         var center = node.Param("ctrShpMap") == "fNode" && cells.Count > 1 ? cells[0] : null;
         var ring = center != null ? cells.Skip(1).ToList() : cells;
         var extents = cells.ToDictionary(c => c, Extent);
-        var size = ring.Max(c => Math.Max(extents[c].W, extents[c].H));
         var n = ring.Count;
-        var step = Math.Abs(Math.Abs(span) - 360) < 1e-9 ? span / n : n > 1 ? span / (n - 1) : 0;
-        var radius = n > 1 && Math.Abs(step) > 1e-9 ? (size + Value(node, "sibSp")) / (2 * Math.Sin(Math.Abs(step) * Math.PI / 360)) : 0;
+        var full = Math.Abs(Math.Abs(span) - 360) < 1e-9;
+        var step = full ? span / n : n > 1 ? span / (n - 1) : 0;
+        var alongPath = node.Param("rotPath") == "alongPath";
+        static (double X, double Y) On(double degrees) => (Math.Sin(degrees * Math.PI / 180), -Math.Cos(degrees * Math.PI / 180));
+        // How far a cell's outline is from its center toward a direction (turned with it along the path).
+        double Exit(LayoutNode cell, double ux, double uy, double angle)
+        {
+            if (alongPath && cell != center)
+            {
+                var (sin, cos) = (Math.Sin(-angle * Math.PI / 180), Math.Cos(-angle * Math.PI / 180));
+                (ux, uy) = (ux * cos - uy * sin, ux * sin + uy * cos);
+            }
+            var (a, b) = (extents[cell].W / 2, extents[cell].H / 2);
+            if ((string?)cell.Shape?.Attribute("type") == "ellipse")
+                return a * b / Math.Max(Math.Sqrt(b * ux * b * ux + a * uy * a * uy), 1e-12);
+            return Math.Min(Math.Abs(ux) > 1e-12 ? a / Math.Abs(ux) : double.MaxValue, Math.Abs(uy) > 1e-12 ? b / Math.Abs(uy) : double.MaxValue);
+        }
+        // The circle as small as keeps each two neighbors' outlines sibSp apart along the line between their centers
+        // (measured: cycle7's boxes, half as high as wide, 0.65 of their width apart; cycle5's with its spacers; cycle2's
+        // circles), and the ring sp away from the middle one likewise.
+        var radius = 0.0;
+        for (var i = 0; n > 1 && Math.Abs(step) > 1e-9 && i < (full ? n : n - 1); i++)
+        {
+            var j = (i + 1) % n;
+            var (p, q) = (On(start + i * step), On(start + j * step));
+            var chord = Math.Sqrt((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y));
+            if (chord < 1e-9)
+                continue;
+            var (ux, uy) = ((q.X - p.X) / chord, (q.Y - p.Y) / chord);
+            var need = Exit(ring[i], ux, uy, start + i * step) + Exit(ring[j], -ux, -uy, start + j * step) + Value(node, "sibSp");
+            radius = Math.Max(radius, need / chord);
+        }
         if (center != null)
         {
-            var middle = Math.Max(extents[center].W, extents[center].H);
-            radius = Math.Max(radius, (middle + size) / 2 + Value(node, "sp"));
+            for (var i = 0; i < n; i++)
+            {
+                var (ux, uy) = On(start + i * step);
+                radius = Math.Max(radius, Exit(center, ux, uy, 0) + Exit(ring[i], -ux, -uy, start + i * step) + Value(node, "sp"));
+            }
         }
         // The cells' centers about the circle's center, then the arrangement fitted to the node.
         var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
@@ -979,7 +1011,6 @@ public static class Engine
         if (!double.IsFinite(factor) || factor <= 0)
             factor = 1;
         var (ox, oy) = (node.X + (node.W - bw * factor) / 2 - minX * factor, node.Y + (node.H - bh * factor) / 2 - minY * factor);
-        var alongPath = node.Param("rotPath") == "alongPath";
         foreach (var (cell, (px, py, angle)) in places)
         {
             PlaceScaled(cell, extents[cell], factor, pins);
