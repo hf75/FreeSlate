@@ -20,6 +20,12 @@ public sealed class ChartSeries
     public string FormatCode { get; init; } = "General";
     public string CategoryFormatCode { get; init; } = "General";
 
+    /// <summary>
+    /// The outer levels of multi-level categories (c:multiLvlStrCache), innermost first after
+    /// <see cref="Categories"/>: a level names a group at its first category and holds null for the others.
+    /// </summary>
+    public List<List<string?>> OuterCategories { get; init; } = [];
+
     public XElement? SpPr => Element.Element(Ns.C + "spPr");
 
     /// <summary>Data point overrides (c:dPt) by point index.</summary>
@@ -33,6 +39,9 @@ public sealed class ChartGroup
 
     /// <summary>The element's local name, e.g. "barChart".</summary>
     public string Type => Element.Name.LocalName;
+
+    /// <summary>The unit a date axis counts in (days, months, years), null without one.</summary>
+    public string? TimeUnit { get; set; }
 
     public bool IsBar => Type is "barChart" or "bar3DChart";
     public bool IsLine => Type is "lineChart" or "line3DChart" or "stockChart";
@@ -151,6 +160,14 @@ public sealed class ChartModel
             else if (name is "catAx" or "valAx" or "dateAx" or "serAx")
                 model.Axes.Add(ReadAxis(element));
         }
+        var date1904 = Flag(space, "date1904", false);
+        foreach (var group in model.Groups)
+        {
+            if (model.Axes.FirstOrDefault(a => a.Kind == "dateAx" && group.AxisIds.Contains(a.Id)) is { } dateAxis)
+                SpreadDates(group, dateAxis, date1904);
+            else if (date1904)
+                ShiftDates(group);
+        }
         return model;
     }
 
@@ -179,6 +196,82 @@ public sealed class ChartModel
         };
     }
 
+    /// <summary>
+    /// A date axis (c:dateAx, catalog: chart.axes) counts days, months or years from the first date to the last
+    /// (c:baseTimeUnit; without it days where two dates lie less than four weeks apart, months where less than a year,
+    /// else years): every unit is a category, every point lands in the category of its date and covers earlier points
+    /// there, empty units stay empty (measured: 1 and 15 January share January, May without data keeps its place).
+    /// The categories become the units' first days as serial dates, so the axis's number format labels them; dates of
+    /// the 1904 system (c:date1904) are moved to the 1900 one.
+    /// </summary>
+    static void SpreadDates(ChartGroup group, ChartAxis axis, bool date1904)
+    {
+        var withDates = group.Series.FirstOrDefault(s => s.Categories.Count > 0);
+        if (withDates == null)
+            return;
+        var dates = Numbers(withDates.Element.Element(Ns.C + "cat")).Values.Select(d => d + (date1904 ? 1462 : 0)).ToList();
+        var known = dates.Where(d => d != null).Select(d => Math.Floor(d!.Value)).Distinct().OrderBy(d => d).ToList();
+        if (known.Count == 0 || dates.Any(d => d == null))
+            return;
+        var unit = Val(axis.Element, "baseTimeUnit");
+        if (unit == null)
+        {
+            var step = known.Zip(known.Skip(1), (a, b) => b - a).DefaultIfEmpty(1).Min();
+            unit = step < 28 ? "days" : step < 365 ? "months" : "years";
+        }
+        var first = DateTime.FromOADate(known[0]);
+        int Slot(double serial)
+        {
+            var date = DateTime.FromOADate(Math.Floor(serial));
+            return unit switch
+            {
+                "months" => (date.Year - first.Year) * 12 + date.Month - first.Month,
+                "years" => date.Year - first.Year,
+                _ => (int)(Math.Floor(serial) - known[0]),
+            };
+        }
+        double Start(int slot) => unit switch
+        {
+            "months" => new DateTime(first.Year, first.Month, 1).AddMonths(slot).ToOADate(),
+            "years" => new DateTime(first.Year, 1, 1).AddYears(slot).ToOADate(),
+            _ => known[0] + slot,
+        };
+        var count = Slot(known[^1]) + 1;
+        if (count <= 0 || count > 100000)
+            return;
+        foreach (var series in group.Series)
+        {
+            var values = new List<double?>(Enumerable.Repeat<double?>(null, count));
+            for (var i = 0; i < series.Values.Count && i < dates.Count; i++)
+            {
+                if (series.Values[i] is { } v)
+                    values[Slot(dates[i]!.Value)] = v;
+            }
+            series.Values.Clear();
+            series.Values.AddRange(values);
+            series.Categories.Clear();
+            series.Categories.AddRange(Enumerable.Range(0, count).Select(k => Start(k).ToString(CultureInfo.InvariantCulture)));
+            var points = series.Points.Where(p => p.Key < dates.Count && dates[p.Key] != null).ToList();
+            series.Points.Clear();
+            foreach (var (index, point) in points)
+                series.Points[Slot(dates[index]!.Value)] = point;
+        }
+        group.TimeUnit = unit;
+    }
+
+    /// <summary>Serial dates of the 1904 system (c:date1904) in the 1900 one, for date-formatted categories.</summary>
+    static void ShiftDates(ChartGroup group)
+    {
+        foreach (var series in group.Series.Where(s => NumberFormat.IsDateFormat(s.CategoryFormatCode)))
+        {
+            for (var i = 0; i < series.Categories.Count; i++)
+            {
+                if (double.TryParse(series.Categories[i], NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                    series.Categories[i] = (d + 1462).ToString(CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
     static ChartSeries ReadSeries(XElement ser, CultureInfo culture)
     {
         var (values, format) = Numbers(ser.Element(Ns.C + "val") ?? ser.Element(Ns.C + "yVal"));
@@ -193,6 +286,7 @@ public sealed class ChartModel
             Order = ser.Element(Ns.C + "order").Int("val") ?? 0,
             Name = Strings(ser.Element(Ns.C + "tx"), culture).FirstOrDefault() ?? "",
             Categories = Strings(categories, culture),
+            OuterCategories = OuterLevels(categories),
             Values = values,
             XValues = xValues,
             FormatCode = format,
@@ -253,7 +347,7 @@ public sealed class ChartModel
             "strRef" => source.Element(Ns.C + "strCache"),
             "numRef" => source.Element(Ns.C + "numCache"),
             "multiLvlStrRef" => source.Element(Ns.C + "multiLvlStrCache"),
-            "strLit" or "numLit" => source,
+            "strLit" or "numLit" or "multiLvlStrLit" => source,
             _ => null,
         };
     }
@@ -266,11 +360,36 @@ public sealed class ChartModel
         var cache = Cache(data);
         if (cache == null)
             return [];
-        if (cache.Name.LocalName == "multiLvlStrCache")
+        if (cache.Name.LocalName is "multiLvlStrCache" or "multiLvlStrLit")
             cache = cache.Element(Ns.C + "lvl") is { } level ? new XElement(cache.Name, cache.Element(Ns.C + "ptCount"), level.Elements()) : cache;
         var format = cache.Element(Ns.C + "formatCode")?.Value;
         return Points(cache).Select(v => v == null ? "" : format != null && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
             ? NumberFormat.Format(d, format, culture) : v).ToList();
+    }
+
+    /// <summary>The levels of multi-level categories beyond the innermost (c:multiLvlStrRef or c16ac:multiLvlStrLit).</summary>
+    static List<List<string?>> OuterLevels(XElement? data)
+    {
+        var source = data?.Elements().FirstOrDefault();
+        var cache = source?.Name.LocalName switch
+        {
+            "multiLvlStrRef" => source.Element(Ns.C + "multiLvlStrCache"),
+            "multiLvlStrLit" => source,
+            _ => null,
+        };
+        if (cache == null)
+            return [];
+        var count = cache.Element(Ns.C + "ptCount").Int("val") ?? 0;
+        return cache.Elements(Ns.C + "lvl").Skip(1).Select(level =>
+        {
+            var names = new List<string?>(Enumerable.Repeat<string?>(null, count));
+            foreach (var pt in level.Elements(Ns.C + "pt"))
+            {
+                if (pt.Int("idx") is { } i && i >= 0 && i < count)
+                    names[i] = pt.Element(Ns.C + "v")?.Value;
+            }
+            return names;
+        }).ToList();
     }
 
     /// <summary>The cached numbers of c:val, c:xVal, c:plus … (c:numRef or c:numLit) with their format code.</summary>

@@ -115,6 +115,10 @@ public static class NumberFormat
         return sb.ToString();
     }
 
+    /// <summary>Whether a format code shows dates or times (its first section has date or time codes).</summary>
+    public static bool IsDateFormat(string? code) =>
+        !string.IsNullOrWhiteSpace(code) && (code is "m/d/yyyy" or "m/d/yyyy h:mm" || IsDate(StripBrackets(Sections(code)[0])));
+
     static bool IsDate(string section)
     {
         var quoted = false;

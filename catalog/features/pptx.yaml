@@ -1248,7 +1248,12 @@ areas:
           A chart's c:clrMapOvr replaces the slide's color mapping for the chart, text included
           (generated/colormap). The chart area's corners are rounded unless c:roundedCorners says otherwise;
           PowerPoint rounds them where the element is missing too, by 9.8 pt whatever the chart's size
-          (measured with local/rounded: 200 x 150 to 300 x 450 pt).
+          (measured with local/rounded: 200 x 150 to 300 x 450 pt). Blank cells (c:dispBlanksAs) show as gaps
+          where the element is missing, as zero where it says so or names nothing, or spanned by the line
+          without a marker (generated/charts-data). Labels of values beyond the axis are hidden as PowerPoint
+          writes c:showDLblsOverMax 0 (8 and 11 on an axis up to 6 go unlabelled). Dates of the 1904 system
+          (c:date1904) are moved to the 1900 one. Print settings (c:printSettings, header and footer, page
+          setup) and editing state (c:protection, c:userInterface, c:externalData) do not change the picture.
 
       - id: chart.data
         title: Series and data caches
@@ -1397,7 +1402,15 @@ areas:
           take the axis's number format, months abbreviated as Office does (German: Mrz, Jun, Sep). A plot
           area placed by hand (c:manualLayout) still turns category labels that do not fit by -45 degrees.
           Horizontal value axes keep each interval at least one label wide plus two font sizes (measured: a
-          252 pt bubble axis up to 3.1 steps by 1, a 377 pt one by 0.5).
+          252 pt bubble axis up to 3.1 steps by 1, a 377 pt one by 0.5). Multi-level categories
+          (c:multiLvlStrRef) put every outer level in a row of its own, the label gap below the categories,
+          each name centered over its group with lines along the group edges from the axis through the row;
+          with c:noMultiLvlLbl the names join their group's first label as further lines. Labels may hold line
+          breaks and align in their slot (c:lblAlgn l, r: flush with its edge). Date axes (c:dateAx) count
+          days, months or years from the first date to the last (c:baseTimeUnit, else by the closest dates),
+          every point in the slot of its date, empty units keeping their place, labels every major unit
+          (c:majorUnit in c:majorTimeUnit) or as many as fit (generated/charts-data: 1, 4, 5, 12 January on a
+          day axis, 1 and 15 January sharing January).
 
       - id: chart.labels
         title: Data labels
@@ -1442,11 +1455,14 @@ areas:
         status: partial
         strategy: Automatic layout of title, legend and plot area like Office; manual layouts are fractions of the chart area.
         office: >-
-          Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend sit 6 pt
-          from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may reach 4.5 pt into
-          that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as wide as their entries
-          ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus 30 pt and then wrap into
-          balanced rows; rows are one line height plus 5.85 pt. Pies with data labels shrink by 1.785 × label size.
+          Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend
+          sit 6 pt from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may
+          reach 4.5 pt into that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as
+          wide as their entries ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus
+          30 pt and then wrap into balanced rows; rows are one line height plus 5.85 pt. Pies with data labels
+          shrink by 1.785 × label size. A manual plot area layout places the inner plot area (layoutTarget
+          inner) or, by default, the plot area with its axis labels (outer); w and h are sizes (wMode, hMode
+          factor) or far edges (edge).
 
       - id: chart.dataTable
         title: Data tables
@@ -1474,8 +1490,11 @@ areas:
           spPr and txPr of every chart element use the shared DrawingML fill, line, effect and text code; the chart
           style and color parts (cs) only matter where a property is not set directly.
         office: >-
-          PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel grid
-          (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
+          PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel
+          grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
+          Picture fills come from the chart part's relationships; c:pictureOptions stacks them from the bar's
+          base at their own proportions (stack) or one per c:pictureStackUnit of the value axis (stackScale),
+          else stretches them over the bar (generated/charts-data).
 
       - id: chart.threeD
         title: 3D charts

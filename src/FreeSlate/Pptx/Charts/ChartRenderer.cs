@@ -114,6 +114,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public List<string> Labels { get; set; } = [];
         public double MaxLabelWidth { get; set; }
         public int Categories { get; set; }
+
+        /// <summary>The groups of multi-level categories' outer levels, innermost first: first and end category, name.</summary>
+        public List<List<(int Start, int End, string Name)>> Levels { get; set; } = [];
+
+        /// <summary>The alignment of category labels in their slot (c:lblAlgn: ctr, l, r).</summary>
+        public string Align { get; set; } = "ctr";
+
+        /// <summary>Every how many categories a date axis labels (its major unit), 0 where it labels as many as fit.</summary>
+        public int? DateStep { get; set; }
+
+        /// <summary>The most lines a label has.</summary>
+        public int LabelLines => Labels.Count == 0 ? 1 : Labels.Max(l => l.Count(ch => ch == '\n') + 1);
         public bool Between { get; set; } = true;
         public double Start { get; set; }
         public double End { get; set; }
@@ -321,13 +333,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var fillAttributes = paint.Fill(fill, w, h, defs);
         var stroke = paint.Stroke(outline, w, h, defs);
         var corners = radius > 0 ? $" rx=\"{Units.Css(Math.Min(radius * PxPerPt, Math.Min(w, h) / 2))}\"" : "";
+        // Picture patterns start at the shape's own origin: the rectangle is drawn there and moved into place.
+        if (fill is PictureFill)
+            return $"<rect transform=\"translate({Units.Css(x0)} {Units.Css(y0)})\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
         return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
     }
+
+    /// <summary>A fill of the chart part: picture fills find their image among the chart's own relationships.</summary>
+    Fill ReadFill(XElement fill) => FillReader.Read(fill, colors, slide.Images(chartPart), slide.ImageSizes(chartPart));
 
     /// <summary>Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title).</summary>
     string Area(XElement? spPr, Box box, bool snap, double radius = 0)
     {
-        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : Fill.None;
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : Fill.None;
         var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
@@ -631,6 +649,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var box = Moved(spec, new Box(lx, ly, w, h));
         DrawLabel(spec, value, box.X, box.Y);
     }
+
+    /// <summary>
+    /// Whether a value lies beyond its axis and so shows no data label (c:showDLblsOverMax 0, as PowerPoint writes it;
+    /// measured: 8 and 11 on an axis up to 6 go without labels).
+    /// </summary>
+    bool Beyond(AxisLayout axis, double value) =>
+        model.Chart.Element(Ns.C + "showDLblsOverMax") != null && !ChartModel.Flag(model.Chart, "showDLblsOverMax", true)
+        && (value > axis.Scale.Max + 1e-9 * Math.Abs(axis.Scale.Max) || value < axis.Scale.Min - 1e-9 * Math.Abs(axis.Scale.Min));
 
     /// <summary>A label box moved by its manual position (c:manualLayout: offsets in fractions of the chart, or edges).</summary>
     Box Moved(LabelSpec spec, Box box)
@@ -1042,14 +1068,38 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     Fill PointFill(ChartGroup group, ChartSeries series, int point)
     {
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && FillReader.FindFill(dPt.Element(Ns.C + "spPr")) is { } own)
-            return FillReader.Read(own, colors);
+            return ReadFill(own);
         if (point >= 0 && group.VaryColors && group.Series.Count == 1)
             return new SolidFill(AutoColor(point));
         if (FillReader.FindFill(series.SpPr) is { } fill)
-            return FillReader.Read(fill, colors);
+            return ReadFill(fill);
         if (group.IsLine || group.IsScatter)
             return new SolidFill(AutoColor(series.Index));
         return new SolidFill(AutoColor(series.Index));
+    }
+
+    /// <summary>
+    /// How a picture fills a point (c:pictureOptions of the point, else of the series): stretched (the default),
+    /// stacked at its proportions, or stacked one per c:pictureStackUnit.
+    /// </summary>
+    static (string Format, double Unit) PictureOptions(ChartSeries series, int point)
+    {
+        var options = (series.Points.TryGetValue(point, out var dPt) ? dPt.Element(Ns.C + "pictureOptions") : null)
+                      ?? series.Element.Element(Ns.C + "pictureOptions");
+        return (ChartModel.Val(options, "pictureFormat") ?? "stretch", Math.Max(1e-9, ChartModel.Number(options, "pictureStackUnit") ?? 1));
+    }
+
+    /// <summary>A bar filled with copies of its picture, a tile long each along the value direction from the base.</summary>
+    string StackedPicture(Box box, PictureFill picture, Outline? outline, bool horizontal, double basePosition, double tile)
+    {
+        var id = paint.NewId("stack");
+        var (x0, y0, w, h) = (box.X * PxPerPt, box.Y * PxPerPt, box.W * PxPerPt, box.H * PxPerPt);
+        var t = tile * PxPerPt;
+        var origin = basePosition * PxPerPt;
+        var (px, py, pw, ph) = horizontal ? (origin, y0, t, h) : (x0, origin, w, t);
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" x=\"{Units.Css(px)}\" y=\"{Units.Css(py)}\" width=\"{Units.Css(pw)}\" height=\"{Units.Css(ph)}\">" +
+                    $"<image href=\"{picture.Image}\" width=\"{Units.Css(pw)}\" height=\"{Units.Css(ph)}\" preserveAspectRatio=\"none\"/></pattern>");
+        return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\" fill=\"url(#{id})\"{paint.Stroke(outline, w, h, defs)}/>";
     }
 
     /// <summary>
@@ -1064,7 +1114,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (series.Points.TryGetValue(point, out var dPt) && FillReader.FindFill(dPt.Element(Ns.C + "spPr")) != null)
             return null;
         var format = series.Element.Descendants().FirstOrDefault(e => e.Name.LocalName == "invertSolidFillFmt")?.Elements().FirstOrDefault();
-        var fill = FillReader.FindFill(format) is { } own ? FillReader.Read(own, colors) : new SolidFill(RgbColor.White);
+        var fill = FillReader.FindFill(format) is { } own ? ReadFill(own) : new SolidFill(RgbColor.White);
         var line = PointOutline(series, point) is { Visible: true } visible
             ? visible
             : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "miter", 8, "sng");
@@ -1096,8 +1146,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     Box PlotBox(Box outer, bool square)
     {
-        if (ManualPlot() is { } manual)
-            return manual;
+        if (PlotLayout() is { } manual)
+            return manual.Box;
         if (!square)
             return outer;
         var size = Math.Min(outer.W, outer.H);
@@ -1105,13 +1155,25 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <summary>A manual plot area layout targeting the inner plot area.</summary>
-    Box? ManualPlot()
+    Box? ManualPlot() => PlotLayout() is { Inner: true } layout ? layout.Box : null;
+
+    /// <summary>A manual layout of the plot area with its axis labels (layoutTarget outer, the default).</summary>
+    Box? ManualOuterPlot() => PlotLayout() is { Inner: false } layout ? layout.Box : null;
+
+    /// <summary>
+    /// The plot area's manual layout (c:manualLayout, catalog: chart.titleLegend) in points, and whether it places the
+    /// inner plot area (layoutTarget inner) or the plot area with its axis labels (outer, the default): x and y are edge
+    /// positions, w and h sizes (wMode, hMode factor) or the far edges (edge), all in fractions of the chart.
+    /// </summary>
+    (Box Box, bool Inner)? PlotLayout()
     {
         var manual = model.PlotArea?.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout");
         if (manual == null || ChartModel.Number(manual, "x") is not { } x || ChartModel.Number(manual, "y") is not { } y
             || ChartModel.Number(manual, "w") is not { } w || ChartModel.Number(manual, "h") is not { } h)
             return null;
-        return new Box(x * width, y * height, w * width, h * height);
+        if (ChartModel.Val(manual, "wMode") == "edge") w -= x;
+        if (ChartModel.Val(manual, "hMode") == "edge") h -= y;
+        return (new Box(x * width, y * height, Math.Max(0, w) * width, Math.Max(0, h) * height), ChartModel.Val(manual, "layoutTarget") == "inner");
     }
 
     string AxisChart(List<ChartGroup> groups, Box outer, LegendLayout? legend, TitleLayout? title)
@@ -1148,8 +1210,36 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         ? NumberFormat.Format(number, categoryFormat, culture)
                         : names[i]
                     : (i + 1).ToString(culture)).ToList();
-            layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, layout.Style));
+            // Multi-level categories (catalog: chart.axes): the outer levels get rows of their own, every name
+            // centered over its group; with c:noMultiLvlLbl the names join the label of their group's first category
+            // as further lines (measured: "Q1" over "2023").
+            var outerLevels = withNames?.OuterCategories ?? [];
+            if (outerLevels.Count > 0 && ChartModel.Flag(layout.Axis.Element, "noMultiLvlLbl", false))
+                layout.Labels = layout.Labels.Select((label, i) => string.Join("\n",
+                    new[] { label }.Concat(outerLevels.Select(level => level.ElementAtOrDefault(i) ?? "").Where(n => n.Length > 0)))).ToList();
+            else if (outerLevels.Count > 0)
+                layout.Levels = outerLevels.Select(level => CategoryGroups(level, layout.Categories)).ToList();
+            layout.Align = ChartModel.Val(layout.Axis.Element, "lblAlgn") ?? "ctr";
+            // A date axis labels every major unit (c:majorUnit in c:majorTimeUnit), else as many dates as fit.
+            if (layout.Groups.Select(g => g.TimeUnit).FirstOrDefault(u => u != null) is { } baseUnit)
+            {
+                var major = ChartModel.Number(layout.Axis.Element, "majorUnit");
+                var majorUnit = ChartModel.Val(layout.Axis.Element, "majorTimeUnit") ?? baseUnit;
+                var perMajor = (baseUnit, majorUnit) switch
+                {
+                    ("days", "months") => 30.4375,
+                    ("days", "years") => 365.25,
+                    ("months", "years") => 12,
+                    _ => 1,
+                };
+                layout.DateStep = major is { } m && m > 0 ? Math.Max(1, (int)Math.Round(m * perMajor)) : 0;
+            }
+            layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => l.Split('\n').Max(line => Width(line, layout.Style)));
         }
+
+        // A plot area placed by hand with its labels replaces the automatic one (measured: the labels fit inside it).
+        if (ManualOuterPlot() is { } placed)
+            outer = placed;
 
         // Axis titles take their room from the outer plot area, at the edge of their axis.
         var titles = new List<(AxisLayout Axis, AxisTitle Title)>();
@@ -1459,9 +1549,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var rot = layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot");
         if (rot is { } r && r != -60000000)
             return r / 60000.0;
-        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Categories == 0)
+        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Categories == 0 || layout.DateStep != null)
             return 0;
         return layout.MaxLabelWidth > length / layout.Categories ? -45 : 0;
+    }
+
+    /// <summary>The groups of an outer category level: from each named category to the next one (or the end).</summary>
+    static List<(int Start, int End, string Name)> CategoryGroups(List<string?> level, int categories)
+    {
+        var starts = Enumerable.Range(0, Math.Min(level.Count, categories)).Where(i => level[i] != null).ToList();
+        return starts.Select((start, k) => (start, k + 1 < starts.Count ? starts[k + 1] : categories, level[start]!)).ToList();
     }
 
     /// <summary>The labels' extent away from the axis.</summary>
@@ -1469,12 +1566,15 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         var lineHeight = LineHeight(layout.Style);
         var horizontal = layout.Axis.Horizontal;
+        var lines = layout.Axis.IsValue ? 1 : layout.LabelLines;
+        // Outer category levels add a row each, the label gap apart (measured: 7.5 pt between 12 pt rows).
+        var levels = layout.Levels.Count * (lineHeight + CategoryLabelGap * layout.Style.Size);
         if (layout.Rotation == 0)
-            return horizontal ? lineHeight : layout.MaxLabelWidth;
+            return horizontal ? lines * lineHeight + levels : layout.MaxLabelWidth;
         var a = Math.Abs(layout.Rotation) * Math.PI / 180;
         return horizontal
-            ? layout.MaxLabelWidth * Math.Sin(a) + lineHeight * Math.Cos(a)
-            : layout.MaxLabelWidth * Math.Cos(a) + lineHeight * Math.Sin(a);
+            ? layout.MaxLabelWidth * Math.Sin(a) + lines * lineHeight * Math.Cos(a) + levels
+            : layout.MaxLabelWidth * Math.Cos(a) + lines * lineHeight * Math.Sin(a);
     }
 
     /// <summary>Labels "next to" an axis that crosses inside the plot area are drawn there and take no room at the edge.</summary>
@@ -1802,6 +1902,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // A category axis may label only every n-th category (c:tickLblSkip), and its labels keep their distance in
         // percent of the default (c:lblOffset).
         var skip = layout.Axis.IsValue ? 1 : Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
+        if (layout.DateStep is { } step)
+        {
+            // Date axes without a major unit label as many dates as fit, a label and a font size apart.
+            var slot = Math.Abs(layout.End - layout.Start) / Math.Max(1, layout.Categories);
+            skip = step > 0 ? step : Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
+        }
         var gapScale = layout.Axis.IsValue ? 1 : (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100;
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
         {
@@ -1833,11 +1939,80 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         svg.Append(UnitLabelMarkup(layout, right));
                     break;
                 case "b":
-                    svg.Append(text.Label(label, style, p - w / 2, bottom + CategoryLabelGap * s * gapScale + Ascent(style)));
-                    break;
                 case "t":
-                    svg.Append(text.Label(label, style, p - w / 2, top - CategoryLabelGap * s * gapScale - Descent(style)));
+                {
+                    // Lines centered, or flush with the category's slot edge (c:lblAlgn l, r; measured).
+                    var lines = label.Split('\n');
+                    var (slot0, slot1) = Slot(layout, i);
+                    var baseline = layout.Axis.Position == "b"
+                        ? bottom + CategoryLabelGap * s * gapScale + Ascent(style)
+                        : top - CategoryLabelGap * s * gapScale - Descent(style) - (lines.Length - 1) * lineHeight;
+                    foreach (var line in lines)
+                    {
+                        var lw = Width(line, style);
+                        var x = layout.Axis.IsValue ? p - lw / 2 : layout.Align switch
+                        {
+                            "l" => slot0,
+                            "r" => slot1 - lw,
+                            _ => p - lw / 2,
+                        };
+                        svg.Append(text.Label(line, style, x, baseline));
+                        baseline += lineHeight;
+                    }
                     break;
+                }
+            }
+        }
+        if (layout.Levels.Count > 0 && layout.Axis.Position is "b" or "t" && layout.Rotation == 0)
+            svg.Append(CategoryLevels(layout, layout.Axis.Position == "b" ? bottom : top, gapScale));
+        return svg.ToString();
+    }
+
+    /// <summary>A category's slot along the axis: between its boundaries, or around its point on midCat axes.</summary>
+    static (double From, double To) Slot(AxisLayout layout, int i)
+    {
+        double a, b;
+        if (layout.Between)
+            (a, b) = (layout.Boundary(i), layout.Boundary(i + 1));
+        else
+        {
+            var half = Math.Abs(layout.End - layout.Start) / Math.Max(1, layout.Categories - 1) / 2;
+            (a, b) = (layout.Center(i) - half, layout.Center(i) + half);
+        }
+        return (Math.Min(a, b), Math.Max(a, b));
+    }
+
+    /// <summary>
+    /// The outer levels of multi-level categories: a row per level after the categories' own labels, the label gap
+    /// apart, each name centered over its group, and lines along the group edges from the axis through the level's
+    /// row (measured: 2023 and 2024 under Q1 to Q4 with lines at both ends and between them).
+    /// </summary>
+    string CategoryLevels(AxisLayout layout, double axis, double gapScale)
+    {
+        var svg = new StringBuilder();
+        var style = layout.Style;
+        var lineHeight = LineHeight(style);
+        var gap = CategoryLabelGap * style.Size;
+        var down = layout.Axis.Position == "b" ? 1 : -1;
+        var outline = AxisOutline(layout.Axis);
+        var edge = gap * gapScale + layout.LabelLines * lineHeight;   // from the axis to the end of the categories' row
+        foreach (var level in layout.Levels)
+        {
+            edge += gap;
+            var baseline = down > 0 ? axis + edge + Ascent(style) : axis - edge - Descent(style);
+            foreach (var (start, end, name) in level)
+            {
+                var (a, b) = (layout.Boundary(start), layout.Boundary(end));
+                svg.Append(text.Label(name, style, (a + b) / 2 - Width(name, style) / 2, baseline));
+            }
+            edge += lineHeight;
+            if (outline is { Visible: true })
+            {
+                foreach (var boundary in level.Select(g => g.Start).Append(layout.Categories).Distinct())
+                {
+                    var x = layout.Boundary(boundary);
+                    svg.Append(GridLine(outline, x, axis, x, axis + down * edge));
+                }
             }
         }
         return svg.ToString();
@@ -1892,9 +2067,22 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 var (barFill, barOutline) = (PointFill(group, series, i), PointOutline(series, i));
                 if (v < 0 && Inverted(series, i) is { } inverted)
                     (barFill, barOutline) = inverted;
-                svg.Append(Rect(box, barFill, barOutline, snap: true));
+                if (barFill is PictureFill picture && PictureOptions(series, i) is { Format: "stack" or "stackScale" } options)
+                {
+                    // Stacked pictures repeat from the bar's base: as wide as the bar at their own proportions, or one
+                    // per c:pictureStackUnit of the value axis (catalog: chart.formatting).
+                    var across = group.Horizontal ? box.H : box.W;
+                    var tile = options.Format == "stackScale"
+                        ? Math.Abs(value.Map(options.Unit) - value.Map(0))
+                        : picture.NaturalSize.W > 0 ? across * picture.NaturalSize.H / picture.NaturalSize.W : across;
+                    if (group.Horizontal && picture.NaturalSize.H > 0 && options.Format == "stack")
+                        tile = across * picture.NaturalSize.W / picture.NaturalSize.H;
+                    svg.Append(StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile)));
+                }
+                else
+                    svg.Append(Rect(box, barFill, barOutline, snap: true));
 
-                if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw)
+                if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw && !Beyond(value, to))
                 {
                     var label = LabelText(spec, series, i, raw, total);
                     var (w, h) = LabelSize(spec, label);
@@ -1925,6 +2113,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         for (var i = 0; i < category.Categories; i++)
         {
             var v = series.Values.ElementAtOrDefault(i);
+            if (v == null && BlanksAs == "zero")
+                v = 0;
             if (group.Stacked)
             {
                 var total = group.PercentStacked ? group.Series.Sum(s => Math.Abs(s.Values.ElementAtOrDefault(i) ?? 0)) : 1;
@@ -1957,7 +2147,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var smooth = ChartModel.Flag(series.Element, "smooth", false);
             if (outline is { Visible: true })
             {
-                foreach (var run in Runs(points))
+                foreach (var run in Runs(Spanned(points)))
                     svg.Append($"<path d=\"{PathData(run.Select(p => SnapPoint(p, outline)).ToList(), smooth)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
             }
             if (Marker(group, series) is { } marker)
@@ -1970,7 +2160,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
             for (var i = 0; i < points.Count; i++)
             {
-                if (points[i] is { } p && series.Values.ElementAtOrDefault(i) is { } raw && DataLabel(group, series, i) is { } spec)
+                if (points[i] is { } p && series.Values.ElementAtOrDefault(i) is { } raw && !Beyond(value, raw) && DataLabel(group, series, i) is { } spec)
                     LabelAtPoint(spec, LabelText(spec, series, i, raw, 0), p.X, p.Y, spec.Position ?? "r");
             }
         }
@@ -2019,7 +2209,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     continue;
                 var part = bars.Element(Ns.C + (close >= open ? "upBars" : "downBars"));
                 var spPr = part?.Element(Ns.C + "spPr");
-                var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : new SolidFill(close >= open ? RgbColor.White : RgbColor.Black);
+                var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : new SolidFill(close >= open ? RgbColor.White : RgbColor.Black);
                 var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)])
                     : new Outline(9525, new SolidFill(RgbColor.Black), "solid", "flat", "round", 8, "sng");
                 var c = category.Center(i);
@@ -2110,7 +2300,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             for (var i = 0; i < series.Values.Count; i++)
             {
                 var x = series.XValues.Count > 0 ? series.XValues.ElementAtOrDefault(i) : i + 1;
-                if (x is not { } xv || series.Values[i] is not { } yv)
+                var y = series.Values[i] ?? (BlanksAs == "zero" ? 0 : null);
+                if (x is not { } xv || y is not { } yv)
                 {
                     points.Add(null);
                     continue;
@@ -2120,7 +2311,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var outline = SeriesOutline(group, series);
             if (ScatterLines(group, series) && outline is { Visible: true })
             {
-                foreach (var run in Runs(points))
+                foreach (var run in Runs(Spanned(points)))
                     svg.Append($"<path d=\"{PathData(run.Select(p => SnapPoint(p, outline)).ToList(), ChartModel.Flag(series.Element, "smooth", false))}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
             }
             if (Marker(group, series) is { } marker)
@@ -2139,6 +2330,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var style = ChartModel.Val(group.Element, "scatterStyle") ?? "marker";
         return ln?.Element(Ns.A + "noFill") == null && style is not ("marker" or "none") || ln?.Element(Ns.A + "solidFill") != null;
     }
+
+    /// <summary>
+    /// How blank cells show (c:dispBlanksAs, catalog: chart.part): as gaps where the element is missing, as zero where
+    /// it says so or names nothing, or spanned by the line (measured: spanned blanks get no marker).
+    /// </summary>
+    string BlanksAs => model.Chart.Element(Ns.C + "dispBlanksAs") is { } blanks ? blanks.Attribute("val")?.Value ?? "zero" : "gap";
+
+    /// <summary>A line's points with blanks dropped where the line spans them.</summary>
+    List<(double X, double Y)?> Spanned(List<(double X, double Y)?> points) =>
+        BlanksAs == "span" ? points.Where(p => p != null).ToList() : points;
 
     static IEnumerable<List<(double X, double Y)>> Runs(List<(double X, double Y)?> points)
     {
@@ -2204,7 +2405,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (symbol == "auto") symbol = MarkerCycle[seriesIndex % MarkerCycle.Length];
         var size = Math.Clamp(ChartModel.Number(marker, "size") ?? 5, 2, 72);
         var spPr = marker.Element(Ns.C + "spPr");
-        var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : seriesFill is NoFill ? new SolidFill(seriesLine?.Fill is SolidFill sf ? sf.Color : RgbColor.Black) : seriesFill;
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : seriesFill is NoFill ? new SolidFill(seriesLine?.Fill is SolidFill sf ? sf.Color : RgbColor.Black) : seriesFill;
         var line = spPr?.Element(Ns.A + "ln") is { } ln
             ? OutlineReader.Merge([(ln, colors)])
             : seriesLine is { Visible: true } ? seriesLine with { WidthEmu = 9525, Dash = "solid" } : null;
@@ -2613,7 +2814,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     Fill BandFill(ChartGroup group, int index)
     {
         var bandFmt = group.Element.Element(Ns.C + "bandFmts")?.Elements(Ns.C + "bandFmt").FirstOrDefault(b => b.Element(Ns.C + "idx").Int("val") == index);
-        return FillReader.FindFill(bandFmt?.Element(Ns.C + "spPr")) is { } fill ? FillReader.Read(fill, colors) : new SolidFill(AutoColor(index));
+        return FillReader.FindFill(bandFmt?.Element(Ns.C + "spPr")) is { } fill ? ReadFill(fill) : new SolidFill(AutoColor(index));
     }
 
     /// <summary>
@@ -2640,7 +2841,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // Measured layout: the first category label overhangs the left edge, the series labels stand 0.624 s right
         // of the surface and the category labels 0.624 s below it, both reaching 4.5 pt past the plot area. The
         // surface is a top view of a 3D box: categories by series in equal steps, 97.3 % of the inner plot area.
-        var inner = ManualPlot() ?? new Func<Box>(() =>
+        var inner = PlotLayout()?.Box ?? new Func<Box>(() =>
         {
             double left = outer.X, right = outer.Right, bottom = outer.Bottom;
             if (showCategories)
@@ -2807,7 +3008,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var showCategories = categoryAxis is { Deleted: false, TickLabelPosition: not "none" };
 
         double cx, cy, radius;
-        if (ManualPlot() is { } manual)
+        if (PlotLayout()?.Box is { } manual)
         {
             (cx, cy, radius) = (manual.X + manual.W / 2, manual.Y + manual.H / 2, Math.Max(1, Math.Min(manual.W, manual.H) / 2));
         }
@@ -2974,7 +3175,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // inside labels (inEnd, ctr) and doughnut labels leave it its full size (measured with local/pielabels).
         var labelled = rings.SelectMany(r => Enumerable.Range(0, r.Values.Count).Select(i => DataLabel(group, r, i)))
             .FirstOrDefault(l => l != null && (doughnut || (l.Position ?? "bestFit") is "bestFit" or "outEnd"));
-        var margin = labelled != null && ManualPlot() == null ? PieLabelMargin * labelled.Style.Size : 0;
+        var margin = labelled != null && PlotLayout() == null ? PieLabelMargin * labelled.Style.Size : 0;
         var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + maxExplosion);
         var (cx, cy) = (plot.X + plot.W / 2, plot.Y + plot.H / 2);
         var hole = doughnut ? Math.Clamp(group.HoleSize, 10, 90) / 100 : 0;
