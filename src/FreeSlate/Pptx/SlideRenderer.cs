@@ -634,7 +634,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
             else if (package.Exists(rel.Target))
             {
-                var type = package.ContentType(rel.Target);
+                // The file's own media type (a:videoFile/a:audioFile contentType), else the package's.
+                var type = file?.Str("contentType") is { Length: > 0 } declared ? declared : package.ContentType(rel.Target);
                 if (string.IsNullOrEmpty(type) || type == "application/octet-stream")
                     type = video ? "video/mp4" : "audio/mpeg";
                 source = $"data:{type};base64,{Convert.ToBase64String(package.ReadBytes(rel.Target))}";
@@ -655,8 +656,26 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (fade.Str("in") is { } fadeIn) attributes.Append($" data-fade-in=\"{System.Net.WebUtility.HtmlEncode(fadeIn)}\"");
             if (fade.Str("out") is { } fadeOut) attributes.Append($" data-fade-out=\"{System.Net.WebUtility.HtmlEncode(fadeOut)}\"");
         }
+        // Bookmarks (p14:bmkLst): named times that start animations (catalog: animation.media).
+        var bookmarks = media?.Element(P14 + "bmkLst")?.Elements(P14 + "bmk")
+            .Select(b => new System.Text.Json.Nodes.JsonObject { ["n"] = b.Str("name") ?? "", ["t"] = double.TryParse(b.Str("time"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : 0 })
+            .ToList();
+        if (bookmarks is { Count: > 0 })
+            attributes.Append($" data-bookmarks=\"{System.Net.WebUtility.HtmlEncode(new System.Text.Json.Nodes.JsonArray(bookmarks.ToArray<System.Text.Json.Nodes.JsonNode?>()).ToJsonString())}\"");
+        // Caption and subtitle tracks (p173:tracksInfo): WebVTT files the video shows over itself.
+        var tracks = new StringBuilder();
+        foreach (var track in nvPr.Descendants().Where(e => e.Name.LocalName == "track" && e.Parent?.Name.LocalName == "trackLst"))
+        {
+            if (track.Attribute(Ns.R + "id")?.Value is not { Length: > 0 } trackId || package.Relationship(part, trackId) is not { External: false } trackRel
+                || !package.Exists(trackRel.Target))
+                continue;
+            var kind = track.Str("type") is "subtitles" ? "subtitles" : "captions";
+            var language = track.Str("lang") is { Length: > 0 } lang ? $" srclang=\"{System.Net.WebUtility.HtmlEncode(lang)}\"" : "";
+            var label = track.Str("label") is { Length: > 0 } name ? $" label=\"{System.Net.WebUtility.HtmlEncode(name)}\"" : "";
+            tracks.Append($"<track kind=\"{kind}\" src=\"data:text/vtt;base64,{Convert.ToBase64String(package.ReadBytes(trackRel.Target))}\"{language}{label}{(tracks.Length == 0 ? " default" : "")}>");
+        }
         var tag = video ? "video" : "audio";
-        return $"<{tag} class=\"fs-media\" src=\"{System.Net.WebUtility.HtmlEncode(source)}\" preload=\"metadata\" playsinline{attributes}></{tag}>";
+        return $"<{tag} class=\"fs-media\" src=\"{System.Net.WebUtility.HtmlEncode(source)}\" preload=\"metadata\" playsinline{attributes}>{(video ? tracks.ToString() : "")}</{tag}>";
     }
 
     /// <summary>Graphic frames: SmartArt, charts and tables (OLE objects follow).</summary>

@@ -348,8 +348,9 @@
         return { behaviors, end, auto: !isIndefinite(stepNode) || isAuto(stepNode) };
       });
       if (sequence.nodeType === 'interactiveSeq') {
-        const trigger = (sequence.begin || []).find(c => c.evt === 'onClick' && c.target);
-        if (trigger) result.triggers.set(String(trigger.target.spid), { steps, played: 0 });
+        // Triggers: a click on a shape, or playback reaching a media bookmark (key bmk:spid:name).
+        const trigger = (sequence.begin || []).find(c => (c.evt === 'onClick' || c.evt === 'onMediaBookmark') && c.target);
+        if (trigger) result.triggers.set(trigger.target.bmk !== undefined ? `bmk:${trigger.target.spid}:${trigger.target.bmk}` : String(trigger.target.spid), { steps, played: 0 });
       } else {
         result.steps.push(...steps);
       }
@@ -670,8 +671,18 @@
   function playMedia(el, from, volume) {
     if (!el.dataset.watched) {
       el.dataset.watched = '1';
+      let last = el.currentTime;
       el.addEventListener('timeupdate', () => {
         const end = (el.duration || Infinity) - (parseFloat(el.dataset.trimEnd) || 0) / 1000;
+        // Bookmarks passed since the last update start their trigger sequences.
+        if (el.dataset.bookmarks && typeof show !== 'undefined' && show && show.animation) {
+          const owner = el.closest('[data-id]');
+          for (const b of JSON.parse(el.dataset.bookmarks)) {
+            const at = b.t / 1000;
+            if (owner && at > last && at <= el.currentTime) show.animation.trigger(`bmk:${owner.getAttribute('data-id')}:${b.n}`);
+          }
+        }
+        last = el.currentTime;
         if (el.currentTime >= end) stopMedia(el);
       });
       el.addEventListener('ended', () => stopMedia(el));

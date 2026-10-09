@@ -274,6 +274,9 @@ public static class SlideShow
             return Sound(slide, sound) is { } src ? new JsonObject { ["snd"] = src, ["name"] = sound.Str("name") } : null;
         if (tgtEl.Element(Ns.P + "inkTgt") is { } ink)
             return new JsonObject { ["ink"] = ink.Str("spid") };
+        // A media bookmark (p14:bmkTgt) that starts a trigger sequence when playback reaches it.
+        if (tgtEl.Descendants().FirstOrDefault(e => e.Name.LocalName == "bmkTgt") is { } bookmark)
+            return new JsonObject { ["spid"] = bookmark.Str("spid"), ["bmk"] = bookmark.Str("bmkName") ?? "" };
         if (tgtEl.Element(Ns.P + "spTgt") is not { } shape)
             return null;
         var json = new JsonObject { ["spid"] = shape.Str("spid") };

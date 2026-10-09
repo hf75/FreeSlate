@@ -5388,6 +5388,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks as WebVTT.",
+      "office": "Bookmarks (p14:bmkLst) travel with the media element and start the trigger sequences that wait for them (p14:bmkTgt, evt onMediaBookmark); caption and subtitle tracks (p173:tracksInfo) become WebVTT text tracks of the video; a file's declared media type (contentType) is kept. CD audio (a:audioCd with its a:st and a:end track times) cannot play from a document.",
       "elements": [
         "a:audioCd",
         "a:audioFile",

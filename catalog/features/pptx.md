@@ -1142,6 +1142,8 @@ The content type behind a:blip/@r:embed.
 
 **Rendering:** HTML5 video/audio with the picture's blip as poster image; trimming and fades in the player; caption tracks as WebVTT.
 
+**Office behaviour:** Bookmarks (p14:bmkLst) travel with the media element and start the trigger sequences that wait for them (p14:bmkTgt, evt onMediaBookmark); caption and subtitle tracks (p173:tracksInfo) become WebVTT text tracks of the video; a file's declared media type (contentType) is kept. CD audio (a:audioCd with its a:st and a:end track times) cannot play from a document.
+
 **Elements (16):** [`a:audioCd`](../format/namespaces/a.md#aaudiocd), [`a:audioFile`](../format/namespaces/a.md#aaudiofile), [`a:end`](../format/namespaces/a.md#aend), [`a:quickTimeFile`](../format/namespaces/a.md#aquicktimefile), [`a:st`](../format/namespaces/a.md#ast), [`a:videoFile`](../format/namespaces/a.md#avideofile), [`a:wavAudioFile`](../format/namespaces/a.md#awavaudiofile), [`p14:bmk`](../format/namespaces/p14.md#p14bmk), [`p14:bmkLst`](../format/namespaces/p14.md#p14bmklst), [`p14:fade`](../format/namespaces/p14.md#p14fade), [`p14:media`](../format/namespaces/p14.md#p14media), [`p14:trim`](../format/namespaces/p14.md#p14trim), [`p15:isNarration`](../format/namespaces/p15.md#p15isnarration), [`p173:track`](../format/namespaces/p173.md#p173track), [`p173:trackLst`](../format/namespaces/p173.md#p173tracklst), [`p173:tracksInfo`](../format/namespaces/p173.md#p173tracksinfo)
 
 **Specification:** §20.1.3.1 Audio from CD (p.2786); §20.1.3.2 Audio from File (p.2787); §20.1.3.3 Audio End Time (p.2788); §20.1.3.4 QuickTime from File (p.2789); §20.1.3.5 Audio Start Time (p.2790); §20.1.3.6 Video from File (p.2791) and 10 more
