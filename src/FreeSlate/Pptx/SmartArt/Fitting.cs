@@ -347,6 +347,9 @@ static class Fitting
                 if (type is not ("h" or "w"))
                     continue;
                 var targets = Constraints.Targets(node, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType"));
+                // Only the shapes are made equal, not the nodes that arrange them (measured: hierarchy4's boxes, equal
+                // by ptType node, while their columns stay as high as they are).
+                targets = targets.Where(t => t.Children.Count == 0 && (t.AlgorithmType == "tx" || (string?)t.Shape?.Attribute("type") is { } shape && shape != "none")).ToList();
                 if (targets.Count < 2)
                     continue;
                 double Size(LayoutNode n) => type == "h" ? n.H : n.W;

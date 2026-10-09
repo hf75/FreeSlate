@@ -210,6 +210,10 @@ public static class Constraints
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
                 referenceNode = reference;
                 value = reference != null && Referenced(reference, refType, owner) is { } referenced ? referenced * fact : null;
+                // A reference to a node no instance of which exists takes the value the list would give it (measured:
+                // hierarchy4's sibling spaces, half of a top-level space that a single top node has none of).
+                if (reference == null && Unplaced(owner, (string?)constraint.Attribute("refForName"), refType, 0) is { } virtualValue)
+                    value = virtualValue * fact;
             }
             else if (constraint.Attribute("val") == null)
             {
@@ -280,6 +284,35 @@ public static class Constraints
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// The value a list's constraints would give a named node of which no instance exists, from the list's own values
+    /// (a size of the owner times the factor, or a further named node's), or null.
+    /// </summary>
+    static double? Unplaced(LayoutNode owner, string? name, string type, int depth)
+    {
+        if (string.IsNullOrEmpty(name) || depth > 4)
+            return null;
+        foreach (var constraint in owner.Constraints)
+        {
+            if ((string?)constraint.Attribute("forName") != name || (string?)constraint.Attribute("type") != type || Bound(constraint))
+                continue;
+            var fact = Number(constraint, "fact") is { } f && !double.IsNaN(f) ? f : 1;
+            if (Number(constraint, "val") is { } v && !double.IsNaN(v) && constraint.Attribute("refType") == null)
+                return v;
+            var refType = (string?)constraint.Attribute("refType");
+            if (string.IsNullOrEmpty(refType) || refType == "none")
+                continue;
+            var refFor = (string?)constraint.Attribute("refFor");
+            if (refFor is null or "" or "self")
+                return Get(owner, refType) is { } own ? own * fact : null;
+            var references = Targets(owner, refFor, (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType"));
+            if (references.FirstOrDefault() is { } reference)
+                return Get(reference, refType) is { } referenced ? referenced * fact : null;
+            return Unplaced(owner, (string?)constraint.Attribute("refForName"), refType, depth + 1) is { } chained ? chained * fact : null;
+        }
+        return null;
     }
 
     /// <summary>Whether only bounds give a node's value of a type: no ancestor and no own constraint sets it.</summary>
