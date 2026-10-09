@@ -328,6 +328,27 @@ public static class Engine
         return null;
     }
 
+    /// <summary>
+    /// A child's value of a type that its parent's list takes from a sibling already placed, from the sibling as placed
+    /// (its laid-out width or height times the factor), or null.
+    /// </summary>
+    static double? SiblingReference(LayoutNode node, LayoutNode child, string type)
+    {
+        foreach (var constraint in node.Constraints)
+        {
+            if ((string?)constraint.Attribute("type") != type || (string?)constraint.Attribute("refFor") != "ch"
+                || (string?)constraint.Attribute("refType") is not ("w" or "h") and var refType
+                || !Constraints.Targets(node, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(child))
+                continue;
+            var reference = Constraints.Targets(node, "ch", (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType")).FirstOrDefault(r => r.Placed && r != child);
+            if (reference == null)
+                continue;
+            var fact = Number((string?)constraint.Attribute("fact")) is { } f && double.IsFinite(f) ? f : 1;
+            return ((string?)constraint.Attribute("refType") == "w" ? reference.W : reference.H) * fact;
+        }
+        return null;
+    }
+
     /// <summary>A node's own lte bound on its size across a line by its length along it (h &lt;= 1.2 w), for a length.</summary>
     static double? UpperAcross(LayoutNode child, string across, string along, double length)
     {
@@ -420,6 +441,15 @@ public static class Engine
                 children[i].Scale = horizontal ? sx : sy;
                 var (ow, oh) = (Finite(children[i], "w") ?? e.X + e.W, Finite(children[i], "h") ?? e.Y + e.H);
                 (ow, oh) = Fitted(children[i], ow, oh);
+                // A size across taken from a sibling placed before follows the sibling as placed (measured: hProcess7's
+                // spacers as high as the cards their own bound lowered).
+                if (SiblingReference(node, children[i], horizontal ? "h" : "w") is { } placedAcross)
+                {
+                    if (horizontal && sy > 0)
+                        oh = placedAcross / sy;
+                    else if (!horizontal && sx > 0)
+                        ow = placedAcross / sx;
+                }
                 if (Grows(children[i], "w"))
                     ow = Math.Max(ow, e.X + e.W);
                 if (Grows(children[i], "h"))
