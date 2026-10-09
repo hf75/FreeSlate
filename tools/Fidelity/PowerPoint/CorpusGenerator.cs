@@ -90,6 +90,7 @@ public static class CorpusGenerator
         ("transitions-2010", TransitionsDeck.Build2010, false),
         ("transitions-2013", TransitionsDeck.Build2013, false),
         ("transitions-morph", TransitionsDeck.BuildMorph, false),
+        ("math", MathDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -119,10 +120,11 @@ public static class CorpusGenerator
         ["tables-more"] = TablesMoreDeck.Patch,
         ["objects-more"] = ObjectsMoreDeck.Patch,
         ["animations-charts"] = ChartAnimationsDeck.Patch,
+        ["math"] = MathDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>
-    static readonly HashSet<string> Resaved = ["sketched", "animations-charts"];
+    static readonly HashSet<string> Resaved = ["sketched", "animations-charts", "math"];
 
     /// <summary>Generates the named decks, or all of them.</summary>
     public static void Run(string outputDir, IReadOnlyCollection<string> only)

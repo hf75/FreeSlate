@@ -1285,11 +1285,27 @@ areas:
         namespaces: [m]
         priority: P2
         difficulty: 4
-        status: partial
-        strategy: Show the picture from mc:Fallback first; later convert OMML to MathML, which browsers render.
+        status: done
+        strategy: >-
+          OMML laid out with the OpenType MATH table of Cambria Math (another installed math font otherwise, the
+          mc:Fallback picture when there is none): runs in the math alphabets (m:sty, m:scr), fractions (bar,
+          skewed, linear, stacked), scripts and pre-scripts, radicals, n-ary operators, stretchy delimiters with
+          separators, matrices, equation arrays, accents, bars, group characters, limits, functions, boxes,
+          border boxes and phantoms, spaced by TeX's atom classes. An equation is an inline object of the text
+          layout, drawn as glyph outlines under transparent selectable text.
         office: >-
-          Equations are drawn from the mc:Fallback picture (a14 is not a supported Choice namespace, so the
-          picture wins). Native OMML layout is not implemented yet.
+          Measured against PowerPoint with probe decks at 18, 20 and 40 pt: display equations reach at least the
+          math font's ascent and descent and stand MathLeading below the top of their line; display operators
+          take the first size at least 1.5 x DisplayOperatorMinHeight tall; fractions keep their size in display
+          equations (text style below the top level) and shrink inline; delimiters take the smallest size at
+          least twice the content's reach from the axis less 630 units (between 613 and 645 by the sizes chosen),
+          and a delimiter with separators sets its parts in text style; skewed fractions put the fraction slash
+          (U+2044) in the largest size within their ink; accents keep their size over one character and grow to
+          the largest size within a wider base; an n-ary operand follows a thin space less what the display size
+          adds to the italic correction, at least SpaceAfterScript after limits beside it; hidden limits keep
+          their baselines; empty arguments keep a 0.9 em placeholder; m:vertJc of a group character picks the
+          part on the baseline (top when missing). PowerPoint's exports cut off accents stretched over several
+          characters and narrow stretched group characters; that is not imitated. Verified with generated/math.
 
       - id: text.rtl
         title: Right-to-left and complex scripts

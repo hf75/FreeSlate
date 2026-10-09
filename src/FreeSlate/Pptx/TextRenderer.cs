@@ -116,7 +116,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     string RenderText(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
-        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld")))
+        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld" || e.Name == Equations.Equation.A14 + "m")))
             return "";
 
         var bodies = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")).ToList();
@@ -554,6 +554,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 }
                 if (string.IsNullOrWhiteSpace(run.Text))
                     continue;
+                if (run.Style.Inline is Equations.Equation equation)
+                {
+                    // An equation: its glyphs and rules, its characters transparent on top for selection.
+                    var (drawn, mathText) = equation.Draw(left + run.X, baseline - run.Lift, slide.Presentation.Glyphs, PxPerPt);
+                    svg.Append(drawn);
+                    if (mathText.Length > 0)
+                        svg.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline - run.Lift)}\" font-size=\"{Px(run.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
+                    continue;
+                }
                 var filter = run.Style.Effects is { } effects
                     ? filters.TryGetValue((effects, effectSize), out var known)
                         ? known
@@ -1108,6 +1117,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         static double Points(string? emu) => long.TryParse(emu, out var v) ? v / Units.EmuPerPoint : 0;
 
         var runs = new List<TextRun>();
+        string? displayAlign = null;
         foreach (var element in p.Elements())
         {
             switch (element.Name.LocalName)
@@ -1132,6 +1142,22 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 case "br":
                     runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)));
                     break;
+                case "m" when element.Name.Namespace == Equations.Equation.A14:
+                {
+                    // An equation (catalog: text.math) stands in the line as one object; display equations (m:oMathPara)
+                    // take lines of their own, justified by m:jc (centered by default) whatever the paragraph says.
+                    var (equations, align) = Equations.Equation.Read(element, fonts,
+                        rPr => Style(rPr, sources, level, fontScale, null) is var s ? new Equations.MathRunStyle(s.Size, s.Color) : default);
+                    var lineStyle = Style(null, sources, level, fontScale, null);
+                    for (var i = 0; i < equations.Count; i++)
+                    {
+                        if (i > 0 || align != null && runs.Count > 0 && runs[^1].Text != "\n")
+                            runs.Add(new TextRun("\n", lineStyle));
+                        runs.Add(new TextRun("￼", lineStyle with { Inline = equations[i] }));
+                    }
+                    displayAlign ??= align;
+                    break;
+                }
             }
         }
         var endStyle = Style(p.Element(Ns.A + "endParaRPr"), sources, level, fontScale, null);
@@ -1146,7 +1172,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             Runs = runs,
             EndStyle = endStyle,
-            Align = P("algn") ?? "l",
+            Align = displayAlign ?? P("algn") ?? "l",
             RightToLeft = P("rtl") is "1" or "true",
             Kinsoku = P("eaLnBrk") is not ("0" or "false"),
             LatinBreak = P("latinLnBrk") is "1" or "true",

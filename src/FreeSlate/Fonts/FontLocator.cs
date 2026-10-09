@@ -3,8 +3,8 @@ using System.Text;
 
 namespace FreeSlate.Fonts;
 
-/// <summary>A font file with the family and style it declares.</summary>
-public sealed record FontFace(string Family, bool Bold, bool Italic, string Path, bool System)
+/// <summary>A font file with the family and style it declares; <see cref="Index"/> is the face's place in a collection (.ttc).</summary>
+public sealed record FontFace(string Family, bool Bold, bool Italic, string Path, bool System, int Index = 0)
 {
     /// <summary>The family's names in other languages (theme fonts are often given as 游ゴシック, 맑은 고딕 …).</summary>
     public IReadOnlyList<string> Aliases { get; init; } = [];
@@ -76,10 +76,10 @@ public sealed class FontLocator
                 var extension = Path.GetExtension(file).ToLowerInvariant();
                 if (extension is not (".ttf" or ".otf" or ".ttc"))
                     continue;
-                FontFace? face = null;
-                try { face = OpenTypeInfo.Read(file, system); }
+                List<FontFace> found = [];
+                try { found = OpenTypeInfo.ReadAll(file, system); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { }
-                if (face != null)
+                foreach (var face in found)
                     yield return face;
             }
         }
@@ -89,13 +89,26 @@ public sealed class FontLocator
 /// <summary>Reads family name and style from the name and OS/2 tables of a TrueType/OpenType file.</summary>
 static class OpenTypeInfo
 {
-    public static FontFace? Read(string path, bool system)
+    /// <summary>Every face of a font file: one, or each font of a collection (Cambria Math is the second of cambria.ttc).</summary>
+    public static List<FontFace> ReadAll(string path, bool system)
     {
         var data = File.ReadAllBytes(path);
-        var offset = 0;
         if (data.Length > 12 && Encoding.ASCII.GetString(data, 0, 4) == "ttcf")
-            offset = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12));   // first font of the collection
+        {
+            var count = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(8));
+            var faces = new List<FontFace>();
+            for (var i = 0; i < count && 12 + i * 4 + 4 <= data.Length; i++)
+            {
+                if (Read(data, path, system, (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + i * 4)), i) is { } face)
+                    faces.Add(face);
+            }
+            return faces;
+        }
+        return Read(data, path, system, 0, 0) is { } single ? [single] : [];
+    }
 
+    static FontFace? Read(byte[] data, string path, bool system, int offset, int index)
+    {
         var tables = new Dictionary<string, int>();
         var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset + 4));
         for (var i = 0; i < count; i++)
@@ -118,7 +131,7 @@ static class OpenTypeInfo
             bold = (selection & 0x20) != 0;
         }
         var aliases = NameStrings(data, name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
-        return new FontFace(family, bold, italic, path, system) { Aliases = aliases };
+        return new FontFace(family, bold, italic, path, system, index) { Aliases = aliases };
     }
 
     /// <summary>All values of a name record, in every language.</summary>

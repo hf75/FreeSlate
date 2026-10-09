@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/math.pptx",
+  "sha256": "e5eb4d2fb33661e83ac62aaecf68c6fe1bd46d74f3a2b13f9e8cfa2dc83cd9a5",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 5
+}

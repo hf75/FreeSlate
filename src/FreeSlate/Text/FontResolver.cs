@@ -52,7 +52,7 @@ public sealed class FontResolver(FontLocator locator)
             return null;
         var exact = faces.FirstOrDefault(f => f.Bold == key.Item2 && f.Italic == key.Item3);
         var face = exact ?? faces.FirstOrDefault(f => !f.Bold && !f.Italic) ?? faces[0];
-        var data = loaded.GetOrAdd(face.Path, path => new FontData(path, face.Family));
+        var data = loaded.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
         return new ResolvedFont(data, key.Item2 && !face.Bold, key.Item3 && !face.Italic);
     });
 }

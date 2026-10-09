@@ -25,25 +25,29 @@ public sealed class FontData : IDisposable
     readonly Dictionary<uint, short>? kerningPairs;
     readonly ConcurrentDictionary<uint, string> outlines = new();
 
-    public FontData(string path, string family)
+    /// <param name="index">The face's place in a font collection (.ttc).</param>
+    public FontData(string path, string family, int index = 0)
     {
         Path = path;
         Family = family;
+        Index = index;
         var data = File.ReadAllBytes(path);
         var offset = data.Length > 12 && data[0] == 't' && data[1] == 't' && data[2] == 'c' && data[3] == 'f'
-            ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12))
+            ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + 4 * index))
             : 0;
-
         var tables = new Dictionary<string, int>();
         var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset + 4));
         for (var i = 0; i < count; i++)
         {
             var record = offset + 12 + i * 16;
-            tables[System.Text.Encoding.ASCII.GetString(data, record, 4)] = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(record + 8));
+            var tag = System.Text.Encoding.ASCII.GetString(data, record, 4);
+            tables[tag] = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(record + 8));
+            tableLengths[tag] = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(record + 12));
         }
+        tableOffsets = tables;
 
         UnitsPerEm = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(tables["head"] + 18));
-        double ascent, descent;
+        double ascent, descent, lineGap = 0;
         double winAscent, winDescent;
         if (tables.TryGetValue("hhea", out var hheaOffset))
         {
@@ -62,6 +66,7 @@ public sealed class FontData : IDisposable
             var useTypo = (selection & 0x80) != 0;
             ascent = useTypo ? BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2 + 68)) : BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 74));
             descent = useTypo ? -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2 + 70)) : BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 76));
+            lineGap = useTypo ? BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2 + 72)) : 0;
         }
         else
         {
@@ -72,6 +77,7 @@ public sealed class FontData : IDisposable
         UnitsPerEm = UnitsPerEm == 0 ? 1000 : UnitsPerEm;
         Ascent = ascent / UnitsPerEm;
         Descent = descent / UnitsPerEm;
+        LineGap = Math.Max(0, lineGap) / UnitsPerEm;
         WinAscent = winAscent / UnitsPerEm;
         WinDescent = winDescent / UnitsPerEm;
 
@@ -94,10 +100,38 @@ public sealed class FontData : IDisposable
         if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
 
         blob = Blob.FromFile(path);
-        face = new Face(blob, 0);
+        face = new Face(blob, index);
         font = new Font(face);
         font.SetScale(UnitsPerEm, UnitsPerEm);
     }
+
+    readonly Dictionary<string, int> tableOffsets;
+    readonly Dictionary<string, int> tableLengths = new();
+
+    /// <summary>The bytes of a font table (read from the file again), or null when the font has none.</summary>
+    public byte[]? Table(string tag)
+    {
+        if (!tableOffsets.TryGetValue(tag, out var offset) || !tableLengths.TryGetValue(tag, out var length))
+            return null;
+        using var stream = File.OpenRead(Path);
+        stream.Position = offset;
+        var bytes = new byte[length];
+        stream.ReadExactly(bytes);
+        return bytes;
+    }
+
+    /// <summary>The glyph for a character, or 0 when the font has none.</summary>
+    public uint GlyphFor(int codepoint) => font.TryGetGlyph((uint)codepoint, out var glyph) ? glyph : 0;
+
+    /// <summary>A glyph's advance in font units.</summary>
+    public int GlyphAdvance(uint glyph) => font.GetHorizontalGlyphAdvance(glyph);
+
+    /// <summary>A glyph's ink box in font units (x right, y up): left, bottom, right, top.</summary>
+    public (int Left, int Bottom, int Right, int Top) GlyphBox(uint glyph) =>
+        font.TryGetGlyphExtents(glyph, out var e) ? (e.XBearing, e.YBearing + e.Height, e.XBearing + e.Width, e.YBearing) : (0, 0, 0, 0);
+
+    /// <summary>The face's place in its font collection.</summary>
+    public int Index { get; }
 
     public string Path { get; }
 
@@ -116,6 +150,9 @@ public sealed class FontData : IDisposable
     public double Ascent { get; }
 
     public double Descent { get; }
+
+    /// <summary>The typo line gap in em when the font sets USE_TYPO_METRICS, else 0.</summary>
+    public double LineGap { get; }
 
     /// <summary>Color fonts (COLR, CBDT, sbix, SVG): their glyphs are left to the browser.</summary>
     public bool IsColor { get; }

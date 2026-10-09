@@ -40,6 +40,17 @@ public sealed record TextStyle(
 
     /// <summary>The action run when the pointer enters the text during the show (a:hlinkMouseOver).</summary>
     public TextLink? HoverLink { get; init; }
+
+    /// <summary>An object standing in the line in place of the run's one character (an equation, catalog: text.math).</summary>
+    public IInlineObject? Inline { get; init; }
+}
+
+/// <summary>An object laid out inside a line of text: its width and how far it reaches above and below the baseline (points).</summary>
+public interface IInlineObject
+{
+    double Width { get; }
+    double Ascent { get; }
+    double Descent { get; }
 }
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
@@ -364,6 +375,12 @@ public static class TextLayout
             var (a, d) = Metrics(style, paragraph.Spacing);
             ascent = Math.Max(ascent, a);
             descent = Math.Max(descent, d);
+            // An equation in the line makes room for itself.
+            if (style.Inline is { } inline)
+            {
+                ascent = Math.Max(ascent, inline.Ascent);
+                descent = Math.Max(descent, inline.Descent);
+            }
         }
 
         if (paragraph.RightToLeft || pieces.Any(p => Enumerable.Range(p.Start, p.End - p.Start).Any(i => i < levels.Length && levels[i] > 0)))
@@ -665,7 +682,7 @@ public static class TextLayout
                 continue;
             var style = styles[runStart];
             var text = all[runStart..i];
-            width += style.Font.Data.LayoutWidth(text, style.Size, style.Kerning, style.LetterSpacing);
+            width += style.Inline is { } inline ? inline.Width * text.Length : style.Font.Data.LayoutWidth(text, style.Size, style.Kerning, style.LetterSpacing);
             runStart = i;
         }
         return width;

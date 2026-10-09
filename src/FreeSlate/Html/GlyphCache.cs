@@ -9,17 +9,17 @@ namespace FreeSlate.Html;
 /// </summary>
 public sealed class GlyphCache
 {
-    readonly Dictionary<(string Font, uint Glyph), string?> ids = new();
+    readonly Dictionary<(string Font, int Face, uint Glyph), string?> ids = new();
     readonly StringBuilder defs = new();
 
     /// <summary>The id of the glyph's path, or null for glyphs without contours (spaces).</summary>
     public string? Id(FontData font, uint glyph)
     {
-        if (ids.TryGetValue((font.Path, glyph), out var id))
+        if (ids.TryGetValue((font.Path, font.Index, glyph), out var id))
             return id;
         var outline = font.Outline(glyph);
         id = outline.Length == 0 ? null : "_g" + ids.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        ids[(font.Path, glyph)] = id;
+        ids[(font.Path, font.Index, glyph)] = id;
         if (id != null)
             defs.Append($"<path id=\"{id}\" d=\"{outline}\"/>");
         return id;

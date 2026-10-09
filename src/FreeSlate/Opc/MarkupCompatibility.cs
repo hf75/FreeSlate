@@ -42,6 +42,7 @@ public static class MarkupCompatibility
                 continue;   // inside an alternative that was already removed
             var chosen = alternate.Elements(Mc + "Choice").FirstOrDefault(IsSupported)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
+                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsEquation)
                          ?? alternate.Element(Mc + "Fallback");
             if (chosen == null)
             {
@@ -88,6 +89,18 @@ public static class MarkupCompatibility
         var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return choice.Elements().Any() && choice.Elements().All(e => e.Name.LocalName is "transition" or "timing" or "contentPart")
                && requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns && (Supported.Contains(ns.NamespaceName) || SlideShow.Contains(ns.NamespaceName)));
+    }
+
+    /// <summary>
+    /// Shapes with equations (a14:m in their paragraphs, catalog: text.math): drawn from their Office Math instead of
+    /// the fallback's picture of them, when a math font is there to lay them out.
+    /// </summary>
+    static bool IsEquation(XElement choice)
+    {
+        XNamespace a14 = "http://schemas.microsoft.com/office/drawing/2010/main";
+        var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns && (Supported.Contains(ns.NamespaceName) || ns == a14))
+               && choice.Descendants(a14 + "m").Any() && Equations.Equation.Available;
     }
 
     static bool IsSupported(XElement choice)
