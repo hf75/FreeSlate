@@ -1537,13 +1537,31 @@ public static class Engine
         // clockwise (measured: cycle8's arrows between the points beside its wedges).
         // A negative diameter runs the other way round, counterclockwise (measured: gear1's second arrow, drawn as a left
         // circular arrow).
+        // Between the points begPts and endPts name, else the centers; a diameter of the distance between them
+        // (connDist) follows it (measured: hProcess4's arrows, 1.15 of the distance, from below a title to below the
+        // next).
+        var (px, py) = (start.X + start.W / 2, start.Y + start.H / 2);
+        var (qx, qy) = (end.X + end.W / 2, end.Y + end.H / 2);
+        if (connector.Param("connRout") is "curve" or "longCurve")
+        {
+            static string? First(string? points) => points?.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(p => p is not ("auto" or "radial"));
+            if (First(connector.Param("begPts")) is { } leaving)
+                (px, py) = Point(start, leaving);
+            if (First(connector.Param("endPts")) is { } arriving)
+                (qx, qy) = Point(end, arriving);
+            if (Finite(connector, "diam") is null or 0
+                && connector.Constraints.LastOrDefault(c => (string?)c.Attribute("type") == "diam") is { } rule && (string?)rule.Attribute("refType") == "connDist")
+            {
+                var between = Math.Sqrt((qx - px) * (qx - px) + (qy - py) * (qy - py));
+                connector.Values["connDist"] = between;
+                connector.Values["diam"] = (Number((string?)rule.Attribute("fact")) ?? 1) * between / Math.Max(connector.Scale, 1e-9);
+            }
+        }
         if (connector.Param("connRout") is "curve" or "longCurve" && Finite(connector, "diam") is { } signed && Math.Abs(signed) > 0)
         {
             var diameter = Math.Abs(signed);
             var turning = signed < 0 ? -1 : 1;
             var radius = diameter / 2 * connector.Scale;
-            var (px, py) = (start.X + start.W / 2, start.Y + start.H / 2);
-            var (qx, qy) = (end.X + end.W / 2, end.Y + end.H / 2);
             var chord = Math.Sqrt((qx - px) * (qx - px) + (qy - py) * (qy - py));
             if (chord > 1e-9)
             {
