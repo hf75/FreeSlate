@@ -9,11 +9,12 @@ namespace FreeSlate.Pptx.SmartArt;
 /// the data model and its constraints evaluated at the diagram's size; then every node, given its box by its parent's
 /// algorithm, evaluates its constraint list again, so that its children's values follow its actual size (lengths that
 /// follow font sizes stay), and its algorithm places them: composite where their values put them, lin one after the
-/// other, snake in rows, connectors between their siblings. A composite takes the room of its children's bounding box
-/// (measured: process3's composite, 1000 times as high as wide, is as high as its shapes); lin applies its rules on its
-/// children's length when they do not fit, lin and snake shrink their children uniformly when they still do not, and
-/// align them by the room they actually take. The text is then fitted by the rules and the diagram laid out again with
-/// the fitted values until nothing changes. Lengths in millimeters.
+/// other, snake in rows, cycle around a circle, hierarchies as trees, pyramids in levels, connectors between the nodes
+/// they join. A composite takes the room of its children's bounding box (measured: process3's composite, 1000 times as
+/// high as wide, is as high as its shapes); lin and snake apply their rules on their children's size when they do not
+/// fit (lin by halving the step, snake in 32nds of the way), shrink them uniformly when they still do not, and align
+/// them by the room they actually take; a composite root's drawing is centered in the frame. The text is then fitted by
+/// the rules and the diagram laid out again with the fitted values until nothing changes. Lengths in millimeters.
 /// </summary>
 public static class Engine
 {
@@ -405,8 +406,6 @@ public static class Engine
         // sp after the rules: it may follow a value they changed (TextCardSideLineWideImage's, 0.12 of the cards' height).
         var gap = Value(node, "sp");
         var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), gap);
-        if (Environment.GetEnvironmentVariable("FS_TRACE") == "1")
-            Console.Error.WriteLine($"lin {node.Name} box {boxAlong:0.##}x{boxAcross:0.##} along {along:0.##} extents {string.Join(", ", children.Select((c, i) => $"{c.Name}=({extents[i].W:0.##},{extents[i].H:0.##})"))}");
         double factor;
         if (node.Param("fallback") == "2D")
         {
