@@ -891,7 +891,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
         }
 
-        if (data.Element(Ns.C + "chart")?.Attribute(Ns.R + "id") is { } chartId
+        if ((data.Element(Ns.C + "chart") ?? data.Element(Charts.ChartExModel.Cx + "chart"))?.Attribute(Ns.R + "id") is { } chartId
             && slide.Presentation.Package.Relationship(part, chartId.Value) is { External: false } chartRel)
         {
             var (x, y, w, h, _, _, _) = ReadTransform(xfrm);

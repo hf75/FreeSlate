@@ -43,7 +43,8 @@ public static class MarkupCompatibility
             var chosen = alternate.Elements(Mc + "Choice").FirstOrDefault(IsSupported)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsEquation)
-                         ?? alternate.Element(Mc + "Fallback");
+                         ?? alternate.Element(Mc + "Fallback")
+                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsChartEx);
             if (chosen == null)
             {
                 alternate.Remove();
@@ -101,6 +102,19 @@ public static class MarkupCompatibility
         var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns && (Supported.Contains(ns.NamespaceName) || ns == a14))
                && choice.Descendants(a14 + "m").Any() && Equations.Equation.Available;
+    }
+
+    /// <summary>
+    /// Office 2016 charts (catalog: chart.ex; Requires cx1, cx2 … for the chartex namespaces of their versions): drawn
+    /// natively where there is no fallback picture of them, which PowerPoint always writes.
+    /// </summary>
+    static bool IsChartEx(XElement choice)
+    {
+        var requires = ((string?)choice.Attribute("Requires") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return requires.All(prefix => choice.GetNamespaceOfPrefix(prefix) is { } ns
+                                      && (Supported.Contains(ns.NamespaceName) || ns.NamespaceName.StartsWith("http://schemas.microsoft.com/office/drawing/", StringComparison.Ordinal)
+                                          && ns.NamespaceName.EndsWith("/chartex", StringComparison.Ordinal)))
+               && choice.Descendants().Any(e => e.Name.LocalName == "graphicData" && (string?)e.Attribute("uri") == "http://schemas.microsoft.com/office/drawing/2014/chartex");
     }
 
     static bool IsSupported(XElement choice)

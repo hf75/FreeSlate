@@ -1781,8 +1781,17 @@ areas:
           region maps use the geography data cached in the file. Check whether mc:Fallback contains a usable picture.
         office: >-
           PowerPoint saves Office 2016 charts as mc:AlternateContent (Requires cx1/cx2) with a picture of the
-          chart in mc:Fallback, which is drawn (generated/charts-more slides 6 and 7: 98.5 %). Native layouts
-          for files without the picture are not implemented yet.
+          chart in mc:Fallback, which is drawn (generated/charts-more slides 6 and 7: 98.5 %). Files without the
+          picture get the chart laid out natively (the chartex Choice is taken only then): a classic frame built
+          from it (title, legend, axes) with layout rules measured on probe decks of 130 to 450 pt wide charts
+          (local chartex, chartex-p1 … p4, chartex-pareto: 96–99 %): the plot area 6 pt from the edges and 4.25 pt
+          below the title's line, axis labels 6.9 pt off it, category labels in a row, staggered up to 1.3 slots,
+          turned by −30° up to 1.65 and −60° up to 2.15 slots, else upright; legends packed in rows of at most 80 %
+          of the chart; histogram bins of Scott's width to two significant digits without axis headroom; waterfall
+          totals and connectors; funnels; Pareto lines on a percentage axis; box plots (exclusive or inclusive
+          quartiles, 1.5 IQR whiskers, outliers, means); squarified treemaps with overlapping or banner labels;
+          sunbursts sorted by size with radial, wrapped labels. Region maps are not drawn natively yet; long labels
+          are not truncated with an ellipsis as PowerPoint does in short charts.
 
   - id: smartart
     title: SmartArt

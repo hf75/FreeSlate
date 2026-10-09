@@ -104,6 +104,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         /// <summary>Legends with trendline entries give every entry a longer key (2.156 L, measured).</summary>
         public bool LongKeys { get; init; }
+
+        /// <summary>The legend of an Office 2016 chart, laid out and drawn with its own metrics (see ExLegend).</summary>
+        public bool Ex { get; init; }
     }
 
     sealed class AxisLayout
@@ -145,6 +148,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         /// <summary>A data table below the plot area shows the category labels instead of the axis.</summary>
         public bool InTable { get; set; }
 
+        /// <summary>How the labels of an Office 2016 chart's category axis fit (see ExLabels).</summary>
+        public ExLabelMode ExMode { get; set; }
+
         public double Map(double value) => Start + Scale.Fraction(value) * (End - Start);
 
         /// <summary>Category boundary <paramref name="i"/> (0 … n) along the axis.</summary>
@@ -172,7 +178,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     string Draw(double widthPt, double heightPt, double originXPx, double originYPx)
     {
-        if (!slide.Presentation.Package.Exists(chartPart) || ChartModel.Read(slide.Presentation.Load(chartPart)) is not { } read)
+        if (!slide.Presentation.Package.Exists(chartPart))
+            return "";
+        var document = slide.Presentation.Load(chartPart);
+        // Office 2016 charts are drawn in a classic chart frame (catalog: chart.ex).
+        if (ChartExModel.Read(document) is { } chartEx)
+            document = ClassicFrame(ex = chartEx);
+        if (ChartModel.Read(document) is not { } read)
             return "";
         model = read;
         plotOrder = model.Groups.SelectMany(g => g.Series).OrderBy(s => s.Order).Select((s, i) => (Series: s, Place: i))
@@ -218,7 +230,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     break;
             }
         }
-        var outer = new Box(left + PlotGap, top + PlotGap, Math.Max(0, right - left - 2 * PlotGap), Math.Max(0, bottom - top - 2 * PlotGap));
+        var outer = ex != null
+            ? ExOuterPlot(title, legend)
+            : new Box(left + PlotGap, top + PlotGap, Math.Max(0, right - left - 2 * PlotGap), Math.Max(0, bottom - top - 2 * PlotGap));
 
         var body = new StringBuilder();
         var pies = model.Groups.Where(g => g.IsPie).ToList();
@@ -237,8 +251,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         foreach (var surface in surfaces)
             body.Append(Surface(surface, outer));
         // A pie of pie or bar of pie lays its two plots out across the whole plot area.
-        foreach (var pie in pies)
-            body.Append(Pie(pie, PlotBox(outer, square: pie.Type != "ofPieChart")));
+        if (exPlot != null)
+            body.Append(exPlot(PlotBox(outer, square: ex?.Layout == "sunburst")));
+        else
+        {
+            foreach (var pie in pies)
+                body.Append(Pie(pie, PlotBox(outer, square: pie.Type != "ofPieChart")));
+        }
 
         svg.Append(body);
         svg.Append(dataLabels);
@@ -277,10 +296,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return layer;
     }
 
+    /// <summary>
+    /// The layers of a chart element's text: its own, the chart's txPr, the style part's, the defaults; in Office 2016
+    /// charts the style part's before the chart's (measured: a chart-wide size does not change their text).
+    /// </summary>
+    List<XElement?> Layers(XElement? own, string styleElement, XElement defaults)
+    {
+        var chart = DefRPr(model.ChartSpace.Element(Ns.C + "txPr"));
+        return ex != null ? [own, StyleLayer(styleElement), chart, defaults] : [own, chart, StyleLayer(styleElement), defaults];
+    }
+
     /// <summary>Text style of a chart element: its own txPr, the chart's txPr, the style part, then 10 pt defaults.</summary>
     TextStyle Style(XElement? txPr, string styleElement, double defaultSize = 10) =>
-        text.ChartStyle([DefRPr(txPr), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer(styleElement),
-            new XElement(Ns.A + "defRPr", new XAttribute("sz", (int)(defaultSize * 100)))]);
+        text.ChartStyle(Layers(DefRPr(txPr), styleElement, new XElement(Ns.A + "defRPr", new XAttribute("sz", (int)(defaultSize * 100)))));
 
     static double Width(string value, TextStyle style) =>
         style.Font.Data.LayoutWidth(value, style.Size, style.Kerning, style.LetterSpacing);
@@ -386,9 +414,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return null;
 
         var txPr = element?.Element(Ns.C + "txPr");
-        var layers = new List<XElement?> { DefRPr(txPr), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("title"),
-            new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")) };
-        var maxWidth = width * 0.8;
+        var layers = Layers(DefRPr(txPr), "title", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")));
+        // Office 2016 charts give their title the chart's width less its margins (measured: 115 pt in a 130 pt chart).
+        var maxWidth = ex != null ? width - 2 * ExMargin : width * 0.8;
         LaidOutText layout;
         TextStyle style;
         if (element?.Element(Ns.C + "tx")?.Element(Ns.C + "rich") is { } rich)
@@ -410,7 +438,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var lineHeight = LineHeight(style);
         var w = block.Width + 2 * TitlePaddingX;
         var h = Math.Max(1, layout.Lines.Count) * lineHeight + 2 * TitlePaddingY;
-        var box = new Box((width - w) / 2, EdgeGap, w, h);
+        var box = new Box((width - w) / 2, ex != null ? ExTitleTop - TitlePaddingY : EdgeGap, w, h);
         if (ManualPosition(element, w, h) is { } manual)
             box = manual;
         return new TitleLayout
@@ -516,8 +544,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // A point label's own rich text with formatted runs keeps their formatting, laid out like a title.
         LaidOutText? richLayout = null;
         if (rich != null && rich.Descendants(Ns.A + "rPr").Any(r => r.HasAttributes || r.HasElements))
-            richLayout = text.ChartRich(rich, [DefRPr(Child("txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("dataLabel"),
-                new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"))], maxWidth, wrap: true);
+            richLayout = text.ChartRich(rich, Layers(DefRPr(Child("txPr")), "dataLabel", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"))), maxWidth, wrap: true);
         return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, spec.Bubble, separator, Child("dLblPos").Str("val"),
             numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), style, Child("spPr"), insets, maxWidth,
             key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText, plotOrder.GetValueOrDefault(series), point, richLayout);
@@ -894,8 +921,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         if (axis.Deleted || axis.Title is not { } element)
             return null;
-        var layers = new List<XElement?> { DefRPr(element.Element(Ns.C + "txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("axisTitle"),
-            new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1")) };
+        var layers = Layers(DefRPr(element.Element(Ns.C + "txPr")), "axisTitle", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1")));
         var rich = element.Element(Ns.C + "tx")?.Element(Ns.C + "rich")
                    ?? new XElement(Ns.C + "rich", new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t",
                        culture.TwoLetterISOLanguageName == "de" ? "Achsentitel" : "Axis Title"))));
@@ -1013,6 +1039,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         if (entries.Count == 0)
             return null;
+        if (ex != null)
+            return ExLegend(element, style, entries, title);
 
         var position = ChartModel.Val(element, "legendPos") ?? "r";
         var lineHeight = LineHeight(style);
@@ -1093,6 +1121,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             var left = legend.Box.X + x;
             var center = legend.Box.Y + rowCenter;
+            if (legend.Ex)
+            {
+                svg.Append(ExLegendEntry(entry, style, left, center));
+                continue;
+            }
             var baseline = CenteredBaseline(style, center);
             // Key geometry in line heights from the entry's left edge: line keys, square keys, or the longer keys
             // of legends with trendlines.
@@ -1369,7 +1402,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 }
                 break;
             }
-            var next = InnerPlot(outer, axes, plot, table, ManualOuterPlot() != null);
+            var next = ex != null
+                ? ExInnerPlot(outer, axes, legend is { Position: "t", Overlay: false })
+                : InnerPlot(outer, axes, plot, table, ManualOuterPlot() != null);
             if (Math.Abs(next.W - plot.W) < 0.01 && Math.Abs(next.H - plot.H) < 0.01)
             {
                 plot = next;
@@ -1425,11 +1460,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var series in group.Series)
                 svg.Append(Part(series, -1, Trendlines(group, series, frame, plot)));
         }
+        // The plot of an Office 2016 chart, laid out on its frame's axes.
+        if (exAxisPlot != null)
+            svg.Append(exAxisPlot(axes, plot));
 
         foreach (var layout in axes.Where(a => a.Visible))
             svg.Append(AxisLine(layout, axes, plot));
         foreach (var layout in axes.Where(a => a.HasLabels))
-            svg.Append(AxisLabels(layout, axes, plot));
+            svg.Append(ex != null ? ExAxisLabels(layout, plot) : AxisLabels(layout, axes, plot));
         if (table != null)
             svg.Append(DrawDataTable(table, plot));
         foreach (var (layout, axisTitle) in titles)
@@ -1715,7 +1753,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size
             : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
-        layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent);
+        // Histograms of Office 2016 charts end at the first major unit past their largest bin (measured: 24 on 0 … 25).
+        layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: ex?.Layout != "clusteredColumn");
 
         // Bubbles have to fit: the data range grows by each bubble's radius in axis units until the scale settles.
         var bubbles = layout.Groups.Where(g => g.IsBubble).ToList();
@@ -2853,8 +2892,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 paragraphs.Add(new XElement(Ns.A + "p", trend.Equation.Select(t => Run(t.Text, t.Superscript))));
             if (showR2)
                 paragraphs.Add(new XElement(Ns.A + "p", Run("R", false), Run("2", true), Run(" = " + Number(trend.RSquared!.Value), false)));
-            var layers = new List<XElement?> { DefRPr(label?.Element(Ns.C + "txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("trendlineLabel"),
-                new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000")) };
+            var layers = Layers(DefRPr(label?.Element(Ns.C + "txPr")), "trendlineLabel", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000")));
             var layout = text.ChartRich(new XElement(Ns.C + "rich", paragraphs), layers, width, wrap: false);
             var style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
             var lineHeight = LineHeight(style);
