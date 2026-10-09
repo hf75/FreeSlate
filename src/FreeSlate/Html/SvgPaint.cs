@@ -12,10 +12,12 @@ public sealed class SvgPaint
     public string NewId(string prefix) => $"{prefix}{++nextId}";
 
     /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
-    public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0, (double X, double Y) origin = default) => fill switch
+    /// <param name="outline">The shape's outline as path data in the box, for gradients that follow it (path="shape").</param>
+    public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0, (double X, double Y) origin = default,
+        string? outline = null) => fill switch
     {
         SolidFill s => Color("fill", s.Color),
-        GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation)})\"",
+        GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation, outline)})\"",
         PatternFill p => $" fill=\"url(#{Pattern(p, defs, origin)})\"",
         PictureFill p => $" fill=\"url(#{Picture(p, w, h, defs)})\"",
         SlideFill { Fill: SolidFill s } => Color("fill", s.Color),
@@ -135,7 +137,7 @@ public sealed class SvgPaint
         _ => 0.35,
     };
 
-    string Gradient(GradientFill g, double w, double h, StringBuilder defs, double shapeRotation)
+    string Gradient(GradientFill g, double w, double h, StringBuilder defs, double shapeRotation, string? outline = null)
     {
         var id = NewId("g");
         var stops = StopMarkup(PowerPointStops(g.Stops, g.Bell));
@@ -164,6 +166,8 @@ public sealed class SvgPaint
 
         var (fl, ft, fr, fb) = g.FocusRect;
         var (tl, tt, tr, tb) = g.TileRect;
+        if (g.Path == "shape" && !string.IsNullOrEmpty(outline))
+            return ShapeGradient(g, id, w, h, outline, defs);
         if (g.Path is "rect" or "shape")
             return RectGradient(g, id, w, h, defs);
 
@@ -209,6 +213,59 @@ public sealed class SvgPaint
             sb.Append($"<rect x=\"{Units.Css(focus.L)}\" y=\"{Units.Css(focus.T)}\" width=\"{Units.Css(focus.R - focus.L)}\" height=\"{Units.Css(focus.B - focus.T)}\"{Color("fill", inner)}/>");
         defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
         return id;
+    }
+
+    /// <summary>
+    /// A path gradient that follows the shape (path="shape", catalog: fill.gradient): the shape's outline repeated in
+    /// bands, each the box mapped onto a rectangle between the tile rectangle (offset 1) and the focus rectangle
+    /// (offset 0) and filled with the gradient's color there (measured: concentric stars, triangles, hearts and arrows
+    /// about the focus, not rectangles).
+    /// </summary>
+    string ShapeGradient(GradientFill g, string id, double w, double h, string outline, StringBuilder defs)
+    {
+        var stops = PowerPointStops(g.Stops, g.Bell);
+        var (fl, ft, fr, fb) = g.FocusRect;
+        var (tl, tt, tr, tb) = g.TileRect;
+        var focus = (L: w * fl, T: h * ft, R: w * (1 - fr), B: h * (1 - fb));
+        var tile = (L: w * tl, T: h * tt, R: w * (1 - tr), B: h * (1 - tb));
+        var pathId = NewId("gp");
+        defs.Append($"<path id=\"{pathId}\" d=\"{outline}\"/>");
+        var sb = new StringBuilder();
+        sb.Append($"<rect x=\"-1\" y=\"-1\" width=\"{Units.Css(w + 2)}\" height=\"{Units.Css(h + 2)}\"{Color("fill", stops[^1].Color)}/>");
+        const int Bands = 64;
+        void Band(double t, RgbColor color)
+        {
+            var (l, top) = (focus.L + (tile.L - focus.L) * t, focus.T + (tile.T - focus.T) * t);
+            var (r, b) = (focus.R + (tile.R - focus.R) * t, focus.B + (tile.B - focus.B) * t);
+            var (sx, sy) = ((r - l) / Math.Max(w, 1e-9), (b - top) / Math.Max(h, 1e-9));
+            if (sx > 1e-6 && sy > 1e-6)
+                sb.Append($"<use href=\"#{pathId}\" transform=\"matrix({Units.Css4(sx)} 0 0 {Units.Css4(sy)} {Units.Css(l)} {Units.Css(top)})\"{Color("fill", color)}/>");
+        }
+        for (var k = Bands; k >= 1; k--)
+            Band((double)k / Bands, ColorAt(stops, (k - 0.5) / Bands));
+        Band(0, stops[0].Color);
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
+        return id;
+    }
+
+    /// <summary>The color of sorted stops at a position, interpolated in sRGB between its neighbors.</summary>
+    static RgbColor ColorAt(List<GradientStop> stops, double position)
+    {
+        if (position <= stops[0].Position)
+            return stops[0].Color;
+        for (var i = 1; i < stops.Count; i++)
+        {
+            if (position <= stops[i].Position)
+            {
+                var span = stops[i].Position - stops[i - 1].Position;
+                if (span <= 1e-9)
+                    return stops[i].Color;
+                var (a, b, t) = (stops[i - 1].Color, stops[i].Color, (position - stops[i - 1].Position) / span);
+                // Like the browser between gradient stops (measured: PowerPoint's path gradients mix in sRGB too).
+                return new RgbColor(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t, a.A + (b.A - a.A) * t);
+            }
+        }
+        return stops[^1].Color;
     }
 
     static string StopMarkup(IEnumerable<GradientStop> stops)

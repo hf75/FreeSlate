@@ -521,10 +521,14 @@ areas:
           paths map to radial gradients and transforms, path="shape" needs an approximation. Browsers interpolate in
           sRGB, so the engine adds intermediate stops computed in linear light.
         office: >-
-          Measured with gradient strips and PowerPoint's own EMF export: a two-color gradient (stops at 0 and 1)
-          and a symmetric three-color gradient (A, B, A) use a GDI+ sigma bell blend (normal distribution CDF,
-          sigma 0.25, normalized to 0 to 1) mixed in linear light; all other gradients interpolate linearly in sRGB.
-          Rectangular path gradients are concentric rectangles from fillToRect to tileRect.
+          Measured with gradient strips and PowerPoint's own EMF export: a two-color gradient (stops at 0 and
+          1) and a symmetric three-color gradient (A, B, A) use a GDI+ sigma bell blend (normal distribution
+          CDF, sigma 0.25, normalized to 0 to 1) mixed in linear light; all other gradients interpolate
+          linearly in sRGB. Rectangular path gradients are concentric rectangles from fillToRect to tileRect.
+          Path gradients that follow the shape (path=shape) repeat the shape's filled outline in bands scaled
+          from the tile rectangle to the focus rectangle, mixed in sRGB (measured with local/pathgrad:
+          concentric ellipses, stars, triangles, hearts, parallelograms); PowerPoint draws some presets
+          circular instead (right arrow, smiley face), which is not reproduced.
 
       - id: fill.pattern
         title: Pattern fills

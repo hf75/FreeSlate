@@ -197,6 +197,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var lastFilled = geometry.Paths.FindLastIndex(p => p.Fill != "none");
         var strokesLast = outline is { Visible: true } && geometry.Paths.Take(Math.Max(0, lastFilled)).Any(p => p.Stroke);
         var strokes = new StringBuilder();
+        // Gradients that follow the shape (path="shape") repeat its filled outline.
+        var outlineData = string.Concat(geometry.Paths.Where(p => p.Fill != "none").Select(p => p.Data));
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
@@ -211,7 +213,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
                 var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
-                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)} stroke=\"none\"{crisp}/>");
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
                 if (stroke != " stroke=\"none\"")
                     strokeTarget.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
@@ -219,13 +221,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (strokesLast)
             {
                 if (pathFill is not NoFill)
-                    paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+                    paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)} stroke=\"none\"{crisp}/>");
                 if (stroke != " stroke=\"none\"")
                     strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else
             {
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin)}{stroke}{crisp}/>");
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)}{stroke}{crisp}/>");
             }
             if (compound)
                 strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
