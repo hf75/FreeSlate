@@ -231,7 +231,14 @@ public static class Constraints
             else if (constraint.Attribute("val") == null)
             {
                 // A constraint without a value or reference only gives a value nothing else sets: 0 (measured: process3's
-                // text node keeps the height its grandparent gives it; list1's text node has no top margin).
+                // text node keeps the height its grandparent gives it; list1's text node has no top margin) — unless an
+                // earlier constraint of the same list gives the value, which it then overrides (measured: LinedList's
+                // lines, h of every node, then h of the lines without a value, as thin as 0).
+                if (op != "equ" && EarlierInList(owner, constraint, target, type))
+                {
+                    target.Values[type] = 0;
+                    continue;
+                }
                 if (op == "equ" || target.Values.ContainsKey(type))
                     continue;
                 // Nor where another constraint gives one, an ancestor's or the node's own bound (measured:
@@ -326,6 +333,22 @@ public static class Constraints
             return Unplaced(owner, (string?)constraint.Attribute("refForName"), refType, depth + 1) is { } chained ? chained * fact : null;
         }
         return null;
+    }
+
+    /// <summary>Whether a constraint of the list before the given one gives a target's value of a type.</summary>
+    static bool EarlierInList(LayoutNode owner, XElement constraint, LayoutNode target, string type)
+    {
+        foreach (var earlier in owner.Constraints)
+        {
+            if (earlier == constraint)
+                return false;
+            if ((string?)earlier.Attribute("type") != type || Bound(earlier)
+                || earlier.Attribute("val") == null && (string?)earlier.Attribute("refType") is null or "" or "none")
+                continue;
+            if (Targets(owner, (string?)earlier.Attribute("for"), (string?)earlier.Attribute("forName"), (string?)earlier.Attribute("ptType")).Contains(target))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>Whether only bounds give a node's value of a type: no ancestor and no own constraint sets it.</summary>
