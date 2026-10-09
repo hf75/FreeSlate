@@ -23,7 +23,14 @@ static class Fitting
         var nodes = root.Descendants().Prepend(root).Where(n => n.Text.Count > 0 && n.AlgorithmType == "tx").ToList();
         var changed = false;
         foreach (var node in nodes)
+        {
+            var font = Font(node);
             changed |= FitNode(node, measure, pins);
+            // A smaller font changes the text of the nodes that take their size from it: they are checked again in the
+            // next round, laid out with it, before they grow.
+            if (Font(node) < font - 1e-6)
+                break;
+        }
         foreach (var group in nodes.GroupBy(n => n.Name))
         {
             var smallest = group.Min(Font);

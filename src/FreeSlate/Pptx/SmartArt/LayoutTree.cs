@@ -62,6 +62,9 @@ public sealed class LayoutNode(XElement definition, DataPoint point, LayoutNode?
     /// <summary>The factor the parent's algorithm scaled the node's constraint size by (lin and snake shrink to fit).</summary>
     public double Scale { get; set; } = 1;
 
+    /// <summary>Whether the layout has given the node its box in this run (references to it then see that size).</summary>
+    public bool Placed { get; set; }
+
     /// <summary>Notes of the layout for diagnostics (text fitting).</summary>
     public string Note { get; set; } = "";
 

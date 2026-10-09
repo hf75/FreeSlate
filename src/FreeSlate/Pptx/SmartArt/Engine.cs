@@ -48,6 +48,7 @@ public static class Engine
             node.Values.Clear();
             node.Rotation = 0;
             node.Scale = 1;
+            node.Placed = false;
             (node.X, node.Y, node.W, node.H) = (0, 0, 0, 0);
         }
         root.Values["w"] = w;
@@ -87,6 +88,7 @@ public static class Engine
             }
         }
         (node.X, node.Y, node.W, node.H) = (x, y, w, h);
+        node.Placed = true;
         node.Values["w"] = w;
         node.Values["h"] = h;
         Constraints.EvaluateList(node, pins);
@@ -133,8 +135,17 @@ public static class Engine
     /// <summary>The composite algorithm: the children where their values put them in the node's box.</summary>
     static void Composite(LayoutNode node, Pins pins)
     {
+        var first = true;
         foreach (var child in node.Children.Where(c => c.AlgorithmType != "conn"))
         {
+            // Values that refer to the size of a node placed meanwhile follow its laid-out size (see
+            // Constraints.Referenced): the list is evaluated again before each further child.
+            if (!first)
+            {
+                Constraints.EvaluateList(node, pins);
+                Constraints.EvaluateOwn(child, pins);
+            }
+            first = false;
             var (cx, cy, cw, ch) = ChildRect(child, node.W, node.H);
             Place(child, node.X + cx, node.Y + cy, cw, ch, pins);
         }

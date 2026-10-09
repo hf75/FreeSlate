@@ -192,7 +192,7 @@ public static class Constraints
                 // A reference among the targets' peers refers to the same data point where there is one (the node's own
                 // value for each of several instances), else to the first.
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
-                value = reference != null && Get(reference, refType) is { } referenced ? referenced * fact : null;
+                value = reference != null && Referenced(reference, refType, owner) is { } referenced ? referenced * fact : null;
             }
             else if (constraint.Attribute("val") == null)
             {
@@ -260,6 +260,19 @@ public static class Constraints
             }
         }
         return bound;
+    }
+
+    /// <summary>
+    /// The value a constraint refers to: the reference's laid-out width or height once the layout has placed it (other
+    /// than the declaring node, whose box is being given), else its value (measured: hierarchy5's background columns
+    /// 1.2 times as wide as its first level's shapes as the fitted tree draws them; process3's description below its
+    /// title's height after the title's bound).
+    /// </summary>
+    static double? Referenced(LayoutNode reference, string type, LayoutNode owner)
+    {
+        if (reference.Placed && reference != owner && type is "w" or "h")
+            return type == "w" ? reference.W : reference.H;
+        return Get(reference, type);
     }
 
     /// <summary>A value of a node: set by a constraint, or derived (r = l + w, ctrX = l + w / 2 …).</summary>
