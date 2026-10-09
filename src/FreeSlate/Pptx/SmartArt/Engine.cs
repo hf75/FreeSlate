@@ -601,9 +601,10 @@ public static class Engine
 
     /// <summary>
     /// Applies a lin node's rules on its children's length along the line (w on a horizontal line) while they do not
-    /// fit it, in order: each lowers its targets' value toward its limit (val, or fact times the value) by halving the
-    /// step, up to twelve times, until the children fit with less than a point to spare, keeping the largest value
-    /// that fits; the values that follow it are evaluated again (measured: hProcess3's columns, w toward 0, end at
+    /// fit it, in order: each lowers its targets' value toward its limit (val, or fact times what the value refers to,
+    /// see <see cref="Constraints.Reference(LayoutNode, LayoutNode, string)"/>) by halving the step, up to twelve
+    /// times, until the children fit with less than a point to spare, keeping the largest value that fits; the values
+    /// that follow it are evaluated again (measured: hProcess3's columns, w toward 0, end at
     /// 987/4096 of their width with 0.6 pt to spare, process3's at 279/1024 with 0.83 pt). The values are pinned for the
     /// children's layout (<paramref name="ruled"/>); the children's extents with them.
     /// </summary>
@@ -624,8 +625,8 @@ public static class Engine
             var starts = targets.Select(t => Finite(t, type)).ToList();
             if (targets.Count == 0 || starts.Any(s => s == null))
                 continue;
-            var limits = starts.Select(s => Number((string?)rule.Attribute("val")) is { } v && double.IsFinite(v) ? v
-                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * s!.Value : double.NaN).ToList();
+            var limits = starts.Select((s, i) => Number((string?)rule.Attribute("val")) is { } v && double.IsFinite(v) ? v
+                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * (Constraints.Reference(node, targets[i], type) ?? s!.Value) : double.NaN).ToList();
             if (limits.Any(l => !double.IsFinite(l)) || limits.Select((l, i) => l >= starts[i]!.Value).All(b => b))
                 continue;
             void Set(double share)
@@ -879,7 +880,8 @@ public static class Engine
 
     /// <summary>
     /// Applies a snake node's rules on its children's size while they do not fit it at their own size, in order: each
-    /// lowers its targets' value from where it is toward its limit (val, or fact times the value) in 32nds of the way,
+    /// lowers its targets' value from where it is toward its limit (val, or fact times what the value refers to:
+    /// radial5's nodes, 1.25 of the middle circle, a rule of fact 1 takes to 1 of it) in 32nds of the way,
     /// taking the first that fits (measured: MeetTheTeamCard's cards at 12/32 of the way from 50 mm to the row's width,
     /// MeetTheTeam's at 2/32; AccentedPicture's text widths grow the same way), the values that follow it evaluated
     /// again.
@@ -896,8 +898,8 @@ public static class Engine
             var starts = targets.Select(t => Finite(t, type)).ToList();
             if (targets.Count == 0 || starts.Any(v => v == null))
                 continue;
-            var limits = starts.Select(v => Number((string?)rule.Attribute("val")) is { } l && double.IsFinite(l) ? l
-                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * v!.Value : double.NaN).ToList();
+            var limits = starts.Select((v, i) => Number((string?)rule.Attribute("val")) is { } l && double.IsFinite(l) ? l
+                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * (Constraints.Reference(node, targets[i], type) ?? v!.Value) : double.NaN).ToList();
             if (limits.Any(l => !double.IsFinite(l)) || limits.Select((l, i) => l >= starts[i]!.Value).All(b => b))
                 continue;
             for (var step = 31; step >= 0; step--)

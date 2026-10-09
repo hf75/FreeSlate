@@ -464,6 +464,26 @@ public static class Constraints
         return null;
     }
 
+    /// <summary>
+    /// The value the constraint giving a node a value refers to, before its factor: the last of an owner's (an ancestor
+    /// whose rule applies to the node) that targets it, else the node's own; null where it refers to none (measured:
+    /// radial5's nodes, w 1.25 of the middle circle's, a rule taking them to 1, 0.9 … of it as they grow more).
+    /// </summary>
+    public static double? Reference(LayoutNode owner, LayoutNode node, string type)
+    {
+        foreach (var constraint in Enumerable.Reverse(owner.Constraints))
+        {
+            if (Bound(constraint) || (string?)constraint.Attribute("type") != type
+                || (string?)constraint.Attribute("refType") is not { Length: > 0 } refType || refType == "none"
+                || !Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(node))
+                continue;
+            var references = Targets(owner, (string?)constraint.Attribute("refFor"), (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType"));
+            var reference = references.FirstOrDefault(r => r.Point == node.Point) ?? references.FirstOrDefault();
+            return reference != null ? Get(reference, refType) : null;
+        }
+        return Reference(node, type);
+    }
+
     /// <summary>A value of a node: set by a constraint, or derived (r = l + w, ctrX = l + w / 2 …).</summary>
     public static double? Get(LayoutNode node, string type)
     {
