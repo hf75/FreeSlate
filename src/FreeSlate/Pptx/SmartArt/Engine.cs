@@ -938,12 +938,14 @@ public static class Engine
         var span = Number(node.Param("spanAng")) ?? 360;
         var center = node.Param("ctrShpMap") == "fNode" && cells.Count > 1 ? cells[0] : null;
         var ring = center != null ? cells.Skip(1).ToList() : cells;
-        var extents = cells.ToDictionary(c => c, Extent);
         var n = ring.Count;
         var full = Math.Abs(Math.Abs(span) - 360) < 1e-9;
         var step = full ? span / n : n > 1 ? span / (n - 1) : 0;
         var alongPath = node.Param("rotPath") == "alongPath";
         static (double X, double Y) On(double degrees) => (Math.Sin(degrees * Math.PI / 180), -Math.Cos(degrees * Math.PI / 180));
+        Dictionary<LayoutNode, (double X, double Y, double W, double H)> extents = [];
+        var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
+        double radius = 0, minX = 0, minY = 0, bw = 0, bh = 0, factor = 1;
         // How far a cell's outline is from its center toward a direction (turned with it along the path).
         double Exit(LayoutNode cell, double ux, double uy, double angle)
         {
@@ -957,59 +959,74 @@ public static class Engine
                 return a * b / Math.Max(Math.Sqrt(b * ux * b * ux + a * uy * a * uy), 1e-12);
             return Math.Min(Math.Abs(ux) > 1e-12 ? a / Math.Abs(ux) : double.MaxValue, Math.Abs(uy) > 1e-12 ? b / Math.Abs(uy) : double.MaxValue);
         }
-        // The circle as small as keeps each two neighbors' outlines sibSp apart along the line between their centers
-        // (measured: cycle7's boxes, half as high as wide, 0.65 of their width apart; cycle5's with its spacers; cycle2's
-        // circles), and the ring sp away from the middle one likewise.
-        var radius = 0.0;
-        for (var i = 0; n > 1 && Math.Abs(step) > 1e-9 && i < (full ? n : n - 1); i++)
+        // The arrangement from the cells' current values, and the factor that fits it to the node.
+        double Measure()
         {
-            var j = (i + 1) % n;
-            var (p, q) = (On(start + i * step), On(start + j * step));
-            var chord = Math.Sqrt((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y));
-            if (chord < 1e-9)
-                continue;
-            var (ux, uy) = ((q.X - p.X) / chord, (q.Y - p.Y) / chord);
-            var need = Exit(ring[i], ux, uy, start + i * step) + Exit(ring[j], -ux, -uy, start + j * step) + Value(node, "sibSp");
-            radius = Math.Max(radius, need / chord);
-        }
-        if (center != null)
-        {
+            extents = cells.ToDictionary(c => c, Extent);
+            // The circle as small as keeps each two neighbors' outlines sibSp apart along the line between their
+            // centers (measured: cycle7's boxes, half as high as wide, 0.65 of their width apart; cycle5's with its
+            // spacers; cycle2's circles), and the ring sp away from the middle one likewise.
+            radius = 0;
+            for (var i = 0; n > 1 && Math.Abs(step) > 1e-9 && i < (full ? n : n - 1); i++)
+            {
+                var j = (i + 1) % n;
+                var (p, q) = (On(start + i * step), On(start + j * step));
+                var chord = Math.Sqrt((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y));
+                if (chord < 1e-9)
+                    continue;
+                var (ux, uy) = ((q.X - p.X) / chord, (q.Y - p.Y) / chord);
+                var need = Exit(ring[i], ux, uy, start + i * step) + Exit(ring[j], -ux, -uy, start + j * step) + Value(node, "sibSp");
+                radius = Math.Max(radius, need / chord);
+            }
+            if (center != null)
+            {
+                for (var i = 0; i < n; i++)
+                {
+                    var (ux, uy) = On(start + i * step);
+                    radius = Math.Max(radius, Exit(center, ux, uy, 0) + Exit(ring[i], -ux, -uy, start + i * step) + Value(node, "sp"));
+                }
+            }
+            // The cells' centers about the circle's center.
+            places.Clear();
+            if (center != null)
+                places[center] = (0, 0, 0);
             for (var i = 0; i < n; i++)
             {
-                var (ux, uy) = On(start + i * step);
-                radius = Math.Max(radius, Exit(center, ux, uy, 0) + Exit(ring[i], -ux, -uy, start + i * step) + Value(node, "sp"));
+                var angle = start + i * step;
+                var radians = angle * Math.PI / 180;
+                places[ring[i]] = (radius * Math.Sin(radians), -radius * Math.Cos(radians), angle);
             }
+            double maxX = double.MinValue, maxY = double.MinValue;
+            (minX, minY) = (double.MaxValue, double.MaxValue);
+            foreach (var (cell, (px, py, _)) in places)
+            {
+                var e = extents[cell];
+                minX = Math.Min(minX, px - e.W / 2);
+                maxX = Math.Max(maxX, px + e.W / 2);
+                minY = Math.Min(minY, py - e.H / 2);
+                maxY = Math.Max(maxY, py + e.H / 2);
+            }
+            // Curved connectors run along the circle; their arcs' circle (0.65 of their thickness beyond it) takes room too.
+            var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve" && c.Param("dim") != "1D").ToList();
+            if (arcs.Count > 0 && radius > 0)
+            {
+                var reach = radius + 0.65 * arcs.Max(c => Value(c, "h"));
+                (minX, maxX, minY, maxY) = (Math.Min(minX, -reach), Math.Max(maxX, reach), Math.Min(minY, -reach), Math.Max(maxY, reach));
+            }
+            (bw, bh) = (maxX - minX, maxY - minY);
+            factor = Math.Min(bw > 0 ? node.W / bw : 1, bh > 0 ? node.H / bh : 1);
+            if (!double.IsFinite(factor) || factor <= 0)
+                factor = 1;
+            return factor;
         }
-        // The cells' centers about the circle's center, then the arrangement fitted to the node.
-        var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
-        if (center != null)
-            places[center] = (0, 0, 0);
-        for (var i = 0; i < n; i++)
+        // Where it does not fit, the node's rules first (in 32nds, as a snake's; measured: radial4's middle circle,
+        // w toward 0.27 of its value, at 30/32 of the way for two nodes and at the limit for one), then it shrinks.
+        var ruled = new Dictionary<(LayoutNode, string), double?>();
+        if (Measure() < 1 - 1e-9 && node.Rules.Count > 0)
         {
-            var angle = start + i * step;
-            var radians = angle * Math.PI / 180;
-            places[ring[i]] = (radius * Math.Sin(radians), -radius * Math.Cos(radians), angle);
+            SnakeRules(node, pins, ruled, () => Measure() >= 1 - 1e-9);
+            Measure();
         }
-        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
-        foreach (var (cell, (px, py, _)) in places)
-        {
-            var e = extents[cell];
-            minX = Math.Min(minX, px - e.W / 2);
-            maxX = Math.Max(maxX, px + e.W / 2);
-            minY = Math.Min(minY, py - e.H / 2);
-            maxY = Math.Max(maxY, py + e.H / 2);
-        }
-        // Curved connectors run along the circle; their arcs' circle (0.65 of their thickness beyond it) takes room too.
-        var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve" && c.Param("dim") != "1D").ToList();
-        if (arcs.Count > 0 && radius > 0)
-        {
-            var reach = radius + 0.65 * arcs.Max(c => Value(c, "h"));
-            (minX, maxX, minY, maxY) = (Math.Min(minX, -reach), Math.Max(maxX, reach), Math.Min(minY, -reach), Math.Max(maxY, reach));
-        }
-        var (bw, bh) = (maxX - minX, maxY - minY);
-        var factor = Math.Min(bw > 0 ? node.W / bw : 1, bh > 0 ? node.H / bh : 1);
-        if (!double.IsFinite(factor) || factor <= 0)
-            factor = 1;
         var (ox, oy) = (node.X + (node.W - bw * factor) / 2 - minX * factor, node.Y + (node.H - bh * factor) / 2 - minY * factor);
         foreach (var (cell, (px, py, angle)) in places)
         {
@@ -1026,6 +1043,13 @@ public static class Engine
             connector.Values["arcY"] = oy;
             connector.Values["arcR"] = radius * factor;
             connector.Values["arcDir"] = Math.Sign(span == 0 ? 1 : span);
+        }
+        foreach (var ((child, type), before) in ruled)
+        {
+            if (before is { } value)
+                pins.Set(child, type, value);
+            else
+                pins.Remove(child, type);
         }
     }
 
@@ -1354,7 +1378,9 @@ public static class Engine
         if (length < 1e-9)
             return;
         var (ux, uy) = (dx / length, dy / length);
-        var (ta, tb) = (Edge(start, ux, uy), Edge(end, -ux, -uy));
+        // From the nodes' outlines, or from a center the points name (begPts, endPts ctr; measured: radial4's arrows
+        // from the middle circle to its nodes' centers).
+        var (ta, tb) = (connector.Param("begPts") == "ctr" ? 0 : Edge(start, ux, uy), connector.Param("endPts") == "ctr" ? 0 : Edge(end, -ux, -uy));
         var distance = Math.Max(0, length - ta - tb);
         // The distance its pads and length refer to: its own, or the one an equ constraint gives it.
         var reference = connector.Values.TryGetValue("connDistEqu", out var equal) ? equal : distance;
