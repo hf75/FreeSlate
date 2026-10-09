@@ -1,6 +1,8 @@
 using System.Xml.Linq;
 using FreeSlate.Drawing;
+using FreeSlate.Fonts;
 using FreeSlate.Opc;
+using FreeSlate.Text;
 
 namespace FreeSlate.Pptx;
 
@@ -11,13 +13,17 @@ public sealed class PresentationContext : IDisposable
     readonly Dictionary<string, Theme> themes = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, string?> images = new(StringComparer.OrdinalIgnoreCase);
 
-    public PresentationContext(OpcPackage package)
+    /// <param name="fonts">Where fonts are found; <see cref="FontLocator.Default"/> when null.</param>
+    /// <param name="embeddedFontsFirst">Use the presentation's embedded fonts even where the family is installed.</param>
+    public PresentationContext(OpcPackage package, FontLocator? fonts = null, bool embeddedFontsFirst = false)
     {
         Package = package;
         PresentationPart = package.FirstRelationship("/", "officeDocument")?.Target
                            ?? throw new InvalidDataException("No presentation part (officeDocument relationship) in the package.");
         Presentation = Load(PresentationPart);
         var root = Presentation.Root!;
+        FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts(root), embeddedFontsFirst);
+        Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
 
         var size = root.Element(Ns.P + "sldSz");
         SlideWidth = size.Long("cx") ?? 12192000;
@@ -62,6 +68,51 @@ public sealed class PresentationContext : IDisposable
 
     /// <summary>Font families of text the browser draws itself (not as glyph outlines), for font embedding.</summary>
     public HashSet<string> UsedFonts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The fonts available to this presentation: the installed ones and those it embeds.</summary>
+    public FontLocator FontLocator { get; }
+
+    /// <summary>Resolves typefaces to fonts, the presentation's embedded fonts included.</summary>
+    public FontResolver Fonts { get; }
+
+    /// <summary>
+    /// The fonts embedded in the presentation (p:embeddedFontLst, catalog: text.embeddedFonts), one face per style:
+    /// Embedded OpenType as PowerPoint writes it, or a plain TrueType/OpenType font; decoded when first used.
+    /// </summary>
+    List<FontFace> EmbeddedFonts(XElement root)
+    {
+        var faces = new List<FontFace>();
+        foreach (var font in root.Element(Ns.P + "embeddedFontLst")?.Elements(Ns.P + "embeddedFont") ?? [])
+        {
+            if (font.Element(Ns.P + "font")?.Str("typeface") is not { Length: > 0 } typeface)
+                continue;
+            foreach (var (style, bold, italic) in new[] { ("regular", false, false), ("bold", true, false), ("italic", false, true), ("boldItalic", true, true) })
+            {
+                if (font.Element(Ns.P + style)?.Attribute(Ns.R + "id")?.Value is not { } id
+                    || Package.Relationship(PresentationPart, id) is not { External: false } rel || !Package.Exists(rel.Target))
+                    continue;
+                var part = rel.Target;
+                faces.Add(new FontFace(typeface, bold, italic, $"embedded:{part}", System: false)
+                {
+                    Embedded = new Lazy<byte[]?>(() =>
+                    {
+                        try
+                        {
+                            var data = Package.ReadBytes(part);
+                            return data is [0, 1, 0, 0, ..] or [(byte)'O', (byte)'T', (byte)'T', (byte)'O', ..] or [(byte)'t', (byte)'r', (byte)'u', (byte)'e', ..]
+                                ? data
+                                : EmbeddedOpenType.Read(data).Font;
+                        }
+                        catch (InvalidDataException)
+                        {
+                            return null;
+                        }
+                    }),
+                });
+            }
+        }
+        return faces;
+    }
 
     /// <summary>Glyph outlines of the rendered text.</summary>
     public Html.GlyphCache Glyphs { get; } = new();

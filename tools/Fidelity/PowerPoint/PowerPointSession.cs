@@ -46,12 +46,16 @@ public sealed class PowerPointSession : IDisposable
         return presentation;
     }
 
-    public static void SaveAndClose(dynamic presentation, string path)
+    /// <param name="embedFonts">Embed the fonts the presentation uses (PowerPoint embeds the characters used, in all styles).</param>
+    public static void SaveAndClose(dynamic presentation, string path, bool embedFonts = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         if (File.Exists(path))
             File.Delete(path);
-        presentation.SaveAs(Path.GetFullPath(path), PpSaveAsOpenXmlPresentation);
+        if (embedFonts)
+            presentation.SaveAs(Path.GetFullPath(path), PpSaveAsOpenXmlPresentation, MsoTrue);
+        else
+            presentation.SaveAs(Path.GetFullPath(path), PpSaveAsOpenXmlPresentation);
         Close(presentation);
     }
 

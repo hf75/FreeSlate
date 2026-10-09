@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/text-fonts.pptx",
+  "sha256": "1919cd30f8dbb2ed8549dafb84e1af52ccfc1dd8bfb71945ebbc35c64fde474a",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 2
+}

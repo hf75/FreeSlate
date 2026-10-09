@@ -24,7 +24,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 0 | 6 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 11 |
 | [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 1 | 11 |
-| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 0 | 20 |
+| [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 0 | 21 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 0 | 3 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 1 | 19 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 1 | 3 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 0 | 4 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **3** | **141** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **3** | **142** |
 
 <a id="package"></a>
 
@@ -1275,7 +1275,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 | [List styles and the text style cascade](#text.styles) | P0 | ●●●●○ | done | 17 | 11 |
 | [Runs and character formatting](#text.runs) | P0 | ●●○○○ | done | 5 | 2 |
 | [Fonts per script](#text.fonts) | P0 | ●●●●○ | done | 4 | 4 |
-| [Embedded fonts](#text.embeddedFonts) | P1 | ●●●●○ | todo | 7 | 2 |
+| [Embedded fonts](#text.embeddedFonts) | P1 | ●●●●○ | done | 7 | 2 |
 | [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | done | 0 | 0 |
 | [Underlines](#text.underline) | P1 | ●●○○○ | done | 4 | 2 |
 | [Text effects](#text.effects) | P2 | ●●●●○ | done | 0 | 0 |
@@ -1434,9 +1434,11 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 ### Embedded fonts
 
-`text.embeddedFonts` · P1 · difficulty 4 · todo
+`text.embeddedFonts` · P1 · difficulty 4 · done
 
-**Rendering:** Convert the embedded font data to WOFF2 and load it with @font-face.
+**Rendering:** Decode the font parts back to TrueType with our own Embedded OpenType and MicroType Express decoder (EOT header, LZCOMP with its adaptive Huffman trees, Compact Table Format to glyf, loca, cvt, hdmx and VDMX); lay text out with them where the family is not installed and carry them in the HTML as @font-face.
+
+**Office behaviour:** PowerPoint stores every style of an embedded family (p:regular, p:bold, p:italic and p:boldItalic, also styles the presentation does not use) as a part of type application/x-fontdata: Embedded OpenType version 0x00020002 with the subset and compressed flags, without XOR. The subset keeps the glyph ids and holds the glyphs of the characters the presentation uses and of printable ASCII; the other glyphs are empty. A family that is installed is taken from the system. Decoded, the kept glyphs' outlines and programs, hmtx, cmap and hdmx equal the installed fonts and VDMX is byte for byte the same (14 faces of Georgia, Comic Sans MS, Consolas and Segoe Script); Chromium's font sanitizer accepts the rebuilt fonts. generated/text-fonts, converted with its embedded fonts in place of the installed ones, renders pixel for pixel like with the installed fonts (95.0 %, the usual gap of small text).
 
 **Elements (7):** [`p:bold`](../format/namespaces/p.md#pbold), [`p:boldItalic`](../format/namespaces/p.md#pbolditalic), [`p:embeddedFont`](../format/namespaces/p.md#pembeddedfont), [`p:embeddedFontLst`](../format/namespaces/p.md#pembeddedfontlst), [`p:font`](../format/namespaces/p.md#pfont), [`p:italic`](../format/namespaces/p.md#pitalic), [`p:regular`](../format/namespaces/p.md#pregular)
 

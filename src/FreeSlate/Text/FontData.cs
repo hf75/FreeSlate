@@ -26,12 +26,21 @@ public sealed class FontData : IDisposable
     readonly ConcurrentDictionary<uint, string> outlines = new();
 
     /// <param name="index">The face's place in a font collection (.ttc).</param>
-    public FontData(string path, string family, int index = 0)
+    public FontData(string path, string family, int index = 0) : this(File.ReadAllBytes(path), path, family, index, inMemory: false)
+    {
+    }
+
+    /// <summary>A font that exists in memory only (embedded in the presentation); <paramref name="name"/> stands for its path.</summary>
+    public FontData(byte[] data, string name, string family) : this(data, name, family, 0, inMemory: true)
+    {
+    }
+
+    FontData(byte[] data, string path, string family, int index, bool inMemory)
     {
         Path = path;
         Family = family;
         Index = index;
-        var data = File.ReadAllBytes(path);
+        memory = inMemory ? data : null;
         var offset = data.Length > 12 && data[0] == 't' && data[1] == 't' && data[2] == 'c' && data[3] == 'f'
             ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + 4 * index))
             : 0;
@@ -99,7 +108,7 @@ public sealed class FontData : IDisposable
         if (UnderlineThickness <= 0) (UnderlinePosition, UnderlineThickness) = (0.1, 0.05);
         if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
 
-        blob = Blob.FromFile(path);
+        blob = inMemory ? Blob.FromStream(new MemoryStream(data)) : Blob.FromFile(path);
         face = new Face(blob, index);
         font = new Font(face);
         font.SetScale(UnitsPerEm, UnitsPerEm);
@@ -107,12 +116,15 @@ public sealed class FontData : IDisposable
 
     readonly Dictionary<string, int> tableOffsets;
     readonly Dictionary<string, int> tableLengths = new();
+    readonly byte[]? memory;
 
     /// <summary>The bytes of a font table (read from the file again), or null when the font has none.</summary>
     public byte[]? Table(string tag)
     {
         if (!tableOffsets.TryGetValue(tag, out var offset) || !tableLengths.TryGetValue(tag, out var length))
             return null;
+        if (memory != null)
+            return memory.AsSpan(offset, length).ToArray();
         using var stream = File.OpenRead(Path);
         stream.Position = offset;
         var bytes = new byte[length];

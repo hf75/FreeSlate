@@ -26,7 +26,8 @@ FreeSlate.PptxConverter.ToFile("deck.pptx", "deck.html");
 
 The HTML is self-contained: all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
 A password-protected presentation needs its password (`ToFile("deck.pptx", "deck.html", password: "…")`); without
-it, or with a wrong one, `FreeSlate.Opc.PasswordException` says which.
+it, or with a wrong one, `FreeSlate.Opc.PasswordException` says which. Fonts embedded in the presentation are decoded
+and used where the family is not installed (`embeddedFontsFirst: true` uses them everywhere); the HTML carries them.
 
 ## Measuring fidelity
 

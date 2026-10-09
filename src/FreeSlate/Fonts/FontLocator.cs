@@ -9,19 +9,27 @@ public sealed record FontFace(string Family, bool Bold, bool Italic, string Path
     /// <summary>The family's names in other languages (theme fonts are often given as 游ゴシック, 맑은 고딕 …).</summary>
     public IReadOnlyList<string> Aliases { get; init; } = [];
 
+    /// <summary>
+    /// The font of a face that exists in memory only (a font embedded in the presentation, catalog: text.embeddedFonts),
+    /// decoded when first needed; null for font files and for embedded fonts that are damaged.
+    /// </summary>
+    public Lazy<byte[]?>? Embedded { get; init; }
+
     public bool Matches(string family) =>
         Family.Equals(family, StringComparison.OrdinalIgnoreCase) || Aliases.Any(a => a.Equals(family, StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>
 /// Finds font files: installed fonts (the browser finds those by name) and Office cloud fonts such as Aptos,
-/// which Office downloads to its own cache and which therefore have to be embedded (catalog: engine.fonts).
+/// which Office downloads to its own cache and which therefore have to be embedded (catalog: engine.fonts); with
+/// <see cref="With"/> also the fonts a presentation embeds.
 /// </summary>
 public sealed class FontLocator
 {
     public static FontLocator Default { get; } = new(SystemDirectories(), CloudDirectories());
 
     readonly Lazy<List<FontFace>> faces;
+    readonly bool embeddedFirst;
 
     public FontLocator(IEnumerable<string> systemDirectories, IEnumerable<string> cloudDirectories)
     {
@@ -30,15 +38,37 @@ public sealed class FontLocator
         faces = new Lazy<List<FontFace>>(() => Scan(system, true).Concat(Scan(cloud, false)).ToList());
     }
 
+    FontLocator(Lazy<List<FontFace>> faces, bool embeddedFirst)
+    {
+        this.faces = faces;
+        this.embeddedFirst = embeddedFirst;
+    }
+
+    /// <summary>
+    /// These fonts and a presentation's embedded ones (faces with <see cref="FontFace.Embedded"/>), which come after
+    /// the installed fonts, as in PowerPoint, or before them with <paramref name="embeddedFirst"/> (as on a computer
+    /// without those fonts).
+    /// </summary>
+    public FontLocator With(IReadOnlyCollection<FontFace> embedded, bool embeddedFirst = false) =>
+        embedded.Count == 0 && !embeddedFirst ? this : new(new Lazy<List<FontFace>>(() => faces.Value.Concat(embedded).ToList()), embeddedFirst);
+
     public bool IsInstalled(string family) => faces.Value.Any(f => f.System && f.Matches(family));
 
-    /// <summary>All known faces of a family, installed ones first.</summary>
+    /// <summary>All known faces of a family: installed ones first, then embedded ones, then cloud fonts.</summary>
     public IEnumerable<FontFace> Faces(string family) =>
-        faces.Value.Where(f => f.Matches(family)).OrderBy(f => f.System ? 0 : 1);
+        faces.Value.Where(f => f.Matches(family)).OrderBy(f => f.Embedded != null ? embeddedFirst ? -1 : 1 : f.System ? 0 : 2);
 
-    /// <summary>Faces of a family that are not installed but available as files (to be embedded).</summary>
-    public IEnumerable<FontFace> Embeddable(string family) =>
-        IsInstalled(family) ? [] : faces.Value.Where(f => !f.System && f.Matches(family));
+    /// <summary>
+    /// Faces of a family the HTML has to carry: the presentation's embedded fonts, else fonts that are not installed but
+    /// available as files.
+    /// </summary>
+    public IEnumerable<FontFace> Embeddable(string family)
+    {
+        var embedded = faces.Value.Where(f => f.Embedded != null && f.Matches(family)).ToList();
+        if (embedded.Count > 0)
+            return embedded;
+        return IsInstalled(family) ? [] : faces.Value.Where(f => !f.System && f.Matches(family));
+    }
 
     static IEnumerable<string> SystemDirectories()
     {

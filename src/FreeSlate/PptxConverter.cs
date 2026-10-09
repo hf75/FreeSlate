@@ -74,10 +74,13 @@ public static class PptxConverter
     });
 
     /// <summary>The HTML document of a presentation; a password-protected one needs its password.</summary>
+    /// <param name="embeddedFontsFirst">
+    /// Use the fonts embedded in the presentation even where the same family is installed (as on a computer without them).
+    /// </param>
     /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
-    public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null)
+    public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false)
     {
-        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password));
+        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst);
         var deck = new DeckInfo(context);
         var paint = new SvgPaint();
         var width = Units.ToPx(context.SlideWidth);
@@ -139,7 +142,7 @@ public static class PptxConverter
             if (value != null)
                 html.Append($"<meta name=\"{name}\" content=\"{WebUtility.HtmlEncode(value)}\">\n");
         }
-        html.Append("<style>\n").Append(FontFaces(context.UsedFonts, fonts ?? FontLocator.Default)).Append(Css).Append("\n</style>\n</head>\n<body>\n");
+        html.Append("<style>\n").Append(FontFaces(context.UsedFonts, context.FontLocator)).Append(Css).Append("\n</style>\n</head>\n<body>\n");
         html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"deck\">\n").Append(slides).Append("</main>\n");
         html.Append("<script type=\"application/json\" id=\"freeslate-data\">").Append(deck.Json(data)).Append("</script>\n");
@@ -148,13 +151,16 @@ public static class PptxConverter
         return html.ToString();
     }
 
-    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null)
+    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password));
+        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password, embeddedFontsFirst));
     }
 
-    /// <summary>@font-face rules for used fonts that the browser cannot find by name (e.g. Office cloud fonts).</summary>
+    /// <summary>
+    /// @font-face rules for used fonts that the browser cannot find by name: the fonts the presentation embeds
+    /// (catalog: text.embeddedFonts) and fonts that are not installed, such as Office cloud fonts.
+    /// </summary>
     static string FontFaces(IEnumerable<string> families, FontLocator fonts)
     {
         var css = new StringBuilder();
@@ -162,8 +168,11 @@ public static class PptxConverter
         {
             foreach (var face in fonts.Embeddable(family).DistinctBy(f => (f.Bold, f.Italic)))
             {
-                var data = Convert.ToBase64String(File.ReadAllBytes(face.Path));
-                var format = Path.GetExtension(face.Path).Equals(".otf", StringComparison.OrdinalIgnoreCase) ? "opentype" : "truetype";
+                var bytes = face.Embedded != null ? face.Embedded.Value : File.ReadAllBytes(face.Path);
+                if (bytes == null)
+                    continue;
+                var data = Convert.ToBase64String(bytes);
+                var format = bytes is [(byte)'O', (byte)'T', (byte)'T', (byte)'O', ..] ? "opentype" : "truetype";
                 css.Append($"@font-face{{font-family:'{family.Replace("'", "\\'")}';src:url(data:font/{format};base64,{data}) format('{format}');" +
                            $"font-weight:{(face.Bold ? 700 : 400)};font-style:{(face.Italic ? "italic" : "normal")}}}\n");
             }

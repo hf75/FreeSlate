@@ -64,6 +64,9 @@ switch (command)
         SmartArtCheck.Geometry(files, args.Contains("--verbose"), slideOnly);
         break;
     }
+    case "fonts":
+        EmbeddedFonts.Extract(decks);
+        break;
     case "animate":
         var animated = Animations.Run(decks);
         foreach (var r in animated)
@@ -90,6 +93,7 @@ switch (command)
               animate-reference [deck…]  sample PowerPoint's videos of animated slides (Windows, ffmpeg); --force
               transitions [deck…]  compare the player's slide transitions with PowerPoint's videos
               transitions-reference [deck…]  sample PowerPoint's videos of the transitions (Windows, ffmpeg); --force
+              fonts [deck…]        write the decks' embedded fonts as TrueType files to artifacts/fidelity/fonts
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
             """);

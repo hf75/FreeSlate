@@ -13,7 +13,7 @@ namespace FreeSlate.Pptx;
 /// </summary>
 public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 {
-    readonly TextRenderer text = new(slide, FreeSlate.Text.FontResolver.Default) { Paint = paint };
+    readonly TextRenderer text = new(slide, slide.Presentation.Fonts) { Paint = paint };
 
     /// <summary>
     /// The morph transition this slide takes part in (into it or out of it; byObject, byWord, byChar), or null: its

@@ -16,7 +16,10 @@ public sealed class FontResolver(FontLocator locator)
 {
     static readonly string[] Fallbacks = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
 
-    readonly ConcurrentDictionary<string, FontData> loaded = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Font files, shared by all resolvers; a presentation's embedded fonts stay with its resolver.</summary>
+    static readonly ConcurrentDictionary<string, FontData> Files = new(StringComparer.OrdinalIgnoreCase);
+
+    readonly ConcurrentDictionary<string, FontData> embedded = new(StringComparer.Ordinal);
     readonly ConcurrentDictionary<(string, bool, bool), ResolvedFont?> cache = new();
 
     public static FontResolver Default { get; } = new(FontLocator.Default);
@@ -47,12 +50,15 @@ public sealed class FontResolver(FontLocator locator)
 
     ResolvedFont? Find(string family, bool bold, bool italic) => cache.GetOrAdd((family, bold, italic), key =>
     {
-        var faces = locator.Faces(key.Item1).ToList();
+        // Embedded fonts that cannot be decoded are skipped.
+        var faces = locator.Faces(key.Item1).Where(f => f.Embedded == null || f.Embedded.Value != null).ToList();
         if (faces.Count == 0)
             return null;
         var exact = faces.FirstOrDefault(f => f.Bold == key.Item2 && f.Italic == key.Item3);
         var face = exact ?? faces.FirstOrDefault(f => !f.Bold && !f.Italic) ?? faces[0];
-        var data = loaded.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
+        var data = face.Embedded?.Value is { } bytes
+            ? embedded.GetOrAdd(face.Path, _ => new FontData(bytes, face.Path, face.Family))
+            : Files.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
         return new ResolvedFont(data, key.Item2 && !face.Bold, key.Item3 && !face.Italic);
     });
 }

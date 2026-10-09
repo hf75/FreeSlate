@@ -91,6 +91,7 @@ public static class CorpusGenerator
         ("transitions-2013", TransitionsDeck.Build2013, false),
         ("transitions-morph", TransitionsDeck.BuildMorph, false),
         ("math", MathDeck.Build, false),
+        ("text-fonts", EmbeddedFontsDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -123,6 +124,9 @@ public static class CorpusGenerator
         ["math"] = MathDeck.Patch,
     };
 
+    /// <summary>Decks saved with the fonts they use embedded (catalog: text.embeddedFonts).</summary>
+    static readonly HashSet<string> FontsEmbedded = ["text-fonts"];
+
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>
     static readonly HashSet<string> Resaved = ["sketched", "animations-charts", "math"];
 
@@ -136,7 +140,7 @@ public static class CorpusGenerator
             if (only.Count == 0 || only.Contains(name))
             {
                 var path = Path.Combine(outputDir, name + ".pptx");
-                Generate(session, path, build, window);
+                Generate(session, path, build, window, FontsEmbedded.Contains(name));
                 if (Patches.TryGetValue(name, out var patch))
                     patch(path);
                 if (Resaved.Contains(name))
@@ -233,13 +237,13 @@ public static class CorpusGenerator
         text.TextFrame2.TextRange.Font.Shadow.Visible = MsoTrue;
     }
 
-    static void Generate(PowerPointSession session, string path, Action<dynamic> build, bool window = false)
+    static void Generate(PowerPointSession session, string path, Action<dynamic> build, bool window = false, bool embedFonts = false)
     {
         var presentation = session.Create(window);
         presentation.PageSetup.SlideWidth = SlideWidth;
         presentation.PageSetup.SlideHeight = SlideHeight;
         build(presentation);
-        PowerPointSession.SaveAndClose(presentation, path);
+        PowerPointSession.SaveAndClose(presentation, path, embedFonts);
         Anonymize(path);
         Console.WriteLine($"  {Path.GetFileName(path)}");
     }

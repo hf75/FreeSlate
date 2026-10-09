@@ -38,7 +38,8 @@ public static class Pipeline
 
             var watch = Stopwatch.StartNew();
             var htmlPath = Path.Combine(dir, "index.html");
-            PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck));
+            // Fonts a deck embeds are used even where they are installed, as on a computer without them.
+            PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true);
             var convertTime = watch.ElapsedMilliseconds;
             var slides = File.ReadAllText(htmlPath).Split("<section class=\"slide\"").Length - 1;
             var url = new Uri(htmlPath).AbsoluteUri;
