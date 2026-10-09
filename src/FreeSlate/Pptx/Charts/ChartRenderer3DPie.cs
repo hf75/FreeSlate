@@ -112,6 +112,8 @@ public sealed partial class ChartRenderer
         }
     }
 
+    const double Pie3DLabelShare = 0.89;
+
     // The light of perspective charts (measured on pies): 0.4 ambient plus a diffuse light from the upper front at
     // 45° and slightly from the left, and a small white highlight on surfaces facing halfway between it and the eye.
     const double Ambient = 0.4, LightX = -0.06, LightY = 0.43, LightZ = -0.43;
@@ -177,7 +179,13 @@ public sealed partial class ChartRenderer
             foreach (var y in new[] { thickness / 2, -thickness / 2 })
                 volume.Add(camera.View(sin * reach, y * 1.025, cos * reach));
         }
-        camera.Fit(volume, outer, view.Perspective / 2);
+        // Data labels that may go outside leave the pie 89 % of its size (measured: 87 % in a 460 x 500 pt chart, 91 %
+        // in a 450 x 200 pt one, both with value labels).
+        var labelled = Enumerable.Range(0, series.Values.Count).Select(i => DataLabel(group, series, i))
+            .FirstOrDefault(l => l != null && (l.Position ?? "bestFit") is "bestFit" or "outEnd");
+        var share = labelled != null && PlotLayout() == null ? Pie3DLabelShare : 1;
+        var fitted = new Box(outer.X + outer.W * (1 - share) / 2, outer.Y + outer.H * (1 - share) / 2, outer.W * share, outer.H * share);
+        camera.Fit(volume, fitted, view.Perspective / 2);
         var eye = camera.Eye;
 
         // Which faces the eye sees: a face is visible when the eye lies on the side its outward normal points to.
@@ -296,6 +304,67 @@ public sealed partial class ChartRenderer
         {
             foreach (var s in slices)
                 svg.Append(Cap(s, PointFill(group, series, s.Index), Fill.MainColor(PointFill(group, series, s.Index)) ?? RgbColor.Black, PointOutline(series, s.Index)));
+        }
+
+        // Data labels on the top of their slices: centered at half the radius (ctr), as far out as they stay inside
+        // the pie's top (bestFit, inEnd), or outside its rim (outEnd).
+        var rim = Enumerable.Range(0, 72).Select(k => camera.Map(Math.Sin(k * Math.PI / 36), capY, Math.Cos(k * Math.PI / 36))).ToList();
+        bool Inside((double X, double Y) p)
+        {
+            var inside = false;
+            for (int a = 0, b = rim.Count - 1; a < rim.Count; b = a++)
+            {
+                if ((rim[a].Y > p.Y) != (rim[b].Y > p.Y) && p.X < (rim[b].X - rim[a].X) * (p.Y - rim[a].Y) / (rim[b].Y - rim[a].Y) + rim[a].X)
+                    inside = !inside;
+            }
+            return inside;
+        }
+        foreach (var s in slices)
+        {
+            if (DataLabel(group, series, s.Index) is not { } spec)
+                continue;
+            var label = LabelText(spec, series, s.Index, series.Values[s.Index] ?? 0, total);
+            var (w, h) = LabelSize(spec, label);
+            var middle = (s.Start + s.End) / 2 * Math.PI / 180;
+            (double X, double Y) At(double t) => camera.Map(Math.Sin(middle) * t + s.Dx, capY, Math.Cos(middle) * t + s.Dz);
+            bool Fits(double t)
+            {
+                var c = At(t);
+                return new[] { (c.X - w / 2, c.Y - h / 2), (c.X + w / 2, c.Y - h / 2), (c.X - w / 2, c.Y + h / 2), (c.X + w / 2, c.Y + h / 2) }
+                    .All(corner => Inside((corner.Item1 - camera.Map(s.Dx, capY, s.Dz).X + camera.Map(0, capY, 0).X,
+                        corner.Item2 - camera.Map(s.Dx, capY, s.Dz).Y + camera.Map(0, capY, 0).Y)));
+            }
+            var position = spec.Position ?? "bestFit";
+            (double X, double Y) centre;
+            if (position == "outEnd")
+            {
+                // Outside: the label's nearest edge a label offset beyond the rim along the projected middle ray.
+                var (edge, inner) = (At(1), At(0));
+                var (ux, uy) = (edge.X - inner.X, edge.Y - inner.Y);
+                var length = Math.Max(1e-9, Math.Sqrt(ux * ux + uy * uy));
+                (ux, uy) = (ux / length, uy / length);
+                var push = Math.Abs(ux) * w / 2 + Math.Abs(uy) * h / 2 + LabelOffset;
+                centre = (edge.X + ux * push, edge.Y + uy * push);
+            }
+            else if (position == "ctr")
+                centre = At(0.5);
+            else
+            {
+                double lo = 0, hi = 1;
+                if (Fits(hi))
+                    lo = hi;
+                else
+                {
+                    for (var k = 0; k < 30; k++)
+                    {
+                        var t = (lo + hi) / 2;
+                        if (Fits(t)) lo = t; else hi = t;
+                    }
+                }
+                centre = At(lo);
+            }
+            var placed = Moved(spec, new Box(centre.X - w / 2, centre.Y - h / 2, w, h));
+            DrawLabel(spec, label, placed.X, placed.Y);
         }
         return svg.ToString();
     }

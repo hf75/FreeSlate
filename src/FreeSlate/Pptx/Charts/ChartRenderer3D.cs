@@ -409,7 +409,7 @@ public sealed partial class ChartRenderer
         var cross = CrossValue(frame.Value, frame.CategoryAxis);
         var groupShape = ChartModel.Val(group.Element, "shape") ?? "box";
         var bars = new List<(double X0, double Y0, double Z0, double X1, double Y1, double Z1, Fill Fill, Outline? Outline, string Shape, double Base, double Apex,
-            ChartSeries Series, int Point)>();
+            ChartSeries Series, int Point, double From, double To)>();
         for (var i = 0; i < frame.Categories; i++)
         {
             double positive = 0, negative = 0;
@@ -446,7 +446,8 @@ public sealed partial class ChartRenderer
                     _ when group.Stacked => (frame.ValuePos(0), frame.ValuePos(stackTop)),
                     _ => (frame.ValuePos(from), frame.ValuePos(to)),
                 };
-                bars.Add((p0.X, p0.Y, p0.Z, p1.X, p1.Y, p1.Z, PointFill(group, series[k], i), PointOutline(series[k], i), shape, solidBase, apex, series[k], i));
+                bars.Add((p0.X, p0.Y, p0.Z, p1.X, p1.Y, p1.Z, PointFill(group, series[k], i), PointOutline(series[k], i), shape, solidBase, apex, series[k], i,
+                    frame.ValuePos(from), frame.ValuePos(to)));
             }
         }
         var ordered = projection is Oblique oblique
@@ -461,6 +462,59 @@ public sealed partial class ChartRenderer
                     Solid3D(projection, bar.X0, bar.Y0, bar.Z0, bar.X1, bar.Y1, bar.Z1, bar.Fill, bar.Outline, bar.Shape, frame.Columns, bar.Base, bar.Apex),
                 _ => Box3D(projection, bar.X0, bar.Y0, bar.Z0, bar.X1, bar.Y1, bar.Z1, bar.Fill, bar.Outline),
             }));
+        }
+
+        // Data labels: at the end of the bar beyond its end face (outEnd, the default) centered on its front face,
+        // or on the front face (ctr, the default of stacked bars; inEnd, inBase).
+        foreach (var bar in bars)
+        {
+            if (DataLabel(group, bar.Series, bar.Point) is not { } spec || bar.Series.Values.ElementAtOrDefault(bar.Point) is not { } raw || Beyond(frame.Value, raw))
+                continue;
+            var label = LabelText(spec, bar.Series, bar.Point, raw, bar.Series.Values.Sum(v => Math.Abs(v ?? 0)));
+            var (w, h) = LabelSize(spec, label);
+            var position = spec.Position ?? (group.Stacked ? "ctr" : "outEnd");
+            var (x0, x1, y0, y1, z0, z1) = (bar.X0, bar.X1, bar.Y0, bar.Y1, bar.Z0, bar.Z1);
+            var front = Math.Min(z0, z1);
+            // The end face's corners on the chart, and the front face's middle across the bar.
+            var end = bar.To;
+            var endFace = (frame.Columns
+                ? new[] { (x0, end, z0), (x1, end, z0), (x0, end, z1), (x1, end, z1) }
+                : new[] { (end, y0, z0), (end, y1, z0), (end, y0, z1), (end, y1, z1) }).Select(p => projection.Map(p.Item1, p.Item2, p.Item3)).ToList();
+            var startPoint = frame.Columns ? projection.Map((x0 + x1) / 2, bar.From, front) : projection.Map(bar.From, (y0 + y1) / 2, front);
+            var endPoint = frame.Columns ? projection.Map((x0 + x1) / 2, end, front) : projection.Map(end, (y0 + y1) / 2, front);
+            // Which way the bar grows on the chart: up or down for columns, right or left for bars.
+            var grows = frame.Columns ? Math.Sign(startPoint.Y - endPoint.Y) : Math.Sign(endPoint.X - startPoint.X);
+            if (grows == 0)
+                grows = 1;
+            Box box;
+            if (frame.Columns)
+            {
+                var cx = endPoint.X;
+                var top = grows > 0 ? endFace.Min(p => p.Y) : endFace.Max(p => p.Y);
+                var y = position switch
+                {
+                    "ctr" => (startPoint.Y + endPoint.Y) / 2 - h / 2,
+                    "inEnd" => grows > 0 ? endPoint.Y + LabelOffset : endPoint.Y - LabelOffset - h,
+                    "inBase" => grows > 0 ? startPoint.Y - LabelOffset - h : startPoint.Y + LabelOffset,
+                    _ => grows > 0 ? top - LabelOffset - h : top + LabelOffset,
+                };
+                box = new Box(cx - w / 2, y, w, h);
+            }
+            else
+            {
+                var cy = endPoint.Y;
+                var reach = grows > 0 ? endFace.Max(p => p.X) : endFace.Min(p => p.X);
+                var x = position switch
+                {
+                    "ctr" => (startPoint.X + endPoint.X) / 2 - w / 2,
+                    "inEnd" => grows > 0 ? endPoint.X - LabelOffset - w : endPoint.X + LabelOffset,
+                    "inBase" => grows > 0 ? startPoint.X + LabelOffset : startPoint.X - LabelOffset - w,
+                    _ => grows > 0 ? reach + LabelOffset : reach - LabelOffset - w,
+                };
+                box = new Box(x, cy - h / 2, w, h);
+            }
+            var placed = Moved(spec, box);
+            DrawLabel(spec, label, placed.X, placed.Y);
         }
         return svg.ToString();
     }
@@ -621,6 +675,22 @@ public sealed partial class ChartRenderer
                 svg.Append(Facet(projection, front, fill, outline, Shade(0, 0, -1)));
             WrapPart(svg, partStart, series[slab.Index], -1);
         }
+
+        // Data labels in the middle of their band on the slab's front face (measured: a 3D area's values halfway
+        // up at their categories).
+        foreach (var slab in slabs)
+        {
+            var s = series[slab.Index];
+            for (var i = 0; i < slab.Points.Count; i++)
+            {
+                if (DataLabel(group, s, i) is not { } spec || s.Values.ElementAtOrDefault(i) is not { } raw)
+                    continue;
+                var label = LabelText(spec, s, i, raw, s.Values.Sum(v => Math.Abs(v ?? 0)));
+                var p = slab.Points[i];
+                var (x, y) = projection.Map(p.X, (p.Y0 + p.Y1) / 2, slab.Z0);
+                LabelAtPoint(spec, label, x, y, "ctr");
+            }
+        }
         return svg.ToString();
     }
 
@@ -667,6 +737,20 @@ public sealed partial class ChartRenderer
             }
             foreach (var face in faces.OrderByDescending(f => f.Depth))
                 svg.Append(Part(series[k], face.Point, Facet(projection, face.Corners, fill, outline, face.Shade)));
+        }
+
+        // Data labels beside their points at the front of the ribbon, right of them like on flat lines.
+        for (var k = 0; k < series.Count; k++)
+        {
+            var z0 = (k + 0.5) * frame.RowDepth - frame.RowDepth / (1 + gapDepth) / 2;
+            for (var i = 0; i < frame.Categories; i++)
+            {
+                if (DataLabel(group, series[k], i) is not { } spec || series[k].Values.ElementAtOrDefault(i) is not { } raw)
+                    continue;
+                var label = LabelText(spec, series[k], i, raw, series[k].Values.Sum(v => Math.Abs(v ?? 0)));
+                var (x, y) = projection.Map(frame.CategoryCenter(i), frame.ValuePos(raw), z0);
+                LabelAtPoint(spec, label, x, y, spec.Position switch { "l" or "t" or "b" or "ctr" => spec.Position, _ => "r" });
+            }
         }
         return svg.ToString();
     }
@@ -857,8 +941,10 @@ public sealed partial class ChartRenderer
         }
         if (double.IsInfinity(min)) (min, max) = (0, 1);
         var style = layout.Style;
+        // Horizontal value axes keep a label and three font sizes per interval as on flat charts (measured: a 3D bar
+        // chart's axis up to 5 steps by 1).
         var extent = layout.Axis.Horizontal
-            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + style.Size
+            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size
             : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: false);

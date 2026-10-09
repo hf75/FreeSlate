@@ -5,7 +5,7 @@ namespace Fidelity.PowerPoint;
 /// <summary>
 /// 3D charts (catalog: chart.threeD) as PowerPoint builds them by default: clustered, stacked and 100 % stacked
 /// columns, columns with the series in depth, bars, pies, areas, lines, surfaces, column shapes (cylinder, cone,
-/// pyramid) and views with other rotations, perspective and right-angle axes.
+/// pyramid), views with other rotations, perspective and right-angle axes, and data labels.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class Charts3DDeck
@@ -55,5 +55,10 @@ static class Charts3DDeck
             c.Elevation = 60;
             c.Rotation = 90;
         });
+
+        // Data labels on 3D charts: a pie (best fit), columns, bars and an area.
+        object labelled = Charts.Slide(presentation, "Data labels");
+        foreach (var (type, left, top) in new[] { (Pie3D, 20f, 120f), (Column3DClustered, 490f, 120f), (Bar3DClustered, 20f, 330f), (Area3D, 490f, 330f) })
+            Charts.Add(labelled, type, left, top, 450, 200).ApplyDataLabels();
     }
 }
