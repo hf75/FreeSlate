@@ -160,7 +160,8 @@ public static class Engine
             }
             return (minX, minY, maxX - minX, maxY - minY);
         }
-        if (node.AlgorithmType == "lin" && children.Count > 0 && (w == null || h == null))
+        var (growsW, growsH) = (Grows(node, "w"), Grows(node, "h"));
+        if (node.AlgorithmType == "lin" && children.Count > 0 && (w == null || h == null || growsW || growsH))
         {
             var horizontal = (node.Param("linDir") ?? "fromL") is "fromL" or "fromR";
             var extents = children.Select(Extent).ToList();
@@ -168,10 +169,19 @@ public static class Engine
             var along = extents.Sum(e => horizontal ? e.W : e.H) + gap;
             var across = extents.Max(e => horizontal ? e.H : e.W);
             var (ew, eh) = horizontal ? (along, across) : (across, along);
-            return (0, 0, w ?? ew, h ?? eh);
+            return (0, 0, w is { } fw ? growsW ? Math.Max(fw, ew) : fw : ew, h is { } fh ? growsH ? Math.Max(fh, eh) : fh : eh);
         }
         return (0, 0, w ?? 0, h ?? 0);
     }
+
+    /// <summary>
+    /// Whether a lin node grows with its content in a dimension (w, h): a rule lets it (type w val INF, measured:
+    /// hierarchy4's rows of boxes as wide as the boxes under them), or a lin child of it grows so.
+    /// </summary>
+    static bool Grows(LayoutNode node, string type) =>
+        node.AlgorithmType == "lin"
+        && (node.Rules.Any(r => (string?)r.Attribute("type") == type && (string?)r.Attribute("val") == "INF")
+            || node.Children.Any(c => c.AlgorithmType == "lin" && Grows(c, type)));
 
     /// <summary>The room a placed subtree takes: the boxes of its nodes that draw (a shape type), else its own box.</summary>
     static (double X, double Y, double W, double H) Bounds(LayoutNode node)
@@ -301,6 +311,10 @@ public static class Engine
                 var (sx, sy) = (e.W > 0 ? w / e.W : factor, e.H > 0 ? h / e.H : factor);
                 children[i].Scale = horizontal ? sx : sy;
                 var (ow, oh) = (Finite(children[i], "w") ?? e.X + e.W, Finite(children[i], "h") ?? e.Y + e.H);
+                if (Grows(children[i], "w"))
+                    ow = Math.Max(ow, e.X + e.W);
+                if (Grows(children[i], "h"))
+                    oh = Math.Max(oh, e.Y + e.H);
                 if (children[i].AlgorithmType == "composite" && oh > 100 * Math.Max(ow, 1e-6))
                     oh = e.Y + e.H;
                 Place(children[i], -e.X * sx, -e.Y * sy, ow * sx, oh * sy, pins);
