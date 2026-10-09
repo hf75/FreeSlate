@@ -112,8 +112,25 @@ public static class Engine
         // Connectors are placed between the nodes their parent placed (a hierarchy places its own).
         if (node.AlgorithmType is not ("hierRoot" or "hierChild"))
         {
-            foreach (var child in node.Children.Where(c => c.AlgorithmType == "conn"))
+            var connectors = node.Children.Where(c => c.AlgorithmType == "conn").ToList();
+            foreach (var child in connectors)
                 Connector(child, pins);
+            // Connectors an equ constraint without a value makes equal in their distance take the shortest one's
+            // (measured: bProcess2's triangles, all as long as between its first circle and the next allows).
+            foreach (var constraint in node.Constraints.Where(c => (string?)c.Attribute("type") == "connDist" && (string?)c.Attribute("op") == "equ"
+                         && c.Attribute("val") == null && c.Attribute("refType") == null))
+            {
+                var group = Constraints.Targets(node, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType"))
+                    .Where(connectors.Contains).Where(c => c.Values.ContainsKey("connDist")).ToList();
+                if (group.Count < 2)
+                    continue;
+                var shortest = group.Min(c => c.Values["connDist"]);
+                foreach (var connector in group)
+                {
+                    connector.Values["connDistEqu"] = shortest;
+                    Connector(connector, pins);
+                }
+            }
         }
     }
 
@@ -672,12 +689,11 @@ public static class Engine
             (cw, ch) = (extents.Max(e => e.X + e.W) - extents.Min(e => e.X), extents.Max(e => e.Y + e.H) - extents.Min(e => e.Y));
             if (cw <= 0 || ch <= 0)
                 return false;
-            var spacers = node.Children.Where(c => IsTransition(c) && c.AlgorithmType != "conn").Select(Extent).ToList();
+            var spacers = node.Children.Where(c => SnakeSpacer(c, columns)).Select(Extent).ToList();
             lineGap = Value(node, "sp");
             gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
             best = (0.0, 1);
-            // A fixed breakpoint sets the cells per row (bkpt fixed, measured: PictureAccentBlocks' two per row).
-            var fixedCount = node.Param("bkpt") == "fixed" && Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 0;
+            var fixedCount = SnakeBreak(node, n);
             for (var count = fixedCount > 0 ? Math.Min(fixedCount, n) : 1; count <= (fixedCount > 0 ? Math.Min(fixedCount, n) : n); count++)
             {
                 var (_, gw, gh) = SnakeArrange(node, extents, count, gap, lineGap, columns);
@@ -718,7 +734,7 @@ public static class Engine
         bool columns, double cw, double ch, double gap, double lineGap, Pins pins)
     {
         var n = cells.Count;
-        var fixedCount = node.Param("bkpt") == "fixed" && Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 0;
+        var fixedCount = SnakeBreak(node, n);
         var perLine = fixedCount > 0 ? fixedCount
             : columns
                 ? Math.Max(count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
@@ -732,7 +748,7 @@ public static class Engine
         if (PlacedReference(node, "sp") is { } placed)
         {
             slineGap = placed;
-            if (!node.Children.Any(c => IsTransition(c) && c.AlgorithmType != "conn"))
+            if (!node.Children.Any(c => SnakeSpacer(c, columns)))
                 sgap = slineGap;
         }
         var scaled = extents.Select(e => (e.X * k, e.Y * k, e.W * k, e.H * k)).ToList();
@@ -745,6 +761,25 @@ public static class Engine
             Translate(cell, node.X + gx + boxes[i].X + e.Item1 + (e.Item3 - b.W) / 2 - b.X, node.Y + gy + boxes[i].Y + e.Item2 + (e.Item4 - b.H) / 2 - b.Y);
         }
     }
+
+    /// <summary>
+    /// The cells per line a snake's breakpoint sets: bkpt fixed, bkPtFixedVal (measured: PictureAccentBlocks' two per
+    /// row); bkpt bal, the square root of their count rounded up (bProcess4's two in a column for two to four nodes, three
+    /// for five to nine); else none, as many as make them largest.
+    /// </summary>
+    static int SnakeBreak(LayoutNode node, int n) => node.Param("bkpt") switch
+    {
+        "fixed" => Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 2,
+        "bal" => (int)Math.Ceiling(Math.Sqrt(n) - 1e-9),
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Whether a snake's child spaces its cells along a line: a transition's node, a connector only given a size along
+    /// the line (measured: bProcess4's arrows, a quarter of a cell high, apart its cells in a column).
+    /// </summary>
+    static bool SnakeSpacer(LayoutNode child, bool columns) =>
+        IsTransition(child) && (child.AlgorithmType != "conn" || Constraints.Get(child, columns ? "h" : "w") != null);
 
     /// <summary>
     /// Arranges a snake's cells, given their extents (their content's offset from their box and its size), in lines of
@@ -1290,9 +1325,11 @@ public static class Engine
         var (ux, uy) = (dx / length, dy / length);
         var (ta, tb) = (Edge(start, ux, uy), Edge(end, -ux, -uy));
         var distance = Math.Max(0, length - ta - tb);
-        connector.Values["connDist"] = distance;
+        // The distance its pads and length refer to: its own, or the one an equ constraint gives it.
+        var reference = connector.Values.TryGetValue("connDistEqu", out var equal) ? equal : distance;
+        connector.Values["connDist"] = reference;
         var oneD = connector.Param("dim") == "1D";
-        var (begPad, endPad) = oneD ? (0.0, 0.0) : (0.22 * distance, 0.25 * distance);
+        var (begPad, endPad) = oneD ? (0.0, 0.0) : (0.22 * reference, 0.25 * reference);
         // The pads refer to the distance: evaluate the connector's own constraints with it.
         foreach (var constraint in connector.Constraints)
         {
@@ -1304,7 +1341,7 @@ public static class Engine
                 var fact = Number((string?)constraint.Attribute("fact")) ?? 1;
                 var value = (string?)constraint.Attribute("refType") switch
                 {
-                    "connDist" => distance * fact,
+                    "connDist" => reference * fact,
                     "w" when Finite(connector, "w") is { } cw => cw * connector.Scale * fact,
                     "h" when Finite(connector, "h") is { } ch => ch * connector.Scale * fact,
                     _ => Number((string?)constraint.Attribute("val")) ?? 0,
@@ -1315,18 +1352,20 @@ public static class Engine
                     endPad = value;
             }
         }
-        var span = Math.Max(0, distance - begPad - endPad);
+        var span = Math.Max(0, reference - begPad - endPad);
         var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
         // An arrow as high as its head where the head's height is given (measured: lProcess1's arrows, hArH half their
         // connector's height).
         if (Finite(connector, "hArH") is > 0 and var head && Finite(connector, "h") is > 0 and var full)
             thickness *= head / full;
-        // A connector without arrowheads draws its stem alone, stemThick of its height (measured: NumberedDotsVertical's
-        // lines between the circles, 0.3 of the connector's height).
+        // A connector without arrowheads draws its stem alone, stemThick of its height, else 0.6 of it unless a line
+        // (measured: NumberedDotsVertical's lines between the circles, 0.3 of the connector's height; bProcess4's bars
+        // 0.6; radial1's lines, dim 1D, as high as given).
         if (connector.Param("begSty") != "arr" && connector.Param("endSty") is { } endStyle && endStyle is not ("arr" or "auto")
-            && Finite(connector, "stemThick") is { } stem && Finite(connector, "h") is > 0 and var height)
+            && Finite(connector, "h") is > 0 and var height && (Finite(connector, "stemThick") ?? (oneD ? null : 0.6 * height)) is { } stem)
             thickness *= stem / height;
-        var from = ta + begPad + span / 2;
+        // Centered between its pads (measured: bProcess2's triangles, shorter than their gaps).
+        var from = ta + (distance + begPad - endPad) / 2;
         var (cx, cy) = (ax + ux * from, ay + uy * from);
         PlaceConnector(connector, cx - span / 2, cy - thickness / 2, span, thickness, pins);
         var angle = Math.Atan2(uy, ux) * 180 / Math.PI;
