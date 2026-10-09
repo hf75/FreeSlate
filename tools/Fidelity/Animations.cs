@@ -151,7 +151,7 @@ public static class Animations
         return results;
     }
 
-    static void Blur(string source, string target)
+    internal static void Blur(string source, string target)
     {
         using var bitmap = SkiaSharp.SKBitmap.Decode(source);
         using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(bitmap.Width, bitmap.Height));
@@ -164,7 +164,7 @@ public static class Animations
         data.SaveTo(file);
     }
 
-    static double VideoDuration(string video)
+    internal static double VideoDuration(string video)
     {
         var output = Tool("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video]);
         return double.Parse(output.Trim(), CultureInfo.InvariantCulture);
@@ -174,11 +174,11 @@ public static class Animations
     /// Frame <paramref name="frame"/> (counted from 0) of the video. PowerPoint encodes with the BT.709 matrix without
     /// saying so, which ffmpeg would decode as BT.601 (measured: the colors of the exported slides only come back with 709).
     /// </summary>
-    static void ExtractFrame(string video, int frame, string png) =>
+    internal static void ExtractFrame(string video, int frame, string png) =>
         Tool("ffmpeg", ["-v", "error", "-y", "-i", video, "-vf", $"select=eq(n\\,{frame}),scale=in_color_matrix=bt709:in_range=tv:out_range=pc",
             "-vsync", "vfr", "-frames:v", "1", png]);
 
-    static string Tool(string name, IEnumerable<string> arguments)
+    internal static string Tool(string name, IEnumerable<string> arguments)
     {
         var info = new ProcessStartInfo(name) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
         foreach (var argument in arguments)

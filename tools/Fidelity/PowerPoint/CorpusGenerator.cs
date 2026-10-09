@@ -86,6 +86,9 @@ public static class CorpusGenerator
         ("animations-charts", ChartAnimationsDeck.Build, true),
         ("animations-text", TextAnimationsDeck.Build, false),
         ("animations-gallery", AnimationGalleryDeck.Build, false),
+        ("transitions-classic", TransitionsDeck.BuildClassic, false),
+        ("transitions-2010", TransitionsDeck.Build2010, false),
+        ("transitions-2013", TransitionsDeck.Build2013, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>

@@ -27,10 +27,13 @@ switch (command)
     case "animate-reference" when OperatingSystem.IsWindows():
         Animations.Reference(decks, force);
         break;
+    case "transitions-reference" when OperatingSystem.IsWindows():
+        Transitions.Reference(decks, force);
+        break;
     case "harvest-cmyk" when OperatingSystem.IsWindows():
         CmykHarvest.Run();
         break;
-    case "generate" or "reference" or "calibrate" or "animate-reference" or "harvest-cmyk":
+    case "generate" or "reference" or "calibrate" or "animate-reference" or "transitions-reference" or "harvest-cmyk":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
         return 1;
     case "harvest-patterns":
@@ -55,6 +58,10 @@ switch (command)
         foreach (var r in animated)
             Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} frames)");
         break;
+    case "transitions":
+        foreach (var r in Transitions.Run(decks))
+            Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} frames)");
+        break;
     default:
         Console.WriteLine("""
             Fidelity: compares our HTML rendering with PowerPoint, slide by slide.
@@ -66,6 +73,8 @@ switch (command)
               reference [deck…]    render reference images with PowerPoint (Windows); --force re-renders
               animate [deck…]      compare the player's animation frames with PowerPoint's videos
               animate-reference [deck…]  sample PowerPoint's videos of animated slides (Windows, ffmpeg); --force
+              transitions [deck…]  compare the player's slide transitions with PowerPoint's videos
+              transitions-reference [deck…]  sample PowerPoint's videos of the transitions (Windows, ffmpeg); --force
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
             """);

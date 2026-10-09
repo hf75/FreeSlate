@@ -37,7 +37,7 @@ public static class PptxConverter
         .fs-play{position:fixed;right:16px;bottom:16px;width:44px;height:44px;border:0;border-radius:50%;background:#c43e1c;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
         body:has(.slide:target) .fs-play{display:none}
         .fs-show{position:fixed;inset:0;background:#000;z-index:2147483647;overflow:hidden;user-select:none}
-        .fs-stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
+        .fs-stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;overflow:clip}
         .fs-stage>.slide{position:absolute!important;left:0;top:0;margin:0!important;display:block!important;opacity:1;outline:none!important}
         .fs-cover{position:absolute;inset:0;opacity:0;pointer-events:none;background:#000}
         .fs-end{display:none;position:absolute;left:0;right:0;top:12px;color:#fff;font:16px system-ui,sans-serif;text-align:center}

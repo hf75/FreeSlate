@@ -1632,15 +1632,234 @@
 
   const offsets = { l: [-1, 0], r: [1, 0], u: [0, -1], d: [0, 1], lu: [-1, -1], ru: [1, -1], ld: [-1, 1], rd: [1, 1] };
 
+  // Easing of PowerPoint's transitions (measured with its videos: Push's edge follows a quadratic ease in and out
+  // within 0.1 %, Cover's and Uncover's steeper ones, Fade a sine).
+  const quadInOut = p => (p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p));
+  const powInOut = k => p => (p < 0.5 ? 2 ** (k - 1) * p ** k : 1 - 2 ** (k - 1) * (1 - p) ** k);
+  const sineInOut = p => (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, p)))) / 2;
+  const smooth = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  /** A curve through measured points [p, value] (straight between them, flat beyond). */
+  const measured = points => p => {
+    if (p <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+      const [p1, v1] = points[i];
+      if (p <= p1) { const [p0, v0] = points[i - 1]; return v0 + (v1 - v0) * (p - p0) / (p1 - p0); }
+    }
+    return points[points.length - 1][1];
+  };
+  // The diagonal Cover and Uncover move otherwise (measured with PowerPoint's video, the share of the way covered):
+  // the new slide comes in at once and slows down, the old one leaves within half the time.
+  const coverAcross = measured([[0, 0], [0.036, 0.004], [0.069, 0.03], [0.102, 0.075], [0.135, 0.133], [0.168, 0.204], [0.201, 0.282],
+    [0.234, 0.365], [0.267, 0.45], [0.3, 0.535], [0.333, 0.616], [0.366, 0.691], [0.399, 0.759], [0.432, 0.813], [0.465, 0.852],
+    [0.498, 0.881], [0.564, 0.922], [0.63, 0.951], [0.696, 0.973], [0.762, 0.986], [0.828, 0.995], [0.894, 0.998], [0.96, 1]]);
+  const uncoverAcross = measured([[0, 0], [0.036, 0.003], [0.069, 0.0125], [0.102, 0.036], [0.135, 0.068], [0.168, 0.12], [0.201, 0.224],
+    [0.234, 0.395], [0.267, 0.59], [0.3, 0.758], [0.333, 0.858], [0.366, 0.92], [0.399, 0.961], [0.432, 0.988], [0.465, 1]]);
+
+  /**
+   * The soft edge of PowerPoint's masking transitions (measured frame by frame with its videos): every point has its
+   * moment u (0 … 1: the distance from where the edge starts), and shows the new slide by a smoothstep ramp w wide
+   * that passes from just before u = 0 at the start to just after u = 1 at the end; linear in time. Wipes, splits
+   * and strips have w = 1 (the ramp as long as the way), the shapes 1/3, the wheels 0.11 of a spoke's sector.
+   */
+  const reveal = (u, p, w) => smooth(((1 + w) * p - u) / w);
+
+  /**
+   * The mask of a masking transition at p, as SVG over the slide (viewBox in the slide's pixels), white where the
+   * new slide shows; null for transitions that do not mask. Shapes and angles are in the slide's own proportions
+   * (a diamond reaches the corners, a wheel's spokes stand at the slide's 12, 3, 6 and 9 o'clock), the circle is
+   * round and reaches the corners.
+   */
+  function transitionMask(type, spec, p) {
+    const [cx, cy] = [W / 2, H / 2];
+    const defs = [], parts = [];
+    let id = 0;
+    const num = v => +v.toFixed(3);
+    // A gradient whose offsets 0 … 1 run through u0 … u1, sampled finely enough for the smoothstep ramp.
+    const stops = (u0, u1, w) => {
+      const list = [];
+      for (let k = 0; k <= 32; k++) {
+        const o = k / 32;
+        list.push(`<stop offset="${num(o)}" stop-color="#fff" stop-opacity="${num(reveal(u0 + (u1 - u0) * o, p, w))}"/>`);
+      }
+      return list.join('');
+    };
+    const linear = (d, [x1, y1, x2, y2], u0, u1, w, spread = 'pad') => {
+      const gid = `tg${id++}`;
+      defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" spreadMethod="${spread}">${stops(u0, u1, w)}</linearGradient>`);
+      parts.push(`<path d="${d}" fill="url(#${gid})" shape-rendering="crispEdges"/>`);
+    };
+    const all = `M0 0H${W}V${H}H0Z`;
+    const box = (x, y, w, h) => `M${num(x)} ${num(y)}h${num(w)}v${num(h)}h${num(-w)}Z`;
+    const dir = spec.dir;
+    switch (type) {
+      case 'wipe': {
+        // dir l: the edge moves left (the new slide comes in from the right).
+        const line = { l: [W, 0, 0, 0], r: [0, 0, W, 0], u: [0, H, 0, 0], d: [0, 0, 0, H] }[dir || 'l'] || [W, 0, 0, 0];
+        linear(all, line, 0, 1, 1);
+        break;
+      }
+      case 'split': {
+        // Two edges from the middle out (or from the sides in): horz moves them up and down.
+        const out = spec.dir !== 'in';
+        const line = spec.orient === 'vert' ? [cx, 0, W, 0] : [0, cy, 0, H];
+        linear(all, line, out ? 0 : 1, out ? 1 : 0, 1, 'reflect');
+        break;
+      }
+      case 'strips': {
+        // From the corner the strips leave (lu: from the bottom right), along the slide's own diagonal: u = (x/W +
+        // y/H) / 2 counted from that corner; the gradient vector is u's gradient over its squared length.
+        const [x1, y1, sx, sy] = { lu: [W, H, -1, -1], ru: [0, H, 1, -1], ld: [W, 0, -1, 1], rd: [0, 0, 1, 1] }[dir || 'lu'] || [W, H, -1, -1];
+        const k = 2 / (W * W + H * H);
+        linear(all, [x1, y1, x1 + sx * k * W * H * H, y1 + sy * k * W * W * H], 0, 1, 1);
+        break;
+      }
+      case 'circle': {
+        const gid = `tg${id++}`;
+        defs.push(`<radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${num(Math.hypot(cx, cy))}">${stops(0, 1, 1 / 3)}</radialGradient>`);
+        parts.push(`<path d="${all}" fill="url(#${gid})"/>`);
+        break;
+      }
+      case 'diamond': {
+        // Each quarter: u = (|dx| / cx + |dy| / cy) / 2, 0 in the middle, 1 in the corner.
+        const k = 2 / (cx * cx + cy * cy);
+        for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          linear(box(sx < 0 ? 0 : cx, sy < 0 ? 0 : cy, cx, cy), [cx, cy, cx + sx * k * cx * cy * cy, cy + sy * k * cx * cx * cy], 0, 1, 1 / 3);
+        }
+        break;
+      }
+      case 'plus': {
+        // u = the smaller of |dx| / cx and |dy| / cy: the triangles above and below the slide's diagonals take the
+        // distance across, those beside them the distance down.
+        linear(`M0 0L${W} 0L${cx} ${cy}ZM0 ${H}L${W} ${H}L${cx} ${cy}Z`, [cx, 0, W, 0], 0, 1, 1 / 3, 'reflect');
+        linear(`M0 0L0 ${H}L${cx} ${cy}ZM${W} 0L${W} ${H}L${cx} ${cy}Z`, [0, cy, 0, H], 0, 1, 1 / 3, 'reflect');
+        break;
+      }
+      case 'wedge': case 'wheel': case 'wheelReverse': {
+        // Angles clockwise from 12 o'clock in the slide's proportions: fans of equal opacity.
+        const spokes = type === 'wedge' ? 1 : Math.max(1, spec.spokes || 4);
+        const sector = 360 / spokes, w = type === 'wedge' ? 1 / 3 : 0.11;
+        const uOf = a => (type === 'wedge' ? Math.min(a, 360 - a) / 180 : ((type === 'wheelReverse' ? 360 - a : a) % sector) / sector);
+        const steps = 720, runs = [];
+        for (let k = 0; k < steps; k++) {
+          const q = Math.round(reveal(uOf((k + 0.5) / steps * 360), p, w) * 64) / 64;
+          const last = runs[runs.length - 1];
+          if (last && last.q === q) last.to = k + 1; else runs.push({ q, from: k, to: k + 1 });
+        }
+        const R = 3;   // far past the corners, in the slide's proportions
+        for (const run of runs) {
+          if (run.q <= 0) continue;
+          const [a0, a1] = [run.from / steps * 360, run.to / steps * 360];
+          const pts = [[cx, cy]];
+          const n = Math.max(1, Math.ceil((a1 - a0) / 30));
+          for (let j = 0; j <= n; j++) {
+            const a = (a0 + (a1 - a0) * j / n) * Math.PI / 180;
+            pts.push([cx + Math.sin(a) * cx * R, cy - Math.cos(a) * cy * R]);
+          }
+          parts.push(`<path d="M${pts.map(([x, y]) => `${num(x)} ${num(y)}`).join('L')}Z" fill="#fff" fill-opacity="${num(run.q)}" shape-rendering="crispEdges"/>`);
+        }
+        break;
+      }
+      case 'randomBar': {
+        // A noise image stretched across (horizontal bars) or down: smooth streaks, each point shown by the same ramp
+        // as a wipe at the moment its noise gives (measured: PowerPoint's bars fade in, varying slowly along).
+        const vertical = spec.dir === 'vert';
+        const image = noiseImage(vertical ? 180 : 6, vertical ? 6 : 180, 'bars');
+        const table = Array.from({ length: 33 }, (_, k) => num(reveal(k / 32, p, 1))).join(' ');
+        // A CSS mask takes an image's alpha: the noise goes there (white), then through the ramp.
+        defs.push(`<filter id="tf" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0"/><feComponentTransfer><feFuncA type="table" tableValues="${table}"/></feComponentTransfer></filter>`);
+        parts.push(`<image href="${image}" width="${W}" height="${H}" preserveAspectRatio="none" filter="url(#tf)"/>`);
+        break;
+      }
+      case 'dissolve': {
+        // Blocks of a 54 × 42 grid, each shown at once at a random moment between 7 and 93 % (measured).
+        const [cols, rows] = [54, 42];
+        const shown = Math.min(1, Math.max(0, (p - 0.07) / 0.86));
+        const order = noiseValues(cols * rows, 'dissolve');
+        let d = '';
+        for (let r = 0; r < rows; r++) {
+          let c = 0;
+          while (c < cols) {
+            if (order[r * cols + c] >= shown) { c++; continue; }
+            let e = c;
+            while (e < cols && order[r * cols + e] < shown) e++;
+            d += box(c * W / cols, r * H / rows, (e - c) * W / cols, H / rows);
+            c = e;
+          }
+        }
+        if (d) parts.push(`<path d="${d}" fill="#fff" shape-rendering="crispEdges"/>`);
+        break;
+      }
+      default:
+        return null;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs>${defs.join('')}</defs>${parts.join('')}</svg>`;
+  }
+
+  /** Uniform pseudo-random values (0 … 1), the same every time for a name. */
+  const noiseCache = new Map();
+  function noiseValues(n, name) {
+    const key = `${name}:${n}`;
+    let values = noiseCache.get(key);
+    if (!values) {
+      values = new Float64Array(n);
+      let seed = 0x9e3779b9 ^ n;
+      for (let i = 0; i < n; i++) {
+        seed = seed + 0x6d2b79f5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        values[i] = ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+      noiseCache.set(key, values);
+    }
+    return values;
+  }
+
+  /** A grayscale image (data URL) of w × h noise values. */
+  function noiseImage(w, h, name) {
+    const key = `img:${name}:${w}x${h}`;
+    let url = noiseCache.get(key);
+    if (!url) {
+      const values = noiseValues(w * h, name);
+      const canvas = document.createElement('canvas');
+      [canvas.width, canvas.height] = [w, h];
+      const context = canvas.getContext('2d'), image = context.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) { const v = Math.round(values[i] * 255); image.data.set([v, v, v, 255], i * 4); }
+      context.putImageData(image, 0, 0);
+      url = canvas.toDataURL();
+      noiseCache.set(key, url);
+    }
+    return url;
+  }
+
+  /** A CSS mask fading a slide's edges over a band (the slide's own pixels) from nothing at the edge. */
+  function feather(band) {
+    const layer = (side, size) => {
+      const f = Math.min(50, band / size * 100);
+      return f >= 50
+        ? `linear-gradient(to ${side},transparent 0%,rgba(0,0,0,${+(50 / f).toFixed(4)}) 50%,transparent 100%)`
+        : `linear-gradient(to ${side},transparent 0%,#000 ${+f.toFixed(3)}%,#000 ${+(100 - f).toFixed(3)}%,transparent 100%)`;
+    };
+    return `${layer('right', W)},${layer('bottom', H)}`;
+  }
+
   function transitionEffect(type, spec, a, b, cover) {
     const reset = () => {
-      for (const el of [a, b]) if (el) { el.style.transform = el.style.opacity = el.style.clipPath = el.style.zIndex = el.style.transformOrigin = ''; }
+      for (const el of [a, b]) {
+        if (el) {
+          el.style.transform = el.style.opacity = el.style.clipPath = el.style.zIndex = el.style.transformOrigin = '';
+          el.style.maskImage = el.style.maskSize = el.style.maskRepeat = el.style.maskComposite = el.style.filter = '';
+        }
+      }
       cover.style.opacity = '0';
     };
+    const masked = { frame: p => {
+      b.style.zIndex = 2;
+      const svg = transitionMask(type, spec, p);
+      Object.assign(b.style, { maskImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`, maskSize: '100% 100%', maskRepeat: 'no-repeat' });
+    }, end: reset };
     const clip = (fn) => ({ frame: p => { b.style.zIndex = 2; b.style.clipPath = fn(p); }, end: reset });
     const dir = spec.dir || 'l';
     const vector = offsets[dir] || offsets.l;
-    const inset = (t, r, bo, l) => `inset(${t * 100}% ${r * 100}% ${bo * 100}% ${l * 100}%)`;
     const poly = pts => `polygon(${pts.map(([x, y]) => `${x * 100}% ${y * 100}%`).join(',')})`;
     const bandsClip = (count, horizontal, p, random) => {
       const pts = [];
@@ -1657,70 +1876,90 @@
     switch (type) {
       case 'none': return null;
       case 'cut':
-        return spec.thruBlk ? { frame: p => { cover.style.background = '#000'; cover.style.opacity = p < 1 ? '1' : '0'; b.style.opacity = p < 0.5 ? '0' : ''; }, end: reset } : null;
+        // Through black: the old slide for the first half, black for the second (measured).
+        return spec.thruBlk ? { frame: p => {
+          cover.style.background = '#000';
+          cover.style.opacity = p >= 0.5 && p < 1 ? '1' : '0';
+          b.style.opacity = p < 0.5 ? '0' : '';
+        }, end: reset } : null;
       case 'fade':
         if (spec.thruBlk) {
-          return { frame: p => { cover.style.background = '#000'; cover.style.opacity = String(p < 0.5 ? p * 2 : (1 - p) * 2); b.style.opacity = p < 0.5 ? '0' : '1'; b.style.zIndex = 2; }, end: reset };
+          // To black with a sine in the first half, a moment black, from black in the rest (measured).
+          return { frame: p => {
+            cover.style.background = '#000';
+            cover.style.opacity = String(p < 0.5 ? sineInOut(p / 0.5) : 1 - sineInOut((p - 0.525) / 0.46));
+            b.style.opacity = p < 0.5 ? '0' : '1';
+            b.style.zIndex = 2;
+          }, end: reset };
         }
+        return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(sineInOut(p)); }, end: reset };
+      case 'glitter': case 'honeycomb': case 'shred':
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
-      case 'dissolve': case 'glitter': case 'honeycomb': case 'shred':
-        return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
+      case 'wipe': case 'split': case 'strips': case 'circle': case 'diamond': case 'plus': case 'wedge': case 'wheel':
+      case 'wheelReverse': case 'randomBar': case 'dissolve':
+        return masked;
       case 'push': case 'pan': case 'conveyor':
         return { frame: p => {
-          a.style.transform = `translate(${vector[0] * p * W}px,${vector[1] * p * H}px)`;
-          b.style.transform = `translate(${-vector[0] * (1 - p) * W}px,${-vector[1] * (1 - p) * H}px)`;
+          const q = quadInOut(p);
+          a.style.transform = `translate(${vector[0] * q * W}px,${vector[1] * q * H}px)`;
+          b.style.transform = `translate(${-vector[0] * (1 - q) * W}px,${-vector[1] * (1 - q) * H}px)`;
         }, end: reset };
       case 'cover':
-        return { frame: p => { b.style.zIndex = 2; b.style.transform = `translate(${-vector[0] * (1 - p) * W}px,${-vector[1] * (1 - p) * H}px)`; }, end: reset };
+        return { frame: p => {
+          const q = vector[0] && vector[1] ? coverAcross(p) : powInOut(3.5)(p);
+          b.style.zIndex = 2;
+          b.style.transform = `translate(${-vector[0] * (1 - q) * W}px,${-vector[1] * (1 - q) * H}px)`;
+        }, end: reset };
       case 'pull': case 'reveal':
-        return { frame: p => { a.style.zIndex = 2; a.style.transform = `translate(${vector[0] * p * W}px,${vector[1] * p * H}px)`; if (type === 'reveal') a.style.opacity = String(1 - p); }, end: reset };
-      case 'wipe':
-        return clip(p => dir === 'l' ? inset(0, 0, 0, 1 - p) : dir === 'r' ? inset(0, 1 - p, 0, 0) : dir === 'u' ? inset(1 - p, 0, 0, 0) : inset(0, 0, 1 - p, 0));
-      case 'split': {
-        const vertical = spec.orient === 'vert', out = spec.dir !== 'in';
-        return clip(p => {
-          const h = (1 - p) / 2;
-          if (out) return vertical ? inset(0, h, 0, h) : inset(h, 0, h, 0);
-          return vertical ? poly([[0, 0], [p / 2, 0], [p / 2, 1], [0, 1], [0, 0], [1, 0], [1, 1], [1 - p / 2, 1], [1 - p / 2, 0], [1, 0]])
-            : poly([[0, 0], [1, 0], [1, p / 2], [0, p / 2], [0, 0], [0, 1], [1, 1], [1, 1 - p / 2], [0, 1 - p / 2], [0, 1]]);
-        });
-      }
+        return { frame: p => {
+          const q = vector[0] && vector[1] ? uncoverAcross(p) : powInOut(3)(p);
+          a.style.zIndex = 2;
+          a.style.transform = `translate(${vector[0] * q * W}px,${vector[1] * q * H}px)`;
+          if (type === 'reveal') a.style.opacity = String(1 - p);
+        }, end: reset };
       case 'blinds': return clip(p => bandsClip(6, spec.dir !== 'vert', p));
       case 'checker': return clip(p => bandsClip(10, spec.dir === 'vert', p));
-      case 'comb': return clip(p => bandsClip(8, spec.dir !== 'vert', p));
-      case 'randomBar': {
-        const random = Array.from({ length: 20 }, () => Math.random());
-        return clip(p => bandsClip(20, spec.dir !== 'vert', p, random));
-      }
-      case 'strips': {
-        return clip(p => {
-          const d = p * 2;
-          if (dir === 'rd') return poly([[0, 0], [d, 0], [0, d]]);
-          if (dir === 'lu') return poly([[1, 1], [1 - d, 1], [1, 1 - d]]);
-          if (dir === 'ru') return poly([[0, 1], [0, 1 - d], [d, 1]]);
-          return poly([[1, 0], [1 - d, 0], [1, d]]);
-        });
-      }
-      case 'circle': return clip(p => `circle(${p * 75}% at 50% 50%)`);
-      case 'diamond': return clip(p => poly([[0.5, 0.5 - p], [0.5 + p, 0.5], [0.5, 0.5 + p], [0.5 - p, 0.5]]));
-      case 'plus': return clip(p => { const s = p / 2; return poly([[0.5 - s, 0], [0.5 + s, 0], [0.5 + s, 0.5 - s], [1, 0.5 - s], [1, 0.5 + s], [0.5 + s, 0.5 + s], [0.5 + s, 1], [0.5 - s, 1], [0.5 - s, 0.5 + s], [0, 0.5 + s], [0, 0.5 - s], [0.5 - s, 0.5 - s]]); });
-      case 'wedge': case 'wheel': case 'wheelReverse': {
-        const spokes = type === 'wedge' ? 1 : Math.max(1, spec.spokes || 4);
-        return clip(p => {
-          const pts = [];
-          for (let k = 0; k < spokes; k++) {
-            const sweep = (type === 'wedge' ? 1 : 1 / spokes) * Math.PI * 2 * p;
-            const start = type === 'wedge' ? -Math.PI / 2 - sweep / 2 : -Math.PI / 2 + k * Math.PI * 2 / spokes;
-            pts.push([0.5, 0.5]);
-            for (let j = 0; j <= 16; j++) {
-              const angle = start + (type === 'wheelReverse' ? -1 : 1) * sweep * j / 16;
-              pts.push([0.5 + Math.cos(angle) * 1.5, 0.5 + Math.sin(angle) * 1.5]);
+      case 'comb': {
+        // Bands of the old slide leave by turns to either side, speeding up evenly (4.78 slide heights per p²): seven
+        // rows across, the last one first, each 0.046 later from 0.05; columns down, all at 0.178 (measured with
+        // PowerPoint's video; ten in a 16:9 slide). The new slide lies beneath.
+        const vertical = spec.dir === 'vert', bands = vertical ? Math.max(2, Math.round(W / H * 5.625)) : 7, copies = [];
+        return { frame: p => {
+          if (!copies.length) {
+            for (let k = 0; k < bands; k++) {
+              const copy = a.cloneNode(true);
+              copy.removeAttribute('id');
+              const [from, to] = [k / bands * 100, (k + 1) / bands * 100];
+              copy.style.clipPath = vertical ? `inset(0 ${100 - to}% 0 ${from}%)` : `inset(${from}% 0 ${100 - to}% 0)`;
+              copy.style.zIndex = 3;
+              a.parentNode.appendChild(copy);
+              copies.push(copy);
             }
+            a.style.opacity = '0';
           }
-          return poly(pts);
-        });
+          copies.forEach((copy, k) => {
+            const t = Math.max(0, p - (vertical ? 0.178 : 0.05 + 0.046 * (bands - 1 - k)));
+            const shift = Math.min(vertical ? H : W, 4.78 * H * t * t) * (vertical ? (k % 2 ? 1 : -1) : (k % 2 ? -1 : 1));
+            copy.style.transform = vertical ? `translateY(${shift}px)` : `translateX(${shift}px)`;
+          });
+        }, end: () => { copies.forEach(c => c.remove()); copies.length = 0; reset(); } };
       }
-      case 'zoom': case 'warp': case 'flythrough': {
+      case 'zoom': {
+        // Out: the new slide grows from the middle in the second half; in: the old one shrinks into it in the first
+        // (linear, measured). Its edge is soft, a band 3 % of the slide's height wide on the screen.
+        const out = spec.dir !== 'in';
+        return { frame: p => {
+          const el = out ? b : a;
+          const s = Math.min(1, Math.max(0, out ? (p - 0.493) / 0.482 : 1 - (p - 0.029) / 0.484));
+          el.style.zIndex = 2;
+          el.style.transformOrigin = '50% 50%';
+          el.style.transform = `scale(${s})`;
+          el.style.opacity = s > 0 ? '' : '0';
+          el.style.maskImage = s > 0 && s < 1 ? feather(0.03 * H / Math.max(s, 1e-3)) : '';
+          el.style.maskComposite = 'intersect';
+        }, end: reset };
+      }
+      case 'warp': case 'flythrough': {
         const inward = spec.dir !== 'out';
         return { frame: p => {
           b.style.zIndex = 2;
@@ -1730,12 +1969,20 @@
           b.style.transformOrigin = '50% 50%';
         }, end: reset };
       }
-      case 'newsflash': case 'vortex': case 'ripple':
+      case 'newsflash':
+        // The new slide grows from the middle (scale p) turning 400° anticlockwise into place (measured).
+        return { frame: p => {
+          b.style.zIndex = 2;
+          b.style.transformOrigin = '50% 50%';
+          b.style.opacity = p > 0 ? '' : '0';
+          b.style.transform = `rotate(${40 - 400 * p}deg) scale(${Math.max(p, 1e-4)})`;
+        }, end: reset };
+      case 'vortex': case 'ripple':
         return { frame: p => {
           b.style.zIndex = 2;
           b.style.transformOrigin = '50% 50%';
           b.style.opacity = String(Math.min(1, p * 1.5));
-          b.style.transform = type === 'ripple' ? `scale(${0.9 + 0.1 * p})` : `rotate(${(1 - p) * (type === 'vortex' ? -180 : 720)}deg) scale(${p})`;
+          b.style.transform = type === 'ripple' ? `scale(${0.9 + 0.1 * p})` : `rotate(${(1 - p) * -180}deg) scale(${p})`;
         }, end: reset };
       case 'flash':
         return { frame: p => { cover.style.background = '#fff'; cover.style.opacity = String(p < 0.5 ? p * 2 : (1 - p) * 2); b.style.opacity = p < 0.5 ? '0' : '1'; b.style.zIndex = 2; }, end: reset };
@@ -2305,6 +2552,32 @@
       steps++;
     }
     frame(index, steps, (shown - start) * tick, undefined);
+  }
+
+  // ?transition=ms&fps=n#slide-N draws the transition into slide N ms after it began, the slide before it at its end
+  // and slide N at its start, on a stage in the slide's place (tools/Fidelity transitions).
+  const transitionAt = frameParams.get('transition');
+  if (transitionAt !== null && frameSlide) {
+    const index = +frameSlide[1] - 1;
+    const spec = slides[index] && info(index).transition;
+    if (spec && slides[index - 1]) {
+      const [a, b] = [slides[index - 1], slides[index]];
+      const steps = frame(index - 1, 0, 0, undefined) || [];
+      frame(index - 1, steps.length, undefined, undefined);
+      frame(index, 0, 0, undefined);
+      const stage = document.createElement('div');
+      stage.className = 'fs-stage';
+      // A stage that clips without scrolling: the slide the address targets would scroll into view.
+      stage.style.cssText = `position:fixed;left:0;top:0;width:${W}px;height:${H}px;z-index:1;background:#000;overflow:clip`;
+      const cover = document.createElement('div');
+      cover.className = 'fs-cover';
+      cover.style.cssText = `position:fixed;left:0;top:0;width:${W}px;height:${H}px;z-index:2`;
+      stage.append(a, b);
+      document.body.append(stage, cover);
+      const effect = transitionEffect(spec.type || 'none', spec, a, b, cover);
+      const duration = Math.max(1, spec.dur || 0);
+      if (effect) effect.frame(Math.min(1, Math.max(0, +transitionAt / duration)));
+    }
   }
 
   window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments, frame };

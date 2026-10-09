@@ -148,6 +148,73 @@ public sealed class PowerPointSession : IDisposable
         }
     }
 
+    /// <summary>The slides (1-based) that are entered with a transition, with the transition's duration (s).</summary>
+    public List<(int Slide, double Duration)> TransitionSlides(string pptxPath, string? password = null)
+    {
+        const int PpEffectNone = 0;
+        var presentation = Open(pptxPath, password);
+        try
+        {
+            var result = new List<(int, double)>();
+            int count = presentation.Slides.Count;
+            for (var i = 2; i <= count; i++)
+            {
+                var transition = presentation.Slides[i].SlideShowTransition;
+                if ((int)transition.EntryEffect != PpEffectNone)
+                    result.Add((i, (double)(float)transition.Duration));
+            }
+            return result;
+        }
+        finally
+        {
+            Close(presentation);
+        }
+    }
+
+    /// <summary>
+    /// PowerPoint's video of the transition into a slide: that slide and the one before it alone, without animations,
+    /// each shown <paramref name="seconds"/> (the transition begins after the first one's time). Waits until the
+    /// video is written.
+    /// </summary>
+    public void ExportTransitionVideo(string pptxPath, int slide, string mp4Path, int height, int fps, double seconds, string? password = null)
+    {
+        const int PpMediaTaskStatusInProgress = 1, PpMediaTaskStatusQueued = 2, PpMediaTaskStatusDone = 3, PpEffectNone = 0;
+        var presentation = Open(pptxPath, password);
+        try
+        {
+            int count = presentation.Slides.Count;
+            for (var i = count; i >= 1; i--)
+            {
+                if (i != slide && i != slide - 1)
+                    presentation.Slides[i].Delete();
+            }
+            presentation.Slides[1].SlideShowTransition.EntryEffect = PpEffectNone;
+            for (var i = 1; i <= 2; i++)
+            {
+                var sequence = presentation.Slides[i].TimeLine.MainSequence;
+                for (int j = sequence.Count; j >= 1; j--)
+                    sequence[j].Delete();
+            }
+            if (File.Exists(mp4Path))
+                File.Delete(mp4Path);
+            presentation.CreateVideo(Path.GetFullPath(mp4Path), false, (int)Math.Round(seconds), height, fps, 100);
+            var watch = Stopwatch.StartNew();
+            int status;
+            do
+            {
+                Thread.Sleep(200);
+                status = presentation.CreateVideoStatus;
+            } while (status is PpMediaTaskStatusInProgress or PpMediaTaskStatusQueued && watch.Elapsed < TimeSpan.FromMinutes(5));
+            if (status != PpMediaTaskStatusDone)
+                throw new InvalidOperationException($"PowerPoint did not export the video of the transition into slide {slide} (status {status}).");
+        }
+        finally
+        {
+            presentation.Saved = MsoTrue;
+            Close(presentation);
+        }
+    }
+
     public void Dispose()
     {
         try
