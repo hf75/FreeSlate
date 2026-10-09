@@ -158,11 +158,11 @@ public static class SmartArtCheck
                     string? builtSize = null;
                     // The font size of a shape's text where its node holds the text: its first run's, as the output
                     // builds it (child text in the secondary size).
-                    if (size != null && node.Text.Count > 0)
+                    if (size != null && node.Text.Count > 0 && Output.TextSource(root, node) is { } source)
                     {
-                        var primary = node.Values.TryGetValue("primFontSz", out var p) && double.IsFinite(p) ? p : 65;
-                        var secondary = node.Values.TryGetValue("secFontSz", out var sec) && double.IsFinite(sec) ? sec : primary * 0.78;
-                        var ours = (string?)TextBody.Build(node, primary, secondary).Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz");
+                        var primary = source.Values.TryGetValue("primFontSz", out var p) && double.IsFinite(p) ? p : 65;
+                        var secondary = source.Values.TryGetValue("secFontSz", out var sec) && double.IsFinite(sec) ? sec : primary * 0.78;
+                        var ours = (string?)TextBody.Build(source, primary, secondary).Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz");
                         builtSize = ours;
                         fonts++;
                         if (ours != null && Math.Abs(int.Parse(ours, CultureInfo.InvariantCulture) - int.Parse(size, CultureInfo.InvariantCulture)) < 100)

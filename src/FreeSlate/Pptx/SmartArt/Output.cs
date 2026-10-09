@@ -84,6 +84,14 @@ public static class Output
 
     static string TextKey(LayoutNode node) => string.Join("|", node.Text.Select(p => p.Id));
 
+    /// <summary>The node whose text and font sizes a node's shape shows (a text node of the same data), or null.</summary>
+    public static LayoutNode? TextSource(LayoutNode root, LayoutNode node)
+    {
+        var all = root.Descendants().Prepend(root).ToList();
+        var byText = all.Where(n => n.Text.Count > 0).GroupBy(TextKey).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+        return TextLayout(node, byText);
+    }
+
     /// <summary>
     /// The node laying out a node's text: the node itself if it runs the text algorithm, else a text node showing the
     /// same data points (its own descendants first, then its siblings, then any), else the node itself.
