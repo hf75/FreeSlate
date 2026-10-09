@@ -287,6 +287,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     static double LineHeight(TextStyle style) => (style.Font.Data.Ascent + style.Font.Data.Descent) * style.Size;
 
+    /// <summary>A line of rich label text as tall as its largest run.</summary>
+    static double RichLineHeight(LaidOutLine line) => line.Runs.Count > 0 ? line.Runs.Max(r => LineHeight(r.Style)) : 0;
+
     static double Ascent(TextStyle style) => style.Font.Data.Ascent * style.Size;
 
     static double Descent(TextStyle style) => style.Font.Data.Descent * style.Size;
@@ -442,7 +445,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// </summary>
     sealed record LabelSpec(bool Value, bool Category, bool Series, bool Percent, bool BubbleSize, string Separator, string? Position,
         string? FormatCode, TextStyle Style, XElement? SpPr, (double L, double T, double R, double B) Insets, double MaxWidth,
-        Fill? Key, ManualOffset? Manual, Outline? Leader, string? Text = null, string? RangeText = null, int Ser = -1, int Pt = -1);
+        Fill? Key, ManualOffset? Manual, Outline? Leader, string? Text = null, string? RangeText = null, int Ser = -1, int Pt = -1,
+        LaidOutText? Rich = null);
 
     /// <summary>A label's manual position: offsets from its automatic place in fractions of the chart, or edge positions.</summary>
     sealed record ManualOffset(double? X, double? Y, bool EdgeX, bool EdgeY);
@@ -509,9 +513,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     new XElement(Ns.A + "lumMod", new XAttribute("val", "35000")), new XElement(Ns.A + "lumOff", new XAttribute("val", "65000"))))),
                     "solid", "flat", "round", 8, "sng");
         }
+        // A point label's own rich text with formatted runs keeps their formatting, laid out like a title.
+        LaidOutText? richLayout = null;
+        if (rich != null && rich.Descendants(Ns.A + "rPr").Any(r => r.HasAttributes || r.HasElements))
+            richLayout = text.ChartRich(rich, [DefRPr(Child("txPr")), DefRPr(model.ChartSpace.Element(Ns.C + "txPr")), StyleLayer("dataLabel"),
+                new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"))], maxWidth, wrap: true);
         return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, spec.Bubble, separator, Child("dLblPos").Str("val"),
             numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), style, Child("spPr"), insets, maxWidth,
-            key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText, plotOrder.GetValueOrDefault(series), point);
+            key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText, plotOrder.GetValueOrDefault(series), point, richLayout);
     }
 
     /// <summary>The fill of a data label's legend key: the point's fill, the line's color for series drawn as lines.</summary>
@@ -603,8 +612,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// <summary>The size of a data label's box: its lines, the legend key before them and the text insets.</summary>
     (double W, double H) LabelSize(LabelSpec spec, string value)
     {
-        var lines = value.Split('\n');
         var key = spec.Key != null ? LabelKeyText * LineHeight(spec.Style) : 0;
+        if (spec.Rich is { } rich)
+            return ((rich.Lines.Count > 0 ? rich.Lines.Max(l => l.Width) : 0) + key + spec.Insets.L + spec.Insets.R,
+                rich.Lines.Sum(RichLineHeight) + spec.Insets.T + spec.Insets.B);
+        var lines = value.Split('\n');
         return (lines.Max(l => Width(l, spec.Style)) + key + spec.Insets.L + spec.Insets.R,
             lines.Length * LineHeight(spec.Style) + spec.Insets.T + spec.Insets.B);
     }
@@ -629,11 +641,25 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var baseline = y + spec.Insets.T + Ascent(spec.Style);
         var left = x + spec.Insets.L + keyWidth;
         var room = w - spec.Insets.L - spec.Insets.R - keyWidth;
-        foreach (var line in value.Split('\n'))
+        if (spec.Rich is { } rich)
         {
-            var lw = Width(line, spec.Style);
-            dataLabels.Append(text.Label(line, spec.Style, left + (room - lw) / 2, baseline));
-            baseline += lineHeight;
+            // Formatted runs: each line as tall as its largest run, centered.
+            var top = y + spec.Insets.T;
+            foreach (var line in rich.Lines)
+            {
+                var ascent = line.Runs.Count > 0 ? line.Runs.Max(r => Ascent(r.Style)) : Ascent(spec.Style);
+                dataLabels.Append(text.EmitLine(line, left + (room - line.Width) / 2, top + ascent));
+                top += RichLineHeight(line);
+            }
+        }
+        else
+        {
+            foreach (var line in value.Split('\n'))
+            {
+                var lw = Width(line, spec.Style);
+                dataLabels.Append(text.Label(line, spec.Style, left + (room - lw) / 2, baseline));
+                baseline += lineHeight;
+            }
         }
         // The label (and a pie label's leader line) builds with its point.
         if (spec.Ser >= 0 && dataLabels.Length > start)

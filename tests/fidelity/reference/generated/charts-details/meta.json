@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/charts-details.pptx",
-  "sha256": "dd104fbbbd4ee9d8fd0adc5f8352de44f417b6f4404b11b0a1019cb73731fdd6",
+  "sha256": "863add4c6a95803acab33fe79b85f179ab0f54950ee1c21320ebb21137790585",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 5
+  "slides": 6
 }

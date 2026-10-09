@@ -1570,8 +1570,9 @@ areas:
           baseline. Legend keys (c:showLegendKey) are squares of the point's fill as in legends, the text
           1.108 line heights after the inset. Bubble sizes (c:showBubbleSize) label bubbles on the right, 5.5
           pt off the edge. A point label's own text (c:tx: rich text with its fields' current text, or a cell)
-          replaces the parts; text from cells (c15:datalabelsRange) leads them. Not yet: wide best fit labels
-          (PowerPoint moves them towards the horizontal and further in), the rich text's own run formatting.
+          replaces the parts, its runs keeping their own formatting (generated/charts-details slide 6:
+          99.6 %); text from cells (c15:datalabelsRange) leads them. Not yet: wide best fit labels (PowerPoint
+          moves them towards the horizontal and further in).
 
       - id: chart.titleLegend
         title: Titles, legend and layout

@@ -84,6 +84,26 @@ static class ChartsDetailsDeck
         bubbles.SeriesCollection(1).HasDataLabels = true;
         bubbles.SeriesCollection(1).DataLabels().ShowBubbleSize = true;
         bubbles.SeriesCollection(1).DataLabels().ShowValue = false;
+
+        // Point labels with text of their own whose runs are formatted (c:dLbl/c:tx/c:rich with run properties).
+        object formatted = Slide(presentation, "Formatted data label text");
+        var columns = Add(formatted, ColumnClustered, 20, 110, 460, 410);
+        columns.SeriesCollection(1).HasDataLabels = true;
+        var peak = columns.SeriesCollection(1).Points(4).DataLabel;
+        peak.Text = "Peak 4.5";
+        var peakText = peak.Format.TextFrame2.TextRange.Characters(1, 4);
+        peakText.Font.Bold = -1;
+        peakText.Font.Size = 16;
+        peakText.Font.Fill.ForeColor.RGB = CorpusGenerator.Rgb(192, 0, 0);
+        var low = columns.SeriesCollection(1).Points(2).DataLabel;
+        low.Text = "low";
+        low.Format.TextFrame2.TextRange.Characters(1, 3).Font.Italic = -1;
+        var bars = Add(formatted, BarClustered, 490, 110, 460, 410);
+        bars.SeriesCollection(2).HasDataLabels = true;
+        var mixed = bars.SeriesCollection(2).Points(1).DataLabel;
+        mixed.Text = "Big and small";
+        mixed.Format.TextFrame2.TextRange.Characters(1, 3).Font.Size = 20;
+        mixed.Format.TextFrame2.TextRange.Characters(9, 5).Font.Size = 8;
     }
 
     /// <summary>
