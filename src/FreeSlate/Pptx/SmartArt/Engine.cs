@@ -1295,10 +1295,12 @@ public static class Engine
         var horizontal = align is "lCtrCh" or "rCtrCh" or "lT" or "lB" or "rT" or "rB";
         if (own != null)
             Arrange(own, pins);
-        // Rows hang from the root's own box (a composite's, not the union of its shapes).
+        // Rows line up with the root's own box (a composite's, not the union of its shapes) and hang sp beyond its shapes
+        // (measured: CirclePictureHierarchy's rows sp below the pictures, inside their composites).
         (double X, double Y, double W, double H) shape = own != null ? (own.X, own.Y, own.W, own.H) : (0, 0, 0, 0);
+        var drawn = own != null ? Bounds(own) : shape;
         var (centerX, centerY) = (shape.X + shape.W / 2, shape.Y + shape.H / 2);
-        var next = horizontal ? (align.StartsWith('l') ? shape.X + shape.W + sp : shape.X - sp) : shape.Y + shape.H + sp;
+        var next = horizontal ? (align.StartsWith('l') ? drawn.X + drawn.W + sp : drawn.X - sp) : drawn.Y + drawn.H + sp;
         if (assistants != null && assistants.Children.Count > 0)
         {
             var a = ArrangeRow(assistants, pins);
