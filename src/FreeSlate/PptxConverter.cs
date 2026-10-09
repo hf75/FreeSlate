@@ -84,6 +84,12 @@ public static class PptxConverter
         var slides = new StringBuilder();
         var data = new List<SlideData>();
         string? section = null;
+        // Morph (catalog: transition.morph) pairs the shapes of a slide and the one before it by name, their words or
+        // letters by text: both slides carry their shapes' names, and their text in units when morph goes by them.
+        var morphs = Enumerable.Range(0, context.SlideParts.Count)
+            .Select(i => SlideShow.Transition(new SlideContext(context, context.SlideParts[i], i + 1)) is { } t && t["type"]?.GetValue<string>() == "morph"
+                ? t["option"]?.GetValue<string>() ?? "byObject" : null)
+            .ToList();
         for (var i = 0; i < context.SlideParts.Count; i++)
         {
             var number = i + 1;
@@ -99,7 +105,9 @@ public static class PptxConverter
             if (slideSection != null) attributes.Append($" data-section=\"{WebUtility.HtmlEncode(slideSection)}\"");
             var notes = deck.NotesHtml(part) is { } n ? $"<aside class=\"notes\">{n}</aside>" : "";
             var comments = Comments.Read(context, part);
-            slides.Append(new SlideRenderer(new SlideContext(context, part, number), paint).Render(attributes.ToString(), notes + Comments.Markers(comments, number)))
+            var morph = new[] { morphs[i], i + 1 < morphs.Count ? morphs[i + 1] : null }.Where(m => m != null)
+                .OrderByDescending(m => m == "byChar" ? 2 : m == "byWord" ? 1 : 0).FirstOrDefault();
+            slides.Append(new SlideRenderer(new SlideContext(context, part, number), paint) { Morph = morph }.Render(attributes.ToString(), notes + Comments.Markers(comments, number)))
                 .Append(Comments.Panel(comments, number, width)).Append('\n');
             var slideData = new SlideData { Number = number, Hidden = hidden, Section = slideSection };
             var slideContext = new SlideContext(context, part, number);

@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/pptx/generated/transitions-morph.pptx",
+  "sha256": "f83bb6c2895a1cd1029908f5ccee2dc6d4a2ecac3609eb36eb328e7388a6be5c",
+  "powerPoint": "16.0.20430",
+  "width": 1280,
+  "height": 720,
+  "slides": 5
+}

@@ -89,6 +89,7 @@ public static class CorpusGenerator
         ("transitions-classic", TransitionsDeck.BuildClassic, false),
         ("transitions-2010", TransitionsDeck.Build2010, false),
         ("transitions-2013", TransitionsDeck.Build2013, false),
+        ("transitions-morph", TransitionsDeck.BuildMorph, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>

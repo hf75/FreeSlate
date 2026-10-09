@@ -12,7 +12,7 @@ namespace Fidelity.PowerPoint;
 static class TransitionsDeck
 {
     // MsoAutoShapeType
-    const int Rectangle = 1, Oval = 9, IsoscelesTriangle = 7;
+    const int Rectangle = 1, Oval = 9, IsoscelesTriangle = 7, Star5 = 92;
 
     // PpEntryEffect values and the markup PowerPoint writes for them (enumerated with PowerPoint 16).
     public static readonly int[] Classic =
@@ -34,6 +34,82 @@ static class TransitionsDeck
     [
         3934, 3935, 3936, 3937, 3938, 3939, 3940, 3941, 3942, 3943, 3944, 3945, 3946, 3947, 3948, 3949, 3950, 3951, 3952, 3953,
     ];
+
+    // PpEntryEffect: morph by object, by word, by character.
+    const int MorphObjects = 3954, MorphWords = 3955, MorphCharacters = 3956;
+
+    /// <summary>
+    /// Morph (catalog: transition.morph): a slide and copies of it whose shapes moved, grew, turned and changed color,
+    /// a shape that comes and one that goes, text whose words and letters change places, and two shapes of different
+    /// geometry that !! names pair.
+    /// </summary>
+    public static void BuildMorph(dynamic deck)
+    {
+        object presentation = deck;
+        var first = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        first.FollowMasterBackground = PowerPointSession.MsoFalse;
+        first.Background.Fill.Solid();
+        first.Background.Fill.ForeColor.RGB = CorpusGenerator.Rgb(242, 242, 242);
+        Text(Named(first, "Title", first.Shapes.AddTextbox(1, 40f, 30f, 600f, 60f)), "Morph", 36);
+        Named(first, "Box", Filled(first.Shapes.AddShape(Rectangle, 60f, 140f, 220f, 140f), CorpusGenerator.Rgb(68, 114, 196)));
+        Named(first, "Ball", Filled(first.Shapes.AddShape(Oval, 640f, 140f, 200f, 200f), CorpusGenerator.Rgb(237, 125, 49)));
+        Named(first, "Peak", Filled(first.Shapes.AddShape(IsoscelesTriangle, 360f, 320f, 180f, 160f), CorpusGenerator.Rgb(112, 173, 71)));
+        Named(first, "Leaving", Filled(first.Shapes.AddShape(Rectangle, 760f, 420f, 140f, 80f), CorpusGenerator.Rgb(165, 165, 165)));
+        Text(Named(first, "Words", first.Shapes.AddTextbox(1, 60f, 420f, 560f, 60f)), "one two three four", 32);
+
+        // Shapes moved, grown, turned and recolored; one gone, one new.
+        var second = first.Duplicate()[1];
+        second.Shapes["Box"].Left = 600f; second.Shapes["Box"].Top = 300f; second.Shapes["Box"].Width = 300f; second.Shapes["Box"].Height = 200f;
+        second.Shapes["Ball"].Left = 80f; second.Shapes["Ball"].Top = 120f; second.Shapes["Ball"].Width = 120f; second.Shapes["Ball"].Height = 120f;
+        second.Shapes["Ball"].Fill.ForeColor.RGB = CorpusGenerator.Rgb(112, 48, 160);
+        second.Shapes["Peak"].Rotation = 90f;
+        second.Shapes["Leaving"].Delete();
+        Named(second, "Coming", Filled(second.Shapes.AddShape(Star5, 380f, 100f, 160f, 160f), CorpusGenerator.Rgb(255, 192, 0)));
+        second.SlideShowTransition.EntryEffect = MorphObjects;
+        second.SlideShowTransition.Duration = 1f;
+
+        // Words change places.
+        var third = second.Duplicate()[1];
+        third.Shapes["Words"].TextFrame.TextRange.Text = "four three two one";
+        third.SlideShowTransition.EntryEffect = MorphWords;
+        third.SlideShowTransition.Duration = 1f;
+
+        // Letters change places.
+        var fourth = third.Duplicate()[1];
+        fourth.Shapes["Words"].TextFrame.TextRange.Text = "one two three four";
+        fourth.Shapes["Title"].TextFrame.TextRange.Text = "Mprho";
+        fourth.SlideShowTransition.EntryEffect = MorphCharacters;
+        fourth.SlideShowTransition.Duration = 1f;
+
+        // Different shapes paired by their !! names.
+        var fifth = fourth.Duplicate()[1];
+        fifth.Shapes["Box"].Name = "!!Pair";
+        var circle = Filled(fifth.Shapes.AddShape(Oval, 60f, 140f, 220f, 220f), CorpusGenerator.Rgb(68, 114, 196));
+        circle.Name = "!!Pair";
+        fourth.Shapes["Box"].Name = "!!Pair";
+        fifth.Shapes["!!Pair"].Delete();
+        fifth.SlideShowTransition.EntryEffect = MorphObjects;
+        fifth.SlideShowTransition.Duration = 1f;
+    }
+
+    static dynamic Filled(dynamic shape, int color)
+    {
+        shape.Fill.ForeColor.RGB = color;
+        shape.Line.Visible = PowerPointSession.MsoFalse;
+        return shape;
+    }
+
+    static dynamic Named(dynamic slide, string name, dynamic shape)
+    {
+        shape.Name = name;
+        return shape;
+    }
+
+    static void Text(dynamic shape, string text, int size)
+    {
+        shape.TextFrame.TextRange.Text = text;
+        shape.TextFrame.TextRange.Font.Size = size;
+    }
 
     public static void BuildClassic(dynamic deck) => Build(deck, Classic);
     public static void Build2010(dynamic deck) => Build(deck, Office2010);

@@ -1619,15 +1619,165 @@
       const duration = Math.max(0, spec && spec.dur !== undefined ? spec.dur : 0);
       const effect = transitionEffect(type, spec || {}, outgoing, incoming, cover);
       if (!effect || duration === 0 || !outgoing) { if (effect && effect.end) effect.end(); resolve(); return; }
-      const started = performance.now();
-      const tick = () => {
-        const p = Math.min(1, (performance.now() - started) / duration);
-        effect.frame(p);
-        if (p < 1) requestAnimationFrame(tick);
-        else { effect.end(); resolve(); }
-      };
-      tick();
+      // 3D transitions draw the slides as images first.
+      const ready = effect.prepare ? effect.prepare() : Promise.resolve();
+      ready.then(() => {
+        const started = performance.now();
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - started) / duration);
+          effect.frame(p);
+          if (p < 1) requestAnimationFrame(tick);
+          else { effect.end(); resolve(); }
+        };
+        tick();
+      });
     });
+  }
+
+  /* ---------------------------------------------------------------- 3D transitions (WebGL) */
+
+  /**
+   * A slide drawn as an image (for the 3D transitions, catalog: transition.office2010): its markup as it shows now,
+   * with the document's styles and the shared glyphs, in an SVG foreignObject, which the browser draws like the
+   * page itself.
+   */
+  function rasterize(slide) {
+    const copy = slide.cloneNode(true);
+    copy.removeAttribute('id');
+    for (const k of ['transform', 'opacity', 'clipPath', 'maskImage', 'zIndex', 'visibility', 'filter']) copy.style[k] = '';
+    Object.assign(copy.style, { margin: '0', position: 'relative', left: '0', top: '0', display: 'block' });
+    const css = [...document.querySelectorAll('style')].map(e => e.textContent).join('\n');
+    const glyphs = [...document.querySelectorAll('svg.glyphs')].map(e => new XMLSerializer().serializeToString(e)).join('');
+    const markup = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject width="${W}" height="${H}">` +
+      `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;overflow:hidden"><style>${css}</style>${glyphs}` +
+      `${new XMLSerializer().serializeToString(copy)}</div></foreignObject></svg>`;
+    return new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+    });
+  }
+
+  /**
+   * A WebGL scene over the stage: textured triangles in 3D seen by a camera on the slide's middle axis (eye
+   * distance in slide heights), each vertex with its own brightness, each mesh with its own opacity. Meshes are
+   * { tex, pos: [x, y, z …] (slide pixels, z toward the viewer), uv: [u, v …], shade: [s …] or a number, alpha }.
+   */
+  function glScene(stage) {
+    const canvas = document.createElement('canvas');
+    const scale = (stage.getBoundingClientRect().width / W || 1) * (window.devicePixelRatio || 1);
+    canvas.width = Math.max(1, Math.round(W * scale));
+    canvas.height = Math.max(1, Math.round(H * scale));
+    canvas.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${H}px;z-index:4;pointer-events:none`;
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: false, alpha: true, antialias: true });
+    if (!gl) return null;
+    const shader = (kind, code) => { const sh = gl.createShader(kind); gl.shaderSource(sh, code); gl.compileShader(sh); return sh; };
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, `
+      attribute vec3 pos; attribute vec2 uv; attribute float shade;
+      uniform mat4 projection; varying vec2 vUv; varying float vShade;
+      void main() { gl_Position = projection * vec4(pos, 1.0); vUv = uv; vShade = shade; }`));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, `
+      precision mediump float; uniform sampler2D tex; uniform float alpha; uniform vec4 tint;
+      varying vec2 vUv; varying float vShade;
+      void main() { vec4 c = texture2D(tex, vUv); vec3 rgb = mix(c.rgb * vShade, tint.rgb, tint.a); gl_FragColor = vec4(rgb, c.a * alpha); }`));
+    gl.linkProgram(program);
+    gl.useProgram(program);
+    const loc = name => gl.getAttribLocation(program, name);
+    const buffers = { pos: gl.createBuffer(), uv: gl.createBuffer(), shade: gl.createBuffer() };
+    const textures = new Map();
+    const texture = image => {
+      let t = textures.get(image);
+      if (!t) {
+        t = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+        textures.set(image, t);
+      }
+      return t;
+    };
+    stage.appendChild(canvas);
+    return {
+      canvas,
+      /** Draws the meshes (in order, with depth) over a background color [r, g, b, a] (0 … 1). */
+      draw(meshes, eye = 2, background = [0, 0, 0, 1]) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(...background);
+        gl.clearDepth(1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Perspective: the slide plane (z = 0) fills the view; a point at z comes nearer by D / (D - z).
+        const D = eye * H, Z = 4 * H;
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'projection'), false, new Float32Array([
+          2 / W, 0, 0, 0, 0, -2 / H, 0, 0, 0, 0, -1 / Z, -1 / D, -1, 1, 0, 1]));
+        for (const mesh of meshes) {
+          const n = mesh.pos.length / 3;
+          const shade = typeof mesh.shade === 'number' || mesh.shade === undefined ? new Float32Array(n).fill(mesh.shade === undefined ? 1 : mesh.shade) : new Float32Array(mesh.shade);
+          for (const [name, data, size] of [['pos', new Float32Array(mesh.pos), 3], ['uv', new Float32Array(mesh.uv), 2], ['shade', shade, 1]]) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers[name]);
+            gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+            gl.enableVertexAttribArray(loc(name));
+            gl.vertexAttribPointer(loc(name), size, gl.FLOAT, false, 0, 0);
+          }
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, texture(mesh.tex));
+          gl.uniform1i(gl.getUniformLocation(program, 'tex'), 0);
+          gl.uniform1f(gl.getUniformLocation(program, 'alpha'), mesh.alpha === undefined ? 1 : mesh.alpha);
+          gl.uniform4fv(gl.getUniformLocation(program, 'tint'), mesh.tint || [0, 0, 0, 0]);
+          gl.drawArrays(gl.TRIANGLES, 0, n);
+        }
+      },
+      remove() { canvas.remove(); },
+    };
+  }
+
+  /** Two triangles of a quad: corners (x, y, z) a, b, c, d clockwise from the top left, their texture corners. */
+  function quad(a, b, c, d, [u0, v0, u1, v1] = [0, 0, 1, 1]) {
+    return {
+      pos: [...a, ...b, ...c, ...a, ...c, ...d],
+      uv: [u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1],
+    };
+  }
+
+  /** A point turned about an axis through a center: angles in degrees about x (tilting back) and y (turning right). */
+  function turn([x, y, z], [cx, cy, cz], ax = 0, ay = 0, az = 0) {
+    let [px, py, pz] = [x - cx, y - cy, z - cz];
+    if (ax) { const r = ax * Math.PI / 180, [c, s] = [Math.cos(r), Math.sin(r)]; [py, pz] = [py * c - pz * s, py * s + pz * c]; }
+    if (ay) { const r = ay * Math.PI / 180, [c, s] = [Math.cos(r), Math.sin(r)]; [px, pz] = [px * c + pz * s, -px * s + pz * c]; }
+    if (az) { const r = az * Math.PI / 180, [c, s] = [Math.cos(r), Math.sin(r)]; [px, py] = [px * c - py * s, px * s + py * c]; }
+    return [px + cx, py + cy, pz + cz];
+  }
+
+  /**
+   * A 3D transition: the slides as images, drawn by draw(p, old, new) into a WebGL scene over the stage while the
+   * slides themselves hide; without WebGL the new slide fades in.
+   */
+  function glTransition(a, b, draw, reset) {
+    let scene = null, images = null;
+    return {
+      async prepare() {
+        images = await Promise.all([rasterize(a), rasterize(b)]);
+        if (!images[0] || !images[1]) return;
+        scene = glScene(a.parentNode);
+      },
+      frame(p) {
+        if (!scene) { b.style.zIndex = 2; b.style.opacity = String(p); return; }
+        a.style.visibility = b.style.visibility = 'hidden';
+        draw(scene, p, images[0], images[1]);
+      },
+      end() {
+        if (scene) scene.remove();
+        scene = null;
+        a.style.visibility = b.style.visibility = '';
+        reset();
+      },
+    };
   }
 
   const offsets = { l: [-1, 0], r: [1, 0], u: [0, -1], d: [0, 1], lu: [-1, -1], ru: [1, -1], ld: [-1, 1], rd: [1, 1] };
@@ -1831,6 +1981,242 @@
     return url;
   }
 
+  /**
+   * Morph (catalog: transition.morph; measured with PowerPoint's video): shapes of the two slides with the same name
+   * (!! names too, whatever their geometry) move, grow and turn from the one to the other at PowerPoint's ease
+   * (accelerating for 0.1, slowing down for 0.85), the old one fading out on top of the new one, so that their colors
+   * mix; by words or letters the text goes unit by unit to where the same word or letter stands on the new slide.
+   * Shapes only on the old slide fade out early (0.02 … 0.26), shapes only on the new one late (from 0.43, slowing
+   * down); the backgrounds crossfade.
+   */
+  function morphTransition(spec, a, b, reset) {
+    // PowerPoint's morph starts half a frame late (measured: its ease fits from frame 31.4).
+    const curve = p => ease(Math.min(1, Math.max(0, (p - 0.015) / 0.985)), { accel: 0.1, decel: 0.85 });
+    const leave = p => 1 - Math.min(1, Math.max(0, (p - 0.02) / 0.24));
+    const arrive = p => { const u = Math.min(1, Math.max(0, (p - 0.43) / 0.52)); return 1 - (1 - u) * (1 - u); };
+    const byUnits = spec.option === 'byWord' ? 'w' : spec.option === 'byChar' ? 'c' : null;
+    let plan = null;
+    const shapes = slide => [...slide.querySelectorAll(':scope > .sp')];
+    /** A shape's place: its middle, size and turn on the slide, and the map from its own box to the unit square. */
+    const placeOf = el => {
+      const m = parseMatrix(el.style.transform);
+      const [w0, h0] = [parseFloat(el.style.width) || el.offsetWidth || 1, parseFloat(el.style.height) || el.offsetHeight || 1];
+      const [cx, cy] = apply(m, w0 / 2, h0 / 2);
+      const w = w0 * Math.hypot(m[0], m[1]), h = h0 * Math.hypot(m[2], m[3]);
+      const angle = Math.atan2(m[1], m[0]) * 180 / Math.PI;
+      const local = multiply(invert(multiply(translate(cx, cy), multiply(rotate(angle), scale(Math.max(w, 1e-6), Math.max(h, 1e-6))))), m);
+      return { cx, cy, w, h, angle, local, original: el.style.transform };
+    };
+    const placed = (place, from, to, e) => {
+      let turn = to.angle - from.angle;
+      turn -= 360 * Math.round(turn / 360);
+      const [cx, cy, w, h] = [from.cx + (to.cx - from.cx) * e, from.cy + (to.cy - from.cy) * e, from.w + (to.w - from.w) * e, from.h + (to.h - from.h) * e];
+      return css(multiply(translate(cx, cy), multiply(rotate(from.angle + turn * e), multiply(scale(w, h), place.local))));
+    };
+    /** The text units of a shape (letters, or words of letters) with their text, in reading order. */
+    const unitsOf = el => {
+      const group = el.querySelector('[data-tx][data-text]');
+      if (!group) return [];
+      const text = group.dataset.text, letters = [...el.querySelectorAll('[data-tx] [data-c]')];
+      if (byUnits === 'c') return letters.map(g => ({ key: text[+g.dataset.c] || '', els: [g] })).filter(u => u.key.trim());
+      const words = new Map();
+      for (const g of letters) {
+        if (g.dataset.w === '-1') continue;
+        if (!words.has(g.dataset.w)) words.set(g.dataset.w, { key: '', els: [] });
+        const word = words.get(g.dataset.w);
+        word.key += text[+g.dataset.c] || '';
+        word.els.push(g);
+      }
+      return [...words.values()];
+    };
+    /** The middle of elements on the slide, in the slide's own pixels. */
+    const middleOf = (els, slide) => {
+      const r = slide.getBoundingClientRect(), k = (r.width / W) || 1;
+      let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+      for (const e of els) { const b = e.getBoundingClientRect(); x0 = Math.min(x0, b.left); y0 = Math.min(y0, b.top); x1 = Math.max(x1, b.right); y1 = Math.max(y1, b.bottom); }
+      return [((x0 + x1) / 2 - r.left) / k, ((y0 + y1) / 2 - r.top) / k];
+    };
+    const setup = () => {
+      const named = new Map();
+      for (const el of shapes(b)) if (el.dataset.name) { if (!named.has(el.dataset.name)) named.set(el.dataset.name, []); named.get(el.dataset.name).push(el); }
+      const pairs = [], gone = [];
+      for (const x of shapes(a)) {
+        const list = x.dataset.name && named.get(x.dataset.name);
+        if (list && list.length) pairs.push({ x, y: list.shift() }); else gone.push(x);
+      }
+      const taken = new Set(pairs.map(pair => pair.y));
+      const come = shapes(b).filter(el => !taken.has(el));
+      for (const pair of pairs) {
+        pair.from = placeOf(pair.x);
+        pair.to = placeOf(pair.y);
+        // Shapes of different geometry turn the one outline into the other (measured: a rectangle bulges into a
+        // circle): both outlines sampled alike, from the points that lie closest, and the colors mixed.
+        if (pair.x.dataset.geom !== pair.y.dataset.geom) pair.outline = outlines(pair);
+        if (!byUnits) continue;
+        // Units with the same text pair in reading order; each keeps its place in its shape while the shape moves.
+        const [ux, uy] = [unitsOf(pair.x), unitsOf(pair.y)];
+        if (!ux.length && !uy.length) continue;
+        const waiting = new Map();
+        for (const u of uy) { if (!waiting.has(u.key)) waiting.set(u.key, []); waiting.get(u.key).push(u); }
+        pair.moves = [];
+        pair.leaving = [];
+        for (const u of ux) {
+          const list = waiting.get(u.key);
+          const v = list && list.shift();
+          if (!v) { pair.leaving.push(u); continue; }
+          pair.moves.push({ u, v, start: middleOf(u.els, a), end: middleOf(v.els, b), local: (() => {
+            try { const bb = u.els.map(e => e.getBBox()); const [x0, y0] = [Math.min(...bb.map(q => q.x)), Math.min(...bb.map(q => q.y))]; return [(x0 + Math.max(...bb.map(q => q.x + q.width))) / 2, (y0 + Math.max(...bb.map(q => q.y + q.height))) / 2]; } catch { return [0, 0]; }
+          })() });
+        }
+        pair.arriving = [...waiting.values()].flat();
+      }
+      // The backgrounds crossfade beneath both slides' shapes: copies of them on a layer of their own.
+      const layer = document.createElement('div');
+      layer.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${H}px;z-index:0;pointer-events:none`;
+      const grounds = [a, b].map(slide => {
+        const holder = document.createElement('div');
+        holder.style.cssText = `position:absolute;inset:0;background:${getComputedStyle(slide).backgroundColor}`;
+        const bg = background(slide);
+        if (bg) { holder.appendChild(bg.cloneNode(true)); bg.style.visibility = 'hidden'; }
+        slide.style.background = 'transparent';
+        layer.appendChild(holder);
+        return holder;
+      });
+      a.parentNode.insertBefore(layer, a.parentNode.firstChild);
+      // Outlines turning into others are drawn between the slides' shapes.
+      const drawing = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      drawing.setAttribute('width', W);
+      drawing.setAttribute('height', H);
+      drawing.style.cssText = 'position:absolute;left:0;top:0;z-index:2;pointer-events:none;overflow:visible';
+      for (const pair of pairs) if (pair.outline) drawing.appendChild(pair.outline.path);
+      a.parentNode.appendChild(drawing);
+      plan = { pairs, gone, come, layer, grounds, drawing };
+    };
+    const background = slide => slide.querySelector(':scope > .bg');
+    return {
+      frame(p) {
+        if (!plan) setup();
+        const e = curve(p);
+        // The old slide's shapes lie on top of the new one's, the backgrounds beneath both.
+        a.style.zIndex = 3;
+        b.style.zIndex = 1;
+        plan.grounds[1].style.opacity = String(e);
+        for (const el of plan.gone) el.style.opacity = String(leave(p));
+        for (const el of plan.come) el.style.opacity = String(arrive(p));
+        for (const pair of plan.pairs) {
+          pair.x.style.transform = placed(pair.from, pair.from, pair.to, e);
+          pair.y.style.transform = placed(pair.to, pair.from, pair.to, e);
+          if (pair.outline) morphOutline(pair, e);
+          if (!pair.moves) { pair.x.style.opacity = String(1 - e); continue; }
+          // Text by units: the old shape's units travel, the new shape's paired ones wait hidden.
+          pair.x.style.opacity = '';
+          const m = multiply(translate(0, 0), parseMatrix(pair.x.style.transform));
+          const inverse = invert(m);
+          for (const move of pair.moves) {
+            const target = [move.start[0] + (move.end[0] - move.start[0]) * e, move.start[1] + (move.end[1] - move.start[1]) * e];
+            const [lx, ly] = apply(inverse, target[0], target[1]);
+            const shift = `translate(${(lx - move.local[0]).toFixed(2)} ${(ly - move.local[1]).toFixed(2)})`;
+            for (const g of move.u.els) g.setAttribute('transform', shift);
+            for (const g of move.v.els) g.style.visibility = 'hidden';
+          }
+          for (const u of pair.leaving) for (const g of u.els) g.style.opacity = String(leave(p));
+          for (const u of pair.arriving) for (const g of u.els) g.style.opacity = String(arrive(p));
+        }
+      },
+      end() {
+        if (plan) {
+          for (const el of [...plan.gone, ...plan.come]) el.style.opacity = '';
+          for (const pair of plan.pairs) {
+            pair.x.style.transform = pair.from.original;
+            pair.y.style.transform = pair.to.original;
+            pair.x.style.opacity = '';
+            for (const move of pair.moves || []) {
+              for (const g of move.u.els) g.removeAttribute('transform');
+              for (const g of move.v.els) g.style.visibility = '';
+            }
+            for (const u of [...(pair.leaving || []), ...(pair.arriving || [])]) for (const g of u.els) g.style.opacity = '';
+          }
+        }
+        if (plan) {
+          plan.layer.remove();
+          plan.drawing.remove();
+          for (const pair of plan.pairs) if (pair.outline) for (const g of pair.outline.hidden) g.style.visibility = '';
+        }
+        for (const slide of [a, b]) {
+          slide.style.background = '';
+          if (background(slide)) background(slide).style.visibility = '';
+        }
+        plan = null;
+        reset();
+      },
+    };
+  }
+
+  /**
+   * The outlines of a morph pair whose geometry differs: both shapes' first filled path sampled at 128 points in
+   * their unit squares, each from where its path starts; null when either has none.
+   */
+  function outlines(pair) {
+    const N = 128;
+    const sample = (el, place) => {
+      // The shape's drawing: its background group, or (without text) its paths themselves.
+      const path = el.querySelector('[data-bg] path') || el.querySelector(':scope > svg > path');
+      if (!path || !path.getTotalLength) return null;
+      let length;
+      try { length = path.getTotalLength(); } catch { return null; }
+      if (!(length > 0)) return null;
+      const points = [];
+      for (let i = 0; i < N; i++) {
+        const q = path.getPointAtLength(length * i / N);
+        points.push(apply(place.local, q.x, q.y));
+      }
+      return { points, fill: getComputedStyle(path).fill, group: el.querySelector('[data-bg]') || path };
+    };
+    const [from, to] = [sample(pair.x, pair.from), sample(pair.y, pair.to)];
+    if (!from || !to) return null;
+    // Start to start, as the outlines are drawn (measured: a rectangle from its top left corner turns into a circle
+    // from its left, so that the shape between seems to turn).
+    const best = { points: to.points };
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const color = c => { const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c || ''); return m ? [+m[1], +m[2], +m[3]] : null; };
+    from.group.style.visibility = to.group.style.visibility = 'hidden';
+    return { path, from: from.points, to: best.points, fills: [color(from.fill), color(to.fill)], fill: to.fill, hidden: [from.group, to.group] };
+  }
+
+  /** Draws a morph pair's outline at e: the points mixed and placed in the pair's box of the moment. */
+  function morphOutline(pair, e) {
+    const o = pair.outline, from = pair.from, to = pair.to;
+    let turn = to.angle - from.angle;
+    turn -= 360 * Math.round(turn / 360);
+    const m = multiply(translate(from.cx + (to.cx - from.cx) * e, from.cy + (to.cy - from.cy) * e),
+      multiply(rotate(from.angle + turn * e), scale(from.w + (to.w - from.w) * e, from.h + (to.h - from.h) * e)));
+    const d = o.from.map(([x0, y0], i) => {
+      const [x1, y1] = o.to[i];
+      const [x, y] = apply(m, x0 + (x1 - x0) * e, y0 + (y1 - y0) * e);
+      return `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join('') + 'Z';
+    o.path.setAttribute('d', d);
+    const [c0, c1] = o.fills;
+    o.path.setAttribute('fill', c0 && c1 ? `rgb(${c0.map((v, i) => Math.round(v + (c1[i] - v) * e)).join(',')})` : o.fill);
+  }
+
+  /** A CSS filter blurring across only (an SVG filter in the document, made once), or none for nothing. */
+  function acrossBlur(deviation) {
+    if (deviation < 0.5) return '';
+    let filter = document.getElementById('fs-across-blur');
+    if (!filter) {
+      const holder = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      holder.setAttribute('width', '0');
+      holder.setAttribute('height', '0');
+      holder.style.position = 'absolute';
+      holder.innerHTML = '<filter id="fs-across-blur" x="-20%" y="0" width="140%" height="100%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="0 0" edgeMode="duplicate"/></filter>';
+      document.body.appendChild(holder);
+      filter = holder.firstChild;
+    }
+    filter.firstChild.setAttribute('stdDeviation', `${deviation.toFixed(2)} 0`);
+    return 'url(#fs-across-blur)';
+  }
+
   /** A CSS mask fading a slide's edges over a band (the slide's own pixels) from nothing at the edge. */
   function feather(band) {
     const layer = (side, size) => {
@@ -1910,13 +2296,45 @@
           b.style.zIndex = 2;
           b.style.transform = `translate(${-vector[0] * (1 - q) * W}px,${-vector[1] * (1 - q) * H}px)`;
         }, end: reset };
-      case 'pull': case 'reveal':
+      case 'pull':
         return { frame: p => {
           const q = vector[0] && vector[1] ? uncoverAcross(p) : powInOut(3)(p);
           a.style.zIndex = 2;
           a.style.transform = `translate(${vector[0] * q * W}px,${vector[1] * q * H}px)`;
-          if (type === 'reveal') a.style.opacity = String(1 - p);
         }, end: reset };
+      case 'reveal':
+        if (spec.thruBlk) {
+          // The old slide darkens to black, the side it leaves toward first (dir l: the left, 0.11 ahead of the
+          // right), and the new slide lightens from black the other way round, each within 0.33 (measured).
+          const ahead = dir === 'r' ? x => 1 - x : x => x;
+          const shade = (p, start, lead) => {
+            const stops = [];
+            for (let k = 0; k <= 16; k++) {
+              const x = k / 16, t = (p - start - 0.11 * lead(x)) / 0.33;
+              stops.push(`rgba(0,0,0,${+(start < 0.5 ? sineInOut(t) : 1 - sineInOut(t)).toFixed(4)}) ${x * 100}%`);
+            }
+            return `linear-gradient(to right,${stops.join(',')})`;
+          };
+          return { frame: p => {
+            cover.style.opacity = '1';
+            cover.style.background = p < 0.5 ? shade(p, 0.055, ahead) : shade(p, 0.515, x => 1 - ahead(x));
+            b.style.opacity = p < 0.5 ? '0' : '1';
+            b.style.zIndex = 2;
+          }, end: () => { cover.style.background = '#000'; reset(); } };
+        }
+        // Smoothly: the backgrounds crossfade with a sine over the whole time, the old slide's content fades out
+        // before the middle and the new one's in after it, each within 0.3 (measured: only the backgrounds' mixed
+        // color at 0.5).
+        return { frame: p => {
+          b.style.zIndex = 2;
+          b.style.opacity = String(sineInOut(p));
+          const content = (slide, alpha) => slide.querySelectorAll(':scope > :not(.bg)').forEach(e => { e.style.opacity = alpha < 1 ? String(alpha) : ''; });
+          content(a, 1 - sineInOut((p - 0.12) / 0.3));
+          content(b, 1 - sineInOut((1 - p - 0.12) / 0.3));
+        }, end: () => {
+          for (const slide of [a, b]) slide.querySelectorAll(':scope > :not(.bg)').forEach(e => { e.style.opacity = ''; });
+          reset();
+        } };
       case 'blinds': return clip(p => bandsClip(6, spec.dir !== 'vert', p));
       case 'checker': return clip(p => bandsClip(10, spec.dir === 'vert', p));
       case 'comb': {
@@ -1985,7 +2403,14 @@
           b.style.transform = type === 'ripple' ? `scale(${0.9 + 0.1 * p})` : `rotate(${(1 - p) * -180}deg) scale(${p})`;
         }, end: reset };
       case 'flash':
-        return { frame: p => { cover.style.background = '#fff'; cover.style.opacity = String(p < 0.5 ? p * 2 : (1 - p) * 2); b.style.opacity = p < 0.5 ? '0' : '1'; b.style.zIndex = 2; }, end: reset };
+        // White at once; the new slide comes out of it with its colors scaled by a and raised by b, both falling
+        // linearly to plain at 0.894 (measured: R 29 · 2.1 + 90 = 151 at 0.63).
+        return { frame: p => {
+          b.style.zIndex = 2;
+          const left = Math.max(0, 0.894 - p), gain = 1 + 4.17 * left, lift = 341 * left / 255;
+          const contrast = gain / (gain + 2 * lift), brightness = gain + 2 * lift;
+          b.style.filter = left > 0 ? `contrast(${contrast.toFixed(4)}) brightness(${brightness.toFixed(4)})` : '';
+        }, end: reset };
       case 'flip': case 'switch': case 'gallery': case 'prism': case 'doors': case 'window': case 'ferris': case 'cube': case 'rotate': case 'box': case 'orbit':
         return three(p => {
           const sign = dir === 'r' || dir === 'd' ? -1 : 1;
@@ -2035,7 +2460,9 @@
           a.style.opacity = String(1 - p);
         }, end: reset };
       }
-      case 'morph': default:
+      case 'morph':
+        return morphTransition(spec, a, b, reset);
+      default:
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
     }
   }
@@ -2576,7 +3003,7 @@
       document.body.append(stage, cover);
       const effect = transitionEffect(spec.type || 'none', spec, a, b, cover);
       const duration = Math.max(1, spec.dur || 0);
-      if (effect) effect.frame(Math.min(1, Math.max(0, +transitionAt / duration)));
+      if (effect) (effect.prepare ? effect.prepare() : Promise.resolve()).then(() => effect.frame(Math.min(1, Math.max(0, +transitionAt / duration))));
     }
   }
 

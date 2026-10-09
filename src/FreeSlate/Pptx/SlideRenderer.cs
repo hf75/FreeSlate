@@ -14,6 +14,12 @@ namespace FreeSlate.Pptx;
 public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 {
     readonly TextRenderer text = new(slide, FreeSlate.Text.FontResolver.Default) { Paint = paint };
+
+    /// <summary>
+    /// The morph transition this slide takes part in (into it or out of it; byObject, byWord, byChar), or null: its
+    /// shapes carry their names (data-name), and by words or letters its text is drawn in units.
+    /// </summary>
+    public string? Morph { get; init; }
     TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
     TableRenderer? tables;
 
@@ -420,7 +426,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 Defaults = textDefaults,
                 FontRef = style?.Element(Ns.A + "fontRef"),
-                Units = shapeId != null && Iterated.Contains(shapeId),
+                Units = shapeId != null && (Iterated.Contains(shapeId) || Morph is "byWord" or "byChar"),
             };
             var textMarkup = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
@@ -1167,6 +1173,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var sb = new StringBuilder(model);
         if (isSlide && c.Str("id") is { } id)
             sb.Append($" data-id=\"{System.Net.WebUtility.HtmlEncode(id)}\"");
+        if (isSlide && Morph != null && c.Str("name") is { Length: > 0 } name)
+        {
+            sb.Append($" data-name=\"{System.Net.WebUtility.HtmlEncode(name)}\"");
+            // The geometry, so that morph knows when to turn one outline into another.
+            var spPr = shape.Element(Ns.P + "spPr");
+            var geometry = spPr?.Element(Ns.A + "prstGeom")?.Str("prst") ?? (spPr?.Element(Ns.A + "custGeom") != null ? "custom" : null);
+            if (geometry != null)
+                sb.Append($" data-geom=\"{System.Net.WebUtility.HtmlEncode(geometry)}\"");
+        }
         // Mouse-over actions (a:hlinkHover, catalog: interactivity.hyperlinks): the player runs them when the pointer
         // enters the shape during the show.
         if (Links.Resolve(c.Element(Ns.A + "hlinkHover"), part, slide.Presentation) is { } hover)

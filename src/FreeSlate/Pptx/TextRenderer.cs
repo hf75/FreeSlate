@@ -491,6 +491,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 paragraphStarts[group.Key] = body.Length;
                 body.Append(group.First().ParagraphText).Append('\n');
             }
+            // The text the units index (morph pairs words and letters by it).
+            svg.Replace("<g data-tx=\"\"", $"<g data-tx=\"\" data-text=\"{WebUtility.HtmlEncode(body.ToString())}\"", 0, svg.Length);
             words = new int[body.Length];
             for (int i = 0, word = -1; i < body.Length; i++)
             {

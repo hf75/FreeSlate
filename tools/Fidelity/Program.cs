@@ -59,7 +59,11 @@ switch (command)
             Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} frames)");
         break;
     case "transitions":
-        foreach (var r in Transitions.Run(decks))
+        // --slides=3,7 compares only those transitions (while working on them).
+        var only = args.FirstOrDefault(a => a.StartsWith("--slides=", StringComparison.Ordinal)) is { } list
+            ? list["--slides=".Length..].Split(',').Select(int.Parse).ToHashSet()
+            : null;
+        foreach (var r in Transitions.Run(decks, only))
             Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} frames)");
         break;
     default:

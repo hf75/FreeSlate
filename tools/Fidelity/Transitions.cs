@@ -112,7 +112,7 @@ public static class Transitions
     static int StartFrame() => Fps * SlideSeconds + 1;
 
     /// <summary>Draws the reference moments with the player and compares them; decks without transition references are skipped.</summary>
-    public static List<DeckResult> Run(IEnumerable<string> decks)
+    public static List<DeckResult> Run(IEnumerable<string> decks, ISet<int>? only = null)
     {
         var browser = Browser.Find();
         const int Parallelism = 4;
@@ -123,13 +123,14 @@ public static class Transitions
             if (Load(deck) is not { Slides.Count: > 0 } info)
                 continue;
             var dir = Path.Combine(Pipeline.OutputDir(deck), "trans");
-            if (Directory.Exists(dir))
+            if (Directory.Exists(dir) && only == null)
                 Directory.Delete(dir, recursive: true);
             Directory.CreateDirectory(dir);
             var htmlPath = Path.Combine(dir, "index.html");
             FreeSlate.PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck));
             var url = new Uri(htmlPath).AbsoluteUri;
-            var samples = info.Slides.SelectMany(s => s.Samples.Select(f => (s.Slide, s.Start, Frame: f))).ToList();
+            var samples = info.Slides.Where(s => only == null || only.Contains(s.Slide))
+                .SelectMany(s => s.Samples.Select(f => (s.Slide, s.Start, Frame: f))).ToList();
             var scores = new ConcurrentBag<SlideResult>();
             Parallel.ForEach(samples, new ParallelOptions { MaxDegreeOfParallelism = Parallelism }, sample =>
             {
