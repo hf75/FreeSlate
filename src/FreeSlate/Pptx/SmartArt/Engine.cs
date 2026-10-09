@@ -36,9 +36,13 @@ public static class Engine
         return root;
     }
 
+    /// <summary>The pins of the layout running on this thread, for extents that arrange a subtree (hierarchies).</summary>
+    [ThreadStatic] static Pins? running;
+
     /// <summary>Lays the tree out from scratch with the values the fitting fixed.</summary>
     static void Run(LayoutNode root, double w, double h, Pins pins)
     {
+        running = pins;
         foreach (var node in root.Descendants().Prepend(root))
         {
             node.Values.Clear();
@@ -143,6 +147,13 @@ public static class Engine
     /// </summary>
     static (double X, double Y, double W, double H) Extent(LayoutNode node)
     {
+        // A hierarchy takes the room of its tree arranged in the units of its constraints (measured: hierarchy5's tree
+        // in a lin node with fallback 2D, scaled to fit it).
+        if (IsHierarchy(node) && running is { } pins)
+        {
+            var box = Arrange(node, pins);
+            return (box.X - node.X, box.Y - node.Y, box.W, box.H);
+        }
         var (w, h) = (Finite(node, "w"), Finite(node, "h"));
         var children = node.Children.Where(c => c.AlgorithmType != "conn").ToList();
         if (node.AlgorithmType is "composite" && children.Count > 0)
