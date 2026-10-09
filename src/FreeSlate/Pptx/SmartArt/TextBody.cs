@@ -16,6 +16,10 @@ public static class TextBody
     static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
     const double EmuPerPt = 12700;
 
+    /// <summary>The primary font size of a node (points): its value, else the default.</summary>
+    public static double PrimaryFont(LayoutNode node) =>
+        node.Values.TryGetValue("primFontSz", out var v) && double.IsFinite(v) ? v : 65;
+
     /// <summary>The paragraphs of a node: (text, level), levels counted from the node's own point.</summary>
     public static List<(XElement Paragraph, int Level)> Paragraphs(LayoutNode node)
     {

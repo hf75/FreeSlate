@@ -160,7 +160,7 @@ public static class SmartArtCheck
                     // builds it (child text in the secondary size).
                     if (size != null && node.Text.Count > 0 && Output.TextSource(root, node) is { } source)
                     {
-                        var primary = source.Values.TryGetValue("primFontSz", out var p) && double.IsFinite(p) ? p : 65;
+                        var primary = TextBody.PrimaryFont(source);
                         var secondary = source.Values.TryGetValue("secFontSz", out var sec) && double.IsFinite(sec) ? sec : primary * 0.78;
                         var ours = (string?)TextBody.Build(source, primary, secondary).Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz");
                         builtSize = ours;

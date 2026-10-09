@@ -15,7 +15,6 @@ namespace FreeSlate.Pptx.SmartArt;
 /// </summary>
 static class Fitting
 {
-    const double DefaultFontSize = 65;
 
     /// <summary>One round of fitting; whether it pinned anything new.</summary>
     public static bool Fit(LayoutNode root, Func<XElement, double, LaidOutText> measure, Pins pins)
@@ -47,7 +46,7 @@ static class Fitting
         return changed;
     }
 
-    public static double Font(LayoutNode node) => node.Values.TryGetValue("primFontSz", out var v) && double.IsFinite(v) ? v : DefaultFontSize;
+    public static double Font(LayoutNode node) => TextBody.PrimaryFont(node);
 
     public static double SecondaryFont(LayoutNode node) =>
         node.Values.TryGetValue("secFontSz", out var s) && double.IsFinite(s) ? s : Font(node) * 0.78;
