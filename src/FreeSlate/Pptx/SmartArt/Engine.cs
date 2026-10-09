@@ -1072,10 +1072,12 @@ public static class Engine
                 return null;
             var candidates = all.Where(n => n.Point == p).ToList();
             // A named end among the point's nodes, else inside them (measured: NumberedDotsVertical's connectors between
-            // the number circles its items hold, made for the transitions after them).
+            // the number circles its items hold, made for the transitions after them), else the one node of that name the
+            // diagram itself holds (cycle8's points beside its wedges).
             if (name != null)
                 return candidates.FirstOrDefault(n => n.Name == name)
                        ?? candidates.SelectMany(n => n.Descendants()).FirstOrDefault(n => n.Name == name && n.AlgorithmType != "conn")
+                       ?? (all.Where(n => n.Name == name).ToList() is [{ Point.Type: "doc" } only] ? only : null)
                        ?? candidates.FirstOrDefault(Draws);
             return candidates.FirstOrDefault(n => Draws(n) && (string?)n.Shape?.Attribute("hideGeom") is not ("1" or "true"))
                    ?? candidates.FirstOrDefault(Draws);
@@ -1121,6 +1123,29 @@ public static class Engine
         {
             Arc(connector, start, end, pins);
             return;
+        }
+        // A curved connector with a diameter: along the circle of that size through its ends, the short way round
+        // clockwise (measured: cycle8's arrows between the points beside its wedges).
+        if (connector.Param("connRout") is "curve" or "longCurve" && Finite(connector, "diam") is > 0 and var diameter)
+        {
+            var radius = diameter / 2 * connector.Scale;
+            var (px, py) = (start.X + start.W / 2, start.Y + start.H / 2);
+            var (qx, qy) = (end.X + end.W / 2, end.Y + end.H / 2);
+            var chord = Math.Sqrt((qx - px) * (qx - px) + (qy - py) * (qy - py));
+            if (chord > 1e-9)
+            {
+                var (cux, cuy) = ((qx - px) / chord, (qy - py) / chord);
+                var rise = Math.Sqrt(Math.Max(0, radius * radius - chord * chord / 4));
+                var (mx, my) = ((px + qx) / 2, (py + qy) / 2);
+                (double X, double Y) center = (mx - cuy * rise, my + cux * rise);
+                double Sweep((double X, double Y) c) =>
+                    ((Math.Atan2(qy - c.Y, qx - c.X) - Math.Atan2(py - c.Y, px - c.X)) * 180 / Math.PI % 360 + 360) % 360;
+                if (Sweep(center) > 180)
+                    center = (mx + cuy * rise, my - cux * rise);
+                (connector.Values["arcX"], connector.Values["arcY"], connector.Values["arcR"]) = (center.X, center.Y, Math.Max(radius, chord / 2));
+                Arc(connector, start, end, pins);
+                return;
+            }
         }
         if (connector.Param("connRout") == "bend")
         {
