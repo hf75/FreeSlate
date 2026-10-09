@@ -964,8 +964,12 @@ public static class Engine
             if (p == null)
                 return null;
             var candidates = all.Where(n => n.Point == p).ToList();
+            // A named end among the point's nodes, else inside them (measured: NumberedDotsVertical's connectors between
+            // the number circles its items hold, made for the transitions after them).
             if (name != null)
-                return candidates.FirstOrDefault(n => n.Name == name) ?? candidates.FirstOrDefault(Draws);
+                return candidates.FirstOrDefault(n => n.Name == name)
+                       ?? candidates.SelectMany(n => n.Descendants()).FirstOrDefault(n => n.Name == name && n.AlgorithmType != "conn")
+                       ?? candidates.FirstOrDefault(Draws);
             return candidates.FirstOrDefault(n => Draws(n) && (string?)n.Shape?.Attribute("hideGeom") is not ("1" or "true"))
                    ?? candidates.FirstOrDefault(Draws);
         }
@@ -1045,6 +1049,11 @@ public static class Engine
         }
         var span = Math.Max(0, distance - begPad - endPad);
         var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
+        // A connector without arrowheads draws its stem alone, stemThick of its height (measured: NumberedDotsVertical's
+        // lines between the circles, 0.3 of the connector's height).
+        if (connector.Param("begSty") != "arr" && connector.Param("endSty") is { } endStyle && endStyle is not ("arr" or "auto")
+            && Finite(connector, "stemThick") is { } stem && Finite(connector, "h") is > 0 and var height)
+            thickness *= stem / height;
         var from = ta + begPad + span / 2;
         var (cx, cy) = (ax + ux * from, ay + uy * from);
         PlaceConnector(connector, cx - span / 2, cy - thickness / 2, span, thickness, pins);
