@@ -66,7 +66,9 @@ public static class Constraints
         if (!string.IsNullOrEmpty(name))
             candidates = candidates.Where(n => n.Name == name);
         if (!string.IsNullOrEmpty(ptType) && ptType != "all")
-            candidates = candidates.Where(n => DataModel.Matches(n.Point, ptType));
+            // A node that shows a node's text counts as one (measured: PlusandMinus' two texts, nodes of the diagram's own
+            // point showing its nodes, at the 65 its root gives its descendant nodes).
+            candidates = candidates.Where(n => DataModel.Matches(n.Point, ptType) || ptType == "node" && n.Text.Any(p => p.IsNode));
         return candidates.ToList();
     }
 
@@ -223,6 +225,10 @@ public static class Constraints
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
                 referenceNode = reference;
                 value = reference != null && Referenced(reference, refType, owner) is { } referenced ? referenced * fact : null;
+                // A font size nothing sets is the default one (measured: VerticalAccentList's titles, at least their
+                // descriptions' size, both shrunk to the titles' 28).
+                if (value == null && reference is { AlgorithmType: "tx" } && reference.Text.Count > 0 && refType == "primFontSz")
+                    value = TextBody.PrimaryFont(reference) * fact;
                 // A reference to a node no instance of which exists takes the value the list would give it (measured:
                 // hierarchy4's sibling spaces, half of a top-level space that a single top node has none of).
                 if (reference == null && Unplaced(owner, (string?)constraint.Attribute("refForName"), refType, 0) is { } virtualValue)
@@ -279,9 +285,10 @@ public static class Constraints
                     else
                         target.Values[type] = v;
                     break;
-                case "lte" when BoundOnly(target, type):
+                case "lte" when BoundOnly(target, type) && !(pins != null && pins.TryGet(target, type, out _)):
                     // A value only its bounds give follows them (measured: HorizontalActionList's titles, h <= 0.3 w, as
-                    // their width changes).
+                    // their width changes), unless fitting fixed it (CaptionedPictures' descriptions, shrunk below their
+                    // titles' size).
                     target.Values[type] = v;
                     break;
                 case "lte":

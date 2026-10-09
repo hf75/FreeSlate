@@ -18,7 +18,13 @@ public static class TextBody
 
     /// <summary>The primary font size of a node (points): its value, else the default.</summary>
     public static double PrimaryFont(LayoutNode node) =>
-        node.Values.TryGetValue("primFontSz", out var v) && double.IsFinite(v) ? v : 65;
+        node.Values.TryGetValue("primFontSz", out var v) && double.IsFinite(v) ? v : DefaultFont;
+
+    /// <summary>
+    /// The primary font size of a text node no constraint gives one (points; measured: RadialCluster's middle node, 36 in
+    /// a box with room for more; TitlePictureLineup's texts, equal by a constraint without a value, at 36).
+    /// </summary>
+    public const double DefaultFont = 36;
 
     /// <summary>The paragraphs of a node: (text, level), levels counted from the node's own point.</summary>
     public static List<(XElement Paragraph, int Level)> Paragraphs(LayoutNode node)
