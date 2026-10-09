@@ -146,7 +146,7 @@
     fresh(hidden) {
       return {
         visible: !hidden, opacity: 1, x: this.base.x, y: this.base.y, w: this.base.w, h: this.base.h,
-        rot: 0, sx: 1, sy: 1, mx: 0, my: 0, clip: null, fill: null, color: null, stroke: null,
+        rot: 0, sx: 1, sy: 1, mx: 0, my: 0, shx: 0, shy: 0, clip: null, fill: null, color: null, stroke: null, fontSize: 1,
       };
     }
 
@@ -159,83 +159,90 @@
       }
       const b = this.base;
       const moved = Math.abs(s.x - b.x) > 1e-6 || Math.abs(s.y - b.y) > 1e-6 || Math.abs(s.w - b.w) > 1e-6 || Math.abs(s.h - b.h) > 1e-6
-                    || s.rot !== 0 || s.sx !== 1 || s.sy !== 1 || s.mx !== 0 || s.my !== 0;
+                    || s.rot !== 0 || s.sx !== 1 || s.sy !== 1 || s.mx !== 0 || s.my !== 0 || s.shx !== 0 || s.shy !== 0;
+      // Shear (xshear, yshear: Light Speed leans the shape) about the center, before rotation.
+      const shear = [1, s.shy || 0, s.shx || 0, 1, 0, 0];
       if (this.svg) {
-        if (moved) {
+        // A font size relative to the text's own (Grow with color: 1.5) scales text drawn on its own about its
+        // middle; a whole shape keeps its size, and so does its background (an iterated effect's first pass).
+        const font = this.el.closest('[data-tx]') ? s.fontSize || 1 : 1;
+        if (moved || font !== 1) {
           // Slide-space change around the paragraph's center, expressed in the shape's coordinates.
           const [lx, ly] = [this.local.x + this.local.width / 2, this.local.y + this.local.height / 2];
-          const kx = (b.w > 0 ? s.w / b.w : 1) * s.sx, ky = (b.h > 0 ? s.h / b.h : 1) * s.sy;
+          const kx = (b.w > 0 ? s.w / b.w : 1) * s.sx * font, ky = (b.h > 0 ? s.h / b.h : 1) * s.sy * font;
           const shape = this.shapeMatrix;
           const inverse = invert(shape);
           const slideCenter = apply(shape, lx, ly);
           const target = [(s.x + s.mx) * W, (s.y + s.my) * H];
-          const change = multiply(translate(target[0], target[1]), multiply(rotate(s.rot), multiply(scale(kx, ky), translate(-slideCenter[0], -slideCenter[1]))));
+          const change = multiply(translate(target[0], target[1]), multiply(rotate(s.rot), multiply(shear, multiply(scale(kx, ky), translate(-slideCenter[0], -slideCenter[1])))));
           const transform = css(multiply(inverse, multiply(change, shape)));
           for (const e of this.els) e.setAttribute('transform', transform);
         } else {
           for (const e of this.els) e.removeAttribute('transform');
         }
-        this.renderClip(s.clip);
+        this.renderMask(s.clip);
       } else {
         if (moved) {
           const w = this.local.width, h = this.local.height;
           const [cx, cy] = apply(this.matrix, w / 2, h / 2);
           const kx = (b.w > 0 ? s.w / b.w : 1) * s.sx, ky = (b.h > 0 ? s.h / b.h : 1) * s.sy;
-          const change = multiply(translate((s.x + s.mx) * W, (s.y + s.my) * H), multiply(rotate(s.rot), multiply(scale(kx, ky), translate(-cx, -cy))));
+          const change = multiply(translate((s.x + s.mx) * W, (s.y + s.my) * H), multiply(rotate(s.rot), multiply(shear, multiply(scale(kx, ky), translate(-cx, -cy)))));
           const placed = multiply(change, this.matrix);
           el.style.transform = css(this.host ? multiply(invert(this.host), placed) : placed);
         } else {
           el.style.transform = this.originalTransform;
         }
-        const soft = s.clip && s.clip.soft;
-        el.style.clipPath = s.clip && !soft ? s.clip.css : '';
-        el.style.maskImage = soft ? softGradient(soft) : '';
+        this.renderMask(s.clip);
       }
       this.renderPaint(s);
     }
 
     /**
-     * SVG targets get an SVG clip path (or a mask for soft edges) over the box around their elements: the effect's
-     * unit square mapped onto it, in the elements' own coordinates.
+     * Shows a filter (catalog: animation.behaviors) as an SVG mask on the target's drawing, over the bounds it draws
+     * with its outline (PowerPoint's blinds divide the line too, measured) and without cutting off what reaches past
+     * its box; a target that has no drawing of its own (a group) gets it as a CSS mask image over its box.
      */
-    renderClip(clip) {
-      const els = this.els, box = this.local, ns = 'http://www.w3.org/2000/svg';
-      const unit = `matrix(${box.width},0,0,${box.height},${box.x},${box.y})`;
-      if (clip && clip.soft) {
-        if (!this.mask) {
-          const id = 'fs-mask-' + Math.random().toString(36).slice(2);
-          this.mask = document.createElementNS(ns, 'mask');
-          this.mask.id = id;
-          // The mask's own region reaches past the box, so that strokes on its edge are not cut off.
-          const pad = 0.1 * Math.max(box.width, box.height) + 4;
-          for (const [k, v] of [['maskUnits', 'userSpaceOnUse'], ['x', box.x - pad], ['y', box.y - pad],
-            ['width', box.width + 2 * pad], ['height', box.height + 2 * pad]]) this.mask.setAttribute(k, v);
-          this.gradient = document.createElementNS(ns, 'linearGradient');
-          this.gradient.id = id + '-g';
-          const fill = document.createElementNS(ns, 'rect');
-          for (const [k, v] of [['width', 1], ['height', 1], ['fill', `url(#${id}-g)`], ['transform', unit]]) fill.setAttribute(k, v);
-          this.mask.append(this.gradient, fill);
-          this.el.ownerSVGElement.appendChild(this.mask);
-        }
-        const [x1, y1, x2, y2] = { right: [0, 0, 1, 0], left: [1, 0, 0, 0], down: [0, 0, 0, 1], up: [0, 1, 0, 0] }[clip.soft.dir];
-        for (const [k, v] of [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2]]) this.gradient.setAttribute(k, v);
-        this.gradient.innerHTML = clip.soft.stops.map(([o, a]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a}"/>`).join('');
-        for (const e of els) { e.removeAttribute('clip-path'); e.setAttribute('mask', `url(#${this.mask.id})`); }
+    renderMask(clip) {
+      const key = clip ? `${clip.filter}|${clip.out}|${clip.p.toFixed(5)}` : '';
+      if (key === (this.maskKey || '')) return;
+      this.maskKey = key;
+      if (this.maskHosts === undefined) this.maskHosts = this.findMaskHosts();
+      const ns = 'http://www.w3.org/2000/svg';
+      if (!this.maskHosts) {
+        const box = { x: 0, y: 0, width: this.local.width, height: this.local.height };
+        const markup = clip && effectMask(clip.filter, clip.p, clip.out, 'm', box);
+        const image = markup && `<svg xmlns="${ns}" width="${box.width}" height="${box.height}" viewBox="0 0 ${box.width} ${box.height}" preserveAspectRatio="none">${markup}</svg>`;
+        Object.assign(this.el.style, image
+          ? { maskImage: `url("data:image/svg+xml,${encodeURIComponent(image)}")`, maskSize: '100% 100%', maskRepeat: 'no-repeat' }
+          : { maskImage: '', maskSize: '', maskRepeat: '' });
         return;
       }
-      for (const e of els) e.removeAttribute('mask');
-      if (!clip) { for (const e of els) e.removeAttribute('clip-path'); return; }
-      if (!this.clipPath) {
-        this.clipPath = document.createElementNS(ns, 'clipPath');
-        this.clipPath.id = 'fs-clip-' + Math.random().toString(36).slice(2);
-        this.clipPath.setAttribute('clipPathUnits', 'userSpaceOnUse');
-        this.clipShape = document.createElementNS(ns, 'path');
-        this.clipShape.setAttribute('transform', unit);
-        this.clipPath.appendChild(this.clipShape);
-        this.el.ownerSVGElement.appendChild(this.clipPath);
+      for (const host of this.maskHosts) {
+        const markup = clip && host.box.width > 0 && effectMask(clip.filter, clip.p, clip.out, host.id, host.box);
+        if (!markup) { for (const e of host.els) e.removeAttribute('mask'); continue; }
+        if (!host.mask) {
+          host.mask = document.createElementNS(ns, 'mask');
+          host.mask.id = host.id;
+          // A pixel of room around the bounds keeps their antialiased edge.
+          const { x, y, width, height } = host.box;
+          for (const [k, v] of [['maskUnits', 'userSpaceOnUse'], ['x', x - 1], ['y', y - 1], ['width', width + 2], ['height', height + 2]]) host.mask.setAttribute(k, v);
+          host.svg.appendChild(host.mask);
+        }
+        host.mask.innerHTML = markup;
+        for (const e of host.els) e.setAttribute('mask', `url(#${host.id})`);
       }
-      this.clipShape.setAttribute('d', clip.path);
-      for (const e of els) e.setAttribute('clip-path', `url(#${this.clipPath.id})`);
+    }
+
+    /** The SVG elements a filter's mask goes on, by SVG element drawing them, with the bounds they draw (or null). */
+    findMaskHosts() {
+      const id = () => 'fs-mask-' + Math.random().toString(36).slice(2);
+      if (this.svg) return this.el.ownerSVGElement ? [{ svg: this.el.ownerSVGElement, els: this.els, box: drawnBox(this.els), id: id() }] : null;
+      const svgs = [...this.el.children];
+      if (!svgs.length || svgs.some(e => e.tagName.toLowerCase() !== 'svg')) return null;
+      return svgs.map(svg => {
+        const els = [...svg.children].filter(e => !['defs', 'mask', 'clipPath', 'style', 'title'].includes(e.tagName));
+        return { svg, els, box: drawnBox(els), id: id() };
+      });
     }
 
     /** The elements matching a selector inside the target's elements. */
@@ -263,17 +270,12 @@
     reset() {
       for (const el of this.els) {
         el.style.visibility = el.style.opacity = '';
-        if (this.svg) { el.removeAttribute('transform'); el.removeAttribute('clip-path'); el.removeAttribute('mask'); }
-        else { el.style.transform = this.originalTransform; el.style.clipPath = el.style.maskImage = ''; }
+        if (this.svg) el.removeAttribute('transform');
+        else el.style.transform = this.originalTransform;
       }
+      this.renderMask(null);
       this.renderPaint({ fill: null, stroke: null, color: null });
     }
-  }
-
-  /** A soft edge ({ dir, stops: [[offset, alpha]] }) as a CSS mask image. */
-  function softGradient(soft) {
-    const direction = { right: 'right', left: 'left', down: 'bottom', up: 'top' }[soft.dir];
-    return `linear-gradient(to ${direction},${soft.stops.map(([o, a]) => `rgba(0,0,0,${+a.toFixed(4)}) ${+(o * 100).toFixed(3)}%`).join(',')})`;
   }
 
   function invert(m) {
@@ -491,9 +493,6 @@
     if (context.effects) result.effects = context.effects;
     if (context.unit) result.unit = context.unit;
     if (node.presetClass) result.presetClass = node.presetClass;
-    // Behaviours without a fill of their own take their effect's (Bounce holds its squash, which has none; the
-    // Transparency emphasis, without fill, reverts; measured).
-    if (node.presetClass !== undefined) result.effectFill = node.fill;
     if (node.presetID !== undefined) result.presetID = node.presetID;
     if (node.accel || node.decel) result.ease = { accel: (node.accel || 0) / 100000, decel: (node.decel || 0) / 100000 };
     return result;
@@ -511,7 +510,11 @@
       const units = shape ? textUnits(shape, target, node.iterate.type).length : 0;
       if (!units) return null;
       const build = (timing.builds || []).find(b => b.t === 'bldP' && String(b.spid) === String(target.spid));
-      return { units, background: !target.pRg && !!(build && build.animBg) && !!shape.querySelector('g[data-bg]') };
+      // The shape's own fill and line go first: for entrances and exits when the build animates the background
+      // (bldP animBg), for emphases always (Grow with color turns the fill before the letters; measured).
+      const background = [...shape.querySelectorAll('g[data-bg] path')].some(p =>
+        (p.getAttribute('fill') || 'none') !== 'none' || (p.getAttribute('stroke') || 'none') !== 'none');
+      return { units, background: !target.pRg && background && (node.presetClass === 'emph' || !!(build && build.animBg)) };
     };
     for (const sequence of timing.root.children || []) {
       if (sequence.t !== 'seq') continue;
@@ -536,6 +539,12 @@
       });
       for (const step of steps) {
         for (const b of step.behaviors) b.targets = resolveTargets(slide, b.node.target, result.targets, b.context.unit);
+        for (const b of step.behaviors) {
+          if (b.node.t !== 'animScale' || !b.node.to || b.node.from) continue;
+          const before = step.behaviors.find(o => o !== b && o.node.t === 'animScale' && o.node.to && Math.abs(o.start + o.total - b.start) < 1
+            && o.targets.length && o.targets[0].key === (b.targets[0] || {}).key);
+          if (before) b.chainedFrom = before.node.to;
+        }
       }
       if (sequence.nodeType === 'interactiveSeq') {
         // Triggers: a click on a shape, or playback reaching a media bookmark (key bmk:spid:name).
@@ -590,9 +599,10 @@
     if (local >= b.total) {
       // Without fill (or fill="remove") a behaviour's effect ends with it, a set's too when it has a duration of
       // its own (Transparency); a set without one holds its value (SMIL: fill auto freezes elements without dur).
-      const fill = node.fill !== undefined ? node.fill : b.context.effectFill;
-      if ((fill === undefined || fill === 'remove') && (node.t !== 'set' || typeof node.dur === 'number')) return null;
-      return ease(node.autoRev ? 0 : 1, b.context.ease);
+      if ((node.fill === undefined || node.fill === 'remove') && (node.t !== 'set' || typeof node.dur === 'number')) return null;
+      // The end through the time filter too (Flash bulb's fade comes back to 0).
+      const end = ease(node.autoRev ? 0 : 1, b.context.ease);
+      return node.tmFilter ? timeFilter(node.tmFilter, end) : end;
     }
     let cycle = local / b.dur;
     let p = cycle - Math.floor(cycle);
@@ -638,11 +648,12 @@
   const attributeKey = attribute => ({
     ppt_x: 'x', ppt_y: 'y', ppt_w: 'w', ppt_h: 'h', r: 'rot', 'style.rotation': 'rot', 'style.opacity': 'opacity',
     'style.visibility': 'visible', fillcolor: 'fill', 'fill.color': 'fill', 'stroke.color': 'stroke', 'style.color': 'color',
+    'style.fontSize': 'fontSize', xshear: 'shx', yshear: 'shy',
   })[attribute];
 
   function hexColor(c) {
     if (typeof c === 'string') return c;
-    if (!c) return null;
+    if (!c || typeof c !== 'object') return null;
     if ('r' in c) return `rgb(${c.r},${c.g},${c.b})`;
     return null;
   }
@@ -667,13 +678,13 @@
     const vars = { x: base.x, y: base.y, w: base.w, h: base.h, ppt_x: state.x, ppt_y: state.y, ppt_w: state.w, ppt_h: state.h, $: p };
     switch (node.t) {
       case 'set': {
-        for (const attribute of node.attrs || []) assign(state, attribute, node.to, vars);
+        for (const attribute of node.attrs || []) assign(state, attribute, node.to, vars, false, node);
         break;
       }
       case 'anim': {
         for (const attribute of node.attrs || []) {
           const value = animValue(node, p, vars, state, attribute);
-          if (value !== undefined) assign(state, attribute, value, vars, true);
+          if (value !== undefined) assign(state, attribute, value, vars, true, node);
         }
         break;
       }
@@ -683,7 +694,7 @@
         if (node.transition === 'in' || node.transition === 'out') {
           state.visible = true;
           if (filter.startsWith('fade')) state.opacity = Math.min(state.opacity, shown);
-          else if (shown < 1) state.clip = effectClip(filter, shown);
+          else if (shown < 1) state.clip = { filter, p, out: node.transition === 'out' };
           if (node.transition === 'out' && p >= 1) state.visible = false;
         }
         break;
@@ -702,8 +713,10 @@
       case 'animScale': {
         if (node.to) {
           // A scale to a size replaces the scale so far, from it unless the behaviour names its start (SMIL to and
-          // from-to animation; Bounce squashes to 60 % and then back to 100 % from there, measured).
-          const from = node.from ? [node.from[0] / 100000, node.from[1] / 100000] : [state.sx, state.sy];
+          // from-to animation); one starting where another scale of the target ends starts from that one's end
+          // (Bounce squashes to 60 % and back to 100 % from there, measured).
+          const start = node.from || b.chainedFrom;
+          const from = start ? [start[0] / 100000, start[1] / 100000] : [state.sx, state.sy];
           state.sx = from[0] + (node.to[0] / 100000 - from[0]) * p;
           state.sy = from[1] + (node.to[1] / 100000 - from[1]) * p;
           break;
@@ -724,11 +737,63 @@
         }
         const key = attributeKey((node.attrs || [])[0]) || 'fill';
         const from = hexColor(node.from) || state[key] || currentColor(target, key);
-        const to = node.to ? hexColor(node.to) : from;
-        state[key] = mixColor(from, to, p);
+        state[key] = animateColor(node, from, p);
         break;
       }
+      case 'anim': break;
     }
+  }
+
+  /**
+   * A color animation's value at p (p:animClr, catalog: animation.behaviors): to a color, or by a change (p:by) in
+   * RGB (percentages of full intensity) or HSL (hue in 60000ths of a degree, saturation and lightness added in
+   * thousandths of a percent: Desaturate, Lighten, Darken, Complementary); in HSL the hue turns in the direction
+   * given (dir cw: increasing).
+   */
+  function animateColor(node, from, p) {
+    const start = parseColor(from);
+    if (!start) return from;
+    const by = node.by;
+    if (node.clrSpc === 'hsl') {
+      const [h, s, l] = rgbToHsl(start);
+      let target;
+      if (by && 'h' in by) target = [h + by.h / 60000, s + by.s / 100000, l + by.l / 100000];
+      else {
+        const end = parseColor(hexColor(node.to)) || start;
+        const [h2, s2, l2] = rgbToHsl(end);
+        let dh = ((h2 - h) % 360 + 360) % 360;
+        if (node.dir === 'ccw' && dh > 0) dh -= 360;
+        target = [h + dh, s2, l2];
+      }
+      const clamp = v => Math.min(1, Math.max(0, v));
+      const rgb = hslToRgb(h + (target[0] - h) * p, clamp(s + (clamp(target[1]) - s) * p), clamp(l + (clamp(target[2]) - l) * p));
+      return `rgb(${rgb.map(v => Math.round(v)).join(',')})`;
+    }
+    if (by && 'r' in by) {
+      const end = start.map((v, i) => Math.min(255, Math.max(0, v + [by.r, by.g, by.b][i] / 100000 * 255)));
+      return mixColor(from, `rgb(${end.map(Math.round).join(',')})`, p);
+    }
+    return mixColor(from, node.to ? hexColor(node.to) : from, p);
+  }
+
+  function rgbToHsl([r, g, b]) {
+    [r, g, b] = [r / 255, g / 255, b / 255];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+    if (d === 0) return [0, 0, l];
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+
+  function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360 / 360;
+    if (s === 0) return [l * 255, l * 255, l * 255];
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const channel = t => {
+      t = (t + 1) % 1;
+      return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p);
+    };
+    return [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)];
   }
 
   function currentColor(target, key) {
@@ -737,13 +802,15 @@
     return el ? (key === 'stroke' ? el.getAttribute('stroke') : el.getAttribute('fill')) : null;
   }
 
-  function assign(state, attribute, value, vars, numeric) {
+  function assign(state, attribute, value, vars, numeric, node) {
     const key = attributeKey(attribute);
     if (!key) return;
     if (key === 'visible') state.visible = value !== 'hidden' && value !== false;
     else if (key === 'opacity') state.opacity = Number(value);
-    else if (key === 'rot') state.rot += Number(value);
+    // A rotation set or animated replaces the one so far (Swivel sets -45 and animates back to 0), unless it adds.
+    else if (key === 'rot') state.rot = (node && node.additive === 'sum' ? state.rot : 0) + Number(numeric ? value : formula(value)(vars));
     else if (key === 'fill' || key === 'stroke' || key === 'color') state[key] = hexColor(value);
+    else if (key === 'fontSize') state.fontSize = Number(value) || 1;
     else state[key] = numeric ? Number(value) : Number(formula(value)(vars));
   }
 
@@ -758,6 +825,8 @@
       const span = times[Math.min(i + 1, tav.length - 1)] - times[i];
       // A bounce overshoots the last key frame: the last segment goes on beyond it.
       const local = span > 0 ? Math.max(0, i + 1 === tav.length - 1 ? (p - times[i]) / span : Math.min(1, (p - times[i]) / span)) : 1;
+      // Colors (valueType clr: Color Reveal) step or blend, they are no formulas.
+      if (node.valueType === 'clr') return node.calcmode === 'discrete' ? hexColor(local < 1 ? a.val : b.val) : mixColor(hexColor(a.val), hexColor(b.val), Math.min(1, local));
       if (node.valueType === 'str' || node.calcmode === 'discrete') return valueOf(local < 1 ? a.val : b.val);
       const va = Number(valueOf(a.val)), vb = Number(valueOf(b.val));
       let v = va + (vb - va) * local;
@@ -767,7 +836,7 @@
     if (node.to !== undefined || node.by !== undefined) {
       const current = state[attributeKey(attribute)];
       const from = node.from !== undefined ? Number(valueOf(node.from)) : Number(current);
-      const to = node.to !== undefined ? Number(valueOf(node.to)) : from + Number(node.by);
+      const to = node.to !== undefined ? Number(valueOf(node.to)) : from + Number(valueOf(node.by));
       return from + (to - from) * p;
     }
     return undefined;
@@ -828,82 +897,229 @@
     return points;
   }
 
-  /** Clip shapes of animEffect filters at visibility s (0 hidden … 1 shown); css for divs, path in 0…1 units for SVG. */
-  function effectClip(filter, s) {
+  /* ---------------------------------------------------------------- filters (catalog: animation.behaviors) */
+
+  // PowerPoint softens the edges of its filters: a linear ramp 0.14 of the way the edge travels, which runs from just
+  // before the target at the start to just past it at the end (measured with its videos).
+  const SOFT = 0.14;
+
+  /**
+   * The mask of an animEffect filter at progress p over a box (x, y, width, height in the masked elements'
+   * coordinates: the bounds they draw, outline included): SVG markup, white where the target shows, or null for none.
+   * Every point of the box has its moment u (0 … 1) at which the filter's edge passes it, in the box's own proportions:
+   * the distance from the side a wipe starts at (6 bands for blinds, 6 × 6 cells for a checkerboard, every other row
+   * half a cell over), from the middle of a box, circle or diamond opening out, the angle of a wheel's spokes or of a
+   * wedge opening from 12 o'clock, a diagonal of 16 × 16 blocks for strips; dissolves and random bars are random. An
+   * entrance shows what the edge has passed. An exit hides it, except that blinds, checkerboards and strips play
+   * their entrance backwards (all measured).
+   */
+  function effectMask(filter, p, out, id, box) {
     const m = /^([a-z]+)(?:\(([^)]*)\))?/.exec(filter) || [];
     const name = m[1], option = m[2] || '';
-    const polygon = pts => ({ css: `polygon(${pts.map(([x, y]) => `${(x * 100).toFixed(2)}% ${(y * 100).toFixed(2)}%`).join(',')})`, path: 'M' + pts.map(([x, y]) => `${x.toFixed(4)} ${y.toFixed(4)}`).join('L') + 'Z' });
-    const rect = (l, t, r, b) => polygon([[l, t], [r, t], [r, b], [l, b]]);
-    const bands = (count, horizontal) => {
-      const pts = [];
-      for (let k = 0; k < count; k++) {
-        const a = k / count, b = a + s / count;
-        if (horizontal) pts.push([0, a], [1, a], [1, b], [0, b], [0, a]);
-        else pts.push([a, 0], [a, 1], [b, 1], [b, 0], [a, 0]);
-      }
-      return polygon(pts);
+    const backwards = out && (name === 'blinds' || name === 'checkerboard' || name === 'strips');
+    const s = backwards ? 1 - p : p, hides = out && !backwards;
+    const clear = (1 + SOFT) * s;
+    const alpha = u => {
+      const a = Math.min(1, Math.max(0, (clear - u) / SOFT));
+      return hides ? 1 - a : a;
     };
-    // PowerPoint softens the moving edge of wipes and splits: a linear ramp 0.14 of the distance the edge travels,
-    // which runs from just before the shape at the start to just past it at the end (measured with its video).
-    const SOFT = 0.14;
-    const [opaque, clear] = [(1 + SOFT) * s - SOFT, (1 + SOFT) * s];
-    const softly = (dir, stops) => ({ soft: { dir, stops } });
+    const num = v => +v.toFixed(5);
+    const defs = [], unit = [];
+    let count = 0;
+    const nextId = () => `${id}-${count++}`;
+    // Pieces of a mask meet without antialiasing (their opacities agree where they meet; antialiased, the seams would
+    // show).
+    const PIECE = 'shape-rendering="crispEdges"';
+    /** Stops of a gradient whose offsets 0 … 1 run through the moments u0 … u1. */
+    const stops = (u0, u1) => {
+      const at = u => (u - u0) / (u1 - u0);
+      const offsets = [0, 1, at(clear - SOFT), at(clear)].filter(o => o >= 0 && o <= 1).sort((a, b) => a - b);
+      return offsets.map(o => `<stop offset="${num(o)}" stop-color="#fff" stop-opacity="${num(alpha(u0 + (u1 - u0) * o))}"/>`).join('');
+    };
+    /** A region of the unit square where the moment changes along a line: u0 at (x1, y1), u1 at (x2, y2). */
+    const ramp = (d, [x1, y1, x2, y2], u0, u1, spread = 'pad', piece = '') => {
+      const gid = nextId();
+      defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" spreadMethod="${spread}">${stops(u0, u1)}</linearGradient>`);
+      unit.push(`<path d="${d}" fill="url(#${gid})" ${piece}/>`);
+    };
+    const solid = (d, a) => { if (a > 0) unit.push(`<path d="${d}" fill="#fff" fill-opacity="${num(a)}" ${PIECE}/>`); };
+    const square = 'M0 0H1V1H0Z';
+    const cell = (x, y, w, h) => `M${num(x)} ${num(y)}h${num(w)}v${num(h)}h${num(-w)}Z`;
+    // Angles clockwise from 12 o'clock: fans of equal opacity reaching past the square's corners.
+    const angular = uOf => {
+      const steps = 720, runs = [];
+      for (let k = 0; k < steps; k++) {
+        const q = Math.round(alpha(uOf((k + 0.5) / steps * 360)) * 64) / 64;
+        const last = runs[runs.length - 1];
+        if (last && last.q === q) last.to = k + 1;
+        else runs.push({ q, from: k, to: k + 1 });
+      }
+      for (const run of runs) {
+        if (run.q <= 0) continue;
+        const [a0, a1] = [run.from / steps * 360, run.to / steps * 360];
+        const pts = [[0.5, 0.5]];
+        const n = Math.max(1, Math.ceil((a1 - a0) / 40));
+        for (let j = 0; j <= n; j++) {
+          const a = (a0 + (a1 - a0) * j / n) * Math.PI / 180;
+          pts.push([0.5 + Math.sin(a), 0.5 - Math.cos(a)]);
+        }
+        solid('M' + pts.map(([x, y]) => `${num(x)} ${num(y)}`).join('L') + 'Z', run.q);
+      }
+    };
     switch (name) {
-      case 'wipe':
-        // wipe(left) starts at the left edge ("From Left"), wipe(up) at the top.
-        return softly({ left: 'right', right: 'left', down: 'up' }[option] || 'down', [[opaque, 1], [clear, 0]]);
-      case 'slide':
-        return rect(0, 0, 1, 1);
+      case 'wipe': {
+        // wipe(left) starts at the left edge ("From Left"), wipe(up) at the top, wipe(down) at the bottom.
+        const line = { left: [0, 0, 1, 0], right: [1, 0, 0, 0], down: [0, 1, 0, 0] }[option] || [0, 0, 0, 1];
+        ramp(square, line, 0, 1);
+        break;
+      }
       case 'barn': {
-        // Two edges, each travelling half the shape: from the sides to the middle (in) or from the middle out.
-        const dir = option.includes('Vertical') ? 'right' : 'down';
-        const ramp = u => Math.min(1, Math.max(0, (clear - u) / SOFT));   // u: 0 where an edge starts, 1 at its end
-        if (option.startsWith('out')) {
-          if (opaque < 0) return softly(dir, [[0.5 - clear / 2, 0], [0.5, ramp(0)], [0.5 + clear / 2, 0]]);
-          return softly(dir, [[0.5 - clear / 2, 0], [0.5 - opaque / 2, 1], [0.5 + opaque / 2, 1], [0.5 + clear / 2, 0]]);
+        // Two edges from the middle out (u = |2x - 1|) or from the sides in.
+        const line = option.includes('Vertical') ? [0.5, 0, 1, 0] : [0, 0.5, 0, 1];
+        ramp(square, line, option.startsWith('out') ? 0 : 1, option.startsWith('out') ? 1 : 0, 'reflect');
+        break;
+      }
+      case 'blinds':
+        ramp(square, option === 'vertical' ? [0, 0, 1 / 6, 0] : [0, 0, 0, 1 / 6], 0, 1, 'repeat');
+        break;
+      case 'checkerboard': {
+        const down = option === 'down';
+        for (let k = 0; k < 6; k++) {
+          const shift = k % 2 ? 0.5 / 6 : 0;
+          ramp(down ? cell(k / 6, 0, 1 / 6, 1) : cell(0, k / 6, 1, 1 / 6),
+            down ? [0, shift, 0, shift + 1 / 6] : [shift, 0, shift + 1 / 6, 0], 0, 1, 'repeat', PIECE);
         }
-        if (clear > 1) return softly(dir, [[opaque / 2, 1], [0.5, ramp(1)], [1 - opaque / 2, 1]]);
-        return softly(dir, [[opaque / 2, 1], [clear / 2, 0], [1 - clear / 2, 0], [1 - opaque / 2, 1]]);
+        break;
       }
-      case 'blinds': return bands(6, option === 'horizontal');
-      case 'randombar': return bands(12, option === 'horizontal');
-      case 'checkerboard': return bands(8, option !== 'across');
-      case 'box': {
-        const h = s / 2;
-        return option === 'in'
-          ? polygon([[0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [h, h], [h, 1 - h], [1 - h, 1 - h], [1 - h, h], [h, h]])
-          : rect(0.5 - h, 0.5 - h, 0.5 + h, 0.5 + h);
+      case 'box': case 'plus': {
+        // Triangles between the diagonals, each with its side's distance: a box takes the larger of the distances
+        // from the middle lines, a plus the smaller.
+        const opens = option === 'out', across = 'M0 0L1 0L0.5 0.5ZM0 1L1 1L0.5 0.5Z', sides = 'M0 0L0 1L0.5 0.5ZM1 0L1 1L0.5 0.5Z';
+        const [vertical, horizontal] = [[0, 0.5, 0, 1], [0.5, 0, 1, 0]];
+        const [u0, u1] = opens ? [0, 1] : [1, 0];
+        ramp(across, name === 'box' ? vertical : horizontal, u0, u1, 'reflect', PIECE);
+        ramp(sides, name === 'box' ? horizontal : vertical, u0, u1, 'reflect', PIECE);
+        break;
       }
-      case 'circle': case 'diamond': case 'plus': {
-        const r = s * 0.75;
-        if (name === 'diamond') return polygon([[0.5, 0.5 - r * 1.4], [0.5 + r * 1.4, 0.5], [0.5, 0.5 + r * 1.4], [0.5 - r * 1.4, 0.5]]);
-        if (name === 'plus') { const a = s / 2; return polygon([[0.5 - a, 0], [0.5 + a, 0], [0.5 + a, 0.5 - a], [1, 0.5 - a], [1, 0.5 + a], [0.5 + a, 0.5 + a], [0.5 + a, 1], [0.5 - a, 1], [0.5 - a, 0.5 + a], [0, 0.5 + a], [0, 0.5 - a], [0.5 - a, 0.5 - a]]); }
-        const pts = [];
-        for (let k = 0; k < 32; k++) { const a = k / 32 * Math.PI * 2; pts.push([0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r]); }
-        return polygon(pts);
-      }
-      case 'wedge': case 'wheel': {
-        const spokes = name === 'wheel' ? Math.max(1, parseInt(option, 10) || 1) : 2;
-        const pts = [];
-        for (let k = 0; k < spokes; k++) {
-          const start = name === 'wedge' ? -Math.PI / 2 - s * Math.PI : -Math.PI / 2 + k * 2 * Math.PI / spokes;
-          const sweep = name === 'wedge' ? s * 2 * Math.PI : s * 2 * Math.PI / spokes;
-          pts.push([0.5, 0.5]);
-          for (let j = 0; j <= 12; j++) { const a = start + sweep * j / 12; pts.push([0.5 + Math.cos(a), 0.5 + Math.sin(a)]); }
-          pts.push([0.5, 0.5]);
+      case 'diamond': {
+        const [u0, u1] = option === 'out' ? [0, 1] : [1, 0];
+        for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+          ramp(cell(Math.min(cx, 0.5), Math.min(cy, 0.5), 0.5, 0.5), [0.5, 0.5, cx, cy], u0, u1, 'pad', PIECE);
         }
-        return polygon(pts);
+        break;
+      }
+      case 'circle': {
+        // The circle (an ellipse in the box) reaches the corners.
+        const gid = nextId(), [u0, u1] = option === 'out' ? [0, 1] : [1, 0];
+        defs.push(`<radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="0.5" cy="0.5" r="${num(Math.SQRT1_2)}">${stops(u0, u1)}</radialGradient>`);
+        unit.push(`<path d="${square}" fill="url(#${gid})"/>`);
+        break;
       }
       case 'strips': {
-        const d = s * 2;
-        if (option === 'downRight') return polygon([[0, 0], [d, 0], [0, d]]);
-        if (option === 'upLeft') return polygon([[1, 1], [1 - d, 1], [1, 1 - d]]);
-        if (option === 'upRight') return polygon([[0, 1], [0, 1 - d], [d, 1]]);
-        return polygon([[1, 0], [1 - d, 0], [1, d]]);
+        // Blocks of a 16 × 16 grid, a diagonal at a time from the corner the strips leave (downLeft: top right).
+        const way = option || 'downLeft', diagonals = new Map();
+        for (let r = 0; r < 16; r++) {
+          for (let c = 0; c < 16; c++) {
+            const d = (way.endsWith('Left') ? 15 - c : c) + (way.startsWith('up') ? 15 - r : r);
+            diagonals.set(d, (diagonals.get(d) || '') + cell(c / 16, r / 16, 1 / 16, 1 / 16));
+          }
+        }
+        for (const [d, path] of diagonals) solid(path, alpha(d / 31));
+        break;
       }
-      case 'dissolve': return rect(0, 0, 1, 1);
-      default: return rect(0, 0, 1, 1);
+      case 'wedge':
+        angular(a => (a <= 180 ? a : 360 - a) / 180);
+        break;
+      case 'wheel': {
+        const sector = 360 / Math.max(1, parseInt(option, 10) || 1);
+        angular(a => (a % sector) / sector);
+        break;
+      }
+      case 'dissolve': case 'randombar': {
+        // Thresholds of a noise image: specks of a pixel, in an S-shaped pace (the average of three random numbers)
+        // or lines of a pixel across the box (measured).
+        const covered = name === 'dissolve' ? irwinHall3(s) : randomBars(s);
+        const t = covered * 256 / 255 - 0.5 / 255, k = 1020;
+        const [slope, intercept] = hides ? [k, -k * t] : [-k, k * t];
+        const func = c => `<feFunc${c} type="linear" slope="${num(slope)}" intercept="${num(intercept)}"/>`;
+        const fid = nextId();
+        defs.push(`<filter id="${fid}" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feComponentTransfer>${func('R')}${func('G')}${func('B')}</feComponentTransfer></filter>`);
+        const at = `x="${num(box.x)}" y="${num(box.y)}" width="${num(box.width)}" height="${num(box.height)}"`;
+        if (name === 'dissolve') {
+          const pid = nextId();
+          defs.push(`<pattern id="${pid}" patternUnits="userSpaceOnUse" x="${num(box.x)}" y="${num(box.y)}" width="128" height="128"><image href="${noise(128, 128)}" width="128" height="128" style="image-rendering:pixelated"/></pattern>`);
+          return `<defs>${defs.join('')}</defs><rect ${at} fill="url(#${pid})" filter="url(#${fid})"/>`;
+        }
+        const lines = Math.max(1, Math.round(option === 'vertical' ? box.width : box.height));
+        const image = option === 'vertical' ? noise(lines, 1) : noise(1, lines);
+        return `<defs>${defs.join('')}</defs><image href="${image}" ${at} preserveAspectRatio="none" style="image-rendering:pixelated" filter="url(#${fid})"/>`;
+      }
+      default:
+        return null;
     }
+    const place = `matrix(${num(box.width)},0,0,${num(box.height)},${num(box.x)},${num(box.y)})`;
+    return `<defs>${defs.join('')}</defs><g transform="${place}">${unit.join('')}</g>`;
+  }
+
+  /** The share of a dissolve shown at s: the distribution of the average of three random numbers. */
+  function irwinHall3(s) {
+    const x = Math.min(3, Math.max(0, 3 * s));
+    if (x < 1) return x ** 3 / 6;
+    if (x < 2) return (-2 * x ** 3 + 9 * x ** 2 - 9 * x + 3) / 6;
+    return 1 - (3 - x) ** 3 / 6;
+  }
+
+  /** The share of random bars shown at s (PowerPoint's pace, measured: slow at first, ahead of time in the middle). */
+  function randomBars(s) {
+    const table = [0, 0.003, 0.024, 0.07, 0.143, 0.231, 0.313, 0.383, 0.448, 0.515, 0.585, 0.65, 0.705, 0.757, 0.81, 0.868, 0.925, 0.966, 0.988, 0.999, 1];
+    const x = Math.min(1, Math.max(0, s)) * 20, i = Math.min(19, Math.floor(x));
+    return table[i] + (table[i + 1] - table[i]) * (x - i);
+  }
+
+  /** A grayscale noise image (data URL) of w × h pixels, the same for every frame. */
+  const noises = new Map();
+  function noise(w, h) {
+    const key = `${w}x${h}`;
+    let url = noises.get(key);
+    if (!url) {
+      const canvas = document.createElement('canvas');
+      [canvas.width, canvas.height] = [w, h];
+      const context = canvas.getContext('2d'), image = context.createImageData(w, h);
+      let seed = 0x2545f491;
+      for (let i = 0; i < w * h; i++) {
+        // mulberry32
+        seed = seed + 0x6d2b79f5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        const v = (t ^ t >>> 14) >>> 24;
+        image.data.set([v, v, v, 255], i * 4);
+      }
+      context.putImageData(image, 0, 0);
+      url = canvas.toDataURL();
+      noises.set(key, url);
+    }
+    return url;
+  }
+
+  /** The bounds elements draw, their outlines included, in their own coordinates. */
+  function drawnBox(els) {
+    let box = null, pad = 0;
+    for (const e of els) {
+      let b;
+      try { b = e.getBBox(); } catch { continue; }
+      if (b.width === 0 && b.height === 0) continue;
+      box = box ? {
+        x: Math.min(box.x, b.x), y: Math.min(box.y, b.y),
+        width: Math.max(box.x + box.width, b.x + b.width) - Math.min(box.x, b.x),
+        height: Math.max(box.y + box.height, b.y + b.height) - Math.min(box.y, b.y),
+      } : { x: b.x, y: b.y, width: b.width, height: b.height };
+      for (const stroked of [e, ...e.querySelectorAll('[stroke]')]) {
+        const stroke = stroked.getAttribute('stroke');
+        if (stroke && stroke !== 'none') pad = Math.max(pad, (parseFloat(stroked.getAttribute('stroke-width')) || 1) / 2);
+      }
+    }
+    if (!box) return { x: 0, y: 0, width: 0, height: 0 };
+    return { x: box.x - pad, y: box.y - pad, width: box.width + 2 * pad, height: box.height + 2 * pad };
   }
 
   /* ---------------------------------------------------------------- media (catalog: picture.media) */

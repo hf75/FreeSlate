@@ -1932,14 +1932,25 @@ areas:
         strategy: >-
           Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …)
           map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become
-          masks or clip paths; motion paths are relative path strings.
+          SVG masks; motion paths are relative path strings.
         office: >-
           Formulas use ppt_x, ppt_y, ppt_w, ppt_h (the property's current value, used by exit effects such as
           Fly Out) besides #ppt_x … (the value before the animation). Motion paths move at a speed even in the
           path's own units (fractions of the slide's width and height), not on the screen (measured with a
-          circle path: 1.1 px against 7.6 px). Wipes and splits have a soft edge, a linear ramp 0.14 of the
-          distance the edge travels (measured), drawn as a CSS mask (shapes) or an SVG mask (paragraphs); the
-          other filters still clip hard. Color animations are compared in RGB only so far.
+          circle path: 1.1 px against 7.6 px). Filters (measured frame by frame with PowerPoint's videos of
+          every filter and direction, entrance and exit): every point of the shape's drawn bounds (its outline
+          included) has a moment u at which the edge passes it, in the bounds' own proportions: the distance
+          from the starting side (wipe; blinds in 6 bands; checkerboard in 6 x 6 cells, odd rows half a cell
+          over), from the middle (box, circle reaching the corners, diamond, plus, barn), the angle from 12
+          o'clock (wedge both ways, wheel per spoke), the diagonal of a 16 x 16 block grid (strips, u = d/31).
+          The edge is a linear ramp 0.14 wide from just before u = 0 to just past u = 1. Exits hide what the
+          edge passes; blinds, checkerboard and strips play their entrance backwards instead. Dissolve shows
+          one-pixel specks at the pace of the average of three random numbers (an S curve), random bars
+          one-pixel lines at a measured pace. The player draws all of them as SVG masks (gradients, fans, a
+          thresholded noise image) on the shape's drawing, so outlines past the shape's box stay; groups get a
+          CSS mask over their box. Color animations work in RGB and HSL (to, by, direction). Effects of an
+          iterated build animate the background first, the font size scales only the text
+          (generated/animations-gallery: 99.7 % of 257 video frames).
 
       - id: animation.build
         title: Build lists
