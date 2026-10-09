@@ -217,6 +217,13 @@ public static class Constraints
                 // text node keeps the height its grandparent gives it; list1's text node has no top margin).
                 if (op == "equ" || target.Values.ContainsKey(type))
                     continue;
+                // Nor where another constraint gives one, an ancestor's or the node's own bound (measured:
+                // HorizontalActionList's titles, w from their composite rather than 0 from the root, h and h <= 0.3 w,
+                // 0.3 w high).
+                if ((target.FromAncestors.Contains(type)
+                        || target.Constraints.Any(c => Own(c) && (string?)c.Attribute("type") == type
+                            && (c.Attribute("val") != null || (string?)c.Attribute("refType") is { Length: > 0 } and not "none"))))
+                    continue;
                 value = 0;
             }
             else
@@ -248,6 +255,11 @@ public static class Constraints
                     else
                         target.Values[type] = v;
                     break;
+                case "lte" when BoundOnly(target, type):
+                    // A value only its bounds give follows them (measured: HorizontalActionList's titles, h <= 0.3 w, as
+                    // their width changes).
+                    target.Values[type] = v;
+                    break;
                 case "lte":
                     if (target.Values.TryGetValue(type, out var high))
                     {
@@ -269,6 +281,12 @@ public static class Constraints
             }
         }
     }
+
+    /// <summary>Whether only bounds give a node's value of a type: no ancestor and no own constraint sets it.</summary>
+    static bool BoundOnly(LayoutNode node, string type) =>
+        !node.FromAncestors.Contains(type)
+        && !node.Constraints.Any(c => Own(c) && !Bound(c) && (string?)c.Attribute("type") == type
+            && (c.Attribute("val") != null || (string?)c.Attribute("refType") is { Length: > 0 } and not "none"));
 
     /// <summary>
     /// Keeps a node's values that an equ constraint of the list makes equal (h equ w of the same node) equal when a bound
