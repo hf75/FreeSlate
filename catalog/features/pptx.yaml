@@ -466,8 +466,10 @@ areas:
           PowerPoint fills all paths of a geometry before it strokes any of them (measured with overlapping
           paths: the outline of the first path lies on the fill of the second, also for an outline-only path
           saved before a fill-only one); the document does the same where the order matters (presets
-          chartPlus, chartStar, chartX, sketched shapes). Verified with generated/geometry-presets and
-          sketched; adjust handles (a:ahXY, a:ahPolar) and connection sites are editor-only.
+          chartPlus, chartStar, chartX, sketched shapes). In paths with their own w/h, arcTo angles are visual
+          angles in the path's coordinates, before it is stretched to the shape (measured: clouds of other
+          proportions than the 43200-unit square). Verified with generated/geometry-presets and sketched;
+          adjust handles (a:ahXY, a:ahPolar) and connection sites are editor-only.
 
       - id: shape.connectors
         title: Connectors
@@ -548,11 +550,12 @@ areas:
         elements: [a:gradFill, a:gsLst, a:gs, a:lin, a:path, a:tileRect, a:fillToRect]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
-          SVG linear and radial gradients in the shape's box (lin angle with scaled, rotWithShape); circle and rect
-          paths map to radial gradients and transforms, path="shape" needs an approximation. Browsers interpolate in
-          sRGB, so the engine adds intermediate stops computed in linear light.
+          SVG linear and radial gradients in the bounds of the geometry's filled paths (lin angle with scaled,
+          rotWithShape); circle paths map to radial gradients, rect paths to four trapezoids, path="shape" to
+          bands of the outline. Browsers interpolate in sRGB, so the engine adds intermediate stops computed in
+          linear light.
         office: >-
           Measured with gradient strips and PowerPoint's own EMF export: a two-color gradient (stops at 0 and
           1) and a symmetric three-color gradient (A, B, A) use a GDI+ sigma bell blend (normal distribution
@@ -560,8 +563,13 @@ areas:
           linearly in sRGB. Rectangular path gradients are concentric rectangles from fillToRect to tileRect.
           Path gradients that follow the shape (path=shape) repeat the shape's filled outline in bands scaled
           from the tile rectangle to the focus rectangle, mixed in sRGB (measured with local/pathgrad:
-          concentric ellipses, stars, triangles, hearts, parallelograms); PowerPoint draws some presets
-          circular instead (right arrow, smiley face), which is not reproduced.
+          concentric ellipses, stars, triangles, hearts, parallelograms). 64 presets (block arrows, callouts
+          with tails, ribbons, scrolls, waves, donut, moon, smiley face, sun …) draw such a gradient exactly as
+          a circle gradient (measured: all 187 presets filled both ways; the binary format's
+          fFillShadeShapeOK flag); custom geometries follow their outline. Every gradient spans the bounds of
+          the geometry's filled paths rather than the shape's box (a block arc's band shows the whole
+          gradient), and darkened or lightened paths shade the gradient's colors like a solid fill's (the
+          faces of cans, cubes and bevels; local/pathgrad3: 99.2 %, local/pathgrad_all: 98.6 %).
 
       - id: fill.pattern
         title: Pattern fills
@@ -702,7 +710,10 @@ areas:
         status: done
         strategy: SVG filter inside the shape's alpha.
         office: >-
-          Verified with generated/effects.
+          The shape's outside, blurred (σ = 0.35 blurRad) and moved against dir, colored and kept inside the
+          shape; the filter region reaches beyond the shape by the distance and the blur so that the outside
+          exists to cast it. Verified with generated/effects and local/innershadow (offsets 3 to 12 pt, blur 0
+          to 8 pt: 100 %).
 
       - id: effect.presetShadow
         title: Preset shadows
@@ -1168,8 +1179,19 @@ areas:
         description: effectLst on runs (shadow, glow, reflection, soft edges).
         priority: P2
         difficulty: 4
-        status: partial
-        strategy: The shape effect filters applied to the glyph layer.
+        status: done
+        strategy: >-
+          The shape effect filters on the glyph layer, sized with the line's largest font; scaled and skewed
+          shadows as transformed copies about the shape's box; reflections mirrored line by line; warped
+          WordArt text gets the same filters.
+        office: >-
+          PowerPoint sizes text effects with the largest font of each line, unlike a shape's (measured with
+          probe decks of 8 to 240 pt lines in several fonts, in exported slides and in the slide show alike):
+          outer shadows (distance and blur) and glow grow with (size / 78 pt)^0.695, inner shadows with
+          size / 117 pt, a reflection's blur with size / 79 pt and its distance with size / 14.5 pt. A
+          reflection mirrors each line about its baseline: the distance extends the mirrored box below the
+          baseline by half the scaled distance and the fade runs over that box. Text glow is dilated by 0.46 r
+          and blurred by r / 6 at the outer scale. Verified with generated/text-effects.
 
       - id: text.fields
         title: Fields

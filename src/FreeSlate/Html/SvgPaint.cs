@@ -13,11 +13,13 @@ public sealed class SvgPaint
 
     /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
     /// <param name="outline">The shape's outline as path data in the box, for gradients that follow it (path="shape").</param>
+    /// <param name="offset">Where the w × h box lies in the shape's coordinates: a gradient spans the bounds of the path
+    /// it fills (see SlideRenderer).</param>
     public string Fill(Fill fill, double w, double h, StringBuilder defs, double shapeRotation = 0, (double X, double Y) origin = default,
-        string? outline = null) => fill switch
+        string? outline = null, (double X, double Y) offset = default) => fill switch
     {
         SolidFill s => Color("fill", s.Color),
-        GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation, outline)})\"",
+        GradientFill g => $" fill=\"url(#{Gradient(g, w, h, defs, shapeRotation, outline, offset)})\"",
         PatternFill p => $" fill=\"url(#{Pattern(p, defs, origin)})\"",
         PictureFill p => $" fill=\"url(#{Picture(p, w, h, defs)})\"",
         SlideFill { Fill: SolidFill s } => Color("fill", s.Color),
@@ -137,10 +139,11 @@ public sealed class SvgPaint
         _ => 0.35,
     };
 
-    string Gradient(GradientFill g, double w, double h, StringBuilder defs, double shapeRotation, string? outline = null)
+    string Gradient(GradientFill g, double w, double h, StringBuilder defs, double shapeRotation, string? outline = null, (double X, double Y) offset = default)
     {
         var id = NewId("g");
         var stops = StopMarkup(PowerPointStops(g.Stops, g.Bell));
+        var shift = offset == default ? "" : $"translate({Units.Css(offset.X)} {Units.Css(offset.Y)}) ";
 
         var counterRotation = g.RotateWithShape ? "" : $" rotate({Units.Css(-shapeRotation)} {Units.Css(w / 2)} {Units.Css(h / 2)})";
         if (g.Angle is { } angle)
@@ -152,13 +155,14 @@ public sealed class SvgPaint
                 // The angle applies in the unit square, which is then stretched to the shape box.
                 var half = (Math.Abs(cos) + Math.Abs(sin)) / 2;
                 coords = $"x1=\"{Units.Css4(0.5 - half * cos)}\" y1=\"{Units.Css4(0.5 - half * sin)}\" x2=\"{Units.Css4(0.5 + half * cos)}\" y2=\"{Units.Css4(0.5 + half * sin)}\" " +
-                         $"gradientTransform=\"{counterRotation.Trim()} scale({Units.Css(w)} {Units.Css(h)})\"";
+                         $"gradientTransform=\"{shift}{counterRotation.Trim()} scale({Units.Css(w)} {Units.Css(h)})\"";
             }
             else
             {
                 var half = (Math.Abs(w * cos) + Math.Abs(h * sin)) / 2;
+                var transform = (shift + counterRotation.Trim()).Trim();
                 coords = $"x1=\"{Units.Css(w / 2 - half * cos)}\" y1=\"{Units.Css(h / 2 - half * sin)}\" x2=\"{Units.Css(w / 2 + half * cos)}\" y2=\"{Units.Css(h / 2 + half * sin)}\"" +
-                         (counterRotation.Length > 0 ? $" gradientTransform=\"{counterRotation.Trim()}\"" : "");
+                         (transform.Length > 0 ? $" gradientTransform=\"{transform}\"" : "");
             }
             defs.Append($"<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" {coords}>{stops}</linearGradient>");
             return id;
@@ -167,9 +171,9 @@ public sealed class SvgPaint
         var (fl, ft, fr, fb) = g.FocusRect;
         var (tl, tt, tr, tb) = g.TileRect;
         if (g.Path == "shape" && !string.IsNullOrEmpty(outline))
-            return ShapeGradient(g, id, w, h, outline, defs);
+            return ShapeGradient(g, id, w, h, outline, defs, offset);
         if (g.Path is "rect" or "shape")
-            return RectGradient(g, id, w, h, defs);
+            return RectGradient(g, id, w, h, defs, offset);
 
         // Circle: from the focus rectangle (offset 0) to the edge of the tile rectangle (offset 1).
         var cx = w * (fl + (1 - fr)) / 2;
@@ -177,7 +181,7 @@ public sealed class SvgPaint
         double[] xs = [w * tl, w * (1 - tr)];
         double[] ys = [h * tt, h * (1 - tb)];
         var r = xs.SelectMany(x => ys.Select(y => Math.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)))).Max();
-        defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(cx)}\" cy=\"{Units.Css(cy)}\" r=\"{Units.Css(Math.Max(r, 1))}\">{stops}</radialGradient>");
+        defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(offset.X + cx)}\" cy=\"{Units.Css(offset.Y + cy)}\" r=\"{Units.Css(Math.Max(r, 1))}\">{stops}</radialGradient>");
         return id;
     }
 
@@ -186,7 +190,7 @@ public sealed class SvgPaint
     /// the focus rectangle (offset 0) to the tile rectangle (offset 1), drawn exactly as four trapezoids with linear
     /// gradients perpendicular to their side, inside a pattern the size of the shape.
     /// </summary>
-    string RectGradient(GradientFill g, string id, double w, double h, StringBuilder defs)
+    string RectGradient(GradientFill g, string id, double w, double h, StringBuilder defs, (double X, double Y) offset = default)
     {
         var (fl, ft, fr, fb) = g.FocusRect;
         var (tl, tt, tr, tb) = g.TileRect;
@@ -211,9 +215,13 @@ public sealed class SvgPaint
         Side(NewId("g"), (focus.L, 0, tile.L, 0), (tile.L, tile.B), (tile.L, tile.T), (focus.L, focus.T), (focus.L, focus.B));
         if (focus.R - focus.L > 1e-6 && focus.B - focus.T > 1e-6)
             sb.Append($"<rect x=\"{Units.Css(focus.L)}\" y=\"{Units.Css(focus.T)}\" width=\"{Units.Css(focus.R - focus.L)}\" height=\"{Units.Css(focus.B - focus.T)}\"{Color("fill", inner)}/>");
-        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\"{PatternOrigin(offset)} width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
         return id;
     }
+
+    /// <summary>The x and y of a pattern tile placed at <paramref name="offset"/> (its content moves along).</summary>
+    static string PatternOrigin((double X, double Y) offset) =>
+        offset == default ? "" : $" x=\"{Units.Css(offset.X)}\" y=\"{Units.Css(offset.Y)}\"";
 
     /// <summary>
     /// A path gradient that follows the shape (path="shape", catalog: fill.gradient): the shape's outline repeated in
@@ -221,7 +229,7 @@ public sealed class SvgPaint
     /// (offset 0) and filled with the gradient's color there (measured: concentric stars, triangles, hearts and arrows
     /// about the focus, not rectangles).
     /// </summary>
-    string ShapeGradient(GradientFill g, string id, double w, double h, string outline, StringBuilder defs)
+    string ShapeGradient(GradientFill g, string id, double w, double h, string outline, StringBuilder defs, (double X, double Y) offset = default)
     {
         var stops = PowerPointStops(g.Stops, g.Bell);
         var (fl, ft, fr, fb) = g.FocusRect;
@@ -229,7 +237,7 @@ public sealed class SvgPaint
         var focus = (L: w * fl, T: h * ft, R: w * (1 - fr), B: h * (1 - fb));
         var tile = (L: w * tl, T: h * tt, R: w * (1 - tr), B: h * (1 - tb));
         var pathId = NewId("gp");
-        defs.Append($"<path id=\"{pathId}\" d=\"{outline}\"/>");
+        defs.Append($"<path id=\"{pathId}\" d=\"{outline}\"{(offset == default ? "" : $" transform=\"translate({Units.Css(-offset.X)} {Units.Css(-offset.Y)})\"")}/>");
         var sb = new StringBuilder();
         sb.Append($"<rect x=\"-1\" y=\"-1\" width=\"{Units.Css(w + 2)}\" height=\"{Units.Css(h + 2)}\"{Color("fill", stops[^1].Color)}/>");
         const int Bands = 64;
@@ -244,7 +252,7 @@ public sealed class SvgPaint
         for (var k = Bands; k >= 1; k--)
             Band((double)k / Bands, ColorAt(stops, (k - 0.5) / Bands));
         Band(0, stops[0].Color);
-        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\"{PatternOrigin(offset)} width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\">{sb}</pattern>");
         return id;
     }
 

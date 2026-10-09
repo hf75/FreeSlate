@@ -23,6 +23,9 @@ public sealed class GeometryDefinition
     public (string L, string T, string R, string B)? TextRect { get; private set; }
     public List<PathDefinition> Paths { get; } = [];
 
+    /// <summary>Whether a path gradient may follow the outline (path="shape"); false for some presets (see PresetGeometries).</summary>
+    public bool ShadeShape { get; set; } = true;
+
     /// <summary>Parses a geometry element: a preset from presetShapeDefinitions.xml or an a:custGeom.</summary>
     public static GeometryDefinition Parse(XElement geometry)
     {

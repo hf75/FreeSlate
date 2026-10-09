@@ -198,6 +198,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             fill = new SlideFill(SlideBackground(), Units.ToPx(slide.Presentation.SlideWidth), Units.ToPx(slide.Presentation.SlideHeight),
                 (toShape.A, toShape.B, toShape.C, toShape.D, toShape.E, toShape.F));
         }
+        // Presets that cannot shade along their outline draw such a gradient as a circle gradient.
+        if (fill is GradientFill { Path: "shape" } alongOutline && !definition.ShadeShape)
+            fill = alongOutline with { Path = "circle" };
         var outline = ResolveOutline(chain, style);
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
 
@@ -229,10 +232,20 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var lastFilled = geometry.Paths.FindLastIndex(p => p.Fill != "none");
         var strokesLast = outline is { Visible: true } && geometry.Paths.Take(Math.Max(0, lastFilled)).Any(p => p.Stroke);
         var strokes = new StringBuilder();
-        // Gradients that follow the shape (path="shape") repeat its filled outline.
-        var outlineData = string.Concat(geometry.Paths.Where(p => p.Fill != "none").Select(p => p.Data));
         var fillable = isSlide && fill is NoFill && NonVisual(shape)?.Attribute("id")?.Value is { } animatedId && FillsTurnedOn.Contains(animatedId)
             ? " data-fillable=\"\"" : "";
+        // A gradient spans the bounds of the geometry's filled paths, not the shape's box, and one that follows the
+        // shape (path="shape") repeats their outline (measured: the band of a block arc shows the whole gradient;
+        // the shaded faces of cans, cubes and bevels show their part of it).
+        var filled = geometry.Paths.Where(p => p.Fill != "none").ToList();
+        var outlineData = string.Concat(filled.Select(p => p.Data));
+        var paintBounds = PathBounds(new EvaluatedPath(filled.SelectMany(p => p.Segments).ToList(), "norm", false));
+        string PathPaint(Fill pathFill, EvaluatedPath path)
+        {
+            if (pathFill is not GradientFill || paintBounds is not var (x, y, w, h))
+                return paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData);
+            return paint.Fill(pathFill, w, h, defs, rotation, origin, outlineData, (x, y));
+        }
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
@@ -247,7 +260,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
                 var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
-                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)} stroke=\"none\"{crisp}/>");
+                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
                 if (stroke != " stroke=\"none\"")
                     strokeTarget.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
@@ -255,13 +268,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (strokesLast)
             {
                 if (pathFill is not NoFill)
-                    paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)} stroke=\"none\"{crisp}/>");
+                    paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
                 if (stroke != " stroke=\"none\"")
                     strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else
             {
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
+                paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
             }
             if (compound)
                 strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
@@ -435,6 +448,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 FontRef = style?.Element(Ns.A + "fontRef"),
                 Units = shapeId != null && (Iterated.Contains(shapeId) || Morph is "byWord" or "byChar"),
             };
+            text.ShapeSize = (pw, ph);
             var textMarkup = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
@@ -1345,17 +1359,35 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// <summary>Path fill modes of preset geometries that shade the fill (e.g. the top of a cylinder).</summary>
     static Fill Shade(Fill fill, string mode)
     {
-        if (fill is not SolidFill solid || mode == "norm")
+        if (mode == "norm")
             return fill;
-        var c = solid.Color;
-        return new SolidFill(mode switch
+        RgbColor Modify(RgbColor c) => mode switch
         {
             "darken" => new RgbColor(c.R * 0.6, c.G * 0.6, c.B * 0.6, c.A),
             "darkenLess" => new RgbColor(c.R * 0.8, c.G * 0.8, c.B * 0.8, c.A),
             "lighten" => RgbColor.Mix(c, RgbColor.White.WithAlpha(c.A), 0.4),
             "lightenLess" => RgbColor.Mix(c, RgbColor.White.WithAlpha(c.A), 0.2),
             _ => c,
-        });
+        };
+        // Gradients and patterns are shaded color by color (measured: the lit top of a can with a gradient).
+        return fill switch
+        {
+            SolidFill solid => new SolidFill(Modify(solid.Color)),
+            GradientFill gradient => gradient with { Stops = gradient.Stops.Select(s => s with { Color = Modify(s.Color) }).ToList() },
+            PatternFill pattern => pattern with { Foreground = Modify(pattern.Foreground), Background = Modify(pattern.Background) },
+            _ => fill,
+        };
+    }
+
+    /// <summary>The bounds of an evaluated path (pixels, shape-local), or null for an empty one.</summary>
+    static (double X, double Y, double W, double H)? PathBounds(EvaluatedPath path)
+    {
+        var points = CompoundLines.Flatten(path.Segments).SelectMany(f => f.Points).ToList();
+        if (points.Count == 0)
+            return null;
+        var (minX, minY) = (points.Min(p => p.X), points.Min(p => p.Y));
+        var (maxX, maxY) = (points.Max(p => p.X), points.Max(p => p.Y));
+        return maxX - minX > 1e-6 && maxY - minY > 1e-6 ? (minX, minY, maxX - minX, maxY - minY) : null;
     }
 
     string Background(double width, double height)

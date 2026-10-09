@@ -68,6 +68,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>A chart's own color mapping while the chart is drawn.</summary>
     public ColorContext? ColorOverride { get; set; }
 
+    /// <summary>The shape's box in pixels: scaled or skewed shadows of its text align on it, as the shape's own do.</summary>
+    public (double Width, double Height)? ShapeSize { get; set; }
+
     int nextClip;
 
     static readonly XNamespace HyperlinkColor = "http://schemas.microsoft.com/office/drawing/2018/hyperlinkcolor";
@@ -424,6 +427,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         var svg = new StringBuilder("<g data-tx=\"\">");
         var defs = new StringBuilder();
+        // Shadows, glow and inner shadows fall on the warped glyphs, sized with their line's largest font.
+        var lineSizes = layout.Lines.Select(l => l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : 0).ToList();
         for (var i = 0; i < warped.Count;)
         {
             var style = owners[i];
@@ -435,7 +440,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 ? Paint.Fill(paint, box.W, box.H, defs, 0, (box.L, box.T))
                 : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
             var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
-            svg.Append($"<path d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}/>");
+            var filter = style.Effects is { } effects
+                ? SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]))
+                : null;
+            svg.Append($"<path d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}/>");
             i = j;
         }
         svg.Append(selection).Append("</g>");
@@ -466,7 +474,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         var svg = new StringBuilder();
         var defs = new StringBuilder();
-        var filters = new Dictionary<XElement, string?>();
+        var filters = new Dictionary<(XElement, double), string?>();
         // The point that stays where it is when an animation changes the font size (style.fontSize): the text's
         // anchor down, the first line's alignment across.
         var anchorAt = "";
@@ -520,6 +528,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             // each format run (measured with the text-snap deck; see Snap and Text).
             var shiftBy = lineShift?.Invoke(line) ?? 0;
             var baseline = top + Snap(offset + line.Baseline + shiftBy);
+            // Text effects take their size from the line's largest font (measured: a 40 pt run beside a 120 pt run
+            // casts the 120 pt run's shadow; see SvgEffects.TextScale).
+            var effectSize = line.Runs.Count > 0 ? line.Runs.Max(r => r.Style.Size) : 0;
+            var effectScale = SvgEffects.TextScale.Of(effectSize);
             TextStyle? formatStyle = null;
             double formatOrigin = 0, formatEnd = double.NaN;
             foreach (var run in line.Runs)
@@ -543,7 +555,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 if (string.IsNullOrWhiteSpace(run.Text))
                     continue;
                 var filter = run.Style.Effects is { } effects
-                    ? filters.TryGetValue(effects, out var known) ? known : filters[effects] = SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true)
+                    ? filters.TryGetValue((effects, effectSize), out var known)
+                        ? known
+                        : filters[(effects, effectSize)] = SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: effectScale)
                     : null;
                 var shifted = run.Style.BaselineShift == 0 && run.Lift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
@@ -556,11 +570,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     {
                         var index = paragraphStarts.GetValueOrDefault(line.Paragraph) + run.Start + at;
                         var word = index < words.Length ? words[index] : -1;
-                        svg.Append($"<g data-c=\"{index}\" data-w=\"{word}\">{Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from)}</g>");
+                        svg.Append($"<g data-c=\"{index}\" data-w=\"{word}\">{Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from, effectSize)}</g>");
                     }
                     continue;
                 }
-                var markup = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs);
+                // A shadow that scales or skews the text (outerShdw sx, sy, kx, ky) is a transformed copy of the run behind
+                // it, about the alignment point of the shape's box (measured: 110 % about its bottom middle), else of the
+                // run's box on its line (as for shapes, see SvgEffects.Shadow).
+                if (run.Style.Effects is { } runEffects && !run.Upright)
+                {
+                    var (bx, by, bw, bh) = ShapeSize is { } shape
+                        ? (0.0, 0.0, shape.Width, shape.Height)
+                        : ((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt);
+                    if (SvgEffects.Shadow(runEffects, Colors, bw, bh, defs, scale: effectScale.Outer) is { } copy)
+                        svg.Append($"<g transform=\"translate({Units.Css(bx)} {Units.Css(by)})\"><g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">" +
+                                   $"<g transform=\"translate({Units.Css(-bx)} {Units.Css(-by)})\">{Text(run, left + run.X, shifted, null, left + formatOrigin, box, defs)}</g></g></g></g>");
+                }
+                var markup = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs, effectSize: effectSize);
                 // Upright characters in vertical text turn back about the middle of their em box.
                 svg.Append(run.Upright
                     ? $"<g transform=\"rotate(-90 {Px(left + run.X + run.Width / 2)} {Px(shifted - 0.38 * run.Style.Size)})\">{markup}</g>"
@@ -651,8 +677,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// </summary>
     /// <param name="from">Where the run starts from the format run's start (points), as the format run accumulates it;
     /// by default x - origin.</param>
+    /// <param name="effectSize">The largest font size of the line, which sizes its effects (by default the run's).</param>
     string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null,
-        (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null, double? from = null)
+        (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null, double? from = null, double? effectSize = null)
     {
         var style = run.Style;
         var data = style.Font.Data;
@@ -748,16 +775,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             }
             if (filter != null || decorations.Length > 0)
                 sb.Append(decorations).Append("</g>");
-            if (style.Effects?.Element(Ns.A + "reflection") != null)
-            {
-                // The reflection mirrors the text about a line slightly below the baseline (measured: 0.055 em
-                // below the bottom of the glyphs of a 60 pt line).
-                var size = style.Size * PxPerPt;
-                var bottom = y * PxPerPt + 0.055 * size;
-                var height = size * data.Ascent + 0.055 * size;
-                var mirrored = SvgEffects.Reflection(style.Effects, sb.ToString(), (x * PxPerPt, bottom - height, run.Width * PxPerPt, height), local);
+            if (Reflect(sb.ToString(), local) is { } mirrored)
                 sb.Clear().Append(mirrored);
-            }
             if (defs == null && local.Length > 0)
                 sb.Insert(0, $"<defs>{local}</defs>");
         }
@@ -806,6 +825,16 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
         }
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
+        if (!outlined)
+        {
+            var local = defs ?? new StringBuilder();
+            if (Reflect(sb.ToString(), local) is { } reflected)
+            {
+                sb.Clear();
+                if (defs == null && local.Length > 0) sb.Append($"<defs>{local}</defs>");
+                sb.Append(reflected);
+            }
+        }
         // A mouse-over action on the text (a:hlinkMouseOver, catalog: interactivity.hyperlinks) runs when the pointer
         // enters it during the show, like a shape's.
         if (style.HoverLink is { } hover)
@@ -815,6 +844,22 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             sb.Insert(0, $"<g{attributes}>").Append("</g>");
         }
         return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
+
+        // Text reflects line by line about its baseline: the box mirrored about its bottom reaches from the font's
+        // ascent down to half the reflection's distance below the baseline, sized with the line's largest font, and
+        // the fade runs over the mirrored box (measured: below 80 pt text the gap is 5.5 times the distance and the
+        // fade starts halfway into it; see SvgEffects.TextScale).
+        string? Reflect(string markup, StringBuilder into)
+        {
+            if (style.Effects?.Element(Ns.A + "reflection") is not { } reflection)
+                return null;
+            var scale = SvgEffects.TextScale.Of(effectSize ?? style.Size);
+            var below = Units.ToPx(reflection.Long("dist") ?? 0) * scale.ReflectionDistance / 2;
+            var bottom = y * PxPerPt + below;
+            var height = style.Size * PxPerPt * data.Ascent + below;
+            return SvgEffects.Reflection(style.Effects, markup, (x * PxPerPt, bottom - height, run.Width * PxPerPt, height), into,
+                distanceScale: 0, blurScale: scale.ReflectionBlur);
+        }
     }
 
     /// <summary>

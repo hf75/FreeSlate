@@ -74,6 +74,42 @@ static class TextEffectsDeck
         combined.Font.Shadow.OffsetX = 3f;
         combined.Font.Shadow.OffsetY = 3f;
 
+        // More effects on text: inner and scaled shadows, a soft wide shadow, transparent glow, reflections.
+        var more = Slide(presentation);
+        var inner = Text(more, 40, 20, 420, 100, "Inner shadow", 54);
+        inner.Font.Fill.ForeColor.RGB = CorpusGenerator.Rgb(240, 200, 60);
+        inner.Font.Shadow.Visible = MsoTrue;
+        inner.Font.Shadow.Style = 1;   // msoShadowStyleInnerShadow
+        inner.Font.Shadow.OffsetX = 3f;
+        inner.Font.Shadow.OffsetY = 3f;
+        inner.Font.Shadow.Blur = 3f;
+        inner.Font.Shadow.ForeColor.RGB = CorpusGenerator.Rgb(120, 60, 0);
+        var scaled = Text(more, 500, 20, 420, 100, "Scaled shadow", 54);
+        scaled.Font.Shadow.Visible = MsoTrue;
+        scaled.Font.Shadow.OffsetX = 6f;
+        scaled.Font.Shadow.OffsetY = -4f;
+        scaled.Font.Shadow.Size = 110f;
+        scaled.Font.Shadow.Blur = 2f;
+        scaled.Font.Shadow.Transparency = 0.4f;
+        scaled.Font.Shadow.ForeColor.RGB = CorpusGenerator.Rgb(0, 80, 160);
+        var soft = Text(more, 40, 160, 420, 100, "Soft shadow", 54);
+        soft.Font.Shadow.Visible = MsoTrue;
+        soft.Font.Shadow.OffsetX = 0f;
+        soft.Font.Shadow.OffsetY = 8f;
+        soft.Font.Shadow.Blur = 14f;
+        soft.Font.Shadow.Transparency = 0.3f;
+        soft.Font.Shadow.ForeColor.RGB = CorpusGenerator.Rgb(0, 0, 0);
+        var halo = Text(more, 500, 160, 420, 100, "Soft glow", 54);
+        halo.Font.Fill.ForeColor.RGB = CorpusGenerator.Rgb(255, 255, 255);
+        halo.Font.Glow.Radius = 14f;
+        halo.Font.Glow.Color.RGB = CorpusGenerator.Rgb(40, 90, 220);
+        halo.Font.Glow.Transparency = 0.5f;
+        var tight = Text(more, 40, 300, 420, 100, "Tight reflection", 48);
+        tight.Font.Reflection.Type = 1;   // msoReflectionType1: tight, touching
+        var half = Text(more, 500, 300, 420, 100, "Half reflection", 48);
+        half.Font.Fill.ForeColor.RGB = CorpusGenerator.Rgb(160, 30, 60);
+        half.Font.Reflection.Type = 8;   // msoReflectionType8: half, 4 pt offset
+
         var warps = Slide(presentation);
         int[] formats = [1, 4, 8, 12, 16, 20, 24, 28];
         for (var i = 0; i < formats.Length; i++)

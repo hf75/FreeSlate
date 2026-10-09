@@ -155,9 +155,9 @@ public static class GeometryEvaluator
                     (curX, curY) = (Arg(4), Arg(5));
                     break;
                 case "arcTo":
-                    var wR = Value(cmd.Args[0], vars) * sx;
-                    var hR = Value(cmd.Args[1], vars) * sy;
-                    (curX, curY) = Arc(segments, curX, curY, wR, hR, Value(cmd.Args[2], vars), Value(cmd.Args[3], vars));
+                    var wR = Value(cmd.Args[0], vars);
+                    var hR = Value(cmd.Args[1], vars);
+                    (curX, curY) = Arc(segments, curX, curY, wR * sx, hR * sy, Value(cmd.Args[2], vars), Value(cmd.Args[3], vars), wR / Math.Max(hR, 1e-9));
                     break;
                 case "close":
                     segments.Add(new PathSegment('Z', []));
@@ -170,11 +170,12 @@ public static class GeometryEvaluator
 
     /// <summary>
     /// arcTo: the current point lies on the ellipse at the visual angle stAng. Visual angles map to the ellipse
-    /// parameter via t = atan2(wR·sin a, hR·cos a); sweeps are split into pieces of at most 180°.
+    /// parameter via t = atan2(wR·sin a, hR·cos a) with the radii of the path's own coordinates (<paramref name="ratio"/>
+    /// = wR/hR there; measured: clouds stretched to other proportions); sweeps are split into pieces of at most 180°.
     /// </summary>
-    static (double X, double Y) Arc(List<PathSegment> segments, double x, double y, double wR, double hR, double stAng, double swAng)
+    static (double X, double Y) Arc(List<PathSegment> segments, double x, double y, double wR, double hR, double stAng, double swAng, double ratio)
     {
-        double Param(double a) => Math.Atan2(wR * Math.Sin(a), hR * Math.Cos(a));
+        double Param(double a) => Math.Atan2(ratio * Math.Sin(a), Math.Cos(a));
         var start = Rad(stAng);
         var sweep = Rad(swAng);
         var t0 = Param(start);

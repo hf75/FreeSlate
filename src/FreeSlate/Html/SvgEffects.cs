@@ -28,14 +28,28 @@ public static class SvgEffects
         All = Outer | Shape,
     }
 
+    /// <summary>
+    /// How PowerPoint sizes the effects of text: unlike a shape's, they grow with the largest font size of the line
+    /// (measured with lines of 8 to 240 pt in Aptos and other fonts, in exported slides and in the slide show alike):
+    /// outer shadows and glow by (size / 78 pt)^0.695, inner shadows by size / 117 pt, a reflection's blur by
+    /// size / 79 pt and its distance by size / 14.5 pt.
+    /// </summary>
+    public readonly record struct TextScale(double Outer, double Inner, double ReflectionBlur, double ReflectionDistance)
+    {
+        /// <summary>The scales for a line whose largest font is <paramref name="size"/> points.</summary>
+        public static TextScale Of(double size) => new(Math.Pow(Math.Max(size, 0.01) / 78, 0.695), size / 117, size / 79, size / 14.5);
+    }
+
     /// <summary>Appends a filter for the effects of <paramref name="effectLst"/> to <paramref name="defs"/> and returns its id, or null.</summary>
     /// <param name="stroke">The outline width in pixels: a blur that does not grow stays within the outline's outer edge.</param>
     /// <param name="parts">The effects drawn; a 3D body casts its shadow and glow from its back and has no soft edges.</param>
     /// <param name="region">The area the shape covers when it is not the box (0, 0, width, height).</param>
     /// <param name="frame">The turn and flips of the shape on the slide: a shadow that does not rotate with the shape
     /// (rotWithShape 0, as PowerPoint writes its shadows) keeps its direction on the slide (measured).</param>
+    /// <param name="text">Effects of a line of text: sized with its font (see <see cref="TextScale"/>); the glow is
+    /// dilated by 0.46 r and blurred by r / 6 at the outer scale (measured).</param>
     public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0,
-        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null)
+        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null, TextScale? text = null)
     {
         if (effectLst == null)
             return null;
@@ -82,7 +96,7 @@ public static class SvgEffects
             var r = Units.ToPx(glow.Long("rad") ?? 0);
             var color = colors.ResolveChild(glow) ?? RgbColor.Black;
             // Around a 3D body (outer effects only) the glow is half as wide: dilated by r/4, σ = r/8 (measured).
-            var (dilate, sigma) = own ? (r / 2, r / 6) : (r / 4, r / 8);
+            var (dilate, sigma) = text is { } scale ? (0.46 * r * scale.Outer, r * scale.Outer / 6) : own ? (r / 2, r / 6) : (r / 4, r / 8);
             steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
             steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
@@ -92,8 +106,8 @@ public static class SvgEffects
         }
         if (shadow != null)
         {
-            var blur = Units.ToPx(shadow.Long("blurRad") ?? 0);
-            var distance = Units.ToPx(shadow.Long("dist") ?? 0);
+            var blur = Units.ToPx(shadow.Long("blurRad") ?? 0) * (text?.Outer ?? 1);
+            var distance = Units.ToPx(shadow.Long("dist") ?? 0) * (text?.Outer ?? 1);
             var direction = (shadow.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
             var color = colors.ResolveChild(shadow) ?? RgbColor.Black;
             var (dx, dy) = (distance * Math.Cos(direction), distance * Math.Sin(direction));
@@ -116,8 +130,8 @@ public static class SvgEffects
         {
             // Inner shadow: the shape's outside, blurred and moved against the direction, colored and kept inside
             // the shape (measured: at 45° the shadow lies along the inner right and bottom edges).
-            var blur = Units.ToPx(inner.Long("blurRad") ?? 0);
-            var distance = Units.ToPx(inner.Long("dist") ?? 0);
+            var blur = Units.ToPx(inner.Long("blurRad") ?? 0) * (text?.Inner ?? 1);
+            var distance = Units.ToPx(inner.Long("dist") ?? 0) * (text?.Inner ?? 1);
             var direction = (inner.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
             var color = colors.ResolveChild(inner) ?? RgbColor.Black;
             steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"io\"><feFuncA type=\"table\" tableValues=\"1 0\"/></feComponentTransfer>");
@@ -127,6 +141,8 @@ public static class SvgEffects
             steps.Append("<feComposite in2=\"ib\" operator=\"in\"/>");
             steps.Append("<feComposite in2=\"SourceAlpha\" operator=\"in\" result=\"inner\"/>");
             merge.Add("inner");
+            // The outside that casts the shadow must lie within the filter's region.
+            extent = Math.Max(extent, distance + blur * 1.2 + 1);
         }
 
         var (rx, ry, rw, rh) = region ?? (0, 0, width, height);
@@ -149,9 +165,11 @@ public static class SvgEffects
     /// <summary>
     /// An outer shadow that scales, skews or flips the shape (outerShdw sx, sy, kx, ky, the perspective shadows), or
     /// null: about its alignment point (algn, bottom center by default) the shape is scaled and skewed, then moved by
-    /// dist in direction dir; the blur comes last (measured, generated/effects).
+    /// dist in direction dir; the blur comes last (measured, generated/effects). Text passes the outer scale of its
+    /// line for dist and blur (see <see cref="TextScale"/>).
     /// </summary>
-    public static ShadowCopy? Shadow(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, Matrix? frame = null)
+    public static ShadowCopy? Shadow(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, Matrix? frame = null,
+        double scale = 1)
     {
         var shadow = effectLst?.Element(Ns.A + "outerShdw");
         if (shadow == null || !Transformed(shadow))
@@ -170,14 +188,14 @@ public static class SvgEffects
             "bl" => (-0.5, 0.5), "br" => (0.5, 0.5), _ => (0, 0.5),
         };
         (ax, ay) = (ax * boxWidth, ay * boxHeight);
-        var distance = Units.ToPx(shadow.Long("dist") ?? 0);
+        var distance = Units.ToPx(shadow.Long("dist") ?? 0) * scale;
         var direction = (shadow.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
         // About the box's center on the slide: p' = A + M·(p − A) + offset with M = [sx, tan kx; tan ky, sy], the skew
         // not scaled (measured: a flipped shadow keeps its skew's direction); then back into the shape's coordinates.
         var m = new Matrix(sx, ky, kx, sy, 0, 0);
         var onSlide = Matrix.Translate(ax + distance * Math.Cos(direction), ay + distance * Math.Sin(direction)).Then(m).Then(Matrix.Translate(-ax, -ay));
         var transform = Matrix.Translate(width / 2, height / 2).Then(turn.Invert()).Then(onSlide).Then(turn).Then(Matrix.Translate(-width / 2, -height / 2));
-        var blur = Units.ToPx(shadow.Long("blurRad") ?? 0);
+        var blur = Units.ToPx(shadow.Long("blurRad") ?? 0) * scale;
         var color = colors.ResolveChild(shadow) ?? RgbColor.Black;
         // The filter covers the transformed box with room for the blur.
         (double X, double Y)[] corners = [(0, 0), (width, 0), (0, height), (width, height)];
@@ -200,10 +218,11 @@ public static class SvgEffects
     /// endPos (fractions of the copy's extent) and blurred by blurRad. A reflection that does not rotate with its
     /// shape (rotWithShape 0, given the shape's turn in <paramref name="frame"/>) mirrors the turned shape on the
     /// slide (measured). Without a reflection the markup is returned unchanged; without the original
-    /// (<paramref name="original"/> false, effect graphs) only the reflection is returned.
+    /// (<paramref name="original"/> false, effect graphs) only the reflection is returned. Text has its distance in
+    /// the box and passes <paramref name="distanceScale"/> 0, and its blur scale (see <see cref="TextScale"/>).
     /// </summary>
     public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs, Matrix? frame = null,
-        bool original = true)
+        bool original = true, double distanceScale = 1, double blurScale = 1)
     {
         var reflection = effectLst?.Element(Ns.A + "reflection");
         if (reflection == null || markup.Length == 0)
@@ -213,9 +232,9 @@ public static class SvgEffects
         double Angle(string name, double fallback) => (reflection.Long(name) ?? fallback * 60000) / 60000.0 * Math.PI / 180;
         var (sx, sy) = (Fraction("sx", 1), Fraction("sy", 1));
         var (kx, ky) = (Math.Tan(Angle("kx", 0)), Math.Tan(Angle("ky", 0)));
-        var distance = Units.ToPx(reflection.Long("dist") ?? 0);
+        var distance = Units.ToPx(reflection.Long("dist") ?? 0) * distanceScale;
         var direction = Angle("dir", 0);
-        var blur = Units.ToPx(reflection.Long("blurRad") ?? 0);
+        var blur = Units.ToPx(reflection.Long("blurRad") ?? 0) * blurScale;
 
         // On the slide for reflections that keep still (about the box around the turned shape), else in the shape.
         var turn = frame is { } f && reflection.Bool("rotWithShape") == false ? f with { E = 0, F = 0 } : Matrix.Identity;
