@@ -1735,8 +1735,11 @@
           gl.uniform1i(gl.getUniformLocation(program, 'tex'), 0);
           gl.uniform1f(gl.getUniformLocation(program, 'alpha'), mesh.alpha === undefined ? 1 : mesh.alpha);
           gl.uniform4fv(gl.getUniformLocation(program, 'tint'), mesh.tint || [0, 0, 0, 0]);
+          // flat: hides nothing drawn after it; over: lies over everything drawn before it.
           gl.depthMask(!mesh.flat);
+          if (mesh.over) gl.disable(gl.DEPTH_TEST);
           gl.drawArrays(gl.TRIANGLES, 0, n);
+          gl.enable(gl.DEPTH_TEST);
           gl.depthMask(true);
         }
       },
@@ -2464,9 +2467,10 @@
     return glTransition(a, b, (scene, p, oldImage, newImage) => {
       const e = sineInOut(p), meshes = [];
       if (type === 'doors') {
+        // (measured with PowerPoint's video) the doors swing open by 150° p², darkening, while the new slide grows
+        // from half size over them, fading in.
         const vertical = spec.dir === 'vert';
-        meshes.push({ tex: newImage, ...flatQuad(0.6 + 0.4 * e, W / 2, H / 2, -0.01), alpha: Math.min(1, p / 0.7) });
-        const swing = 100 * e;
+        const swing = 150 * p * p;
         for (const half of [0, 1]) {
           const r = swing * Math.PI / 180 * (half ? 1 : -1);
           const [c, sn] = [Math.cos(r), Math.abs(Math.sin(r))];
@@ -2482,17 +2486,20 @@
           };
           const [x0, y0, x1, y1] = [uv[0] * W, uv[1] * H, uv[2] * W, uv[3] * H];
           if (Math.cos(r) <= 0.05) continue;
-          meshes.push({ tex: oldImage, ...quad(place(x0, y0), place(x1, y0), place(x1, y1), place(x0, y1), uv), shade: 1 - 0.5 * e });
+          meshes.push({ tex: oldImage, ...quad(place(x0, y0), place(x1, y0), place(x1, y1), place(x0, y1), uv), shade: 1 - 0.6 * smooth(p / 0.7) });
         }
+        meshes.push({ tex: newImage, ...flatQuad(0.5 + 0.5 * smooth((p - 0.2) / 0.75)), alpha: smooth(p / 0.7), flat: true, over: true });
       } else {
         // Warp
-        const into = spec.dir === 'in';
-        if (into) {
-          meshes.push({ tex: oldImage, ...flatQuad(1 + 0.3 * e), shade: 1 - Math.min(1, p / 0.5) });
-          meshes.push({ tex: newImage, ...flatQuad(0.6 + 0.4 * e, W / 2, H / 2, 1), alpha: Math.min(1, Math.max(0, (p - 0.3) / 0.4)) });
+        // (measured with PowerPoint's videos) in: the old slide grows (1 + 3 p²) and darkens out by 0.68 while the new
+        // one grows from half size over it, fading in; out: the old slide shrinks to half size over the new one, fading
+        // out, while the new one comes back from large.
+        if (spec.dir === 'in') {
+          meshes.push({ tex: oldImage, ...flatQuad(1 + 3 * p * p), shade: Math.max(0, 1 - (p / 0.68) ** 2), flat: true });
+          meshes.push({ tex: newImage, ...flatQuad(0.5 + 0.5 * smooth((p - 0.2) / 0.75)), alpha: Math.min(1, 1.1 * p), flat: true });
         } else {
-          meshes.push({ tex: newImage, ...flatQuad(1.3 - 0.3 * e), alpha: Math.min(1, p / 0.5) });
-          meshes.push({ tex: oldImage, ...flatQuad(1 - 0.5 * e, W / 2, H / 2, 1), alpha: 1 - Math.min(1, Math.max(0, (p - 0.2) / 0.6)) });
+          meshes.push({ tex: newImage, ...flatQuad(1 + 3 * (1 - p) * (1 - p)), flat: true });
+          meshes.push({ tex: oldImage, ...flatQuad(1 - 0.5 * smooth(p / 0.85)), alpha: Math.max(0, 1 - p), flat: true });
         }
       }
       scene.draw(meshes, 1.493, [0, 0, 0, 1]);
@@ -2507,8 +2514,9 @@
   function galleryTransition(spec, a, b, reset) {
     const sign = spec.dir === 'r' ? -1 : 1;
     return glTransition(a, b, (scene, p, oldImage, newImage) => {
-      const e = sineInOut(p), wave = Math.sin(Math.PI * p);
-      const angle = sign * 18 * wave * Math.PI / 180, depth = -0.45 * W * wave, gap = 0.12 * W;
+      // The wall turns early and stays turned while the slides pass along it (from 0.33 to 0.75).
+      const e = smooth((p - 0.33) / 0.42), turned = smooth(p / 0.15) * (1 - smooth((p - 0.75) / 0.25));
+      const angle = sign * 16 * turned * Math.PI / 180, depth = -0.15 * W * smooth(p / 0.3) * (1 - smooth((p - 0.6) / 0.4)), gap = 0.12 * W;
       const [c, sn] = [Math.cos(angle), Math.sin(angle)];
       const meshes = [];
       const hang = (image, along) => {
@@ -2517,7 +2525,7 @@
         meshes.push({ tex: image, ...quad(corner(l, 0), corner(r, 0), corner(r, H), corner(l, H)) });
         // The floor's mirror image beneath, fading into the dark.
         const q = quad(corner(l, H), corner(r, H), corner(r, 2 * H), corner(l, 2 * H), [0, 1, 1, 0]);
-        meshes.push({ tex: image, ...q, shade: [0.25, 0.25, 0, 0.25, 0, 0] });
+        meshes.push({ tex: image, ...q, shade: [0.15, 0.15, 0, 0.15, 0, 0] });
       };
       hang(oldImage, -sign * (W + gap) * e);
       hang(newImage, sign * (W + gap) * (1 - e));
@@ -2554,19 +2562,33 @@
       const d = { l: t.x / W, r: 1 - t.x / W, u: t.y / H, d: 1 - t.y / H }[dir] ?? t.x / W;
       t.start = 0.057 + 0.569 * Math.min(1, Math.max(0, d)) + 0.197 * (random() - 0.5);
     }
+    return turningTiles(a, b, reset, tiles, 0.32);
+  }
+
+  /**
+   * Tiles of the slide (polygons about their middles x, y) that turn over about their vertical middle line (or their
+   * horizontal one) evenly for a while from their start, the old slide on their fronts and the new one on their
+   * backs, darker as they turn edge on.
+   */
+  function turningTiles(a, b, reset, tiles, duration, horizontal = false) {
     return glTransition(a, b, (scene, p, oldImage, newImage) => {
       const front = { tex: oldImage, pos: [], uv: [], shade: [] }, back = { tex: newImage, pos: [], uv: [], shade: [] };
       for (const t of tiles) {
-        const theta = Math.PI * Math.min(1, Math.max(0, (p - t.start) / 0.32));
+        const theta = Math.PI * Math.min(1, Math.max(0, (p - t.start) / duration));
         const [c, sn] = [Math.cos(theta), Math.sin(theta)];
-        // The old slide on the front; the back mirrored, so that it shows the new slide in place when turned over.
+        // The back mirrored, so that it shows the new slide in place when turned over.
         const [mesh, mirror] = c >= 0 ? [front, 1] : [back, -1];
         const shade = 0.15 + 0.85 * Math.abs(c) ** 0.6;
         const n = t.shape.length;
         for (let k = 0; k < n; k++) {
           for (const [lx, ly] of [[0, 0], t.shape[k], t.shape[(k + 1) % n]]) {
-            mesh.pos.push(t.x + lx * c, t.y + ly, lx * sn);
-            mesh.uv.push((t.x + mirror * lx) / W, (t.y + ly) / H);
+            if (horizontal) {
+              mesh.pos.push(t.x + lx, t.y + ly * c, ly * sn);
+              mesh.uv.push((t.x + lx) / W, (t.y + mirror * ly) / H);
+            } else {
+              mesh.pos.push(t.x + lx * c, t.y + ly, lx * sn);
+              mesh.uv.push((t.x + mirror * lx) / W, (t.y + ly) / H);
+            }
             mesh.shade.push(shade);
           }
         }
@@ -2576,287 +2598,170 @@
   }
 
   /**
-   * A slide's image as a sheet of nx × ny cells whose corners place(u, v) puts in the scene (u, v: 0 … 1 across and
-   * down) as [x, y, z] or [x, y, z, shade]; the texture follows the sheet, or uvOf(u, v) gives its coordinates.
+   * Blinds and Checkerboard as PowerPoint plays them now (measured with its videos): Blinds turns bands 40 px wide
+   * (of a 1280-wide slide) over about their long middle lines, from the middle of the slide out to its edges (0.08 …
+   * 0.53, each for 0.22); Checkerboard turns 14 × 10 tiles over, across (dir vert: down) the slide give or take a
+   * little (0.12 … 0.57, each for 0.22).
    */
-  function sheetMesh(tex, nx, ny, place, uvOf = (u, v) => [u, v]) {
-    const pts = [];
-    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) pts.push(place(i / nx, j / ny));
-    const pos = [], uv = [], shade = [];
-    const put = (i, j) => {
-      const q = pts[j * (nx + 1) + i];
-      pos.push(q[0], q[1], q[2]);
-      uv.push(...uvOf(i / nx, j / ny));
-      shade.push(q.length > 3 ? q[3] : 1);
-    };
+  function blindsTransition(type, spec, a, b, reset) {
+    const random = seeded(type === 'blinds' ? 769 : 1025), tiles = [];
+    const rect = (w, h) => [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]];
+    if (type === 'blinds') {
+      // dir horz (the default): bands across the slide turning about horizontal lines.
+      const across = spec.dir !== 'vert', size = 40 * W / 1280;
+      const count = Math.max(1, Math.round((across ? H : W) / size)), step = (across ? H : W) / count;
+      for (let k = 0; k < count; k++) {
+        const at = (k + 0.5) * step, d = Math.abs(at - (across ? H : W) / 2) / ((across ? H : W) / 2);
+        tiles.push({ x: across ? W / 2 : at, y: across ? at : H / 2, shape: across ? rect(W, step) : rect(step, H), start: 0.08 + 0.45 * d });
+      }
+      return turningTiles(a, b, reset, tiles, 0.22, across);
+    }
+    const down = spec.dir === 'vert', [nx, ny] = [14, 10], [w, h] = [W / nx, H / ny];
     for (let j = 0; j < ny; j++) {
       for (let i = 0; i < nx; i++) {
-        put(i, j); put(i + 1, j); put(i + 1, j + 1);
-        put(i, j); put(i + 1, j + 1); put(i, j + 1);
+        const [x, y] = [(i + 0.5) * w, (j + 0.5) * h];
+        tiles.push({ x, y, shape: rect(w, h), start: 0.12 + 0.45 * (down ? y / H : x / W) + 0.12 * (random() - 0.5) });
       }
     }
-    return { tex, pos, uv, shade };
+    return turningTiles(a, b, reset, tiles, 0.22, down);
   }
 
-  /** A slide's image lying in place behind everything (not hiding what is drawn after it). */
-  const backdrop = image => ({ tex: image, ...quad([0, 0, 0], [W, 0, 0], [W, H, 0], [0, H, 0]), flat: true });
-
-  // The Office 2013 transitions (p15:prstTrans; measured with PowerPoint's videos, pixels of a 1280 × 720 slide).
-  // Fall Over: the old slide's fall back about its bottom edge in degrees (in its middle).
-  const fallOverAngle = measured([[0, 0], [0.134, 0.2], [0.2, 1.2], [0.266, 2.3], [0.331, 3.6], [0.397, 5.5], [0.462, 8.4], [0.528, 12.8],
-    [0.593, 19.6], [0.659, 29.4], [0.725, 44.3], [0.79, 65.3], [0.823, 78.7], [0.856, 90], [0.9, 125], [1, 125]]);
-  // Drape: the new slide's swing about its top edge (degrees, its lower edge toward the viewer), swaying back.
-  const drapeAngle = measured([[0, 110], [0.3, 72], [0.331, 70.8], [0.364, 68.4], [0.397, 65.6], [0.43, 62.2], [0.462, 57.4], [0.495, 50.5],
-    [0.528, 36], [0.561, 17], [0.593, -1.5], [0.626, -4], [0.659, -7], [0.692, -8.5], [0.725, -8.5], [0.757, -7], [0.79, -6], [0.823, -4],
-    [0.856, -3], [0.889, -2], [0.921, -1.5], [0.954, -0.5], [1, 0]]);
-  // Curtains: the inner edges of the left and the right curtain at half height and at the bottom.
-  const curtainMiddle = [[0, 640, 640], [0.069, 630, 642], [0.134, 578, 678], [0.2, 494, 766], [0.266, 412, 871], [0.3, 382, 913],
-    [0.397, 381, 966], [0.495, 381, 926], [0.561, 420, 866], [0.626, 448, 823], [0.692, 390, 867], [0.725, 382, 942], [0.757, 382, 1046],
-    [0.79, 146, 1158], [0.823, 64, 1254], [0.856, -40, 1320]];
-  const curtainBottom = [[0, 640, 640], [0.134, 626, 642], [0.2, 550, 693], [0.266, 420, 829], [0.3, 358, 917], [0.331, 304, 999],
-    [0.364, 266, 1058], [0.397, 248, 1089], [0.43, 258, 1082], [0.462, 290, 1043], [0.495, 338, 987], [0.528, 392, 922], [0.561, 444, 852],
-    [0.593, 480, 800], [0.659, 456, 900], [0.692, 354, 1034], [0.725, 308, 1154], [0.757, 252, 1208], [0.79, 200, 1240], [0.823, 100, 1270],
-    [0.856, -40, 1320]];
-  // Wind: the old slide blown off across (toward the right; invX: the left) and up.
-  const windAcross = measured([[0, 0], [0.3, 0], [0.331, 12], [0.364, 42], [0.397, 86], [0.43, 144], [0.462, 214], [0.495, 296], [0.528, 390],
-    [0.561, 492], [0.593, 600], [0.626, 716], [0.659, 838], [0.692, 954], [0.725, 1054], [0.757, 1144], [0.79, 1262], [0.83, 1420]]);
-  const windUp = measured([[0, 0], [0.134, 4], [0.2, 10], [0.266, 22], [0.331, 28], [0.397, 44], [0.462, 76], [0.528, 144], [0.593, 230],
-    [0.659, 272], [0.725, 344], [0.79, 432], [0.83, 520]]);
-  // Prestige: the old slide pulled up off the new one: its lower edge, and how wide it stays.
-  const prestigeBottom = measured([[0, 720], [0.5, 708], [0.528, 704], [0.561, 692], [0.593, 660], [0.626, 602], [0.659, 524], [0.692, 428],
-    [0.725, 314], [0.757, 192], [0.79, 74], [0.82, -20]]);
-  const prestigeWidth = measured([[0, 1], [0.626, 0.96], [0.659, 0.95], [0.692, 0.89], [0.725, 0.72], [0.757, 0.17], [0.79, 0.09], [0.82, 0.05]]);
-  // Crush: the box of the crumpled old slide (left, right, top, height), which then falls out at the bottom.
-  const crushBox = [[0, 0, 1280, 0, 720], [0.069, 36, 1252, 14, 690], [0.102, 58, 1248, 18, 676], [0.134, 74, 1234, 22, 660],
-    [0.167, 92, 1202, 28, 644], [0.2, 104, 1158, 46, 618], [0.233, 116, 1116, 70, 586], [0.266, 134, 1080, 90, 558], [0.298, 158, 1050, 108, 534],
-    [0.331, 188, 1018, 128, 506], [0.364, 228, 984, 144, 480], [0.397, 270, 958, 156, 454], [0.43, 312, 934, 170, 426], [0.462, 348, 906, 176, 404],
-    [0.495, 380, 882, 190, 374], [0.528, 408, 862, 198, 352], [0.561, 422, 852, 210, 336], [0.593, 426, 850, 214, 332], [0.626, 420, 856, 222, 334],
-    [0.659, 418, 860, 238, 336], [0.692, 416, 864, 262, 336], [0.725, 412, 866, 292, 336], [0.757, 410, 866, 330, 336], [0.79, 408, 868, 376, 336],
-    [0.823, 406, 870, 424, 336], [0.856, 400, 874, 478, 336], [0.889, 394, 852, 536, 336], [0.921, 400, 810, 592, 336], [0.954, 420, 800, 650, 336],
-    [1, 440, 790, 740, 336]];
-  // Page Curl (single): the old slide pulled off toward the left (invX: the right).
-  const curlAcross = measured([[0, 0], [0.233, 0], [0.266, 3], [0.298, 8], [0.331, 17], [0.364, 32], [0.397, 57], [0.43, 95], [0.462, 155],
-    [0.495, 237], [0.528, 327], [0.561, 409], [0.593, 487], [0.626, 577], [0.659, 685], [0.692, 825], [0.725, 995], [0.757, 1177], [0.79, 1300]]);
-  // Page Curl (double): the turn of the right page (invX: the left one) over the middle, degrees.
-  const pageTurn = measured([[0, 0], [0.1, 0], [0.134, 9], [0.2, 22], [0.266, 33], [0.331, 41], [0.397, 51], [0.462, 66], [0.495, 75.5],
-    [0.528, 86], [0.561, 98.6], [0.593, 113], [0.626, 128], [0.659, 142], [0.692, 156], [0.725, 180]]);
-  // Peel Off: the edge of the uncovered new slide, x + 0.83 y = c, moving from the bottom right corner (invX: left).
-  const peelEdge = measured([[0, 1900], [0.15, 1878], [0.167, 1853], [0.2, 1797], [0.233, 1749], [0.266, 1693], [0.298, 1637], [0.331, 1581],
-    [0.364, 1525], [0.397, 1469], [0.43, 1409], [0.462, 1341], [0.495, 1269], [0.528, 1189], [0.561, 1077], [0.593, 933], [0.626, 789],
-    [0.659, 685], [0.692, 597], [0.725, 497], [0.757, 377], [0.79, 257], [0.823, 153], [0.856, 41], [0.889, -80]]);
-  // Airplane and Origami: the middle and the size of the folded old slide as it flies off.
-  // Airplane: the folded dart's nose, left wing tip, keel and right wing tip (x, y each).
-  const airplaneDart = [[0.3, 778, 208, 118, 450, 300, 820, 650, 860], [0.62, 650, 330, 0, 470, 130, 760, 450, 800],
-    [0.79, 562, 386, -80, 500, 60, 800, 380, 830], [0.823, 616, 336, 30, 470, 180, 760, 500, 790], [0.856, 844, 156, 200, 270, 420, 550, 690, 560],
-    [0.889, 1076, 2, 722, 65, 843, 219, 991, 224], [0.93, 1400, -200, 1100, -150, 1180, -40, 1300, -40]];
-  const origamiPath = [[0, 640, 360, 1280, 720], [0.069, 622, 325, 1176, 688], [0.102, 640, 358, 654, 630], [0.134, 649, 375, 664, 498],
-    [0.2, 635, 365, 700, 418], [0.3, 633, 392, 698, 432], [0.4, 618, 427, 748, 348], [0.5, 702, 435, 674, 352], [0.6, 909, 383, 526, 384],
-    [0.7, 1088, 277, 360, 242], [0.79, 1199, 163, 178, 182], [0.856, 1238, 94, 96, 120], [0.9, 1320, 30, 50, 60]];
-
   /**
-   * The Office 2013 transitions (p15:prstTrans; from PowerPoint's videos): over the new slide the old one falls
-   * over, opens as curtains, is blown away, pulled off, crumpled, shattered, peeled, turned like a page or folded and
-   * flown off; Drape lets the new slide swing down over the old one. invX mirrors them.
+   * Vortex (p14:vortex; from PowerPoint's video): the old slide breaks into small squares that, from the side the
+   * direction names (l: from the right) to the other, swirl off into the distance toward that side; the new slide's
+   * squares come back the same way and land from the other side, the last as the transition ends.
    */
-  function presetTransition(spec, a, b, reset) {
-    const preset = spec.prst || 'fade', flip = spec.invX ? -1 : 1;
-    const [kx, ky] = [W / 1280, H / 720];
-    const mirrorX = x => (flip < 0 ? W - x : x);
-    const random = seeded(2013);
-    // Fracture: long splinters between cracks from the point of impact to the slide's edges, each broken once along
-    // its length; they part a little, turn about their length and fall.
-    const shards = [];
-    if (preset === 'fracture') {
-      const [ix, iy] = [0.5 * W, 0.55 * H];
-      const reach = angle => {
-        const [c, sn] = [Math.cos(angle), Math.sin(angle)];
-        return Math.min(c > 1e-9 ? (W - ix) / c : c < -1e-9 ? -ix / c : Infinity, sn > 1e-9 ? (H - iy) / sn : sn < -1e-9 ? -iy / sn : Infinity);
-      };
-      const corners = [[W, H], [0, H], [0, 0], [W, 0]].map(([x, y]) => ({ x, y, angle: (Math.atan2(y - iy, x - ix) + 2 * Math.PI) % (2 * Math.PI) }));
-      const rays = [];
-      for (let k = 0; k < 28; k++) rays.push((k + 0.2 + 0.6 * random()) / 28 * 2 * Math.PI);
-      const at = (angle, radius) => [ix + radius * Math.cos(angle), iy + radius * Math.sin(angle)];
-      for (let k = 0; k < rays.length; k++) {
-        const [a0, a1] = [rays[k], k + 1 < rays.length ? rays[k + 1] : rays[0] + 2 * Math.PI];
-        const [b0, b1] = [Math.min(reach(a0), reach(a1)) * (0.3 + 0.4 * random()), Math.min(reach(a0), reach(a1)) * (0.3 + 0.4 * random())];
-        const between = corners.filter(c => { const angle = c.angle < a0 ? c.angle + 2 * Math.PI : c.angle; return angle > a0 && angle < a1; })
-          .sort((c, d) => ((c.angle - a0 + 4 * Math.PI) % (2 * Math.PI)) - ((d.angle - a0 + 4 * Math.PI) % (2 * Math.PI))).map(c => [c.x, c.y]);
-        for (const pts of [[[ix, iy], at(a0, b0), at(a1, b1)], [at(a0, b0), at(a0, reach(a0)), ...between, at(a1, reach(a1)), at(a1, b1)]]) {
-          const cx = pts.reduce((sum, q) => sum + q[0], 0) / pts.length, cy = pts.reduce((sum, q) => sum + q[1], 0) / pts.length;
-          const d = Math.max(1, Math.hypot(cx - ix, cy - iy)), mid = (a0 + a1) / 2;
-          shards.push({ pts, cx, cy, vx: (cx - ix) / d * (30 + 90 * random()) * kx, vy: (cy - iy) / d * (20 + 60 * random()) * ky,
-            vz: (random() - 0.4) * 300 * kx, spin: (random() < 0.5 ? -1 : 1) * (0.5 + 1.5 * random()), ax: Math.cos(mid), ay: Math.sin(mid) });
-        }
+  function vortexTransition(spec, a, b, reset) {
+    const dir = spec.dir || 'l', across = dir === 'l' || dir === 'r', sign = dir === 'l' || dir === 'u' ? 1 : -1;
+    const size = W / 128, [nx, ny] = [128, Math.round(H / size)];
+    const random = seeded(3863);
+    const tiles = [];
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const [x, y] = [(i + 0.5) * W / nx, (j + 0.5) * H / ny];
+        // d: 0 on the side the squares leave first, 1 on the other.
+        const d = across ? (sign > 0 ? 1 - x / W : x / W) : (sign > 0 ? 1 - y / H : y / H);
+        tiles.push({ x, y, i, j, leave: 0.02 + 0.24 * d + 0.12 * (random() - 0.5), land: 0.98 - 0.36 * d + 0.08 * (random() - 0.5),
+          orbit: 3 + 4 * random(), spin: (random() - 0.5) * 12, drift: 0.8 + 0.4 * random() });
       }
     }
+    // Along the swirl s after leaving (or before landing): off toward the side, away, about the slide's middle line.
+    const flight = (t, s, out) => {
+      const [hx, hy] = [W / nx / 2, H / ny / 2];
+      const reach = s ** 1.5 * t.drift * W / 1280, [far, side] = [9000 * reach, 4200 * reach];
+      const turn = t.orbit * s, [c, sn] = [Math.cos(turn), Math.sin(turn)], spin = t.spin * s;
+      const [sc, ss] = [Math.cos(spin), Math.sin(spin)];
+      const corners = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]].map(([dx, dy]) => {
+        const [rx, ry] = [dx * sc - dy * ss, dx * ss + dy * sc];
+        let [x, y, z] = [t.x + rx, t.y + ry, 0];
+        if (across) { const dy2 = y - H / 2; [y, z] = [H / 2 + dy2 * c, dy2 * sn]; x -= sign * side; } else { const dx2 = x - W / 2; [x, z] = [W / 2 + dx2 * c, dx2 * sn]; y -= sign * side; }
+        return [x, y, z - far];
+      });
+      const [u0, v0, u1, v1] = [t.i / nx, t.j / ny, (t.i + 1) / nx, (t.j + 1) / ny];
+      out.pos.push(...corners[0], ...corners[1], ...corners[2], ...corners[0], ...corners[2], ...corners[3]);
+      out.uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+      const shade = 0.75 + 0.25 * Math.abs(c);
+      out.shade.push(shade, shade, shade, shade, shade, shade);
+    };
     return glTransition(a, b, (scene, p, oldImage, newImage) => {
-      const meshes = [];
-      switch (preset) {
-        case 'fallOver': {
-          meshes.push(backdrop(newImage));
-          const middle = fallOverAngle(p);
-          meshes.push(sheetMesh(oldImage, 24, 16, (u, v) => {
-            const theta = Math.min(150, middle * (1 + 0.33 * flip * (1 - 2 * u))) * Math.PI / 180, r = (1 - v) * H;
-            return [u * W, H - r * Math.cos(theta), -r * Math.sin(theta), 0.4 + 0.6 * Math.max(0, Math.cos(theta))];
-          }));
-          break;
-        }
-        case 'drape': {
-          meshes.push(backdrop(oldImage));
-          const angle = drapeAngle(p);
-          meshes.push(sheetMesh(newImage, 24, 16, (u, v) => {
-            const theta = (angle < 0 ? angle * (1 + 0.6 * flip * (1 - 2 * u)) : angle) * Math.PI / 180, r = v * H;
-            return [u * W, r * Math.cos(theta), r * Math.sin(theta), 0.55 + 0.45 * Math.cos(theta)];
-          }));
-          break;
-        }
-        case 'curtains': {
-          meshes.push(backdrop(newImage));
-          const [ml, mr] = keyframes(curtainMiddle, p).map(v => v * kx);
-          const [bl, br] = keyframes(curtainBottom, p).map(v => v * kx);
-          const edge = (middle, bottom, v) => middle + (bottom - middle) * (v - 0.5) / (v > 0.5 ? 0.46 : 0.92);
-          for (const side of [0, 1]) {
-            // u across the curtain from its outer edge (left) or its inner edge (right); gathered in folds.
-            meshes.push(sheetMesh(oldImage, 24, 12, (u, v) => {
-              const inner = side ? edge(mr, br, v) : edge(ml, bl, v);
-              const squeeze = Math.min(1, Math.max(0, side ? (inner - W / 2) / (W / 2) : (W / 2 - inner) / (W / 2)));
-              const x = side ? inner + u * (W - inner) : u * inner;
-              return [x, v * H, 40 * kx * squeeze * Math.sin(u * Math.PI * 12), 1 - 0.25 * squeeze * (0.5 - 0.5 * Math.cos(u * Math.PI * 24))];
-            }, (u, v) => [side ? 0.5 + u / 2 : u / 2, v]));
-          }
-          break;
-        }
-        case 'wind': {
-          meshes.push(backdrop(newImage));
-          const [dx, dy] = [windAcross(p) * kx, windUp(p) * ky];
-          const amplitude = 30 * kx * Math.min(1, p / 0.4);
-          meshes.push(sheetMesh(oldImage, 24, 14, (u, v) => {
-            const phase = 2 * Math.PI * (1.2 * (flip > 0 ? u : 1 - u) + 0.6 * v - 2.5 * p);
-            return [u * W + flip * dx, v * H - dy * (0.6 + 0.4 * v), amplitude * Math.sin(phase), 0.94 + 0.06 * Math.cos(phase)];
-          }));
-          break;
-        }
-        case 'prestige': {
-          meshes.push(backdrop(newImage));
-          const bottom = prestigeBottom(p) * ky, width = prestigeWidth(p), center = W * (0.5 + 0.19 * (1 - width));
-          const lifted = 1 - bottom / H;
-          meshes.push(sheetMesh(oldImage, 24, 14, (u, v) => {
-            const gather = 1 - (1 - width) * (0.3 + 0.7 * v);
-            return [center + (u * W - W / 2) * gather, v * bottom, 30 * kx * lifted * Math.sin(u * Math.PI * 10),
-              1 - 0.3 * lifted * (0.5 - 0.5 * Math.cos(u * Math.PI * 20))];
-          }));
-          break;
-        }
-        case 'crush': {
-          meshes.push(backdrop(newImage));
-          const [x0, x1, y0, height] = keyframes(crushBox, p);
-          const [l, r, t, h] = [x0 * kx, x1 * kx, y0 * ky, height * ky];
-          const crumple = Math.min(1, p / 0.5);
-          const bump = (u, v, k) => Math.sin(u * 17.3 + k) * Math.cos(v * 13.1 - k) + 0.5 * Math.sin(u * 31.7 + v * 23.3 + 2 * k);
-          meshes.push(sheetMesh(oldImage, 32, 18, (u, v) => {
-            // Rounder as it crumples: the square's corners drawn in toward a disc.
-            const [a1, b1] = [2 * u - 1, 2 * v - 1];
-            const [ra, rb] = [a1 * Math.sqrt(1 - b1 * b1 / 2), b1 * Math.sqrt(1 - a1 * a1 / 2)];
-            const [qa, qb] = [a1 + (ra - a1) * crumple, b1 + (rb - b1) * crumple];
-            const [n1, n2] = [bump(u, v, 0), bump(v, u, 1.7)];
-            return [(l + r) / 2 + qa * (r - l) / 2 + n1 * 18 * kx * crumple, t + h / 2 + qb * h / 2 + n2 * 18 * ky * crumple,
-              60 * kx * crumple * n1, 1 - 0.35 * crumple * (0.5 + 0.5 * n2)];
-          }));
-          break;
-        }
-        case 'fracture': {
-          meshes.push(backdrop(newImage));
-          const t = Math.max(0, p - 0.13), fall = 1227 * ky * t * t;
-          for (const shard of shards) {
-            const turn = shard.spin * t, [c, sn] = [Math.cos(turn), Math.sin(turn)];
-            // Turned about an axis in the slide's plane through the shard's middle, drifting and falling.
-            const place = ([x, y]) => {
-              const [dx, dy] = [x - shard.cx, y - shard.cy];
-              const along = dx * shard.ax + dy * shard.ay, [px, py] = [dx - along * shard.ax, dy - along * shard.ay];
-              return [shard.cx + along * shard.ax + px * c + shard.vx * t, shard.cy + along * shard.ay + py * c + shard.vy * t + fall,
-                (shard.ax * py - shard.ay * px) * sn + shard.vz * t];
-            };
-            const mesh = { tex: oldImage, pos: [], uv: [], shade: [] };
-            for (let k = 1; k + 1 < shard.pts.length; k++) {
-              for (const q of [shard.pts[0], shard.pts[k], shard.pts[k + 1]]) {
-                mesh.pos.push(...place(q));
-                mesh.uv.push(q[0] / W, q[1] / H);
-                mesh.shade.push(0.55 + 0.45 * Math.abs(c));
-              }
-            }
-            meshes.push(mesh);
-          }
-          break;
-        }
-        case 'peelOff': {
-          meshes.push(backdrop(newImage));
-          // In the frame where the peel starts at the bottom right: the fold a curl's radius before the uncovered edge,
-          // the sheet beyond it around the curl and back over the slide.
-          const c = peelEdge(p), R = 50, len = Math.hypot(1, 0.83), [nx, ny] = [1 / len, 0.83 / len];
-          meshes.push(sheetMesh(oldImage, 40, 24, (u, v) => {
-            const [x, y] = [(flip > 0 ? u : 1 - u) * 1280, v * 720];
-            const s = (x + 0.83 * y - c) / len + R;
-            if (s <= 0) return [u * W, v * H, 0, 1];
-            let along, z, shade;
-            if (s <= Math.PI * R) {
-              const phi = s / R;
-              [along, z, shade] = [R * Math.sin(phi), R * (1 - Math.cos(phi)), phi < Math.PI / 2 ? 0.55 + 0.45 * Math.cos(phi) : 0.55 - 0.25 * Math.cos(phi)];
-            } else {
-              [along, z, shade] = [-(s - Math.PI * R), 2 * R, 0.8];
-            }
-            const [fx, fy] = [x - s * nx + along * nx, y - s * ny + along * ny];
-            return [(flip > 0 ? fx : 1280 - fx) * kx, fy * ky, z * kx, shade];
-          }));
-          break;
-        }
-        case 'pageCurlSingle': {
-          meshes.push(backdrop(newImage));
-          const shift = curlAcross(p) * kx, curl = 150 * kx;
-          meshes.push(sheetMesh(oldImage, 16, 1, (u, v) => {
-            const x = u * W - flip * shift;
-            return [x, v * H, 0, 0.75 + 0.25 * Math.min(1, Math.max(0, (flip > 0 ? x : W - x) / curl))];
-          }));
-          break;
-        }
-        case 'pageCurlDouble': {
-          // Beneath: the old slide's half that stays and the new slide's other half; over them the turning page, the
-          // old slide's other half in front and the new slide's first half on its back.
-          const theta = pageTurn(p) * Math.PI / 180, cos = Math.cos(theta), front = cos >= 0;
-          const half = (image, left) => ({ tex: image, ...quad([left ? 0 : W / 2, 0, 0], [left ? W / 2 : W, 0, 0], [left ? W / 2 : W, H, 0],
-            [left ? 0 : W / 2, H, 0], [left ? 0 : 0.5, 0, left ? 0.5 : 1, 1]), flat: true });
-          meshes.push(half(oldImage, flip > 0), half(newImage, flip < 0));
-          meshes.push(sheetMesh(front ? oldImage : newImage, 12, 1, (u, v) => [W / 2 + flip * u * W / 2 * cos, v * H, 0, 0.55 + 0.45 * Math.abs(cos)],
-            (u, v) => [front ? 0.5 + flip * u / 2 : 0.5 - flip * u / 2, v]));
-          break;
-        }
-        case 'airplane': {
-          meshes.push(backdrop(newImage));
-          // From the flat slide to the dart: its top edge to the nose, its bottom edge along the wings and the keel.
-          const [nx, ny, lx, ly, cx, cy, rx, ry] = keyframes(airplaneDart, p).map((v, i) => v * (i % 2 ? ky : kx));
-          const folded = smooth(p / 0.3);
-          meshes.push(sheetMesh(oldImage, 16, 8, (u, v) => {
-            const [bx, by] = u < 0.5 ? [lx + (cx - lx) * u * 2, ly + (cy - ly) * u * 2] : [cx + (rx - cx) * (u - 0.5) * 2, cy + (ry - cy) * (u - 0.5) * 2];
-            const [dx, dy] = [nx + (bx - nx) * v, ny + (by - ny) * v];
-            return [mirrorX(u * W + (dx - u * W) * folded), v * H + (dy - v * H) * folded, 0, 1 - folded * (u < 0.5 ? 0.08 : 0.2)];
-          }, (u, v) => [flip > 0 ? u : 1 - u, v]));
-          break;
-        }
-        case 'origami': {
-          meshes.push(backdrop(newImage));
-          const [cx, cy, w, h] = keyframes(origamiPath, p).map((v, i) => v * (i % 2 ? ky : kx));
-          const folded = Math.min(1, p / 0.134);
-          // From the slide's rectangle to a diamond in its box: its corners to the middles of the box's sides.
-          const rect = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], kite = [[-0.5, 0], [0, -0.5], [0.5, 0], [0, 0.5]];
-          const at = k => [mirrorX(cx + (rect[k][0] + (kite[k][0] - rect[k][0]) * folded) * w), cy + (rect[k][1] + (kite[k][1] - rect[k][1]) * folded) * h, 0];
-          meshes.push({ tex: oldImage, ...quad(at(0), at(1), at(2), at(3), flip > 0 ? [0, 0, 1, 1] : [1, 0, 0, 1]), shade: 1 - 0.15 * folded });
-          break;
-        }
-        default: {
-          meshes.push(backdrop(oldImage));
-          meshes.push({ ...backdrop(newImage), alpha: p });
-        }
+      const old = { tex: oldImage, pos: [], uv: [], shade: [] }, neu = { tex: newImage, pos: [], uv: [], shade: [] };
+      for (const t of tiles) {
+        if (p < t.leave + 0.6) flight(t, Math.max(0, p - t.leave), old);
+        if (p > t.land - 0.6) flight(t, Math.max(0, t.land - p), neu);
       }
-      scene.draw(meshes, 1.493, [0, 0, 0, 1]);
+      scene.draw([old, neu], 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  // Shred: the old slide's pieces as a group shrink (scale, about a point x, y of a 1280 × 720 slide) and fly off far
+  // to the top left; the new slide's come from there, large, and settle (measured with PowerPoint's video).
+  const shredOld = [[0, 1, 457, 567], [0.1, 0.99, 457, 567], [0.2, 0.94, 457, 567], [0.3, 0.91, 457, 567], [0.4, 0.88, 457, 567],
+    [0.5, 0.82, 457, 567], [0.53, 0.82, 457, 567], [0.56, 0.7, 430, 450], [0.59, 0.28, 380, 130], [0.62, 0.02, 350, 60]];
+  const shredNew = [[0.59, 0.02, 380, 120], [0.63, 0.4, 430, 230], [0.66, 0.95, 457, 567], [0.69, 0.85, 457, 567], [0.72, 0.86, 457, 567],
+    [0.76, 0.9, 457, 567], [0.79, 0.95, 457, 567], [0.82, 0.97, 457, 567], [0.86, 0.98, 457, 567], [0.95, 1, 457, 567]];
+
+  /**
+   * Shred (p14:shred; from PowerPoint's video): the old slide cut in strips of random widths (pattern rectangle: in
+   * small pieces) that part in depth and height as the slide sinks back, then flies off into the distance; the new
+   * slide's pieces come out of it, close up and apart, and settle into place.
+   */
+  function shredTransition(spec, a, b, reset) {
+    const random = seeded(3910), pieces = [];
+    if (spec.pattern === 'rectangle') {
+      const [nx, ny] = [256, 60];
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) pieces.push({ x0: i / nx, x1: (i + 1) / nx, y0: j / ny, y1: (j + 1) / ny });
+    } else {
+      for (let x = 0; x < 1;) {
+        const w = (30 + 60 * random()) / 1280;
+        pieces.push({ x0: x, x1: Math.min(1, x + w), y0: 0, y1: 1 });
+        x += w;
+      }
+    }
+    for (const piece of pieces) Object.assign(piece, { depth: random(), rise: random() - 0.5, depth2: random() - 0.5, rise2: random() - 0.5 });
+    const draw = (image, frames, p, spread, second, out) => {
+      if (p < frames[0][0] || p > frames[frames.length - 1][0] + 0.001 && frames === shredOld) return;
+      const [scale, cx, cy] = keyframes(frames, p).map((v, i) => (i === 1 ? v * W / 1280 : i === 2 ? v * H / 720 : v));
+      for (const piece of pieces) {
+        const k = scale * (second ? 1 + 0.4 * piece.depth2 * spread : 1 / (1 + 0.35 * piece.depth * spread));
+        const dy = (second ? piece.rise2 : piece.rise) * 60 * H / 720 * spread;
+        // leaning a little as the group tilts back
+        const corner = (u, v) => [cx + (u * W - cx) * k + (0.5 - v) * 40 * W / 1280 * spread * scale, cy + (v * H - cy) * k + dy * scale, 0];
+        out.pos.push(...corner(piece.x0, piece.y0), ...corner(piece.x1, piece.y0), ...corner(piece.x1, piece.y1),
+          ...corner(piece.x0, piece.y0), ...corner(piece.x1, piece.y1), ...corner(piece.x0, piece.y1));
+        out.uv.push(piece.x0, piece.y0, piece.x1, piece.y0, piece.x1, piece.y1, piece.x0, piece.y0, piece.x1, piece.y1, piece.x0, piece.y1);
+        for (let n = 0; n < 6; n++) out.shade.push(1);
+      }
+    };
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const old = { tex: oldImage, pos: [], uv: [], shade: [] }, neu = { tex: newImage, pos: [], uv: [], shade: [] };
+      if (p < 0.62) draw(oldImage, shredOld, p, smooth(p / 0.5), false, old);
+      if (p > 0.59) draw(newImage, shredNew, p, 1 - smooth((p - 0.62) / 0.33), true, neu);
+      scene.draw([{ ...old, flat: true }, { ...neu, flat: true }], 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
+  // Honeycomb: how far the old slide comes toward the viewer as it breaks up (measured with PowerPoint's video).
+  const honeycombZoom = measured([[0, 1], [0.07, 1.02], [0.13, 1.1], [0.2, 1.35], [0.27, 1.9], [0.33, 2.6], [0.38, 3.8], [0.4, 5]]);
+  const honeycombReturn = measured([[0.42, 0.85], [0.53, 0.9], [0.76, 1.08], [0.89, 1.02], [0.95, 1]]);
+
+  /**
+   * Honeycomb (p14:honeycomb; from PowerPoint's video): the old slide parts into hexagons with dark seams and comes
+   * at the viewer while hexagons drop out, until it has passed; then the new slide's hexagons pop up from the middle
+   * outward with dark seams that close at the end.
+   */
+  function honeycombTransition(spec, a, b, reset) {
+    const random = seeded(3898), w = 110 * W / 1280, h = w * Math.sqrt(3) / 2;
+    const cells = [];
+    for (let i = -1; i * 0.75 * w < W + w; i++) {
+      for (let j = -1; j * h < H + h; j++) {
+        const [x, y] = [i * 0.75 * w, j * h + (i & 1 ? h / 2 : 0)];
+        const d = Math.hypot((x - W / 2) / (W / 2), (y - H / 2) / (H / 2)) / Math.SQRT2;
+        cells.push({ x, y, vanish: 0.2 + 0.7 * random(), appear: 0.42 + 0.42 * (0.55 * Math.min(1, d) + 0.45 * random()) });
+      }
+    }
+    const shape = [[w / 2, 0], [w / 4, h / 2], [-w / 4, h / 2], [-w / 2, 0], [-w / 4, -h / 2], [w / 4, -h / 2]];
+    const hexagon = (out, cell, size, zoom, shade) => {
+      const place = ([dx, dy]) => [W / 2 + (cell.x + dx * size - W / 2) * zoom, H / 2 + (cell.y + dy * size - H / 2) * zoom, 0];
+      for (let k = 0; k < 6; k++) {
+        const [p0, p1] = [shape[k], shape[(k + 1) % 6]];
+        out.pos.push(...place([0, 0]), ...place(p0), ...place(p1));
+        out.uv.push(cell.x / W, cell.y / H, (cell.x + p0[0]) / W, (cell.y + p0[1]) / H, (cell.x + p1[0]) / W, (cell.y + p1[1]) / H);
+        out.shade.push(shade, shade, shade);
+      }
+    };
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const old = { tex: oldImage, pos: [], uv: [], shade: [] }, neu = { tex: newImage, pos: [], uv: [], shade: [] };
+      if (p < 0.4) {
+        const zoom = honeycombZoom(p), seam = 1 - 0.12 * smooth(p / 0.15);
+        for (const cell of cells) if (p < cell.vanish) hexagon(old, cell, seam, zoom, 1 - 0.5 * smooth((p - 0.2) / 0.2));
+      }
+      const seam = 1 - 0.12 * (1 - smooth((p - 0.86) / 0.07));
+      for (const cell of cells) {
+        if (p < cell.appear) continue;
+        const t = (p - cell.appear) / 0.04;
+        hexagon(neu, cell, seam * Math.min(1, 0.7 + 0.3 * t), honeycombReturn(p), 0.5 + 0.5 * smooth(t));
+      }
+      scene.draw([{ ...old, flat: true }, { ...neu, flat: true }], 1.493, [0, 0, 0, 1]);
     }, reset);
   }
 
@@ -2941,8 +2846,10 @@
         return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(sineInOut(p)); }, end: reset };
       case 'glitter':
         return glitterTransition(spec, a, b, reset);
-      case 'honeycomb': case 'shred':
-        return { frame: p => { b.style.zIndex = 2; b.style.opacity = String(p); }, end: reset };
+      case 'shred':
+        return shredTransition(spec, a, b, reset);
+      case 'honeycomb':
+        return honeycombTransition(spec, a, b, reset);
       case 'wipe': case 'split': case 'strips': case 'circle': case 'diamond': case 'plus': case 'wedge': case 'wheel':
       case 'wheelReverse': case 'randomBar': case 'dissolve': case 'ripple':
         return masked;
@@ -3001,8 +2908,8 @@
           for (const slide of [a, b]) slide.querySelectorAll(':scope > :not(.bg)').forEach(e => { e.style.opacity = ''; });
           reset();
         } };
-      case 'blinds': return clip(p => bandsClip(6, spec.dir !== 'vert', p));
-      case 'checker': return clip(p => bandsClip(10, spec.dir === 'vert', p));
+      case 'blinds': case 'checker':
+        return blindsTransition(type, spec, a, b, reset);
       case 'comb': {
         // Bands of the old slide leave by turns to either side, speeding up evenly (4.78 slide heights per p²): seven
         // rows across, the last one first, each 0.046 later from 0.05; columns down, all at 0.178 (measured with
@@ -3052,12 +2959,7 @@
           b.style.transform = `rotate(${40 - 400 * p}deg) scale(${Math.max(p, 1e-4)})`;
         }, end: reset };
       case 'vortex':
-        return { frame: p => {
-          b.style.zIndex = 2;
-          b.style.transformOrigin = '50% 50%';
-          b.style.opacity = String(Math.min(1, p * 1.5));
-          b.style.transform = type === 'ripple' ? `scale(${0.9 + 0.1 * p})` : `rotate(${(1 - p) * -180}deg) scale(${p})`;
-        }, end: reset };
+        return vortexTransition(spec, a, b, reset);
       case 'flash':
         // White at once; the new slide comes out of it with its colors scaled by a and raised by b, both falling
         // linearly to plain at 0.894 (measured: R 29 · 2.1 + 90 = 151 at 0.63).

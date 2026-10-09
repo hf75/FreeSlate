@@ -1839,8 +1839,14 @@ areas:
                    p:plus, p:pull, p:push, p:random, p:randomBar, p:split, p:strips, p:wedge, p:wheel, p:wipe, p:zoom]
         priority: P1
         difficulty: 3
-        status: partial
-        strategy: Web Animations on two stacked slide layers (clip-path, transforms, opacity).
+        status: done
+        strategy: Two stacked slide layers with SVG masks, transforms and opacity; WebGL for the 3D ones.
+        office: >-
+          Compared with PowerPoint's videos (tools/Fidelity transitions): 95.2 % over
+          generated/transitions-classic. Masks with the soft edges PowerPoint draws for wipes, splits, strips,
+          shapes and wheels; push, cover, uncover, comb, zoom and newsflash with PowerPoint's easing; blinds
+          and checkerboard turn bands and tiles over in 3D as PowerPoint plays them since 2013; dissolve and
+          random bars use random patterns of their own.
 
       - id: transition.office2010
         title: Office 2010 transitions
@@ -1849,28 +1855,45 @@ areas:
                    p14:vortex, p14:warp, p14:wheelReverse, p14:window]
         priority: P2
         difficulty: 4
-        status: partial
-        strategy: 3D transitions with CSS 3D transforms; particle-like ones (vortex, shred, honeycomb, glitter) with WebGL.
-        office: Written as mc:AlternateContent with a p:fade fallback.
+        status: done
+        strategy: >-
+          The slides (or their content and backgrounds apart) rasterized into textures and drawn in a WebGL scene
+          with PowerPoint's camera; particle-like ones (vortex, shred, honeycomb, glitter) as many small tiles.
+        office: >-
+          All of them, compared with PowerPoint's videos: 83.4 % over generated/transitions-2010. Prism, cube,
+          box, orbit, flip, switch, gallery, doors, window, ferris wheel, conveyor, pan, fly through, warp,
+          reveal and flash as WebGL scenes whose poses and timing are fitted frame by frame; ripple as a
+          growing soft circle; glitter, vortex, shred and honeycomb as turning tiles and particles with
+          PowerPoint's timing, their random patterns differing from PowerPoint's. Written as
+          mc:AlternateContent with a p:fade fallback.
 
       - id: transition.office2013
         title: Office 2013 transitions
         elements: [p15:prstTrans]
         priority: P2
         difficulty: 5
-        status: partial
-        strategy: Curtains, wind, prestige, fracture, crush, peel off, page curl, airplane, origami in WebGL.
+        status: done
+        strategy: The slides as WebGL meshes deformed per vertex (hinged, curled, gathered, crumpled, shattered, folded).
+        office: >-
+          All presets with invX, compared with PowerPoint's videos: 83.9 % over generated/transitions-2013.
+          Fall over, drape, curtains, wind, prestige, crush, fracture, peel off, page curl (single and
+          double), airplane and origami as meshes bent, folded and moved with keyframes measured from the
+          videos; airplane and origami fold into simplified shapes.
 
       - id: transition.morph
         title: Morph
         elements: [p159:morph]
         priority: P2
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           Match objects between the two slides (same name, names starting with !!, similar content), then interpolate
           position, size, rotation, fill and geometry; words or characters for text.
-        office: Written as mc:AlternateContent with p:fade in mc:Fallback.
+        office: >-
+          Compared with PowerPoint's video: 96.8 % over generated/transitions-morph (objects, words,
+          characters, !! names). Shapes paired by name move, grow and turn at PowerPoint's ease, the old one
+          fading out over the new one; text by words or characters moves unit by unit. Written as
+          mc:AlternateContent with p:fade in mc:Fallback.
 
   - id: animation
     title: Animations
