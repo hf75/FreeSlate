@@ -170,6 +170,19 @@ public static class Constraints
             Apply(node, constraint, pins, null);
     }
 
+    /// <summary>
+    /// Applies a node's constraints on itself that are not its box again once it has its box (measured: venn3's
+    /// margins, 0.156 of the circle's width as placed).
+    /// </summary>
+    public static void EvaluateOwnValues(LayoutNode node, Pins? pins)
+    {
+        foreach (var constraint in node.Constraints.Where(c => Own(c) && !Bound(c) && !Box.Contains((string?)c.Attribute("type") ?? "")))
+        {
+            if (!node.FromAncestors.Contains((string?)constraint.Attribute("type") ?? ""))
+                Apply(node, constraint, pins, null);
+        }
+    }
+
     static void Apply(LayoutNode owner, XElement constraint, Pins? pins, LayoutNode? keep)
     {
         var type = (string?)constraint.Attribute("type") ?? "";

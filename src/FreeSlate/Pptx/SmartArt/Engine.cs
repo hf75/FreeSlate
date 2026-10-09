@@ -297,6 +297,13 @@ public static class Engine
             h = extent.Y + extent.H;
         Place(child, -extent.X, -extent.Y, w, h, pins);
         ScaleSubtree(child, factor, 0, 0);
+        // Values that follow the nodes' sizes (margins of a fraction of the width) follow the scaled sizes (measured:
+        // venn3's circles, their margins 0.156 of their width as drawn).
+        foreach (var n in child.Descendants().Prepend(child))
+        {
+            (n.Values["w"], n.Values["h"]) = (n.W, n.H);
+            Constraints.EvaluateOwnValues(n, pins);
+        }
     }
 
     /// <summary>Scales a laid-out subtree about a point: positions, sizes, elbows and the nodes' scale.</summary>
