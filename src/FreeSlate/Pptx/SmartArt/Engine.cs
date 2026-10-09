@@ -254,6 +254,8 @@ public static class Engine
         var extents = children.Select(Extent).ToList();
         var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * (children.Count - 1);
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
+        if (Environment.GetEnvironmentVariable("FS_TRACE") == "1")
+            Console.Error.WriteLine($"lin {node.Name} box {boxAlong:0.##}x{boxAcross:0.##} along {along:0.##} extents {string.Join(", ", children.Select((c, i) => $"{c.Name}=({extents[i].W:0.##},{extents[i].H:0.##})"))}");
         double factor;
         if (node.Param("fallback") == "2D")
         {
@@ -283,10 +285,17 @@ public static class Engine
             }
             var widest = sizes.Max(z => z.Across);
             var more = widest > boxAcross && widest > 0 ? boxAcross / widest : 1;
-            factor = shrink * more;
+            // Children sticking out across only lose what sticks out (measured: hierarchy4's column, three rows high in a
+            // one-row-high diagram, keeps its full width while its rows shrink to fit it), unless their size across
+            // follows their length (h = 0.6 w): those shrink with the row's widest.
+            factor = shrink * (children.Any(c => c.AlgorithmType is "lin" or "snake") ? 1 : more);
             for (var i = 0; i < children.Count; i++)
             {
-                var (length, cross) = (sizes[i].Along * more, sizes[i].Across * more);
+                var (alongType, acrossType) = horizontal ? ("w", "h") : ("h", "w");
+                var clamp = children[i].AlgorithmType is "lin" or "snake" || Derived(children[i], acrossType, alongType, sizes[i].Along) == null;
+                var (length, cross) = clamp
+                    ? (sizes[i].Along, Math.Min(sizes[i].Across, boxAcross))
+                    : (sizes[i].Along * more, sizes[i].Across * more);
                 var e = extents[i];
                 var (w, h) = horizontal ? (length, cross) : (cross, length);
                 var (sx, sy) = (e.W > 0 ? w / e.W : factor, e.H > 0 ? h / e.H : factor);

@@ -50,9 +50,20 @@ switch (command)
         Summarize(Pipeline.Compare(decks));
         break;
     case "smartart":
-        SmartArtCheck.Run(rest);
-        SmartArtCheck.Geometry(rest, args.Contains("--verbose"));
+    {
+        // --slide=N checks one slide's diagram; --tree prints its layout tree before text fitting.
+        var files = rest.Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
+        int? slideOnly = args.FirstOrDefault(a => a.StartsWith("--slide=", StringComparison.Ordinal)) is { } s ? int.Parse(s["--slide=".Length..]) : null;
+        if (slideOnly is { } one && args.Contains("--tree"))
+        {
+            SmartArtCheck.Tree(files[0], one);
+            break;
+        }
+        if (slideOnly == null)
+            SmartArtCheck.Run(files);
+        SmartArtCheck.Geometry(files, args.Contains("--verbose"), slideOnly);
         break;
+    }
     case "animate":
         var animated = Animations.Run(decks);
         foreach (var r in animated)

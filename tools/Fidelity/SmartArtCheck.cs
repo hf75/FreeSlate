@@ -80,7 +80,30 @@ public static class SmartArtCheck
     /// Compares the engine's layout with PowerPoint's drawing: for every drawing shape the node of its presentation
     /// point; a shape is good when its box is within 1 % of the diagram's size.
     /// </summary>
-    public static void Geometry(IEnumerable<string> files, bool verbose)
+    /// <summary>
+    /// The layout tree of one slide's diagram laid out without text fitting: every node's algorithm, box and values,
+    /// indented by depth (--slide=N --tree).
+    /// </summary>
+    public static void Tree(string file, int slide)
+    {
+        foreach (var diagram in Diagrams(file).Where(d => d.Slide == slide))
+        {
+            var root = Engine.Layout(diagram.LayoutDef, diagram.Model, diagram.Size.W, diagram.Size.H);
+            var k = Engine.PtPerMm;
+            void Print(LayoutNode node, int depth)
+            {
+                var values = string.Join(" ", node.Values.Where(v => v.Key is "w" or "h" or "l" or "t" or "r" or "b" or "ctrX" or "ctrY" or "sp" or "userH" or "primFontSz")
+                    .Select(v => string.Create(CultureInfo.InvariantCulture, $"{v.Key}={v.Value:0.##}")));
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"{new string(' ', depth * 2)}{node.Name} [{node.AlgorithmType}] ({node.X * k:0.0} {node.Y * k:0.0} {node.W * k:0.0} {node.H * k:0.0}) scale {node.Scale:0.###}  {values}"));
+                foreach (var child in node.Children)
+                    Print(child, depth + 1);
+            }
+            Print(root, 0);
+        }
+    }
+
+    public static void Geometry(IEnumerable<string> files, bool verbose, int? onlySlide = null)
     {
         foreach (var file in files)
         {
@@ -89,7 +112,7 @@ public static class SmartArtCheck
             using var context = new FreeSlate.Pptx.PresentationContext(OpcPackage.Open(file));
             foreach (var diagram in Diagrams(file))
             {
-                if (diagram.Drawing == null)
+                if (diagram.Drawing == null || onlySlide != null && diagram.Slide != onlySlide)
                     continue;
                 LayoutNode root;
                 try
