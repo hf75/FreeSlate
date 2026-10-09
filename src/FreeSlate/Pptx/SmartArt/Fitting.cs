@@ -95,43 +95,41 @@ static class Fitting
         var (l, r) = (TextBody.Margin(node, "lMarg", primary), TextBody.Margin(node, "rMarg", primary));
         var (t, b) = (TextBody.Margin(node, "tMarg", primary), TextBody.Margin(node, "bMarg", primary));
         // The text lies in the geometry's text rectangle (a rounded rectangle's inside its corners), within the margins.
-        var (areaWidth, _) = Output.TextArea(node);
+        var (areaWidth, areaHeight) = Output.TextArea(node);
         var width = areaWidth * Engine.PtPerMm - l - r;
         if (width <= 0)
             return (false, double.PositiveInfinity);
         var layout = measure(body, width);
         var overflow = layout.Lines.Any(line => line.Width > width + 0.01) || BrokenWord(layout);
         var needed = TextHeight(layout, body) + t + b;
-        node.Note = string.Create(CultureInfo.InvariantCulture, $"font {primary:0.#} text {layout.Height:0.##} lines {layout.Lines.Count} margins {t:0.#}/{b:0.#} width {width:0.#}{(overflow ? " overflow" : "")}");
-        return (!overflow && needed <= node.H * Engine.PtPerMm + 0.01, needed);
+        node.Note = string.Create(CultureInfo.InvariantCulture, $"font {primary:0.#} text {needed - t - b:0.##} lines {layout.Lines.Count} margins {t:0.#}/{b:0.#} width {width:0.#} area {areaHeight * Engine.PtPerMm:0.#}{(overflow ? " overflow" : "")}");
+        return (!overflow && needed <= areaHeight * Engine.PtPerMm + 0.01, needed);
     }
 
-    /// <summary>The height of a line in SmartArt's text measure, in em (measured with Aptos: one line 1.3264 to 1.3346).</summary>
-    const double LineHeight = 1.33;
-
     /// <summary>
-    /// The height SmartArt gives the text (points), not the drawn lines' height: the first line one line height L, every
-    /// further line 0.9 L, and after a paragraph its space after (spcAft, % of L) before the next (measured with 1 to 4
-    /// paragraphs at 42, 56 and 65 pt, all within 0.1 %); L of each line's largest font size.
+    /// The height SmartArt gives the text (points): every line its font's height (ascent and descent of the line's
+    /// largest run) times its paragraph's line spacing (lnSpc, 90 % in most layouts), and between paragraphs the
+    /// previous one's space after (spcAft, a share of its font's height); the text lies within the geometry's text
+    /// rectangle and the margins (measured: vList2 grown for 1 to 4 paragraphs at 42 to 65 pt, the font sizes process3
+    /// and hProcess3 keep).
     /// </summary>
     static double TextHeight(LaidOutText layout, XElement body)
     {
         var paragraphs = body.Elements(A + "p").ToList();
+        static double FontHeight(LaidOutLine line) =>
+            line.Runs.Count > 0 ? line.Runs.Max(r => (r.Style.Font.Data.Ascent + r.Style.Font.Data.Descent) * r.Style.Size) : 0;
         double total = 0;
         var previous = -1;
         for (var i = 0; i < layout.Lines.Count; i++)
         {
             var line = layout.Lines[i];
-            var size = line.Runs.Count > 0 ? line.Runs.Max(r => r.Style.Size) : 0;
-            var height = LineHeight * size;
-            if (i == 0)
-                total += height;
-            else
-            {
-                total += 0.9 * height;
-                if (line.Paragraph != previous && previous >= 0 && previous < paragraphs.Count)
-                    total += SpaceAfter(paragraphs[previous]) * LineHeight * PreviousSize(layout, i);
-            }
+            var paragraph = line.Paragraph >= 0 && line.Paragraph < paragraphs.Count ? paragraphs[line.Paragraph] : null;
+            var spacing = paragraph?.Element(A + "pPr")?.Element(A + "lnSpc");
+            total += spacing?.Element(A + "spcPts")?.Attribute("val") is { } points
+                ? (long)points / 100.0
+                : FontHeight(line) * ((spacing?.Element(A + "spcPct")?.Attribute("val") is { } share ? (long)share : 100000) / 100000.0);
+            if (i > 0 && line.Paragraph != previous && previous >= 0 && previous < paragraphs.Count)
+                total += SpaceAfter(paragraphs[previous]) * FontHeight(layout.Lines[i - 1]);
             previous = line.Paragraph;
         }
         return total;
@@ -142,11 +140,6 @@ static class Fitting
     static double SpaceAfter(XElement paragraph) =>
         (paragraph.Element(A + "pPr")?.Element(A + "spcAft")?.Element(A + "spcPct")?.Attribute("val") is { } v ? (long)v : 0) / 100000.0;
 
-    static double PreviousSize(LaidOutText layout, int index)
-    {
-        var line = layout.Lines[index - 1];
-        return line.Runs.Count > 0 ? line.Runs.Max(r => r.Style.Size) : 0;
-    }
 
     /// <summary>A word broken across lines: a line ending without a space continued by one in the same paragraph.</summary>
     static bool BrokenWord(LaidOutText layout)
@@ -273,7 +266,9 @@ static class Fitting
                 limit = Math.Min(limit, Room(node));
                 if (Constraints.UpperBound(node, "h") is { } upper)
                     limit = Math.Min(limit, Math.Max(upper * node.Scale, node.H));
-                var wanted = Check(node, measure).Needed / Engine.PtPerMm;
+                // The text needs that much of the geometry's text rectangle: the height giving it (a rounded rectangle's
+                // text rectangle is smaller by its corners).
+                var wanted = HeightFor(node, Check(node, measure).Needed / Engine.PtPerMm);
                 if (startHeight > 0)
                     wanted = Math.Ceiling(wanted / startHeight * 16 - 1e-9) / 16 * startHeight;
                 var height = wanted;
@@ -291,6 +286,23 @@ static class Fitting
             }
         }
         return changed;
+    }
+
+    /// <summary>The node height whose geometry's text rectangle is <paramref name="area"/> high (mm).</summary>
+    static double HeightFor(LayoutNode node, double area)
+    {
+        var height = node.H;
+        var saved = node.H;
+        for (var round = 0; round < 4; round++)
+        {
+            node.H = height;
+            var have = Output.TextArea(node).H;
+            if (Math.Abs(have - area) < 1e-6 || height <= 0)
+                break;
+            height *= area / Math.Max(have, 1e-9);
+        }
+        node.H = saved;
+        return height;
     }
 
     /// <summary>Makes sizes equal (the largest) where an equ constraint without a value asks for it.</summary>

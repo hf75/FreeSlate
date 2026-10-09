@@ -18,6 +18,8 @@ public sealed class Pins
 
     public void Set(LayoutNode node, string type, double value) => values[(node, type)] = value;
 
+    public void Remove(LayoutNode node, string type) => values.Remove((node, type));
+
     public IEnumerable<(string Type, double Value)> Of(LayoutNode node) =>
         values.Where(v => v.Key.Node == node).Select(v => (v.Key.Type, v.Value));
 }
@@ -175,6 +177,10 @@ public static class Constraints
         if (double.IsNaN(fact))
             fact = 1;
         var refType = (string?)constraint.Attribute("refType");
+        // A bound on a user variable holds nothing (measured: hProcess3's text, h ≤ userT, keeps the height of its font
+        // size above the userT its root sets).
+        if (op is "lte" or "gte" && refType?.StartsWith("user", StringComparison.Ordinal) == true)
+            return;
 
         foreach (var target in targets)
         {
@@ -253,6 +259,8 @@ public static class Constraints
             foreach (var constraint in owner.Constraints)
             {
                 if ((string?)constraint.Attribute("op") != "lte" || (string?)constraint.Attribute("type") != type)
+                    continue;
+                if (((string?)constraint.Attribute("refType"))?.StartsWith("user", StringComparison.Ordinal) == true)
                     continue;
                 if (!Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(node))
                     continue;

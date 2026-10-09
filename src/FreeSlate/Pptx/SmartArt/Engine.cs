@@ -10,9 +10,10 @@ namespace FreeSlate.Pptx.SmartArt;
 /// algorithm, evaluates its constraint list again, so that its children's values follow its actual size (lengths that
 /// follow font sizes stay), and its algorithm places them: composite where their values put them, lin one after the
 /// other, snake in rows, connectors between their siblings. A composite takes the room of its children's bounding box
-/// (measured: process3's composite, 1000 times as high as wide, is as high as its shapes); lin and snake shrink their
-/// children uniformly when they do not fit and align them by the room they actually take. The text is then fitted by
-/// the rules and the diagram laid out again with the fitted values until nothing changes. Lengths in millimeters.
+/// (measured: process3's composite, 1000 times as high as wide, is as high as its shapes); lin applies its rules on its
+/// children's length when they do not fit, lin and snake shrink their children uniformly when they still do not, and
+/// align them by the room they actually take. The text is then fitted by the rules and the diagram laid out again with
+/// the fitted values until nothing changes. Lengths in millimeters.
 /// </summary>
 public static class Engine
 {
@@ -284,9 +285,10 @@ public static class Engine
     };
 
     /// <summary>
-    /// The linear algorithm: the children one after another (linDir) by the room they take, scaled uniformly to fit
-    /// the node when they do not, the row aligned in the node (horzAlign, vertAlign; centered) and each child across it
-    /// (nodeHorzAlign, nodeVertAlign; centered). Negative room (a negative height) overlaps the neighbors.
+    /// The linear algorithm: the children one after another (linDir) by the room they take; where they do not fit the
+    /// node, its rules on their length apply first, then they shrink uniformly. The row is aligned in the node along
+    /// (horzAlign on a horizontal line; centered) and across (vertAlign; as wide as its widest child), each child across
+    /// the row (nodeVertAlign; centered). Negative room (a negative height) overlaps the neighbors.
     /// </summary>
     static void Linear(LayoutNode node, Pins pins)
     {
@@ -296,9 +298,10 @@ public static class Engine
         var direction = node.Param("linDir") ?? "fromL";
         var horizontal = direction is "fromL" or "fromR";
         var gap = Value(node, "sp");
-        var extents = children.Select(Extent).ToList();
-        var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * (children.Count - 1);
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
+        var ruled = new Dictionary<LayoutNode, double?>();
+        var extents = ApplyRules(node, children, horizontal, boxAlong, gap, pins, ruled);
+        var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * (children.Count - 1);
         if (Environment.GetEnvironmentVariable("FS_TRACE") == "1")
             Console.Error.WriteLine($"lin {node.Name} box {boxAlong:0.##}x{boxAcross:0.##} along {along:0.##} extents {string.Join(", ", children.Select((c, i) => $"{c.Name}=({extents[i].W:0.##},{extents[i].H:0.##})"))}");
         double factor;
@@ -356,23 +359,131 @@ public static class Engine
             }
         }
 
-        var bounds = children.Select(Bounds).ToList();
+        // The rules' values hold for this layout only (a value pinned before stays).
+        foreach (var (child, before) in ruled)
+        {
+            if (before is { } value)
+                pins.Set(child, horizontal ? "w" : "h", value);
+            else
+                pins.Remove(child, horizontal ? "w" : "h");
+        }
+
+        // A lin child takes the room of its box (measured: hProcess3's columns, their text below a spacer that draws
+        // nothing), any other the room its drawn shapes take.
+        var bounds = children.Select(c => c.AlgorithmType == "lin" ? (c.X, c.Y, c.W, c.H) : Bounds(c)).ToList();
         var total = bounds.Sum(b => horizontal ? b.W : b.H) + gap * factor * (children.Count - 1);
-        var start = Align(horizontal ? node.Param("horzAlign") : node.Param("vertAlign"), boxAlong, total);
+        var order = (direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count)).ToList();
+        // The row's room along: from where it starts, or the farthest back a child of negative length reaches, to where
+        // it ends (measured: hProcess3's arrow, drawn back over the row from its end, starts the row at the node's left).
+        var (low, reach) = (0.0, 0.0);
+        foreach (var i in order)
+        {
+            var size = horizontal ? bounds[i].W : bounds[i].H;
+            low = Math.Min(low, reach + Math.Min(0, size));
+            reach += size + gap * factor;
+        }
+        total -= low;
+        var start = Align(horizontal ? node.Param("horzAlign") : node.Param("vertAlign"), boxAlong, total) - low;
         var crossAlignment = horizontal ? node.Param("nodeVertAlign") : node.Param("nodeHorzAlign");
-        var order = direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count);
+        // The row across: as wide as its widest child, aligned in the node (vertAlign on a horizontal line), each child
+        // aligned in it (nodeVertAlign).
+        var row = bounds.Max(b => horizontal ? b.H : b.W);
+        var rowOffset = Align(horizontal ? node.Param("vertAlign") : node.Param("horzAlign"), boxAcross, row);
         var position = start;
         foreach (var i in order)
         {
             var b = bounds[i];
             var (size, cross) = horizontal ? (b.W, b.H) : (b.H, b.W);
-            var offset = Align(crossAlignment, boxAcross, cross);
+            var offset = rowOffset + Align(crossAlignment, row, cross);
             if (horizontal)
                 Translate(children[i], node.X + position - b.X, node.Y + offset - b.Y);
             else
                 Translate(children[i], node.X + offset - b.X, node.Y + position - b.Y);
             position += size + gap * factor;
         }
+    }
+
+    static bool Flag(string name) => Environment.GetEnvironmentVariable(name) == "1";
+
+    /// <summary>Evaluates the lists under a node again for its values (as its layout would, without placing it).</summary>
+    static void Refresh(LayoutNode node, Pins pins)
+    {
+        if (node.Children.Count == 0)
+            return;
+        Constraints.EvaluateList(node, pins);
+        foreach (var child in node.Children)
+        {
+            Constraints.EvaluateOwn(child, pins);
+            Refresh(child, pins);
+        }
+    }
+
+    /// <summary>How close to the room the rules bring the children's length: a point (mm).</summary>
+    const double CloseEnough = 1 / PtPerMm;
+
+    /// <summary>
+    /// Applies a lin node's rules on its children's length along the line (w on a horizontal line) while they do not
+    /// fit it, in order: each lowers its targets' value toward its limit (val, or fact times the value) by halving the
+    /// step, up to twelve times, until the children fit with less than a point to spare, keeping the largest value
+    /// that fits; the values that follow it are evaluated again (measured: hProcess3's columns, w toward 0, end at
+    /// 987/4096 of their width with 0.6 pt to spare, process3's at 279/1024 with 0.83 pt). The values are pinned for the
+    /// children's layout (<paramref name="ruled"/>); the children's extents with them.
+    /// </summary>
+    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, double gap, Pins pins, Dictionary<LayoutNode, double?> ruled)
+    {
+        var type = horizontal ? "w" : "h";
+        var extents = children.Select(Extent).ToList();
+        double Left() => box - extents.Sum(e => horizontal ? e.W : e.H) - gap * (children.Count - 1);
+        bool Fits() => Left() >= -1e-9;
+        foreach (var rule in node.Rules)
+        {
+            if (Fits())
+                break;
+            if ((string?)rule.Attribute("type") != type)
+                continue;
+            var targets = Constraints.Targets(node, (string?)rule.Attribute("for"), (string?)rule.Attribute("forName"), (string?)rule.Attribute("ptType"))
+                .Where(children.Contains).ToList();
+            var starts = targets.Select(t => Finite(t, type)).ToList();
+            if (targets.Count == 0 || starts.Any(s => s == null))
+                continue;
+            var limits = starts.Select(s => Number((string?)rule.Attribute("val")) is { } v && double.IsFinite(v) ? v
+                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * s!.Value : double.NaN).ToList();
+            if (limits.Any(l => !double.IsFinite(l)) || limits.Select((l, i) => l >= starts[i]!.Value).All(b => b))
+                continue;
+            void Set(double share)
+            {
+                for (var i = 0; i < targets.Count; i++)
+                {
+                    var value = limits[i] + (starts[i]!.Value - limits[i]) * share;
+                    if (!ruled.ContainsKey(targets[i]))
+                        ruled[targets[i]] = pins.TryGet(targets[i], type, out var before) ? before : null;
+                    pins.Set(targets[i], type, value);
+                    targets[i].Values[type] = value;
+                }
+                Constraints.EvaluateList(node, pins);
+                foreach (var child in node.Children)
+                {
+                    Constraints.EvaluateOwn(child, pins);
+                    Refresh(child, pins);
+                }
+                extents = children.Select(Extent).ToList();
+            }
+            Set(0);
+            if (!Fits())
+                continue;
+            var (fits, fails, spare) = (0.0, 1.0, Left());
+            for (var step = 0; step < 12 && spare >= CloseEnough; step++)
+            {
+                var middle = (fits + fails) / 2;
+                Set(middle);
+                if (Fits())
+                    (fits, spare) = (middle, Left());
+                else
+                    fails = middle;
+            }
+            Set(fits);
+        }
+        return extents;
     }
 
     /// <summary>
