@@ -73,21 +73,8 @@ public static class Engine
     static void Place(LayoutNode node, double x, double y, double w, double h, Pins pins)
     {
         // A composite keeps its aspect ratio (width : height) within its box, centered.
-        if (node.AlgorithmType == "composite" && Number(node.Param("ar")) is > 0 and var ar && w > 0 && h > 0)
-        {
-            if (w / h > ar)
-            {
-                var fitted = h * ar;
-                x += (w - fitted) / 2;
-                w = fitted;
-            }
-            else
-            {
-                var fitted = w / ar;
-                y += (h - fitted) / 2;
-                h = fitted;
-            }
-        }
+        var (fw, fh) = Fitted(node, w, h);
+        (x, y, w, h) = (x + (w - fw) / 2, y + (h - fh) / 2, fw, fh);
         (node.X, node.Y, node.W, node.H) = (x, y, w, h);
         node.Placed = true;
         node.Values["w"] = w;
@@ -125,9 +112,11 @@ public static class Engine
     }
 
     /// <summary>
-    /// A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; the parent's size where none is given), each value
-    /// moved by its offset (wOff, bOff …, measured: chevron2's descriptions as wide as the row less its title, wOff
-    /// −1 title width, and ending half a title width above its bottom, bOff).
+    /// A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; where no size is given, as far as the parent's box
+    /// reaches from the given edge, else the parent's size; measured: PictureLineup's captions, from half their
+    /// composite's height down to its bottom), each value moved by its offset (wOff, bOff …, measured: chevron2's
+    /// descriptions as wide as the row less its title, wOff −1 title width, and ending half a title width above its
+    /// bottom, bOff).
     /// </summary>
     static (double X, double Y, double W, double H) ChildRect(LayoutNode child, double parentW, double parentH)
     {
@@ -137,8 +126,8 @@ public static class Engine
                 : null;
         var (l, r, ctrX, w) = (Raw("l"), Raw("r"), Raw("ctrX"), Raw("w"));
         var (t, b, ctrY, h) = (Raw("t"), Raw("b"), Raw("ctrY"), Raw("h"));
-        var cw = w ?? (l is { } left && r is { } right ? right - left : parentW);
-        var ch = h ?? (t is { } top && b is { } bottom ? bottom - top : parentH);
+        var cw = w ?? (l is { } left ? (r is { } right ? right - left : parentW > 0 ? parentW - left : 0) : r is { } r0 && parentW > 0 ? r0 : parentW);
+        var ch = h ?? (t is { } top ? (b is { } bottom ? bottom - top : parentH > 0 ? parentH - top : 0) : b is { } b0 && parentH > 0 ? b0 : parentH);
         var cx = l ?? (ctrX is { } cX ? cX - cw / 2 : r is { } rr ? rr - cw : 0);
         var cy = t ?? (ctrY is { } cY ? cY - ch / 2 : b is { } bb ? bb - ch : 0);
         return (cx, cy, cw, ch);
@@ -182,16 +171,28 @@ public static class Engine
         if (node.AlgorithmType is "composite" && children.Count > 0)
         {
             var (pw, ph) = (w ?? 0, h ?? 0);
+            // A composite kept to its aspect ratio takes the room of its children in the box it keeps (measured:
+            // TitlePictureLineup's pictures, as wide as half their height, in a row as wide as the diagram).
+            if (Fitted(node, pw, ph) is var (aw, ah) && (aw != pw || ah != ph))
+            {
+                (node.Values["w"], node.Values["h"]) = (aw, ah);
+                Constraints.EvaluateList(node, running);
+                foreach (var child in node.Children)
+                    Constraints.EvaluateOwn(child, running);
+                (pw, ph) = (aw, ah);
+            }
             double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
             foreach (var child in children)
             {
-                var (cx, cy, _, _) = ChildRect(child, pw, ph);
-                var e = Extent(child);
+                var (cx, cy, cw, ch) = ChildRect(child, pw, ph);
+                var e = child.Children.Count > 0 ? Extent(child) : (0, 0, cw, ch);
                 minX = Math.Min(minX, cx + e.X);
                 minY = Math.Min(minY, cy + e.Y);
                 maxX = Math.Max(maxX, cx + e.X + e.W);
                 maxY = Math.Max(maxY, cy + e.Y + e.H);
             }
+            if (pw != (w ?? 0) || ph != (h ?? 0))
+                (node.Values["w"], node.Values["h"]) = (w ?? 0, h ?? 0);
             return (minX, minY, maxX - minX, maxY - minY);
         }
         var (growsW, growsH) = (Grows(node, "w"), Grows(node, "h"));
@@ -199,7 +200,7 @@ public static class Engine
         {
             var horizontal = (node.Param("linDir") ?? "fromL") is "fromL" or "fromR";
             var extents = children.Select(Extent).ToList();
-            var gap = Value(node, "sp") * (children.Count - 1);
+            var gap = Value(node, "sp") * Pairs(children);
             var along = extents.Sum(e => horizontal ? e.W : e.H) + gap;
             var across = extents.Max(e => horizontal ? e.H : e.W);
             var (ew, eh) = horizontal ? (along, across) : (across, along);
@@ -255,6 +256,7 @@ public static class Engine
         child.Scale = factor;
         var w = Finite(child, "w") ?? extent.X + extent.W;
         var h = Finite(child, "h") ?? extent.Y + extent.H;
+        (w, h) = Fitted(child, w, h);
         if (child.AlgorithmType == "composite" && h > 100 * Math.Max(w, 1e-6))
             h = extent.Y + extent.H;
         Place(child, -extent.X * factor, -extent.Y * factor, w * factor, h * factor, pins);
@@ -297,11 +299,13 @@ public static class Engine
             return;
         var direction = node.Param("linDir") ?? "fromL";
         var horizontal = direction is "fromL" or "fromR";
-        var gap = Value(node, "sp");
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
         var ruled = new Dictionary<LayoutNode, double?>();
-        var extents = ApplyRules(node, children, horizontal, boxAlong, gap, pins, ruled);
-        var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * (children.Count - 1);
+        var pairs = Pairs(children);
+        var extents = ApplyRules(node, children, horizontal, boxAlong, pairs, pins, ruled);
+        // sp after the rules: it may follow a value they changed (TextCardSideLineWideImage's, 0.12 of the cards' height).
+        var gap = Value(node, "sp");
+        var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * pairs;
         if (Environment.GetEnvironmentVariable("FS_TRACE") == "1")
             Console.Error.WriteLine($"lin {node.Name} box {boxAlong:0.##}x{boxAcross:0.##} along {along:0.##} extents {string.Join(", ", children.Select((c, i) => $"{c.Name}=({extents[i].W:0.##},{extents[i].H:0.##})"))}");
         double factor;
@@ -349,6 +353,7 @@ public static class Engine
                 var (sx, sy) = (e.W > 0 ? w / e.W : factor, e.H > 0 ? h / e.H : factor);
                 children[i].Scale = horizontal ? sx : sy;
                 var (ow, oh) = (Finite(children[i], "w") ?? e.X + e.W, Finite(children[i], "h") ?? e.Y + e.H);
+                (ow, oh) = Fitted(children[i], ow, oh);
                 if (Grows(children[i], "w"))
                     ow = Math.Max(ow, e.X + e.W);
                 if (Grows(children[i], "h"))
@@ -371,16 +376,17 @@ public static class Engine
         // A lin child takes the room of its box (measured: hProcess3's columns, their text below a spacer that draws
         // nothing), any other the room its drawn shapes take.
         var bounds = children.Select(c => c.AlgorithmType == "lin" ? (c.X, c.Y, c.W, c.H) : Bounds(c)).ToList();
-        var total = bounds.Sum(b => horizontal ? b.W : b.H) + gap * factor * (children.Count - 1);
+        var total = bounds.Sum(b => horizontal ? b.W : b.H) + gap * factor * pairs;
         var order = (direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count)).ToList();
+        double After(int k) => k + 1 < order.Count && Spaced(children[order[k]], children[order[k + 1]]) ? gap * factor : 0;
         // The row's room along: from where it starts, or the farthest back a child of negative length reaches, to where
         // it ends (measured: hProcess3's arrow, drawn back over the row from its end, starts the row at the node's left).
         var (low, reach) = (0.0, 0.0);
-        foreach (var i in order)
+        for (var k = 0; k < order.Count; k++)
         {
-            var size = horizontal ? bounds[i].W : bounds[i].H;
+            var size = horizontal ? bounds[order[k]].W : bounds[order[k]].H;
             low = Math.Min(low, reach + Math.Min(0, size));
-            reach += size + gap * factor;
+            reach += size + After(k);
         }
         total -= low;
         var start = Align(horizontal ? node.Param("horzAlign") : node.Param("vertAlign"), boxAlong, total) - low;
@@ -390,8 +396,9 @@ public static class Engine
         var row = bounds.Max(b => horizontal ? b.H : b.W);
         var rowOffset = Align(horizontal ? node.Param("vertAlign") : node.Param("horzAlign"), boxAcross, row);
         var position = start;
-        foreach (var i in order)
+        for (var k = 0; k < order.Count; k++)
         {
+            var i = order[k];
             var b = bounds[i];
             var (size, cross) = horizontal ? (b.W, b.H) : (b.H, b.W);
             var offset = rowOffset + Align(crossAlignment, row, cross);
@@ -399,11 +406,25 @@ public static class Engine
                 Translate(children[i], node.X + position - b.X, node.Y + offset - b.Y);
             else
                 Translate(children[i], node.X + offset - b.X, node.Y + position - b.Y);
-            position += size + gap * factor;
+            position += size + After(k);
         }
     }
 
-    static bool Flag(string name) => Environment.GetEnvironmentVariable(name) == "1";
+    /// <summary>
+    /// Whether sp separates two neighbors on a line: not where a transition's node (a spacer) is one of them (measured:
+    /// TextCardSideLineWideImage's cards, 0.12 of their height apart by spacers and sp alike, apart by that once).
+    /// </summary>
+    static bool Spaced(LayoutNode a, LayoutNode b) => !IsTransition(a) && !IsTransition(b);
+
+    static int Pairs(List<LayoutNode> children) => Enumerable.Range(0, Math.Max(0, children.Count - 1)).Count(i => Spaced(children[i], children[i + 1]));
+
+    /// <summary>A composite's size kept to its aspect ratio (ar, width : height) within a size; any other node's as given.</summary>
+    static (double W, double H) Fitted(LayoutNode node, double w, double h)
+    {
+        if (node.AlgorithmType == "composite" && Number(node.Param("ar")) is > 0 and var ar && w > 0 && h > 0)
+            return w / h > ar ? (h * ar, h) : (w, w / ar);
+        return (w, h);
+    }
 
     /// <summary>Evaluates the lists under a node again for its values (as its layout would, without placing it).</summary>
     static void Refresh(LayoutNode node, Pins pins)
@@ -429,11 +450,11 @@ public static class Engine
     /// 987/4096 of their width with 0.6 pt to spare, process3's at 279/1024 with 0.83 pt). The values are pinned for the
     /// children's layout (<paramref name="ruled"/>); the children's extents with them.
     /// </summary>
-    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, double gap, Pins pins, Dictionary<LayoutNode, double?> ruled)
+    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, int pairs, Pins pins, Dictionary<LayoutNode, double?> ruled)
     {
         var type = horizontal ? "w" : "h";
         var extents = children.Select(Extent).ToList();
-        double Left() => box - extents.Sum(e => horizontal ? e.W : e.H) - gap * (children.Count - 1);
+        double Left() => box - extents.Sum(e => horizontal ? e.W : e.H) - Value(node, "sp") * pairs;
         bool Fits() => Left() >= -1e-9;
         foreach (var rule in node.Rules)
         {
