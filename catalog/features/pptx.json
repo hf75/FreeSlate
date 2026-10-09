@@ -13713,7 +13713,7 @@
       "difficulty": 4,
       "status": "partial",
       "strategy": "A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous, triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.",
-      "office": "Checked against PowerPoint's own video of the slides (tools/Fidelity animate, generated/slideshow 98.8 %, generated/smartart 98.0 % of frames): acceleration and deceleration (accel, decel) are not SMIL's linear speed ramps: the speed rises and falls along a smoothstep curve (measured on six accel/decel pairs, under 1.5 px off along 640 px). A behaviour with a duration of its own and without fill (or fill=remove) ends with its duration, a p:set as well (the Transparency emphasis reverts); a set without duration holds. PowerPoint's video export plays the steps back to back, starts time nodes on its frames and adds one frame after the first step; the player's frame mode (?frame=ms&fps=n) follows that so the comparison is exact.",
+      "office": "Checked against PowerPoint's own video of the slides (tools/Fidelity animate: slideshow 99.9 %, smartart 99.9 %, animations-charts 99.6 %, animations-text 100.0 % of frames). Acceleration and deceleration follow a smoothstep speed curve (measured on six accel/decel pairs). A behaviour without fill of its own takes its effect's (Bounce holds its squash; the Transparency emphasis, without fill, reverts); a set without duration holds. Text built letter by letter or word by word (p:iterate lt, wd): the shape's background first for the effect's duration when the build animates it (bldP animBg), then every letter or word (blanks are none) with the whole effect, tmPct of the effect's duration or tmAbs apart; a group after the previous effect starts when the groups before it end (the stored delay is the editor's guess, which iterated text outlasts). After effects (p:subTnLst): sameClick ones when their effect ends, nextClick ones (dim, hide on next click) when the next effect of the sequence begins. Containers repeat (repeatCount, repeatDur; indefinite ones cycle), effects with fill=remove rewind when done, tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its share of the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds per frame (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame mode does the same. Still open: end conditions (endCondLst, endSync: until next click / end of slide), restart, iterate type el.",
       "elements": [
         "p:cTn",
         "p:childTnLst",
@@ -13902,7 +13902,7 @@
       "difficulty": 3,
       "status": "partial",
       "strategy": "Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must keep those addressable.",
-      "office": "Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm) and chart parts (a:chart: series, categories, points, background) are addressable; character ranges (p:charRg), ink (p:inkTgt) and sounds (p:sndTgt) still to do.",
+      "office": "Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart: series, categories, points, background) and the letters and words of text built by iteration (drawn character by character, data-c/data-w) are addressable; character ranges (p:charRg), ink (p:inkTgt) and sounds (p:sndTgt) still to do.",
       "elements": [
         "a:chart",
         "a:dgm",

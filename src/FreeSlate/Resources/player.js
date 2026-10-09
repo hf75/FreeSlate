@@ -282,13 +282,40 @@
       (m[2] * m[5] - m[3] * m[4]) / det, (m[1] * m[4] - m[0] * m[5]) / det];
   }
 
-  /** The targets of a behaviour's tgtEl on a slide (several for paragraph ranges). */
-  function resolveTargets(slide, target, cache) {
+  /**
+   * The letters or words of a shape's text (or of its paragraph range) in reading order, each a list of the
+   * elements drawing it: the renderer draws text that is built letter by letter character by character (data-c,
+   * data-w the word; blanks are no units, measured).
+   */
+  function textUnits(shape, target, type) {
+    let scope = [shape];
+    if (target.pRg) {
+      scope = [];
+      for (let p = target.pRg[0]; p <= target.pRg[1]; p++) { const g = shape.querySelector(`g[data-p="${p}"]`); if (g) scope.push(g); }
+    }
+    const letters = scope.flatMap(s => [...s.querySelectorAll('[data-c]')]);
+    if (type === 'lt') return letters.map(e => [e]);
+    const words = new Map();
+    for (const e of letters) {
+      if (e.dataset.w === '-1') continue;
+      if (!words.has(e.dataset.w)) words.set(e.dataset.w, []);
+      words.get(e.dataset.w).push(e);
+    }
+    return [...words.values()];
+  }
+
+  /** The targets of a behaviour's tgtEl on a slide (several for paragraph ranges); unit: an iterated effect's part. */
+  function resolveTargets(slide, target, cache, unit) {
     if (!target || target.spid === undefined) return [];
     const shape = slide.querySelector(`[data-id="${target.spid}"]`);
     if (!shape) return [];
     const keys = [];
-    if (target.pRg) {
+    if (unit && unit.type === 'bg') {
+      keys.push([`${target.spid}:bg`, () => shape.querySelector('g[data-bg]'), true]);
+    } else if (unit) {
+      const range = target.pRg ? target.pRg.join('-') : '';
+      keys.push([`${target.spid}:${range}:${unit.type}${unit.index}`, () => textUnits(shape, target, unit.type)[unit.index] || null, true]);
+    } else if (target.pRg) {
       for (let p = target.pRg[0]; p <= target.pRg[1]; p++) keys.push([`${target.spid}:p${p}`, () => shape.querySelector(`g[data-p="${p}"]`), true]);
     } else if (target.graphic && target.graphic.kind === 'dgm') {
       // A shape of a SmartArt by its model id, or the diagram's background and outline (bldStep bg).
@@ -354,10 +381,31 @@
     const begin = context.tick ? Math.ceil((start + delayOf(node)) / context.tick - 1e-6) * context.tick : start + delayOf(node);
     const speed = node.spd ? node.spd / 100000 : 1;
     const children = node.children || [];
+    const first = out.length;
     let end = begin;
     if (node.t === 'par' || node.t === 'excl') {
-      for (const child of children) end = Math.max(end, schedule(child, begin, out, Object.assign({}, context, inherit(node, context))));
+      const inner = Object.assign({}, context, inherit(node, context));
+      const plan = node.iterate && context.unitsOf ? context.unitsOf(node) : null;
+      if (plan) {
+        end = iterate(node, plan, begin, out, inner);
+      } else {
+        let previous = begin;
+        for (const child of children) {
+          // A group after the previous effect starts when the groups before it end, as PowerPoint plays it: the
+          // delay it keeps is what the editor reckoned, which text built letter by letter outlasts (measured).
+          const after = child.t === 'par' && (child.children || []).some(c => c.nodeType === 'afterEffect');
+          const childEnd = after
+            ? schedule(Object.assign({}, child, { begin: [] }), Math.max(begin + delayOf(child), previous), out, inner)
+            : schedule(child, begin, out, inner);
+          previous = Math.max(previous, childEnd);
+          end = Math.max(end, childEnd);
+        }
+      }
       if (typeof node.dur === 'number') end = begin + node.dur / speed;
+      end = repeatChildren(node, begin, end, first, out, inner);
+      if (node.presetClass !== undefined && context.effects) context.effects.push({ node, begin, end, context });
+      // An effect that rewinds when done (fill="remove", catalog: animation.timing) takes its behaviours back then.
+      if (node.presetClass !== undefined && node.fill === 'remove') for (let i = first; i < out.length; i++) out[i].until = end;
     } else if (node.t === 'seq') {
       let t = begin;
       for (const child of children) t = schedule(child, t, out, Object.assign({}, context, inherit(node, context)));
@@ -371,9 +419,72 @@
     }
     return end;
   }
+  /**
+   * An effect built letter by letter or word by word (p:iterate): the shape's background first when the build
+   * animates it (bldP animBg), for the effect's own duration, then every unit with the whole effect, each the
+   * interval later than the one before (tmAbs, or tmPct of the effect's duration); measured with PowerPoint's video.
+   */
+  function iterate(node, plan, begin, out, context) {
+    const children = node.children || [];
+    let span = 0;
+    for (const child of children) span = Math.max(span, schedule(child, begin, [], context) - begin);
+    const it = node.iterate;
+    const interval = typeof it.abs === 'number' ? it.abs : (it.pct || 0) / 100000 * span;
+    let at = begin;
+    if (plan.background) {
+      for (const child of children) schedule(child, at, out, Object.assign({}, context, { unit: { type: 'bg' } }));
+      at += span;
+    }
+    for (let k = 0; k < plan.units; k++) {
+      const index = it.backwards ? plan.units - 1 - k : k;
+      for (const child of children) schedule(child, at + k * interval, out, Object.assign({}, context, { unit: { type: it.type, index } }));
+    }
+    return at + (plan.units - 1) * interval + span;
+  }
+
+  /**
+   * Repeats of a container (repeatCount in thousandths, repeatDur, "indefinite"; Spin twice): its behaviours scheduled
+   * again one pass after the other, the last pass of a fractional count stopped where it ends; an indefinite repeat
+   * cycles its behaviours (until the next step) and counts as one pass. Returns the container's end.
+   */
+  function repeatChildren(node, begin, end, first, out, context) {
+    const once = end - begin;
+    const count = node.repeatCount === 'indefinite' || node.repeatDur === 'indefinite' ? Infinity
+      : typeof node.repeatCount === 'number' ? node.repeatCount / 1000
+      : typeof node.repeatDur === 'number' && once > 0 ? node.repeatDur / once : 1;
+    if (!(count > 1) || once <= 0) return end;
+    const behaviors = out.slice(first);
+    if (count === Infinity) {
+      for (const b of behaviors) b.loop = { start: begin, period: once };
+      return end;
+    }
+    const stop = begin + once * count;
+    for (let k = 1; k < Math.ceil(count); k++) {
+      for (const b of behaviors) {
+        const copy = Object.assign({}, b, { start: b.start + k * once });
+        if (k + 1 > count) copy.stop = stop;
+        out.push(copy);
+      }
+    }
+    return stop;
+  }
+
+  /** The first target of the behaviours under a time node. */
+  function firstTarget(node) {
+    if (node.target && node.target.spid !== undefined) return node.target;
+    for (const child of node.children || []) { const t = firstTarget(child); if (t) return t; }
+    return null;
+  }
+
   function inherit(node, context) {
     const result = context.tick ? { tick: context.tick } : {};
+    if (context.unitsOf) result.unitsOf = context.unitsOf;
+    if (context.effects) result.effects = context.effects;
+    if (context.unit) result.unit = context.unit;
     if (node.presetClass) result.presetClass = node.presetClass;
+    // Behaviours without a fill of their own take their effect's (Bounce holds its squash, which has none; the
+    // Transparency emphasis, without fill, reverts; measured).
+    if (node.presetClass !== undefined) result.effectFill = node.fill;
     if (node.presetID !== undefined) result.presetID = node.presetID;
     if (node.accel || node.decel) result.ease = { accel: (node.accel || 0) / 100000, decel: (node.decel || 0) / 100000 };
     return result;
@@ -383,14 +494,36 @@
   function buildTimeline(slide, timing, tick) {
     const result = { steps: [], triggers: new Map(), hidden: new Set(), targets: new Map() };
     if (!timing || !timing.root) return result;
+    // Text an effect builds letter by letter or word by word: its units, and whether the shape's background goes first.
+    const unitsOf = node => {
+      if (node.iterate.type !== 'lt' && node.iterate.type !== 'wd') return null;
+      const target = firstTarget(node);
+      const shape = target && !target.graphic ? slide.querySelector(`[data-id="${target.spid}"]`) : null;
+      const units = shape ? textUnits(shape, target, node.iterate.type).length : 0;
+      if (!units) return null;
+      const build = (timing.builds || []).find(b => b.t === 'bldP' && String(b.spid) === String(target.spid));
+      return { units, background: !target.pRg && !!(build && build.animBg) && !!shape.querySelector('g[data-bg]') };
+    };
     for (const sequence of timing.root.children || []) {
       if (sequence.t !== 'seq') continue;
       const steps = (sequence.children || []).map(stepNode => {
         const behaviors = [];
-        const end = schedule(Object.assign({}, stepNode, { begin: [] }), 0, behaviors, tick ? { tick } : {});
-        for (const b of behaviors) b.targets = resolveTargets(slide, b.node.target, result.targets);
-        return { behaviors, end, auto: !isIndefinite(stepNode) || isAuto(stepNode) };
+        const context = Object.assign(tick ? { tick } : {}, { unitsOf, effects: [] });
+        const end = schedule(Object.assign({}, stepNode, { begin: [] }), 0, behaviors, context);
+        return { behaviors, end, auto: !isIndefinite(stepNode) || isAuto(stepNode), effects: context.effects };
       });
+      // After effects (p:subTnLst): those of the same click when their effect ends, the others (dim, hide on the next
+      // click) when the next effect of the sequence begins, even one after the previous (measured).
+      const effects = steps.flatMap(step => step.effects.map(e => Object.assign({ step }, e)));
+      effects.forEach((e, i) => {
+        for (const sub of e.node.sub || []) {
+          const at = sub.masterRel === 'nextClick' ? effects[i + 1] : { step: e.step, begin: e.end, context: e.context };
+          if (at) schedule(Object.assign({}, sub, { begin: [] }), at.begin, at.step.behaviors, Object.assign({}, at.context, { unit: undefined }));
+        }
+      });
+      for (const step of steps) {
+        for (const b of step.behaviors) b.targets = resolveTargets(slide, b.node.target, result.targets, b.context.unit);
+      }
       if (sequence.nodeType === 'interactiveSeq') {
         // Triggers: a click on a shape, or playback reaching a media bookmark (key bmk:spid:name).
         const trigger = (sequence.begin || []).find(c => (c.evt === 'onClick' || c.evt === 'onMediaBookmark') && c.target);
@@ -436,19 +569,57 @@
 
   /** Progress (0…1) of a behaviour at time t (ms in its step), or null before its start or after a removed end. */
   function progress(b, t) {
-    if (t < b.start) return null;
+    if (b.loop && Number.isFinite(t) && t >= b.loop.start) t = b.loop.start + (t - b.loop.start) % b.loop.period;
+    if (b.stop !== undefined) t = Math.min(t, b.stop);
+    if (t < b.start || (b.until !== undefined && t >= b.until)) return null;
     const node = b.node;
     const local = t - b.start;
     if (local >= b.total) {
       // Without fill (or fill="remove") a behaviour's effect ends with it, a set's too when it has a duration of
       // its own (Transparency); a set without one holds its value (SMIL: fill auto freezes elements without dur).
-      if ((node.fill === undefined || node.fill === 'remove') && (node.t !== 'set' || typeof node.dur === 'number')) return null;
+      const fill = node.fill !== undefined ? node.fill : b.context.effectFill;
+      if ((fill === undefined || fill === 'remove') && (node.t !== 'set' || typeof node.dur === 'number')) return null;
       return ease(node.autoRev ? 0 : 1, b.context.ease);
     }
     let cycle = local / b.dur;
     let p = cycle - Math.floor(cycle);
     if (node.autoRev) { const half = local / b.dur % 2; p = half > 1 ? 2 - half : half; }
-    return ease(Math.min(1, p), node.accel || node.decel ? { accel: (node.accel || 0) / 100000, decel: (node.decel || 0) / 100000 } : b.context.ease);
+    const easing = node.accel || node.decel ? { accel: (node.accel || 0) / 100000, decel: (node.decel || 0) / 100000 } : b.context.ease;
+    const shaped = q => { const e = ease(Math.min(1, q), easing); return node.tmFilter ? timeFilter(node.tmFilter, e) : e; };
+    return node.bounceEnd ? bounceEnd(p * b.dur, b.dur, node.bounceEnd / 100000, shaped) : shaped(p);
+  }
+
+  /**
+   * A bounce at the end (p14:bounceEnd: the share b of the duration it takes; "a mass-spring-damper system"): the
+   * behaviour runs in the rest of the duration, then swings about its end with the speed it arrived with, damped.
+   * Measured with PowerPoint's video for b of 25, 50 and 75 % and durations of 1 and 2 s (its 60 fps videos run 4 %
+   * slow; under 1.1 px off): damping and frequency times the bounce's time are 5.33 + 2.48 (b - ½) - 1.92 (b - ½)²
+   * and 12.35 + 12.26 (b - ½) - 13.04 (b - ½)².
+   */
+  function bounceEnd(local, dur, b, shaped) {
+    const reach = (1 - b) * dur;
+    if (local <= reach) return shaped(local / reach);
+    const speed = (shaped(1) - shaped(1 - 1e-3)) / 1e-3 / reach;   // per ms
+    const left = Math.max(1, dur - reach), d = b - 0.5;
+    const damping = (5.33 + 2.48 * d - 1.92 * d * d) / left, frequency = (12.35 + 12.26 * d - 13.04 * d * d) / left;
+    const s = local - reach;
+    return shaped(1) + speed / frequency * Math.exp(-damping * s) * Math.sin(frequency * s);
+  }
+
+  /** A time filter (tmFilter "t,p; t,p; …"): progress remapped along the polyline through its points (Bounce). */
+  const filterCache = new Map();
+  function timeFilter(text, p) {
+    let points = filterCache.get(text);
+    if (!points) {
+      points = String(text).split(';').map(s => s.split(',').map(Number)).filter(a => a.length === 2 && a.every(Number.isFinite));
+      filterCache.set(text, points);
+    }
+    if (points.length < 2) return p;
+    for (let i = 1; i < points.length; i++) {
+      const [t0, v0] = points[i - 1], [t1, v1] = points[i];
+      if (p <= t1 || i === points.length - 1) return t1 > t0 ? v0 + (v1 - v0) * Math.min(1, Math.max(0, (p - t0) / (t1 - t0))) : v1;
+    }
+    return p;
   }
 
   const attributeKey = attribute => ({
@@ -516,13 +687,28 @@
         break;
       }
       case 'animScale': {
-        const from = node.from || [100000, 100000];
-        const to = node.to || (node.by ? [from[0] * node.by[0] / 100000, from[1] * node.by[1] / 100000] : [100000, 100000]);
-        state.sx *= (from[0] + (to[0] - from[0]) * p) / 100000;
-        state.sy *= (from[1] + (to[1] - from[1]) * p) / 100000;
+        if (node.to) {
+          // A scale to a size replaces the scale so far, from it unless the behaviour names its start (SMIL to and
+          // from-to animation; Bounce squashes to 60 % and then back to 100 % from there, measured).
+          const from = node.from ? [node.from[0] / 100000, node.from[1] / 100000] : [state.sx, state.sy];
+          state.sx = from[0] + (node.to[0] / 100000 - from[0]) * p;
+          state.sy = from[1] + (node.to[1] / 100000 - from[1]) * p;
+          break;
+        }
+        // A scale by a factor multiplies the scale so far.
+        const by = node.by || [100000, 100000];
+        state.sx *= 1 + (by[0] / 100000 - 1) * p;
+        state.sy *= 1 + (by[1] / 100000 - 1) * p;
         break;
       }
       case 'animClr': {
+        if ((node.attrs || [])[0] === 'ppt_c') {
+          // Dimming after an effect colors the whole shape: fill, line and text (measured).
+          const to = hexColor(node.to);
+          const color = mixColor(state.fill || currentColor(target, 'fill') || to, to, p);
+          state.fill = state.stroke = state.color = color;
+          break;
+        }
         const key = attributeKey((node.attrs || [])[0]) || 'fill';
         const from = hexColor(node.from) || state[key] || currentColor(target, key);
         const to = node.to ? hexColor(node.to) : from;
@@ -554,10 +740,11 @@
     if (tav && tav.length) {
       const times = tav.map((k, i) => (typeof k.tm === 'number' ? k.tm / 100000 : i / Math.max(1, tav.length - 1)));
       let i = 0;
-      while (i < tav.length - 1 && p > times[i + 1]) i++;
+      while (i < tav.length - 2 && p > times[i + 1]) i++;
       const a = tav[i], b = tav[Math.min(i + 1, tav.length - 1)];
       const span = times[Math.min(i + 1, tav.length - 1)] - times[i];
-      const local = span > 0 ? Math.min(1, Math.max(0, (p - times[i]) / span)) : 1;
+      // A bounce overshoots the last key frame: the last segment goes on beyond it.
+      const local = span > 0 ? Math.max(0, i + 1 === tav.length - 1 ? (p - times[i]) / span : Math.min(1, (p - times[i]) / span)) : 1;
       if (node.valueType === 'str' || node.calcmode === 'discrete') return valueOf(local < 1 ? a.val : b.val);
       const va = Number(valueOf(a.val)), vb = Number(valueOf(b.val));
       let v = va + (vb - va) * local;
@@ -1560,23 +1747,26 @@
 
   // ?frame=ms&fps=n#slide-N draws slide N as PowerPoint's video of the slide (n frames per second) shows it ms after
   // the slide began: the main steps play one after another without waiting for clicks, each starting on the first
-  // frame after the previous one ended and the second one frame later still; time nodes start on frames as well
+  // frame after the previous one ended by the video's time and the second one frame later still; within a step
+  // PowerPoint's clock advances whole milliseconds per frame (33 ms at 30 fps, 16 at 60: the steps run 1 and 4 %
+  // slow and are cut off a little where the next begins), and the last step shows its last frame unfinished
   // (measured; tools/Fidelity animate).
   const frameParams = new URLSearchParams(location.search);
   const frameSlide = /^#slide-(\d+)$/.exec(location.hash);
   if (frameParams.get('frame') !== null && frameSlide) {
     const index = +frameSlide[1] - 1;
-    const tick = 1000 / (+frameParams.get('fps') || 30);
-    const main = frame(index, 0, 0, tick) || [];
-    const time = +frameParams.get('frame');
+    const fps = +frameParams.get('fps') || 30;
+    const [video, tick] = [1000 / fps, Math.floor(1000 / fps)];
+    const main = frame(index, 0, 0, undefined) || [];
+    const shown = Math.round(+frameParams.get('frame') / video);
     let steps = 0, start = 0;
     while (steps < main.length) {
-      const next = Math.ceil((start + main[steps].end) / tick - 1e-6) * tick + (steps === 0 ? tick : 0);
-      if (time < next - 0.01) break;
+      const next = start + Math.ceil(main[steps].end / video - 1e-6) + (steps === 0 ? 1 : 0);
+      if (shown < next || steps === main.length - 1) break;
       start = next;
       steps++;
     }
-    frame(index, steps, Math.max(0, time - start), tick);
+    frame(index, steps, (shown - start) * tick, undefined);
   }
 
   window.FreeSlate = { start: i => start(i === undefined ? order()[0] : i), stop, next, previous, presenter: openPresenter, comments: toggleComments, frame };

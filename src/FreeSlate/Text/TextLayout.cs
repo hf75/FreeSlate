@@ -126,12 +126,18 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
 
     /// <summary>Text at an odd bidi level, shaped and drawn right to left.</summary>
     public bool RightToLeft { get; init; }
+
+    /// <summary>Where the run's text starts in its paragraph's text; -1 for bullets.</summary>
+    public int Start { get; init; } = -1;
 }
 
 public sealed class LaidOutLine
 {
     /// <summary>Index of the paragraph the line belongs to (animations address paragraphs).</summary>
     public int Paragraph { get; set; }
+
+    /// <summary>The text of the paragraph the line belongs to (caps applied), which the runs' starts index.</summary>
+    public string ParagraphText { get; set; } = "";
 
     /// <summary>Baseline from the top of the text area, in points.</summary>
     public double Baseline { get; set; }
@@ -282,7 +288,9 @@ public static class TextLayout
 
         void Finish(bool lastOfParagraph)
         {
-            lines.Add(BuildLine(paragraph, all, styles, levels, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth));
+            var line = BuildLine(paragraph, all, styles, levels, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth);
+            line.ParagraphText = all;
+            lines.Add(line);
             current = [];
             first = false;
             x = lineStart = lastContentEnd = marginLeft;
@@ -397,7 +405,7 @@ public static class TextLayout
                     continue;
                 var text = all[runStart..i];
                 var w = Measure(all, styles, runStart, i);
-                line.Runs.Add(new PlacedRun(text, styles[runStart], runX, w) { Lift = Lift(styles[runStart], paragraph, ascent, descent) });
+                line.Runs.Add(new PlacedRun(text, styles[runStart], runX, w) { Lift = Lift(styles[runStart], paragraph, ascent, descent), Start = runStart });
                 runX += w;
                 runStart = i;
             }
@@ -486,6 +494,7 @@ public static class TextLayout
             {
                 Lift = Lift(styles[start], paragraph, ascent, descent),
                 RightToLeft = levels[start] % 2 == 1,
+                Start = start,
             });
             x += widths[k] + (justify && all[start] == ' ' ? spaceExtra : 0);
         }
@@ -547,7 +556,7 @@ public static class TextLayout
         // The shorter line keeps its paragraph's alignment.
         var shorter = line.Width - Width(cut + "\u2026");
         start += line.Align switch { "ctr" => shorter / 2, "r" => shorter, _ => 0 };
-        line.Runs.Add(new PlacedRun(cut + "\u2026", last.Style, start, Width(cut + "\u2026")));
+        line.Runs.Add(new PlacedRun(cut + "\u2026", last.Style, start, Width(cut + "\u2026")) { Start = runs[0].Start });
     }
 
     /// <summary>

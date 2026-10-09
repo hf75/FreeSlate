@@ -23,6 +23,12 @@ public sealed class TextChain
 
     /// <summary>The shape's p:style/a:fontRef (default text color and theme font).</summary>
     public XElement? FontRef { get; init; }
+
+    /// <summary>
+    /// Every character drawn on its own and marked with its place in the text and its word (data-c, data-w): the
+    /// slide show builds the text letter by letter or word by word (p:iterate, catalog: animation.timing).
+    /// </summary>
+    public bool Units { get; init; }
 }
 
 /// <summary>
@@ -64,7 +70,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// </summary>
     public List<(List<List<(double X, double Y)>> Contours, RgbColor Color)>? Outlines { get; set; }
 
+    /// <summary>Whether the text being rendered is drawn character by character (see <see cref="TextChain.Units"/>).</summary>
+    bool units;
+
     public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
+    {
+        units = chain.Units;
+        try
+        {
+            return RenderText(chain, geometry, boxWidth, unflip);
+        }
+        finally
+        {
+            units = false;
+        }
+    }
+
+    string RenderText(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
         if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld")))
@@ -312,7 +334,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var moved = new LaidOutLine
                 {
                     Paragraph = line.Paragraph, Ascent = line.Ascent, Descent = line.Descent, Width = line.Width, Align = line.Align,
-                    Baseline = line.Baseline - columnTop,
+                    Baseline = line.Baseline - columnTop, ParagraphText = line.ParagraphText,
                 };
                 moved.Runs.AddRange(line.Runs.Select(r => r with { X = r.X + dx }));
                 result.Lines.Add(moved);
@@ -422,6 +444,31 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var defs = new StringBuilder();
         var filters = new Dictionary<XElement, string?>();
         svg.Append(unflipWidth is { } w ? $"<g data-tx=\"\" transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g data-tx=\"\">");
+        // Text drawn character by character: every paragraph's start in the whole text (paragraphs end with a break,
+        // as PowerPoint counts them) and every character's word.
+        var paragraphStarts = new Dictionary<int, int>();
+        var words = Array.Empty<int>();
+        if (units)
+        {
+            var body = new StringBuilder();
+            foreach (var group in layout.Lines.GroupBy(l => l.Paragraph).OrderBy(g => g.Key))
+            {
+                paragraphStarts[group.Key] = body.Length;
+                body.Append(group.First().ParagraphText).Append('\n');
+            }
+            words = new int[body.Length];
+            for (int i = 0, word = -1; i < body.Length; i++)
+            {
+                if (char.IsWhiteSpace(body[i]))
+                {
+                    words[i] = -1;
+                    continue;
+                }
+                if (i == 0 || char.IsWhiteSpace(body[i - 1]))
+                    word++;
+                words[i] = word;
+            }
+        }
         var paragraph = -1;
         foreach (var line in layout.Lines)
         {
@@ -465,6 +512,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
                 // gradient anew, from the line's start to its end and from its ascent to its descent).
                 var box = (left + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
+                if (units && run.Start >= 0 && !run.RightToLeft && !run.Upright
+                    && Characters(run, left + run.X - (left + formatOrigin)) is { } characters)
+                {
+                    foreach (var (piece, at, from) in characters)
+                    {
+                        var index = paragraphStarts.GetValueOrDefault(line.Paragraph) + run.Start + at;
+                        var word = index < words.Length ? words[index] : -1;
+                        svg.Append($"<g data-c=\"{index}\" data-w=\"{word}\">{Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from)}</g>");
+                    }
+                    continue;
+                }
                 var markup = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs);
                 // Upright characters in vertical text turn back about the middle of their em box.
                 svg.Append(run.Upright
@@ -554,8 +612,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// text itself transparent on top for selection, search and accessibility; color fonts, synthesized styles
     /// and glyphs missing from the font are left to the browser.
     /// </summary>
+    /// <param name="from">Where the run starts from the format run's start (points), as the format run accumulates it;
+    /// by default x - origin.</param>
     string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null,
-        (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null)
+        (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null, double? from = null)
     {
         var style = run.Style;
         var data = style.Font.Data;
@@ -568,7 +628,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var glyphX = new double[glyphs.Length];
         var clusterX = new double?[text.Length];
         var spacing = FontData.MasterUnits(style.LetterSpacing);
-        var position = x - start;
+        var position = from ?? x - start;
         for (var i = 0; i < glyphs.Length; i++)
         {
             var glyph = glyphs[i];
@@ -718,6 +778,42 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             sb.Insert(0, $"<g{attributes}>").Append("</g>");
         }
         return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
+    }
+
+    /// <summary>
+    /// A run split into its characters for builds letter by letter: every non-blank character a run of its own, with
+    /// its offset in the run and where it starts from the format run's start, accumulated as <see cref="Text"/> does
+    /// from <paramref name="from"/> (the same pixel rounding); null where characters and glyphs do not map one to one
+    /// (ligatures, marks), which keeps the run whole.
+    /// </summary>
+    static List<(PlacedRun Piece, int At, double From)>? Characters(PlacedRun run, double from)
+    {
+        var style = run.Style;
+        var text = style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
+        var glyphs = style.Font.Data.Glyphs(text, style.Kerning, false);
+        var spacing = FontData.MasterUnits(style.LetterSpacing);
+        var starts = new double?[text.Length + 1];
+        var position = from;
+        foreach (var glyph in glyphs)
+        {
+            var first = glyph.Cluster < text.Length && starts[glyph.Cluster] == null;
+            if (first)
+                starts[glyph.Cluster] = position;
+            position += FontData.MasterUnits(glyph.Advance * style.Size) + FontData.MasterUnits(glyph.Kerning * style.Size) + (first ? spacing : 0);
+        }
+        starts[text.Length] = position;
+        var result = new List<(PlacedRun, int, double)>();
+        for (var k = 0; k < text.Length;)
+        {
+            var length = char.IsHighSurrogate(text[k]) && k + 1 < text.Length ? 2 : 1;
+            if (starts[k] is not { } at || starts[k + length] is not { } end)
+                return null;
+            var character = text.Substring(k, length);
+            if (!string.IsNullOrWhiteSpace(character))
+                result.Add((new PlacedRun(character, style, run.X + at - from, end - at) { Lift = run.Lift, Start = run.Start + k }, k, at));
+            k += length;
+        }
+        return result;
     }
 
     /// <summary>Stroke attributes in pixels converted to the font units of a glyph group (width and dashes).</summary>

@@ -134,6 +134,9 @@ public static class SlideShow
             if (Conditions(element.Element(Ns.P + "prevCondLst"), slide) is { } prev) json["prev"] = prev;
             if (Conditions(element.Element(Ns.P + "nextCondLst"), slide) is { } next) json["next"] = next;
         }
+        // A bounce at the end of the behaviour (p14:bounceEnd, PowerPoint 2010).
+        if (element.Attribute(P14 + "bounceEnd") is { } bounce)
+            json["bounceEnd"] = Value(bounce.Value);
         if (behavior != null)
         {
             Copy(behavior, json, "additive", "accumulate", "xfrmType", "from", "to", "by", "rctx", "override");

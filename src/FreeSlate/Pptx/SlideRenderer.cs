@@ -17,6 +17,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
     TableRenderer? tables;
 
+    /// <summary>Shapes whose text the slide show builds letter by letter or word by word (p:iterate type lt or wd).</summary>
+    HashSet<string> Iterated => iterated ??= slide.Slide.Root?.Element(Ns.P + "timing") is { } timing
+        ? timing.Descendants(Ns.P + "cTn").Where(c => c.Element(Ns.P + "iterate")?.Attribute("type")?.Value is "lt" or "wd")
+            .SelectMany(c => c.Descendants(Ns.P + "spTgt")).Select(t => t.Attribute("spid")?.Value).OfType<string>().ToHashSet()
+        : [];
+    HashSet<string>? iterated;
+
     /// <summary>Maps child coordinates of a group to slide coordinates (EMU); Transform holds rotations and flips.</summary>
     readonly record struct Placement(Matrix Transform, double OffX, double OffY, double ScaleX, double ScaleY, double ChildX, double ChildY, Fill? GroupFill)
     {
@@ -391,6 +398,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 Defaults = textDefaults,
                 FontRef = style?.Element(Ns.A + "fontRef"),
+                Units = isSlide && NonVisual(shape)?.Attribute("id")?.Value is { } shapeId && Iterated.Contains(shapeId),
             }, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
