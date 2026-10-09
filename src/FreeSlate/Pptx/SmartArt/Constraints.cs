@@ -250,7 +250,11 @@ public static class Constraints
                     break;
                 case "lte":
                     if (target.Values.TryGetValue(type, out var high))
+                    {
                         target.Values[type] = Math.Min(high, v);
+                        if (high > v + 1e-9)
+                            Follow(owner, target, type);
+                    }
                     else if (Get(target, type) is { } derivedHigh)
                     {
                         if (derivedHigh > v)
@@ -263,6 +267,25 @@ public static class Constraints
                     target.Values[type] = v;
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// Keeps a node's values that an equ constraint of the list makes equal (h equ w of the same node) equal when a bound
+    /// lowers one of them (measured: vList3's pictures, h = w bounded by the row's height, as wide as high).
+    /// </summary>
+    static void Follow(LayoutNode owner, LayoutNode target, string type)
+    {
+        foreach (var constraint in owner.Constraints)
+        {
+            if ((string?)constraint.Attribute("op") != "equ" || (string?)constraint.Attribute("type") != type
+                || (string?)constraint.Attribute("refType") is not { Length: > 0 } refType || refType == type)
+                continue;
+            if (!Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType")).Contains(target)
+                || !Targets(owner, (string?)constraint.Attribute("refFor"), (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType")).Contains(target))
+                continue;
+            var fact = Number(constraint, "fact") is { } f && double.IsFinite(f) && f != 0 ? f : 1;
+            target.Values[refType] = target.Values[type] / fact;
         }
     }
 

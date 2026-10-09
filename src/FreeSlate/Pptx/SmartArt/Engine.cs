@@ -408,6 +408,15 @@ public static class Engine
                     oh = Math.Max(oh, e.Y + e.H);
                 if (children[i].AlgorithmType == "composite" && oh > 100 * Math.Max(ow, 1e-6))
                     oh = e.Y + e.H;
+                // A composite shrunk along the line takes its content's room along it (measured: vList3's rows, their
+                // pictures as high as wide, shrunk with the row and their composites as high as them).
+                if (children[i].AlgorithmType == "composite" && (horizontal ? sx : sy) < 1 - 1e-9)
+                {
+                    if (horizontal)
+                        ow = Math.Min(ow, e.W);
+                    else
+                        oh = Math.Min(oh, e.H);
+                }
                 Place(children[i], -e.X * sx, -e.Y * sy, ow * sx, oh * sy, pins);
             }
         }
