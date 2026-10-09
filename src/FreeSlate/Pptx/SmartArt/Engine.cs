@@ -183,7 +183,10 @@ public static class Engine
                 (node.Values["w"], node.Values["h"]) = (aw, ah);
                 Constraints.EvaluateList(node, running);
                 foreach (var child in node.Children)
+                {
                     Constraints.EvaluateOwn(child, running);
+                    Refresh(child, running);
+                }
                 (pw, ph) = (aw, ah);
             }
             double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
@@ -487,7 +490,7 @@ public static class Engine
     }
 
     /// <summary>Evaluates the lists under a node again for its values (as its layout would, without placing it).</summary>
-    static void Refresh(LayoutNode node, Pins pins)
+    static void Refresh(LayoutNode node, Pins? pins)
     {
         if (node.Children.Count == 0)
             return;

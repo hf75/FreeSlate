@@ -195,15 +195,20 @@ public static class Constraints
             if (pins != null && pins.TryGet(target, type, out var pinned))
             {
                 target.Values[type] = pinned;
-                continue;
+                // A bound on a font size holds against the size the fitting fixed (measured: CaptionedPictures'
+                // descriptions, primFontSz <= their titles', at the titles' fitted size).
+                if (!(op is "lte" or "gte" && type is "primFontSz" or "secFontSz"))
+                    continue;
             }
             double? value;
+            LayoutNode? referenceNode = null;
             if (!string.IsNullOrEmpty(refType) && refType != "none")
             {
                 var references = Targets(owner, (string?)constraint.Attribute("refFor"), (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType"));
                 // A reference among the targets' peers refers to the same data point where there is one (the node's own
                 // value for each of several instances), else to the first.
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
+                referenceNode = reference;
                 value = reference != null && Referenced(reference, refType, owner) is { } referenced ? referenced * fact : null;
             }
             else if (constraint.Attribute("val") == null)
@@ -220,6 +225,14 @@ public static class Constraints
             }
             if (value is not { } v || double.IsNaN(v))
                 continue;
+            // Font sizes only shrink: a bound between two nodes' sizes lowers the larger (measured: VerticalAccentList's
+            // texts, parent >= child, both at the parent's fitted size).
+            if (op == "gte" && type is "primFontSz" or "secFontSz"
+                && referenceNode != null && refType == type && fact > 0 && target.Values.TryGetValue(type, out var own) && own < v)
+            {
+                referenceNode.Values[type] = own / fact;
+                continue;
+            }
             switch (op)
             {
                 // A bound on a value the others derive (w from l and r) holds it only where they break it (measured:

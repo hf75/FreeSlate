@@ -108,6 +108,7 @@ public static class SmartArtCheck
         foreach (var file in files)
         {
             var (good, shapes) = (0, 0);
+            var (fontsGood, fonts) = (0, 0);
             var results = new List<(string Layout, int Good, int Count, double Mean)>();
             using var context = new FreeSlate.Pptx.PresentationContext(OpcPackage.Open(file));
             foreach (var diagram in Diagrams(file))
@@ -128,6 +129,7 @@ public static class SmartArtCheck
                 var nodes = root.Descendants().Prepend(root).GroupBy(n => (n.Point.Id, n.Name)).ToDictionary(g => g.Key, g => g.First());
                 var scale = Math.Max(diagram.Size.W, diagram.Size.H);
                 var (diagramGood, count, sum) = (0, 0, 0.0);
+                var (diagramFontsGood, diagramFonts) = (fontsGood, fonts);
                 var lines = new List<string>();
                 foreach (var sp in diagram.Drawing.Descendants(Dsp + "sp"))
                 {
@@ -153,6 +155,13 @@ public static class SmartArtCheck
                     if (error < 0.01)
                         diagramGood++;
                     var size = sp.Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz")?.Value;
+                    // The font size of a shape's text where its node holds the text.
+                    if (size != null && node.Text.Count > 0 && node.Values.TryGetValue("primFontSz", out var font))
+                    {
+                        fonts++;
+                        if (Math.Abs(Math.Round(font) * 100 - int.Parse(size, CultureInfo.InvariantCulture)) < 1)
+                            fontsGood++;
+                    }
                     lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({nx * k,7:0.0} {ny * k,7:0.0} {nw * k,7:0.0} {nh * k,7:0.0})  {error * 100,5:0.0} %  {node.Note}"));
                 }
                 if (count == 0)
@@ -162,7 +171,7 @@ public static class SmartArtCheck
                 results.Add((Short(diagram.Layout), diagramGood, count, sum / count));
                 if (verbose)
                 {
-                    Console.WriteLine($"  slide {diagram.Slide,3} {Short(diagram.Layout)}: {diagramGood}/{count}");
+                    Console.WriteLine($"  slide {diagram.Slide,3} {Short(diagram.Layout)}: {diagramGood}/{count}, fonts {fontsGood - diagramFontsGood}/{fonts - diagramFonts}");
                     foreach (var line in lines)
                         Console.WriteLine(line);
                     // Text nodes the drawing does not show (their text taken by other shapes), for the text fitting.
@@ -173,7 +182,7 @@ public static class SmartArtCheck
             }
             foreach (var r in results.OrderByDescending(r => r.Mean))
                 Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"  {r.Layout,-36} {r.Good,3}/{r.Count,-3} mean error {r.Mean * 100,5:0.0} %"));
-            Console.WriteLine($"{Path.GetFileName(file)}: {good} of {shapes} shapes within 1 %, {results.Count(r => r.Good == r.Count)} of {results.Count} diagrams exact");
+            Console.WriteLine($"{Path.GetFileName(file)}: {good} of {shapes} shapes within 1 %, {results.Count(r => r.Good == r.Count)} of {results.Count} diagrams exact, {fontsGood} of {fonts} font sizes");
         }
     }
 }
