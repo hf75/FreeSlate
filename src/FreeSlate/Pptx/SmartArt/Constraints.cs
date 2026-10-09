@@ -31,8 +31,9 @@ public sealed class Pins
 /// Evaluates the constraints of a layout tree (dgm:constr, catalog: smartart.layout): every node's list in document
 /// order, the nodes in tree order, each constraint setting a value of its targets (the declaring node, its children or
 /// its descendants of a name or point type) to an absolute value or to a value of a reference node times a factor;
-/// gte and lte only raise or lower a value already set, equ without a value makes the targets' values equal, and a
-/// constraint without a value or reference gives 0 where nothing else sets the value. When a node has its box, its list
+/// gte and lte only raise or lower a value already set (a list's bounds on others in its order, a node's bounds on
+/// itself at the end), equ without a value makes the targets' values equal, and a constraint without a value or
+/// reference gives 0 where nothing else sets the value. When a node has its box, its list
 /// is evaluated again: its children's values follow its actual size (the composite's ar works that way, ECMA-376
 /// §21.4.7.49). Sizes and positions are in millimeters, font sizes in points.
 /// </summary>
@@ -112,14 +113,16 @@ public static class Constraints
                         Apply(node, constraint, pins, null);
                 }
             }
+            // A list's bounds on others hold in its order (measured: NumberedDotsVertical's titles placed from their
+            // circles as their bound leaves them); a node's bounds on itself at the end.
             foreach (var node in nodes)
             {
-                foreach (var constraint in node.Constraints.Where(c => !Own(c) && !Bound(c)))
+                foreach (var constraint in node.Constraints.Where(c => !Own(c)))
                     Apply(node, constraint, pins, null);
             }
             foreach (var node in nodes)
             {
-                foreach (var constraint in node.Constraints.Where(Bound))
+                foreach (var constraint in node.Constraints.Where(c => Bound(c) && Own(c)))
                     Apply(node, constraint, pins, null);
             }
             var after = nodes.Select(n => n.Values.Count + n.Values.Values.Sum(v => double.IsFinite(v) ? v : 0)).ToList();
@@ -140,13 +143,13 @@ public static class Constraints
     {
         for (var pass = 0; pass < 2; pass++)
         {
-            foreach (var constraint in node.Constraints.Where(c => !Bound(c)))
+            foreach (var constraint in node.Constraints.Where(c => !Bound(c) || !Own(c)))
             {
                 if (Own(constraint) && node.FromAncestors.Contains((string?)constraint.Attribute("type") ?? ""))
                     continue;
                 Apply(node, constraint, pins, node);
             }
-            foreach (var constraint in node.Constraints.Where(Bound))
+            foreach (var constraint in node.Constraints.Where(c => Bound(c) && Own(c)))
                 Apply(node, constraint, pins, node);
         }
     }
