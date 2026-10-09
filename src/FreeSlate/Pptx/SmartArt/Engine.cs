@@ -328,6 +328,20 @@ public static class Engine
         return null;
     }
 
+    /// <summary>A node's own lte bound on its size across a line by its length along it (h &lt;= 1.2 w), for a length.</summary>
+    static double? UpperAcross(LayoutNode child, string across, string along, double length)
+    {
+        foreach (var constraint in child.Constraints)
+        {
+            if ((string?)constraint.Attribute("for") is not (null or "" or "self") || (string?)constraint.Attribute("op") != "lte"
+                || (string?)constraint.Attribute("type") != across || (string?)constraint.Attribute("refType") != along || constraint.Attribute("refFor") != null)
+                continue;
+            var fact = Number((string?)constraint.Attribute("fact")) is { } f && double.IsFinite(f) ? f : 1;
+            return length * fact;
+        }
+        return null;
+    }
+
     static double Align(string? alignment, double room, double size) => alignment switch
     {
         "l" or "t" => 0,
@@ -381,6 +395,10 @@ public static class Engine
                 // A composite takes the room of its children, whose lengths follow it where they relate to it.
                 if (shrink < 1 && children[i].AlgorithmType != "composite" && Derived(children[i], acrossType, alongType, length) is { } derived)
                     cross = derived;
+                // A composite's own bound across by its length holds for its new length (measured: NumberedTitleCard-
+                // List's cards, h <= 1.2 w, as high as 1.2 times the width the row leaves them).
+                if (children[i].AlgorithmType == "composite" && UpperAcross(children[i], acrossType, alongType, length) is { } cap)
+                    cross = Math.Min(cross, cap);
                 sizes.Add((length, cross));
             }
             var widest = sizes.Max(z => z.Across);
