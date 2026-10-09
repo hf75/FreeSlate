@@ -669,7 +669,7 @@ public static class Engine
         bool Measure()
         {
             extents = cells.Select(Extent).ToList();
-            (cw, ch) = (extents.Max(e => e.W), extents.Max(e => e.H));
+            (cw, ch) = (extents.Max(e => e.X + e.W) - extents.Min(e => e.X), extents.Max(e => e.Y + e.H) - extents.Min(e => e.Y));
             if (cw <= 0 || ch <= 0)
                 return false;
             var spacers = node.Children.Where(c => IsTransition(c) && c.AlgorithmType != "conn").Select(Extent).ToList();
@@ -680,10 +680,7 @@ public static class Engine
             var fixedCount = node.Param("bkpt") == "fixed" && Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 0;
             for (var count = fixedCount > 0 ? Math.Min(fixedCount, n) : 1; count <= (fixedCount > 0 ? Math.Min(fixedCount, n) : n); count++)
             {
-                var lines = (n + count - 1) / count;
-                var along = SnakeLines(node, n, count, columns ? ch : cw, gap, columns).Along;
-                var across = lines * (columns ? cw : ch) + (lines - 1) * lineGap;
-                var (gw, gh) = columns ? (across, along) : (along, across);
+                var (_, gw, gh) = SnakeArrange(node, extents, count, gap, lineGap, columns);
                 var factor = Math.Min(node.W / gw, node.H / gh);
                 if (factor > best.Factor * (1 + 1e-9))
                     best = (factor, count);
@@ -727,10 +724,9 @@ public static class Engine
                 ? Math.Max(count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
                 : Math.Max(count, (int)Math.Floor((node.W + gap * k) / ((cw + gap) * k) + 1e-6));
         perLine = Math.Min(perLine, n);
-        var lineCount = (n + perLine - 1) / perLine;
         for (var i = 0; i < n; i++)
             PlaceScaled(cells[i], extents[i], k, pins);
-        var (scw, sch, sgap, slineGap) = (cw * k, ch * k, gap * k, lineGap * k);
+        var (sgap, slineGap) = (gap * k, lineGap * k);
         // The spacing follows the placed cells where it refers to them (PictureAccentBlocks' sp, 0.113 of a cell's width:
         // of its width as placed, kept to its aspect ratio), else it shrinks with them (bProcess4's, 0.33 of the node's).
         if (PlacedReference(node, "sp") is { } placed)
@@ -739,30 +735,58 @@ public static class Engine
             if (!node.Children.Any(c => IsTransition(c) && c.AlgorithmType != "conn"))
                 sgap = slineGap;
         }
-        var (cellAlong, cellAcross) = columns ? (sch, scw) : (scw, sch);
-        var (starts, gridAlong) = SnakeLines(node, n, perLine, cellAlong, sgap, columns);
-        var gridAcross = lineCount * cellAcross + (lineCount - 1) * slineGap;
+        var scaled = extents.Select(e => (e.X * k, e.Y * k, e.W * k, e.H * k)).ToList();
+        var (boxes, w, h) = SnakeArrange(node, scaled, perLine, sgap, slineGap, columns);
+        var (gx, gy) = (Align(node.Param("horzAlign"), node.W, w), Align(node.Param("vertAlign"), node.H, h));
+        for (var i = 0; i < n; i++)
+        {
+            var (cell, e) = (cells[i], scaled[i]);
+            var b = Bounds(cell);
+            Translate(cell, node.X + gx + boxes[i].X + e.Item1 + (e.Item3 - b.W) / 2 - b.X, node.Y + gy + boxes[i].Y + e.Item2 + (e.Item4 - b.H) / 2 - b.Y);
+        }
+    }
+
+    /// <summary>
+    /// Arranges a snake's cells, given their extents (their content's offset from their box and its size), in lines of
+    /// <paramref name="perLine"/>: each in a slot as large as all cells' content, in place in it by its box, the lines
+    /// started as <see cref="SnakeLines"/> starts them, growing from the corner grDir names. Gives each cell's box offset
+    /// from the corner of the room their content takes, and that room (measured: StepUpProcess' last step, without its
+    /// arrow, a step lower at its top, the steps centered without it).
+    /// </summary>
+    static (List<(double X, double Y)> Boxes, double W, double H) SnakeArrange(LayoutNode node, List<(double X, double Y, double W, double H)> extents,
+        int perLine, double gap, double lineGap, bool columns)
+    {
+        var n = extents.Count;
+        var (ux, uy) = (extents.Min(e => e.X), extents.Min(e => e.Y));
+        var (cw, ch) = (extents.Max(e => e.X + e.W) - ux, extents.Max(e => e.Y + e.H) - uy);
+        var (cellAlong, cellAcross) = columns ? (ch, cw) : (cw, ch);
+        var (starts, gridAlong) = SnakeLines(node, n, perLine, cellAlong, gap, columns);
+        var gridAcross = starts.Count * cellAcross + (starts.Count - 1) * lineGap;
         var (gridW, gridH) = columns ? (gridAcross, gridAlong) : (gridAlong, gridAcross);
-        var (gx, gy) = (Align(node.Param("horzAlign"), node.W, gridW), Align(node.Param("vertAlign"), node.H, gridH));
         var grow = node.Param("grDir") ?? "tL";
         var reverse = node.Param("contDir") == "revDir";
+        var boxes = new List<(double X, double Y)>();
+        var (minX, minY, maxX, maxY) = (double.MaxValue, double.MaxValue, double.MinValue, double.MinValue);
         for (var i = 0; i < n; i++)
         {
             var (line, index) = (i / perLine, i % perLine);
             var inLine = Math.Min(perLine, n - line * perLine);
             if (reverse && line % 2 == 1)
                 index = inLine - 1 - index;
-            var along = starts[line] + index * (cellAlong + sgap);
-            var across = line * (cellAcross + slineGap);
+            var along = starts[line] + index * (cellAlong + gap);
+            var across = line * (cellAcross + lineGap);
             var (x, y) = columns ? (across, along) : (along, across);
             if (grow is "tR" or "bR")
-                x = gridW - x - scw;
+                x = gridW - x - cw;
             if (grow is "bL" or "bR")
-                y = gridH - y - sch;
-            var cell = cells[i];
-            var b = Bounds(cell);
-            Translate(cell, node.X + gx + x + (scw - b.W) / 2 - b.X, node.Y + gy + y + (sch - b.H) / 2 - b.Y);
+                y = gridH - y - ch;
+            var (bx, by) = (x - ux, y - uy);
+            boxes.Add((bx, by));
+            var e = extents[i];
+            (minX, minY) = (Math.Min(minX, bx + e.X), Math.Min(minY, by + e.Y));
+            (maxX, maxY) = (Math.Max(maxX, bx + e.X + e.W), Math.Max(maxY, by + e.Y + e.H));
         }
+        return (boxes.Select(b => (b.X - minX, b.Y - minY)).ToList(), maxX - minX, maxY - minY);
     }
 
     /// <summary>
