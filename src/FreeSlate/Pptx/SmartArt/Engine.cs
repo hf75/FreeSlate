@@ -217,6 +217,9 @@ public static class Engine
         if (node.AlgorithmType == "lin" && children.Count > 0 && (w == null || h == null || growsW || growsH))
         {
             var horizontal = (node.Param("linDir") ?? "fromL") is "fromL" or "fromR";
+            // The children the line places, connectors given a size among them (measured: lProcess1's arrows between
+            // its boxes take room in its columns).
+            children = node.Children.Where(c => c.AlgorithmType != "conn" || Constraints.Get(c, "w") != null).ToList();
             var extents = children.Select(Extent).ToList();
             var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
             var across = extents.Max(e => horizontal ? e.H : e.W);
@@ -1243,9 +1246,16 @@ public static class Engine
             var type = (string?)constraint.Attribute("type");
             if (type is "begPad" or "endPad")
             {
-                var value = (string?)constraint.Attribute("refType") == "connDist"
-                    ? distance * (Number((string?)constraint.Attribute("fact")) ?? 1)
-                    : Number((string?)constraint.Attribute("val")) ?? 0;
+                // Of the distance, or of the connector's own size (measured: lProcess1's arrows between items, padded
+                // by a quarter of their width at each end).
+                var fact = Number((string?)constraint.Attribute("fact")) ?? 1;
+                var value = (string?)constraint.Attribute("refType") switch
+                {
+                    "connDist" => distance * fact,
+                    "w" when Finite(connector, "w") is { } cw => cw * connector.Scale * fact,
+                    "h" when Finite(connector, "h") is { } ch => ch * connector.Scale * fact,
+                    _ => Number((string?)constraint.Attribute("val")) ?? 0,
+                };
                 if (type == "begPad")
                     begPad = value;
                 else
@@ -1254,6 +1264,10 @@ public static class Engine
         }
         var span = Math.Max(0, distance - begPad - endPad);
         var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
+        // An arrow as high as its head where the head's height is given (measured: lProcess1's arrows, hArH half their
+        // connector's height).
+        if (Finite(connector, "hArH") is > 0 and var head && Finite(connector, "h") is > 0 and var full)
+            thickness *= head / full;
         // A connector without arrowheads draws its stem alone, stemThick of its height (measured: NumberedDotsVertical's
         // lines between the circles, 0.3 of the connector's height).
         if (connector.Param("begSty") != "arr" && connector.Param("endSty") is { } endStyle && endStyle is not ("arr" or "auto")
