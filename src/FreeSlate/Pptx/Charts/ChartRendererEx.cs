@@ -398,8 +398,11 @@ public sealed partial class ChartRenderer
             case "treemap" or "sunburst":
                 FrameHierarchy(chart, data, plotArea);
                 break;
+            case "regionMap":
+                FrameRegionMap(chart, data);
+                break;
             default:
-                // Region maps and unknown layouts: title and legend only.
+                // Unknown layouts: title and legend only.
                 break;
         }
 
@@ -423,7 +426,8 @@ public sealed partial class ChartRenderer
         else
             classic.Add(V("autoTitleDeleted", 1));
         classic.Add(plotArea);
-        if (chart.Legend is { } legend)
+        // Region maps draw their color scale themselves (see RegionMap).
+        if (chart.Legend is { } legend && chart.Layout != "regionMap")
         {
             classic.Add(C("legend", V("legendPos", (string?)legend.Attribute("pos") ?? "r"),
                 deletedEntries.Select(i => C("legendEntry", V("idx", i), V("delete", 1))),

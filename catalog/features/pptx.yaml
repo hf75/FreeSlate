@@ -1775,7 +1775,7 @@ areas:
         namespaces: [cx]
         priority: P2
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Each type needs its own layout (treemap squarify, sunburst rings, histogram binning, box plot statistics);
           region maps use the geography data cached in the file. Check whether mc:Fallback contains a usable picture.
@@ -1790,8 +1790,12 @@ areas:
           of the chart; histogram bins of Scott's width to two significant digits without axis headroom; waterfall
           totals and connectors; funnels; Pareto lines on a percentage axis; box plots (exclusive or inclusive
           quartiles, 1.5 IQR whiskers, outliers, means); squarified treemaps with overlapping or banner labels;
-          sunbursts sorted by size with radial, wrapped labels. Region maps are not drawn natively yet; long labels
-          are not truncated with an ellipsis as PowerPoint does in short charts.
+          sunbursts sorted by size with radial, wrapped labels. Region maps (local chartex-map … map4 at 300 to
+          900 pt: 98.4–99.9 %) are drawn from their geography cache (raw deflated XML whose rings are Bing point
+          compressed in the base64url alphabet) in Robinson's projection, 1.5 % wider than defined, fitted beside
+          a color scale legend (interpolated in linear light) with the map's credits below; like PowerPoint's own
+          pictures of such files, every region is gray, as the cache does not tell which region a data point names.
+          Not reproduced: the ellipsis PowerPoint puts on long category labels in very short charts.
 
   - id: smartart
     title: SmartArt
