@@ -5,8 +5,8 @@ namespace Fidelity.PowerPoint;
 /// <summary>
 /// Chart details (catalog: chart.barColumn, chart.axes, chart.labels, chart.pie, chart.part, chart.titleLegend):
 /// negative bars with inverted fills, display units, label and tick mark intervals, label offsets and alignment, a
-/// date axis, data labels with legend keys and leader lines, pie of pie and bar of pie, rounded corners and a manual
-/// plot area layout.
+/// date axis, data labels with legend keys, leader lines and text of their own, pie of pie and bar of pie, rounded
+/// corners and a manual plot area layout.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class ChartsDetailsDeck
@@ -74,12 +74,11 @@ static class ChartsDetailsDeck
         var keyed = Add(labels, BarClustered, 490, 110, 460, 410);
         keyed.SeriesCollection(1).HasDataLabels = true;
         keyed.SeriesCollection(1).DataLabels().ShowLegendKey = true;
+        keyed.SeriesCollection(2).HasDataLabels = true;
+        keyed.SeriesCollection(2).Points(3).DataLabel.Text = "Own text";
 
         object frames = Slide(presentation, "Rounded corners, layouts and bubble sizes");
-        var rounded = Add(frames, ColumnClustered, 20, 110, 300, 410);
-        rounded.ChartArea.Format.Line.Visible = PowerPointSession.MsoTrue;
-        rounded.ChartArea.Format.Line.Weight = 3f;
-        rounded.ChartArea.Format.Line.ForeColor.RGB = CorpusGenerator.Rgb(192, 0, 0);
+        Add(frames, ColumnClustered, 20, 110, 300, 410);
         Add(frames, ColumnClustered, 330, 110, 300, 410);
         var bubbles = Add(frames, Bubble, 640, 110, 300, 410);
         bubbles.SeriesCollection(1).HasDataLabels = true;
@@ -88,8 +87,8 @@ static class ChartsDetailsDeck
     }
 
     /// <summary>
-    /// Rounds the corners of the fifth slide's first chart (c:roundedCorners) and places the second one's plot area by
-    /// hand (c:manualLayout); the object model sets neither.
+    /// Rounds the corners of the fifth slide's first chart (c:roundedCorners) on a framed chart area and places the
+    /// second one's plot area by hand (c:manualLayout); the object model sets neither (nor, there, the frame's line).
     /// </summary>
     public static void Patch(string path)
     {
@@ -143,6 +142,13 @@ static class ChartsDetailsDeck
             after.AddAfterSelf(rounded);
         else
             space.AddFirst(rounded);
+        // The frame the corners show on: a light fill and a 3 pt red line (c:spPr follows c:chart).
+        System.Xml.Linq.XNamespace a = "http://schemas.openxmlformats.org/drawingml/2006/main";
+        space.Element(c + "spPr")?.Remove();
+        space.Element(c + "chart")!.AddAfterSelf(new System.Xml.Linq.XElement(c + "spPr",
+            new System.Xml.Linq.XElement(a + "solidFill", new System.Xml.Linq.XElement(a + "srgbClr", new System.Xml.Linq.XAttribute("val", "F2F2F2"))),
+            new System.Xml.Linq.XElement(a + "ln", new System.Xml.Linq.XAttribute("w", "38100"),
+                new System.Xml.Linq.XElement(a + "solidFill", new System.Xml.Linq.XElement(a + "srgbClr", new System.Xml.Linq.XAttribute("val", "C00000"))))));
         Save(part, chart);
     }
 

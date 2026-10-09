@@ -36,6 +36,15 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     const double TickLength = 3.75;           // 5 px
     const double LabelOffset = 3;             // data labels from the end of a bar or a point
     const double PieLabelMargin = 1.785;      // × s: pies shrink by this on every side when they show data labels
+    const double LabelMaxShare = 0.2;         // data labels wrap at this share of the chart's width
+    const double LabelKeyText = 1.108;        // × L from a data label's inset to its text after a legend key
+    const double PieOutsideGapX = 0.0509, PieOutsideGapY = 0.04;   // × r, outside pie labels off the edge
+    const double PieOutsideTurn = 3.05;       // outside pie labels straddle the ray within atan(1 / 3.05) of the vertical
+    const double PieInEndMargin = 0.037;      // × r, inEnd pie labels inside the edge
+    const double PieInsideMargin = 0.009;     // × r, best fit pie labels' outer corner inside the edge
+    const double LeaderShoulder = 5.6;        // the level end of a pie label's leader line
+    const double BubbleLabelGap = 5.5;        // labels beside a bubble from its edge
+    const double CornerRadius = 9.8;          // rounded chart area corners
 
     static readonly string[] MarkerCycle = ["diamond", "square", "triangle", "x", "star", "circle", "plus", "dot", "dash"];
 
@@ -165,7 +174,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         text.ColorOverride = colors;
 
         var svg = new StringBuilder();
-        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false));
+        // The chart area's corners are rounded unless c:roundedCorners says otherwise (catalog: chart.part; measured:
+        // PowerPoint rounds them where the element is missing too, by 9.8 pt at every chart size).
+        var rounded = ChartModel.Flag(model.ChartSpace, "roundedCorners", true);
+        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false, rounded ? CornerRadius : 0));
 
         var title = BuildTitle();
         var legend = BuildLegend(title);
@@ -290,7 +302,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return (Snap(p.X, originX), Snap(p.Y, originY));
     }
 
-    string Rect(Box box, Fill fill, Outline? outline, bool snap)
+    string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0)
     {
         double x0, y0, x1, y1;
         if (snap)
@@ -308,17 +320,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return "";
         var fillAttributes = paint.Fill(fill, w, h, defs);
         var stroke = paint.Stroke(outline, w, h, defs);
-        return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{fillAttributes}{stroke}/>";
+        var corners = radius > 0 ? $" rx=\"{Units.Css(Math.Min(radius * PxPerPt, Math.Min(w, h) / 2))}\"" : "";
+        return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
     }
 
     /// <summary>Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title).</summary>
-    string Area(XElement? spPr, Box box, bool snap)
+    string Area(XElement? spPr, Box box, bool snap, double radius = 0)
     {
         var fill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, colors) : Fill.None;
         var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
-        return Rect(box, fill, outline, snap);
+        return Rect(box, fill, outline, snap, radius);
     }
 
     /// <summary>A horizontal or vertical line of the plot area, snapped like PowerPoint draws thin lines.</summary>
@@ -398,9 +411,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     // ---------------------------------------------------------------- data labels
 
-    /// <summary>What a data label shows and where (c:dLbl of the point, else c:dLbls of the series, else of the group).</summary>
-    sealed record LabelSpec(bool Value, bool Category, bool Series, bool Percent, string Separator, string? Position,
-        string? FormatCode, TextStyle Style, XElement? SpPr, (double L, double T, double R, double B) Insets);
+    /// <summary>
+    /// What a data label shows and where (c:dLbl of the point, else c:dLbls of the series, else of the group): its parts,
+    /// separator, position and text, the widest its lines may be, the legend key's fill (c:showLegendKey), the point
+    /// label's manual position (c:layout/c:manualLayout) and, for pies, its leader line (c:showLeaderLines); a point
+    /// label's own text (c:tx) replaces the parts, a cell range's text (c15:datalabelsRange) leads them.
+    /// </summary>
+    sealed record LabelSpec(bool Value, bool Category, bool Series, bool Percent, bool BubbleSize, string Separator, string? Position,
+        string? FormatCode, TextStyle Style, XElement? SpPr, (double L, double T, double R, double B) Insets, double MaxWidth,
+        Fill? Key, ManualOffset? Manual, Outline? Leader, string? Text = null, string? RangeText = null);
+
+    /// <summary>A label's manual position: offsets from its automatic place in fractions of the chart, or edge positions.</summary>
+    sealed record ManualOffset(double? X, double? Y, bool EdgeX, bool EdgeY);
 
     LabelSpec? DataLabel(ChartGroup group, ChartSeries series, int point)
     {
@@ -410,67 +432,337 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (layers.Count == 0 || ChartModel.Flag(layers[0], "delete", false))
             return null;
         bool Show(string name) => layers.FirstOrDefault(l => l.Element(Ns.C + name) != null) is { } owner && ChartModel.Flag(owner, name, false);
-        var spec = (Value: Show("showVal"), Category: Show("showCatName"), Series: Show("showSerName"), Percent: Show("showPercent"));
-        if (!spec.Value && !spec.Category && !spec.Series && !spec.Percent)
+        var spec = (Value: Show("showVal"), Category: Show("showCatName"), Series: Show("showSerName"), Percent: Show("showPercent"),
+            Bubble: group.IsBubble && Show("showBubbleSize"));
+        // The point label's own text: rich text whose fields hold their current text, or a cell's text.
+        string? own = null;
+        XElement? rich = null;
+        if (pointLabel?.Element(Ns.C + "tx") is { } tx)
+        {
+            if ((rich = tx.Element(Ns.C + "rich")) != null)
+                own = string.Join("\n", rich.Elements(Ns.A + "p").Select(p => string.Concat(p.Elements().Select(e => e.Name.LocalName switch
+                {
+                    "r" or "fld" => e.Element(Ns.A + "t")?.Value ?? "",
+                    "br" => "\n",
+                    _ => "",
+                }))));
+            else if (tx.Element(Ns.C + "strRef")?.Element(Ns.C + "strCache") is { } cache)
+                own = string.Concat(cache.Elements(Ns.C + "pt").Select(pt => pt.Element(Ns.C + "v")?.Value));
+        }
+        // Text from a range of cells (c15:datalabelsRange, shown by c15:showDataLabelsRange).
+        var rangeShown = layers.Select(l => l.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "showDataLabelsRange"))
+            .FirstOrDefault(e => e != null) is { } range && range.Attribute("val")?.Value is not ("0" or "false");
+        var rangeText = rangeShown
+            ? series.Element.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "dlblRangeCache")?
+                .Elements(Ns.C + "pt").FirstOrDefault(pt => pt.Attribute("idx")?.Value == point.ToString(CultureInfo.InvariantCulture))?.Element(Ns.C + "v")?.Value
+            : null;
+        if (own == null && rangeText == null && !spec.Value && !spec.Category && !spec.Series && !spec.Percent && !spec.Bubble)
             return null;
 
         XElement? Child(string name) => layers.Select(l => l.Element(Ns.C + name)).FirstOrDefault(e => e != null);
-        var txPr = Child("txPr");
+        var txPr = rich?.Descendants(Ns.A + "defRPr").Any() == true ? rich : Child("txPr");
         var body = txPr?.Element(Ns.A + "bodyPr");
         double Inset(string name, long fallback) => (body.Long(name) ?? fallback) / Units.EmuPerPoint;
         var numFmt = Child("numFmt");
-        var separator = Child("separator")?.Value ?? (group.IsPie ? "\n" : ", ");
-        return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, separator, Child("dLblPos").Str("val"),
-            numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), Style(txPr, "dataLabel"), Child("spPr"),
-            (Inset("lIns", 38100), Inset("tIns", 19050), Inset("rIns", 38100), Inset("bIns", 19050)));
+        // The default separator (measured with a German Office): a line break between a percentage and a name shown
+        // without the value, else the list separator of the chart's language and a space ("One; 40").
+        var separator = Child("separator")?.Value ?? (spec.Percent && !spec.Value ? "\n" : culture.TextInfo.ListSeparator + " ");
+        var style = Style(txPr, "dataLabel");
+        var insets = (Inset("lIns", 38100), Inset("tIns", 19050), Inset("rIns", 38100), Inset("bIns", 19050));
+        var key = Show("showLegendKey") ? KeyFill(group, series, point) : null;
+        // Labels wrap at a fifth of the chart's width, box and key included (measured: 86 pt of text in a 460 pt chart).
+        var maxWidth = Math.Max(1, LabelMaxShare * width - insets.Item1 - insets.Item3 - (key != null ? LabelKeyText * LineHeight(style) : 0));
+        ManualOffset? manual = null;
+        if (pointLabel?.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } layout)
+            manual = new ManualOffset(ChartModel.Number(layout, "x"), ChartModel.Number(layout, "y"),
+                ChartModel.Val(layout, "xMode") == "edge", ChartModel.Val(layout, "yMode") == "edge");
+        Outline? leader = null;
+        if (group.IsPie && Show("showLeaderLines"))
+        {
+            var line = layers.Select(l => l.Element(Ns.C + "leaderLines")).FirstOrDefault(e => e != null)?.Element(Ns.C + "spPr")?.Element(Ns.A + "ln");
+            leader = line != null
+                ? OutlineReader.Merge([(line, colors)])
+                : new Outline(9525, new SolidFill(colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "tx1"),
+                    new XElement(Ns.A + "lumMod", new XAttribute("val", "35000")), new XElement(Ns.A + "lumOff", new XAttribute("val", "65000"))))),
+                    "solid", "flat", "round", 8, "sng");
+        }
+        return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, spec.Bubble, separator, Child("dLblPos").Str("val"),
+            numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), style, Child("spPr"), insets, maxWidth,
+            key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText);
     }
 
-    string LabelText(LabelSpec spec, ChartSeries series, int point, double value, double total)
+    /// <summary>The fill of a data label's legend key: the point's fill, the line's color for series drawn as lines.</summary>
+    Fill KeyFill(ChartGroup group, ChartSeries series, int point) =>
+        group.HasLines && SeriesOutline(group, series) is { Visible: true, Fill: { } line } ? line : PointFill(group, series, point);
+
+    /// <summary>
+    /// The text of a data label in pieces a line may break after: its parts (series name, category, value, percentage,
+    /// bubble size) with the separator leading every part after the first, split after spaces; a line break in the
+    /// separator is a piece of its own (measured: "Ffffffffffff; 10" breaks into "Ffffffffffff" and "; 10").
+    /// </summary>
+    List<string> LabelPieces(LabelSpec spec, ChartSeries series, int point, double value, double total)
     {
         var parts = new List<string>();
-        if (spec.Series) parts.Add(series.Name);
-        if (spec.Category) parts.Add(series.Categories.ElementAtOrDefault(point) ?? (point + 1).ToString(culture));
-        if (spec.Value) parts.Add(NumberFormat.Format(value, spec.FormatCode ?? series.FormatCode, culture));
-        if (spec.Percent) parts.Add(NumberFormat.Format(total == 0 ? 0 : Math.Abs(value) / total, spec.FormatCode is { } f && f.Contains('%') ? f : "0%", culture));
-        return string.Join(spec.Separator, parts);
+        if (spec.Text != null) parts.Add(spec.Text);
+        else if (spec.RangeText != null) parts.Add(spec.RangeText);
+        if (spec.Text == null && spec.Series) parts.Add(series.Name);
+        if (spec.Text == null)
+        {
+            if (spec.Category) parts.Add(series.Categories.ElementAtOrDefault(point) ?? (point + 1).ToString(culture));
+            if (spec.Value) parts.Add(NumberFormat.Format(value, spec.FormatCode ?? series.FormatCode, culture));
+            if (spec.Percent) parts.Add(NumberFormat.Format(total == 0 ? 0 : Math.Abs(value) / total, spec.FormatCode is { } f && f.Contains('%') ? f : "0%", culture));
+            if (spec.BubbleSize) parts.Add(NumberFormat.Format(BubbleSize(series, point), spec.FormatCode ?? "General", culture));
+        }
+        var pieces = new List<string>();
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var text = i == 0 ? parts[i] : spec.Separator + parts[i];
+            var start = 0;
+            for (var k = 0; k < text.Length; k++)
+            {
+                if (text[k] == '\n')
+                {
+                    if (k > start) pieces.Add(text[start..k]);
+                    pieces.Add("\n");
+                    start = k + 1;
+                }
+                else if (text[k] == ' ' && (k + 1 == text.Length || text[k + 1] != ' '))
+                {
+                    pieces.Add(text[start..(k + 1)]);
+                    start = k + 1;
+                }
+            }
+            if (start < text.Length)
+                pieces.Add(text[start..]);
+        }
+        return pieces;
     }
 
-    /// <summary>The size of a data label's box: its lines plus the text insets.</summary>
-    static (double W, double H) LabelSize(LabelSpec spec, string value)
+    string LabelText(LabelSpec spec, ChartSeries series, int point, double value, double total) =>
+        WrapLabel(LabelPieces(spec, series, point, value, total), spec.Style, spec.MaxWidth);
+
+    /// <summary>
+    /// Breaks label pieces into lines no wider than <paramref name="max"/>, filling each line as far as it goes; a piece
+    /// wider than a line breaks between characters (measured: "Wwwwwwwwww; 1" reads "Wwwwwwwww" and "w; 1"). Lines drop
+    /// their trailing spaces.
+    /// </summary>
+    static string WrapLabel(IReadOnlyList<string> pieces, TextStyle style, double max)
+    {
+        var lines = new List<string>();
+        var line = "";
+        foreach (var piece in pieces)
+        {
+            if (piece == "\n")
+            {
+                lines.Add(line.TrimEnd());
+                line = "";
+                continue;
+            }
+            if (line.Length > 0 && Width((line + piece).TrimEnd(), style) > max)
+            {
+                lines.Add(line.TrimEnd());
+                line = "";
+            }
+            line += piece;
+            while (line.TrimEnd().Length > 1 && Width(line.TrimEnd(), style) > max)
+            {
+                var n = 1;
+                while (n + 1 < line.Length && Width(line[..(n + 1)], style) <= max)
+                    n++;
+                lines.Add(line[..n]);
+                line = line[n..];
+            }
+        }
+        lines.Add(line.TrimEnd());
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>The size of a data label's box: its lines, the legend key before them and the text insets.</summary>
+    (double W, double H) LabelSize(LabelSpec spec, string value)
     {
         var lines = value.Split('\n');
-        return (lines.Max(l => Width(l, spec.Style)) + spec.Insets.L + spec.Insets.R,
+        var key = spec.Key != null ? LabelKeyText * LineHeight(spec.Style) : 0;
+        return (lines.Max(l => Width(l, spec.Style)) + key + spec.Insets.L + spec.Insets.R,
             lines.Length * LineHeight(spec.Style) + spec.Insets.T + spec.Insets.B);
     }
 
-    /// <summary>Draws a data label whose box has its top-left corner at (x, y); lines are centered.</summary>
+    /// <summary>
+    /// Draws a data label whose box has its top-left corner at (x, y): the legend key, a square of the point's fill
+    /// centered in height (measured: as in legends, the text 1.108 line heights after the inset), then the centered lines.
+    /// </summary>
     void DrawLabel(LabelSpec spec, string value, double x, double y)
     {
         var (w, h) = LabelSize(spec, value);
         dataLabels.Append(Area(spec.SpPr, new Box(x, y, w, h), snap: false));
         var lineHeight = LineHeight(spec.Style);
+        var keyWidth = 0.0;
+        if (spec.Key is { } fill)
+        {
+            var size = LegendKey * lineHeight;
+            dataLabels.Append(Rect(new Box(x + spec.Insets.L + LegendKeyLeft * lineHeight, y + h / 2 - size / 2, size, size), fill, null, snap: false));
+            keyWidth = LabelKeyText * lineHeight;
+        }
         var baseline = y + spec.Insets.T + Ascent(spec.Style);
+        var left = x + spec.Insets.L + keyWidth;
+        var room = w - spec.Insets.L - spec.Insets.R - keyWidth;
         foreach (var line in value.Split('\n'))
         {
             var lw = Width(line, spec.Style);
-            dataLabels.Append(text.Label(line, spec.Style, x + spec.Insets.L + (w - spec.Insets.L - spec.Insets.R - lw) / 2, baseline));
+            dataLabels.Append(text.Label(line, spec.Style, left + (room - lw) / 2, baseline));
             baseline += lineHeight;
         }
     }
 
-    /// <summary>Places a label at a point: centered, or 3 pt off it to one side (r, l, t, b).</summary>
-    void LabelAtPoint(LabelSpec spec, string value, double x, double y, string position)
+    /// <summary>
+    /// Places a label at a point: centered, or <paramref name="offset"/> (3 pt) off it to one side (r, l, t, b); a moved
+    /// label (c:manualLayout) is offset from there by fractions of the chart, or placed at its edge position.
+    /// </summary>
+    void LabelAtPoint(LabelSpec spec, string value, double x, double y, string position, double offset = LabelOffset)
     {
         var (w, h) = LabelSize(spec, value);
         var (lx, ly) = position switch
         {
-            "l" => (x - LabelOffset - w, y - h / 2),
-            "t" => (x - w / 2, y - LabelOffset - h),
-            "b" => (x - w / 2, y + LabelOffset),
+            "l" => (x - offset - w, y - h / 2),
+            "t" => (x - w / 2, y - offset - h),
+            "b" => (x - w / 2, y + offset),
             "ctr" => (x - w / 2, y - h / 2),
-            _ => (x + LabelOffset, y - h / 2),
+            _ => (x + offset, y - h / 2),
         };
-        DrawLabel(spec, value, lx, ly);
+        var box = Moved(spec, new Box(lx, ly, w, h));
+        DrawLabel(spec, value, box.X, box.Y);
+    }
+
+    /// <summary>A label box moved by its manual position (c:manualLayout: offsets in fractions of the chart, or edges).</summary>
+    Box Moved(LabelSpec spec, Box box)
+    {
+        if (spec.Manual is not { } manual)
+            return box;
+        var x = manual.X is { } mx ? manual.EdgeX ? mx * width : box.X + mx * width : box.X;
+        var y = manual.Y is { } my ? manual.EdgeY ? my * height : box.Y + my * height : box.Y;
+        return box with { X = x, Y = y };
+    }
+
+    /// <summary>
+    /// Places a pie slice's data label (catalog: chart.labels; measured with PowerPoint's label boxes for pies turned in
+    /// 5° steps and labels of several widths, local/pieangles, local/piebestfit). On the slice's middle ray: ctr at half
+    /// the radius; inEnd where the ray leaves the label 3.7 % of the radius inside the edge; bestFit inside with the
+    /// outermost corner just inside the edge, where the label's text fits into the slice (else broken into two lines,
+    /// else outside). Outside (outEnd, bestFit that does not fit, moved labels before their offset) the label's inner
+    /// edges keep 4 % of the radius vertically and 5.1 % horizontally off the edge's point, the label straddling the ray
+    /// near the axes (horizontally within 18° of the vertical by (1 − 3.05 tan φ) / 2 of its width, vertically within
+    /// 45° of the horizontal by (1 − cot φ) / 2 of its height). Labels stay inside the chart; a moved label clear of the
+    /// pie gets a leader line from the slice's edge, ending in a short level stroke beside it or straight above or below.
+    /// </summary>
+    void PieLabel(LabelSpec spec, ChartSeries series, int point, double value, double total, double cx, double cy, double r, double start, double sweep)
+    {
+        var pieces = LabelPieces(spec, series, point, value, total);
+        var label = WrapLabel(pieces, spec.Style, spec.MaxWidth);
+        var mid = (start + sweep / 2) * Math.PI / 180;
+        var (ux, uy) = (Math.Sin(mid), -Math.Cos(mid));
+        var (ax, ay) = (Math.Abs(ux), Math.Abs(uy));
+
+        Box OnRay(string text, double distance)
+        {
+            var (w, h) = LabelSize(spec, text);
+            return new Box(cx + ux * distance - w / 2, cy + uy * distance - h / 2, w, h);
+        }
+        Box Outside(string text)
+        {
+            var (w, h) = LabelSize(spec, text);
+            var tan = ay < 1e-9 ? double.MaxValue : ax / ay;
+            var shareX = Math.Max(-0.01, (1 - PieOutsideTurn * tan) / 2);
+            var shareY = ax < 1e-9 ? 0 : Math.Max(0, (1 - ay / ax) / 2);
+            var innerX = (1 + PieOutsideGapX) * r * ax - w * shareX;
+            var innerY = (1 + PieOutsideGapY) * r * ay - h * shareY;
+            return new Box(cx + Math.Sign(ux) * (innerX + w / 2) - w / 2, cy + Math.Sign(uy) * (innerY + h / 2) - h / 2, w, h);
+        }
+        Box? Inside(string text)
+        {
+            // The corner farthest out on a circle just inside the edge.
+            var (w, h) = LabelSize(spec, text);
+            var (kx, ky) = (ux < 0 ? -w / 2 : w / 2, uy < 0 ? -h / 2 : h / 2);
+            var along = ux * kx + uy * ky;
+            var reach = r * (1 - PieInsideMargin);
+            var root = along * along - (kx * kx + ky * ky) + reach * reach;
+            if (root < 0)
+                return null;
+            var box = OnRay(text, -along + Math.Sqrt(root));
+            return InSlice(new Box(box.X + spec.Insets.L, box.Y + spec.Insets.T, box.W - spec.Insets.L - spec.Insets.R,
+                box.H - spec.Insets.T - spec.Insets.B), cx, cy, start, sweep) ? box : null;
+        }
+
+        Box box;
+        var position = spec.Position ?? "bestFit";
+        if (position == "ctr")
+            box = OnRay(label, r / 2);
+        else if (position == "inEnd")
+        {
+            var (w, h) = LabelSize(spec, label);
+            var leave = Math.Min(ax > 1e-9 ? w / 2 / ax : double.MaxValue, ay > 1e-9 ? h / 2 / ay : double.MaxValue);
+            box = OnRay(label, r * (1 - PieInEndMargin) - leave);
+        }
+        else if (position == "bestFit" && spec.Manual == null)
+        {
+            var inside = Inside(label);
+            if (inside == null && !label.Contains('\n'))
+            {
+                // A one-line label that does not fit tries two lines, breaking as late as possible.
+                for (var k = pieces.Count - 1; k > 0 && inside == null; k--)
+                {
+                    var broken = string.Concat(pieces.Take(k)).TrimEnd() + "\n" + string.Concat(pieces.Skip(k)).TrimEnd();
+                    if ((inside = Inside(broken)) != null)
+                        label = broken;
+                }
+            }
+            box = inside ?? Outside(label);
+        }
+        else
+            box = Outside(label);
+
+        var moved = Moved(spec, box);
+        moved = moved with { X = Math.Clamp(moved.X, 0, Math.Max(0, width - moved.W)), Y = Math.Clamp(moved.Y, 0, Math.Max(0, height - moved.H)) };
+        if (spec.Manual != null && spec.Leader is { Visible: true } leader && Distance(moved, cx, cy) > r)
+            dataLabels.Append(LeaderLine(leader, moved, cx + ux * r, cy + uy * r, moved.Y + spec.Insets.T + Ascent(spec.Style)));
+        DrawLabel(spec, label, moved.X, moved.Y);
+    }
+
+    /// <summary>Whether every corner of a box lies within a pie slice's angles (from the top, clockwise), give or take 1°.</summary>
+    static bool InSlice(Box box, double cx, double cy, double start, double sweep)
+    {
+        if (sweep >= 359.99)
+            return true;
+        foreach (var (x, y) in new[] { (box.X, box.Y), (box.Right, box.Y), (box.X, box.Bottom), (box.Right, box.Bottom) })
+        {
+            var angle = Math.Atan2(x - cx, cy - y) * 180 / Math.PI;
+            var into = ((angle - start) % 360 + 360) % 360;
+            if (into > sweep + 1 && into < 359)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>The distance from a point to the nearest point of a box (0 inside it).</summary>
+    static double Distance(Box box, double x, double y) =>
+        Math.Sqrt(Math.Pow(Math.Max(0, Math.Max(box.X - x, x - box.Right)), 2) + Math.Pow(Math.Max(0, Math.Max(box.Y - y, y - box.Bottom)), 2));
+
+    /// <summary>
+    /// A pie label's leader line from the slice's edge point: straight up or down to a label above or below it, else to
+    /// a level stroke of 5.6 pt ending at the label's near side at its first baseline (measured).
+    /// </summary>
+    string LeaderLine(Outline outline, Box box, double px, double py, double attach)
+    {
+        var points = new List<(double X, double Y)> { (px, py) };
+        if (px >= box.X && px <= box.Right)
+            points.Add((px, box.Y > py ? box.Y : box.Bottom));
+        else
+        {
+            var (end, shoulder) = box.X > px ? (box.X, box.X - LeaderShoulder) : (box.Right, box.Right + LeaderShoulder);
+            if (box.X > px ? shoulder > px : shoulder < px)
+                points.Add((shoulder, attach));
+            points.Add((end, attach));
+        }
+        var d = string.Concat(points.Select((p, i) => $"{(i == 0 ? 'M' : 'L')}{Px(p.X)} {Px(p.Y)}"));
+        return $"<path d=\"{d}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>";
     }
 
     // ---------------------------------------------------------------- axis titles
@@ -888,7 +1180,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var layout in axes.Where(a => a.Axis.IsValue))
                 ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H);
             if (inner != null)
+            {
+                // A plot area placed by hand still turns category labels that do not fit (measured: −45° in a
+                // 150 pt wide plot area with four categories).
+                foreach (var layout in axes.Where(a => a.HasLabels))
+                {
+                    layout.Rotation = Rotation(layout, layout.Axis.Horizontal ? plot.W : plot.H);
+                    layout.Inside = LabelsInside(layout, axes);
+                }
                 break;
+            }
             var next = InnerPlot(outer, axes, plot, table);
             if (Math.Abs(next.W - plot.W) < 0.01 && Math.Abs(next.H - plot.H) < 0.01)
             {
@@ -1205,9 +1506,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (double.IsInfinity(min)) (min, max) = (0, 1);
 
         var style = layout.Style;
-        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus a gap.
+        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus two font
+        // sizes (measured: a 252 pt bubble axis up to 3.1 takes steps of 1, a 377 pt one steps of 0.5).
         var extent = layout.Axis.Horizontal
-            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + style.Size
+            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 2 * style.Size
             : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent);
@@ -1608,10 +1910,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         "inBase" => grows > 0 ? v0 + LabelOffset : v0 - LabelOffset - extent,
                         _ => grows > 0 ? v1 + LabelOffset : v1 - LabelOffset - extent,
                     };
-                    if (group.Horizontal)
-                        DrawLabel(spec, label, along, across - h / 2);
-                    else
-                        DrawLabel(spec, label, across - w / 2, along);
+                    var placed = Moved(spec, group.Horizontal ? new Box(along, across - h / 2, w, h) : new Box(across - w / 2, along, w, h));
+                    DrawLabel(spec, label, placed.X, placed.Y);
                 }
             }
         }
@@ -1793,7 +2093,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 var (cx, cy, r) = (xAxis.Map(xv), yAxis.Map(yv), d / 2);
                 svg.Append($"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{paint.Fill(PointFill(group, series, i), d, d, defs)}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>");
                 if (DataLabel(group, series, i) is { } spec)
-                    LabelAtPoint(spec, LabelText(spec, series, i, yv, 0), cx, cy, spec.Position ?? "ctr");
+                    LabelAtPoint(spec, LabelText(spec, series, i, yv, 0), cx, cy, spec.Position ?? "r", r + BubbleLabelGap);
             }
         }
         return svg.ToString();
@@ -2670,8 +2970,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return "";
         var maxExplosion = rings.SelectMany(s => s.Points.Values.Select(p => ChartModel.Number(p, "explosion") ?? 0)
             .Append(ChartModel.Number(s.Element, "explosion") ?? 0)).DefaultIfEmpty(0).Max() / 100;
-        // With data labels PowerPoint keeps a margin around the pie for them.
-        var labelled = rings.SelectMany(r => Enumerable.Range(0, r.Values.Count).Select(i => DataLabel(group, r, i))).FirstOrDefault(l => l != null);
+        // With data labels that may go outside (outEnd, bestFit) PowerPoint keeps a margin around the pie for them;
+        // inside labels (inEnd, ctr) and doughnut labels leave it its full size (measured with local/pielabels).
+        var labelled = rings.SelectMany(r => Enumerable.Range(0, r.Values.Count).Select(i => DataLabel(group, r, i)))
+            .FirstOrDefault(l => l != null && (doughnut || (l.Position ?? "bestFit") is "bestFit" or "outEnd"));
         var margin = labelled != null && ManualPlot() == null ? PieLabelMargin * labelled.Style.Size : 0;
         var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + maxExplosion);
         var (cx, cy) = (plot.X + plot.W / 2, plot.Y + plot.H / 2);
@@ -2700,18 +3002,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 svg.Append($"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
                 if (DataLabel(group, series, i) is { } spec)
                 {
-                    // Doughnut labels sit in the middle of the ring; pie labels at half the radius (ctr), near the
-                    // edge inside (inEnd, bestFit) or outside it (outEnd).
-                    var label = LabelText(spec, series, i, series.Values[i] ?? 0, total);
-                    var (w, h) = LabelSize(spec, label);
-                    var (dx, dy) = (Math.Sin(mid), -Math.Cos(mid));
-                    var distance = doughnut ? (outer + inner) / 2 : (spec.Position ?? "bestFit") switch
+                    if (doughnut)
                     {
-                        "ctr" => outer * 0.5,
-                        "outEnd" => outer + LabelOffset + Math.Abs(dx) * w / 2 + Math.Abs(dy) * h / 2,
-                        _ => outer * 0.8,
-                    };
-                    DrawLabel(spec, label, cx + ox + dx * distance - w / 2, cy + oy + dy * distance - h / 2);
+                        // Doughnut labels sit in the middle of the ring.
+                        var label = LabelText(spec, series, i, series.Values[i] ?? 0, total);
+                        var (w, h) = LabelSize(spec, label);
+                        var (dx, dy) = (Math.Sin(mid), -Math.Cos(mid));
+                        var placed = Moved(spec, new Box(cx + ox + dx * (outer + inner) / 2 - w / 2, cy + oy + dy * (outer + inner) / 2 - h / 2, w, h));
+                        DrawLabel(spec, label, placed.X, placed.Y);
+                    }
+                    else
+                        PieLabel(spec, series, i, series.Values[i] ?? 0, total, cx + ox, cy + oy, outer, angle, sweep);
                 }
                 angle += sweep;
             }
@@ -2724,8 +3025,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// the last splitPos, 2 by default; val and percent: those below splitPos; cust: c:secondPiePt) are drawn as a second
     /// pie or a stacked bar beside the main pie, which shows them as one slice (formatted by the extra data point)
     /// centered towards it; the second plot is secondPieSize % of the main pie high, a bar half as wide as high, the gap
-    /// between them gapWidth % of a constant share of the main pie, the second pie's slices start where the combined
-    /// slice starts, the bar's first point on top; series lines join them (measured with generated/charts-details).
+    /// between them gapWidth % of a constant share of the main pie, the second pie's slices start (clockwise) where the
+    /// combined slice ends, the bar's first point on top; series lines join them (measured with generated/charts-details).
     /// </summary>
     string OfPie(ChartGroup group, Box plot)
     {
@@ -2808,7 +3109,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         else
         {
             var (cx2, r2) = (secondLeft + height / 2, height / 2);
-            var a = 90 - otherSweep / 2;
+            var a = 90 + otherSweep / 2;
             foreach (var i in second.OrderBy(i => i))
             {
                 var sweep = other > 0 ? values[i] / other * 360 : 0;
