@@ -1441,7 +1441,8 @@ public static class Engine
         var oneD = connector.Param("dim") == "1D";
         var (begPad, endPad) = Pads(connector, reference, oneD ? (0.0, 0.0) : (0.22 * reference, 0.25 * reference));
         var span = Math.Max(0, reference - begPad - endPad);
-        var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
+        // As high as given, else a line without height (dim 1D, measured: RadialCluster's lines) or 0.62 of its length.
+        var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? (oneD ? 0 : span * 0.62)) * connector.Scale;
         // An arrow as high as its head where the head's height is given (measured: lProcess1's arrows, hArH half their
         // connector's height).
         if (Finite(connector, "hArH") is > 0 and var head && Finite(connector, "h") is > 0 and var full)
