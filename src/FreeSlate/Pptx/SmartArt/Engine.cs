@@ -35,10 +35,13 @@ public static class Engine
             for (var round = 0; round < 8 && Fitting.Fit(root, measure, pins); round++)
                 Run(root, w, h, pins);
         }
-        // A composite root's drawing, where it fits the frame, is centered in it (measured: AccentedPicture's picture
-        // and descriptions, pyramid2, funnel1; the roots that align their children themselves, lin and snake, keep it
-        // where they put it, IncreasingCircleProcess's at the top).
-        if (root.AlgorithmType == "composite" && Bounds(root) is var drawn && drawn.W <= w + 1e-6 && drawn.H <= h + 1e-6)
+        // A composite root's drawing, where it fits the frame with the root's own connectors, is centered in it
+        // (measured: AccentedPicture's picture and descriptions, pyramid2, funnel1; gear1's arrows reach beyond the
+        // frame, its gears stay; the roots that align their children themselves, lin and snake, keep it where they put
+        // it, IncreasingCircleProcess's at the top).
+        if (root.AlgorithmType == "composite" && Bounds(root) is var drawn
+            && Union(drawn, root.Children.Where(c => c.AlgorithmType == "conn" && c.W + c.H > 0).Select(c => (c.X, c.Y, c.W, c.H))) is var all
+            && all.W <= w + 1e-6 && all.H <= h + 1e-6)
             Translate(root, (w - drawn.W) / 2 - drawn.X, (h - drawn.H) / 2 - drawn.Y);
         return root;
     }
@@ -1455,13 +1458,20 @@ public static class Engine
             if (name != null)
                 return candidates.FirstOrDefault(n => n.Name == name)
                        ?? candidates.SelectMany(n => n.Descendants()).FirstOrDefault(n => n.Name == name && n.AlgorithmType != "conn")
-                       ?? (all.Where(n => n.Name == name).ToList() is [{ Point.Type: "doc" } only] ? only : null)
+                       ?? (all.Where(n => n.Name == name).ToList() is [var only] && only.Point.Type == "doc" ? only : null)
                        ?? candidates.FirstOrDefault(Draws);
             return candidates.FirstOrDefault(n => Draws(n) && (string?)n.Shape?.Attribute("hideGeom") is not ("1" or "true"))
                    ?? candidates.FirstOrDefault(Draws);
         }
         var start = Find(from, connector.Param("srcNode"));
         var end = Find(to, connector.Param("dstNode"));
+        // A name the transition's own nodes do not hold names the one node of that name in the diagram, unless that
+        // is the other end (measured: gear1's arrows between two points of the same gear).
+        LayoutNode? Unique(string? name) => name != null && all.Where(n => n.Name == name).ToList() is [var only] ? only : null;
+        if (end != null && end.Name != connector.Param("dstNode") && Unique(connector.Param("dstNode")) is { } namedEnd && namedEnd != start)
+            end = namedEnd;
+        if (start != null && start.Name != connector.Param("srcNode") && Unique(connector.Param("srcNode")) is { } namedStart && namedStart != end)
+            start = namedStart;
         if (start != null && end != null)
             return (start, end);
         // Outside transitions, the siblings srcNode and dstNode name (measured: VerticalCurvedList's arc from its first
@@ -1509,8 +1519,12 @@ public static class Engine
         }
         // A curved connector with a diameter: along the circle of that size through its ends, the short way round
         // clockwise (measured: cycle8's arrows between the points beside its wedges).
-        if (connector.Param("connRout") is "curve" or "longCurve" && Finite(connector, "diam") is > 0 and var diameter)
+        // A negative diameter runs the other way round, counterclockwise (measured: gear1's second arrow, drawn as a left
+        // circular arrow).
+        if (connector.Param("connRout") is "curve" or "longCurve" && Finite(connector, "diam") is { } signed && Math.Abs(signed) > 0)
         {
+            var diameter = Math.Abs(signed);
+            var turning = signed < 0 ? -1 : 1;
             var radius = diameter / 2 * connector.Scale;
             var (px, py) = (start.X + start.W / 2, start.Y + start.H / 2);
             var (qx, qy) = (end.X + end.W / 2, end.Y + end.H / 2);
@@ -1522,10 +1536,11 @@ public static class Engine
                 var (mx, my) = ((px + qx) / 2, (py + qy) / 2);
                 (double X, double Y) center = (mx - cuy * rise, my + cux * rise);
                 double Sweep((double X, double Y) c) =>
-                    ((Math.Atan2(qy - c.Y, qx - c.X) - Math.Atan2(py - c.Y, px - c.X)) * 180 / Math.PI % 360 + 360) % 360;
+                    ((Math.Atan2(qy - c.Y, qx - c.X) - Math.Atan2(py - c.Y, px - c.X)) * 180 / Math.PI * turning % 360 + 360) % 360;
                 if (Sweep(center) > 180)
                     center = (mx + cuy * rise, my - cux * rise);
                 (connector.Values["arcX"], connector.Values["arcY"], connector.Values["arcR"]) = (center.X, center.Y, Math.Max(radius, chord / 2));
+                connector.Values["arcDir"] = turning;
                 Arc(connector, start, end, pins);
                 return;
             }

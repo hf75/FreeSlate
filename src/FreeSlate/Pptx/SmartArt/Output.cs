@@ -312,11 +312,20 @@ public static class Output
             static string Ratio(double v) => ((long)Math.Round(v * 100000)).ToString(CultureInfo.InvariantCulture);
             static string Degrees(double v) => ((long)Math.Round((v % 360 + 360) % 360 * 60000)).ToString(CultureInfo.InvariantCulture);
             XElement Guide(string name, string value) => new(A + "gd", new XAttribute("name", name), new XAttribute("fmla", "val " + value));
-            var arcPreset = begin && !end ? "leftCircularArrow" : end || begin ? "circularArrow" : "blockArc";
+            // Counterclockwise (arcDir negative) the arrow mirrors: a left circular arrow from the start back to its end,
+            // the head before the end (measured: gear1's second arrow).
+            var back = connector.Values.TryGetValue("arcDir", out var arcDir) && arcDir < 0;
+            var arcPreset = back ? (end ? "leftCircularArrow" : begin ? "circularArrow" : "blockArc")
+                : begin && !end ? "leftCircularArrow" : end || begin ? "circularArrow" : "blockArc";
             List<XElement> arc = arcPreset == "blockArc"
-                ? [Guide("adj1", Degrees(start)), Guide("adj2", Degrees(start + sweep)), Guide("adj3", Ratio(0.6 * thickness / box))]
-                : [Guide("adj1", Ratio(0.6 * thickness / box)), Guide("adj2", Degrees(head)), Guide("adj3", Degrees(start + sweep - head)),
-                   Guide("adj4", Degrees(start)), Guide("adj5", Ratio(0.7 * thickness / box))];
+                ? back
+                    ? [Guide("adj1", Degrees(start - sweep)), Guide("adj2", Degrees(start)), Guide("adj3", Ratio(0.6 * thickness / box))]
+                    : [Guide("adj1", Degrees(start)), Guide("adj2", Degrees(start + sweep)), Guide("adj3", Ratio(0.6 * thickness / box))]
+                : back
+                    ? [Guide("adj1", Ratio(0.6 * thickness / box)), Guide("adj2", Degrees(head)), Guide("adj3", Degrees(start - sweep + head)),
+                       Guide("adj4", Degrees(start)), Guide("adj5", Ratio(0.7 * thickness / box))]
+                    : [Guide("adj1", Ratio(0.6 * thickness / box)), Guide("adj2", Degrees(head)), Guide("adj3", Degrees(start + sweep - head)),
+                       Guide("adj4", Degrees(start)), Guide("adj5", Ratio(0.7 * thickness / box))];
             return new Geometry(arcPreset, arc, connector.X, connector.Y, connector.W, connector.H, 0, false, false, false);
         }
         if (connector.Param("dim") == "1D")
