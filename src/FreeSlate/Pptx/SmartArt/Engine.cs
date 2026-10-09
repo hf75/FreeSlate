@@ -1332,6 +1332,9 @@ public static class Engine
         var boxes = children.Select(c => Arrange(c, pins)).ToList();
         var across = boxes.Max(b => horizontal ? b.H : b.W);
         var order = direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count);
+        // Each subtree as close to the ones before as their shapes allow where they lie side by side, sibSp apart
+        // (measured: orgChart1's and hierarchy1's second child beside the first, over its children's row).
+        var placed = new List<(double X, double Y, double W, double H)>();
         var position = 0.0;
         foreach (var i in order)
         {
@@ -1339,12 +1342,45 @@ public static class Engine
             var size = horizontal ? b.W : b.H;
             var cross = Align(alignment switch { "b" or "r" => "b", "ctr" or "mid" => "ctr", _ => "t" }, across, horizontal ? b.H : b.W);
             if (horizontal)
-                Translate(children[i], position - b.X, cross - b.Y);
+                Translate(children[i], 0, cross - b.Y);
             else
-                Translate(children[i], cross - b.X, position - b.Y);
-            position += size + gap;
+                Translate(children[i], cross - b.X, 0);
+            var shapes = Shapes(children[i]);
+            double? shift = null;
+            foreach (var a in placed)
+            {
+                foreach (var s in shapes)
+                {
+                    var side = horizontal ? a.Y < s.Y + s.H - 1e-6 && s.Y < a.Y + a.H - 1e-6 : a.X < s.X + s.W - 1e-6 && s.X < a.X + a.W - 1e-6;
+                    if (side)
+                        shift = Math.Max(shift ?? double.MinValue, horizontal ? a.X + a.W + gap - s.X : a.Y + a.H + gap - s.Y);
+                }
+            }
+            var start = horizontal ? b.X : b.Y;
+            var move = placed.Count == 0 ? -start : shift ?? position - start;
+            if (horizontal)
+                Translate(children[i], move, 0);
+            else
+                Translate(children[i], 0, move);
+            placed.AddRange(Shapes(children[i]));
+            position = Math.Max(position, start + move + size + gap);
         }
         return Bounds(node);
+    }
+
+    /// <summary>The boxes of a placed subtree's shapes (as <see cref="Bounds"/> counts them).</summary>
+    static List<(double X, double Y, double W, double H)> Shapes(LayoutNode node)
+    {
+        var result = new List<(double X, double Y, double W, double H)>();
+        foreach (var n in node.Descendants().Prepend(node))
+        {
+            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || n.AlgorithmType == "conn")
+                continue;
+            result.Add((Math.Min(n.X, n.X + n.W), Math.Min(n.Y, n.Y + n.H), Math.Abs(n.W), Math.Abs(n.H)));
+        }
+        if (result.Count == 0)
+            result.Add((node.X, node.Y, node.W, node.H));
+        return result;
     }
 
     /// <summary>
