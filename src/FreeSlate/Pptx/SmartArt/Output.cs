@@ -391,6 +391,21 @@ public static class Output
                 new XElement(A + "rect", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0)),
                 new XElement(A + "pathLst", path)));
         }
+        else if (geometry.Line && (Connector(node) ?? node).Values.TryGetValue("arcSweep", out var arcSweep))
+        {
+            // A curved line: along its circle (its box) from where it starts, the way it runs.
+            var v = (Connector(node) ?? node).Values;
+            var (radius, start) = (geometry.W / 2, v["arcStart"]);
+            var sweep = arcSweep * (v.TryGetValue("arcDir", out var dir) && dir < 0 ? -1 : 1);
+            var path = new XElement(A + "path", new XAttribute("w", Emu(geometry.W)), new XAttribute("h", Emu(geometry.H)), new XAttribute("fill", "none"),
+                new XElement(A + "moveTo", new XElement(A + "pt",
+                    new XAttribute("x", Emu(radius + radius * Math.Cos(start * Math.PI / 180))), new XAttribute("y", Emu(radius + radius * Math.Sin(start * Math.PI / 180))))),
+                new XElement(A + "arcTo", new XAttribute("wR", Emu(radius)), new XAttribute("hR", Emu(radius)),
+                    new XAttribute("stAng", Angle(((start % 360) + 360) % 360)), new XAttribute("swAng", Angle(sweep))));
+            spPr.Add(new XElement(A + "custGeom", new XElement(A + "avLst"), new XElement(A + "gdLst"), new XElement(A + "ahLst"), new XElement(A + "cxnLst"),
+                new XElement(A + "rect", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0)),
+                new XElement(A + "pathLst", path)));
+        }
         else if (geometry.Line)
         {
             spPr.Add(new XElement(A + "custGeom", new XElement(A + "avLst"), new XElement(A + "gdLst"), new XElement(A + "ahLst"), new XElement(A + "cxnLst"),

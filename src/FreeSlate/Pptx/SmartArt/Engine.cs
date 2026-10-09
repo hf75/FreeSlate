@@ -1000,7 +1000,7 @@ public static class Engine
             maxY = Math.Max(maxY, py + e.H / 2);
         }
         // Curved connectors run along the circle; their arcs' circle (0.65 of their thickness beyond it) takes room too.
-        var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve").ToList();
+        var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve" && c.Param("dim") != "1D").ToList();
         if (arcs.Count > 0 && radius > 0)
         {
             var reach = radius + 0.65 * arcs.Max(c => Value(c, "h"));
@@ -1360,29 +1360,7 @@ public static class Engine
         var reference = connector.Values.TryGetValue("connDistEqu", out var equal) ? equal : distance;
         connector.Values["connDist"] = reference;
         var oneD = connector.Param("dim") == "1D";
-        var (begPad, endPad) = oneD ? (0.0, 0.0) : (0.22 * reference, 0.25 * reference);
-        // The pads refer to the distance: evaluate the connector's own constraints with it.
-        foreach (var constraint in connector.Constraints)
-        {
-            var type = (string?)constraint.Attribute("type");
-            if (type is "begPad" or "endPad")
-            {
-                // Of the distance, or of the connector's own size (measured: lProcess1's arrows between items, padded
-                // by a quarter of their width at each end).
-                var fact = Number((string?)constraint.Attribute("fact")) ?? 1;
-                var value = (string?)constraint.Attribute("refType") switch
-                {
-                    "connDist" => reference * fact,
-                    "w" when Finite(connector, "w") is { } cw => cw * connector.Scale * fact,
-                    "h" when Finite(connector, "h") is { } ch => ch * connector.Scale * fact,
-                    _ => Number((string?)constraint.Attribute("val")) ?? 0,
-                };
-                if (type == "begPad")
-                    begPad = value;
-                else
-                    endPad = value;
-            }
-        }
+        var (begPad, endPad) = Pads(connector, reference, oneD ? (0.0, 0.0) : (0.22 * reference, 0.25 * reference));
         var span = Math.Max(0, reference - begPad - endPad);
         var thickness = connector.H > 0 ? connector.H : (Finite(connector, "h") ?? span * 0.62) * connector.Scale;
         // An arrow as high as its head where the head's height is given (measured: lProcess1's arrows, hArH half their
@@ -1401,6 +1379,35 @@ public static class Engine
         PlaceConnector(connector, cx - span / 2, cy - thickness / 2, span, thickness, pins);
         var angle = Math.Atan2(uy, ux) * 180 / Math.PI;
         connector.Rotation = Math.Abs(angle) < 1e-9 ? 0 : (angle % 360 + 360) % 360;
+    }
+
+    /// <summary>
+    /// A connector's pads (begPad, endPad) by its own constraints, which refer to the distance between its ends
+    /// (connDist) or its own size (measured: lProcess1's arrows between items, padded by a quarter of their width at each
+    /// end), else as given.
+    /// </summary>
+    static (double Begin, double End) Pads(LayoutNode connector, double distance, (double Begin, double End) given)
+    {
+        var (begPad, endPad) = given;
+        foreach (var constraint in connector.Constraints)
+        {
+            var type = (string?)constraint.Attribute("type");
+            if (type is not ("begPad" or "endPad"))
+                continue;
+            var fact = Number((string?)constraint.Attribute("fact")) ?? 1;
+            var value = (string?)constraint.Attribute("refType") switch
+            {
+                "connDist" => distance * fact,
+                "w" when Finite(connector, "w") is { } cw => cw * connector.Scale * fact,
+                "h" when Finite(connector, "h") is { } ch => ch * connector.Scale * fact,
+                _ => Number((string?)constraint.Attribute("val")) ?? 0,
+            };
+            if (type == "begPad")
+                begPad = value;
+            else
+                endPad = value;
+        }
+        return (begPad, endPad);
     }
 
     /// <summary>A connection point of a node's box (tL, tCtr, tR, midL, ctr, midR, bL, bCtr, bR).</summary>
@@ -1525,8 +1532,19 @@ public static class Engine
         var begin = Leave(start, cx, cy, r, AngleOf(start), way);
         var finish = Leave(end, cx, cy, r, AngleOf(end), -way);
         var sweep = ((finish - begin) * way % 360 + 360) % 360;
+        // The pads along the arc, of the straight distance between where it leaves and reaches its nodes (measured:
+        // cycle5's arrows a fifth of it short of their nodes at each end).
+        var chord = 2 * r * Math.Sin(sweep * Math.PI / 360);
+        connector.Values["connDist"] = chord;
+        var (begPad, endPad) = Pads(connector, chord, (0, 0));
+        if (r > 0 && (begPad + endPad) / r * 180 / Math.PI < sweep)
+        {
+            begin += way * begPad / r * 180 / Math.PI;
+            sweep -= (begPad + endPad) / r * 180 / Math.PI;
+        }
         var head = r > 0 ? 0.5 * thickness / r * 180 / Math.PI : 0;
-        var reach = r + 0.65 * thickness;
+        // A line's box is the circle's (dim 1D, measured: cycle5's), an arrow's reaches beyond it.
+        var reach = connector.Param("dim") == "1D" ? r : r + 0.65 * thickness;
         PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
         connector.Rotation = 0;
         connector.Values["arcStart"] = begin;
