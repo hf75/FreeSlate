@@ -95,7 +95,9 @@ static class Fitting
         var (l, r) = (TextBody.Margin(node, "lMarg", primary), TextBody.Margin(node, "rMarg", primary));
         var (t, b) = (TextBody.Margin(node, "tMarg", primary), TextBody.Margin(node, "bMarg", primary));
         // The text lies in the geometry's text rectangle (a rounded rectangle's inside its corners), within the margins.
-        var (areaWidth, areaHeight) = Output.TextArea(node);
+        // A text node without a box of its own fits its text in the shape showing it (measured: pyramid1's levels; a
+        // text node with a box fits in it, process3's titles in theirs below their shapes).
+        var (areaWidth, areaHeight) = Output.TextArea(node.W * node.H <= 1e-9 && Output.ShownBy(node) is { } shown ? shown : node);
         var width = areaWidth * Engine.PtPerMm - l - r;
         if (width <= 0)
             return (false, double.PositiveInfinity);

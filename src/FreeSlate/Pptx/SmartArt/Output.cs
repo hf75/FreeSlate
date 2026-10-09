@@ -38,7 +38,11 @@ public static class Output
     ];
 
     /// <summary>A shape's geometry: preset (or null for a line), adjust values, box (mm), rotation and flips.</summary>
-    sealed record Geometry(string? Preset, List<XElement> Adjust, double X, double Y, double W, double H, double Rotation, bool Line, bool HeadArrow, bool TailArrow);
+    sealed record Geometry(string? Preset, List<XElement> Adjust, double X, double Y, double W, double H, double Rotation, bool Line, bool HeadArrow, bool TailArrow)
+    {
+        /// <summary>A text rectangle the algorithm sets instead of the preset's (mm, relative to the box, unturned).</summary>
+        public (double L, double T, double R, double B)? Text { get; init; }
+    }
 
     /// <summary>The shapes of the diagram as a PresentationML shape tree, in EMU relative to the diagram's frame.</summary>
     public static XElement Shapes(LayoutNode root, Styling styling, XElement? listStyle)
@@ -83,6 +87,22 @@ public static class Output
     static bool Hidden(LayoutNode node) => ShapeType(node) is { } type && type != "none" && HideGeometry(node);
 
     static string TextKey(LayoutNode node) => string.Join("|", node.Text.Select(p => p.Id));
+
+    /// <summary>
+    /// The shape showing a text node's text where the text node draws no geometry of its own (a pyramid's level showing
+    /// its hidden text node's text), or null.
+    /// </summary>
+    public static LayoutNode? ShownBy(LayoutNode textNode)
+    {
+        if (Visible(textNode) || textNode.Text.Count == 0)
+            return null;
+        var root = textNode;
+        while (root.Parent != null)
+            root = root.Parent;
+        var all = root.Descendants().Prepend(root).ToList();
+        var byText = all.Where(n => n.Text.Count > 0).GroupBy(TextKey).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+        return all.FirstOrDefault(n => n != textNode && Visible(n) && TextLayout(n, byText) == textNode);
+    }
 
     /// <summary>The node whose text and font sizes a node's shape shows (a text node of the same data), or null.</summary>
     public static LayoutNode? TextSource(LayoutNode root, LayoutNode node)
@@ -250,10 +270,15 @@ public static class Output
                 : ((long)Math.Round(value * 100000)).ToString(CultureInfo.InvariantCulture);
             adjust.Add(new XElement(A + "gd", new XAttribute("name", names[index - 1]), new XAttribute("fmla", "val " + formula)));
         }
-        // A pyramid level's trapezoid continues the pyramid's sides (Engine.Pyramid).
+        // A pyramid level's trapezoid continues the pyramid's sides (Engine.Pyramid); its text takes the middle 0.65 of
+        // its width, the apex's its whole box (measured: pyramid1's and pyramid3's text rectangles).
+        (double L, double T, double R, double B)? text = null;
         if (node.Values.TryGetValue("pyraAdj", out var pyramid) && type == "trapezoid")
+        {
             adjust = [new XElement(A + "gd", new XAttribute("name", "adj"), new XAttribute("fmla", "val " + ((long)Math.Round(pyramid * 100000)).ToString(CultureInfo.InvariantCulture)))];
-        return new Geometry(type, adjust, x, y, w, h, turn + node.Rotation, false, false, false);
+            text = w - 2 * pyramid * Math.Min(w, h) < 0.01 * w ? (0, 0, w, h) : (0.175 * w, 0, 0.825 * w, h);
+        }
+        return new Geometry(type, adjust, x, y, w, h, turn + node.Rotation, false, false, false) { Text = text };
     }
 
     /// <summary>
@@ -301,6 +326,8 @@ public static class Output
     /// <summary>The text rectangle of a geometry (mm, relative to its box, unturned).</summary>
     static (double L, double T, double R, double B) TextRect(Geometry geometry)
     {
+        if (geometry.Text is { } set)
+            return set;
         if (geometry.Preset == null || PresetGeometries.Get(geometry.Preset) is not { } definition)
             return (0, 0, geometry.W, geometry.H);
         var adjust = geometry.Adjust.Select(g => new Guide((string)g.Attribute("name")!, (string)g.Attribute("fmla")!)).ToList();
