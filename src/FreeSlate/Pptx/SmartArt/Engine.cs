@@ -123,12 +123,23 @@ public static class Engine
         }
     }
 
-    /// <summary>A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; the parent's size where none is given).</summary>
+    /// <summary>
+    /// A child's box in its parent's (l, t, r, b, ctrX, ctrY, w, h; the parent's size where none is given), each value
+    /// moved by its offset (wOff, bOff …, measured: chevron2's descriptions as wide as the row less its title, wOff
+    /// −1 title width, and ending half a title width above its bottom, bOff).
+    /// </summary>
     static (double X, double Y, double W, double H) ChildRect(LayoutNode child, double parentW, double parentH)
     {
-        var (cw, ch) = (Value(child, "w", parentW), Value(child, "h", parentH));
-        var cx = Finite(child, "l") ?? (Finite(child, "ctrX") is { } cX ? cX - cw / 2 : Finite(child, "r") is { } r ? r - cw : 0);
-        var cy = Finite(child, "t") ?? (Finite(child, "ctrY") is { } cY ? cY - ch / 2 : Finite(child, "b") is { } b ? b - ch : 0);
+        double? Raw(string type) =>
+            child.Values.TryGetValue(type, out var v) && double.IsFinite(v)
+                ? v + (child.Values.TryGetValue(type + "Off", out var o) && double.IsFinite(o) ? o : 0)
+                : null;
+        var (l, r, ctrX, w) = (Raw("l"), Raw("r"), Raw("ctrX"), Raw("w"));
+        var (t, b, ctrY, h) = (Raw("t"), Raw("b"), Raw("ctrY"), Raw("h"));
+        var cw = w ?? (l is { } left && r is { } right ? right - left : parentW);
+        var ch = h ?? (t is { } top && b is { } bottom ? bottom - top : parentH);
+        var cx = l ?? (ctrX is { } cX ? cX - cw / 2 : r is { } rr ? rr - cw : 0);
+        var cy = t ?? (ctrY is { } cY ? cY - ch / 2 : b is { } bb ? bb - ch : 0);
         return (cx, cy, cw, ch);
     }
 
@@ -193,7 +204,9 @@ public static class Engine
             var (ew, eh) = horizontal ? (along, across) : (across, along);
             return (0, 0, w is { } fw ? growsW ? Math.Max(fw, ew) : fw : ew, h is { } fh ? growsH ? Math.Max(fh, eh) : fh : eh);
         }
-        return (0, 0, w ?? 0, h ?? 0);
+        // A leaf's own size, its offsets added (ChildRect).
+        var (_, _, ow, oh) = ChildRect(node, 0, 0);
+        return (0, 0, ow, oh);
     }
 
     /// <summary>

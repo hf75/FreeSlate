@@ -146,12 +146,14 @@ public static class SmartArtCheck
                         continue;
                     }
                     var k = Engine.PtPerMm;
-                    var error = new[] { node.X * k - px, node.Y * k - py, node.W * k - pw, node.H * k - ph }.Max(Math.Abs) / scale;
+                    // The box the shape is drawn in (a quarter-turned shape's box turned, as PowerPoint writes it).
+                    var (nx, ny, nw, nh) = Output.DrawnBox(node) ?? (node.X, node.Y, node.W, node.H);
+                    var error = new[] { nx * k - px, ny * k - py, nw * k - pw, nh * k - ph }.Max(Math.Abs) / scale;
                     sum += Math.Min(error, 1);
                     if (error < 0.01)
                         diagramGood++;
                     var size = sp.Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz")?.Value;
-                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({node.X * k,7:0.0} {node.Y * k,7:0.0} {node.W * k,7:0.0} {node.H * k,7:0.0})  {error * 100,5:0.0} %  {node.Note}"));
+                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({nx * k,7:0.0} {ny * k,7:0.0} {nw * k,7:0.0} {nh * k,7:0.0})  {error * 100,5:0.0} %  {node.Note}"));
                 }
                 if (count == 0)
                     continue;

@@ -211,6 +211,10 @@ public static class Output
 
     static string Angle(double degrees) => ((long)Math.Round(degrees * 60000)).ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>The box of the geometry a node draws (millimeters, a quarter-turned shape's box turned), or null.</summary>
+    public static (double X, double Y, double W, double H)? DrawnBox(LayoutNode node) =>
+        GeometryOf(node) is { } g ? (g.X, g.Y, g.W, g.H) : null;
+
     /// <summary>The geometry a node draws, or null for none.</summary>
     static Geometry? GeometryOf(LayoutNode node)
     {
