@@ -269,7 +269,11 @@ public sealed class LayoutTree
                 break;
             case "pos" or "revPos" or "posEven" or "posOdd":
             {
-                var (position, total) = Position(point);
+                // The position among its siblings of the first point the axis selects (measured: cycle7's connectors,
+                // posEven of the diagram's first node, so never even, straight between the nodes' centers).
+                if ((condition.Attribute("axis") != null ? Select(condition, point).FirstOrDefault() : point) is not { } first)
+                    return false;
+                var (position, total) = Position(first);
                 var value = func switch
                 {
                     "pos" => position,

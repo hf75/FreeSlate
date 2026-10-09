@@ -1373,14 +1373,25 @@ public static class Engine
         }
         var (ax, ay) = (start.X + start.W / 2, start.Y + start.H / 2);
         var (bx, by) = (end.X + end.W / 2, end.Y + end.H / 2);
+        // Radial points in a cycle: where its circle leaves the first node and reaches the second (measured: cycle2's
+        // arrows between two circles, over and under the middle).
+        var radial = connector.Param("begPts") == "radial" && connector.Param("endPts") == "radial"
+            && connector.Values.ContainsKey("arcR") && Value(connector, "arcR") > 0;
+        if (radial)
+        {
+            var (ox, oy, r) = (Value(connector, "arcX"), Value(connector, "arcY"), Value(connector, "arcR"));
+            var way = Value(connector, "arcDir") < 0 ? -1 : 1;
+            (ax, ay) = OnCircle(ox, oy, r, Leave(start, ox, oy, r, Math.Atan2(ay - oy, ax - ox) * 180 / Math.PI, way));
+            (bx, by) = OnCircle(ox, oy, r, Leave(end, ox, oy, r, Math.Atan2(by - oy, bx - ox) * 180 / Math.PI, -way));
+        }
         var (dx, dy) = (bx - ax, by - ay);
         var length = Math.Sqrt(dx * dx + dy * dy);
         if (length < 1e-9)
             return;
         var (ux, uy) = (dx / length, dy / length);
         // From the nodes' outlines, or from a center the points name (begPts, endPts ctr; measured: radial4's arrows
-        // from the middle circle to its nodes' centers).
-        var (ta, tb) = (connector.Param("begPts") == "ctr" ? 0 : Edge(start, ux, uy), connector.Param("endPts") == "ctr" ? 0 : Edge(end, -ux, -uy));
+        // from the middle circle to its nodes' centers), or from the radial points.
+        var (ta, tb) = radial ? (0, 0) : (connector.Param("begPts") == "ctr" ? 0 : Edge(start, ux, uy), connector.Param("endPts") == "ctr" ? 0 : Edge(end, -ux, -uy));
         var distance = Math.Max(0, length - ta - tb);
         // The distance its pads and length refer to: its own, or the one an equ constraint gives it.
         var reference = connector.Values.TryGetValue("connDistEqu", out var equal) ? equal : distance;
