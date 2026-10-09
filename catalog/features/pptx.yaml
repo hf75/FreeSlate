@@ -1892,7 +1892,7 @@ areas:
                    dgm:linClrLst, dgm:effectClrLst, dgm:txLinClrLst, dgm:txFillClrLst, dgm:txEffectClrLst]
         priority: P3
         difficulty: 3
-        status: partial
+        status: done
         strategy: Part of the layout engine path.
         office: >-
           Color definitions: each style label lists fill, line, effect and text colors applied in turn
@@ -1903,8 +1903,12 @@ areas:
           is the presentation point's presStyleIdx of presStyleCnt: shapes showing the same data points share
           one, decorations count each. Text color from txFillClrLst, else the quick style's fontRef. The quick
           style's scene3d turns the whole diagram (3d5 to 3d9 styles); its labels give style references, sp3d
-          and light rigs, which the drawing keeps. Done for diagrams with a saved drawing (smartart.drawing);
-          diagrams laid out by the engine (smartart.layout) do not apply them yet.
+          and light rigs, which the drawing keeps; its labels' text properties (dgm:txPr, the 3d9 style's
+          a:sp3d extrusion) go into the text body's a:bodyPr. Applied to diagrams with a saved drawing
+          (smartart.drawing) and to those the engine lays out (smartart.layout writes style references, color
+          list colors, 3D properties and text properties per label like PowerPoint's drawings; all color
+          definitions and quick styles on a process with the drawings removed: 95.7 %). Built-in color
+          definitions leave txLinClrLst and txEffectClrLst empty; they are not applied.
 
   - id: transition
     title: Slide transitions

@@ -404,6 +404,10 @@ public static class Output
             var body = TextBody.Build(textNode, primary, Fitting.SecondaryFont(textNode));
             if (listStyle != null)
                 Styling.ApplyListStyle(body, textNode.Text, listStyle);
+            // The label's text properties of the style definition go into the body (measured: the 3d9 quick style's
+            // a:sp3d extrusion in PowerPoint's drawings).
+            if (styling.StyleElement(label, "txPr") is { HasElements: true } txPr)
+                body.Element(A + "bodyPr")?.Add(txPr.Elements().Select(e => new XElement(e)));
             shape.Add(body);
             shape.Add(TextTransform(geometry, textNode == node ? geometry : GeometryOf(textNode) ?? geometry, textNode));
         }
