@@ -210,15 +210,27 @@ public static class Constraints
                 continue;
             switch (op)
             {
+                // A bound on a value the others derive (w from l and r) holds it only where they break it (measured:
+                // VerticalCurvedList's text, w ≥ h, spans from its l to its r).
                 case "gte":
                     if (target.Values.TryGetValue(type, out var low))
                         target.Values[type] = Math.Max(low, v);
+                    else if (Get(target, type) is { } derivedLow)
+                    {
+                        if (derivedLow < v)
+                            target.Values[type] = v;
+                    }
                     else
                         target.Values[type] = v;
                     break;
                 case "lte":
                     if (target.Values.TryGetValue(type, out var high))
                         target.Values[type] = Math.Min(high, v);
+                    else if (Get(target, type) is { } derivedHigh)
+                    {
+                        if (derivedHigh > v)
+                            target.Values[type] = v;
+                    }
                     else
                         target.Values[type] = v;
                     break;
