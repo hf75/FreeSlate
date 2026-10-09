@@ -194,6 +194,15 @@ public static class Engine
             {
                 var (cx, cy, cw, ch) = ChildRect(child, pw, ph);
                 var e = child.Children.Count > 0 ? Extent(child) : (0, 0, cw, ch);
+                // A lin child without a size of its own takes the composite's box and shrinks its children into it
+                // (measured: lProcess2's inner lists, as high as their composites, their items shrunk to fit).
+                if (child.AlgorithmType == "lin")
+                {
+                    if (Finite(child, "w") == null && !Grows(child, "w"))
+                        (e.X, e.W) = (0, cw);
+                    if (Finite(child, "h") == null && !Grows(child, "h"))
+                        (e.Y, e.H) = (0, ch);
+                }
                 minX = Math.Min(minX, cx + e.X);
                 minY = Math.Min(minY, cy + e.Y);
                 maxX = Math.Max(maxX, cx + e.X + e.W);
