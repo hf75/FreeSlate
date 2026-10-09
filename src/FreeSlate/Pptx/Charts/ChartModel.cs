@@ -30,6 +30,12 @@ public sealed class ChartSeries
 
     /// <summary>Data point overrides (c:dPt) by point index.</summary>
     public Dictionary<int, XElement> Points { get; init; } = [];
+
+    /// <summary>
+    /// The categories of a date axis no date falls on: no data points, unlike blank cells (lines and areas run on
+    /// through them; measured: PowerPoint joins 5 and 12 January on a day axis with dispBlanksAs gap).
+    /// </summary>
+    public HashSet<int> Fillers { get; } = [];
 }
 
 /// <summary>A chart type group of the plot area (c:barChart, c:lineChart, c:pieChart …) and its series.</summary>
@@ -249,6 +255,9 @@ public sealed class ChartModel
             }
             series.Values.Clear();
             series.Values.AddRange(values);
+            var taken = dates.Select(d => Slot(d!.Value)).ToHashSet();
+            series.Fillers.Clear();
+            series.Fillers.UnionWith(Enumerable.Range(0, count).Where(k => !taken.Contains(k)));
             series.Categories.Clear();
             series.Categories.AddRange(Enumerable.Range(0, count).Select(k => Start(k).ToString(CultureInfo.InvariantCulture)));
             var points = series.Points.Where(p => p.Key < dates.Count && dates[p.Key] != null).ToList();

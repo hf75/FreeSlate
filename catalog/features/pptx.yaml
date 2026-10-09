@@ -1564,7 +1564,7 @@ areas:
                    c:numFmt, c15:numFmt]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Reproduce Office's automatic minimum, maximum and major unit; number formats need an Excel number-format
           engine; date axes, logarithmic and reversed scales.
@@ -1590,7 +1590,14 @@ areas:
           days, months or years from the first date to the last (c:baseTimeUnit, else by the closest dates),
           every point in the slot of its date, empty units keeping their place, labels every major unit
           (c:majorUnit in c:majorTimeUnit) or as many as fit (generated/charts-data: 1, 4, 5, 12 January on a
-          day axis, 1 and 15 January sharing January).
+          day axis, 1 and 15 January sharing January). Lines and areas run on through the dates
+          without data between their points (dispBlanksAs only concerns blank cells). A plot area placed with its
+          labels (layoutTarget outer) holds them all: half a value label at the top, the first turned category
+          label at the left edge. Category labels stand (1 + lblOffset / 100) / 2 default gaps below the axis
+          (measured with offsets of 0, 200, 400 and 1000). Display unit labels stand 3.6 pt beside the value labels
+          in a column 9.5 pt wider than their line, their end 2.5 pt below the top of the plot area. Horizontal
+          value axes keep each interval one label and three font sizes wide (a 418 pt scatter axis up to 9 steps
+          by 2). Checked with generated/charts-data, charts-details (99.2 %) and a label offset probe (99.6 %).
 
       - id: chart.labels
         title: Data labels

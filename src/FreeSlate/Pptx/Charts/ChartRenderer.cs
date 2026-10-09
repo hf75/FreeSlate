@@ -1369,7 +1369,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 }
                 break;
             }
-            var next = InnerPlot(outer, axes, plot, table);
+            var next = InnerPlot(outer, axes, plot, table, ManualOuterPlot() != null);
             if (Math.Abs(next.W - plot.W) < 0.01 && Math.Abs(next.H - plot.H) < 0.01)
             {
                 plot = next;
@@ -1553,7 +1553,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <summary>The plot area inside the axis labels (PowerPoint's inner plot area) for an automatic layout.</summary>
-    Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous, DataTableLayout? table)
+    /// <param name="manual">
+    /// The outer box is a manual layout (layoutTarget outer): the labels then fit inside it instead of reaching past
+    /// it (measured: a 180 x 205 pt outer plot area with labels turned by −45° and value labels from 0 to 6).
+    /// </param>
+    Box InnerPlot(Box outer, List<AxisLayout> axes, Box previous, DataTableLayout? table, bool manual = false)
     {
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
         var edges = new HashSet<string>();
@@ -1573,12 +1577,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             edges.Add(layout.Axis.Position);
             var extent = LabelExtent(layout);
-            var bleed = layout.Titled ? -TitlePaddingY : LabelBleed;
-            // A category axis's labels keep their distance in percent of the default (c:lblOffset); a value axis with a
+            var bleed = layout.Titled ? -TitlePaddingY : manual ? 0 : LabelBleed;
+            // A category axis's labels keep their distance by c:lblOffset (see AxisLabelOffset); a value axis with a
             // display unit label gives it a column of its own beside its labels.
-            var gapScale = layout.Axis.IsValue ? 1 : (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100;
+            var gapScale = AxisLabelOffset(layout);
             if (UnitLabel(layout.Axis) is { } unit)
-                extent += LineHeight(unit.Style) + ValueLabelGap * unit.Style.Size;
+                extent += LineHeight(unit.Style) + UnitLabelColumn;
             switch (layout.Axis.Position)
             {
                 case "l":
@@ -1607,8 +1611,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
             else
             {
-                if (!edges.Contains("t")) top = Math.Max(top, outer.Y - 6 + half);
-                if (!edges.Contains("b")) bottom = Math.Min(bottom, outer.Bottom + 6 - half);
+                var reach = manual ? 0 : 6;
+                if (!edges.Contains("t")) top = Math.Max(top, outer.Y - reach + half);
+                if (!edges.Contains("b")) bottom = Math.Min(bottom, outer.Bottom + reach - half);
             }
         }
 
@@ -1624,13 +1629,21 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             var angle = -layout.Rotation * Math.PI / 180;
             var reach = Width(layout.Labels[0], layout.Style) * Math.Cos(angle) + LineHeight(layout.Style) / 2 * Math.Sin(angle);
-            var limit = outer.X - 9 + reach;
+            var limit = outer.X - (manual ? 0 : 9) + reach;
             var n = Math.Max(1, layout.Categories);
             var needed = layout.Between ? (limit - right / (2 * n)) / (1 - 1.0 / (2 * n)) : limit;
             left = Math.Max(left, needed);
         }
         return new Box(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
     }
+
+    /// <summary>
+    /// The factor on the default gap between a category axis and its labels (c:lblOffset, percent): half of the gap
+    /// stays, the other half follows the percentage (measured: offsets of 0, 200, 400 and 1000 put 12 pt labels 0.5,
+    /// 1.5, 2.5 and 5.5 default gaps below the axis).
+    /// </summary>
+    static double AxisLabelOffset(AxisLayout layout) =>
+        layout.Axis.IsValue ? 1 : (1 + (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100) / 2;
 
     /// <summary>Label rotation in degrees (negative rises to the right): the text body's own, else −45° when category labels do not fit.</summary>
     static double Rotation(AxisLayout layout, double length)
@@ -1695,10 +1708,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (double.IsInfinity(min)) (min, max) = (0, 1);
 
         var style = layout.Style;
-        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus two font
-        // sizes (measured: a 252 pt bubble axis up to 3.1 takes steps of 1, a 377 pt one steps of 0.5).
+        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus three font
+        // sizes (measured: a 252 pt bubble axis up to 3.1 takes steps of 1, a 377 pt one steps of 0.5, a 418 pt
+        // scatter axis up to 9 steps of 2).
         var extent = layout.Axis.Horizontal
-            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 2 * style.Size
+            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size
             : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent);
@@ -1746,9 +1760,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return text.Length == 0 ? null : (text, Style(label.Element(Ns.C + "txPr"), "valueAxis", 10));
     }
 
+    // A display unit label's line stands 3.6 pt beside the value labels, its end 2.5 pt below the top of the plot
+    // area, in a column 9.5 pt wider than its line (measured: "Millionen" in 13.3 pt beside labels from 0 to 5).
+    const double UnitLabelGap = 3.6, UnitLabelEnd = 2.5, UnitLabelColumn = 9.5;
+
     /// <summary>
-    /// The display unit label of a value axis on the left or right: turned a quarter (reading upwards), beside the
-    /// labels, its end at the top of the plot area (measured: "Millionen" beside 0 to 5).
+    /// The display unit label of a value axis on the left or right: turned a quarter (reading upwards) beside the
+    /// labels, its end at the top of the plot area (see <see cref="UnitLabelGap"/>).
     /// </summary>
     string UnitLabelMarkup(AxisLayout layout, double edge)
     {
@@ -1759,9 +1777,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var s = layout.Style.Size;
         var lineHeight = LineHeight(style);
         var x = layout.Axis.Position == "l"
-            ? edge - ValueLabelGap * s - layout.MaxLabelWidth - ValueLabelGap * style.Size - lineHeight / 2
-            : edge + ValueLabelGap * s + layout.MaxLabelWidth + ValueLabelGap * style.Size + lineHeight / 2;
-        var top = layout.Scale.Ticks().Select(layout.Map).DefaultIfEmpty(0).Min();
+            ? edge - ValueLabelGap * s - layout.MaxLabelWidth - UnitLabelGap - lineHeight / 2
+            : edge + ValueLabelGap * s + layout.MaxLabelWidth + UnitLabelGap + lineHeight / 2;
+        var top = layout.Scale.Ticks().Select(layout.Map).DefaultIfEmpty(0).Min() + UnitLabelEnd;
         return $"<g transform=\"translate({Px(x)} {Px(top + w)}) rotate(-90)\">{text.Label(label, style, 0, CenteredBaseline(style, 0))}</g>";
     }
 
@@ -1988,8 +2006,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
 
         var angle = Math.Abs(layout.Rotation) * Math.PI / 180;
-        // A category axis may label only every n-th category (c:tickLblSkip), and its labels keep their distance in
-        // percent of the default (c:lblOffset).
+        // A category axis may label only every n-th category (c:tickLblSkip), and its labels keep their distance by
+        // c:lblOffset.
         var skip = layout.Axis.IsValue ? 1 : Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
         if (layout.DateStep is { } step)
         {
@@ -1997,7 +2015,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var slot = Math.Abs(layout.End - layout.Start) / Math.Max(1, layout.Categories);
             skip = step > 0 ? step : Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
         }
-        var gapScale = layout.Axis.IsValue ? 1 : (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100;
+        var gapScale = AxisLabelOffset(layout);
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
         {
             if (i % skip != 0)
@@ -2202,7 +2220,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         for (var i = 0; i < category.Categories; i++)
         {
             var v = series.Values.ElementAtOrDefault(i);
-            if (v == null && BlanksAs == "zero")
+            if (v == null && BlanksAs == "zero" && !series.Fillers.Contains(i))
                 v = 0;
             if (group.Stacked)
             {
@@ -2317,6 +2335,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             var series = group.Series[k];
             var points = SeriesPoints(group, k, category, value, stack);
+            // Dates without data (fillers) take the line between their neighbors' points.
+            for (var i = 0; i < points.Count; i++)
+            {
+                if (points[i] != null || !series.Fillers.Contains(i))
+                    continue;
+                var before = Enumerable.Range(0, i).Reverse().FirstOrDefault(j => points[j] != null && !series.Fillers.Contains(j), -1);
+                var after = Enumerable.Range(i + 1, points.Count - i - 1).FirstOrDefault(j => points[j] != null && !series.Fillers.Contains(j), -1);
+                if (before < 0 || after < 0)
+                    continue;
+                var t = (double)(i - before) / (after - before);
+                var (a, b) = (points[before]!.Value, points[after]!.Value);
+                points[i] = (a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+            }
             var top = points.Select((p, i) => p ?? (horizontal ? (category.Center(i), baseline[i]) : (baseline[i], category.Center(i)))).ToList();
             var d = new StringBuilder();
             for (var i = 0; i < top.Count; i++)
@@ -2455,7 +2486,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     string SeriesLine(ChartSeries series, List<(double X, double Y)?> points, Outline outline, bool smooth)
     {
         var stroke = paint.Stroke(outline, 0, 0, defs);
-        var indexed = points.Select((p, i) => p is { } q ? (Index: i, q.X, q.Y) : ((int Index, double X, double Y)?)null).ToList();
+        var indexed = points.Select((p, i) => p is { } q ? (Index: i, q.X, q.Y) : ((int Index, double X, double Y)?)null)
+            .Where((_, i) => !series.Fillers.Contains(i)).ToList();
         if (BlanksAs == "span")
             indexed = indexed.Where(p => p != null).ToList();
         var svg = new StringBuilder();
@@ -2490,7 +2522,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (run.Count > 0) yield return run;
     }
 
-    /// <summary>Path data through the points; smoothed lines use Catmull-Rom splines converted to Béziers.</summary>
+    /// <summary>
+    /// Path data through the points; smoothed lines use Catmull-Rom splines converted to Béziers, the ends continued
+    /// by mirroring their neighbors (measured: the last segment of a smoothed scatter line leaves its point a third
+    /// of the way back to the previous one).
+    /// </summary>
     static string PathData(List<(double X, double Y)> points, bool smooth)
     {
         var d = new StringBuilder($"M{Px(points[0].X)} {Px(points[0].Y)}");
@@ -2507,10 +2543,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         if (!smooth || points.Count < 3)
             return $"L{Px(points[i].X)} {Px(points[i].Y)}";
-        var p0 = points[Math.Max(0, i - 2)];
         var p1 = points[i - 1];
         var p2 = points[i];
-        var p3 = points[Math.Min(points.Count - 1, i + 1)];
+        (double X, double Y) p0 = i >= 2 ? points[i - 2] : (2 * p1.X - p2.X, 2 * p1.Y - p2.Y);
+        (double X, double Y) p3 = i + 1 < points.Count ? points[i + 1] : (2 * p2.X - p1.X, 2 * p2.Y - p1.Y);
         const double t = 1.0 / 6;
         var c1 = (p1.X + (p2.X - p0.X) * t, p1.Y + (p2.Y - p0.Y) * t);
         var c2 = (p2.X - (p3.X - p1.X) * t, p2.Y - (p3.Y - p1.Y) * t);
