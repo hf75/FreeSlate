@@ -205,8 +205,7 @@ public static class Engine
         {
             var horizontal = (node.Param("linDir") ?? "fromL") is "fromL" or "fromR";
             var extents = children.Select(Extent).ToList();
-            var gap = Value(node, "sp") * Pairs(children);
-            var along = extents.Sum(e => horizontal ? e.W : e.H) + gap;
+            var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
             var across = extents.Max(e => horizontal ? e.H : e.W);
             var (ew, eh) = horizontal ? (along, across) : (across, along);
             return (0, 0, w is { } fw ? growsW ? Math.Max(fw, ew) : fw : ew, h is { } fh ? growsH ? Math.Max(fh, eh) : fh : eh);
@@ -273,6 +272,43 @@ public static class Engine
     }
 
     /// <summary>
+    /// Places a child at its own size, its room's corner at the origin, and then scales the laid-out subtree by
+    /// <paramref name="factor"/> (measured: hList9's columns, laid out by the unscaled width of the circles beside them,
+    /// then scaled with the whole row to fit).
+    /// </summary>
+    static void PlaceThenScale(LayoutNode child, (double X, double Y, double W, double H) extent, double factor, Pins pins)
+    {
+        var w = Finite(child, "w") ?? extent.X + extent.W;
+        var h = Finite(child, "h") ?? extent.Y + extent.H;
+        (w, h) = Fitted(child, w, h);
+        if (child.AlgorithmType == "composite" && h > 100 * Math.Max(w, 1e-6))
+            h = extent.Y + extent.H;
+        Place(child, -extent.X, -extent.Y, w, h, pins);
+        ScaleSubtree(child, factor, 0, 0);
+    }
+
+    /// <summary>Scales a laid-out subtree about a point: positions, sizes, elbows and the nodes' scale.</summary>
+    static void ScaleSubtree(LayoutNode node, double factor, double ox, double oy)
+    {
+        foreach (var n in node.Descendants().Prepend(node))
+        {
+            n.X = ox + (n.X - ox) * factor;
+            n.Y = oy + (n.Y - oy) * factor;
+            n.W *= factor;
+            n.H *= factor;
+            n.Scale *= factor;
+            for (var i = 1; i <= 4; i++)
+            {
+                foreach (var key in new[] { $"elbowX{i}", $"elbowY{i}" })
+                {
+                    if (n.Values.TryGetValue(key, out var v))
+                        n.Values[key] = v * factor;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// A child's size across a line once it has its length along it: what its own constraints make of the new length
     /// (h = 0.6 w follows), or null where they give the across size no relation to it.
     /// </summary>
@@ -311,11 +347,10 @@ public static class Engine
         var horizontal = direction is "fromL" or "fromR";
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
         var ruled = new Dictionary<LayoutNode, double?>();
-        var pairs = Pairs(children);
-        var extents = ApplyRules(node, children, horizontal, boxAlong, pairs, pins, ruled);
+        var extents = ApplyRules(node, children, horizontal, boxAlong, pins, ruled);
         // sp after the rules: it may follow a value they changed (TextCardSideLineWideImage's, 0.12 of the cards' height).
         var gap = Value(node, "sp");
-        var along = extents.Sum(e => horizontal ? e.W : e.H) + gap * pairs;
+        var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), gap);
         if (Environment.GetEnvironmentVariable("FS_TRACE") == "1")
             Console.Error.WriteLine($"lin {node.Name} box {boxAlong:0.##}x{boxAcross:0.##} along {along:0.##} extents {string.Join(", ", children.Select((c, i) => $"{c.Name}=({extents[i].W:0.##},{extents[i].H:0.##})"))}");
         double factor;
@@ -326,7 +361,7 @@ public static class Engine
             if (!double.IsFinite(factor) || factor <= 0)
                 factor = 1;
             for (var i = 0; i < children.Count; i++)
-                PlaceScaled(children[i], extents[i], factor, pins);
+                PlaceThenScale(children[i], extents[i], factor, pins);
         }
         else
         {
@@ -386,7 +421,7 @@ public static class Engine
         // A lin child takes the room of its box (measured: hProcess3's columns, their text below a spacer that draws
         // nothing), any other the room its drawn shapes take.
         var bounds = children.Select(c => c.AlgorithmType == "lin" ? (c.X, c.Y, c.W, c.H) : Bounds(c)).ToList();
-        var total = bounds.Sum(b => horizontal ? b.W : b.H) + gap * factor * pairs;
+        var total = Reach(children, bounds.Select(b => horizontal ? b.W : b.H).ToList(), gap * factor);
         var order = (direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count)).ToList();
         double After(int k) => k + 1 < order.Count && Spaced(children[order[k]], children[order[k + 1]]) ? gap * factor : 0;
         // The row's room along: from where it starts, or the farthest back a child of negative length reaches, to where
@@ -426,7 +461,22 @@ public static class Engine
     /// </summary>
     static bool Spaced(LayoutNode a, LayoutNode b) => !IsTransition(a) && !IsTransition(b);
 
-    static int Pairs(List<LayoutNode> children) => Enumerable.Range(0, Math.Max(0, children.Count - 1)).Count(i => Spaced(children[i], children[i + 1]));
+    /// <summary>
+    /// How far a row of children reaches along its line from its start: the farthest end, where a child of negative
+    /// length steps back over the ones before it (measured: hList9's rows, their circles stepping back under the
+    /// descriptions, fitted by the farthest description).
+    /// </summary>
+    static double Reach(List<LayoutNode> children, List<double> sizes, double gap)
+    {
+        double position = 0, far = 0;
+        for (var i = 0; i < sizes.Count; i++)
+        {
+            far = Math.Max(far, Math.Max(position, position + sizes[i]));
+            position += sizes[i] + (i + 1 < sizes.Count && Spaced(children[i], children[i + 1]) ? gap : 0);
+        }
+        return far;
+    }
+
 
     /// <summary>A composite's size kept to its aspect ratio (ar, width : height) within a size; any other node's as given.</summary>
     static (double W, double H) Fitted(LayoutNode node, double w, double h)
@@ -460,11 +510,11 @@ public static class Engine
     /// 987/4096 of their width with 0.6 pt to spare, process3's at 279/1024 with 0.83 pt). The values are pinned for the
     /// children's layout (<paramref name="ruled"/>); the children's extents with them.
     /// </summary>
-    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, int pairs, Pins pins, Dictionary<LayoutNode, double?> ruled)
+    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, Pins pins, Dictionary<LayoutNode, double?> ruled)
     {
         var type = horizontal ? "w" : "h";
         var extents = children.Select(Extent).ToList();
-        double Left() => box - extents.Sum(e => horizontal ? e.W : e.H) - Value(node, "sp") * pairs;
+        double Left() => box - Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
         bool Fits() => Left() >= -1e-9;
         foreach (var rule in node.Rules)
         {
