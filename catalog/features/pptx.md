@@ -576,7 +576,7 @@ p:sld/@show="0".
 
 **Rendering:** Map child coordinates (chOff/chExt) to the group box and compose the rotations and flips of all ancestors into one matrix per leaf shape.
 
-**Office behaviour:** Stretching a group stretches the child boxes but not their font sizes.
+**Office behaviour:** A locked canvas (lc:lockedCanvas in a graphic frame) is drawn like a picture of its DrawingML shapes: the box around them stretched over the frame together with their lines and text, its own group transform unused, text without a font in Arial (generated/objects-more). a14:isCanvas and a15:nonVisualGroupProps only mark groups for editing.
 
 **Elements (11):** [`a14:isCanvas`](../format/namespaces/a14.md#a14iscanvas), [`a15:nonVisualGroupProps`](../format/namespaces/a15.md#a15nonvisualgroupprops), [`a:cNvGrpSpPr`](../format/namespaces/a.md#acnvgrpsppr), [`a:grpSp`](../format/namespaces/a.md#agrpsp), [`a:grpSpPr`](../format/namespaces/a.md#agrpsppr), [`a:nvGrpSpPr`](../format/namespaces/a.md#anvgrpsppr), [`lc:lockedCanvas`](../format/namespaces/lc.md#lclockedcanvas), [`p:cNvGrpSpPr`](../format/namespaces/p.md#pcnvgrpsppr), [`p:grpSp`](../format/namespaces/p.md#pgrpsp), [`p:grpSpPr`](../format/namespaces/p.md#pgrpsppr), [`p:nvGrpSpPr`](../format/namespaces/p.md#pnvgrpsppr)
 
@@ -2251,7 +2251,7 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 **Rendering:** Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.
 
-**Office behaviour:** Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show.
+**Office behaviour:** Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show. Mouse-over actions on text (a:hlinkMouseOver) run when the pointer enters the text during the show, like a shape's a:hlinkHover. highlightClick, invalidUrl and tgtFrame do not change the picture.
 
 **Elements (5):** [`a:hlinkClick`](../format/namespaces/a.md#ahlinkclick), [`a:hlinkHover`](../format/namespaces/a.md#ahlinkhover), [`a:hlinkMouseOver`](../format/namespaces/a.md#ahlinkmouseover), [`a:snd`](../format/namespaces/a.md#asnd), [`ahyp:hlinkClr`](../format/namespaces/ahyp.md#ahyphlinkclr)
 

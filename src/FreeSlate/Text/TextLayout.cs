@@ -37,6 +37,9 @@ public sealed record TextStyle(
 
     /// <summary>Digits stand upright in vertical text (a:rPr kumimoji).</summary>
     public bool UprightDigits { get; init; }
+
+    /// <summary>The action run when the pointer enters the text during the show (a:hlinkMouseOver).</summary>
+    public TextLink? HoverLink { get; init; }
 }
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>

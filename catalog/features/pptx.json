@@ -3262,7 +3262,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Map child coordinates (chOff/chExt) to the group box and compose the rotations and flips of all ancestors into one matrix per leaf shape.",
-      "office": "Stretching a group stretches the child boxes but not their font sizes.",
+      "office": "A locked canvas (lc:lockedCanvas in a graphic frame) is drawn like a picture of its DrawingML shapes: the box around them stretched over the frame together with their lines and text, its own group transform unused, text without a font in Arial (generated/objects-more). a14:isCanvas and a15:nonVisualGroupProps only mark groups for editing.",
       "elements": [
         "a14:isCanvas",
         "a15:nonVisualGroupProps",
@@ -14631,7 +14631,7 @@
       "difficulty": 2,
       "status": "partial",
       "strategy": "Links for URLs and files; ppaction:// actions (jump to slide, next, previous, first, last, end show, custom show) handled by the player; hover actions and sounds.",
-      "office": "Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show.",
+      "office": "Hyperlinked text is drawn in the theme's hyperlink color unless ahyp:hlinkClr says to keep the text color. Mouse-over actions (a:hlinkHover on shapes) run when the pointer enters the shape during the show. Mouse-over actions on text (a:hlinkMouseOver) run when the pointer enters the text during the show, like a shape's a:hlinkHover. highlightClick, invalidUrl and tgtFrame do not change the picture.",
       "elements": [
         "a:hlinkClick",
         "a:hlinkHover",

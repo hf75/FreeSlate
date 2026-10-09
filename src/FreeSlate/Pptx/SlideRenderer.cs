@@ -673,6 +673,35 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
         }
 
+        // A locked canvas (lc:lockedCanvas, catalog: shape.group): its DrawingML shapes drawn like a picture of
+        // them, the box around them stretched over the frame with their lines and text (measured: shapes, lines and
+        // text grow and shrink with the frame; the canvas's own group transform is not used).
+        if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "lockedCanvas") is { } canvas)
+        {
+            var group = FromCanvas(canvas);
+            var boxes = group.Elements().Select(e => (e.Element(Ns.P + "spPr") ?? e.Element(Ns.P + "grpSpPr"))?.Element(Ns.A + "xfrm") ?? e.Element(Ns.P + "xfrm"))
+                .Where(x => x?.Element(Ns.A + "ext") != null).Select(x => ReadTransform(x!)).ToList();
+            if (boxes.Count == 0)
+                return;
+            var (cx0, cy0) = (boxes.Min(b => b.X), boxes.Min(b => b.Y));
+            var (cw, ch) = (Math.Max(1, boxes.Max(b => b.X + b.W) - cx0), Math.Max(1, boxes.Max(b => b.Y + b.H) - cy0));
+            var (fx, fy, fw, fh, _, _, _) = ReadTransform(xfrm);
+            group.Element(Ns.P + "grpSpPr")?.Remove();
+            group.AddFirst(new XElement(Ns.P + "grpSpPr", new XElement(Ns.A + "xfrm",
+                new XElement(Ns.A + "off", new XAttribute("x", (long)fx), new XAttribute("y", (long)fy)),
+                new XElement(Ns.A + "ext", new XAttribute("cx", (long)cw), new XAttribute("cy", (long)ch)),
+                new XElement(Ns.A + "chOff", new XAttribute("x", (long)cx0), new XAttribute("y", (long)cy0)),
+                new XElement(Ns.A + "chExt", new XAttribute("cx", (long)cw), new XAttribute("cy", (long)ch)))));
+            var content = new StringBuilder();
+            RenderGroup(group, part, content, placement, isSlide: false);
+            var (sx, sy) = (fw / cw, fh / ch);
+            var (px, py, _, _) = placement.Map(fx, fy, fw, fh);
+            var origin = ToPx(placement.Transform.Then(Matrix.Translate(px, py)));
+            var (ox, oy) = (origin.E, origin.F);
+            html.Append($"<div class=\"sp\" style=\"transform:matrix({Units.Css4(sx)},0,0,{Units.Css4(sy)},{Units.Css(ox * (1 - sx))},{Units.Css(oy * (1 - sy))})\">{content}</div>");
+            return;
+        }
+
         // OLE objects (catalog: picture.ole): PowerPoint stores a picture of the object, usually an EMF; PowerPoint 2007
         // only in the slide's VML drawing (catalog: legacy.vml).
         if (data.Element(Ns.P + "oleObj") is { } ole)
@@ -962,6 +991,56 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             tree.Add(converted);
         }
         RenderTree(tree, part, html, placement, isSlide: false);
+    }
+
+    /// <summary>
+    /// A locked canvas in PresentationML names: the canvas a group (p:grpSp), its DrawingML shapes (a:sp, a:pic,
+    /// a:cxnSp, a:grpSp, a:graphicFrame) and their properties as p: elements, the shape text (a:txSp/a:txBody) as
+    /// p:txBody (catalog: text.body; useSpRect, the shape's own rectangle for the text, is what the shapes have anyway).
+    /// </summary>
+    static XElement FromCanvas(XElement element)
+    {
+        static XName Name(XElement e) => e.Name.LocalName switch
+        {
+            "lockedCanvas" => Ns.P + "grpSp",
+            "sp" or "pic" or "cxnSp" or "grpSp" or "graphicFrame" or "nvSpPr" or "cNvSpPr" or "nvPicPr" or "cNvPicPr" or "nvCxnSpPr" or "cNvCxnSpPr"
+                or "nvGrpSpPr" or "cNvGrpSpPr" or "nvGraphicFramePr" or "cNvGraphicFramePr" or "cNvPr" or "nvPr" or "spPr" or "grpSpPr" or "style"
+                or "blipFill" when e.Name.Namespace == Ns.A || e.Name.LocalName == "lockedCanvas" => Ns.P + e.Name.LocalName,
+            _ => e.Name,
+        };
+        var converted = new XElement(Name(element), element.Attributes());
+        foreach (var node in element.Nodes())
+        {
+            if (node is not XElement child)
+            {
+                converted.Add(node);
+                continue;
+            }
+            if (child.Name == Ns.A + "txSp")
+            {
+                // The text of a DrawingML shape: its body becomes the shape's p:txBody. It inherits no text styles:
+                // runs without a Latin font are Arial (measured).
+                if (child.Element(Ns.A + "txBody") is { } body)
+                {
+                    var text = new XElement(Ns.P + "txBody", body.Attributes(), body.Nodes().Select(n => n is XElement e ? new XElement(e) : n));
+                    foreach (var properties in text.Descendants().Where(e => e.Name == Ns.A + "rPr" || e.Name == Ns.A + "endParaRPr"))
+                    {
+                        if (properties.Element(Ns.A + "latin") == null)
+                            properties.Add(new XElement(Ns.A + "latin", new XAttribute("typeface", "Arial")));
+                    }
+                    converted.Add(text);
+                }
+                continue;
+            }
+            // Graphic frames keep their graphic in a: names; their transform is p:xfrm.
+            if (child.Name == Ns.A + "xfrm" && element.Name.LocalName == "graphicFrame")
+            {
+                converted.Add(new XElement(Ns.P + "xfrm", child.Attributes(), child.Nodes()));
+                continue;
+            }
+            converted.Add(child.Name == Ns.A + "graphic" ? new XElement(child) : FromCanvas(child));
+        }
+        return converted;
     }
 
     /// <summary>A shape of a chart drawing (cdr:) in PresentationML (p:) names.</summary>

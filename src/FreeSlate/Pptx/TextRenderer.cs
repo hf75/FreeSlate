@@ -709,6 +709,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
         }
         sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
+        // A mouse-over action on the text (a:hlinkMouseOver, catalog: interactivity.hyperlinks) runs when the pointer
+        // enters it during the show, like a shape's.
+        if (style.HoverLink is { } hover)
+        {
+            var attributes = (hover.Action != null ? $" data-hover-action=\"{WebUtility.HtmlEncode(hover.Action)}\"" : "")
+                             + (hover.Href != null ? $" data-hover-href=\"{WebUtility.HtmlEncode(hover.Href)}\"" : "");
+            sb.Insert(0, $"<g{attributes}>").Append("</g>");
+        }
         return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
     }
 
@@ -1204,6 +1212,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             UnderlineWidth = underlineLine?.Name.LocalName == "uLn" && underlineLine.Long("w") is { } uw ? uw / Units.EmuPerPoint : null,
             UnderlineDash = underlineLine?.Name.LocalName == "uLn" ? underlineLine.Element(Ns.A + "prstDash")?.Str("val") : null,
             NormalizeHeight = R("normalizeH") is "1" or "true",
+            HoverLink = rPr?.Element(Ns.A + "hlinkMouseOver") is { } mouseOver && linkPart != null ? Links.Resolve(mouseOver, linkPart, slide.Presentation) : null,
             UprightDigits = R("kumimoji") is "1" or "true",
         };
     }
