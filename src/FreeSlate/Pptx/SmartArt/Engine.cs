@@ -962,7 +962,8 @@ public static class Engine
         var factor = Math.Min(box.W > 0 ? bw / box.W : 1, box.H > 0 ? bh / box.H : 1);
         if (!double.IsFinite(factor) || factor <= 0)
             factor = 1;
-        var (ox, oy) = (bx + (bw - box.W * factor) / 2, by + (bh - box.H * factor) / 2);
+        // The tree aligned in the node by its horzAlign and vertAlign (centered; measured: SquareAccentList's at the top).
+        var (ox, oy) = (bx + Align(node.Param("horzAlign"), bw, box.W * factor), by + Align(node.Param("vertAlign"), bh, box.H * factor));
         foreach (var n in node.Descendants())
         {
             n.X = ox + (n.X - box.X) * factor;
