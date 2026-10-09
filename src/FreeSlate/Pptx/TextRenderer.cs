@@ -1075,7 +1075,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var resolved = font?.Name.LocalName == "buFont" && slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
             ? fonts.Resolve(family, textStyle.Bold, textStyle.Italic)
             : textStyle.Font;
-        // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them.
+        // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them:
+        // PowerPoint numbers in MS Gothic (East Asian), Arial (Arabic, Hebrew) and Nirmala UI (Indic scripts), whatever
+        // the theme says (measured with the lists deck's PDF; its Thai numbers are Leelawadee UI drawn larger than the
+        // font's own, which the theme's Thai font comes closer to).
         if (!resolved.Data.Covers(text) && Scripts.Split(text) is [var (_, slot, script)])
         {
             var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
@@ -1085,7 +1088,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 FontSlot.Complex when script != null => slide.Theme.ScriptFonts.GetValueOrDefault((false, script)),
                 _ => null,
             };
-            resolved = fonts.ResolveCovering(theme ?? candidates[0], textStyle.Bold, textStyle.Italic, text, candidates);
+            var numbering = kind?.Name.LocalName != "buAutoNum" ? null : slot switch
+            {
+                FontSlot.EastAsian => "MS Gothic",
+                FontSlot.Complex when script is "Thai" => null,
+                FontSlot.Complex when script is "Arab" or "Hebr" => "Arial",
+                FontSlot.Complex => "Nirmala UI",
+                _ => null,
+            };
+            resolved = fonts.ResolveCovering(numbering ?? theme ?? candidates[0], textStyle.Bold, textStyle.Italic, text, candidates);
         }
 
         var sizeElement = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
