@@ -42,6 +42,43 @@ static class Fitting
                 }
             }
         }
+        // Nodes an equ constraint on a font size makes equal (without a reference) take the smallest (measured:
+        // CircleRelationship's circles, all nodes equ at 65, at the small circles' 40; target3's child texts).
+        {
+            foreach (var owner in root.Descendants().Prepend(root))
+            {
+                foreach (var constraint in owner.Constraints)
+                {
+                    var fontType = (string?)constraint.Attribute("type");
+                    if (fontType is not ("primFontSz" or "secFontSz") || (string?)constraint.Attribute("op") != "equ"
+                        || (string?)constraint.Attribute("refType") is { Length: > 0 } and not "none")
+                        continue;
+                    var group = Constraints.Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType"))
+                        .Where(n => n.Text.Count > 0 && n.AlgorithmType == "tx").ToList();
+                    if (group.Count < 2)
+                        continue;
+                    if (fontType == "primFontSz")
+                    {
+                        var smallest = group.Min(Font);
+                        foreach (var node in group.Where(n => Font(n) > smallest + 1e-6))
+                        {
+                            PinFont(node, smallest, pins);
+                            changed = true;
+                        }
+                    }
+                    else
+                    {
+                        var smallest = group.Min(SecondaryFont);
+                        foreach (var node in group.Where(n => SecondaryFont(n) > smallest + 1e-6))
+                        {
+                            SetSecondary(node, smallest);
+                            pins.Set(node, "secFontSz", smallest);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
         changed |= Equalize(root, pins);
         return changed;
     }
@@ -65,6 +102,17 @@ static class Fitting
             node.Values["secFontSz"] = secondary * size / old;
     }
 
+    /// <summary>Sets a node's secondary font size for a trial: margins given in secondary sizes follow it.</summary>
+    static void SetSecondary(LayoutNode node, double size)
+    {
+        node.Values["secFontSz"] = size;
+        foreach (var side in new[] { "lMarg", "rMarg", "tMarg", "bMarg" })
+        {
+            if (MarginFromFont(node, side, "secFontSz") is { } factor)
+                node.Values[side] = factor * size;
+        }
+    }
+
     static void PinFont(LayoutNode node, double size, Pins pins)
     {
         var old = Font(node);
@@ -75,11 +123,11 @@ static class Fitting
     }
 
     /// <summary>The factor of a margin constraint on the primary font size, if the node's margin is one.</summary>
-    static double? MarginFromFont(LayoutNode node, string side)
+    static double? MarginFromFont(LayoutNode node, string side, string font = "primFontSz")
     {
         foreach (var constraint in node.Constraints)
         {
-            if ((string?)constraint.Attribute("type") == side && (string?)constraint.Attribute("refType") == "primFontSz"
+            if ((string?)constraint.Attribute("type") == side && (string?)constraint.Attribute("refType") == font
                 && (string?)constraint.Attribute("for") is null or "self")
                 return double.TryParse((string?)constraint.Attribute("fact"), NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f : 1;
         }
@@ -233,6 +281,34 @@ static class Fitting
         foreach (var rule in Rules(node))
         {
             var type = (string?)rule.Attribute("type");
+            // A rule on the secondary size lowers it alone (measured: target3's child texts at 46 pt beside their
+            // parents' 65, the primary sizes equal by their constraint).
+            if (type is "secFontSz")
+            {
+                var limit = Number(rule, "val") ?? (Number(rule, "fact") is { } f ? f * SecondaryFont(node) : 5);
+                var (low, high) = ((int)Math.Ceiling(limit), (int)Math.Floor(SecondaryFont(node) + 1e-9));
+                if (high < low)
+                    continue;
+                SetSecondary(node, low);
+                if (!Check(node, measure).Fits)
+                {
+                    pins.Set(node, "secFontSz", low);
+                    changed = true;
+                    continue;
+                }
+                while (low < high)
+                {
+                    var middle = (low + high + 1) / 2;
+                    SetSecondary(node, middle);
+                    if (Check(node, measure).Fits)
+                        low = middle;
+                    else
+                        high = middle - 1;
+                }
+                SetSecondary(node, low);
+                pins.Set(node, "secFontSz", low);
+                return true;
+            }
             if (type is "primFontSz" or "secFontSz")
             {
                 var limit = Number(rule, "val") ?? (Number(rule, "fact") is { } f ? f * startFont : 5);
