@@ -34,6 +34,11 @@ public static class Engine
             for (var round = 0; round < 8 && Fitting.Fit(root, measure, pins); round++)
                 Run(root, w, h, pins);
         }
+        // A composite root's drawing, where it fits the frame, is centered in it (measured: AccentedPicture's picture
+        // and descriptions, pyramid2, funnel1; the roots that align their children themselves, lin and snake, keep it
+        // where they put it, IncreasingCircleProcess's at the top).
+        if (root.AlgorithmType == "composite" && Bounds(root) is var drawn && drawn.W <= w + 1e-6 && drawn.H <= h + 1e-6)
+            Translate(root, (w - drawn.W) / 2 - drawn.X, (h - drawn.H) / 2 - drawn.Y);
         return root;
     }
 
