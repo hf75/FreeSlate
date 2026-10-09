@@ -441,6 +441,10 @@ public static class Engine
         var horizontal = direction is "fromL" or "fromR";
         var (boxAlong, boxAcross) = horizontal ? (node.W, node.H) : (node.H, node.W);
         var ruled = new Dictionary<LayoutNode, double?>();
+        // The children's subtrees evaluated for the sizes this node's box gives them before they are measured (measured:
+        // SubStepProcess' rows, as high as their texts at the width the column has once the line is scaled).
+        foreach (var child in children)
+            Refresh(child, pins);
         var extents = ApplyRules(node, children, horizontal, boxAlong, pins, ruled);
         // sp after the rules: it may follow a value they changed (TextCardSideLineWideImage's, 0.12 of the cards' height).
         var gap = Value(node, "sp");
