@@ -1585,7 +1585,7 @@ areas:
                    c15:spPr, c16:dLbl]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: Label text from values, categories, series names, percentages or cell ranges; automatic placement and leader lines.
         office: >-
           Data labels wrap at a fifth of the chart's width, box, insets and legend key included; a word longer
@@ -1608,8 +1608,11 @@ areas:
           1.108 line heights after the inset. Bubble sizes (c:showBubbleSize) label bubbles on the right, 5.5
           pt off the edge. A point label's own text (c:tx: rich text with its fields' current text, or a cell)
           replaces the parts, its runs keeping their own formatting (generated/charts-details slide 6:
-          99.6 %); text from cells (c15:datalabelsRange) leads them. Not yet: wide best fit labels (PowerPoint
-          moves them towards the horizontal and further in).
+          99.6 %); text from cells (c15:datalabelsRange) leads them. Best fit labels inside slices narrower than
+          a half move sideways off the middle ray until their lines keep the same distance from both of the
+          slice's radii, then out as far as their corners stay within reach (wide labels of slices turned in
+          5° steps move towards the horizontal by up to 34 px, matched within 2 px; local/piebestfit 92.4 %);
+          one-line labels near the wrap width sit up to 4 % of the radius further in in PowerPoint.
 
       - id: chart.titleLegend
         title: Titles, legend and layout
