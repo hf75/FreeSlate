@@ -37,6 +37,34 @@ public static class SlideShow
         return traces.Count > 0 ? traces : null;
     }
 
+    /// <summary>
+    /// Media and trigger events recorded with the slide show (p14:showEvtLst in the slide's extLst, catalog:
+    /// animation.media): [kind (play, stop, pause, resume, seek, trigger), time in ms from the start of the slide's
+    /// timeline after the transition, the shape's id, the seek position in ms or the trigger event]. Null without.
+    /// </summary>
+    public static JsonArray? Events(SlideContext slide)
+    {
+        var list = slide.Slide.Root?.Element(Ns.P + "extLst")?.Descendants(P14 + "showEvtLst").FirstOrDefault();
+        var events = new JsonArray();
+        foreach (var record in list?.Elements() ?? [])
+        {
+            var kind = record.Name.LocalName switch
+            {
+                "playEvt" => "play", "stopEvt" => "stop", "pauseEvt" => "pause", "resumeEvt" => "resume",
+                "seekEvt" => "seek", "triggerEvt" => "trigger", _ => null,
+            };
+            if (kind == null || TimeOffset(record.Str("time")) is not { } time || record.Str("objId") is not { } id)
+                continue;
+            var item = new JsonArray(kind, Math.Round(time, 1), id);
+            if (kind == "seek" && TimeOffset(record.Str("seek")) is { } seek)
+                item.Add(Math.Round(seek, 1));
+            if (kind == "trigger")
+                item.Add(record.Str("type") ?? "onClick");
+            events.Add(item);
+        }
+        return events.Count > 0 ? events : null;
+    }
+
     /// <summary>A time offset ("1.5s", "250ms", "2min"; milliseconds without a unit, [MS-PPTX] 2.3.4.6) in milliseconds.</summary>
     public static double? TimeOffset(string? value)
     {

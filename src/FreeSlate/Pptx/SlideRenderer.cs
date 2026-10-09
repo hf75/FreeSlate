@@ -17,10 +17,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
     TableRenderer? tables;
 
-    /// <summary>Shapes whose text the slide show builds letter by letter or word by word (p:iterate type lt or wd).</summary>
+    /// <summary>
+    /// Shapes whose text the slide show builds letter by letter or word by word (p:iterate type lt or wd) or animates
+    /// in character ranges (p:charRg): their text is drawn character by character.
+    /// </summary>
     HashSet<string> Iterated => iterated ??= slide.Slide.Root?.Element(Ns.P + "timing") is { } timing
         ? timing.Descendants(Ns.P + "cTn").Where(c => c.Element(Ns.P + "iterate")?.Attribute("type")?.Value is "lt" or "wd")
-            .SelectMany(c => c.Descendants(Ns.P + "spTgt")).Select(t => t.Attribute("spid")?.Value).OfType<string>().ToHashSet()
+            .SelectMany(c => c.Descendants(Ns.P + "spTgt"))
+            .Concat(timing.Descendants(Ns.P + "spTgt").Where(t => t.Element(Ns.P + "txEl")?.Element(Ns.P + "charRg") != null))
+            .Select(t => t.Attribute("spid")?.Value).OfType<string>().ToHashSet()
         : [];
     HashSet<string>? iterated;
 

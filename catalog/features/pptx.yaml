@@ -1895,14 +1895,15 @@ areas:
           (p:iterate lt, wd): the shape's background first for the effect's duration when the build animates
           it (bldP animBg), then every letter or word (blanks are none) with the whole effect, tmPct of the
           effect's duration or tmAbs apart; a group after the previous effect starts when the groups before it
-          end (the stored delay is the editor's guess, which iterated text outlasts). After effects
-          (p:subTnLst): sameClick ones when their effect ends, nextClick ones (dim, hide on next click) when
-          the next effect of the sequence begins. Containers repeat (repeatCount, repeatDur; indefinite ones
-          cycle), effects with fill=remove rewind when done, tmFilter remaps progress, p14:bounceEnd swings
-          about the end as a damped spring over its share of the duration (fitted on five videos).
-          PowerPoint's video clock advances whole milliseconds per frame (33 ms at 30 fps) within a step while
-          steps follow the video's frames; the player's frame mode does the same. Still open: end conditions
-          (endCondLst, endSync: until next click / end of slide), restart, iterate type el.
+          end (the stored delay is the editor's guess, which iterated text outlasts). After effects and sounds
+          (p:subTnLst): sameClick ones when their effect begins or ends as their condition says, nextClick
+          ones (dim, hide on next click) when the next effect of the sequence begins. Containers repeat
+          (repeatCount, repeatDur); indefinite repeats go on after their step until the end of the slide, or
+          until the next click with an onNext end condition (checked live). Effects with fill=remove rewind
+          when done, tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its
+          share of the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds
+          per frame (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame
+          mode does the same. Still open: restart, endSync, iterate type el.
 
       - id: animation.targets
         title: Animation targets
@@ -1915,10 +1916,10 @@ areas:
           Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must
           keep those addressable.
         office: >-
-          Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart:
-          series, categories, points, background) and the letters and words of text built by iteration (drawn
-          character by character, data-c/data-w) are addressable; character ranges (p:charRg), ink (p:inkTgt)
-          and sounds (p:sndTgt) still to do.
+          Shapes, paragraph ranges (p:pRg), character ranges (p:charRg; their text is drawn character by
+          character), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart: series, categories,
+          points, background), the letters and words of text built by iteration (data-c, data-w) and sounds
+          (p:sndTgt, played with their effect) are addressable; ink (p:inkTgt) still to do.
 
       - id: animation.behaviors
         title: Animation behaviours
@@ -1975,8 +1976,18 @@ areas:
                    p14:seekEvt, p14:stopEvt, p14:triggerEvt, p14:showEvtLst]
         priority: P2
         difficulty: 3
-        status: partial
+        status: done
         strategy: Play, pause and stop commands and media bookmarks as timing events.
+        office: >-
+          Media nodes (p:audio, p:video, cMediaNode) give volume and mute, showWhenStopped 0 (the shape hides
+          in the show while the medium is not playing), numSld (it plays on across that many slides), fullScrn
+          (a video fills the slide, centered, while it plays) and isNarration (narration media stay silent
+          when the show plays without narrations); p:cmd plays, pauses, resumes, stops and seeks them;
+          bookmarks (p14:bmkTgt) start trigger sequences when playback reaches them; sounds of effects
+          (p:sndTgt in the effect's p:subTnLst, begin of the effect) play with the effect. What was done
+          during a recorded show (p14:showEvtLst in the slide's extLst: play, pause, resume, stop, seek of
+          media, clicks on triggers) replays at its times from the start of the slide's timeline when the show
+          uses its timings. Checked live in the browser with probe decks (times within 10 ms).
 
       - id: animation.pictures
         title: Animated pictures

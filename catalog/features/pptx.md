@@ -29,12 +29,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 4 | 16 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 2 | 2 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
-| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 4 | 3 |
+| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 3 | 4 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 1 | 2 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 0 | 4 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **21** | **123** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **20** | **124** |
 
 <a id="package"></a>
 
@@ -2161,7 +2161,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | [Animation behaviours](#animation.behaviors) | P1 | ●●●●○ | partial | 26 | 20 |
 | [Build lists](#animation.build) | P1 | ●●●○○ | done | 11 | 9 |
 | [Effect presets](#animation.presets) | P1 | ●●●○○ | done | 0 | 0 |
-| [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | partial | 12 | 3 |
+| [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | done | 12 | 3 |
 | [Animated pictures](#animation.pictures) | P3 | ●●○○○ | todo | 1 | 0 |
 | [Recorded laser pointer](#animation.laser) | P3 | ●●●○○ | done | 4 | 0 |
 
@@ -2173,7 +2173,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 **Rendering:** A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous, triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.
 
-**Office behaviour:** Checked against PowerPoint's own video of the slides (tools/Fidelity animate: slideshow 99.9 %, smartart 99.9 %, animations-charts 99.6 %, animations-text 100.0 % of frames). Acceleration and deceleration follow a smoothstep speed curve (measured on six accel/decel pairs). A behaviour without fill of its own takes its effect's (Bounce holds its squash; the Transparency emphasis, without fill, reverts); a set without duration holds. Text built letter by letter or word by word (p:iterate lt, wd): the shape's background first for the effect's duration when the build animates it (bldP animBg), then every letter or word (blanks are none) with the whole effect, tmPct of the effect's duration or tmAbs apart; a group after the previous effect starts when the groups before it end (the stored delay is the editor's guess, which iterated text outlasts). After effects (p:subTnLst): sameClick ones when their effect ends, nextClick ones (dim, hide on next click) when the next effect of the sequence begins. Containers repeat (repeatCount, repeatDur; indefinite ones cycle), effects with fill=remove rewind when done, tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its share of the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds per frame (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame mode does the same. Still open: end conditions (endCondLst, endSync: until next click / end of slide), restart, iterate type el.
+**Office behaviour:** Checked against PowerPoint's own video of the slides (tools/Fidelity animate: slideshow 99.9 %, smartart 99.9 %, animations-charts 99.6 %, animations-text 100.0 % of frames). Acceleration and deceleration follow a smoothstep speed curve (measured on six accel/decel pairs). A behaviour without fill of its own takes its effect's (Bounce holds its squash; the Transparency emphasis, without fill, reverts); a set without duration holds. Text built letter by letter or word by word (p:iterate lt, wd): the shape's background first for the effect's duration when the build animates it (bldP animBg), then every letter or word (blanks are none) with the whole effect, tmPct of the effect's duration or tmAbs apart; a group after the previous effect starts when the groups before it end (the stored delay is the editor's guess, which iterated text outlasts). After effects and sounds (p:subTnLst): sameClick ones when their effect begins or ends as their condition says, nextClick ones (dim, hide on next click) when the next effect of the sequence begins. Containers repeat (repeatCount, repeatDur); indefinite repeats go on after their step until the end of the slide, or until the next click with an onNext end condition (checked live). Effects with fill=remove rewind when done, tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its share of the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds per frame (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame mode does the same. Still open: restart, endSync, iterate type el.
 
 **Elements (19):** [`p:cTn`](../format/namespaces/p.md#pctn), [`p:childTnLst`](../format/namespaces/p.md#pchildtnlst), [`p:cond`](../format/namespaces/p.md#pcond), [`p:endCondLst`](../format/namespaces/p.md#pendcondlst), [`p:endSync`](../format/namespaces/p.md#pendsync), [`p:excl`](../format/namespaces/p.md#pexcl), [`p:iterate`](../format/namespaces/p.md#piterate), [`p:nextCondLst`](../format/namespaces/p.md#pnextcondlst), [`p:par`](../format/namespaces/p.md#ppar), [`p:prevCondLst`](../format/namespaces/p.md#pprevcondlst), [`p:rtn`](../format/namespaces/p.md#prtn), [`p:seq`](../format/namespaces/p.md#pseq), [`p:stCondLst`](../format/namespaces/p.md#pstcondlst), [`p:subTnLst`](../format/namespaces/p.md#psubtnlst), [`p:timing`](../format/namespaces/p.md#ptiming), [`p:tmAbs`](../format/namespaces/p.md#ptmabs), [`p:tmPct`](../format/namespaces/p.md#ptmpct), [`p:tn`](../format/namespaces/p.md#ptn), [`p:tnLst`](../format/namespaces/p.md#ptnlst)
 
@@ -2189,7 +2189,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 **Rendering:** Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must keep those addressable.
 
-**Office behaviour:** Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart: series, categories, points, background) and the letters and words of text built by iteration (drawn character by character, data-c/data-w) are addressable; character ranges (p:charRg), ink (p:inkTgt) and sounds (p:sndTgt) still to do.
+**Office behaviour:** Shapes, paragraph ranges (p:pRg), character ranges (p:charRg; their text is drawn character by character), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart: series, categories, points, background), the letters and words of text built by iteration (data-c, data-w) and sounds (p:sndTgt, played with their effect) are addressable; ink (p:inkTgt) still to do.
 
 **Elements (13):** [`a:chart`](../format/namespaces/a.md#achart), [`a:dgm`](../format/namespaces/a.md#adgm), [`p:charRg`](../format/namespaces/p.md#pcharrg), [`p:graphicEl`](../format/namespaces/p.md#pgraphicel), [`p:inkTgt`](../format/namespaces/p.md#pinktgt), [`p:oleChartEl`](../format/namespaces/p.md#polechartel), [`p:pRg`](../format/namespaces/p.md#pprg), [`p:sldTgt`](../format/namespaces/p.md#psldtgt), [`p:sndTgt`](../format/namespaces/p.md#psndtgt), [`p:spTgt`](../format/namespaces/p.md#psptgt), [`p:subSp`](../format/namespaces/p.md#psubsp), [`p:tgtEl`](../format/namespaces/p.md#ptgtel), [`p:txEl`](../format/namespaces/p.md#ptxel)
 
@@ -2243,9 +2243,11 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Media control and bookmarks
 
-`animation.media` · P2 · difficulty 3 · partial
+`animation.media` · P2 · difficulty 3 · done
 
 **Rendering:** Play, pause and stop commands and media bookmarks as timing events.
+
+**Office behaviour:** Media nodes (p:audio, p:video, cMediaNode) give volume and mute, showWhenStopped 0 (the shape hides in the show while the medium is not playing), numSld (it plays on across that many slides), fullScrn (a video fills the slide, centered, while it plays) and isNarration (narration media stay silent when the show plays without narrations); p:cmd plays, pauses, resumes, stops and seeks them; bookmarks (p14:bmkTgt) start trigger sequences when playback reaches them; sounds of effects (p:sndTgt in the effect's p:subTnLst, begin of the effect) play with the effect. What was done during a recorded show (p14:showEvtLst in the slide's extLst: play, pause, resume, stop, seek of media, clicks on triggers) replays at its times from the start of the slide's timeline when the show uses its timings. Checked live in the browser with probe decks (times within 10 ms).
 
 **Elements (12):** [`p14:bmkTgt`](../format/namespaces/p14.md#p14bmktgt), [`p14:nullEvt`](../format/namespaces/p14.md#p14nullevt), [`p14:pauseEvt`](../format/namespaces/p14.md#p14pauseevt), [`p14:playEvt`](../format/namespaces/p14.md#p14playevt), [`p14:resumeEvt`](../format/namespaces/p14.md#p14resumeevt), [`p14:seekEvt`](../format/namespaces/p14.md#p14seekevt), [`p14:showEvtLst`](../format/namespaces/p14.md#p14showevtlst), [`p14:stopEvt`](../format/namespaces/p14.md#p14stopevt), [`p14:triggerEvt`](../format/namespaces/p14.md#p14triggerevt), [`p:audio`](../format/namespaces/p.md#paudio), [`p:cMediaNode`](../format/namespaces/p.md#pcmedianode), [`p:video`](../format/namespaces/p.md#pvideo)
 

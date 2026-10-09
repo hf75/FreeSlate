@@ -315,6 +315,13 @@
     } else if (unit) {
       const range = target.pRg ? target.pRg.join('-') : '';
       keys.push([`${target.spid}:${range}:${unit.type}${unit.index}`, () => textUnits(shape, target, unit.type)[unit.index] || null, true]);
+    } else if (target.charRg && shape.querySelector('[data-c]')) {
+      // A character range (p:charRg; paragraph ends count as one character): the characters drawn on their own.
+      const [first, end] = target.charRg;
+      keys.push([`${target.spid}:c${first}-${end}`, () => {
+        const found = [...shape.querySelectorAll('[data-c]')].filter(e => +e.dataset.c >= first && +e.dataset.c < end);
+        return found.length ? found : null;
+      }, true]);
     } else if (target.pRg) {
       for (let p = target.pRg[0]; p <= target.pRg[1]; p++) keys.push([`${target.spid}:p${p}`, () => shape.querySelector(`g[data-p="${p}"]`), true]);
     } else if (target.graphic && target.graphic.kind === 'dgm') {
@@ -455,7 +462,9 @@
     if (!(count > 1) || once <= 0) return end;
     const behaviors = out.slice(first);
     if (count === Infinity) {
-      for (const b of behaviors) b.loop = { start: begin, period: once };
+      // Until the next click (endCondLst onNext) or the end of the slide.
+      const untilNext = (node.end || []).some(c => c.evt === 'onNext');
+      for (const b of behaviors) b.loop = { start: begin, period: once, untilNext };
       return end;
     }
     const stop = begin + once * count;
@@ -512,12 +521,16 @@
         const end = schedule(Object.assign({}, stepNode, { begin: [] }), 0, behaviors, context);
         return { behaviors, end, auto: !isIndefinite(stepNode) || isAuto(stepNode), effects: context.effects };
       });
-      // After effects (p:subTnLst): those of the same click when their effect ends, the others (dim, hide on the next
-      // click) when the next effect of the sequence begins, even one after the previous (measured).
+      // After effects and sounds (p:subTnLst): those of the same click when their effect begins or ends (as their
+      // condition says; a sound with its effect, hiding after it), the others (dim, hide on the next click) when the
+      // next effect of the sequence begins, even one after the previous (measured).
       const effects = steps.flatMap(step => step.effects.map(e => Object.assign({ step }, e)));
       effects.forEach((e, i) => {
         for (const sub of e.node.sub || []) {
-          const at = sub.masterRel === 'nextClick' ? effects[i + 1] : { step: e.step, begin: e.end, context: e.context };
+          const cond = (sub.begin || []).find(c => c.evt === 'begin' || c.evt === 'end');
+          const delay = cond && typeof cond.delay === 'number' ? cond.delay : 0;
+          const at = sub.masterRel === 'nextClick' ? effects[i + 1]
+            : { step: e.step, begin: (cond && cond.evt === 'begin' ? e.begin : e.end) + delay, context: e.context };
           if (at) schedule(Object.assign({}, sub, { begin: [] }), at.begin, at.step.behaviors, Object.assign({}, at.context, { unit: undefined }));
         }
       });
@@ -919,6 +932,13 @@
       el.addEventListener('ended', () => stopMedia(el));
     }
     if (volume !== undefined) el.dataset.volume = volume;
+    const options = el.fsOptions;
+    if (options && show) {
+      if (options.hideStopped) showMediaShape(el, true);
+      if (options.fullScreen) fullScreenMedia(el, true);
+      // Playing across slides: counted down as the show moves on.
+      if (options.slides > 1) (show.acrossSlides = show.acrossSlides || new Map()).set(el, options.slides);
+    }
     el.currentTime = trimStart(el) + (from || 0);
     const target = el.dataset.volume !== undefined ? +el.dataset.volume : 1;
     const fadeIn = parseFloat(el.dataset.fadeIn) || 0;
@@ -938,6 +958,11 @@
   function stopMedia(el) {
     el.pause();
     el.classList.remove('playing');
+    if (el.fsOptions && show) {
+      if (el.fsOptions.hideStopped) showMediaShape(el, false);
+      if (el.fsOptions.fullScreen) fullScreenMedia(el, false);
+      if (show.acrossSlides) show.acrossSlides.delete(el);
+    }
     try { el.currentTime = trimStart(el); } catch { /* not loaded yet */ }
   }
   function toggleMedia(el) {
@@ -950,9 +975,25 @@
   }
 
   /** Runs a p:cmd behaviour (playFrom(t), togglePause, pause, resume, stop) on its target's media. */
+  /** Sounds effects play (p:audio with p:sndTgt: "Play sound" of an effect), stopped when the slide ends. */
+  const effectSounds = new Set();
+  function stopEffectSounds() {
+    for (const audio of effectSounds) audio.pause();
+    effectSounds.clear();
+  }
+
   function command(slide, node, volumes) {
+    if (node.t === 'audio' && node.target && node.target.snd) {
+      const audio = new Audio(node.target.snd);
+      audio.volume = node.mute ? 0 : Math.min(1, typeof node.vol === 'number' ? node.vol / 100000 : 1);
+      effectSounds.add(audio);
+      audio.addEventListener('ended', () => effectSounds.delete(audio));
+      audio.play().catch(() => effectSounds.delete(audio));
+      return;
+    }
     const el = node.target && mediaOf(slide, node.target.spid);
     if (!el) return;
+    if (el.fsOptions && el.fsOptions.narration && deck.show && deck.show.narration === false) return;
     const cmd = String(node.cmd || '');
     const volume = volumes.get(String(node.target.spid));
     const from = /^playFrom\(([-0-9.]+)\)/.exec(cmd);
@@ -965,15 +1006,73 @@
 
   /** Volumes of the slide's media nodes (p:audio / p:video, cMediaNode vol in 1/100000). */
   function mediaVolumes(timing) {
+    return new Map([...mediaOptions(timing)].map(([spid, o]) => [spid, o.volume]));
+  }
+
+  /**
+   * Playback options of the slide's media (p:audio, p:video and their cMediaNode, catalog: animation.media): volume,
+   * hidden while not playing (showWhenStopped 0), playing on across slides (numSld), full screen (fullScrn) and
+   * narration (isNarration).
+   */
+  function mediaOptions(timing) {
     const result = new Map();
     const visit = node => {
       if (!node) return;
-      if ((node.t === 'audio' || node.t === 'video') && node.target && node.target.spid !== undefined)
-        result.set(String(node.target.spid), node.mute ? 0 : (typeof node.vol === 'number' ? node.vol / 100000 : 1));
+      if ((node.t === 'audio' || node.t === 'video') && node.target && node.target.spid !== undefined) {
+        result.set(String(node.target.spid), {
+          volume: node.mute ? 0 : (typeof node.vol === 'number' ? node.vol / 100000 : 1),
+          hideStopped: node.showWhenStopped === false || node.showWhenStopped === 0,
+          slides: typeof node.numSld === 'number' ? node.numSld : 1,
+          fullScreen: node.fullScrn === true || node.fullScrn === 1,
+          narration: node.isNarration === true || node.isNarration === 1,
+        });
+      }
       (node.children || []).forEach(visit);
+      (node.sub || []).forEach(visit);
     };
     visit(timing && timing.root);
     return result;
+  }
+
+  /** Applies the media options of a slide shown in the show: hidden stopped media, and remembers the others. */
+  function prepareMedia(slide, index) {
+    for (const [spid, o] of mediaOptions(info(index).timing)) {
+      const el = mediaOf(slide, spid);
+      if (!el) continue;
+      el.fsOptions = o;
+      if (o.hideStopped && !el.classList.contains('playing')) showMediaShape(el, false);
+    }
+  }
+
+  /** Shows or hides the shape a medium belongs to (media hidden while stopped), over what animations set. */
+  function showMediaShape(el, visible) {
+    const owner = el.closest('[data-id]');
+    if (!owner || (!visible && !(show && show.stage.contains(owner)))) return;
+    if (!document.getElementById('fs-media-style')) {
+      const style = document.createElement('style');
+      style.id = 'fs-media-style';
+      style.textContent = '.fs-stopped{visibility:hidden!important}';
+      document.head.appendChild(style);
+    }
+    owner.classList.toggle('fs-stopped', !visible);
+    if (!visible && show) (show.hiddenMedia = show.hiddenMedia || new Set()).add(owner);
+  }
+
+  /** A video played full screen (fullScrn) fills the slide, centered, while it plays. */
+  function fullScreenMedia(el, on) {
+    const owner = el.closest('.sp');
+    if (!owner || el.tagName !== 'VIDEO') return;
+    if (on && owner.dataset.fullTransform === undefined) {
+      owner.dataset.fullTransform = owner.style.transform;
+      const w = parseFloat(owner.style.width) || owner.offsetWidth, h = parseFloat(owner.style.height) || owner.offsetHeight;
+      const k = Math.min(W / w, H / h);
+      owner.style.transform = `matrix(${k},0,0,${k},${(W - w * k) / 2},${(H - h * k) / 2})`;
+      owner.style.zIndex = '1000';
+    } else if (!on && owner.dataset.fullTransform !== undefined) {
+      owner.style.transform = owner.dataset.fullTransform;
+      owner.style.zIndex = '';
+      delete owner.dataset.fullTransform;
+    }
   }
 
   /* ---------------------------------------------------------------- the animation player of one slide */
@@ -1056,7 +1155,10 @@
       cancelAnimationFrame(this.frame);
       clearTimeout(this.timer);
       const current = this.current = { step, started: performance.now() };
-      const commands = step.behaviors.filter(b => b.node.t === 'cmd');
+      const commands = step.behaviors.filter(b => b.node.t === 'cmd' || (b.node.t === 'audio' && b.node.target && b.node.target.snd));
+      // A click ends what repeats until the next click.
+      if (!step.auto) for (const s of this.done) s.clicked = true;
+      step.startedAt = performance.now();
       const runCommands = t => {
         for (let i = commands.length - 1; i >= 0; i--) {
           if (t >= commands[i].start) { command(this.slide, commands[i].node, this.volumes); commands.splice(i, 1); }
@@ -1071,6 +1173,7 @@
         this.current = null;
         this.render(null, 0);
         this.autoPlay();
+        this.keepLooping();
       };
       const tick = () => {
         if (this.current !== current) return;
@@ -1083,6 +1186,17 @@
       // Frames may be throttled (hidden tabs); the step still completes on time.
       this.timer = setTimeout(finish, step.end + 20);
       tick();
+    }
+
+    /** Keeps drawing while repeats of finished steps go on and no step plays. */
+    keepLooping() {
+      const looping = () => this.done.some(s => s.startedAt !== undefined && s.behaviors.some(b => b.loop && !(b.loop.untilNext && s.clicked)));
+      const tick = () => {
+        if (this.current || !looping()) return;
+        this.render(null, 0);
+        this.frame = requestAnimationFrame(tick);
+      };
+      if (!this.current && looping()) this.frame = requestAnimationFrame(tick);
     }
 
     autoPlay() {
@@ -1098,22 +1212,29 @@
     render(current, t) {
       const states = new Map();
       for (const [key, target] of this.timeline.targets) if (target) states.set(key, target.fresh(this.timeline.hidden.has(key)));
-      const run = (step, time) => {
+      const now = performance.now();
+      const run = (step, time, done) => {
         for (const b of step.behaviors) {
-          const p = progress(b, time);
+          // Repeats until the end of the slide (or until a click) go on after their step.
+          const looping = done && b.loop && step.startedAt !== undefined && !(b.loop.untilNext && step.clicked);
+          const p = progress(b, looping ? now - step.startedAt : time);
           if (p === null) continue;
           for (const { key, target } of b.targets) evaluate(b, p, target, states.get(key));
         }
       };
-      for (const step of this.done) run(step, Infinity);
-      if (current) run(current, t);
+      for (const step of this.done) run(step, Infinity, true);
+      if (current) run(current, t, false);
       for (const [key, target] of this.timeline.targets) if (target) target.render(states.get(key));
     }
 
     reset() {
       this.stop();
+      for (const step of this.done) { delete step.startedAt; delete step.clicked; }
       for (const target of this.timeline.targets.values()) if (target) target.reset();
-      this.slide.querySelectorAll('.fs-media').forEach(stopMedia);
+      this.slide.querySelectorAll('.fs-media').forEach(el => {
+        if (!(show && show.acrossSlides && show.acrossSlides.has(el))) stopMedia(el);
+      });
+      stopEffectSounds();
     }
   }
 
@@ -1338,6 +1459,9 @@
   function stop() {
     if (!show) return;
     stopLaser();
+    stopEvents();
+    if (show.acrossSlides) { for (const el of show.acrossSlides.keys()) stopMedia(el); show.acrossSlides = null; }
+
     clearTimeout(show.timer);
     clearInterval(show.clock);
     if (show.presenter && !show.presenter.closed) show.presenter.close();
@@ -1346,6 +1470,8 @@
       slide.style.transform = slide.style.opacity = slide.style.clipPath = slide.style.zIndex = '';
       placeholder.replaceWith(slide);
     }
+    // Media hidden while stopped show again outside the show.
+    document.querySelectorAll('.fs-stopped').forEach(owner => owner.classList.remove('fs-stopped'));
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     show.overlay.remove();
     show = null;
@@ -1372,6 +1498,7 @@
     const placeholder = show.placeholders.get(slide);
     if (!placeholder) return;
     slide.style.transform = slide.style.opacity = slide.style.clipPath = slide.style.zIndex = '';
+    slide.querySelectorAll('.fs-stopped').forEach(owner => owner.classList.remove('fs-stopped'));
     placeholder.replaceWith(slide);
     show.placeholders.delete(slide);
   }
@@ -1386,8 +1513,16 @@
     if (previous === slide) return;
     show.busy = true;
     stopLaser();
+    stopEvents();
     if (show.animation) show.animation.stop();
+    // Media playing across slides (numSld) go on until their count runs out.
+    if (show.acrossSlides) {
+      for (const [el, left] of [...show.acrossSlides]) {
+        if (left <= 1) { show.acrossSlides.delete(el); stopMedia(el); } else show.acrossSlides.set(el, left - 1);
+      }
+    }
     mount(slide);
+    prepareMedia(slide, index);
     const animation = new SlideAnimation(slide, index);
     // "Show without animation" (showPr showAnimation="0") shows every slide in its final state.
     const animated = !deck.show || deck.show.animation !== false;
@@ -1405,7 +1540,38 @@
     show.busy = false;
     if (options.atEnd) idle(); else animation.start(idle);
     startLaser(index);
+    if (!options.atEnd) startEvents(index);
     updatePresenter();
+  }
+
+  /* ---------------------------------------------------------------- recorded media and trigger events */
+
+  /**
+   * Replays what was done with the slide's media and triggers while the show was recorded (p14:showEvtLst,
+   * catalog: animation.media) when the show uses its timings: play, pause, resume, stop and seek of a video or
+   * sound and clicks on triggers, at their times from the start of the slide's timeline after the transition.
+   */
+  function startEvents(index) {
+    const events = info(index).events;
+    if (!events || (deck.show && deck.show.timings === false)) return;
+    const slide = slides[index];
+    show.eventTimers = events.map(([kind, time, id, extra]) => setTimeout(() => {
+      if (!show || show.current !== slide) return;
+      if (kind === 'trigger') { if (extra === 'onClick' && show.animation) show.animation.trigger(id); return; }
+      const el = mediaOf(slide, id);
+      if (!el) return;
+      if (kind === 'play') { if (el.paused && !el.classList.contains('playing')) playMedia(el, 0); else el.play().catch(() => {}); }
+      else if (kind === 'pause') el.pause();
+      else if (kind === 'resume') el.play().catch(() => {});
+      else if (kind === 'stop') stopMedia(el);
+      else if (kind === 'seek') el.currentTime = trimStart(el) + (extra || 0) / 1000;
+    }, time));
+  }
+
+  function stopEvents() {
+    if (!show || !show.eventTimers) return;
+    show.eventTimers.forEach(clearTimeout);
+    show.eventTimers = null;
   }
 
   /* ---------------------------------------------------------------- recorded laser pointer */

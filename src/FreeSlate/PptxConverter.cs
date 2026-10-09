@@ -109,6 +109,8 @@ public static class PptxConverter
                 slideData.Members.Add($"\"timing\":{timing.ToJsonString()}");
             if (SlideShow.Laser(slideContext) is { } laser)
                 slideData.Members.Add($"\"laser\":{laser.ToJsonString()}");
+            if (SlideShow.Events(slideContext) is { } events)
+                slideData.Members.Add($"\"events\":{events.ToJsonString()}");
             data.Add(slideData);
         }
 
