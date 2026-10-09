@@ -1865,25 +1865,34 @@ areas:
           Only for SmartArt without a saved drawing (PowerPoint 2007 and other producers; PowerPoint itself
           always saves one). The layout tree is instantiated for the data model (all 159 built-in layouts
           match PowerPoint's presentation points). Constraints: a node's own values first, those its ancestors
-          give over them (the nearest last; equalizing and defaulting constraints do not count), lte and gte
-          bounds at the end, a constraint without value or reference only giving 0 where nothing else does;
-          every node evaluates its list again once its parent's algorithm gives it its box, so values follow
-          the actual size while lengths that follow font sizes stay. Algorithms: composite (taking its
-          children's bounding box; ar), lin (shrinking along its line, sizes across following their
-          constraints; alignment parameters; fallback 2D), snake (cells spaced by the transitions' spacer
-          nodes, rows sp apart), cycle (circle as small as keeps neighbors sibSp apart, fNode in the middle,
-          curved connectors as circular arrows), hierRoot/hierChild (levels sp apart, siblings sibSp apart,
-          parents centered over their first and last child, assistants on a level of their own, bent
-          connectors), pyra (exact), connectors along the line between the shapes they join (found by the
-          transitions' data points). Text fitting: font sizes in whole points within the geometry's text
-          rectangle, heights growing in sixteenths as far as the parent has room and lte bounds allow, the
-          diagram laid out again with the pinned values. The output writes the shapes the way PowerPoint
-          writes its drawing (text nodes' text taken by shapes showing the same data, styles and colors by
-          label). Measured against PowerPoint's drawings of the 159 layouts: 577 of 1455 shapes within 1 %, 51
-          diagrams exact (151 and 12 before this engine work); rendered with the drawings removed 65.3 % (38.5
-          % before), all color definitions and quick styles on a process 95.7 %. Missing: layout-specific
-          behaviors of the remaining layouts (hierarchy bands, curved lists, picture layouts), connector
-          routing variants.
+          give over them (the nearest last; equalizing and defaulting constraints do not count); a list's lte
+          and gte bounds on other nodes hold where they stand, a node's bounds on itself at the end, bounds on
+          user variables hold nothing, and bounds between font sizes lower the larger one after fitting; a
+          constraint without value or reference only gives 0 where nothing else does; edges, centers and sizes
+          are derived from each other with their offsets, references to a placed node read its laid-out box,
+          and every node evaluates its list again once its parent's algorithm gives it its box. Algorithms:
+          composite (the room of all its children's boxes, invisible leaves included; ar keeps its box while
+          references see its constraint size; a composite root's drawing centered in the frame), lin (its
+          rules on the children's length first, by halving to within a point of the room, then uniform
+          shrinking; the row as long as the farthest a child reaches; sp only between neighbors without a
+          spacer node; the row aligned in the node and each child across it; fallback 2D laid out at the own
+          size and scaled), snake (rules in 32nds of the way, fixed breakpoints, the grid aligned and growing
+          from grDir, cells never grown, line gaps following the placed cells they refer to), cycle (circle as
+          small as keeps neighbors sibSp apart, fNode in the middle, curved connectors as circular arrows),
+          hierRoot/hierChild (levels sp apart, siblings sibSp apart, parents centered over their first and
+          last child's head, assistants on a level of their own, bent connectors), pyra, connectors between
+          the shapes they join (named ends found inside the transitions' nodes; plain ones drawn as their
+          stem). Text fitting: every line its font's height times the line spacing, paragraphs apart by their
+          space after, within the geometry's text rectangle and the margins; font sizes in whole points,
+          heights growing in sixteenths as far as the parent has room and lte bounds allow, widths growing in
+          32nds of the way to a rule's limit; the diagram laid out again with the pinned values. The output
+          writes the shapes the way PowerPoint writes its drawing (text nodes' text taken by shapes showing
+          the same data, styles and colors by label). Measured against PowerPoint's drawings of the 159
+          layouts: 1031 of 1455 shapes within 1 %, 107 diagrams exact, 508 of 724 font sizes (151 shapes and
+          12 diagrams before this engine work); rendered with the drawings removed 81.6 % (38.5 % before), all
+          color definitions and quick styles on a process 97.2 %. Missing: the snake's offset rows
+          (StepUpProcess, StepDownProcess), org chart variants (hierarchy4, HorizontalOrganizationChart), gear
+          and curved list connectors, nested list bands (LinedList, bProcess2).
 
       - id: smartart.styles
         title: SmartArt styles and color definitions
