@@ -112,10 +112,11 @@ public static class CorpusGenerator
         ["text-more"] = TextMoreDeck.Patch,
         ["tables-more"] = TablesMoreDeck.Patch,
         ["objects-more"] = ObjectsMoreDeck.Patch,
+        ["animations-charts"] = ChartAnimationsDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>
-    static readonly HashSet<string> Resaved = ["sketched"];
+    static readonly HashSet<string> Resaved = ["sketched", "animations-charts"];
 
     /// <summary>Generates the named decks, or all of them.</summary>
     public static void Run(string outputDir, IReadOnlyCollection<string> only)

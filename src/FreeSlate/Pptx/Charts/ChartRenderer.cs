@@ -51,6 +51,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     readonly StringBuilder defs = new();
     readonly StringBuilder dataLabels = new();
     ChartModel model = null!;
+
+    /// <summary>Every series' place in plot order (a:chart seriesIdx of chart builds).</summary>
+    Dictionary<ChartSeries, int> plotOrder = [];
     XElement? chartStyle;
     XElement? colorStyle;
     CultureInfo culture = CultureInfo.InvariantCulture;
@@ -172,6 +175,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (!slide.Presentation.Package.Exists(chartPart) || ChartModel.Read(slide.Presentation.Load(chartPart)) is not { } read)
             return "";
         model = read;
+        plotOrder = model.Groups.SelectMany(g => g.Series).OrderBy(s => s.Order).Select((s, i) => (Series: s, Place: i))
+            .ToDictionary(p => p.Series, p => p.Place);
         width = widthPt;
         height = heightPt;
         originX = originXPx;
@@ -437,7 +442,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// </summary>
     sealed record LabelSpec(bool Value, bool Category, bool Series, bool Percent, bool BubbleSize, string Separator, string? Position,
         string? FormatCode, TextStyle Style, XElement? SpPr, (double L, double T, double R, double B) Insets, double MaxWidth,
-        Fill? Key, ManualOffset? Manual, Outline? Leader, string? Text = null, string? RangeText = null);
+        Fill? Key, ManualOffset? Manual, Outline? Leader, string? Text = null, string? RangeText = null, int Ser = -1, int Pt = -1);
 
     /// <summary>A label's manual position: offsets from its automatic place in fractions of the chart, or edge positions.</summary>
     sealed record ManualOffset(double? X, double? Y, bool EdgeX, bool EdgeY);
@@ -506,7 +511,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, spec.Bubble, separator, Child("dLblPos").Str("val"),
             numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), style, Child("spPr"), insets, maxWidth,
-            key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText);
+            key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText, plotOrder.GetValueOrDefault(series), point);
     }
 
     /// <summary>The fill of a data label's legend key: the point's fill, the line's color for series drawn as lines.</summary>
@@ -608,8 +613,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// Draws a data label whose box has its top-left corner at (x, y): the legend key, a square of the point's fill
     /// centered in height (measured: as in legends, the text 1.108 line heights after the inset), then the centered lines.
     /// </summary>
-    void DrawLabel(LabelSpec spec, string value, double x, double y)
+    void DrawLabel(LabelSpec spec, string value, double x, double y, int start = -1)
     {
+        start = start >= 0 ? start : dataLabels.Length;
         var (w, h) = LabelSize(spec, value);
         dataLabels.Append(Area(spec.SpPr, new Box(x, y, w, h), snap: false));
         var lineHeight = LineHeight(spec.Style);
@@ -628,6 +634,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var lw = Width(line, spec.Style);
             dataLabels.Append(text.Label(line, spec.Style, left + (room - lw) / 2, baseline));
             baseline += lineHeight;
+        }
+        // The label (and a pie label's leader line) builds with its point.
+        if (spec.Ser >= 0 && dataLabels.Length > start)
+        {
+            dataLabels.Insert(start, PartStart(spec.Ser, spec.Pt));
+            dataLabels.Append("</g>");
         }
     }
 
@@ -747,9 +759,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         var moved = Moved(spec, box);
         moved = moved with { X = Math.Clamp(moved.X, 0, Math.Max(0, width - moved.W)), Y = Math.Clamp(moved.Y, 0, Math.Max(0, height - moved.H)) };
+        var labelStart = dataLabels.Length;
         if (spec.Manual != null && spec.Leader is { Visible: true } leader && Distance(moved, cx, cy) > r)
             dataLabels.Append(LeaderLine(leader, moved, cx + ux * r, cy + uy * r, moved.Y + spec.Insets.T + Ascent(spec.Style)));
-        DrawLabel(spec, label, moved.X, moved.Y);
+        DrawLabel(spec, label, moved.X, moved.Y, labelStart);
     }
 
     /// <summary>Whether every corner of a box lies within a pie slice's angles (from the top, clockwise), give or take 1°.</summary>
@@ -1317,7 +1330,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (xAxis == null || yAxis == null)
                     continue;
                 frame = ScatterFrame(xAxis, yAxis);
-                svg.Append(string.Concat(group.Series.Select(s => ErrorBarLines(group, s, frame))));
+                svg.Append(string.Concat(group.Series.Select(s => Part(s, -1, ErrorBarLines(group, s, frame)))));
                 svg.Append(Scatter(group, xAxis, yAxis));
             }
             else
@@ -1326,7 +1339,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     continue;
                 frame = CategoryFrame(categoryAxis, valueAxis);
                 // Error bars lie under lines and markers but over bars and areas.
-                var errorBars = string.Concat(group.Series.Select(s => ErrorBarLines(group, s, frame)));
+                var errorBars = string.Concat(group.Series.Select(s => Part(s, -1, ErrorBarLines(group, s, frame))));
                 if (group.IsLine) svg.Append(errorBars);
                 if (group.IsBar) svg.Append(Bars(group, categoryAxis, valueAxis));
                 else if (group.IsArea) svg.Append(Areas(group, categoryAxis, valueAxis));
@@ -1334,7 +1347,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (!group.IsLine) svg.Append(errorBars);
             }
             foreach (var series in group.Series)
-                svg.Append(Trendlines(group, series, frame, plot));
+                svg.Append(Part(series, -1, Trendlines(group, series, frame, plot)));
         }
 
         foreach (var layout in axes.Where(a => a.Visible))
@@ -2077,10 +2090,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         : picture.NaturalSize.W > 0 ? across * picture.NaturalSize.H / picture.NaturalSize.W : across;
                     if (group.Horizontal && picture.NaturalSize.H > 0 && options.Format == "stack")
                         tile = across * picture.NaturalSize.W / picture.NaturalSize.H;
-                    svg.Append(StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile)));
+                    svg.Append(Part(series, i, StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile))));
                 }
                 else
-                    svg.Append(Rect(box, barFill, barOutline, snap: true));
+                    svg.Append(Part(series, i, Rect(box, barFill, barOutline, snap: true)));
 
                 if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw && !Beyond(value, to))
                 {
@@ -2146,16 +2159,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var outline = SeriesOutline(group, series);
             var smooth = ChartModel.Flag(series.Element, "smooth", false);
             if (outline is { Visible: true })
-            {
-                foreach (var run in Runs(Spanned(points)))
-                    svg.Append($"<path d=\"{PathData(run.Select(p => SnapPoint(p, outline)).ToList(), smooth)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
-            }
+                svg.Append(SeriesLine(series, points, outline, smooth));
             if (Marker(group, series) is { } marker)
             {
                 for (var i = 0; i < points.Count; i++)
                 {
                     if (points[i] is { } p)
-                        svg.Append(DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline));
+                        svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
                 }
             }
             for (var i = 0; i < points.Count; i++)
@@ -2241,7 +2251,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 d.Append('L').Append(Px(b.Item1)).Append(' ').Append(Px(b.Item2));
             }
             d.Append('Z');
-            svg.Append($"<path d=\"{d}\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(PointOutline(series, -1), 0, 0, defs)}/>");
+            svg.Append(Part(series, -1, $"<path d=\"{d}\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(PointOutline(series, -1), 0, 0, defs)}/>"));
             if (group.Stacked)
             {
                 for (var i = 0; i < top.Count; i++)
@@ -2281,7 +2291,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (x is not { } xv || series.Values[i] is not { } yv || d <= 0)
                     continue;
                 var (cx, cy, r) = (xAxis.Map(xv), yAxis.Map(yv), d / 2);
-                svg.Append($"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{paint.Fill(PointFill(group, series, i), d, d, defs)}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>");
+                svg.Append(Part(series, i, $"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{paint.Fill(PointFill(group, series, i), d, d, defs)}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>"));
                 if (DataLabel(group, series, i) is { } spec)
                     LabelAtPoint(spec, LabelText(spec, series, i, yv, 0), cx, cy, spec.Position ?? "r", r + BubbleLabelGap);
             }
@@ -2310,14 +2320,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
             var outline = SeriesOutline(group, series);
             if (ScatterLines(group, series) && outline is { Visible: true })
-            {
-                foreach (var run in Runs(Spanned(points)))
-                    svg.Append($"<path d=\"{PathData(run.Select(p => SnapPoint(p, outline)).ToList(), ChartModel.Flag(series.Element, "smooth", false))}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>");
-            }
+                svg.Append(SeriesLine(series, points, outline, ChartModel.Flag(series.Element, "smooth", false)));
             if (Marker(group, series) is { } marker)
             {
-                foreach (var p in points.Where(p => p.HasValue))
-                    svg.Append(DrawMarker(marker, series.Index, p!.Value.X, p.Value.Y, PointFill(group, series, -1), outline));
+                for (var i = 0; i < points.Count; i++)
+                {
+                    if (points[i] is { } p)
+                        svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, -1), outline)));
+                }
             }
         }
         return svg.ToString();
@@ -2338,12 +2348,59 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     string BlanksAs => model.Chart.Element(Ns.C + "dispBlanksAs") is { } blanks ? blanks.Attribute("val")?.Value ?? "zero" : "gap";
 
     /// <summary>A line's points with blanks dropped where the line spans them.</summary>
-    List<(double X, double Y)?> Spanned(List<(double X, double Y)?> points) =>
-        BlanksAs == "span" ? points.Where(p => p != null).ToList() : points;
+    // ---------------------------------------------------------------- build steps
 
-    static IEnumerable<List<(double X, double Y)>> Runs(List<(double X, double Y)?> points)
+    /// <summary>
+    /// A point's markup (bar, slice, marker, label, line segment) or, with point -1, a whole series' (area, error bars,
+    /// trendline), tagged for the slide show's chart builds (catalog: animation.build): data-ser is the series' place
+    /// in plot order (a:chart seriesIdx), data-pt its category (categoryIdx). Untagged parts are the chart's
+    /// background (bldStep gridLegend).
+    /// </summary>
+    string Part(ChartSeries series, int point, string markup) =>
+        markup.Length == 0 ? "" : PartStart(plotOrder.GetValueOrDefault(series), point) + markup + "</g>";
+
+    /// <summary>Wraps what <paramref name="svg"/> gained since <paramref name="start"/> as a part (see <see cref="Part"/>).</summary>
+    void WrapPart(StringBuilder svg, int start, ChartSeries series, int point)
     {
-        var run = new List<(double X, double Y)>();
+        if (svg.Length == start)
+            return;
+        svg.Insert(start, PartStart(plotOrder.GetValueOrDefault(series), point));
+        svg.Append("</g>");
+    }
+
+    static string PartStart(int series, int point) =>
+        point >= 0 ? $"<g data-ser=\"{series}\" data-pt=\"{point}\">" : $"<g data-ser=\"{series}\">";
+
+    /// <summary>
+    /// A series' line in segments, each with the category it ends at (a category build draws the line up to the
+    /// category; measured on PowerPoint's video). Lines a segment would join differently (other caps or joins than
+    /// round, dashes) stay whole, with the series.
+    /// </summary>
+    string SeriesLine(ChartSeries series, List<(double X, double Y)?> points, Outline outline, bool smooth)
+    {
+        var stroke = paint.Stroke(outline, 0, 0, defs);
+        var indexed = points.Select((p, i) => p is { } q ? (Index: i, q.X, q.Y) : ((int Index, double X, double Y)?)null).ToList();
+        if (BlanksAs == "span")
+            indexed = indexed.Where(p => p != null).ToList();
+        var svg = new StringBuilder();
+        var whole = outline.Dash != "solid" || outline.Cap != "rnd" || outline.Join != "round";
+        foreach (var run in Runs(indexed))
+        {
+            var snapped = run.Select(p => SnapPoint((p.X, p.Y), outline)).ToList();
+            if (whole)
+            {
+                svg.Append(Part(series, -1, $"<path d=\"{PathData(snapped, smooth)}\" fill=\"none\"{stroke}/>"));
+                continue;
+            }
+            for (var j = 1; j < run.Count; j++)
+                svg.Append(Part(series, run[j].Index, $"<path d=\"{SegmentData(snapped, j, smooth)}\" fill=\"none\"{stroke}/>"));
+        }
+        return svg.ToString();
+    }
+
+    static IEnumerable<List<T>> Runs<T>(List<T?> points) where T : struct
+    {
+        var run = new List<T>();
         foreach (var p in points)
         {
             if (p is { } point)
@@ -2362,22 +2419,26 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         var d = new StringBuilder($"M{Px(points[0].X)} {Px(points[0].Y)}");
         for (var i = 1; i < points.Count; i++)
-        {
-            if (!smooth || points.Count < 3)
-            {
-                d.Append($"L{Px(points[i].X)} {Px(points[i].Y)}");
-                continue;
-            }
-            var p0 = points[Math.Max(0, i - 2)];
-            var p1 = points[i - 1];
-            var p2 = points[i];
-            var p3 = points[Math.Min(points.Count - 1, i + 1)];
-            const double t = 1.0 / 6;
-            var c1 = (p1.X + (p2.X - p0.X) * t, p1.Y + (p2.Y - p0.Y) * t);
-            var c2 = (p2.X - (p3.X - p1.X) * t, p2.Y - (p3.Y - p1.Y) * t);
-            d.Append($"C{Px(c1.Item1)} {Px(c1.Item2)} {Px(c2.Item1)} {Px(c2.Item2)} {Px(p2.X)} {Px(p2.Y)}");
-        }
+            d.Append(Segment(points, i, smooth));
         return d.ToString();
+    }
+
+    /// <summary>The segment from point i − 1 to point i on its own.</summary>
+    static string SegmentData(List<(double X, double Y)> points, int i, bool smooth) =>
+        $"M{Px(points[i - 1].X)} {Px(points[i - 1].Y)}" + Segment(points, i, smooth);
+
+    static string Segment(List<(double X, double Y)> points, int i, bool smooth)
+    {
+        if (!smooth || points.Count < 3)
+            return $"L{Px(points[i].X)} {Px(points[i].Y)}";
+        var p0 = points[Math.Max(0, i - 2)];
+        var p1 = points[i - 1];
+        var p2 = points[i];
+        var p3 = points[Math.Min(points.Count - 1, i + 1)];
+        const double t = 1.0 / 6;
+        var c1 = (p1.X + (p2.X - p0.X) * t, p1.Y + (p2.Y - p0.Y) * t);
+        var c2 = (p2.X - (p3.X - p1.X) * t, p2.Y - (p3.Y - p1.Y) * t);
+        return $"C{Px(c1.Item1)} {Px(c1.Item2)} {Px(c2.Item1)} {Px(c2.Item2)} {Px(p2.X)} {Px(p2.Y)}";
     }
 
     /// <summary>The marker of a line or scatter series, or null when markers are off.</summary>
@@ -3061,7 +3122,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     var d = new StringBuilder();
                     for (var i = 0; i < corners.Count; i++)
                         d.Append(i == 0 ? 'M' : 'L').Append(Px(corners[i].X)).Append(' ').Append(Px(corners[i].Y));
-                    svg.Append($"<path d=\"{d}Z\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(outline, 0, 0, defs)}/>");
+                    svg.Append(Part(series, -1, $"<path d=\"{d}Z\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(outline, 0, 0, defs)}/>"));
                     continue;
                 }
                 var points = Enumerable.Range(0, n).Select(i => series.Values.ElementAtOrDefault(i) is { } v ? At(i, Radius(v)) : ((double X, double Y)?)null).ToList();
@@ -3083,7 +3144,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     for (var i = 0; i < points.Count; i++)
                     {
                         if (points[i] is { } p)
-                            svg.Append(DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline));
+                            svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
                     }
                 }
                 for (var i = 0; i < points.Count; i++)
@@ -3200,7 +3261,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                                 ?? ChartModel.Number(series.Element, "explosion") ?? 0;
                 var mid = (angle + sweep / 2) * Math.PI / 180;
                 var (ox, oy) = (Math.Sin(mid) * outer * explosion / 100, -Math.Cos(mid) * outer * explosion / 100);
-                svg.Append($"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+                svg.Append(Part(series, i, $"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
                 if (DataLabel(group, series, i) is { } spec)
                 {
                     if (doughnut)
@@ -3285,11 +3346,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             if (second.Contains(i) || values[i] <= 0)
                 continue;
             var sweep = values[i] / total * 360;
-            svg.Append($"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+            svg.Append(Part(series, i, $"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
             angle += sweep;
         }
         if (other > 0)
-            svg.Append($"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{paint.Fill(PointFill(group, series, n), 0, 0, defs)}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>");
+            svg.Append(Part(series, n, $"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{paint.Fill(PointFill(group, series, n), 0, 0, defs)}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>"));
 
         // The second plot.
         var secondLeft = left + diameter * (1 + gap);
@@ -3302,7 +3363,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var i in second.OrderBy(i => i))
             {
                 var h = other > 0 ? values[i] / other * height : 0;
-                svg.Append(Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true));
+                svg.Append(Part(series, i, Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true)));
                 y += h;
             }
             (top, bottom) = ((secondLeft, cy - height / 2), (secondLeft, cy + height / 2));
@@ -3314,7 +3375,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var i in second.OrderBy(i => i))
             {
                 var sweep = other > 0 ? values[i] / other * 360 : 0;
-                svg.Append($"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>");
+                svg.Append(Part(series, i, $"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
                 a += sweep;
             }
             (top, bottom) = ((cx2, cy - r2), (cx2, cy + r2));

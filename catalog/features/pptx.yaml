@@ -1906,6 +1906,10 @@ areas:
         strategy: >-
           Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must
           keep those addressable.
+        office: >-
+          Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm) and chart parts
+          (a:chart: series, categories, points, background) are addressable; character ranges (p:charRg), ink
+          (p:inkTgt) and sounds (p:sndTgt) still to do.
 
       - id: animation.behaviors
         title: Animation behaviours
@@ -1933,13 +1937,20 @@ areas:
                    a:bldChart, a:bldDgm]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: Build text by paragraph and level, charts by series or category, SmartArt by node.
         office: >-
-          SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape (p:graphicEl
-          with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the player animates each
-          shape of the diagram on its own (checked with tools/Fidelity animate on generated/smartart). Charts by
-          series or category (a:chart in p:graphicEl) still animate the whole chart.
+          SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape
+          (p:graphicEl with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the
+          player animates each shape of the diagram on its own (checked with tools/Fidelity animate on
+          generated/smartart). Chart builds (a:bldChart series, category, seriesEl, categoryEl) are effects
+          per a:chart step: gridLegend (everything but the data), series, category, ptInSeries, ptInCategory,
+          with seriesIdx -3/-4 and categoryIdx -3/-4 where they do not apply (PowerPoint keeps them so; its
+          object model refuses chart builds of modern charts). PowerPoint animates a series or category as
+          one: a wipe runs over the box around all its bars, labels and markers; a line segment builds with
+          the category it ends at. The chart marks its parts (data-ser in plot order, data-pt), the player
+          animates their union (generated/animations-charts: 99.5 % of 103 video frames). Builds of legacy OLE
+          charts (p:bldOleChart) animate the whole object, which is drawn from its picture.
 
       - id: animation.presets
         title: Effect presets

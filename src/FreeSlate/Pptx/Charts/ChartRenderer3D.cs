@@ -408,7 +408,8 @@ public sealed partial class ChartRenderer
         (double X, double Y, double Z) Point(double along, double across, double z) => frame.Columns ? (along, across, z) : (across, along, z);
         var cross = CrossValue(frame.Value, frame.CategoryAxis);
         var groupShape = ChartModel.Val(group.Element, "shape") ?? "box";
-        var bars = new List<(double X0, double Y0, double Z0, double X1, double Y1, double Z1, Fill Fill, Outline? Outline, string Shape, double Base, double Apex)>();
+        var bars = new List<(double X0, double Y0, double Z0, double X1, double Y1, double Z1, Fill Fill, Outline? Outline, string Shape, double Base, double Apex,
+            ChartSeries Series, int Point)>();
         for (var i = 0; i < frame.Categories; i++)
         {
             double positive = 0, negative = 0;
@@ -445,7 +446,7 @@ public sealed partial class ChartRenderer
                     _ when group.Stacked => (frame.ValuePos(0), frame.ValuePos(stackTop)),
                     _ => (frame.ValuePos(from), frame.ValuePos(to)),
                 };
-                bars.Add((p0.X, p0.Y, p0.Z, p1.X, p1.Y, p1.Z, PointFill(group, series[k], i), PointOutline(series[k], i), shape, solidBase, apex));
+                bars.Add((p0.X, p0.Y, p0.Z, p1.X, p1.Y, p1.Z, PointFill(group, series[k], i), PointOutline(series[k], i), shape, solidBase, apex, series[k], i));
             }
         }
         var ordered = projection is Oblique oblique
@@ -454,12 +455,12 @@ public sealed partial class ChartRenderer
         var svg = new StringBuilder();
         foreach (var bar in ordered)
         {
-            svg.Append(bar.Shape switch
+            svg.Append(Part(bar.Series, bar.Point, bar.Shape switch
             {
                 "cylinder" or "cone" or "coneToMax" or "pyramid" or "pyramidToMax" =>
                     Solid3D(projection, bar.X0, bar.Y0, bar.Z0, bar.X1, bar.Y1, bar.Z1, bar.Fill, bar.Outline, bar.Shape, frame.Columns, bar.Base, bar.Apex),
                 _ => Box3D(projection, bar.X0, bar.Y0, bar.Z0, bar.X1, bar.Y1, bar.Z1, bar.Fill, bar.Outline),
-            });
+            }));
         }
         return svg.ToString();
     }
@@ -585,6 +586,7 @@ public sealed partial class ChartRenderer
         }
         foreach (var slab in slabs.OrderByDescending(s => s.Z0))
         {
+            var partStart = svg.Length;
             var fill = PointFill(group, series[slab.Index], -1);
             var outline = SeriesOutline(group, series[slab.Index]);
             var pts = slab.Points;
@@ -617,6 +619,7 @@ public sealed partial class ChartRenderer
             var front = pts.Select(p => (p.X, p.Y1, z0)).Concat(pts.AsEnumerable().Reverse().Select(p => (p.X, p.Y0, z0))).ToList();
             if (projection.Faces((pts[0].X, pts[0].Y1, z0), (0, 0, -1)))
                 svg.Append(Facet(projection, front, fill, outline, Shade(0, 0, -1)));
+            WrapPart(svg, partStart, series[slab.Index], -1);
         }
         return svg.ToString();
     }
@@ -642,7 +645,7 @@ public sealed partial class ChartRenderer
             var points = new List<(double X, double Y)?>();
             for (var i = 0; i < frame.Categories; i++)
                 points.Add(series[k].Values.ElementAtOrDefault(i) is { } v ? (frame.CategoryCenter(i), frame.ValuePos(v)) : null);
-            var faces = new List<(double Depth, (double X, double Y, double Z)[] Corners, double Shade)>();
+            var faces = new List<(double Depth, (double X, double Y, double Z)[] Corners, double Shade, int Point)>();
             for (var i = 0; i + 1 < points.Count; i++)
             {
                 if (points[i] is not { } a || points[i + 1] is not { } b)
@@ -657,13 +660,13 @@ public sealed partial class ChartRenderer
                 var centre = ((a.X + b.X) / 2, (a.Y + b.Y) / 2, (z0 + z1) / 2);
                 var depthOf = projection.Depth(centre.Item1, centre.Item2, centre.Item3);
                 if (projection.Faces(centre, (nx, ny, 0)))
-                    faces.Add((depthOf, top, Shade(nx, ny, 0)));
+                    faces.Add((depthOf, top, Shade(nx, ny, 0), i + 1));
                 else
-                    faces.Add((depthOf, under, Shade(-nx, -ny, 0)));
-                faces.Add((depthOf - 1e-6, front, Shade(0, 0, -1)));
+                    faces.Add((depthOf, under, Shade(-nx, -ny, 0), i + 1));
+                faces.Add((depthOf - 1e-6, front, Shade(0, 0, -1), i + 1));
             }
             foreach (var face in faces.OrderByDescending(f => f.Depth))
-                svg.Append(Facet(projection, face.Corners, fill, outline, face.Shade));
+                svg.Append(Part(series[k], face.Point, Facet(projection, face.Corners, fill, outline, face.Shade)));
         }
         return svg.ToString();
     }

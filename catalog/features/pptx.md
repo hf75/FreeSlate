@@ -29,12 +29,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 4 | 16 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 2 | 2 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 4 | 1 |
-| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 5 | 2 |
+| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 4 | 3 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 1 | 2 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 0 | 4 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **22** | **122** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **21** | **123** |
 
 <a id="package"></a>
 
@@ -2159,7 +2159,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | [Timing tree](#animation.timing) | P1 | ●●●●○ | partial | 19 | 10 |
 | [Animation targets](#animation.targets) | P1 | ●●●○○ | partial | 13 | 9 |
 | [Animation behaviours](#animation.behaviors) | P1 | ●●●●○ | partial | 26 | 20 |
-| [Build lists](#animation.build) | P1 | ●●●○○ | partial | 11 | 9 |
+| [Build lists](#animation.build) | P1 | ●●●○○ | done | 11 | 9 |
 | [Effect presets](#animation.presets) | P1 | ●●●○○ | done | 0 | 0 |
 | [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | partial | 12 | 3 |
 | [Animated pictures](#animation.pictures) | P3 | ●●○○○ | todo | 1 | 0 |
@@ -2189,6 +2189,8 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 **Rendering:** Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must keep those addressable.
 
+**Office behaviour:** Shapes, paragraph ranges (p:pRg), backgrounds (p:bg), SmartArt shapes (a:dgm) and chart parts (a:chart: series, categories, points, background) are addressable; character ranges (p:charRg), ink (p:inkTgt) and sounds (p:sndTgt) still to do.
+
 **Elements (13):** [`a:chart`](../format/namespaces/a.md#achart), [`a:dgm`](../format/namespaces/a.md#adgm), [`p:charRg`](../format/namespaces/p.md#pcharrg), [`p:graphicEl`](../format/namespaces/p.md#pgraphicel), [`p:inkTgt`](../format/namespaces/p.md#pinktgt), [`p:oleChartEl`](../format/namespaces/p.md#polechartel), [`p:pRg`](../format/namespaces/p.md#pprg), [`p:sldTgt`](../format/namespaces/p.md#psldtgt), [`p:sndTgt`](../format/namespaces/p.md#psndtgt), [`p:spTgt`](../format/namespaces/p.md#psptgt), [`p:subSp`](../format/namespaces/p.md#psubsp), [`p:tgtEl`](../format/namespaces/p.md#ptgtel), [`p:txEl`](../format/namespaces/p.md#ptxel)
 
 **Specification:** §19.5.23 Character Range (p.2638); §19.5.45 Graphic Element (p.2657); §19.5.47 Ink Target (p.2659); §19.5.52 Embedded Chart Element (p.2662); §19.5.56 Paragraph Text Range (p.2664); §19.5.67 Slide Target (p.2675) and 7 more
@@ -2215,11 +2217,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### Build lists
 
-`animation.build` · P1 · difficulty 3 · partial
+`animation.build` · P1 · difficulty 3 · done
 
 **Rendering:** Build text by paragraph and level, charts by series or category, SmartArt by node.
 
-**Office behaviour:** SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape (p:graphicEl with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the player animates each shape of the diagram on its own (checked with tools/Fidelity animate on generated/smartart). Charts by series or category (a:chart in p:graphicEl) still animate the whole chart.
+**Office behaviour:** SmartArt builds (a:bldDgm one, lvlOne, lvlAtOnce) are written as effects per drawing shape (p:graphicEl with a:dgm id = the shape's model id, bldStep bg for the diagram's background); the player animates each shape of the diagram on its own (checked with tools/Fidelity animate on generated/smartart). Chart builds (a:bldChart series, category, seriesEl, categoryEl) are effects per a:chart step: gridLegend (everything but the data), series, category, ptInSeries, ptInCategory, with seriesIdx -3/-4 and categoryIdx -3/-4 where they do not apply (PowerPoint keeps them so; its object model refuses chart builds of modern charts). PowerPoint animates a series or category as one: a wipe runs over the box around all its bars, labels and markers; a line segment builds with the category it ends at. The chart marks its parts (data-ser in plot order, data-pt), the player animates their union (generated/animations-charts: 99.5 % of 103 video frames). Builds of legacy OLE charts (p:bldOleChart) animate the whole object, which is drawn from its picture.
 
 **Elements (11):** [`a:bldChart`](../format/namespaces/a.md#abldchart), [`a:bldDgm`](../format/namespaces/a.md#ablddgm), [`p:bldAsOne`](../format/namespaces/p.md#pbldasone), [`p:bldDgm`](../format/namespaces/p.md#pblddgm), [`p:bldGraphic`](../format/namespaces/p.md#pbldgraphic), [`p:bldLst`](../format/namespaces/p.md#pbldlst), [`p:bldOleChart`](../format/namespaces/p.md#pbldolechart), [`p:bldP`](../format/namespaces/p.md#pbldp), [`p:bldSub`](../format/namespaces/p.md#pbldsub), [`p:tmpl`](../format/namespaces/p.md#ptmpl), [`p:tmplLst`](../format/namespaces/p.md#ptmpllst)
 

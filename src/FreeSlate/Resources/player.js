@@ -98,19 +98,32 @@
   /* ---------------------------------------------------------------- animation targets */
 
   /**
-   * A target of behaviours: a shape (its div), its background, or a paragraph (SVG groups inside the shape).
-   * Base values are PowerPoint's ppt_x/ppt_y (center) and ppt_w/ppt_h, as fractions of the slide size.
+   * A target of behaviours: a shape (its div), its background, a paragraph (SVG groups inside the shape) or a chart's
+   * part (several SVG elements acting as one: a series, a category, the background). Base values are PowerPoint's
+   * ppt_x/ppt_y (center) and ppt_w/ppt_h, as fractions of the slide size.
    */
   class Target {
     constructor(element, svg) {
-      this.el = element;
+      this.els = Array.isArray(element) ? element : [element];
+      this.el = this.els[0];
       this.svg = svg;   // true for SVG elements inside a shape
       if (svg) {
-        const shape = element.closest('.sp');
+        const shape = this.el.closest('.sp');
         this.shapeMatrix = parseMatrix(shape ? shape.style.transform : '');
         this.matrix = IDENTITY.slice();
-        let box;
-        try { box = element.getBBox(); } catch { box = { x: 0, y: 0, width: 0, height: 0 }; }
+        // Several elements share the box around them all (PowerPoint wipes a series as one).
+        let box = null;
+        for (const e of this.els) {
+          let b;
+          try { b = e.getBBox(); } catch { continue; }
+          if (b.width === 0 && b.height === 0) continue;
+          box = box ? {
+            x: Math.min(box.x, b.x), y: Math.min(box.y, b.y),
+            width: Math.max(box.x + box.width, b.x + b.width) - Math.min(box.x, b.x),
+            height: Math.max(box.y + box.height, b.y + b.height) - Math.min(box.y, b.y),
+          } : { x: b.x, y: b.y, width: b.width, height: b.height };
+        }
+        box = box || { x: 0, y: 0, width: 0, height: 0 };
         this.local = box;
         const [cx, cy] = apply(this.shapeMatrix, box.x + box.width / 2, box.y + box.height / 2);
         this.base = { x: cx / W, y: cy / H, w: box.width / W, h: box.height / H };
@@ -140,8 +153,10 @@
     /** Writes a state to the element (only what differs from the original). */
     render(s) {
       const el = this.el;
-      el.style.visibility = s.visible ? '' : 'hidden';
-      el.style.opacity = s.opacity < 1 ? String(Math.max(0, s.opacity)) : '';
+      for (const e of this.els) {
+        e.style.visibility = s.visible ? '' : 'hidden';
+        e.style.opacity = s.opacity < 1 ? String(Math.max(0, s.opacity)) : '';
+      }
       const b = this.base;
       const moved = Math.abs(s.x - b.x) > 1e-6 || Math.abs(s.y - b.y) > 1e-6 || Math.abs(s.w - b.w) > 1e-6 || Math.abs(s.h - b.h) > 1e-6
                     || s.rot !== 0 || s.sx !== 1 || s.sy !== 1 || s.mx !== 0 || s.my !== 0;
@@ -155,9 +170,10 @@
           const slideCenter = apply(shape, lx, ly);
           const target = [(s.x + s.mx) * W, (s.y + s.my) * H];
           const change = multiply(translate(target[0], target[1]), multiply(rotate(s.rot), multiply(scale(kx, ky), translate(-slideCenter[0], -slideCenter[1]))));
-          el.setAttribute('transform', css(multiply(inverse, multiply(change, shape))));
+          const transform = css(multiply(inverse, multiply(change, shape)));
+          for (const e of this.els) e.setAttribute('transform', transform);
         } else {
-          el.removeAttribute('transform');
+          for (const e of this.els) e.removeAttribute('transform');
         }
         this.renderClip(s.clip);
       } else {
@@ -178,69 +194,78 @@
       this.renderPaint(s);
     }
 
-    /** SVG targets get an SVG clip path in their own coordinates. */
+    /**
+     * SVG targets get an SVG clip path (or a mask for soft edges) over the box around their elements: the effect's
+     * unit square mapped onto it, in the elements' own coordinates.
+     */
     renderClip(clip) {
-      const el = this.el;
+      const els = this.els, box = this.local, ns = 'http://www.w3.org/2000/svg';
+      const unit = `matrix(${box.width},0,0,${box.height},${box.x},${box.y})`;
       if (clip && clip.soft) {
-        el.removeAttribute('clip-path');
         if (!this.mask) {
-          const ns = 'http://www.w3.org/2000/svg';
           const id = 'fs-mask-' + Math.random().toString(36).slice(2);
           this.mask = document.createElementNS(ns, 'mask');
           this.mask.id = id;
-          this.mask.setAttribute('maskContentUnits', 'objectBoundingBox');
+          // The mask's own region reaches past the box, so that strokes on its edge are not cut off.
+          const pad = 0.1 * Math.max(box.width, box.height) + 4;
+          for (const [k, v] of [['maskUnits', 'userSpaceOnUse'], ['x', box.x - pad], ['y', box.y - pad],
+            ['width', box.width + 2 * pad], ['height', box.height + 2 * pad]]) this.mask.setAttribute(k, v);
           this.gradient = document.createElementNS(ns, 'linearGradient');
           this.gradient.id = id + '-g';
           const fill = document.createElementNS(ns, 'rect');
-          for (const [k, v] of [['width', 1], ['height', 1], ['fill', `url(#${id}-g)`]]) fill.setAttribute(k, v);
+          for (const [k, v] of [['width', 1], ['height', 1], ['fill', `url(#${id}-g)`], ['transform', unit]]) fill.setAttribute(k, v);
           this.mask.append(this.gradient, fill);
-          el.ownerSVGElement.appendChild(this.mask);
+          this.el.ownerSVGElement.appendChild(this.mask);
         }
         const [x1, y1, x2, y2] = { right: [0, 0, 1, 0], left: [1, 0, 0, 0], down: [0, 0, 0, 1], up: [0, 1, 0, 0] }[clip.soft.dir];
         for (const [k, v] of [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2]]) this.gradient.setAttribute(k, v);
         this.gradient.innerHTML = clip.soft.stops.map(([o, a]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a}"/>`).join('');
-        el.setAttribute('mask', `url(#${this.mask.id})`);
+        for (const e of els) { e.removeAttribute('clip-path'); e.setAttribute('mask', `url(#${this.mask.id})`); }
         return;
       }
-      el.removeAttribute('mask');
-      if (!clip) { el.removeAttribute('clip-path'); return; }
+      for (const e of els) e.removeAttribute('mask');
+      if (!clip) { for (const e of els) e.removeAttribute('clip-path'); return; }
       if (!this.clipPath) {
-        const svg = el.ownerSVGElement;
-        const ns = 'http://www.w3.org/2000/svg';
         this.clipPath = document.createElementNS(ns, 'clipPath');
         this.clipPath.id = 'fs-clip-' + Math.random().toString(36).slice(2);
-        this.clipPath.setAttribute('clipPathUnits', 'objectBoundingBox');
+        this.clipPath.setAttribute('clipPathUnits', 'userSpaceOnUse');
         this.clipShape = document.createElementNS(ns, 'path');
+        this.clipShape.setAttribute('transform', unit);
         this.clipPath.appendChild(this.clipShape);
-        svg.appendChild(this.clipPath);
+        this.el.ownerSVGElement.appendChild(this.clipPath);
       }
       this.clipShape.setAttribute('d', clip.path);
-      el.setAttribute('clip-path', `url(#${this.clipPath.id})`);
+      for (const e of els) e.setAttribute('clip-path', `url(#${this.clipPath.id})`);
+    }
+
+    /** The elements matching a selector inside the target's elements. */
+    all(selector) {
+      return this.els.flatMap(e => [...e.querySelectorAll(selector)]);
     }
 
     renderPaint(s) {
       if (s.fill !== this.lastFill) {
         this.lastFill = s.fill;
-        const paths = this.el.querySelectorAll(this.svg ? 'path' : '[data-bg] path, svg > path');
-        paths.forEach(p => { if (p.getAttribute('fill') !== 'none') p.style.fill = s.fill || ''; });
+        this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => { if (p.getAttribute('fill') !== 'none') p.style.fill = s.fill || ''; });
       }
       if (s.stroke !== this.lastStroke) {
         this.lastStroke = s.stroke;
-        this.el.querySelectorAll(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => {
+        this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => {
           if (p.getAttribute('stroke') && p.getAttribute('stroke') !== 'none') p.style.stroke = s.stroke || '';
         });
       }
       if (s.color !== this.lastColor) {
         this.lastColor = s.color;
-        this.el.querySelectorAll('[data-tx] g[fill], [data-tx] text:not(.sel), [data-tx] rect').forEach(t => { t.style.fill = s.color || ''; });
+        this.all('[data-tx] g[fill], [data-tx] text:not(.sel), [data-tx] rect').forEach(t => { t.style.fill = s.color || ''; });
       }
     }
 
     reset() {
-      const el = this.el;
-      el.style.visibility = el.style.opacity = '';
-      if (this.svg) { el.removeAttribute('transform'); el.removeAttribute('clip-path'); el.removeAttribute('mask'); }
-      else { el.style.transform = this.originalTransform; el.style.clipPath = el.style.maskImage = ''; }
+      for (const el of this.els) {
+        el.style.visibility = el.style.opacity = '';
+        if (this.svg) { el.removeAttribute('transform'); el.removeAttribute('clip-path'); el.removeAttribute('mask'); }
+        else { el.style.transform = this.originalTransform; el.style.clipPath = el.style.maskImage = ''; }
+      }
       this.renderPaint({ fill: null, stroke: null, color: null });
     }
   }
@@ -273,6 +298,25 @@
         const id = String(target.graphic.id);
         keys.push([`${target.spid}:${id}`, () => Array.from(shape.querySelectorAll('[data-mid]')).find(e => e.dataset.mid === id), false]);
       }
+    } else if (target.graphic && target.graphic.kind === 'chart') {
+      // A chart's background (gridLegend), series, category or point (catalog: animation.build): the chart marks
+      // its parts with data-ser and data-pt; everything else is background. Parts of a whole series (areas,
+      // trendlines) build with the series' first category.
+      const g = target.graphic, step = g.bldStep;
+      const [ser, cat] = [String(g.seriesIdx), String(g.categoryIdx)];
+      keys.push([`${target.spid}:chart:${step}:${ser}:${cat}`, () => {
+        const svg = shape.querySelector(':scope > svg');
+        if (!svg) return null;
+        const parts = [...svg.querySelectorAll('[data-ser]')];
+        const whole = e => e.dataset.pt === undefined && cat === '0';
+        const found = step === 'gridLegend'
+          ? [...svg.children].filter(e => !e.hasAttribute('data-ser') && !['defs', 'clipPath', 'mask'].includes(e.tagName))
+          : step === 'series' ? parts.filter(e => e.dataset.ser === ser)
+          : step === 'category' ? parts.filter(e => e.dataset.pt === cat || whole(e))
+          : step === 'ptInSeries' || step === 'ptInCategory' ? parts.filter(e => e.dataset.ser === ser && (e.dataset.pt === cat || whole(e)))
+          : parts;
+        return found.length ? found : null;
+      }, true]);
     } else if (target.bg) {
       keys.push([`${target.spid}:bg`, () => shape.querySelector('g[data-bg]'), true]);
     } else {
@@ -490,7 +534,7 @@
 
   function currentColor(target, key) {
     const selector = key === 'color' ? '[data-tx] g[fill], [data-tx] text' : (target.svg ? 'path' : '[data-bg] path, svg > path');
-    const el = target.el.querySelector(selector);
+    const el = target.all(selector)[0];
     return el ? (key === 'stroke' ? el.getAttribute('stroke') : el.getAttribute('fill')) : null;
   }
 
