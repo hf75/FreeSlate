@@ -618,6 +618,51 @@ public static class Engine
         {
             if (Fits())
                 break;
+            // A font size rule lowers its targets' size in whole points to the largest that lets the children fit, the
+            // values that follow it evaluated again (measured: list1's titles at 44 pt, their rows as high as it makes
+            // them); the size stays pinned for the text's own fitting.
+            if ((string?)rule.Attribute("type") == "primFontSz")
+            {
+                var texts = Constraints.Targets(node, (string?)rule.Attribute("for"), (string?)rule.Attribute("forName"), (string?)rule.Attribute("ptType"))
+                    .Where(t => t.AlgorithmType == "tx").ToList();
+                if (texts.Count == 0)
+                    continue;
+                var largest = (int)Math.Floor(texts.Max(TextBody.PrimaryFont) + 1e-9);
+                var smallest = (int)Math.Ceiling(Number((string?)rule.Attribute("val")) is { } lowest && double.IsFinite(lowest) ? lowest
+                    : Number((string?)rule.Attribute("fact")) is { } part && double.IsFinite(part) ? part * largest : 5);
+                if (smallest >= largest)
+                    continue;
+                void Size(int size)
+                {
+                    foreach (var text in texts)
+                    {
+                        pins.Set(text, "primFontSz", size);
+                        text.Values["primFontSz"] = size;
+                    }
+                    Constraints.EvaluateList(node, pins);
+                    foreach (var child in node.Children)
+                    {
+                        Constraints.EvaluateOwn(child, pins);
+                        Refresh(child, pins);
+                    }
+                    extents = children.Select(Extent).ToList();
+                }
+                var (low, high) = (smallest, largest);
+                Size(low);
+                if (!Fits())
+                    continue;
+                while (low < high)
+                {
+                    var middle = (low + high + 1) / 2;
+                    Size(middle);
+                    if (Fits())
+                        low = middle;
+                    else
+                        high = middle - 1;
+                }
+                Size(low);
+                continue;
+            }
             if ((string?)rule.Attribute("type") != type)
                 continue;
             var targets = Constraints.Targets(node, (string?)rule.Attribute("for"), (string?)rule.Attribute("forName"), (string?)rule.Attribute("ptType"))
