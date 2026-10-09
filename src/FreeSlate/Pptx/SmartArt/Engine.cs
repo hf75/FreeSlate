@@ -1240,6 +1240,13 @@ public static class Engine
                 }
             }
         }
+        // Values that follow the shapes' sizes follow them as drawn (measured: NameandTitleOrganizationalChart's names,
+        // their bottom margin 0.4 of their height as drawn).
+        foreach (var n in node.Descendants().Where(n => n.AlgorithmType == "tx" && !InConnector(n, node)))
+        {
+            (n.Values["w"], n.Values["h"]) = (n.W, n.H);
+            Constraints.EvaluateOwnValues(n, pins);
+        }
         (node.X, node.Y, node.W, node.H) = (bx, by, bw, bh);
     }
 
