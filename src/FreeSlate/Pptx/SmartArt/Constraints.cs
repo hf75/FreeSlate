@@ -191,6 +191,11 @@ public static class Constraints
         if (type is "" or "none")
             return;
         var targets = Targets(owner, (string?)constraint.Attribute("for"), (string?)constraint.Attribute("forName"), (string?)constraint.Attribute("ptType"));
+        // A spacing given to all descendants reaches the nodes of descendant points only, not the lines laying out the
+        // owner's own (measured: hierarchy5's and hierarchy6's flows, their parts with no space between them, the trees
+        // in them sp apart).
+        if (type == "sp" && (string?)constraint.Attribute("for") == "des" && constraint.Attribute("forName") == null)
+            targets = targets.Where(n => n.Point != owner.Point).ToList();
         if (targets.Count == 0)
             return;
         var op = (string?)constraint.Attribute("op") ?? "none";

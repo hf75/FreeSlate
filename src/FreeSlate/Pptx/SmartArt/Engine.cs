@@ -443,6 +443,20 @@ public static class Engine
         var gap = Value(node, "sp");
         var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), gap);
         double factor;
+        // A tree alone on the line fits and centers itself in the node (measured: hierarchy5's tree, centered in a line
+        // aligned to the left).
+        if (children.Count == 1 && IsHierarchy(children[0]))
+        {
+            Place(children[0], node.X, node.Y, node.W, node.H, pins);
+            foreach (var (child, before) in ruled)
+            {
+                if (before is { } value)
+                    pins.Set(child, horizontal ? "w" : "h", value);
+                else
+                    pins.Remove(child, horizontal ? "w" : "h");
+            }
+            return;
+        }
         if (node.Param("fallback") == "2D")
         {
             var across = extents.Max(e => horizontal ? e.H : e.W);
