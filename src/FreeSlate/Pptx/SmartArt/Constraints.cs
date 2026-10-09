@@ -298,6 +298,22 @@ public static class Constraints
     {
         if (reference.Placed && reference != owner && type is "w" or "h")
             return type == "w" ? reference.W : reference.H;
+        // An edge or center of a placed node where its values give none: its box in its parent's (measured: venn2's
+        // inner circles centered on the outer one and ending at its bottom, which only its size places).
+        if (reference.Placed && reference != owner && reference.Parent is { } parent
+            && Get(reference, type) is null && type is "l" or "t" or "r" or "b" or "ctrX" or "ctrY")
+        {
+            var (x, y) = (reference.X - parent.X, reference.Y - parent.Y);
+            return type switch
+            {
+                "l" => x,
+                "t" => y,
+                "r" => x + reference.W,
+                "b" => y + reference.H,
+                "ctrX" => x + reference.W / 2,
+                _ => y + reference.H / 2,
+            };
+        }
         return Get(reference, type);
     }
 
