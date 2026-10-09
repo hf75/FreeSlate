@@ -1001,6 +1001,10 @@ public static class Engine
         {
             return node.Children.FirstOrDefault(c => !IsHierarchy(c) && c.AlgorithmType != "conn");
         }
+        // A composite child is its own head (measured: PictureAccentList's pictures with their texts, as wide as the
+        // root above them and at its left).
+        if (node.AlgorithmType == "composite")
+            return node;
         return node.Descendants().Prepend(node).FirstOrDefault(Draws) ?? node;
     }
 
