@@ -350,13 +350,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return (Snap(p.X, originX), Snap(p.Y, originY));
     }
 
-    string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0)
+    /// <param name="nudge">Pixels added after snapping: ½ puts a 1 px outline on whole pixels.</param>
+    string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0, double nudge = 0)
     {
         double x0, y0, x1, y1;
         if (snap)
         {
-            (x0, x1) = (SnapX(box.X), SnapX(box.Right));
-            (y0, y1) = (SnapY(box.Y), SnapY(box.Bottom));
+            (x0, x1) = (SnapX(box.X) + nudge, SnapX(box.Right) + nudge);
+            (y0, y1) = (SnapY(box.Y) + nudge, SnapY(box.Bottom) + nudge);
         }
         else
         {
@@ -990,13 +991,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             if (group.IsSurface)
             {
-                // Surface charts list their value bands.
+                // Surface charts list their value bands; a wireframe's keys are hollow squares in the bands' lines
+                // (measured with generated/charts-3d).
                 var scale = SurfaceScale(group);
                 var bands = Bands(scale);
+                var wireframe = ChartModel.Flag(group.Element, "wireframe", false);
                 for (var b = 0; b < bands.Count; b++, index++)
                 {
                     if (!deleted.Contains(index))
-                        entries.Add(new LegendEntry(BandName(group, bands[b]), BandFill(group, b), null, false, null, 0));
+                        entries.Add(wireframe && BandLine(group, b) is { } line
+                            ? new LegendEntry(BandName(group, bands[b]), Fill.None, line, false, null, 0)
+                            : new LegendEntry(BandName(group, bands[b]), BandFill(group, b), null, false, null, 0));
                 }
                 continue;
             }
@@ -1163,7 +1168,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 }
                 else
                 {
-                    svg.Append(Rect(new Box(left + squareAt * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: false));
+                    // Hollow keys (wireframe surfaces) draw their outline on whole pixels like PowerPoint's.
+                    var hollow = entry.Fill is NoFill;
+                    svg.Append(Rect(new Box(left + squareAt * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: hollow, nudge: hollow ? 0.5 : 0));
                 }
             }
             svg.Append(text.Label(entry.Text, style, left + textAt * lineHeight, baseline));
