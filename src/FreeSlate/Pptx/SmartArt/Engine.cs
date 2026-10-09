@@ -268,7 +268,7 @@ public static class Engine
         {
             // Leaves count drawn or not (measured: AlternatingCircleProcess's anchors, invisible and as high as their
             // items, keep the items' circles level).
-            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || n.AlgorithmType == "conn")
+            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || InConnector(n, node))
                 continue;
             minX = Math.Min(minX, Math.Min(n.X, n.X + n.W));
             minY = Math.Min(minY, Math.Min(n.Y, n.Y + n.H));
@@ -276,6 +276,22 @@ public static class Engine
             maxY = Math.Max(maxY, Math.Max(n.Y, n.Y + n.H));
         }
         return minX == double.MaxValue ? (node.X, node.Y, node.W, node.H) : (minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>
+    /// Whether a node is a connector or inside one, below <paramref name="top"/>: its text takes no room of its own
+    /// (measured: hierarchy5's connector texts, left where a previous layout put them).
+    /// </summary>
+    static bool InConnector(LayoutNode node, LayoutNode top)
+    {
+        for (var n = node; n != null; n = n.Parent)
+        {
+            if (n.AlgorithmType == "conn")
+                return true;
+            if (n == top)
+                break;
+        }
+        return false;
     }
 
     static void Translate(LayoutNode node, double dx, double dy)
@@ -1374,7 +1390,7 @@ public static class Engine
         var result = new List<(double X, double Y, double W, double H)>();
         foreach (var n in node.Descendants().Prepend(node))
         {
-            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || n.AlgorithmType == "conn")
+            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || InConnector(n, node))
                 continue;
             result.Add((Math.Min(n.X, n.X + n.W), Math.Min(n.Y, n.Y + n.H), Math.Abs(n.W), Math.Abs(n.H)));
         }
