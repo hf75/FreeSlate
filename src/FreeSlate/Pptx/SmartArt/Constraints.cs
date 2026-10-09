@@ -14,6 +14,9 @@ public sealed class Pins
     /// <summary>The height a node had when its text was first fitted (points), the unit of its growth steps.</summary>
     public Dictionary<LayoutNode, double> StartHeight { get; } = [];
 
+    /// <summary>The width a node had when its text was first fitted (mm), where a rule lets it grow.</summary>
+    public Dictionary<LayoutNode, double> StartWidth { get; } = [];
+
     public bool TryGet(LayoutNode node, string type, out double value) => values.TryGetValue((node, type), out value);
 
     public void Set(LayoutNode node, string type, double value) => values[(node, type)] = value;
@@ -295,13 +298,32 @@ public static class Constraints
         return Get(reference, type);
     }
 
+    /// <summary>
+    /// The value a node's own constraint on a type refers to (w = 0.1 userW: userW), or null where it refers to none: a
+    /// rule's factor applies to it.
+    /// </summary>
+    public static double? Reference(LayoutNode node, string type)
+    {
+        foreach (var constraint in node.Constraints)
+        {
+            if (!Own(constraint) || Bound(constraint) || (string?)constraint.Attribute("type") != type
+                || (string?)constraint.Attribute("refType") is not { Length: > 0 } refType || refType == "none")
+                continue;
+            var references = Targets(node, (string?)constraint.Attribute("refFor"), (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType"));
+            return references.FirstOrDefault() is { } reference ? Get(reference, refType) : null;
+        }
+        return null;
+    }
+
     /// <summary>A value of a node: set by a constraint, or derived (r = l + w, ctrX = l + w / 2 …).</summary>
     public static double? Get(LayoutNode node, string type)
     {
         if (node.Values.TryGetValue(type, out var value))
             return value;
         var v = node.Values;
-        double? Has(string key) => v.TryGetValue(key, out var x) ? x : null;
+        // Derived from the values as moved by their offsets (measured: AccentedPicture's maxNode, l = r of the picture
+        // moved by lOff, as wide as from there to r).
+        double? Has(string key) => v.TryGetValue(key, out var x) ? x + (v.TryGetValue(key + "Off", out var o) && double.IsFinite(o) ? o : 0) : null;
         return type switch
         {
             "r" when Has("l") is { } l && Has("w") is { } w => l + w,
@@ -312,6 +334,20 @@ public static class Constraints
             "h" when Has("t") is { } t && Has("b") is { } b => b - t,
             "l" when Has("r") is { } r && Has("w") is { } w => r - w,
             "t" when Has("b") is { } b && Has("h") is { } h => b - h,
+            // From the center (measured: AccentedPicture's descriptions from the right of their pictures, placed by
+            // their centers).
+            "r" when Has("ctrX") is { } cx && Has("w") is { } w => cx + w / 2,
+            "l" when Has("ctrX") is { } cx && Has("w") is { } w => cx - w / 2,
+            "b" when Has("ctrY") is { } cy && Has("h") is { } h => cy + h / 2,
+            "t" when Has("ctrY") is { } cy && Has("h") is { } h => cy - h / 2,
+            "ctrX" when Has("r") is { } r && Has("w") is { } w => r - w / 2,
+            "ctrY" when Has("b") is { } b && Has("h") is { } h => b - h / 2,
+            "ctrX" when Has("l") is { } l && Has("r") is { } r => (l + r) / 2,
+            "ctrY" when Has("t") is { } t && Has("b") is { } b => (t + b) / 2,
+            "w" when Has("ctrX") is { } cx && Has("l") is { } l => 2 * (cx - l),
+            "w" when Has("ctrX") is { } cx && Has("r") is { } r => 2 * (r - cx),
+            "h" when Has("ctrY") is { } cy && Has("t") is { } t => 2 * (cy - t),
+            "h" when Has("ctrY") is { } cy && Has("b") is { } b => 2 * (b - cy),
             _ => null,
         };
     }

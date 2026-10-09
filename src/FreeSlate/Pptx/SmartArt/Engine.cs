@@ -225,13 +225,18 @@ public static class Engine
         && (node.Rules.Any(r => (string?)r.Attribute("type") == type && (string?)r.Attribute("val") == "INF")
             || node.Children.Any(c => c.AlgorithmType == "lin" && Grows(c, type)));
 
-    /// <summary>The room a placed subtree takes: the boxes of its nodes that draw (a shape type), else its own box.</summary>
+    /// <summary>
+    /// The room a placed subtree takes: the boxes of its nodes that draw (a shape type) and of its leaves, else its own
+    /// box.
+    /// </summary>
     static (double X, double Y, double W, double H) Bounds(LayoutNode node)
     {
         double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
         foreach (var n in node.Descendants().Prepend(node))
         {
-            if ((string?)n.Shape?.Attribute("type") is null or "none" || n.AlgorithmType == "conn")
+            // Leaves count drawn or not (measured: AlternatingCircleProcess's anchors, invisible and as high as their
+            // items, keep the items' circles level).
+            if ((string?)n.Shape?.Attribute("type") is null or "none" && (n == node || n.Children.Count > 0) || n.AlgorithmType == "conn")
                 continue;
             minX = Math.Min(minX, Math.Min(n.X, n.X + n.W));
             minY = Math.Min(minY, Math.Min(n.Y, n.Y + n.H));
@@ -608,9 +613,10 @@ public static class Engine
 
     /// <summary>
     /// Applies a snake node's rules on its children's size while they do not fit it at their own size, in order: each
-    /// lowers its targets' value from where it is toward its limit (val, or fact times the value) in sixteenths of the
-    /// way, taking the first that fits (measured: MeetTheTeamCard's cards at 6/16 of the way from 50 mm to the row's
-    /// width, MeetTheTeam's at 1/16), the values that follow it evaluated again.
+    /// lowers its targets' value from where it is toward its limit (val, or fact times the value) in 32nds of the way,
+    /// taking the first that fits (measured: MeetTheTeamCard's cards at 12/32 of the way from 50 mm to the row's width,
+    /// MeetTheTeam's at 2/32; AccentedPicture's text widths grow the same way), the values that follow it evaluated
+    /// again.
     /// </summary>
     static void SnakeRules(LayoutNode node, Pins pins, Dictionary<(LayoutNode, string), double?> ruled, Func<bool> fits)
     {
@@ -628,11 +634,11 @@ public static class Engine
                 : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * v!.Value : double.NaN).ToList();
             if (limits.Any(l => !double.IsFinite(l)) || limits.Select((l, i) => l >= starts[i]!.Value).All(b => b))
                 continue;
-            for (var step = 15; step >= 0; step--)
+            for (var step = 31; step >= 0; step--)
             {
                 for (var i = 0; i < targets.Count; i++)
                 {
-                    var value = limits[i] + (starts[i]!.Value - limits[i]) * step / 16;
+                    var value = limits[i] + (starts[i]!.Value - limits[i]) * step / 32;
                     if (!ruled.ContainsKey((targets[i], type)))
                         ruled[(targets[i], type)] = pins.TryGet(targets[i], type, out var before) ? before : null;
                     pins.Set(targets[i], type, value);

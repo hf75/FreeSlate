@@ -258,6 +258,34 @@ static class Fitting
                 PinFont(node, low, pins);
                 return true;
             }
+            if (type is "w")
+            {
+                // The node grows in 32nds of the way to the rule's limit (val, or fact times what its width constraint
+                // refers to) and takes the first width that fits (measured: AccentedPicture's descriptions, w = 0.1 userW
+                // with a rule to 1 userW, at 13/32 of the way).
+                if (!pins.StartWidth.TryGetValue(node, out var startWidth))
+                    pins.StartWidth[node] = startWidth = node.W;
+                var limit = Number(rule, "val") is { } v && double.IsFinite(v) ? v
+                    : Number(rule, "fact") is { } f ? f * (Constraints.Reference(node, "w") is { } reference ? reference * node.Scale : startWidth) : startWidth;
+                if (!double.IsFinite(limit) || limit <= node.W + 1e-6)
+                    continue;
+                for (var step = 1; step <= 32; step++)
+                {
+                    var width = startWidth + (limit - startWidth) * step / 32;
+                    if (width <= node.W + 1e-9)
+                        continue;
+                    node.W = width;
+                    if (step < 32 && !Check(node, measure).Fits)
+                        continue;
+                    pins.Set(node, "w", width / Math.Max(node.Scale, 1e-9));
+                    node.Values["w"] = width;
+                    changed = true;
+                    break;
+                }
+                if (Check(node, measure).Fits)
+                    return true;
+                continue;
+            }
             if (type is "h")
             {
                 // The node grows in steps of a sixteenth of its height until the text fits (measured: 21/16, 39/16 …), as
