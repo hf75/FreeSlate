@@ -44,6 +44,9 @@ public sealed partial class ChartRenderer
         /// <summary>A painting order: things farther from the viewer have larger values.</summary>
         public abstract double Depth(double x, double y, double z);
 
+        /// <summary>Whether things below <paramref name="plane"/> on an axis (0 x, 1 y, 2 z) lie on the viewer's side of it.</summary>
+        public abstract bool NearerBelow(int axis, double plane);
+
         /// <summary>Whether the viewer looks at the box from its right (else from its left) and from above (else from below).</summary>
         public abstract (bool FromRight, bool FromAbove) Side { get; }
 
@@ -83,6 +86,9 @@ public sealed partial class ChartRenderer
         // Far rows first, then along the direction the depth runs, then from the bottom (for boxes in rows).
         public override double Depth(double x, double y, double z) => z * 1e6 - x * Math.Sign(Sx) * 1e3 - y * Math.Sign(Sy);
 
+        // The viewer looks along (−sin rotY, −sin rotX, 1): lower coordinates come first where that direction grows.
+        public override bool NearerBelow(int axis, double plane) => axis switch { 0 => -Sx > 0, 1 => -Sy > 0, _ => true };
+
         public override (bool FromRight, bool FromAbove) Side => (Sx >= 0, Sy >= 0);
     }
 
@@ -114,6 +120,12 @@ public sealed partial class ChartRenderer
         }
 
         public override double Depth(double x, double y, double z) => camera.View(x - cx, y - cy, z - cz).Z;
+
+        public override bool NearerBelow(int axis, double plane)
+        {
+            var eye = camera.ToModel(camera.Eye);
+            return (axis switch { 0 => eye.X + cx, 1 => eye.Y + cy, _ => eye.Z + cz }) < plane;
+        }
 
         public override (bool FromRight, bool FromAbove) Side
         {
@@ -437,8 +449,8 @@ public sealed partial class ChartRenderer
             }
         }
         var ordered = projection is Oblique oblique
-            ? bars.OrderByDescending(b => b.Z0).ThenBy(b => oblique.Sx >= 0 ? b.X0 : -b.X1).ThenBy(b => oblique.Sy >= 0 ? b.Y0 : -b.Y1)
-            : bars.OrderByDescending(b => projection.Depth((b.X0 + b.X1) / 2, (b.Y0 + b.Y1) / 2, (b.Z0 + b.Z1) / 2));
+            ? bars.OrderByDescending(b => b.Z0).ThenBy(b => oblique.Sx >= 0 ? b.X0 : -b.X1).ThenBy(b => oblique.Sy >= 0 ? b.Y0 : -b.Y1).ToList()
+            : BackToFront(bars, b => (b.X0, b.Y0, b.Z0, b.X1, b.Y1, b.Z1), projection);
         var svg = new StringBuilder();
         foreach (var bar in ordered)
         {
@@ -450,6 +462,81 @@ public sealed partial class ChartRenderer
             });
         }
         return svg.ToString();
+    }
+
+    /// <summary>
+    /// Boxes from the back to the front: a box comes before every box whose picture overlaps its own and which a plane
+    /// between the two puts on the viewer's side; others keep the order of their centers' depth (in perspective a tall
+    /// bar's center can lie nearer than a short bar's in front of it).
+    /// </summary>
+    static List<T> BackToFront<T>(List<T> items, Func<T, (double X0, double Y0, double Z0, double X1, double Y1, double Z1)> boxOf, Projection3D projection)
+    {
+        var n = items.Count;
+        var boxes = items.Select(boxOf).ToList();
+        var depth = boxes.Select(b => projection.Depth((b.X0 + b.X1) / 2, (b.Y0 + b.Y1) / 2, (b.Z0 + b.Z1) / 2)).ToList();
+        var bounds = boxes.Select(b =>
+        {
+            var corners = new[] { b.X0, b.X1 }.SelectMany(x => new[] { b.Y0, b.Y1 }.SelectMany(y => new[] { b.Z0, b.Z1 }.Select(z => projection.Map(x, y, z)))).ToList();
+            return (L: corners.Min(c => c.X), T: corners.Min(c => c.Y), R: corners.Max(c => c.X), B: corners.Max(c => c.Y));
+        }).ToList();
+        var later = Enumerable.Range(0, n).Select(_ => new List<int>()).ToArray();
+        var before = new int[n];
+        static (double Lo, double Hi) Range((double X0, double Y0, double Z0, double X1, double Y1, double Z1) b, int axis) => axis switch
+        {
+            0 => (Math.Min(b.X0, b.X1), Math.Max(b.X0, b.X1)),
+            1 => (Math.Min(b.Y0, b.Y1), Math.Max(b.Y0, b.Y1)),
+            _ => (Math.Min(b.Z0, b.Z1), Math.Max(b.Z0, b.Z1)),
+        };
+        for (var i = 0; i < n; i++)
+        {
+            for (var j = i + 1; j < n; j++)
+            {
+                if (bounds[i].R <= bounds[j].L || bounds[j].R <= bounds[i].L || bounds[i].B <= bounds[j].T || bounds[j].B <= bounds[i].T)
+                    continue;
+                for (var axis = 0; axis < 3; axis++)
+                {
+                    var (a, b) = (Range(boxes[i], axis), Range(boxes[j], axis));
+                    var eps = 1e-9 * Math.Max(1, Math.Abs(a.Hi) + Math.Abs(b.Hi));
+                    int low, high;
+                    double plane;
+                    if (a.Hi <= b.Lo + eps) (low, high, plane) = (i, j, (a.Hi + b.Lo) / 2);
+                    else if (b.Hi <= a.Lo + eps) (low, high, plane) = (j, i, (b.Hi + a.Lo) / 2);
+                    else continue;
+                    // The one on the viewer's side of the plane is painted last.
+                    var (back, front) = projection.NearerBelow(axis, plane) ? (high, low) : (low, high);
+                    later[back].Add(front);
+                    before[front]++;
+                    break;
+                }
+            }
+        }
+        var order = new List<T>(n);
+        var done = new bool[n];
+        var ready = new SortedSet<(double Depth, int Index)>(Enumerable.Range(0, n).Where(i => before[i] == 0).Select(i => (-depth[i], i)));
+        while (order.Count < n)
+        {
+            int next;
+            if (ready.Count > 0)
+            {
+                next = ready.Min.Index;
+                ready.Remove(ready.Min);
+            }
+            else
+            {
+                // A cycle (boxes that cross): the farthest one left goes first.
+                next = Enumerable.Range(0, n).Where(i => !done[i]).OrderByDescending(i => depth[i]).First();
+            }
+            if (done[next])
+                continue;
+            done[next] = true;
+            order.Add(items[next]);
+            foreach (var k in later[next])
+            {
+                if (!done[k] && --before[k] == 0)
+                    ready.Add((-depth[k], k));
+            }
+        }
+        return order;
     }
 
     /// <summary>A flat polygon of the box in a fill lit by the chart light for its normal (solid fills) or as it is.</summary>

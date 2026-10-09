@@ -241,6 +241,10 @@ public sealed class FontData : IDisposable
     /// <summary>The outline of a glyph as SVG path data in font units, y down; "" for glyphs without contours.</summary>
     public string Outline(uint glyph) => outlines.GetOrAdd(glyph, g => GlyphOutlines.Draw(font, g));
 
+    /// <summary>The bottom and top of a glyph's ink in font units (y up); zero for empty glyphs.</summary>
+    public (double Bottom, double Top) GlyphBounds(uint glyph) =>
+        font.TryGetGlyphExtents(glyph, out var extents) ? (extents.YBearing + extents.Height, extents.YBearing) : (0, 0);
+
     /// <summary>Whether the font has a glyph for every character of <paramref name="text"/> (controls and spaces aside).</summary>
     public bool Covers(string text)
     {

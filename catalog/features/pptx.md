@@ -1252,7 +1252,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** The text box is the geometry's text rectangle minus the insets (default 91440 EMU left/right, 45720 top/bottom); anchoring top, middle or bottom, anchorCtr, wrap or no wrap, rotation and overflow.
 
-**Office behaviour:** anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body).
+**Office behaviour:** anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body). Compatible line spacing (compatLnSpc) leaves PowerPoint's lines where they are (measured: 150 % spacing unchanged); forceAA only asks for anti-aliasing.
 
 **Elements (6):** [`a:bodyPr`](../format/namespaces/a.md#abodypr), [`a:txBody`](../format/namespaces/a.md#atxbody), [`a:txSp`](../format/namespaces/a.md#atxsp), [`a:useSpRect`](../format/namespaces/a.md#ausesprect), [`dsp:txXfrm`](../format/namespaces/dsp.md#dsptxxfrm), [`p:txBody`](../format/namespaces/p.md#ptxbody)
 
@@ -1360,7 +1360,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** Size (hundredths of a point), bold, italic, all caps and small caps, single and double strikethrough, superscript and subscript (baseline %), character spacing, kerning threshold, highlight.
 
-**Office behaviour:** Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline percentage of the full size (measured).
+**Office behaviour:** Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline percentage of the full size (measured). Equalized character height (normalizeH) stretches every glyph's ink from the baseline to the font's ascent (OS/2 usWinAscent; measured: all letters of 32 pt Calibri 40 px tall, descenders lifted); kumimoji keeps digits upright in vertical text. altLang, bmk, dirty, err, noProof, smtClean and smtId are editing state.
 
 **Elements (5):** [`a:br`](../format/namespaces/a.md#abr), [`a:highlight`](../format/namespaces/a.md#ahighlight), [`a:r`](../format/namespaces/a.md#ar), [`a:rPr`](../format/namespaces/a.md#arpr), [`a:t`](../format/namespaces/a.md#at)
 
@@ -1376,7 +1376,7 @@ Text decides the fidelity of most slides. The engine measures glyphs with the re
 
 **Rendering:** Choose the latin, East Asian or complex-script font per character; resolve theme fonts; see engine.fonts.
 
-**Office behaviour:** PowerPoint draws every missing font in Calibri, whatever its panose, pitch family or charset say (measured with serif, monospaced, script and decorative hints in generated/text-body).
+**Office behaviour:** PowerPoint draws every missing font in Calibri, whatever its panose, pitch family or charset say (measured with serif, monospaced, script and decorative hints in generated/text-body). Characters inserted from symbol fonts (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym): Wingdings 1 to 3, Symbol and Webdings render with their own glyphs (generated/text-more). charset, panose and pitchFamily only help find substitutes; fonts are resolved by name.
 
 **Elements (4):** [`a:cs`](../format/namespaces/a.md#acs), [`a:ea`](../format/namespaces/a.md#aea), [`a:latin`](../format/namespaces/a.md#alatin), [`a:sym`](../format/namespaces/a.md#asym)
 

@@ -171,7 +171,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var runs = new List<PlacedRun>();
             foreach (var run in line.Runs)
             {
-                if (run.Picture != null || !run.Text.Any(c => Scripts.Upright(c)))
+                // East Asian characters stand upright, and digits of runs that ask for it (a:rPr kumimoji; measured).
+                bool Stands(char c) => Scripts.Upright(c) || run.Style.UprightDigits && char.IsAsciiDigit(c);
+                if (run.Picture != null || !run.Text.Any(Stands))
                 {
                     runs.Add(run);
                     continue;
@@ -182,7 +184,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var start = 0;
                 for (var i = 0; i <= run.Text.Length; i++)
                 {
-                    var upright = i < run.Text.Length && Scripts.Upright(run.Text[i]);
+                    var upright = i < run.Text.Length && Stands(run.Text[i]);
                     if (i < run.Text.Length && !upright)
                         continue;
                     if (i > start)
@@ -606,6 +608,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var gx = glyphX[i] / scale + glyphs[i].OffsetX * data.UnitsPerEm;
                 var gy = -glyphs[i].OffsetY * data.UnitsPerEm;
                 units.Append($"<use href=\"#{id}\"");
+                if (style.NormalizeHeight && data.GlyphBounds(glyphs[i].Id) is var (bottom, top) && top > bottom)
+                {
+                    // Equalized character height (a:rPr normalizeH): the glyph's ink from the baseline to the font's
+                    // ascent (measured: every letter of 32 pt Calibri 40 px tall, descenders lifted onto the baseline).
+                    var k = data.WinAscent * data.UnitsPerEm / (top - bottom);
+                    units.Append($" transform=\"matrix(1 0 0 {Units.Css4(k)} {Units.Css1(gx)} {Units.Css1(gy + bottom * k)})\"/>");
+                    continue;
+                }
                 if (Math.Abs(gx) > 0.05) units.Append($" x=\"{Units.Css1(gx)}\"");
                 if (Math.Abs(gy) > 0.05) units.Append($" y=\"{Units.Css1(gy)}\"");
                 units.Append("/>");
@@ -920,8 +930,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     // Every piece of one font slot (Latin, East Asian, complex script) gets its own font.
                     var t = element.Name.LocalName == "fld" ? FieldText(element) : element.Element(Ns.A + "t")?.Value ?? "";
                     var rPr = element.Element(Ns.A + "rPr");
-                    foreach (var (piece, slot, script) in Scripts.Split(t))
-                        runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)));
+                    // Characters of a symbol font (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym).
+                    var symbol = RunElement(rPr, sources, level, "sym")?.Str("typeface") is { Length: > 0 } sym ? sym : null;
+                    foreach (var (part, symbolic) in symbol != null ? SymbolPieces(t) : [(t, false)])
+                    {
+                        if (symbolic)
+                        {
+                            runs.Add(new TextRun(part, Style(rPr, sources, level, fontScale, part, symbolFont: symbol)));
+                            continue;
+                        }
+                        foreach (var (piece, slot, script) in Scripts.Split(part))
+                            runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)));
+                    }
                     break;
                 case "br":
                     runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)));
@@ -1073,8 +1093,25 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return new Bullet(text, new TextStyle(resolved, size, color, Kerning: false));
     }
 
+    /// <summary>A run's text in pieces of symbol font characters (U+F000 to U+F0FF) and other text.</summary>
+    static List<(string Text, bool Symbol)> SymbolPieces(string text)
+    {
+        var pieces = new List<(string Text, bool Symbol)>();
+        var start = 0;
+        for (var i = 1; i <= text.Length; i++)
+        {
+            if (i == text.Length || IsSymbol(text[i]) != IsSymbol(text[start]))
+            {
+                pieces.Add((text[start..i], IsSymbol(text[start])));
+                start = i;
+            }
+        }
+        return pieces;
+        static bool IsSymbol(char c) => c is >= '\uF000' and <= '\uF0FF';
+    }
+
     TextStyle Style(XElement? rPr, List<Source> sources, int level, double fontScale, string? text,
-        FontSlot slot = FontSlot.Latin, string? script = null)
+        FontSlot slot = FontSlot.Latin, string? script = null, string? symbolFont = null)
     {
         string? R(string name) => RunAttr(rPr, sources, level, name);
         var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale;
@@ -1101,6 +1138,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                      ?? (script != null ? slide.Theme.ScriptFonts.GetValueOrDefault((major, script)) : null)
                      ?? Scripts.Fallbacks(slot, script)[0];
         }
+        if (symbolFont != null && slide.Theme.ResolveTypeface(symbolFont) is { Length: > 0 } symbolFamily)
+            family = symbolFamily;
         var resolved = text != null
             ? fonts.ResolveCovering(family, bold, italic, text, Scripts.Fallbacks(slot, script))
             : fonts.Resolve(family, bold, italic);
@@ -1164,6 +1203,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             UnderlineColor = underlineColor,
             UnderlineWidth = underlineLine?.Name.LocalName == "uLn" && underlineLine.Long("w") is { } uw ? uw / Units.EmuPerPoint : null,
             UnderlineDash = underlineLine?.Name.LocalName == "uLn" ? underlineLine.Element(Ns.A + "prstDash")?.Str("val") : null,
+            NormalizeHeight = R("normalizeH") is "1" or "true",
+            UprightDigits = R("kumimoji") is "1" or "true",
         };
     }
 

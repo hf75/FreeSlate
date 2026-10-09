@@ -912,7 +912,9 @@ areas:
           vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line
           kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the
           text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the
-          last paragraph; compatLnSpc shows no difference (measured with generated/text-body).
+          last paragraph; compatLnSpc shows no difference (measured with generated/text-body). Compatible line
+          spacing (compatLnSpc) leaves PowerPoint's lines where they are (measured: 150 % spacing unchanged);
+          forceAA only asks for anti-aliasing.
 
       - id: text.autofit
         title: Autofit
@@ -1010,7 +1012,10 @@ areas:
           superscript and subscript (baseline %), character spacing, kerning threshold, highlight.
         office: >-
           Superscripts and subscripts are drawn at two thirds of the size, raised or lowered by the baseline
-          percentage of the full size (measured).
+          percentage of the full size (measured). Equalized character height (normalizeH) stretches every
+          glyph's ink from the baseline to the font's ascent (OS/2 usWinAscent; measured: all letters of 32 pt
+          Calibri 40 px tall, descenders lifted); kumimoji keeps digits upright in vertical text. altLang,
+          bmk, dirty, err, noProof, smtClean and smtId are editing state.
 
       - id: text.fonts
         title: Fonts per script
@@ -1021,7 +1026,10 @@ areas:
         strategy: Choose the latin, East Asian or complex-script font per character; resolve theme fonts; see engine.fonts.
         office: >-
           PowerPoint draws every missing font in Calibri, whatever its panose, pitch family or charset say
-          (measured with serif, monospaced, script and decorative hints in generated/text-body).
+          (measured with serif, monospaced, script and decorative hints in generated/text-body). Characters
+          inserted from symbol fonts (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym):
+          Wingdings 1 to 3, Symbol and Webdings render with their own glyphs (generated/text-more). charset,
+          panose and pitchFamily only help find substitutes; fonts are resolved by name.
 
       - id: text.embeddedFonts
         title: Embedded fonts

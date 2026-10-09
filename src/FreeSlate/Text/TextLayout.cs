@@ -31,6 +31,12 @@ public sealed record TextStyle(
 
     /// <summary>The underline's own dash (a:uLn/a:prstDash); null follows the underline style.</summary>
     public string? UnderlineDash { get; init; }
+
+    /// <summary>Every glyph stretched to stand from the baseline to the font's ascent (a:rPr normalizeH).</summary>
+    public bool NormalizeHeight { get; init; }
+
+    /// <summary>Digits stand upright in vertical text (a:rPr kumimoji).</summary>
+    public bool UprightDigits { get; init; }
 }
 
 /// <summary>A hyperlink of a run: a URL or slide anchor, a slide show action and a tooltip.</summary>
