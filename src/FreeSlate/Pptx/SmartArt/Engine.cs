@@ -564,6 +564,8 @@ public static class Engine
         return (w, h);
     }
 
+    static bool Flag(string name) => Environment.GetEnvironmentVariable(name) == "1";
+
     /// <summary>Evaluates the lists under a node again for its values (as its layout would, without placing it).</summary>
     static void Refresh(LayoutNode node, Pins? pins)
     {
@@ -649,8 +651,9 @@ public static class Engine
     /// The snake algorithm: the nodes in rows (or columns, flowDir col) of equal cells, as many per row as make them
     /// largest (more per row when equal), shrunk to fit but never grown, after the node's rules where they do not fit;
     /// within a row the cells keep the room of the spacers between them (the transitions' nodes, measured with bList2),
-    /// else sp, and the rows sp apart; each row centered, the grid centered in the node, growing from the corner grDir
-    /// names, every other row reversed with contDir revDir.
+    /// else sp, and the rows sp apart; short rows centered with off ctr, else from the row's start and each row alignOff
+    /// further (<see cref="SnakeLines"/>), the grid aligned in the node, growing from the corner grDir names, every other
+    /// row reversed with contDir revDir.
     /// </summary>
     static void Snake(LayoutNode node, Pins pins)
     {
@@ -678,9 +681,9 @@ public static class Engine
             for (var count = fixedCount > 0 ? Math.Min(fixedCount, n) : 1; count <= (fixedCount > 0 ? Math.Min(fixedCount, n) : n); count++)
             {
                 var lines = (n + count - 1) / count;
-                var (gw, gh) = columns
-                    ? (lines * cw + (lines - 1) * lineGap, count * ch + (count - 1) * gap)
-                    : (count * cw + (count - 1) * gap, lines * ch + (lines - 1) * lineGap);
+                var along = SnakeLines(node, n, count, columns ? ch : cw, gap, columns).Along;
+                var across = lines * (columns ? cw : ch) + (lines - 1) * lineGap;
+                var (gw, gh) = columns ? (across, along) : (along, across);
                 var factor = Math.Min(node.W / gw, node.H / gh);
                 if (factor > best.Factor * (1 + 1e-9))
                     best = (factor, count);
@@ -737,7 +740,7 @@ public static class Engine
                 sgap = slineGap;
         }
         var (cellAlong, cellAcross) = columns ? (sch, scw) : (scw, sch);
-        var gridAlong = perLine * cellAlong + (perLine - 1) * sgap;
+        var (starts, gridAlong) = SnakeLines(node, n, perLine, cellAlong, sgap, columns);
         var gridAcross = lineCount * cellAcross + (lineCount - 1) * slineGap;
         var (gridW, gridH) = columns ? (gridAcross, gridAlong) : (gridAlong, gridAcross);
         var (gx, gy) = (Align(node.Param("horzAlign"), node.W, gridW), Align(node.Param("vertAlign"), node.H, gridH));
@@ -749,9 +752,7 @@ public static class Engine
             var inLine = Math.Min(perLine, n - line * perLine);
             if (reverse && line % 2 == 1)
                 index = inLine - 1 - index;
-            var lineLength = inLine * cellAlong + (inLine - 1) * sgap;
-            var lineStart = Align(columns ? node.Param("vertAlign") : node.Param("horzAlign"), gridAlong, lineLength);
-            var along = lineStart + index * (cellAlong + sgap);
+            var along = starts[line] + index * (cellAlong + sgap);
             var across = line * (cellAcross + slineGap);
             var (x, y) = columns ? (across, along) : (along, across);
             if (grow is "tR" or "bR")
@@ -762,6 +763,34 @@ public static class Engine
             var b = Bounds(cell);
             Translate(cell, node.X + gx + x + (scw - b.W) / 2 - b.X, node.Y + gy + y + (sch - b.H) / 2 - b.Y);
         }
+    }
+
+    /// <summary>
+    /// Where each line of a snake with <paramref name="perLine"/> cells starts along the lines, and how far the lines
+    /// reach: with off ctr each centered on the full lines (aligned by horzAlign, vertAlign for columns); else each from
+    /// its start, alignOff of a cell and its spacing further than the one before (measured: StepUpProcess' steps 1.103
+    /// of a cell's width with spacers of 0.103, PictureAccentBlocks' rows a cell further; bProcess3's and the
+    /// TextCardSideLine layouts' short rows from the left), a reversed line (contDir revDir) from its far end (process5's).
+    /// </summary>
+    static (List<double> Starts, double Along) SnakeLines(LayoutNode node, int n, int perLine, double cell, double gap, bool columns)
+    {
+        var full = perLine * cell + (perLine - 1) * gap;
+        var centered = node.Param("off") == "ctr";
+        var step = centered ? 0 : Value(node, "alignOff") * (cell + gap);
+        var reverse = node.Param("contDir") == "revDir";
+        var (starts, ends) = (new List<double>(), new List<double>());
+        for (var line = 0; line * perLine < n; line++)
+        {
+            var inLine = Math.Min(perLine, n - line * perLine);
+            var length = inLine * cell + (inLine - 1) * gap;
+            var start = centered
+                ? Align(columns ? node.Param("vertAlign") : node.Param("horzAlign"), full, length)
+                : line * step + (reverse && line % 2 == 1 ? full - length : 0);
+            starts.Add(start);
+            ends.Add(start + length);
+        }
+        var low = starts.Min();
+        return (starts.Select(s => s - low).ToList(), ends.Max() - low);
     }
 
     /// <summary>
