@@ -80,6 +80,7 @@ public static class CorpusGenerator
         ("charts-details", ChartsDetailsDeck.Build, true),
         ("charts-data", ChartsDataDeck.Build, true),
         ("text-more", TextMoreDeck.Build, false),
+        ("tables-more", TablesMoreDeck.Build, false),
     ];
 
     /// <summary>XML-only properties some decks add after PowerPoint saved them.</summary>
@@ -106,6 +107,7 @@ public static class CorpusGenerator
         ["charts-details"] = ChartsDetailsDeck.Patch,
         ["charts-data"] = ChartsDataDeck.Patch,
         ["text-more"] = TextMoreDeck.Patch,
+        ["tables-more"] = TablesMoreDeck.Patch,
     };
 
     /// <summary>Patched decks PowerPoint opens and saves again, so that they hold what it derives from the patched markup.</summary>

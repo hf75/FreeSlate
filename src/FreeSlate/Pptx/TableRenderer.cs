@@ -97,7 +97,11 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             var tcPr = cell.Element.Element(Ns.A + "tcPr");
 
             var fill = CellFill(tcPr, parts);
-            if (fill is not NoFill)
+            var cell3D = tcPr?.Element(Ns.A + "cell3D")
+                         ?? Enumerable.Range(0, parts.Count).Reverse().Select(i => parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "cell3D")).FirstOrDefault(e => e != null);
+            if (fill is not NoFill && cell3D?.Element(Ns.A + "bevel") is { } bevel)
+                fills.Append(Beveled(cell3D, bevel, fill, x, y, w, h, defs));
+            else if (fill is not NoFill)
                 fills.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\"{paint.Fill(fill, w * PxPerPt, h * PxPerPt, defs)}/>");
 
             // A style part's borders refer to its own region (a row, a column, a corner cell or the whole table):
@@ -209,6 +213,30 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         parts.AsEnumerable().Reverse()
             .Select(p => style?.Element(Ns.A + p)?.Element(Ns.A + "tcTxStyle"))
             .Where(t => t != null).Cast<XElement>().ToList();
+
+    /// <summary>
+    /// A beveled cell (a:cell3D, catalog: table.cells): the cell as a shape with a top bevel seen from the front, the
+    /// bevel's strips lit by the cell's light rig (three-point from the top by default) and material (plastic), the
+    /// fill on the face inside the bevel.
+    /// </summary>
+    string Beveled(XElement cell3D, XElement bevel, Fill fill, double x, double y, double w, double h, StringBuilder defs)
+    {
+        var (pw, ph) = (w * PxPerPt, h * PxPerPt);
+        var width = Math.Min(Units.ToPx(bevel.Long("w") ?? 76200), Math.Min(pw, ph) / 2);
+        var height = Units.ToPx(bevel.Long("h") ?? 76200);
+        var scene = new XElement(Ns.A + "scene3d", new XElement(Ns.A + "camera", new XAttribute("prst", "orthographicFront")),
+            cell3D.Element(Ns.A + "lightRig") is { } rig ? new XElement(rig) : new XElement(Ns.A + "lightRig", new XAttribute("rig", "threePt"), new XAttribute("dir", "t")));
+        var material = new XElement(Ns.A + "sp3d", new XAttribute("prstMaterial", cell3D.Attribute("prstMaterial")?.Value ?? "plastic"));
+        var camera = Camera.Read(scene)!;
+        var lighting = Lighting.For(scene, material);
+        var solid = new Solid(camera, lighting, pw, ph, 0, false, false);
+        solid.Bevel([[(0, 0), (pw, 0), (pw, ph), (0, ph)]], width, height, BevelProfiles.Get(bevel.Attribute("prst")?.Value), Fill.MainColor(fill) ?? RgbColor.FromHex("808080"));
+        // The face is lit too (measured: lighter under the three-point rig, darker as metal under the harsh one).
+        if (fill is SolidFill solidFill)
+            fill = new SolidFill(Lighting.Apply(solidFill.Color, lighting.Shade((0, 0, 1), camera.View((pw / 2, ph / 2, 0)))));
+        var (fw, fh) = (Math.Max(0, pw - 2 * width), Math.Max(0, ph - 2 * width));
+        return $"<g transform=\"translate({Px(x)} {Px(y)})\"><g transform=\"translate({Units.Css(width)} {Units.Css(width)})\"><rect width=\"{Units.Css(fw)}\" height=\"{Units.Css(fh)}\"{paint.Fill(fill, fw, fh, defs)}/></g>{solid.Markup()}</g>";
+    }
 
     Fill CellFill(XElement? tcPr, List<XElement> parts)
     {

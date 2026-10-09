@@ -1584,7 +1584,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 **Rendering:** Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
 
-**Office behaviour:** tcPr anchorCtr centers the cell's text block; bodyPr wrap none and horzOverflow have no effect in cells, the text always wraps (measured with generated/tables).
+**Office behaviour:** tcPr anchorCtr centers the cell's text block; bodyPr wrap none and horzOverflow have no effect in cells, the text always wraps (measured with generated/tables). Beveled cells (a:cell3D, also from the style's tcStyle) are drawn as shapes with a top bevel seen from the front: the bevel's strips and the face lit by the cell's light rig (three-point from the top by default) and material (plastic), the fill on the face inside the bevel (generated/tables-more: circle, angle and relaxed inset bevels, faces lighter under the three-point rig).
 
 **Elements (8):** [`a:cell3D`](../format/namespaces/a.md#acell3d), [`a:lnB`](../format/namespaces/a.md#alnb), [`a:lnBlToTr`](../format/namespaces/a.md#alnbltotr), [`a:lnL`](../format/namespaces/a.md#alnl), [`a:lnR`](../format/namespaces/a.md#alnr), [`a:lnT`](../format/namespaces/a.md#alnt), [`a:lnTlToBr`](../format/namespaces/a.md#alntltobr), [`a:tcPr`](../format/namespaces/a.md#atcpr)
 

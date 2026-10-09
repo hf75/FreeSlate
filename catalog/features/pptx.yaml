@@ -1217,7 +1217,11 @@ areas:
         strategy: Margins, anchoring, vertical text, fills and borders including diagonals; shared borders resolved like PowerPoint.
         office: >-
           tcPr anchorCtr centers the cell's text block; bodyPr wrap none and horzOverflow have no effect in
-          cells, the text always wraps (measured with generated/tables).
+          cells, the text always wraps (measured with generated/tables). Beveled cells (a:cell3D, also from
+          the style's tcStyle) are drawn as shapes with a top bevel seen from the front: the bevel's strips
+          and the face lit by the cell's light rig (three-point from the top by default) and material
+          (plastic), the fill on the face inside the bevel (generated/tables-more: circle, angle and relaxed
+          inset bevels, faces lighter under the three-point rig).
 
       - id: table.styles
         title: Table styles
