@@ -29,6 +29,25 @@ public sealed class TextChain
     /// slide show builds the text letter by letter or word by word (p:iterate, catalog: animation.timing).
     /// </summary>
     public bool Units { get; init; }
+
+    /// <summary>Character formatting that overrides the text's own: the text as an animation restyles it.</summary>
+    public TextOverride? Override { get; init; }
+
+    /// <summary>The same text in another formatting.</summary>
+    public TextChain With(TextOverride formatting) =>
+        new() { Shapes = Shapes, StyleKind = StyleKind, Defaults = Defaults, FontRef = FontRef, Units = Units, Override = formatting };
+}
+
+/// <summary>
+/// Character formatting an animation gives text (catalog: animation.behaviors: style.fontWeight, style.fontStyle,
+/// style.textDecorationUnderline, style.fontFamily, style.fontSize); null keeps the text's own.
+/// </summary>
+public sealed record TextOverride(bool? Bold, bool? Italic, bool? Underline, string? Family, double Size = 1)
+{
+    /// <summary>The player's name for the formatting: weight|style|underline|family|size.</summary>
+    public string Key =>
+        $"{(Bold is { } b ? b ? "bold" : "normal" : "")}|{(Italic is { } i ? i ? "italic" : "normal" : "")}|" +
+        $"{(Underline is { } u ? u ? "true" : "false" : "")}|{Family}|{(Size == 1 ? "" : Size.ToString("0.####", CultureInfo.InvariantCulture))}";
 }
 
 /// <summary>
@@ -73,9 +92,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>Whether the text being rendered is drawn character by character (see <see cref="TextChain.Units"/>).</summary>
     bool units;
 
+    /// <summary>The formatting the text being rendered takes instead of its own (see <see cref="TextChain.Override"/>).</summary>
+    TextOverride? runOverride;
+
     public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         units = chain.Units;
+        runOverride = chain.Override;
         try
         {
             return RenderText(chain, geometry, boxWidth, unflip);
@@ -83,6 +106,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         finally
         {
             units = false;
+            runOverride = null;
         }
     }
 
@@ -443,7 +467,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var svg = new StringBuilder();
         var defs = new StringBuilder();
         var filters = new Dictionary<XElement, string?>();
-        svg.Append(unflipWidth is { } w ? $"<g data-tx=\"\" transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : "<g data-tx=\"\">");
+        // The point that stays where it is when an animation changes the font size (style.fontSize): the text's
+        // anchor down, the first line's alignment across.
+        var anchorAt = "";
+        if (layout.Lines.Count > 0 && layout.Lines[0].Runs.Count > 0)
+        {
+            var first = layout.Lines[0];
+            var start = left + first.Runs[0].X;
+            var x = first.Align switch { "ctr" => start + first.Width / 2, "r" => start + first.Width, _ => start };
+            var y = top + anchor switch { "ctr" => height / 2, "b" => height, _ => 0 };
+            anchorAt = $" data-anchor=\"{Px(x)} {Px(y)}\"";
+        }
+        svg.Append(unflipWidth is { } w ? $"<g data-tx=\"\" transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : $"<g data-tx=\"\"{anchorAt}>");
         // Text drawn character by character: every paragraph's start in the whole text (paragraphs end with a break,
         // as PowerPoint counts them) and every character's word.
         var paragraphStarts = new Dictionary<int, int>();
@@ -1229,9 +1264,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         FontSlot slot = FontSlot.Latin, string? script = null, string? symbolFont = null)
     {
         string? R(string name) => RunAttr(rPr, sources, level, name);
-        var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale;
-        var bold = R("b") is "1" or "true";
-        var italic = R("i") is "1" or "true";
+        var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale * (runOverride?.Size ?? 1);
+        var bold = runOverride?.Bold ?? R("b") is "1" or "true";
+        var italic = runOverride?.Italic ?? R("i") is "1" or "true";
 
         // The font of the slot (a:latin, a:ea or a:cs); empty East Asian and complex fonts come from the theme's
         // per-script fonts (by language for East Asian text); a font without the glyphs gives way to one that has
@@ -1255,6 +1290,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }
         if (symbolFont != null && slide.Theme.ResolveTypeface(symbolFont) is { Length: > 0 } symbolFamily)
             family = symbolFamily;
+        else if (runOverride?.Family is { Length: > 0 } animated)
+            family = animated;
         var resolved = text != null
             ? fonts.ResolveCovering(family, bold, italic, text, Scripts.Fallbacks(slot, script))
             : fonts.Resolve(family, bold, italic);
@@ -1267,6 +1304,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var link = hlink != null && linkPart != null ? Links.Resolve(hlink, linkPart, slide.Presentation) : null;
         var color = RunColor(rPr, sources, level);
         var underline = R("u") is { } u && u != "none" ? u : null;
+        if (runOverride?.Underline is { } underlined)
+            underline = underlined ? underline ?? "sng" : null;
         // The underline's own line and fill (catalog: text.underline): uLn's width, dash and fill, uFill's fill where
         // uLn has none; uLnTx and uFillTx follow the text (measured with generated/text-underline).
         var underlineLine = RunElement(rPr, sources, level, "uLn", "uLnTx");

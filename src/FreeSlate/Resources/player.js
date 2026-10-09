@@ -147,6 +147,8 @@
       return {
         visible: !hidden, opacity: 1, x: this.base.x, y: this.base.y, w: this.base.w, h: this.base.h,
         rot: 0, sx: 1, sy: 1, mx: 0, my: 0, shx: 0, shy: 0, clip: null, fill: null, color: null, stroke: null, fontSize: 1,
+        weight: null, fontStyle: null, underline: null, family: null, fillOn: false, strokeOn: true, fillOpacity: 1,
+        strokeOpacity: 1, strokeWidth: null, gray: false,
       };
     }
 
@@ -162,10 +164,12 @@
                     || s.rot !== 0 || s.sx !== 1 || s.sy !== 1 || s.mx !== 0 || s.my !== 0 || s.shx !== 0 || s.shy !== 0;
       // Shear (xshear, yshear: Light Speed leans the shape) about the center, before rotation.
       const shear = [1, s.shy || 0, s.shx || 0, 1, 0, 0];
+      // Text in another formatting shows its drawing in it; a size it was not drawn in is scaled.
+      const sized = this.renderFormatting(s);
       if (this.svg) {
         // A font size relative to the text's own (Grow with color: 1.5) scales text drawn on its own about its
         // middle; a whole shape keeps its size, and so does its background (an iterated effect's first pass).
-        const font = this.el.closest('[data-tx]') ? s.fontSize || 1 : 1;
+        const font = this.el.closest('[data-tx]') && !sized ? s.fontSize || 1 : 1;
         if (moved || font !== 1) {
           // Slide-space change around the paragraph's center, expressed in the shape's coordinates.
           const [lx, ly] = [this.local.x + this.local.width / 2, this.local.y + this.local.height / 2];
@@ -193,8 +197,60 @@
           el.style.transform = this.originalTransform;
         }
         this.renderMask(s.clip);
+        this.renderTextScale(sized ? 1 : s.fontSize || 1);
       }
       this.renderPaint(s);
+    }
+
+    /**
+     * Shows the target's text in the formatting its state asks for (catalog: animation.behaviors): bold, italic,
+     * underlined, in another font or size, as the converter drew it for every paragraph or letter (data-v groups),
+     * the nearest drawing when that one was not drawn. Returns whether the drawing has the state's font size.
+     */
+    renderFormatting(s) {
+      const wanted = [s.weight, s.fontStyle, s.underline, s.family].map(v => v || '');
+      const key = wanted.join('|') + '|' + (s.fontSize !== 1 ? s.fontSize : '');
+      if (key === (this.formatting || '||||')) return this.formattingSized || false;
+      this.formatting = key;
+      if (!this.variants) this.variants = this.all('[data-v]');
+      if (!this.variants.length) return (this.formattingSized = false);
+      // The drawing that has the most of what is asked and nothing else.
+      let chosen = '', best = 0, sized = false;
+      for (const v of new Set(this.variants.map(g => g.dataset.v).filter(v => v))) {
+        const parts = v.split('|');
+        let score = 0, fits = true;
+        for (let i = 0; i < 4 && fits; i++) {
+          if (parts[i] === wanted[i]) score += parts[i] ? 1 : 0;
+          else if (parts[i]) fits = false;
+        }
+        const size = parts[4] ? Number(parts[4]) : 1;
+        if (size !== 1) { if (Math.abs(size - s.fontSize) < 1e-6) score += 1; else fits = false; }
+        if (fits && score > best) { chosen = v; best = score; sized = size !== 1; }
+      }
+      for (const g of this.variants) {
+        if (g.dataset.v !== chosen) { g.setAttribute('visibility', 'hidden'); continue; }
+        g.removeAttribute('visibility');
+        if (g.hasAttribute('data-align') && !g.dataset.aligned) alignVariant(g);
+      }
+      return (this.formattingSized = sized);
+    }
+
+    /** Scales a shape's text about its anchor (style.fontSize of a whole shape: Change Font Size). */
+    renderTextScale(f) {
+      if (f === (this.textScale || 1)) return;
+      this.textScale = f;
+      for (const g of this.all('g[data-tx]')) {
+        if (g.dataset.transform === undefined) g.dataset.transform = g.getAttribute('transform') || '';
+        if (f === 1) {
+          if (g.dataset.transform) g.setAttribute('transform', g.dataset.transform); else g.removeAttribute('transform');
+          continue;
+        }
+        let [x, y] = (g.dataset.anchor || '').split(' ').map(Number);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          try { const b = g.getBBox(); [x, y] = [b.x + b.width / 2, b.y + b.height / 2]; } catch { [x, y] = [0, 0]; }
+        }
+        g.setAttribute('transform', `${g.dataset.transform} translate(${x} ${y}) scale(${f}) translate(${-x} ${-y})`.trim());
+      }
     }
 
     /**
@@ -251,15 +307,34 @@
     }
 
     renderPaint(s) {
-      if (s.fill !== this.lastFill) {
-        this.lastFill = s.fill;
-        this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => { if (p.getAttribute('fill') !== 'none') p.style.fill = s.fill || ''; });
+      const fill = `${s.fill}|${s.fillOn}`;
+      if (fill !== this.lastFill) {
+        this.lastFill = fill;
+        // A shape without fill gets one while an effect turns it on (fill.on; its fillable paths are marked).
+        this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => {
+          if (p.getAttribute('fill') !== 'none') p.style.fill = s.fill || '';
+          else if (p.hasAttribute('data-fillable')) p.style.fill = s.fillOn && s.fill ? s.fill : '';
+        });
       }
       if (s.stroke !== this.lastStroke) {
         this.lastStroke = s.stroke;
         this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => {
           if (p.getAttribute('stroke') && p.getAttribute('stroke') !== 'none') p.style.stroke = s.stroke || '';
         });
+      }
+      // The legacy paint attributes: fill and line opacity, line weight (points), the line off, a gray picture.
+      const extra = `${s.fillOpacity}|${s.strokeOpacity}|${s.strokeWidth}|${s.strokeOn}|${s.gray}`;
+      if (extra !== (this.lastExtra || '1|1|null|true|false')) {
+        this.lastExtra = extra;
+        this.all(this.svg ? 'path' : '[data-bg] path, svg > path').forEach(p => {
+          p.style.fillOpacity = s.fillOpacity !== undefined && s.fillOpacity !== 1 ? String(Math.max(0, s.fillOpacity)) : '';
+          p.style.strokeOpacity = s.strokeOpacity !== undefined && s.strokeOpacity !== 1 ? String(Math.max(0, s.strokeOpacity)) : '';
+          p.style.strokeWidth = typeof s.strokeWidth === 'number' && Number.isFinite(s.strokeWidth) ? `${s.strokeWidth * 96 / 72}px` : '';
+          p.style.visibility = s.strokeOn === false && p.getAttribute('fill') === 'none' ? 'hidden' : '';
+          if (s.strokeOn === false && p.getAttribute('fill') !== 'none') p.style.stroke = 'none';
+          else if (p.style.stroke === 'none') p.style.stroke = s.stroke || '';
+        });
+        for (const e of this.els) if (e.style) e.style.filter = s.gray ? 'grayscale(1)' : '';
       }
       if (s.color !== this.lastColor) {
         this.lastColor = s.color;
@@ -398,17 +473,30 @@
       if (plan) {
         end = iterate(node, plan, begin, out, inner);
       } else {
-        let previous = begin;
+        let previous = begin, firstEnd = Infinity;
+        const played = [];
         for (const child of children) {
           // A group after the previous effect starts when the groups before it end, as PowerPoint plays it: the
           // delay it keeps is what the editor reckoned, which text built letter by letter outlasts (measured).
           const after = child.t === 'par' && (child.children || []).some(c => c.nodeType === 'afterEffect');
+          const from = out.length;
           const childEnd = after
             ? schedule(Object.assign({}, child, { begin: [] }), Math.max(begin + delayOf(child), previous), out, inner)
             : schedule(child, begin, out, inner);
+          played.push({ from, to: out.length, at: out.length > from ? Math.min(...out.slice(from).map(b => b.start)) : childEnd });
           previous = Math.max(previous, childEnd);
           end = Math.max(end, childEnd);
+          firstEnd = Math.min(firstEnd, childEnd);
         }
+        // An exclusive container (SMIL excl) plays one child at a time: one that begins stops the one playing.
+        if (node.t === 'excl') {
+          for (const a of played) {
+            const next = Math.min(...played.filter(b => b.at > a.at).map(b => b.at));
+            if (Number.isFinite(next)) for (let i = a.from; i < a.to; i++) out[i].until = Math.min(out[i].until ?? Infinity, next);
+          }
+        }
+        // A container ends with its last child (endSync all, PowerPoint's), with endSync first with its first.
+        if (node.endSync && node.endSync.rtn === 'first' && Number.isFinite(firstEnd)) end = firstEnd;
       }
       if (typeof node.dur === 'number') end = begin + node.dur / speed;
       end = repeatChildren(node, begin, end, first, out, inner);
@@ -504,6 +592,7 @@
     if (!timing || !timing.root) return result;
     // Text an effect builds letter by letter or word by word: its units, and whether the shape's background goes first.
     const unitsOf = node => {
+      // By element (type el, the default): the target as a whole.
       if (node.iterate.type !== 'lt' && node.iterate.type !== 'wd') return null;
       const target = firstTarget(node);
       const shape = target && !target.graphic ? slide.querySelector(`[data-id="${target.spid}"]`) : null;
@@ -549,7 +638,7 @@
       if (sequence.nodeType === 'interactiveSeq') {
         // Triggers: a click on a shape, or playback reaching a media bookmark (key bmk:spid:name).
         const trigger = (sequence.begin || []).find(c => (c.evt === 'onClick' || c.evt === 'onMediaBookmark') && c.target);
-        if (trigger) result.triggers.set(trigger.target.bmk !== undefined ? `bmk:${trigger.target.spid}:${trigger.target.bmk}` : String(trigger.target.spid), { steps, played: 0 });
+        if (trigger) result.triggers.set(trigger.target.bmk !== undefined ? `bmk:${trigger.target.spid}:${trigger.target.bmk}` : String(trigger.target.spid), { steps, played: 0, restart: sequence.restart });
       } else {
         result.steps.push(...steps);
       }
@@ -648,7 +737,10 @@
   const attributeKey = attribute => ({
     ppt_x: 'x', ppt_y: 'y', ppt_w: 'w', ppt_h: 'h', r: 'rot', 'style.rotation': 'rot', 'style.opacity': 'opacity',
     'style.visibility': 'visible', fillcolor: 'fill', 'fill.color': 'fill', 'stroke.color': 'stroke', 'style.color': 'color',
-    'style.fontSize': 'fontSize', xshear: 'shx', yshear: 'shy',
+    'style.fontSize': 'fontSize', xshear: 'shx', yshear: 'shy', 'style.fontWeight': 'weight', 'style.fontStyle': 'fontStyle',
+    'style.textDecorationUnderline': 'underline', 'style.fontFamily': 'family', fillColor: 'fill', 'fill.on': 'fillOn',
+    'stroke.on': 'strokeOn', 'fill.opacity': 'fillOpacity', 'stroke.opacity': 'strokeOpacity', 'stroke.weight': 'strokeWidth',
+    ppt_r: 'rot', 'imageData.grayscale': 'gray',
   })[attribute];
 
   function hexColor(c) {
@@ -671,11 +763,45 @@
     return m ? [+m[1], +m[2], +m[3]] : null;
   }
 
-  /** Applies one behaviour at progress p to a target's state. */
-  function evaluate(b, p, target, state) {
+  /** Whether a behaviour's formulas take the current values (ppt_x, not #ppt_x: Fly Out, Bounce Out). */
+  function takesCurrent(b) {
+    if (b.takesCurrent === undefined) {
+      const n = b.node;
+      b.takesCurrent = n.t === 'anim' && /(^|[^#a-z_])ppt_[xywh]/i.test(JSON.stringify([n.tav, n.from, n.to, n.by]));
+    }
+    return b.takesCurrent;
+  }
+
+  /**
+   * The states of a behaviour's targets when it begins (by key), which its formulas' current values are: PowerPoint
+   * takes them then. Behaviours of the step that began before it count as they are at that moment, one that ends as
+   * it begins with its end (Bounce Out's fall and bounces build on each other, each ending as the next begins).
+   */
+  function beganWith(step, b, before) {
+    if (b.begun) return b.begun;
+    const states = new Map();
+    for (const { key } of b.targets) states.set(key, Object.assign({}, before && before.get(key)));
+    const index = step.behaviors.indexOf(b);
+    step.behaviors.forEach((o, i) => {
+      if (o === b || o.start > b.start || (o.start === b.start && i > index)) return;
+      const end = o.start + o.total;
+      const p = progress(o, end <= b.start && end > b.start - 1 ? end - 1e-3 : b.start);
+      if (p === null) return;
+      const begun = takesCurrent(o) ? beganWith(step, o, before) : null;
+      for (const { key, target } of o.targets) if (states.has(key)) evaluate(o, p, target, states.get(key), begun && begun.get(key));
+    });
+    b.begun = states;
+    return states;
+  }
+
+  /**
+   * Applies one behaviour at progress p to a target's state; begun: the target's state when the behaviour began,
+   * for formulas that take the current values (ppt_x …).
+   */
+  function evaluate(b, p, target, state, begun) {
     const node = b.node;
-    const base = target.base;
-    const vars = { x: base.x, y: base.y, w: base.w, h: base.h, ppt_x: state.x, ppt_y: state.y, ppt_w: state.w, ppt_h: state.h, $: p };
+    const base = target.base, now = begun || state;
+    const vars = { x: base.x, y: base.y, w: base.w, h: base.h, ppt_x: now.x, ppt_y: now.y, ppt_w: now.w, ppt_h: now.h, $: p };
     switch (node.t) {
       case 'set': {
         for (const attribute of node.attrs || []) assign(state, attribute, node.to, vars, false, node);
@@ -757,7 +883,11 @@
     if (node.clrSpc === 'hsl') {
       const [h, s, l] = rgbToHsl(start);
       let target;
-      if (by && 'h' in by) target = [h + by.h / 60000, s + by.s / 100000, l + by.l / 100000];
+      if (by && 'h' in by) {
+        // The hue turns the way dir says whatever the sign (Complementary Color 2: -120° clockwise is +240°).
+        const turn = ((by.h / 60000) % 360 + 360) % 360;
+        target = [h + (node.dir === 'ccw' && turn > 0 ? turn - 360 : turn), s + by.s / 100000, l + by.l / 100000];
+      }
       else {
         const end = parseColor(hexColor(node.to)) || start;
         const [h2, s2, l2] = rgbToHsl(end);
@@ -811,6 +941,8 @@
     else if (key === 'rot') state.rot = (node && node.additive === 'sum' ? state.rot : 0) + Number(numeric ? value : formula(value)(vars));
     else if (key === 'fill' || key === 'stroke' || key === 'color') state[key] = hexColor(value);
     else if (key === 'fontSize') state.fontSize = Number(value) || 1;
+    else if (key === 'weight' || key === 'fontStyle' || key === 'underline' || key === 'family') state[key] = String(value);
+    else if (key === 'fillOn' || key === 'strokeOn' || key === 'gray') state[key] = value === true || value === 'true';
     else state[key] = numeric ? Number(value) : Number(formula(value)(vars));
   }
 
@@ -1101,6 +1233,23 @@
     return url;
   }
 
+  /**
+   * Lines a letter drawn in another face up with the letter it stands for: their middles meet across, and down too
+   * when the other layout put it on another line.
+   */
+  function alignVariant(g) {
+    g.dataset.aligned = '1';
+    const original = g.parentNode && g.parentNode.querySelector(':scope > [data-v=""]');
+    if (!original) return;
+    try {
+      const a = original.getBBox(), b = g.getBBox();
+      if (!b.width && !b.height) return;
+      const dx = a.x + a.width / 2 - (b.x + b.width / 2);
+      const dy = Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) > a.height / 2 ? a.y + a.height - (b.y + b.height) : 0;
+      g.setAttribute('transform', `translate(${dx} ${dy})`);
+    } catch { /* not drawn */ }
+  }
+
   /** The bounds elements draw, their outlines included, in their own coordinates. */
   function drawnBox(els) {
     let box = null, pad = 0;
@@ -1358,11 +1507,15 @@
     trigger(spid) {
       const sequence = this.timeline.triggers.get(String(spid));
       if (!sequence || sequence.steps.length === 0) return false;
-      this.stop();
       if (sequence.played >= sequence.steps.length) {
+        // The sequence has played (it ends with its last effect, endSync all): a click while that runs seeks it to
+        // its end (restart whenNotActive, PowerPoint's); after it the sequence starts again, unless restart is never.
+        if (this.current && sequence.steps.includes(this.current.step)) { this.stop(); this.render(null, 0); return true; }
+        if (sequence.restart === 'never') return true;
         sequence.played = 0;
         this.done = this.done.filter(s => !sequence.steps.includes(s));
       }
+      this.stop();
       this.play(sequence.steps[sequence.played++]);
       return true;
     }
@@ -1430,12 +1583,15 @@
       for (const [key, target] of this.timeline.targets) if (target) states.set(key, target.fresh(this.timeline.hidden.has(key)));
       const now = performance.now();
       const run = (step, time, done) => {
+        // The states before the step, while values its behaviours take when they begin are still to be found.
+        const before = step.behaviors.some(b => takesCurrent(b) && !b.begun) ? new Map([...states].map(([k, v]) => [k, Object.assign({}, v)])) : null;
         for (const b of step.behaviors) {
           // Repeats until the end of the slide (or until a click) go on after their step.
           const looping = done && b.loop && step.startedAt !== undefined && !(b.loop.untilNext && step.clicked);
           const p = progress(b, looping ? now - step.startedAt : time);
           if (p === null) continue;
-          for (const { key, target } of b.targets) evaluate(b, p, target, states.get(key));
+          const begun = takesCurrent(b) ? beganWith(step, b, before) : null;
+          for (const { key, target } of b.targets) evaluate(b, p, target, states.get(key), begun && begun.get(key));
         }
       };
       for (const step of this.done) run(step, Infinity, true);
@@ -1445,7 +1601,7 @@
 
     reset() {
       this.stop();
-      for (const step of this.done) { delete step.startedAt; delete step.clicked; }
+      for (const step of this.done) { delete step.startedAt; delete step.clicked; for (const b of step.behaviors) delete b.begun; }
       for (const target of this.timeline.targets.values()) if (target) target.reset();
       this.slide.querySelectorAll('.fs-media').forEach(el => {
         if (!(show && show.acrossSlides && show.acrossSlides.has(el))) stopMedia(el);

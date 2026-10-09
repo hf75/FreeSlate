@@ -1882,28 +1882,34 @@ areas:
                    p:tmPct]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           A JS timing engine for the SMIL-like time containers (par, seq, excl): click sequences, with/after previous,
           triggers on shapes and media bookmarks, fill, repeat, auto-reverse, acceleration and deceleration.
         office: >-
           Checked against PowerPoint's own video of the slides (tools/Fidelity animate: slideshow 99.9 %,
-          smartart 99.9 %, animations-charts 99.6 %, animations-text 100.0 % of frames). Acceleration and
-          deceleration follow a smoothstep speed curve (measured on six accel/decel pairs). A behaviour
-          without fill of its own takes its effect's (Bounce holds its squash; the Transparency emphasis,
-          without fill, reverts); a set without duration holds. Text built letter by letter or word by word
-          (p:iterate lt, wd): the shape's background first for the effect's duration when the build animates
-          it (bldP animBg), then every letter or word (blanks are none) with the whole effect, tmPct of the
-          effect's duration or tmAbs apart; a group after the previous effect starts when the groups before it
-          end (the stored delay is the editor's guess, which iterated text outlasts). After effects and sounds
-          (p:subTnLst): sameClick ones when their effect begins or ends as their condition says, nextClick
-          ones (dim, hide on next click) when the next effect of the sequence begins. Containers repeat
-          (repeatCount, repeatDur); indefinite repeats go on after their step until the end of the slide, or
-          until the next click with an onNext end condition (checked live). Effects with fill=remove rewind
-          when done, tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its
-          share of the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds
-          per frame (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame
-          mode does the same. Still open: restart, endSync, iterate type el.
+          smartart 99.9 %, animations-charts 99.6 %, animations-text 100.0 %, animations-gallery 99.7 % of
+          frames). Acceleration and deceleration follow a smoothstep speed curve (measured on six accel/decel
+          pairs). A behaviour without fill of its own reverts when it ends, a set without duration holds;
+          formulas take the current values (ppt_x, ppt_y …, not #ppt_x) as they are when their behaviour
+          begins, a behaviour ending just then with its end (Bounce Out's fall and bounces build on each
+          other). Text built letter by letter or word by word (p:iterate lt, wd; el, the default, animates the
+          whole target): the shape's background first for the effect's duration when the build animates it
+          (bldP animBg) and for emphases, then every letter or word (blanks are none) with the whole effect,
+          tmPct of the effect's duration or tmAbs apart; a group after the previous effect starts when the
+          groups before it end (the stored delay is the editor's guess, which iterated text outlasts). After
+          effects and sounds (p:subTnLst): sameClick ones when their effect begins or ends as their condition
+          says, nextClick ones (dim, hide on next click) when the next effect of the sequence begins.
+          Containers repeat (repeatCount, repeatDur); indefinite repeats go on after their step until the end
+          of the slide, or until the next click with an onNext end condition (checked live). A container ends
+          with its last child (endSync all), with its first under endSync first; an exclusive container
+          (p:excl) stops the child playing when another begins. Interactive sequences (triggers) play a click
+          group per click on their shape or bookmark; once played (endSync all) the next click starts them
+          again (restart whenNotActive), not with restart never. Effects with fill=remove rewind when done,
+          tmFilter remaps progress, p14:bounceEnd swings about the end as a damped spring over its share of
+          the duration (fitted on five videos). PowerPoint's video clock advances whole milliseconds per frame
+          (33 ms at 30 fps) within a step while steps follow the video's frames; the player's frame mode does
+          the same.
 
       - id: animation.targets
         title: Animation targets
@@ -1911,15 +1917,17 @@ areas:
                    p:subSp, a:dgm, a:chart]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Targets are shapes, paragraph or character ranges and chart or SmartArt parts, so the rendered output must
           keep those addressable.
         office: >-
           Shapes, paragraph ranges (p:pRg), character ranges (p:charRg; their text is drawn character by
           character), backgrounds (p:bg), SmartArt shapes (a:dgm), chart parts (a:chart: series, categories,
-          points, background), the letters and words of text built by iteration (data-c, data-w) and sounds
-          (p:sndTgt, played with their effect) are addressable; ink (p:inkTgt) still to do.
+          points, background), the letters and words of text built by iteration (data-c, data-w), sounds
+          (p:sndTgt, played with their effect) and ink (p:inkTgt, and p:spTgt of an ink content part, which
+          PowerPoint writes: the ink is drawn with its shape id; checked with a fade on two ink drawings) are
+          addressable.
 
       - id: animation.behaviors
         title: Animation behaviours
@@ -1928,29 +1936,37 @@ areas:
                    p:clrVal, p:by, p:from, p:to, p:rgb, p:hsl, p:rCtr, p:progress]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Attribute names (ppt_x, ppt_y, ppt_w, ppt_h, style.rotation, style.opacity, style.visibility, fillcolor …)
           map to properties of the rendered elements; animEffect filters (fade, wipe, barn, blinds, circle …) become
           SVG masks; motion paths are relative path strings.
         office: >-
-          Formulas use ppt_x, ppt_y, ppt_w, ppt_h (the property's current value, used by exit effects such as
-          Fly Out) besides #ppt_x … (the value before the animation). Motion paths move at a speed even in the
-          path's own units (fractions of the slide's width and height), not on the screen (measured with a
-          circle path: 1.1 px against 7.6 px). Filters (measured frame by frame with PowerPoint's videos of
-          every filter and direction, entrance and exit): every point of the shape's drawn bounds (its outline
-          included) has a moment u at which the edge passes it, in the bounds' own proportions: the distance
-          from the starting side (wipe; blinds in 6 bands; checkerboard in 6 x 6 cells, odd rows half a cell
-          over), from the middle (box, circle reaching the corners, diamond, plus, barn), the angle from 12
-          o'clock (wedge both ways, wheel per spoke), the diagonal of a 16 x 16 block grid (strips, u = d/31).
-          The edge is a linear ramp 0.14 wide from just before u = 0 to just past u = 1. Exits hide what the
-          edge passes; blinds, checkerboard and strips play their entrance backwards instead. Dissolve shows
-          one-pixel specks at the pace of the average of three random numbers (an S curve), random bars
-          one-pixel lines at a measured pace. The player draws all of them as SVG masks (gradients, fans, a
-          thresholded noise image) on the shape's drawing, so outlines past the shape's box stay; groups get a
-          CSS mask over their box. Color animations work in RGB and HSL (to, by, direction). Effects of an
-          iterated build animate the background first, the font size scales only the text
-          (generated/animations-gallery: 99.7 % of 257 video frames).
+          Formulas use ppt_x, ppt_y, ppt_w, ppt_h (the property's current value as the behaviour begins, used
+          by exit effects such as Fly Out and Bounce Out) besides #ppt_x … (the value before the animation).
+          Motion paths move at a speed even in the path's own units (fractions of the slide's width and
+          height), not on the screen (measured with a circle path: 1.1 px against 7.6 px). Filters (measured
+          frame by frame with PowerPoint's videos of every filter and direction, entrance and exit): every
+          point of the shape's drawn bounds (its outline included) has a moment u at which the edge passes it,
+          in the bounds' own proportions: the distance from the starting side (wipe; blinds in 6 bands;
+          checkerboard in 6 x 6 cells, odd rows half a cell over), from the middle (box, circle reaching the
+          corners, diamond, plus, barn), the angle from 12 o'clock (wedge both ways, wheel per spoke), the
+          diagonal of a 16 x 16 block grid (strips, u = d/31). The edge is a linear ramp 0.14 wide from just
+          before u = 0 to just past u = 1. Exits hide what the edge passes; blinds, checkerboard and strips
+          play their entrance backwards instead. Dissolve shows one-pixel specks at the pace of the average of
+          three random numbers (an S curve), random bars one-pixel lines at a measured pace. The player draws
+          all of them as SVG masks (gradients, fans, a thresholded noise image) on the shape's drawing, so
+          outlines past the shape's box stay; groups get a CSS mask over their box. Color animations work in
+          RGB and HSL (to, by; the hue turns the way dir says whatever the sign of by, Complementary Color 2).
+          Text formatting (style.fontWeight, style.fontStyle, style.textDecorationUnderline, style.fontFamily)
+          shows the text laid out anew in the real faces, as PowerPoint does: the converter draws it in every
+          formatting the timing gives it, per paragraph or, for text built letter by letter, per letter (lined
+          up with the letter it stands for); style.fontSize scales the text about its anchor and ends in the
+          text laid out at that size. fill.on gives a shape without fill the animated fill; stroke.on,
+          fill.opacity, stroke.opacity, stroke.weight, ppt_r and imageData.grayscale (VML-era names
+          PowerPoint's presets do not use) are applied too. Effects of an iterated build animate the
+          background first, the font size scales only the text (generated/animations-gallery: 99.7 % of 373
+          video frames over 12 slides of PowerPoint's effect gallery).
 
       - id: animation.build
         title: Build lists

@@ -303,8 +303,9 @@ public static class SlideShow
             return new JsonObject { ["sld"] = true };
         if (tgtEl.Element(Ns.P + "sndTgt") is { } sound)
             return Sound(slide, sound) is { } src ? new JsonObject { ["snd"] = src, ["name"] = sound.Str("name") } : null;
+        // Ink (p:inkTgt) is a drawn shape like any other.
         if (tgtEl.Element(Ns.P + "inkTgt") is { } ink)
-            return new JsonObject { ["ink"] = ink.Str("spid") };
+            return new JsonObject { ["spid"] = ink.Str("spid"), ["ink"] = true };
         // A media bookmark (p14:bmkTgt) that starts a trigger sequence when playback reaches it.
         if (tgtEl.Descendants().FirstOrDefault(e => e.Name.LocalName == "bmkTgt") is { } bookmark)
             return new JsonObject { ["spid"] = bookmark.Str("spid"), ["bmk"] = bookmark.Str("bmkName") ?? "" };

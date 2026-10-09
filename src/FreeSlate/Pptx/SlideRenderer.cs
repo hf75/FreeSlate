@@ -29,6 +29,20 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         : [];
     HashSet<string>? iterated;
 
+    /// <summary>
+    /// Shapes whose fill the slide show turns on (p:set fill.on: color effects on a shape without fill): their
+    /// fillable paths are marked (data-fillable) so that the player can fill them.
+    /// </summary>
+    HashSet<string> FillsTurnedOn => fillsTurnedOn ??= slide.Slide.Root?.Element(Ns.P + "timing") is { } timing
+        ? timing.Descendants(Ns.P + "cBhvr").Where(b => b.Element(Ns.P + "attrNameLst")?.Elements(Ns.P + "attrName").Any(a => a.Value.Trim() == "fill.on") == true)
+            .Select(b => b.Element(Ns.P + "tgtEl")?.Element(Ns.P + "spTgt")?.Attribute("spid")?.Value).OfType<string>().ToHashSet()
+        : [];
+    HashSet<string>? fillsTurnedOn;
+
+    /// <summary>The formattings the slide show gives shapes' text (catalog: animation.behaviors), by shape id.</summary>
+    Dictionary<string, List<TextOverride>> Restyled => restyled ??= TextVariants.Collect(slide.Slide.Root?.Element(Ns.P + "timing"));
+    Dictionary<string, List<TextOverride>>? restyled;
+
     /// <summary>Maps child coordinates of a group to slide coordinates (EMU); Transform holds rotations and flips.</summary>
     readonly record struct Placement(Matrix Transform, double OffX, double OffY, double ScaleX, double ScaleY, double ChildX, double ChildY, Fill? GroupFill)
     {
@@ -103,7 +117,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                         RenderGraphicFrame(element, part, html, placement, isSlide);
                     break;
                 case "contentPart":
-                    RenderContentPart(element, part, html, placement);
+                    RenderContentPart(element, part, html, placement, isSlide);
                     break;
             }
         }
@@ -211,6 +225,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var strokes = new StringBuilder();
         // Gradients that follow the shape (path="shape") repeat its filled outline.
         var outlineData = string.Concat(geometry.Paths.Where(p => p.Fill != "none").Select(p => p.Data));
+        var fillable = isSlide && fill is NoFill && NonVisual(shape)?.Attribute("id")?.Value is { } animatedId && FillsTurnedOn.Contains(animatedId)
+            ? " data-fillable=\"\"" : "";
         foreach (var path in geometry.Paths)
         {
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
@@ -239,7 +255,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
             else
             {
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)}{stroke}{crisp}/>");
+                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
             }
             if (compound)
                 strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
@@ -397,16 +413,21 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             flatText = solidBody && bodyPrs.Any(b => b!.Element(Ns.A + "flatTx") != null);
             if (textCamera != null)
                 text.Outlines = [];
-            var textMarkup = text.Render(new TextChain
+            var shapeId = isSlide ? NonVisual(shape)?.Attribute("id")?.Value : null;
+            var textChain = new TextChain
             {
                 Shapes = chain,
                 StyleKind = placeholder == null ? "other" : Placeholders.TextStyle(Placeholders.Type(placeholder)),
                 Defaults = textDefaults,
                 FontRef = style?.Element(Ns.A + "fontRef"),
-                Units = isSlide && NonVisual(shape)?.Attribute("id")?.Value is { } shapeId && Iterated.Contains(shapeId),
-            }, textGeometry, pw, flipH ^ flipV);
+                Units = shapeId != null && Iterated.Contains(shapeId),
+            };
+            var textMarkup = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
+            // Text the slide show restyles is drawn in each formatting too (not 3D text).
+            if (textCamera == null && shapeId != null && textMarkup.Length > 0 && Restyled.TryGetValue(shapeId, out var formattings))
+                textMarkup = TextVariants.Merge(textMarkup, formattings.Select(f => (f.Key, text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV))).ToList(), textChain.Units);
             if (upright && turn != 0 && textMarkup.Length > 0)
                 textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
             if (Math.Abs(textTurn) > 1e-9 && textMarkup.Length > 0)
@@ -949,7 +970,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             element.Nodes().Select(n => n is XElement e ? ToPresentationMl(e) : n));
 
     /// <summary>Ink (p:contentPart with an InkML part, catalog: picture.ink) drawn into the part's box.</summary>
-    void RenderContentPart(XElement element, string part, StringBuilder html, Placement placement)
+    void RenderContentPart(XElement element, string part, StringBuilder html, Placement placement, bool isSlide)
     {
         var xfrm = element.Element(P14 + "xfrm") ?? element.Element(Ns.P + "xfrm");
         if (xfrm?.Element(Ns.A + "ext") == null || element.Attribute(Ns.R + "id") is not { } id)
@@ -967,7 +988,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var markup = Ink.Render(ink, pw, ph);
         if (markup.Length == 0)
             return;
-        html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
+        // The id lets animations reach the ink (p:inkTgt, or p:spTgt of the content part).
+        html.Append($"<div class=\"sp\"{Accessibility(element, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
         html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{markup}</svg></div>");
     }
 

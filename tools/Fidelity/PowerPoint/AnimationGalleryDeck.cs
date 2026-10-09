@@ -4,8 +4,8 @@ namespace Fidelity.PowerPoint;
 
 /// <summary>
 /// PowerPoint's effect gallery (catalog: animation.behaviors, animation.presets): entrance, emphasis and exit
-/// effects, eight a slide, one after the other, each on a shape with text so that filters, motions, scales and
-/// color changes show.
+/// effects, up to eight a slide, one after the other, each on a shape with text so that filters, motions, scales,
+/// color and text formatting changes show.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class AnimationGalleryDeck
@@ -23,6 +23,10 @@ static class AnimationGalleryDeck
         ("Emphasis: color", [("Fill color", 54), ("Font color", 56), ("Line color", 60), ("Brush on color", 66), ("Color blend", 68), ("Complementary", 70), ("Contrasting", 72), ("Darken", 73)], false),
         ("Emphasis: more", [("Desaturate", 74), ("Flash bulb", 75), ("Flicker", 76), ("Grow with color", 77), ("Lighten", 78), ("Teeter", 80), ("Vertical grow", 81), ("Wave", 82)], false),
         ("Exit effects", [("Blinds", 3), ("Box", 4), ("Circle", 6), ("Dissolve", 9), ("Peek", 12), ("Split", 16), ("Swivel", 19), ("Zoom", 23)], true),
+        ("Entrance: basic and more", [("Crawl", 7), ("Flash once", 11), ("Bounce", 26), ("Credits", 28), ("Flip", 51), ("Shimmer", 52), ("Fold", 53), ("Zoom", 23)], false),
+        ("Emphasis: text", [("Change font", 55), ("Font size", 57), ("Font style", 58), ("Bold flash", 63), ("Bold reveal", 65), ("Brush underline", 67), ("Color wave", 69), ("Style emphasis", 79)], false),
+        ("More exits", [("Crawl out", 7), ("Flash out", 11), ("Bounce out", 26), ("Credits out", 28), ("Fold out", 53), ("Fly out", 2), ("Wipe out", 22), ("Wheel out", 21)], true),
+        ("Emphasis: shape", [("Blast", 64), ("Complementary 2", 71), ("Spin", 61), ("Grow shrink", 59), ("Transparency", 62)], false),
     ];
 
     public static void Build(dynamic deck)
