@@ -13,8 +13,8 @@ namespace FreeSlate.Pptx.SmartArt;
 /// <item>text is laid out by the text algorithm's nodes: a shape showing the same data points as a text node takes
 /// that node's text and text rectangle, and a text node without geometry (hideGeom) whose text a shape takes draws
 /// nothing itself (a connector's text, a Venn circle's text); one without such a shape draws its text alone;</item>
-/// <item>a shape turned by its shape's rot by a quarter fills its box turned (width and height swapped); text stays
-/// upright unless the text algorithm says otherwise (autoTxRot);</item>
+/// <item>a shape turned by its shape's rot takes the size whose turned bounds are its box (a quarter turn: width and
+/// height swapped); text stays upright unless the text algorithm says otherwise (autoTxRot);</item>
 /// <item>colors, lines and effects come from the color and style definitions by the shape's style label (the saved
 /// presentation point's, the layout node's, the label of the nearest ancestor showing the same data point, else by
 /// the point's type and depth: node1 to node4, parChTrans1D/2D by depth, sibTrans1D1/2D1, asst), each label's
@@ -253,10 +253,22 @@ public static class Output
         var (x, y, w, h) = (node.X, node.Y, node.W, node.H);
         if (type == "conn")
             return ConnectorGeometry(node, x, y, w, h);
-        // A shape turned by a quarter fills its box turned.
-        var quarter = Math.Abs(Math.IEEERemainder(turn, 180)) is > 45 and <= 135;
-        if (quarter)
-            (x, y, w, h) = (x + w / 2 - h / 2, y + h / 2 - w / 2, h, w);
+        // A turned shape takes the size whose turned bounds are its box, centered: a quarter turn fills it turned
+        // (measured: gear1's third gear, turned 15°, 0.816 of its box; arrow3's divider, turned 5°, 834.8 × 95.6 in a
+        // box of 840 × 168; DescendingProcess' arrow turned 73.27°); at 45° it keeps its proportions.
+        var radians = turn * Math.PI / 180;
+        var (cos, sin) = (Math.Abs(Math.Cos(radians)), Math.Abs(Math.Sin(radians)));
+        if (sin > 1e-9 && w > 0 && h > 0)
+        {
+            var determinant = cos * cos - sin * sin;
+            var (tw, th) = Math.Abs(determinant) > 1e-6 ? ((w * cos - h * sin) / determinant, (h * cos - w * sin) / determinant) : (0, 0);
+            if (!(tw > 0 && th > 0))
+            {
+                var fit = Math.Min(w / (w * cos + h * sin), h / (w * sin + h * cos));
+                (tw, th) = (w * fit, h * fit);
+            }
+            (x, y, w, h) = (x + (w - tw) / 2, y + (h - th) / 2, tw, th);
+        }
         var adjust = new List<XElement>();
         var names = PresetGeometries.Get(type)?.AdjustValues.Select(a => a.Name).ToList() ?? [];
         foreach (var adj in node.Shape.Element(D + "adjLst")?.Elements(D + "adj") ?? [])
