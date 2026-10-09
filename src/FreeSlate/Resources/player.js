@@ -2575,6 +2575,291 @@
     }, reset);
   }
 
+  /**
+   * A slide's image as a sheet of nx × ny cells whose corners place(u, v) puts in the scene (u, v: 0 … 1 across and
+   * down) as [x, y, z] or [x, y, z, shade]; the texture follows the sheet, or uvOf(u, v) gives its coordinates.
+   */
+  function sheetMesh(tex, nx, ny, place, uvOf = (u, v) => [u, v]) {
+    const pts = [];
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) pts.push(place(i / nx, j / ny));
+    const pos = [], uv = [], shade = [];
+    const put = (i, j) => {
+      const q = pts[j * (nx + 1) + i];
+      pos.push(q[0], q[1], q[2]);
+      uv.push(...uvOf(i / nx, j / ny));
+      shade.push(q.length > 3 ? q[3] : 1);
+    };
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        put(i, j); put(i + 1, j); put(i + 1, j + 1);
+        put(i, j); put(i + 1, j + 1); put(i, j + 1);
+      }
+    }
+    return { tex, pos, uv, shade };
+  }
+
+  /** A slide's image lying in place behind everything (not hiding what is drawn after it). */
+  const backdrop = image => ({ tex: image, ...quad([0, 0, 0], [W, 0, 0], [W, H, 0], [0, H, 0]), flat: true });
+
+  // The Office 2013 transitions (p15:prstTrans; measured with PowerPoint's videos, pixels of a 1280 × 720 slide).
+  // Fall Over: the old slide's fall back about its bottom edge in degrees (in its middle).
+  const fallOverAngle = measured([[0, 0], [0.134, 0.2], [0.2, 1.2], [0.266, 2.3], [0.331, 3.6], [0.397, 5.5], [0.462, 8.4], [0.528, 12.8],
+    [0.593, 19.6], [0.659, 29.4], [0.725, 44.3], [0.79, 65.3], [0.823, 78.7], [0.856, 90], [0.9, 125], [1, 125]]);
+  // Drape: the new slide's swing about its top edge (degrees, its lower edge toward the viewer), swaying back.
+  const drapeAngle = measured([[0, 110], [0.3, 72], [0.331, 70.8], [0.364, 68.4], [0.397, 65.6], [0.43, 62.2], [0.462, 57.4], [0.495, 50.5],
+    [0.528, 36], [0.561, 17], [0.593, -1.5], [0.626, -4], [0.659, -7], [0.692, -8.5], [0.725, -8.5], [0.757, -7], [0.79, -6], [0.823, -4],
+    [0.856, -3], [0.889, -2], [0.921, -1.5], [0.954, -0.5], [1, 0]]);
+  // Curtains: the inner edges of the left and the right curtain at half height and at the bottom.
+  const curtainMiddle = [[0, 640, 640], [0.069, 630, 642], [0.134, 578, 678], [0.2, 494, 766], [0.266, 412, 871], [0.3, 382, 913],
+    [0.397, 381, 966], [0.495, 381, 926], [0.561, 420, 866], [0.626, 448, 823], [0.692, 390, 867], [0.725, 382, 942], [0.757, 382, 1046],
+    [0.79, 146, 1158], [0.823, 64, 1254], [0.856, -40, 1320]];
+  const curtainBottom = [[0, 640, 640], [0.134, 626, 642], [0.2, 550, 693], [0.266, 420, 829], [0.3, 358, 917], [0.331, 304, 999],
+    [0.364, 266, 1058], [0.397, 248, 1089], [0.43, 258, 1082], [0.462, 290, 1043], [0.495, 338, 987], [0.528, 392, 922], [0.561, 444, 852],
+    [0.593, 480, 800], [0.659, 456, 900], [0.692, 354, 1034], [0.725, 308, 1154], [0.757, 252, 1208], [0.79, 200, 1240], [0.823, 100, 1270],
+    [0.856, -40, 1320]];
+  // Wind: the old slide blown off across (toward the right; invX: the left) and up.
+  const windAcross = measured([[0, 0], [0.3, 0], [0.331, 12], [0.364, 42], [0.397, 86], [0.43, 144], [0.462, 214], [0.495, 296], [0.528, 390],
+    [0.561, 492], [0.593, 600], [0.626, 716], [0.659, 838], [0.692, 954], [0.725, 1054], [0.757, 1144], [0.79, 1262], [0.83, 1420]]);
+  const windUp = measured([[0, 0], [0.134, 4], [0.2, 10], [0.266, 22], [0.331, 28], [0.397, 44], [0.462, 76], [0.528, 144], [0.593, 230],
+    [0.659, 272], [0.725, 344], [0.79, 432], [0.83, 520]]);
+  // Prestige: the old slide pulled up off the new one: its lower edge, and how wide it stays.
+  const prestigeBottom = measured([[0, 720], [0.5, 708], [0.528, 704], [0.561, 692], [0.593, 660], [0.626, 602], [0.659, 524], [0.692, 428],
+    [0.725, 314], [0.757, 192], [0.79, 74], [0.82, -20]]);
+  const prestigeWidth = measured([[0, 1], [0.626, 0.96], [0.659, 0.95], [0.692, 0.89], [0.725, 0.72], [0.757, 0.17], [0.79, 0.09], [0.82, 0.05]]);
+  // Crush: the box of the crumpled old slide (left, right, top, height), which then falls out at the bottom.
+  const crushBox = [[0, 0, 1280, 0, 720], [0.069, 36, 1252, 14, 690], [0.102, 58, 1248, 18, 676], [0.134, 74, 1234, 22, 660],
+    [0.167, 92, 1202, 28, 644], [0.2, 104, 1158, 46, 618], [0.233, 116, 1116, 70, 586], [0.266, 134, 1080, 90, 558], [0.298, 158, 1050, 108, 534],
+    [0.331, 188, 1018, 128, 506], [0.364, 228, 984, 144, 480], [0.397, 270, 958, 156, 454], [0.43, 312, 934, 170, 426], [0.462, 348, 906, 176, 404],
+    [0.495, 380, 882, 190, 374], [0.528, 408, 862, 198, 352], [0.561, 422, 852, 210, 336], [0.593, 426, 850, 214, 332], [0.626, 420, 856, 222, 334],
+    [0.659, 418, 860, 238, 336], [0.692, 416, 864, 262, 336], [0.725, 412, 866, 292, 336], [0.757, 410, 866, 330, 336], [0.79, 408, 868, 376, 336],
+    [0.823, 406, 870, 424, 336], [0.856, 400, 874, 478, 336], [0.889, 394, 852, 536, 336], [0.921, 400, 810, 592, 336], [0.954, 420, 800, 650, 336],
+    [1, 440, 790, 740, 336]];
+  // Page Curl (single): the old slide pulled off toward the left (invX: the right).
+  const curlAcross = measured([[0, 0], [0.233, 0], [0.266, 3], [0.298, 8], [0.331, 17], [0.364, 32], [0.397, 57], [0.43, 95], [0.462, 155],
+    [0.495, 237], [0.528, 327], [0.561, 409], [0.593, 487], [0.626, 577], [0.659, 685], [0.692, 825], [0.725, 995], [0.757, 1177], [0.79, 1300]]);
+  // Page Curl (double): the turn of the right page (invX: the left one) over the middle, degrees.
+  const pageTurn = measured([[0, 0], [0.1, 0], [0.134, 9], [0.2, 22], [0.266, 33], [0.331, 41], [0.397, 51], [0.462, 66], [0.495, 75.5],
+    [0.528, 86], [0.561, 98.6], [0.593, 113], [0.626, 128], [0.659, 142], [0.692, 156], [0.725, 180]]);
+  // Peel Off: the edge of the uncovered new slide, x + 0.83 y = c, moving from the bottom right corner (invX: left).
+  const peelEdge = measured([[0, 1900], [0.15, 1878], [0.167, 1853], [0.2, 1797], [0.233, 1749], [0.266, 1693], [0.298, 1637], [0.331, 1581],
+    [0.364, 1525], [0.397, 1469], [0.43, 1409], [0.462, 1341], [0.495, 1269], [0.528, 1189], [0.561, 1077], [0.593, 933], [0.626, 789],
+    [0.659, 685], [0.692, 597], [0.725, 497], [0.757, 377], [0.79, 257], [0.823, 153], [0.856, 41], [0.889, -80]]);
+  // Airplane and Origami: the middle and the size of the folded old slide as it flies off.
+  // Airplane: the folded dart's nose, left wing tip, keel and right wing tip (x, y each).
+  const airplaneDart = [[0.3, 778, 208, 118, 450, 300, 820, 650, 860], [0.62, 650, 330, 0, 470, 130, 760, 450, 800],
+    [0.79, 562, 386, -80, 500, 60, 800, 380, 830], [0.823, 616, 336, 30, 470, 180, 760, 500, 790], [0.856, 844, 156, 200, 270, 420, 550, 690, 560],
+    [0.889, 1076, 2, 722, 65, 843, 219, 991, 224], [0.93, 1400, -200, 1100, -150, 1180, -40, 1300, -40]];
+  const origamiPath = [[0, 640, 360, 1280, 720], [0.069, 622, 325, 1176, 688], [0.102, 640, 358, 654, 630], [0.134, 649, 375, 664, 498],
+    [0.2, 635, 365, 700, 418], [0.3, 633, 392, 698, 432], [0.4, 618, 427, 748, 348], [0.5, 702, 435, 674, 352], [0.6, 909, 383, 526, 384],
+    [0.7, 1088, 277, 360, 242], [0.79, 1199, 163, 178, 182], [0.856, 1238, 94, 96, 120], [0.9, 1320, 30, 50, 60]];
+
+  /**
+   * The Office 2013 transitions (p15:prstTrans; from PowerPoint's videos): over the new slide the old one falls
+   * over, opens as curtains, is blown away, pulled off, crumpled, shattered, peeled, turned like a page or folded and
+   * flown off; Drape lets the new slide swing down over the old one. invX mirrors them.
+   */
+  function presetTransition(spec, a, b, reset) {
+    const preset = spec.prst || 'fade', flip = spec.invX ? -1 : 1;
+    const [kx, ky] = [W / 1280, H / 720];
+    const mirrorX = x => (flip < 0 ? W - x : x);
+    const random = seeded(2013);
+    // Fracture: long splinters between cracks from the point of impact to the slide's edges, each broken once along
+    // its length; they part a little, turn about their length and fall.
+    const shards = [];
+    if (preset === 'fracture') {
+      const [ix, iy] = [0.5 * W, 0.55 * H];
+      const reach = angle => {
+        const [c, sn] = [Math.cos(angle), Math.sin(angle)];
+        return Math.min(c > 1e-9 ? (W - ix) / c : c < -1e-9 ? -ix / c : Infinity, sn > 1e-9 ? (H - iy) / sn : sn < -1e-9 ? -iy / sn : Infinity);
+      };
+      const corners = [[W, H], [0, H], [0, 0], [W, 0]].map(([x, y]) => ({ x, y, angle: (Math.atan2(y - iy, x - ix) + 2 * Math.PI) % (2 * Math.PI) }));
+      const rays = [];
+      for (let k = 0; k < 28; k++) rays.push((k + 0.2 + 0.6 * random()) / 28 * 2 * Math.PI);
+      const at = (angle, radius) => [ix + radius * Math.cos(angle), iy + radius * Math.sin(angle)];
+      for (let k = 0; k < rays.length; k++) {
+        const [a0, a1] = [rays[k], k + 1 < rays.length ? rays[k + 1] : rays[0] + 2 * Math.PI];
+        const [b0, b1] = [Math.min(reach(a0), reach(a1)) * (0.3 + 0.4 * random()), Math.min(reach(a0), reach(a1)) * (0.3 + 0.4 * random())];
+        const between = corners.filter(c => { const angle = c.angle < a0 ? c.angle + 2 * Math.PI : c.angle; return angle > a0 && angle < a1; })
+          .sort((c, d) => ((c.angle - a0 + 4 * Math.PI) % (2 * Math.PI)) - ((d.angle - a0 + 4 * Math.PI) % (2 * Math.PI))).map(c => [c.x, c.y]);
+        for (const pts of [[[ix, iy], at(a0, b0), at(a1, b1)], [at(a0, b0), at(a0, reach(a0)), ...between, at(a1, reach(a1)), at(a1, b1)]]) {
+          const cx = pts.reduce((sum, q) => sum + q[0], 0) / pts.length, cy = pts.reduce((sum, q) => sum + q[1], 0) / pts.length;
+          const d = Math.max(1, Math.hypot(cx - ix, cy - iy)), mid = (a0 + a1) / 2;
+          shards.push({ pts, cx, cy, vx: (cx - ix) / d * (30 + 90 * random()) * kx, vy: (cy - iy) / d * (20 + 60 * random()) * ky,
+            vz: (random() - 0.4) * 300 * kx, spin: (random() < 0.5 ? -1 : 1) * (0.5 + 1.5 * random()), ax: Math.cos(mid), ay: Math.sin(mid) });
+        }
+      }
+    }
+    return glTransition(a, b, (scene, p, oldImage, newImage) => {
+      const meshes = [];
+      switch (preset) {
+        case 'fallOver': {
+          meshes.push(backdrop(newImage));
+          const middle = fallOverAngle(p);
+          meshes.push(sheetMesh(oldImage, 24, 16, (u, v) => {
+            const theta = Math.min(150, middle * (1 + 0.33 * flip * (1 - 2 * u))) * Math.PI / 180, r = (1 - v) * H;
+            return [u * W, H - r * Math.cos(theta), -r * Math.sin(theta), 0.4 + 0.6 * Math.max(0, Math.cos(theta))];
+          }));
+          break;
+        }
+        case 'drape': {
+          meshes.push(backdrop(oldImage));
+          const angle = drapeAngle(p);
+          meshes.push(sheetMesh(newImage, 24, 16, (u, v) => {
+            const theta = (angle < 0 ? angle * (1 + 0.6 * flip * (1 - 2 * u)) : angle) * Math.PI / 180, r = v * H;
+            return [u * W, r * Math.cos(theta), r * Math.sin(theta), 0.55 + 0.45 * Math.cos(theta)];
+          }));
+          break;
+        }
+        case 'curtains': {
+          meshes.push(backdrop(newImage));
+          const [ml, mr] = keyframes(curtainMiddle, p).map(v => v * kx);
+          const [bl, br] = keyframes(curtainBottom, p).map(v => v * kx);
+          const edge = (middle, bottom, v) => middle + (bottom - middle) * (v - 0.5) / (v > 0.5 ? 0.46 : 0.92);
+          for (const side of [0, 1]) {
+            // u across the curtain from its outer edge (left) or its inner edge (right); gathered in folds.
+            meshes.push(sheetMesh(oldImage, 24, 12, (u, v) => {
+              const inner = side ? edge(mr, br, v) : edge(ml, bl, v);
+              const squeeze = Math.min(1, Math.max(0, side ? (inner - W / 2) / (W / 2) : (W / 2 - inner) / (W / 2)));
+              const x = side ? inner + u * (W - inner) : u * inner;
+              return [x, v * H, 40 * kx * squeeze * Math.sin(u * Math.PI * 12), 1 - 0.25 * squeeze * (0.5 - 0.5 * Math.cos(u * Math.PI * 24))];
+            }, (u, v) => [side ? 0.5 + u / 2 : u / 2, v]));
+          }
+          break;
+        }
+        case 'wind': {
+          meshes.push(backdrop(newImage));
+          const [dx, dy] = [windAcross(p) * kx, windUp(p) * ky];
+          const amplitude = 30 * kx * Math.min(1, p / 0.4);
+          meshes.push(sheetMesh(oldImage, 24, 14, (u, v) => {
+            const phase = 2 * Math.PI * (1.2 * (flip > 0 ? u : 1 - u) + 0.6 * v - 2.5 * p);
+            return [u * W + flip * dx, v * H - dy * (0.6 + 0.4 * v), amplitude * Math.sin(phase), 0.94 + 0.06 * Math.cos(phase)];
+          }));
+          break;
+        }
+        case 'prestige': {
+          meshes.push(backdrop(newImage));
+          const bottom = prestigeBottom(p) * ky, width = prestigeWidth(p), center = W * (0.5 + 0.19 * (1 - width));
+          const lifted = 1 - bottom / H;
+          meshes.push(sheetMesh(oldImage, 24, 14, (u, v) => {
+            const gather = 1 - (1 - width) * (0.3 + 0.7 * v);
+            return [center + (u * W - W / 2) * gather, v * bottom, 30 * kx * lifted * Math.sin(u * Math.PI * 10),
+              1 - 0.3 * lifted * (0.5 - 0.5 * Math.cos(u * Math.PI * 20))];
+          }));
+          break;
+        }
+        case 'crush': {
+          meshes.push(backdrop(newImage));
+          const [x0, x1, y0, height] = keyframes(crushBox, p);
+          const [l, r, t, h] = [x0 * kx, x1 * kx, y0 * ky, height * ky];
+          const crumple = Math.min(1, p / 0.5);
+          const bump = (u, v, k) => Math.sin(u * 17.3 + k) * Math.cos(v * 13.1 - k) + 0.5 * Math.sin(u * 31.7 + v * 23.3 + 2 * k);
+          meshes.push(sheetMesh(oldImage, 32, 18, (u, v) => {
+            // Rounder as it crumples: the square's corners drawn in toward a disc.
+            const [a1, b1] = [2 * u - 1, 2 * v - 1];
+            const [ra, rb] = [a1 * Math.sqrt(1 - b1 * b1 / 2), b1 * Math.sqrt(1 - a1 * a1 / 2)];
+            const [qa, qb] = [a1 + (ra - a1) * crumple, b1 + (rb - b1) * crumple];
+            const [n1, n2] = [bump(u, v, 0), bump(v, u, 1.7)];
+            return [(l + r) / 2 + qa * (r - l) / 2 + n1 * 18 * kx * crumple, t + h / 2 + qb * h / 2 + n2 * 18 * ky * crumple,
+              60 * kx * crumple * n1, 1 - 0.35 * crumple * (0.5 + 0.5 * n2)];
+          }));
+          break;
+        }
+        case 'fracture': {
+          meshes.push(backdrop(newImage));
+          const t = Math.max(0, p - 0.13), fall = 1227 * ky * t * t;
+          for (const shard of shards) {
+            const turn = shard.spin * t, [c, sn] = [Math.cos(turn), Math.sin(turn)];
+            // Turned about an axis in the slide's plane through the shard's middle, drifting and falling.
+            const place = ([x, y]) => {
+              const [dx, dy] = [x - shard.cx, y - shard.cy];
+              const along = dx * shard.ax + dy * shard.ay, [px, py] = [dx - along * shard.ax, dy - along * shard.ay];
+              return [shard.cx + along * shard.ax + px * c + shard.vx * t, shard.cy + along * shard.ay + py * c + shard.vy * t + fall,
+                (shard.ax * py - shard.ay * px) * sn + shard.vz * t];
+            };
+            const mesh = { tex: oldImage, pos: [], uv: [], shade: [] };
+            for (let k = 1; k + 1 < shard.pts.length; k++) {
+              for (const q of [shard.pts[0], shard.pts[k], shard.pts[k + 1]]) {
+                mesh.pos.push(...place(q));
+                mesh.uv.push(q[0] / W, q[1] / H);
+                mesh.shade.push(0.55 + 0.45 * Math.abs(c));
+              }
+            }
+            meshes.push(mesh);
+          }
+          break;
+        }
+        case 'peelOff': {
+          meshes.push(backdrop(newImage));
+          // In the frame where the peel starts at the bottom right: the fold a curl's radius before the uncovered edge,
+          // the sheet beyond it around the curl and back over the slide.
+          const c = peelEdge(p), R = 50, len = Math.hypot(1, 0.83), [nx, ny] = [1 / len, 0.83 / len];
+          meshes.push(sheetMesh(oldImage, 40, 24, (u, v) => {
+            const [x, y] = [(flip > 0 ? u : 1 - u) * 1280, v * 720];
+            const s = (x + 0.83 * y - c) / len + R;
+            if (s <= 0) return [u * W, v * H, 0, 1];
+            let along, z, shade;
+            if (s <= Math.PI * R) {
+              const phi = s / R;
+              [along, z, shade] = [R * Math.sin(phi), R * (1 - Math.cos(phi)), phi < Math.PI / 2 ? 0.55 + 0.45 * Math.cos(phi) : 0.55 - 0.25 * Math.cos(phi)];
+            } else {
+              [along, z, shade] = [-(s - Math.PI * R), 2 * R, 0.8];
+            }
+            const [fx, fy] = [x - s * nx + along * nx, y - s * ny + along * ny];
+            return [(flip > 0 ? fx : 1280 - fx) * kx, fy * ky, z * kx, shade];
+          }));
+          break;
+        }
+        case 'pageCurlSingle': {
+          meshes.push(backdrop(newImage));
+          const shift = curlAcross(p) * kx, curl = 150 * kx;
+          meshes.push(sheetMesh(oldImage, 16, 1, (u, v) => {
+            const x = u * W - flip * shift;
+            return [x, v * H, 0, 0.75 + 0.25 * Math.min(1, Math.max(0, (flip > 0 ? x : W - x) / curl))];
+          }));
+          break;
+        }
+        case 'pageCurlDouble': {
+          // Beneath: the old slide's half that stays and the new slide's other half; over them the turning page, the
+          // old slide's other half in front and the new slide's first half on its back.
+          const theta = pageTurn(p) * Math.PI / 180, cos = Math.cos(theta), front = cos >= 0;
+          const half = (image, left) => ({ tex: image, ...quad([left ? 0 : W / 2, 0, 0], [left ? W / 2 : W, 0, 0], [left ? W / 2 : W, H, 0],
+            [left ? 0 : W / 2, H, 0], [left ? 0 : 0.5, 0, left ? 0.5 : 1, 1]), flat: true });
+          meshes.push(half(oldImage, flip > 0), half(newImage, flip < 0));
+          meshes.push(sheetMesh(front ? oldImage : newImage, 12, 1, (u, v) => [W / 2 + flip * u * W / 2 * cos, v * H, 0, 0.55 + 0.45 * Math.abs(cos)],
+            (u, v) => [front ? 0.5 + flip * u / 2 : 0.5 - flip * u / 2, v]));
+          break;
+        }
+        case 'airplane': {
+          meshes.push(backdrop(newImage));
+          // From the flat slide to the dart: its top edge to the nose, its bottom edge along the wings and the keel.
+          const [nx, ny, lx, ly, cx, cy, rx, ry] = keyframes(airplaneDart, p).map((v, i) => v * (i % 2 ? ky : kx));
+          const folded = smooth(p / 0.3);
+          meshes.push(sheetMesh(oldImage, 16, 8, (u, v) => {
+            const [bx, by] = u < 0.5 ? [lx + (cx - lx) * u * 2, ly + (cy - ly) * u * 2] : [cx + (rx - cx) * (u - 0.5) * 2, cy + (ry - cy) * (u - 0.5) * 2];
+            const [dx, dy] = [nx + (bx - nx) * v, ny + (by - ny) * v];
+            return [mirrorX(u * W + (dx - u * W) * folded), v * H + (dy - v * H) * folded, 0, 1 - folded * (u < 0.5 ? 0.08 : 0.2)];
+          }, (u, v) => [flip > 0 ? u : 1 - u, v]));
+          break;
+        }
+        case 'origami': {
+          meshes.push(backdrop(newImage));
+          const [cx, cy, w, h] = keyframes(origamiPath, p).map((v, i) => v * (i % 2 ? ky : kx));
+          const folded = Math.min(1, p / 0.134);
+          // From the slide's rectangle to a diamond in its box: its corners to the middles of the box's sides.
+          const rect = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], kite = [[-0.5, 0], [0, -0.5], [0.5, 0], [0, 0.5]];
+          const at = k => [mirrorX(cx + (rect[k][0] + (kite[k][0] - rect[k][0]) * folded) * w), cy + (rect[k][1] + (kite[k][1] - rect[k][1]) * folded) * h, 0];
+          meshes.push({ tex: oldImage, ...quad(at(0), at(1), at(2), at(3), flip > 0 ? [0, 0, 1, 1] : [1, 0, 0, 1]), shade: 1 - 0.15 * folded });
+          break;
+        }
+        default: {
+          meshes.push(backdrop(oldImage));
+          meshes.push({ ...backdrop(newImage), alpha: p });
+        }
+      }
+      scene.draw(meshes, 1.493, [0, 0, 0, 1]);
+    }, reset);
+  }
+
   /** A CSS filter blurring across only (an SVG filter in the document, made once), or none for nothing. */
   function acrossBlur(deviation) {
     if (deviation < 0.5) return '';
@@ -2819,30 +3104,8 @@
             b.style.transform = `perspective(${W * 2}px) rotate${axis}(${sign * -180 * (1 - p)}deg) scale(${1 - 0.2 * Math.sin(p * Math.PI)})`;
           }
         });
-      case 'prstTrans': {
-        const preset = spec.prst || 'fade';
-        if (preset === 'curtains') {
-          return { frame: p => {
-            a.style.zIndex = 2;
-            a.style.clipPath = poly([[0, 0], [0.5 - p / 2, 0], [0.5 - p / 2, 1], [0, 1], [0, 0], [1, 0], [1, 1], [0.5 + p / 2, 1], [0.5 + p / 2, 0], [1, 0]]);
-          }, end: reset };
-        }
-        if (preset === 'wind' || preset === 'airplane' || preset === 'peelOff' || preset === 'pageCurlSingle' || preset === 'pageCurlDouble') {
-          const sign = spec.invX ? -1 : 1;
-          return { frame: p => {
-            a.style.zIndex = 2;
-            a.style.transformOrigin = '0 50%';
-            a.style.transform = `perspective(${W * 2}px) translate(${-sign * p * W * 0.5}px,${preset === 'airplane' ? -p * H : 0}px) rotateY(${sign * 90 * p}deg)`;
-            a.style.opacity = String(1 - p);
-          }, end: reset };
-        }
-        return { frame: p => {
-          a.style.zIndex = 2;
-          a.style.transformOrigin = '50% 50%';
-          a.style.transform = `scale(${1 - 0.5 * p})`;
-          a.style.opacity = String(1 - p);
-        }, end: reset };
-      }
+      case 'prstTrans':
+        return presetTransition(spec, a, b, reset);
       case 'morph':
         return morphTransition(spec, a, b, reset);
       default:
