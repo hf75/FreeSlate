@@ -7,8 +7,9 @@ namespace FreeSlate.Pptx.SmartArt;
 /// The text of a SmartArt shape the way PowerPoint writes it into its drawing (measured from saved drawings): the
 /// node's own text at the primary font size, centered unless parTxLTRAlign says otherwise, with 90 % line spacing and
 /// 35 % after; the text of its descendants as bullets (•) 22.5 pt in, at the secondary font size, space after from
-/// lnSpAfChP (15 % by default), unless the node shows only its descendants' text without bullets enabled (then that
-/// text is its top level); margins in points as insets (0.56 em when not constrained); tabs every 3.5 em.
+/// lnSpAfChP (15 % by default), unless the node shows only its descendants' text and starts no bullets at a deeper
+/// level (then that text is its top level); margins in points as insets (0.56 em when not constrained); tabs every
+/// 3.5 em.
 /// </summary>
 public static class TextBody
 {
@@ -23,10 +24,10 @@ public static class TextBody
             return result;
         var baseDepth = DataModel.Depth(node.Point);
         var firstBullet = int.TryParse(node.Param("stBulletLvl"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? b : 1;
-        // Without bullets enabled a node showing only its descendants' text starts it at the top level (measured:
-        // MeetTheTeam's roles, the members' child text, unbulleted at the primary size).
-        var unbulleted = node.Text.All(p => p != node.Point)
-            && !(node.Variables.TryGetValue("bulletEnabled", out var enabled) && enabled is "1" or "true");
+        // A node showing only its descendants' text starts it at the top level, unbulleted at the primary size, unless
+        // its algorithm starts bullets at a deeper level (stBulletLvl 1 and more; measured: MeetTheTeam's roles,
+        // VerticalAccentList's and VerticalActionList's children at the top level, vList2's children bulleted).
+        var unbulleted = node.Text.All(p => p != node.Point) && !(node.Param("stBulletLvl") is { } start && int.TryParse(start, NumberStyles.Integer, CultureInfo.InvariantCulture, out var level0) && level0 >= 1);
         var shallowest = node.Text.Count > 0 ? node.Text.Min(p => Math.Max(0, DataModel.Depth(p) - baseDepth)) : 0;
         foreach (var point in node.Text)
         {
