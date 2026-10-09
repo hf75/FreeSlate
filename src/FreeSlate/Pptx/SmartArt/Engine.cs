@@ -545,7 +545,9 @@ public static class Engine
             lineGap = Value(node, "sp");
             gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
             best = (0.0, 1);
-            for (var count = 1; count <= n; count++)
+            // A fixed breakpoint sets the cells per row (bkpt fixed, measured: PictureAccentBlocks' two per row).
+            var fixedCount = node.Param("bkpt") == "fixed" && Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 0;
+            for (var count = fixedCount > 0 ? Math.Min(fixedCount, n) : 1; count <= (fixedCount > 0 ? Math.Min(fixedCount, n) : n); count++)
             {
                 var lines = (n + count - 1) / count;
                 var (gw, gh) = columns
@@ -568,15 +570,49 @@ public static class Engine
         // Connectors between the cells shrink with them.
         foreach (var connector in node.Children.Where(c => c.AlgorithmType == "conn"))
             connector.Scale = k;
-        // As many cells per line as fit at that size.
-        var perLine = columns
-            ? Math.Max(best.Count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
-            : Math.Max(best.Count, (int)Math.Floor((node.W + gap * k) / ((cw + gap) * k) + 1e-6));
+        SnakeGrid(node, cells, extents, k, best.Count, columns, cw, ch, gap, lineGap, pins);
+        foreach (var ((child, type), before) in ruled)
+        {
+            if (before is { } value)
+                pins.Set(child, type, value);
+            else
+                pins.Remove(child, type);
+        }
+    }
+
+    /// <summary>
+    /// Places a snake's cells scaled by <paramref name="k"/> in a grid: as many per line as the breakpoint or the room
+    /// allow, the spacing evaluated again for the placed cells (measured: PictureAccentBlocks' rows 0.113 of the placed
+    /// cells' width apart), the grid aligned in the node (horzAlign, vertAlign; centered) and each line in the grid
+    /// (horzAlign), the lines growing from the corner grDir names.
+    /// </summary>
+    static void SnakeGrid(LayoutNode node, List<LayoutNode> cells, List<(double X, double Y, double W, double H)> extents, double k, int count,
+        bool columns, double cw, double ch, double gap, double lineGap, Pins pins)
+    {
+        var n = cells.Count;
+        var fixedCount = node.Param("bkpt") == "fixed" && Number(node.Param("bkPtFixedVal")) is >= 1 and var f ? (int)f : 0;
+        var perLine = fixedCount > 0 ? fixedCount
+            : columns
+                ? Math.Max(count, (int)Math.Floor((node.H + gap * k) / ((ch + gap) * k) + 1e-6))
+                : Math.Max(count, (int)Math.Floor((node.W + gap * k) / ((cw + gap) * k) + 1e-6));
         perLine = Math.Min(perLine, n);
         var lineCount = (n + perLine - 1) / perLine;
+        for (var i = 0; i < n; i++)
+            PlaceScaled(cells[i], extents[i], k, pins);
         var (scw, sch, sgap, slineGap) = (cw * k, ch * k, gap * k, lineGap * k);
-        var gridAcross = lineCount * (columns ? scw : sch) + (lineCount - 1) * slineGap;
-        var start = ((columns ? node.W : node.H) - gridAcross) / 2;
+        // The spacing follows the placed cells where it refers to them (PictureAccentBlocks' sp, 0.113 of a cell's width:
+        // of its width as placed, kept to its aspect ratio), else it shrinks with them (bProcess4's, 0.33 of the node's).
+        if (PlacedReference(node, "sp") is { } placed)
+        {
+            slineGap = placed;
+            if (!node.Children.Any(c => IsTransition(c) && c.AlgorithmType != "conn"))
+                sgap = slineGap;
+        }
+        var (cellAlong, cellAcross) = columns ? (sch, scw) : (scw, sch);
+        var gridAlong = perLine * cellAlong + (perLine - 1) * sgap;
+        var gridAcross = lineCount * cellAcross + (lineCount - 1) * slineGap;
+        var (gridW, gridH) = columns ? (gridAcross, gridAlong) : (gridAlong, gridAcross);
+        var (gx, gy) = (Align(node.Param("horzAlign"), node.W, gridW), Align(node.Param("vertAlign"), node.H, gridH));
         var grow = node.Param("grDir") ?? "tL";
         var reverse = node.Param("contDir") == "revDir";
         for (var i = 0; i < n; i++)
@@ -585,30 +621,44 @@ public static class Engine
             var inLine = Math.Min(perLine, n - line * perLine);
             if (reverse && line % 2 == 1)
                 index = inLine - 1 - index;
-            var lineLength = inLine * (columns ? sch : scw) + (inLine - 1) * sgap;
-            var offset = ((columns ? node.H : node.W) - lineLength) / 2 + index * ((columns ? sch : scw) + sgap);
-            var across = start + line * ((columns ? scw : sch) + slineGap);
-            double x, y;
-            if (columns)
-                (x, y) = (across, offset);
-            else
-                (x, y) = (offset, across);
+            var lineLength = inLine * cellAlong + (inLine - 1) * sgap;
+            var lineStart = Align(columns ? node.Param("vertAlign") : node.Param("horzAlign"), gridAlong, lineLength);
+            var along = lineStart + index * (cellAlong + sgap);
+            var across = line * (cellAcross + slineGap);
+            var (x, y) = columns ? (across, along) : (along, across);
             if (grow is "tR" or "bR")
-                x = node.W - x - scw;
+                x = gridW - x - scw;
             if (grow is "bL" or "bR")
-                y = node.H - y - sch;
+                y = gridH - y - sch;
             var cell = cells[i];
-            PlaceScaled(cell, extents[i], k, pins);
             var b = Bounds(cell);
-            Translate(cell, node.X + x + (scw - b.W) / 2 - b.X, node.Y + y + (sch - b.H) / 2 - b.Y);
+            Translate(cell, node.X + gx + x + (scw - b.W) / 2 - b.X, node.Y + gy + y + (sch - b.H) / 2 - b.Y);
         }
-        foreach (var ((child, type), before) in ruled)
+    }
+
+    /// <summary>
+    /// A node's own value of a type that its constraint takes from a child, from the child as placed (its laid-out width
+    /// or height times the factor), or null where the constraint refers to no placed child.
+    /// </summary>
+    static double? PlacedReference(LayoutNode node, string type)
+    {
+        foreach (var constraint in node.Constraints)
         {
-            if (before is { } value)
-                pins.Set(child, type, value);
-            else
-                pins.Remove(child, type);
+            if ((string?)constraint.Attribute("type") != type || (string?)constraint.Attribute("for") is not (null or "" or "self")
+                || (string?)constraint.Attribute("refFor") != "ch" || (string?)constraint.Attribute("refType") is not ("w" or "h"))
+                continue;
+            var reference = Constraints.Targets(node, "ch", (string?)constraint.Attribute("refForName"), (string?)constraint.Attribute("refPtType")).FirstOrDefault();
+            if (reference is not { Placed: true })
+                continue;
+            var fact = Number((string?)constraint.Attribute("fact")) is { } f && double.IsFinite(f) ? f : 1;
+            return (string?)constraint.Attribute("refType") switch
+            {
+                "w" => reference.W * fact,
+                "h" => reference.H * fact,
+                _ => null,
+            };
         }
+        return null;
     }
 
     /// <summary>
