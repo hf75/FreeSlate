@@ -509,35 +509,51 @@ public static class Engine
 
     /// <summary>
     /// The snake algorithm: the nodes in rows (or columns, flowDir col) of equal cells, as many per row as make them
-    /// largest (more per row when equal); within a row the cells keep the room of the spacers between them (the
-    /// transitions' nodes, measured with bList2), else sp, and the rows sp apart; each row centered, the grid centered in
-    /// the node, growing from the corner grDir names, every other row reversed with contDir revDir.
+    /// largest (more per row when equal), shrunk to fit but never grown, after the node's rules where they do not fit;
+    /// within a row the cells keep the room of the spacers between them (the transitions' nodes, measured with bList2),
+    /// else sp, and the rows sp apart; each row centered, the grid centered in the node, growing from the corner grDir
+    /// names, every other row reversed with contDir revDir.
     /// </summary>
     static void Snake(LayoutNode node, Pins pins)
     {
         var cells = node.Children.Where(c => !IsTransition(c) && c.AlgorithmType != "conn").ToList();
         if (cells.Count == 0)
             return;
-        var extents = cells.Select(Extent).ToList();
-        var (cw, ch) = (extents.Max(e => e.W), extents.Max(e => e.H));
-        if (cw <= 0 || ch <= 0)
-            return;
         var columns = node.Param("flowDir") == "col";
-        var spacers = node.Children.Where(c => IsTransition(c) && c.AlgorithmType != "conn").Select(Extent).ToList();
-        var lineGap = Value(node, "sp");
-        var gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
         var n = cells.Count;
+        List<(double X, double Y, double W, double H)> extents = [];
+        double cw = 0, ch = 0, gap = 0, lineGap = 0;
         var best = (Factor: 0.0, Count: 1);
-        for (var count = 1; count <= n; count++)
+        // The cells' size and spacing from their current values, and the arrangement that makes them largest.
+        bool Measure()
         {
-            var lines = (n + count - 1) / count;
-            var (gw, gh) = columns
-                ? (lines * cw + (lines - 1) * lineGap, count * ch + (count - 1) * gap)
-                : (count * cw + (count - 1) * gap, lines * ch + (lines - 1) * lineGap);
-            var factor = Math.Min(node.W / gw, node.H / gh);
-            if (factor > best.Factor * (1 + 1e-9))
-                best = (factor, count);
+            extents = cells.Select(Extent).ToList();
+            (cw, ch) = (extents.Max(e => e.W), extents.Max(e => e.H));
+            if (cw <= 0 || ch <= 0)
+                return false;
+            var spacers = node.Children.Where(c => IsTransition(c) && c.AlgorithmType != "conn").Select(Extent).ToList();
+            lineGap = Value(node, "sp");
+            gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
+            best = (0.0, 1);
+            for (var count = 1; count <= n; count++)
+            {
+                var lines = (n + count - 1) / count;
+                var (gw, gh) = columns
+                    ? (lines * cw + (lines - 1) * lineGap, count * ch + (count - 1) * gap)
+                    : (count * cw + (count - 1) * gap, lines * ch + (lines - 1) * lineGap);
+                var factor = Math.Min(node.W / gw, node.H / gh);
+                if (factor > best.Factor * (1 + 1e-9))
+                    best = (factor, count);
+            }
+            return true;
         }
+        if (!Measure())
+            return;
+        var ruled = new Dictionary<(LayoutNode, string), double?>();
+        if (best.Factor < 1 - 1e-9)
+            SnakeRules(node, pins, ruled, () => Measure() && best.Factor >= 1 - 1e-9);
+        // The cells shrink to fit, never grow (measured: the TextCard layouts' cards keep their size in a larger node).
+        best.Factor = Math.Min(best.Factor, 1);
         var k = best.Factor;
         // Connectors between the cells shrink with them.
         foreach (var connector in node.Children.Where(c => c.AlgorithmType == "conn"))
@@ -575,6 +591,57 @@ public static class Engine
             PlaceScaled(cell, extents[i], k, pins);
             var b = Bounds(cell);
             Translate(cell, node.X + x + (scw - b.W) / 2 - b.X, node.Y + y + (sch - b.H) / 2 - b.Y);
+        }
+        foreach (var ((child, type), before) in ruled)
+        {
+            if (before is { } value)
+                pins.Set(child, type, value);
+            else
+                pins.Remove(child, type);
+        }
+    }
+
+    /// <summary>
+    /// Applies a snake node's rules on its children's size while they do not fit it at their own size, in order: each
+    /// lowers its targets' value from where it is toward its limit (val, or fact times the value) in sixteenths of the
+    /// way, taking the first that fits (measured: MeetTheTeamCard's cards at 6/16 of the way from 50 mm to the row's
+    /// width, MeetTheTeam's at 1/16), the values that follow it evaluated again.
+    /// </summary>
+    static void SnakeRules(LayoutNode node, Pins pins, Dictionary<(LayoutNode, string), double?> ruled, Func<bool> fits)
+    {
+        foreach (var rule in node.Rules)
+        {
+            var type = (string?)rule.Attribute("type");
+            if (type is not ("w" or "h"))
+                continue;
+            var targets = Constraints.Targets(node, (string?)rule.Attribute("for"), (string?)rule.Attribute("forName"), (string?)rule.Attribute("ptType"))
+                .Where(node.Children.Contains).ToList();
+            var starts = targets.Select(t => Finite(t, type)).ToList();
+            if (targets.Count == 0 || starts.Any(v => v == null))
+                continue;
+            var limits = starts.Select(v => Number((string?)rule.Attribute("val")) is { } l && double.IsFinite(l) ? l
+                : Number((string?)rule.Attribute("fact")) is { } f && double.IsFinite(f) ? f * v!.Value : double.NaN).ToList();
+            if (limits.Any(l => !double.IsFinite(l)) || limits.Select((l, i) => l >= starts[i]!.Value).All(b => b))
+                continue;
+            for (var step = 15; step >= 0; step--)
+            {
+                for (var i = 0; i < targets.Count; i++)
+                {
+                    var value = limits[i] + (starts[i]!.Value - limits[i]) * step / 16;
+                    if (!ruled.ContainsKey((targets[i], type)))
+                        ruled[(targets[i], type)] = pins.TryGet(targets[i], type, out var before) ? before : null;
+                    pins.Set(targets[i], type, value);
+                    targets[i].Values[type] = value;
+                }
+                Constraints.EvaluateList(node, pins);
+                foreach (var child in node.Children)
+                {
+                    Constraints.EvaluateOwn(child, pins);
+                    Refresh(child, pins);
+                }
+                if (fits())
+                    return;
+            }
         }
     }
 
