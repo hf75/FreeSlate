@@ -1525,14 +1525,26 @@ public static class Engine
             (ax, ay) = OnCircle(ox, oy, r, Leave(start, ox, oy, r, Math.Atan2(ay - oy, ax - ox) * 180 / Math.PI, way));
             (bx, by) = OnCircle(ox, oy, r, Leave(end, ox, oy, r, Math.Atan2(by - oy, bx - ox) * 180 / Math.PI, -way));
         }
+        // Between the connection points begPts and endPts name, the nearest pair (measured: hierarchy5's lines from a
+        // node's right middle to its children's left middles).
+        static List<string> Named(string? points) =>
+            points?.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries).Where(p => p is not ("auto" or "radial" or "ctr")).ToList() ?? [];
+        var (begins, ends) = (Named(connector.Param("begPts")), Named(connector.Param("endPts")));
+        var named = !radial && begins.Count > 0 && ends.Count > 0;
+        if (named)
+        {
+            var pair = begins.SelectMany(n => ends.Select(m => (P: Point(start, n), Q: Point(end, m))))
+                .MinBy(pq => (pq.Q.X - pq.P.X) * (pq.Q.X - pq.P.X) + (pq.Q.Y - pq.P.Y) * (pq.Q.Y - pq.P.Y));
+            ((ax, ay), (bx, by)) = (pair.P, pair.Q);
+        }
         var (dx, dy) = (bx - ax, by - ay);
         var length = Math.Sqrt(dx * dx + dy * dy);
         if (length < 1e-9)
             return;
         var (ux, uy) = (dx / length, dy / length);
         // From the nodes' outlines, or from a center the points name (begPts, endPts ctr; measured: radial4's arrows
-        // from the middle circle to its nodes' centers), or from the radial points.
-        var (ta, tb) = radial ? (0, 0) : (connector.Param("begPts") == "ctr" ? 0 : Edge(start, ux, uy), connector.Param("endPts") == "ctr" ? 0 : Edge(end, -ux, -uy));
+        // from the middle circle to its nodes' centers), or from the radial or named points.
+        var (ta, tb) = radial || named ? (0, 0) : (connector.Param("begPts") == "ctr" ? 0 : Edge(start, ux, uy), connector.Param("endPts") == "ctr" ? 0 : Edge(end, -ux, -uy));
         var distance = Math.Max(0, length - ta - tb);
         // The distance its pads and length refer to: its own, or the one an equ constraint gives it.
         var reference = connector.Values.TryGetValue("connDistEqu", out var equal) ? equal : distance;
