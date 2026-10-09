@@ -353,14 +353,53 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 solid.Bevel(solidOutlines, topWidth, topHeight, topProfile, texturedBevel ? null : faceColor, line: lineColor, lineWidth: lineWidth);
             if (contourWidth > 0.01 && !wireframe)
                 solid.Contour(solidOutlines, front, back, contourWidth, Solid.Rise(topWidth, topHeight, topProfile), Solid.Rise(bottomWidth, bottomHeight, bottomProfile));
-            // A 3D body casts its shadow and glow from its back, the outline at the back seen by the camera (measured).
-            var (backData, backBounds) = solid.Projected(solidOutlines, back);
-            var outerDefs = new StringBuilder();
-            if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
-                html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs><path d=\"{backData}\" fill=\"#000\" filter=\"url(#{outerFilter})\"/></svg>");
+            // A 3D body casts its shadow and glow from its back, the outline at the back seen by the camera (measured);
+            // a backdrop (a:backdrop) takes them instead: the flat shape's shadow and glow lie in that plane, seen by
+            // the camera, behind the body when the plane is, else over its sides (measured: a floor plane below the
+            // shape shows the whole shadow there, a plane through the front face covers the extrusion).
+            var planeEffects = "";
+            var planeBehind = false;
+            if (Backdrop(scene3d) is { } backdrop && effects != null)
+            {
+                // The glow lies at the anchor; the shadow moves by its distance along the scene's x and y, not the
+                // plane's (measured: a floor plane's shadow only moves sideways).
+                var flatOutline = string.Concat(geometry.Paths.Where(p => p.Fill != "none").Select(p => p.Data));
+                var layers = new List<(XElement Effects, (double X, double Y) Shift)>();
+                if (effects.Element(Ns.A + "glow") is { } planeGlow)
+                    layers.Add((new XElement(Ns.A + "effectLst", planeGlow), (0, 0)));
+                if (effects.Element(Ns.A + "outerShdw") is { } planeShadow)
+                {
+                    var (distance, direction) = (Units.ToPx(planeShadow.Long("dist") ?? 0), (planeShadow.Long("dir") ?? 0) / 60000.0 * Math.PI / 180);
+                    var still = new XElement(planeShadow);
+                    still.SetAttributeValue("dist", null);
+                    layers.Insert(0, (new XElement(Ns.A + "effectLst", still), (distance * Math.Cos(direction), distance * Math.Sin(direction))));
+                }
+                foreach (var (layerEffects, shift) in layers)
+                {
+                    var planeDefs = new StringBuilder();
+                    if (flatOutline.Length == 0 || SvgEffects.Filter(layerEffects, slide.Colors, pw, ph, planeDefs, parts: SvgEffects.Parts.Outer) is not { } planeFilter)
+                        continue;
+                    var moved = backdrop with { Anchor = (backdrop.Anchor.X + shift.X, backdrop.Anchor.Y + shift.Y, backdrop.Anchor.Z) };
+                    planeEffects += $"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{OnBackdrop(camera!, pw, ph, rotation, flipH, flipV, moved)}\">" +
+                                    $"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{planeDefs}</defs>" +
+                                    $"<path d=\"{flatOutline}\" fill=\"#000\" filter=\"url(#{planeFilter})\"/></svg></div>";
+                }
+                planeBehind = backdrop.Anchor.Z < back - 0.01;
+            }
+            else
+            {
+                var (backData, backBounds) = solid.Projected(solidOutlines, back);
+                var outerDefs = new StringBuilder();
+                if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
+                    html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs><path d=\"{backData}\" fill=\"#000\" filter=\"url(#{outerFilter})\"/></svg>");
+            }
+            if (planeBehind)
+                html.Append(planeEffects);
             var solidMarkup = solid.Markup();
             if (solidMarkup.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{solidMarkup}</svg>");
+            if (!planeBehind)
+                html.Append(planeEffects);
             var contourColor = shape3d?.Element(Ns.A + "contourClr") is { } contourClr ? slide.Colors.ResolveChild(contourClr) : null;
             bevelShading = solid.OverlayMarkup(contourColor ?? RgbColor.Black);
             // A solid body hides its front face from behind: the back face shows there.
@@ -524,6 +563,59 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// The CSS transform of a shape's drawing under a 3D camera, in the shape's own pixels: the shape's rotation and
     /// flips in its plane, then the camera's turn and projection about its center.
     /// </summary>
+    /// <summary>
+    /// A scene's backdrop plane (a:backdrop) in the camera's scene coordinates (pixels about the shape's center, x right,
+    /// y down, z towards the viewer, as DrawingML's): its anchor, the directions of a picture's right and down on it
+    /// (down along its up vector) and its normal.
+    /// </summary>
+    sealed record BackdropPlane((double X, double Y, double Z) Anchor, (double X, double Y, double Z) Right, (double X, double Y, double Z) Down,
+        (double X, double Y, double Z) Normal);
+
+    /// <summary>
+    /// The backdrop of a:scene3d, or null: the shape's picture lies on it with its x along down × normal and its y along
+    /// the up vector, its corner where the plane's anchor less half the shape's size is (fitted to the corners of right
+    /// triangles' glow PowerPoint renders on walls and floors of both orientations, within 3 px).
+    /// </summary>
+    static BackdropPlane? Backdrop(XElement? scene3d)
+    {
+        if (scene3d?.Element(Ns.A + "backdrop") is not { } backdrop)
+            return null;
+        (double X, double Y, double Z) Vector(string name, (double, double, double) fallback) =>
+            backdrop.Element(Ns.A + name) is { } v ? ((v.Long("dx") ?? 0) * 1.0, (v.Long("dy") ?? 0) * 1.0, (v.Long("dz") ?? 0) * 1.0) : fallback;
+        static (double X, double Y, double Z) Unit((double X, double Y, double Z) v)
+        {
+            var length = Math.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+            return length < 1e-9 ? (0, 0, 0) : (v.X / length, v.Y / length, v.Z / length);
+        }
+        static double Dot((double X, double Y, double Z) a, (double X, double Y, double Z) b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+        var normal = Unit(Vector("norm", (0, 0, 1)));
+        var down = Vector("up", (0, 1, 0));
+        // The up vector as far as it lies in the plane.
+        var along = Dot(down, normal);
+        down = Unit((down.X - along * normal.X, down.Y - along * normal.Y, down.Z - along * normal.Z));
+        if (normal == (0, 0, 0) || down == (0, 0, 0))
+            return null;
+        var right = (down.Y * normal.Z - down.Z * normal.Y, down.Z * normal.X - down.X * normal.Z, down.X * normal.Y - down.Y * normal.X);
+        var anchor = backdrop.Element(Ns.A + "anchor");
+        var position = (Units.ToPx(anchor?.Long("x") ?? 0), Units.ToPx(anchor?.Long("y") ?? 0), Units.ToPx(anchor?.Long("z") ?? 0));
+        return new BackdropPlane(position, right, down, normal);
+    }
+
+    /// <summary>The CSS transform that lays a shape-sized picture onto the backdrop plane and projects it like the camera.</summary>
+    static string OnBackdrop(Camera camera, double w, double h, double rotation, bool flipH, bool flipV, BackdropPlane plane)
+    {
+        var turn = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
+        double[] local = [turn.A, turn.B, 0, 0, turn.C, turn.D, 0, 0, 0, 0, 1, 0, turn.E, turn.F, 0, 1];
+        var (r, d, n) = (plane.Right, plane.Down, plane.Normal);
+        // The picture's point (x, y) of the box goes to anchor + x·right + y·down − (w/2, h/2, 0); the turned picture's
+        // points are relative to the box's center.
+        var a = (X: plane.Anchor.X + w / 2 * r.X + h / 2 * d.X - w / 2, Y: plane.Anchor.Y + w / 2 * r.Y + h / 2 * d.Y - h / 2, Z: plane.Anchor.Z + w / 2 * r.Z + h / 2 * d.Z);
+        double[] onPlane = [r.X, r.Y, r.Z, 0, d.X, d.Y, d.Z, 0, n.X, n.Y, n.Z, 0, a.X, a.Y, a.Z, 1];
+        double[] center = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, w / 2, h / 2, 0, 1];
+        var m = Camera.Multiply(center, Camera.Multiply(camera.Matrix3D(), Camera.Multiply(onPlane, local)));
+        return "matrix3d(" + string.Join(",", m.Select(v => Units.Css4(v))) + ")";
+    }
+
     static string Projection(Camera camera, double w, double h, double rotation, bool flipH, bool flipV)
     {
         var plane = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));

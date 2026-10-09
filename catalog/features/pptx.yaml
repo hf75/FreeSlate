@@ -795,7 +795,7 @@ areas:
         elements: [a:scene3d, a:camera, a:lightRig, a:rot, a:backdrop, a:anchor, a:norm, a:up]
         priority: P2
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           The camera turns and projects the shape: a CSS matrix3d for the front face with its text, SVG polygons for
           the body. The light rig lights every face with Lambert diffuse and Phong highlights, fitted per rig.
@@ -807,8 +807,13 @@ areas:
           0.03, brightRoom 0.05); dir turns a rig in 45° steps clockwise, a:rot turns it further. sp3d z moves
           the shape along its own axis (perspective enlarges it, turned cameras shift it). Shadows and glow of
           3D shapes come from the body's back as the camera sees it (the glow half as wide), soft edges do not
-          apply. Not implemented: a:backdrop, the plane PowerPoint then casts shadows on (unused in the
-          corpus).
+          apply. A backdrop (a:backdrop) takes the shadow and glow instead: the flat shape's picture lies in
+          that plane with its x along up × normal and its y along the up vector, its
+          corner at the anchor less half the shape's size (scene coordinates as DrawingML's: y down, z
+          towards the viewer), the shadow moved by its distance along the scene's x and y, behind the body when
+          the plane lies behind it, else over its sides (fitted to glow and shadows on walls and floors of
+          both orientations with perspective and isometric cameras within 3 px; local/backdrop, backdrop2,
+          backdrop3: 98.3 to 98.6 %). The text's own shadow inside a backdrop shadow is not drawn.
 
       - id: effect.shape3d
         title: 3D shape (bevel, extrusion, material)

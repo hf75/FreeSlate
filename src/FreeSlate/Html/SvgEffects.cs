@@ -48,8 +48,9 @@ public static class SvgEffects
     /// (rotWithShape 0, as PowerPoint writes its shadows) keeps its direction on the slide (measured).</param>
     /// <param name="text">Effects of a line of text: sized with its font (see <see cref="TextScale"/>); the glow is
     /// dilated by 0.46 r and blurred by r / 6 at the outer scale (measured).</param>
+    /// <param name="flat">Outer effects of the flat shape (a 3D scene's backdrop), with a flat shape's glow.</param>
     public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0,
-        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null, TextScale? text = null)
+        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null, TextScale? text = null, bool flat = false)
     {
         if (effectLst == null)
             return null;
@@ -96,7 +97,7 @@ public static class SvgEffects
             var r = Units.ToPx(glow.Long("rad") ?? 0);
             var color = colors.ResolveChild(glow) ?? RgbColor.Black;
             // Around a 3D body (outer effects only) the glow is half as wide: dilated by r/4, σ = r/8 (measured).
-            var (dilate, sigma) = text is { } scale ? (0.46 * r * scale.Outer, r * scale.Outer / 6) : own ? (r / 2, r / 6) : (r / 4, r / 8);
+            var (dilate, sigma) = text is { } scale ? (0.46 * r * scale.Outer, r * scale.Outer / 6) : own || flat ? (r / 2, r / 6) : (r / 4, r / 8);
             steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
             steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
