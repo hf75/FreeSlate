@@ -155,14 +155,20 @@ public static class SmartArtCheck
                     if (error < 0.01)
                         diagramGood++;
                     var size = sp.Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz")?.Value;
-                    // The font size of a shape's text where its node holds the text.
-                    if (size != null && node.Text.Count > 0 && node.Values.TryGetValue("primFontSz", out var font))
+                    string? builtSize = null;
+                    // The font size of a shape's text where its node holds the text: its first run's, as the output
+                    // builds it (child text in the secondary size).
+                    if (size != null && node.Text.Count > 0)
                     {
+                        var primary = node.Values.TryGetValue("primFontSz", out var p) && double.IsFinite(p) ? p : 65;
+                        var secondary = node.Values.TryGetValue("secFontSz", out var sec) && double.IsFinite(sec) ? sec : primary * 0.78;
+                        var ours = (string?)TextBody.Build(node, primary, secondary).Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz");
+                        builtSize = ours;
                         fonts++;
-                        if (Math.Abs(Math.Round(font) * 100 - int.Parse(size, CultureInfo.InvariantCulture)) < 1)
+                        if (ours != null && Math.Abs(int.Parse(ours, CultureInfo.InvariantCulture) - int.Parse(size, CultureInfo.InvariantCulture)) < 100)
                             fontsGood++;
                     }
-                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({nx * k,7:0.0} {ny * k,7:0.0} {nw * k,7:0.0} {nh * k,7:0.0})  {error * 100,5:0.0} %  {node.Note}"));
+                    lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({nx * k,7:0.0} {ny * k,7:0.0} {nw * k,7:0.0} {nh * k,7:0.0}) sz {builtSize,-5} {error * 100,5:0.0} %  {node.Note}"));
                 }
                 if (count == 0)
                     continue;

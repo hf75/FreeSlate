@@ -7,7 +7,8 @@ namespace FreeSlate.Pptx.SmartArt;
 /// The text of a SmartArt shape the way PowerPoint writes it into its drawing (measured from saved drawings): the
 /// node's own text at the primary font size, centered unless parTxLTRAlign says otherwise, with 90 % line spacing and
 /// 35 % after; the text of its descendants as bullets (•) 22.5 pt in, at the secondary font size, space after from
-/// lnSpAfChP (15 % by default); margins in points as insets (0.56 em when not constrained); tabs every 3.5 em.
+/// lnSpAfChP (15 % by default), unless the node shows only its descendants' text without bullets enabled (then that
+/// text is its top level); margins in points as insets (0.56 em when not constrained); tabs every 3.5 em.
 /// </summary>
 public static class TextBody
 {
@@ -22,11 +23,18 @@ public static class TextBody
             return result;
         var baseDepth = DataModel.Depth(node.Point);
         var firstBullet = int.TryParse(node.Param("stBulletLvl"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? b : 1;
+        // Without bullets enabled a node showing only its descendants' text starts it at the top level (measured:
+        // MeetTheTeam's roles, the members' child text, unbulleted at the primary size).
+        var unbulleted = node.Text.All(p => p != node.Point)
+            && !(node.Variables.TryGetValue("bulletEnabled", out var enabled) && enabled is "1" or "true");
+        var shallowest = node.Text.Count > 0 ? node.Text.Min(p => Math.Max(0, DataModel.Depth(p) - baseDepth)) : 0;
         foreach (var point in node.Text)
         {
             var level = Math.Max(0, DataModel.Depth(point) - baseDepth);
+            if (unbulleted)
+                level -= shallowest;
             // A node showing only the text of its descendants starts them at the first bullet level.
-            if (node.Text.All(p => p != node.Point) && level > 0 && firstBullet <= 1)
+            else if (node.Text.All(p => p != node.Point) && level > 0 && firstBullet <= 1)
                 level = Math.Max(1, level);
             var body = point.Element.Element(DataModel.Dgm + "t");
             var paragraphs = body?.Elements(A + "p").ToList() ?? [];
