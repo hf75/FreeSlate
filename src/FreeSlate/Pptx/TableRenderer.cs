@@ -170,7 +170,10 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         return (M("marL", 91440), M("marR", 91440), M("marT", 45720), M("marB", 45720));
     }
 
-    /// <summary>The table style: inline a:tableStyle, else a:tableStyleId looked up in ppt/tableStyles.xml.</summary>
+    /// <summary>
+    /// The table style: inline a:tableStyle, else a:tableStyleId looked up in ppt/tableStyles.xml, else among
+    /// PowerPoint's built-in styles (named by files from other producers without defining them).
+    /// </summary>
     XElement? Style(XElement? tblPr)
     {
         if (tblPr?.Element(Ns.A + "tableStyle") is { } inline)
@@ -180,9 +183,10 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             return null;
         var package = slide.Presentation.Package;
         var part = package.FirstRelationship(slide.Presentation.PresentationPart, "tableStyles")?.Target;
-        if (part == null || !package.Exists(part))
-            return null;
-        return slide.Presentation.Load(part).Root?.Elements(Ns.A + "tblStyle").FirstOrDefault(s => s.Str("styleId") == id);
+        var own = part != null && package.Exists(part)
+            ? slide.Presentation.Load(part).Root?.Elements(Ns.A + "tblStyle").FirstOrDefault(s => string.Equals(s.Str("styleId"), id.Trim(), StringComparison.OrdinalIgnoreCase))
+            : null;
+        return own ?? BuiltInTableStyles.Find(id);
     }
 
     /// <summary>The names of the style parts that apply to a cell, lowest priority first.</summary>

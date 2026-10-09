@@ -1245,7 +1245,11 @@ areas:
           Combine whole table, banding, first/last row and column and corner cells in PowerPoint's order for the flags
           set in tblPr. For files that reference a built-in style without defining it, we need definitions of the 74
           built-in styles, harvested from PowerPoint itself.
-        office: Table styles are referenced by GUID; PowerPoint writes the definitions of the styles in use to ppt/tableStyles.xml.
+        office: >-
+          A table naming a built-in style its presentation does not define (files from other producers) takes
+          PowerPoint's own definition: the 74 built-in styles as PowerPoint writes them into
+          ppt/tableStyles.xml, kept as a resource (generated/tables-more slide 2: six styles with an empty
+          style list, 98.4 %).
 
   - id: chart
     title: Charts
