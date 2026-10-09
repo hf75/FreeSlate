@@ -1307,8 +1307,20 @@ public static class Engine
         if (assistants != null && assistants.Children.Count > 0)
         {
             var a = ArrangeRow(assistants, pins);
-            Translate(assistants, centerX - sp / 2 - (a.X + a.W), next - a.Y);
-            next += a.H + sp;
+            // Half the assistants' sibSp beside the line from the shape to its children (measured: orgChart1's left of
+            // the line down; HorizontalOrganizationChart's above the line across, in a column of their own sp from the
+            // shape and from the children).
+            var gap = Value(assistants, "sibSp", sp);
+            if (horizontal)
+            {
+                Translate(assistants, align.StartsWith('l') ? next - a.X : next - (a.X + a.W), centerY - gap / 2 - (a.Y + a.H));
+                next = align.StartsWith('l') ? next + a.W + sp : next - a.W - sp;
+            }
+            else
+            {
+                Translate(assistants, centerX - gap / 2 - (a.X + a.W), next - a.Y);
+                next += a.H + sp;
+            }
         }
         foreach (var row in rows.Where(r => r != assistants))
         {
