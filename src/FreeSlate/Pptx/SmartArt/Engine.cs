@@ -946,6 +946,7 @@ public static class Engine
         Dictionary<LayoutNode, (double X, double Y, double W, double H)> extents = [];
         var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
         double radius = 0, minX = 0, minY = 0, bw = 0, bh = 0, factor = 1;
+        double? spread = null;
         // How far a cell's outline is from its center toward a direction (turned with it along the path).
         double Exit(LayoutNode cell, double ux, double uy, double angle)
         {
@@ -986,6 +987,8 @@ public static class Engine
                     radius = Math.Max(radius, Exit(center, ux, uy, 0) + Exit(ring[i], -ux, -uy, start + i * step) + Value(node, "sp"));
                 }
             }
+            if (spread is { } wider)
+                radius = Math.Max(radius, wider);
             // The cells' centers about the circle's center.
             places.Clear();
             if (center != null)
@@ -1006,12 +1009,20 @@ public static class Engine
                 minY = Math.Min(minY, py - e.H / 2);
                 maxY = Math.Max(maxY, py + e.H / 2);
             }
-            // Curved connectors run along the circle; their arcs' circle (0.65 of their thickness beyond it) takes room too.
+            // Curved connectors run along the circle where the span runs; their arcs (0.65 of their thickness beyond
+            // it, 0.3 without arrowheads) take room too (measured: cycle1's around the circle; VerticalCurvedList's
+            // along a quarter of it, as far as its points).
             var arcs = node.Children.Where(c => c.AlgorithmType == "conn" && c.Param("connRout") is "curve" or "longCurve" && c.Param("dim") != "1D").ToList();
             if (arcs.Count > 0 && radius > 0)
             {
-                var reach = radius + 0.65 * arcs.Max(c => Value(c, "h"));
-                (minX, maxX, minY, maxY) = (Math.Min(minX, -reach), Math.Max(maxX, reach), Math.Min(minY, -reach), Math.Max(maxY, reach));
+                var reach = radius + arcs.Max(c => (ArcHeads(c) ? 0.65 : 0.3) * Value(c, "h"));
+                var sweep = full ? 360 : step * (n - 1);
+                for (var k = 0; k <= 360; k++)
+                {
+                    var (ax, ay) = On(start + sweep * k / 360);
+                    (minX, maxX) = (Math.Min(minX, ax * reach), Math.Max(maxX, ax * reach));
+                    (minY, maxY) = (Math.Min(minY, ay * reach), Math.Max(maxY, ay * reach));
+                }
             }
             (bw, bh) = (maxX - minX, maxY - minY);
             factor = Math.Min(bw > 0 ? node.W / bw : 1, bh > 0 ? node.H / bh : 1);
@@ -1026,6 +1037,32 @@ public static class Engine
         {
             SnakeRules(node, pins, ruled, () => Measure() >= 1 - 1e-9);
             Measure();
+        }
+        // A ring with room to spare spreads out until it fills the node, its shapes keeping their size (measured:
+        // RadialCluster's nodes about its middle circle), at most to a diameter of its own (VerticalCurvedList's, 1.344
+        // of its height, its points on a quarter of it; arrow5's, 1.1 of a node's width, too small to matter); nothing
+        // grows.
+        if (factor > 1 + 1e-9)
+        {
+            var most = Finite(node, "diam") is > 0 and var diameter ? diameter / 2 : radius + node.W + node.H;
+            if ((n > 1 || n == 1 && center != null) && most > radius)
+            {
+                var (low, high) = (radius, most);
+                spread = most;
+                if (Measure() >= 1)
+                    low = high;
+                for (var i = 0; i < 50; i++)
+                {
+                    spread = (low + high) / 2;
+                    if (Measure() >= 1)
+                        low = spread.Value;
+                    else
+                        high = spread.Value;
+                }
+                spread = low;
+                Measure();
+            }
+            factor = Math.Min(factor, 1);
         }
         var (ox, oy) = (node.X + (node.W - bw * factor) / 2 - minX * factor, node.Y + (node.H - bh * factor) / 2 - minY * factor);
         foreach (var (cell, (px, py, angle)) in places)
@@ -1305,6 +1342,11 @@ public static class Engine
         var end = Find(to, connector.Param("dstNode"));
         if (start != null && end != null)
             return (start, end);
+        // Outside transitions, the siblings srcNode and dstNode name (measured: VerticalCurvedList's arc from its first
+        // point to its last).
+        if (connector.Parent is { } holder && connector.Param("srcNode") is { } source && connector.Param("dstNode") is { } target
+            && holder.Children.FirstOrDefault(c => c.Name == source) is { } named && holder.Children.FirstOrDefault(c => c.Name == target) is { } other)
+            return (named, other);
         // Without transitions: the siblings before and after the connector.
         var parent = connector.Parent;
         if (parent == null)
@@ -1580,8 +1622,9 @@ public static class Engine
             sweep -= (begPad + endPad) / r * 180 / Math.PI;
         }
         var head = r > 0 ? 0.5 * thickness / r * 180 / Math.PI : 0;
-        // A line's box is the circle's (dim 1D, measured: cycle5's), an arrow's reaches beyond it.
-        var reach = connector.Param("dim") == "1D" ? r : r + 0.65 * thickness;
+        // A line's box is the circle's (dim 1D, measured: cycle5's), an arrow's reaches beyond it, a band without heads
+        // half its width (measured: VerticalCurvedList's, 0.6 of its thickness wide).
+        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : 0.3) * thickness;
         PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
         connector.Rotation = 0;
         connector.Values["arcStart"] = begin;
@@ -1589,6 +1632,10 @@ public static class Engine
         connector.Values["arcHead"] = Math.Min(head, sweep);
         connector.Values["arcThickness"] = thickness;
     }
+
+    /// <summary>Whether a curved connector draws arrowheads (begSty, endSty arr; the end's by default).</summary>
+    static bool ArcHeads(LayoutNode connector) =>
+        connector.Param("begSty") == "arr" || connector.Param("endSty") is null or "arr" or "auto";
 
     /// <summary>Gives a connector its box and its children theirs in it.</summary>
     static void PlaceConnector(LayoutNode connector, double x, double y, double w, double h, Pins pins)
