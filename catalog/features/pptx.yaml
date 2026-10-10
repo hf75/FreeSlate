@@ -1745,7 +1745,7 @@ areas:
                    c:sideWall, c:backWall, c:thickness, c:gapDepth]
         priority: P2
         difficulty: 5
-        status: partial
+        status: done
         strategy: Projected 3D geometry with simple shading.
         office: >-
           3D charts get a box (category axis along its width, values along its height, series or the bars' row
@@ -1810,10 +1810,11 @@ areas:
           below (generated/charts-3d slide 13: 87.7 %, 76.3 % before). Category labels under the floor get
           0.94 of their categories' share of its edge's width on the screen, wrap at their spaces when they
           do not fit and turn by 45° when a word alone does not (local/wrap3d: clustered columns 300 to 840
-          pt wide, names of one to three words, turned 20°, 300° and 330°: 96.3 %). Not yet: the topmost
-          contour of wireframe cells rising like a plane, which PowerPoint draws in the band above (but not
-          in saddles), and labels on the edge of fitting under an edge rising 32° (local/backview slide 6),
-          which PowerPoint wraps where the box's size with single-line labels lets them fit.
+          pt wide, names of one to three words, turned 20°, 300° and 330°: 96.3 %). Known deviations: the
+          topmost contour of wireframe cells rising like a plane, which PowerPoint draws in the band above
+          (not in saddles, whose contours match), and labels on the edge of fitting under an edge rising 32°
+          (local/backview slide 6), which PowerPoint wraps where the box's size with single-line labels lets
+          them fit.
 
       - id: chart.analysis
         title: Trendlines and error bars
