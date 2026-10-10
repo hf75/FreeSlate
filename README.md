@@ -8,6 +8,7 @@ and later the foundation of an editor.
 | Path | Content |
 |---|---|
 | `src/FreeSlate/` | the rendering engine (PPTX → HTML for now) |
+| `src/FreeSlate.Presenter/` | a small Avalonia app that opens a presentation and runs its slide show |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog and checks the feature catalogs |
 | `tools/Fidelity/` | measures fidelity: our HTML against PowerPoint's rendering, slide by slide |
 | `catalog/format/` | format catalog, level 1: every element, attribute and type of DOCX and PPTX, linked to the specification |
@@ -28,6 +29,15 @@ The HTML is self-contained: all slides one below the other; `deck.html#slide-3` 
 A password-protected presentation needs its password (`ToFile("deck.pptx", "deck.html", password: "…")`); without
 it, or with a wrong one, `FreeSlate.Opc.PasswordException` says which. Fonts embedded in the presentation are decoded
 and used where the family is not installed (`embeddedFontsFirst: true` uses them everywhere); the HTML carries them.
+
+## Presenting
+
+```sh
+dotnet run --project src/FreeSlate.Presenter -- deck.pptx
+```
+
+The presenter (Avalonia 12) converts the presentation and shows the document in the platform's web view (WebView2 on
+Windows); *Präsentation starten* runs the slide show full screen. Arrow keys, space and Escape work as in PowerPoint.
 
 ## Measuring fidelity
 
