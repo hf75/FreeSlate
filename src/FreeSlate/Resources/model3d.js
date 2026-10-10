@@ -246,11 +246,11 @@
   /** The roughness of the environment's prefiltered levels. */
   const LEVELS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.65, 0.8, 1];
 
-  let studio = null;
+  let work = null, studio = null;
 
-  /** The environment's prefiltered levels (stacked), its irradiance (SH9) and the split-sum table; computed once. */
-  function lighting() {
-    if (studio) return studio;
+  /** The environment read (radiance, the directions and solid angles of its texels), its levels still to filter. */
+  function environmentWork() {
+    if (work) return work;
     const { width: w, height: h } = ENVIRONMENT, n = w * h;
     const raw = atob(ENVIRONMENT.rgbe);
     const env = new Float32Array(n * 3), dirs = new Float32Array(n * 3), solid = new Float32Array(n);
@@ -264,25 +264,34 @@
         for (let k = 0; k < 3; k++) env[i * 3 + k] = raw.charCodeAt(i * 4 + k) * f;
       }
     }
-    // GGX lobes (alpha = roughness squared) around each direction, seen head-on (n = v = r).
-    const levels = new Float32Array(LEVELS.length * n * 4);
-    LEVELS.forEach((roughness, level) => {
-      const a2 = roughness ** 4;
-      for (let i = 0; i < n; i++) {
-        const o = (level * n + i) * 4;
-        levels[o + 3] = 1;
-        if (!roughness) { levels.set(env.subarray(i * 3, i * 3 + 3), o); continue; }
-        const x = dirs[i * 3], y = dirs[i * 3 + 1], z = dirs[i * 3 + 2];
-        let r = 0, g = 0, b = 0, sum = 0;
-        for (let j = 0; j < n; j++) {
-          const nl = x * dirs[j * 3] + y * dirs[j * 3 + 1] + z * dirs[j * 3 + 2];
-          if (nl <= 0) continue;
-          const d = (1 + nl) / 2 * (a2 - 1) + 1, weight = a2 / (d * d) * nl * solid[j];
-          r += weight * env[j * 3]; g += weight * env[j * 3 + 1]; b += weight * env[j * 3 + 2]; sum += weight;
-        }
-        levels[o] = r / sum; levels[o + 1] = g / sum; levels[o + 2] = b / sum;
+    work = { n, env, dirs, solid, levels: new Float32Array(LEVELS.length * n * 4), filtered: 0 };
+    return work;
+  }
+
+  /** Filters the next level: GGX lobes (alpha = roughness squared) around each direction, seen head-on (n = v = r). */
+  function filterLevel() {
+    const { n, env, dirs, solid, levels } = work, level = work.filtered++, roughness = LEVELS[level], a2 = roughness ** 4;
+    for (let i = 0; i < n; i++) {
+      const o = (level * n + i) * 4;
+      levels[o + 3] = 1;
+      if (!roughness) { levels.set(env.subarray(i * 3, i * 3 + 3), o); continue; }
+      const x = dirs[i * 3], y = dirs[i * 3 + 1], z = dirs[i * 3 + 2];
+      let r = 0, g = 0, b = 0, sum = 0;
+      for (let j = 0; j < n; j++) {
+        const nl = x * dirs[j * 3] + y * dirs[j * 3 + 1] + z * dirs[j * 3 + 2];
+        if (nl <= 0) continue;
+        const d = (1 + nl) / 2 * (a2 - 1) + 1, weight = a2 / (d * d) * nl * solid[j];
+        r += weight * env[j * 3]; g += weight * env[j * 3 + 1]; b += weight * env[j * 3 + 2]; sum += weight;
       }
-    });
+      levels[o] = r / sum; levels[o + 1] = g / sum; levels[o + 2] = b / sum;
+    }
+  }
+
+  /** The environment's prefiltered levels (stacked), its irradiance (SH9) and the split-sum table; computed once. */
+  function lighting() {
+    if (studio) return studio;
+    const { n, env, dirs, solid, levels } = environmentWork();
+    while (work.filtered < LEVELS.length) filterLevel();
     // Irradiance: the radiance's SH9 coefficients times the cosine lobe's band factors.
     const band = [Math.PI, 2 * Math.PI / 3, 2 * Math.PI / 3, 2 * Math.PI / 3, Math.PI / 4, Math.PI / 4, Math.PI / 4, Math.PI / 4, Math.PI / 4];
     const sh = new Float32Array(27);
@@ -294,6 +303,18 @@
     studio = { levels, sh, brdf: brdfTable(32, 512) };
     return studio;
   }
+
+  /**
+   * Filters the environment a level at a time while the page is idle (about 30 ms each), so that a model's first
+   * drawing need not wait for it all.
+   */
+  function warmUp() {
+    if (studio) return;
+    environmentWork();
+    if (work.filtered < LEVELS.length) filterLevel();
+    if (work.filtered < LEVELS.length) idle(warmUp); else lighting();
+  }
+  const idle = callback => (window.requestIdleCallback ? window.requestIdleCallback(callback, { timeout: 2000 }) : setTimeout(callback, 50));
 
   /** The split-sum table (Karis): A and B over (n.v, roughness), GGX with Smith-Schlick k = alpha / 2. */
   function brdfTable(size, samples) {
@@ -867,6 +888,9 @@
       return animations.length ? { index, length: animationLength(this.gltf, animations[index]) } : null;
     }
   }
+
+  // A document with models (canvas.fs-model) gets its lighting ready once it has loaded.
+  if (document.querySelector('canvas.fs-model')) window.addEventListener('load', () => idle(warmUp));
 
   window.FreeSlateModel3D = {
     Model, LIGHTING, mat4,
