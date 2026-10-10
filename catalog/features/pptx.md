@@ -23,7 +23,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 0 | 5 |
 | [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 0 | 6 |
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 11 |
-| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 1 | 11 |
+| [Pictures and media](#picture) | 12 | 2 | 6 | 2 | 2 | 2.2 | 0 | 12 |
 | [Text](#text) | 21 | 8 | 5 | 7 | 1 | 3.4 | 0 | 21 |
 | [Tables](#table) | 3 | 3 | 0 | 0 | 0 | 3.3 | 0 | 3 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 1 | 19 |
@@ -34,7 +34,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 0 | 4 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **3** | **142** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **2** | **143** |
 
 <a id="package"></a>
 
@@ -1082,7 +1082,7 @@ gradFill and pattFill inside a:ln.
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Pictures](#picture.basic) | P0 | ●●○○○ | done | 11 | 1 |
-| [Raster image formats](#picture.formats) | P1 | ●●●○○ | partial | 0 | 0 |
+| [Raster image formats](#picture.formats) | P1 | ●●●○○ | done | 0 | 0 |
 | [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | done | 0 | 0 |
 | [SVG pictures](#picture.svg) | P0 | ●○○○○ | done | 1 | 0 |
 | [Picture color effects](#picture.effects) | P1 | ●●●○○ | done | 18 | 11 |
@@ -1114,13 +1114,13 @@ gradFill and pattFill inside a:ln.
 
 ### Raster image formats
 
-`picture.formats` · P1 · difficulty 3 · partial
+`picture.formats` · P1 · difficulty 3 · done
 
 The content type behind a:blip/@r:embed.
 
-**Rendering:** PNG, JPEG, GIF, BMP, SVG and WebP natively (also when the package names another content type); TIFF decoded (strips or tiles; uncompressed, PackBits, LZW, Deflate with prediction, CCITT group 3/4, JPEG; bilevel, gray, palette, RGB(A), CMYK; 1-16 bit) and converted to PNG, JPEG-compressed TIFF merged into one JPEG (Huffman re-coding where strips use different tables); color profiles carried along; JPEG XR (.jxr) to do.
+**Rendering:** PNG, JPEG, GIF, BMP, SVG and WebP natively (also when the package names another content type); TIFF decoded (strips or tiles; uncompressed, PackBits, LZW, Deflate with prediction, CCITT group 3/4, JPEG; bilevel, gray, palette, RGB(A), CMYK; 1-16 bit) and converted to PNG, JPEG-compressed TIFF merged into one JPEG (Huffman re-coding where strips use different tables); color profiles carried along; JPEG XR decoded by our own decoder after ITU-T T.832 (spatial and frequency order, tiles, all overlap modes, 4:2:0, 4:2:2 and 4:4:4, gray, CMYK, n-channel, 1 to 32-bit integer, fixed and floating point, RGBE, interleaved and separate alpha, orientation) and converted to PNG.
 
-**Office behaviour:** PowerPoint keeps TIFF pictures as inserted (also CCITT and JPEG compressed ones) and honors embedded ICC profiles (PNG, JPEG, TIFF; verified with a swapped-primaries profile); profile-less CMYK shows through a 9^4 table measured from PowerPoint's rendering (harvest-cmyk). Pattern tiles of stretched pictures reach a margin with the edge pixels repeated, so edges no longer blend with the opposite edge. Inserted .jxr/.wdp pictures stay JPEG XR (image/vnd.ms-photo): not decoded yet. hdphoto parts of artistic effects (a14:imgLayer) are originals; the blip holds the rendered result. Deck: picture-formats 99.9 %.
+**Office behaviour:** PowerPoint keeps TIFF pictures as inserted (also CCITT and JPEG compressed ones) and honors embedded ICC profiles (PNG, JPEG, TIFF; verified with a swapped-primaries profile); profile-less CMYK shows through a 9^4 table measured from PowerPoint's rendering (harvest-cmyk). Pattern tiles of stretched pictures reach a margin with the edge pixels repeated, so edges no longer blend with the opposite edge. Inserted .jxr/.wdp pictures stay JPEG XR, but PowerPoint names .jxr parts image/png (the extension's default), so pictures are told apart by their bytes. The JPEG XR decoder matches Windows' own (WIC) sample for sample on 44 files of its encoder in all its options (frequency and spatial order, tiles, overlap 0-2, subsampling, quality, without flexbits, highpass or lowpass, separate and interleaved alpha, rotations; gray, bilevel, 565, 555, 101010, 16-bit, float, CMYK): the highpass prediction direction comes from the lowpass coefficients before dequantization (the order of steps in 9.4 would take them after), centred chroma is upsampled with the taps (-2, 9, 28, -3) / 32 (4:2:0 in both directions before one rounding), packed formats swap red and blue unless RED_BLUE_NOT_SWAPPED. Only WIC's own 8-bit conversion of 10-bit, 16-bit and floating point samples differs by 1 at most. hdphoto parts of artistic effects (a14:imgLayer) are originals; the blip holds the rendered result. Deck: picture-formats 99.9 % (slide 2: ten JPEG XR pictures).
 
 <a id="picture.metafiles"></a>
 

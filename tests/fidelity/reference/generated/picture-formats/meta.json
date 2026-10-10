@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/picture-formats.pptx",
-  "sha256": "e852b62c215697d6dfda552c803c602aade1a3bd030fcd19d608398d807317d6",
+  "sha256": "78c3ef0b16ac7c4377fb90faa98166ff239db0790c6a698368698d9ba3314a27",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 1
+  "slides": 2
 }

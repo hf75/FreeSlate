@@ -153,8 +153,8 @@ public sealed class PresentationContext : IDisposable
         {
             uri = type switch
             {
-                "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml" or "image/webp" =>
-                    $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
+                "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/webp" => Native(type, Package.ReadBytes(rel.Target)),
+                "image/svg+xml" => $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
                 _ when metafile => Metafiles.MetafileConverter.ToDataUri(Package.ReadBytes(rel.Target), $"mf{images.Count}_", displayWidth),
                 _ => Converted(Package.ReadBytes(rel.Target)),
             };
@@ -164,14 +164,23 @@ public sealed class PresentationContext : IDisposable
     }
 
     /// <summary>
+    /// A picture under a content type browsers show, unless its bytes are a format they do not: PowerPoint names
+    /// inserted .jxr pictures image/png.
+    /// </summary>
+    static string? Native(string type, byte[] data) =>
+        Html.JpegXr.IsJpegXr(data) || Html.Tiff.IsTiff(data) ? Converted(data) : $"data:{type};base64,{Convert.ToBase64String(data)}";
+
+    /// <summary>
     /// A picture of another content type as data URI by its bytes (catalog: picture.formats): TIFF converted to PNG
-    /// or JPEG, formats browsers show under a content type the package names otherwise; null for formats without
-    /// converter.
+    /// or JPEG, JPEG XR to PNG, formats browsers show under a content type the package names otherwise; null for
+    /// formats without converter.
     /// </summary>
     static string? Converted(byte[] data)
     {
         if (Html.Tiff.IsTiff(data))
             return Html.Tiff.ToWeb(data) is var (tiffType, web) ? $"data:{tiffType};base64,{Convert.ToBase64String(web)}" : null;
+        if (Html.JpegXr.IsJpegXr(data))
+            return Html.JpegXr.ToPng(data) is { } png ? $"data:image/png;base64,{Convert.ToBase64String(png)}" : null;
         var type = data switch
         {
             [0x89, 0x50, 0x4E, 0x47, ..] => "image/png",

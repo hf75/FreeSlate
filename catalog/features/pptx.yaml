@@ -858,20 +858,31 @@ areas:
         description: The content type behind a:blip/@r:embed.
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
-          PNG, JPEG, GIF, BMP, SVG and WebP natively (also when the package names another content type); TIFF decoded
-          (strips or tiles; uncompressed, PackBits, LZW, Deflate with prediction, CCITT group 3/4, JPEG; bilevel,
-          gray, palette, RGB(A), CMYK; 1-16 bit) and converted to PNG, JPEG-compressed TIFF merged into one JPEG
-          (Huffman re-coding where strips use different tables); color profiles carried along; JPEG XR (.jxr) to do.
+          PNG, JPEG, GIF, BMP, SVG and WebP natively (also when the package names another content type); TIFF
+          decoded (strips or tiles; uncompressed, PackBits, LZW, Deflate with prediction, CCITT group 3/4,
+          JPEG; bilevel, gray, palette, RGB(A), CMYK; 1-16 bit) and converted to PNG, JPEG-compressed TIFF
+          merged into one JPEG (Huffman re-coding where strips use different tables); color profiles carried
+          along; JPEG XR decoded by our own decoder after ITU-T T.832 (spatial and frequency order, tiles, all
+          overlap modes, 4:2:0, 4:2:2 and 4:4:4, gray, CMYK, n-channel, 1 to 32-bit integer, fixed and
+          floating point, RGBE, interleaved and separate alpha, orientation) and converted to PNG.
         office: >-
           PowerPoint keeps TIFF pictures as inserted (also CCITT and JPEG compressed ones) and honors embedded
           ICC profiles (PNG, JPEG, TIFF; verified with a swapped-primaries profile); profile-less CMYK shows
           through a 9^4 table measured from PowerPoint's rendering (harvest-cmyk). Pattern tiles of stretched
           pictures reach a margin with the edge pixels repeated, so edges no longer blend with the opposite
-          edge. Inserted .jxr/.wdp pictures stay JPEG XR (image/vnd.ms-photo): not decoded yet. hdphoto parts
-          of artistic effects (a14:imgLayer) are originals; the blip holds the rendered result. Deck:
-          picture-formats 99.9 %.
+          edge. Inserted .jxr/.wdp pictures stay JPEG XR, but PowerPoint names .jxr parts image/png (the
+          extension's default), so pictures are told apart by their bytes. The JPEG XR decoder matches
+          Windows' own (WIC) sample for sample on 44 files of its encoder in all its options (frequency and
+          spatial order, tiles, overlap 0-2, subsampling, quality, without flexbits, highpass or lowpass,
+          separate and interleaved alpha, rotations; gray, bilevel, 565, 555, 101010, 16-bit, float, CMYK):
+          the highpass prediction direction comes from the lowpass coefficients before dequantization (the
+          order of steps in 9.4 would take them after), centred chroma is upsampled with the taps (-2, 9, 28,
+          -3) / 32 (4:2:0 in both directions before one rounding), packed formats swap red and blue unless
+          RED_BLUE_NOT_SWAPPED. Only WIC's own 8-bit conversion of 10-bit, 16-bit and floating point samples
+          differs by 1 at most. hdphoto parts of artistic effects (a14:imgLayer) are originals; the blip holds
+          the rendered result. Deck: picture-formats 99.9 % (slide 2: ten JPEG XR pictures).
 
       - id: picture.metafiles
         title: EMF and WMF pictures

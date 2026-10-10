@@ -67,6 +67,9 @@ switch (command)
     case "fonts":
         EmbeddedFonts.Extract(decks);
         break;
+    case "jxr":
+        JpegXrCheck.Run(rest.FirstOrDefault() ?? ".");
+        break;
     case "animate":
         var animated = Animations.Run(decks);
         foreach (var r in animated)
@@ -94,6 +97,7 @@ switch (command)
               transitions [deck…]  compare the player's slide transitions with PowerPoint's videos
               transitions-reference [deck…]  sample PowerPoint's videos of the transitions (Windows, ffmpeg); --force
               fonts [deck…]        write the decks' embedded fonts as TrueType files to artifacts/fidelity/fonts
+              jxr <dir>            decode every .jxr in a directory and compare it with the .png next to it
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
             """);

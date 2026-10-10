@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 
 namespace FreeSlate.Html;
 
-/// <summary>Reads the pixel size and resolution of PNG, JPEG, GIF, BMP and TIFF files.</summary>
+/// <summary>Reads the pixel size and resolution of PNG, JPEG, GIF, BMP, TIFF and JPEG XR files.</summary>
 public static class ImageInfo
 {
     /// <summary>
@@ -37,6 +37,8 @@ public static class ImageInfo
         }
         if (Tiff.IsTiff(data))
             return Tiff.Info(data);
+        if (JpegXr.IsJpegXr(data))
+            return JpegXr.Info(data);
         return default;
     }
 

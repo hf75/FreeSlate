@@ -10,7 +10,8 @@ namespace Fidelity.PowerPoint;
 /// <summary>
 /// TIFF pictures (catalog: picture.formats), which PowerPoint keeps as they are inserted: written by GDI+ (LZW RGB and
 /// RGBA, palette, CCITT group 4 bilevel) and by hand as other programs write them (Deflate with horizontal prediction,
-/// PackBits, big-endian 16-bit samples, JPEG in strips, CMYK).
+/// PackBits, big-endian 16-bit samples, JPEG in strips, CMYK). A second slide holds JPEG XR pictures written by
+/// Windows' own encoder in many of its settings (subsampling, overlap, tiles, lossless, alpha, gray, 16-bit, 565).
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class PictureFormatsDeck
@@ -25,6 +26,66 @@ static class PictureFormatsDeck
         var slide = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
         for (var i = 0; i < files.Count; i++)
             slide.Shapes.AddPicture(files[i], MsoFalse, MsoTrue, 15f + i % 5 * 188, 60f + i / 5 * 230, 178f, 133.5f);
+
+        var photos = JpegXr(Path.Combine(Path.GetTempPath(), "fidelity-images", "jxr"));
+        slide = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        for (var i = 0; i < photos.Count; i++)
+            slide.Shapes.AddPicture(photos[i], MsoFalse, MsoTrue, 15f + i % 5 * 188, 60f + i / 5 * 230, 178f, 133.5f);
+    }
+
+    /// <summary>
+    /// JPEG XR files of the test picture by Windows' encoder (WPF's WmpBitmapEncoder, run in Windows PowerShell),
+    /// which PowerPoint keeps as image/vnd.ms-photo.
+    /// </summary>
+    static List<string> JpegXr(string directory)
+    {
+        Directory.CreateDirectory(directory);
+        var (opaquePng, transparentPng) = (Path.Combine(directory, "opaque.png"), Path.Combine(directory, "transparent.png"));
+        foreach (var (path, transparent) in new[] { (opaquePng, false), (transparentPng, true) })
+        {
+            using var picture = Picture(transparent, "JXR");
+            using var png = picture.Encode(SKEncodedImageFormat.Png, 100);
+            File.WriteAllBytes(path, png.ToArray());
+        }
+        var script = Path.Combine(directory, "encode.ps1");
+        File.WriteAllText(script, """
+            param([string]$Opaque, [string]$Transparent, [string]$Out)
+            Add-Type -AssemblyName PresentationCore, WindowsBase
+            function Load($path) {
+              $decoder = New-Object System.Windows.Media.Imaging.PngBitmapDecoder((New-Object Uri($path)), 'PreservePixelFormat', 'OnLoad')
+              New-Object System.Windows.Media.Imaging.FormatConvertedBitmap($decoder.Frames[0], [System.Windows.Media.PixelFormats]::Bgra32, $null, 0)
+            }
+            function Convert($source, $format) { New-Object System.Windows.Media.Imaging.FormatConvertedBitmap($source, $format, $null, 0) }
+            function Save($name, $source, [scriptblock]$configure) {
+              $encoder = New-Object System.Windows.Media.Imaging.WmpBitmapEncoder
+              & $configure $encoder
+              $encoder.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($source))
+              $stream = [System.IO.File]::Create((Join-Path $Out "$name.jxr"))
+              try { $encoder.Save($stream) } finally { $stream.Close() }
+            }
+            $bgra = Load $Opaque
+            $alpha = Load $Transparent
+            $bgr = Convert $bgra ([System.Windows.Media.PixelFormats]::Bgr24)
+            Save '01-444' $bgr { param($e) $e.ImageQualityLevel = 0.9 }
+            Save '02-420' $bgr { param($e) $e.UseCodecOptions = $true; $e.QualityLevel = 40; $e.SubsamplingLevel = 1 }
+            Save '03-422-overlap2' $bgr { param($e) $e.UseCodecOptions = $true; $e.QualityLevel = 30; $e.SubsamplingLevel = 2; $e.OverlapLevel = 2 }
+            Save '04-lossless' $bgr { param($e) $e.Lossless = $true }
+            Save '05-spatial-tiles' $bgr { param($e) $e.UseCodecOptions = $true; $e.QualityLevel = 20; $e.FrequencyOrder = $false; $e.HorizontalTileSlices = 2; $e.VerticalTileSlices = 1 }
+            Save '06-alpha' $alpha { param($e) $e.ImageQualityLevel = 0.8 }
+            Save '07-alpha-interleaved' $alpha { param($e) $e.UseCodecOptions = $true; $e.QualityLevel = 30; $e.InterleavedAlpha = $true }
+            Save '08-gray' (Convert $bgra ([System.Windows.Media.PixelFormats]::Gray8)) { param($e) $e.ImageQualityLevel = 0.8 }
+            Save '09-rgb48' (Convert $bgra ([System.Windows.Media.PixelFormats]::Rgb48)) { param($e) $e.ImageQualityLevel = 0.8 }
+            Save '10-bgr565' (Convert $bgra ([System.Windows.Media.PixelFormats]::Bgr565)) { param($e) $e.ImageQualityLevel = 0.9 }
+            """);
+        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe",
+            ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Opaque", opaquePng, "-Transparent", transparentPng, "-Out", directory])
+        {
+            UseShellExecute = false,
+        })!;
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException("Writing the JPEG XR pictures failed.");
+        return [.. Directory.GetFiles(directory, "*.jxr").Order()];
     }
 
     static List<string> Write(string directory)
@@ -68,7 +129,7 @@ static class PictureFormatsDeck
     }
 
     /// <summary>The test picture: a gradient with shapes and text, transparent around a circle when asked.</summary>
-    static SKBitmap Picture(bool transparent)
+    static SKBitmap Picture(bool transparent, string label = "TIFF")
     {
         var bitmap = new SKBitmap(new SKImageInfo(W, H, SKColorType.Rgba8888, SKAlphaType.Unpremul));
         using var canvas = new SKCanvas(bitmap);
@@ -88,7 +149,7 @@ static class PictureFormatsDeck
         shapes.Color = new SKColor(0, 0, 0);
         canvas.DrawCircle(230, 170, 35, shapes);
         using var font = new SKFont(SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold), 30);
-        canvas.DrawText("TIFF", 110, 140, font, shapes);
+        canvas.DrawText(label, 110, 140, font, shapes);
         return bitmap;
     }
 
