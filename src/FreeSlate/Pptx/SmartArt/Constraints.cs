@@ -222,6 +222,10 @@ public static class Constraints
         // size above the userT its root sets).
         if (op is "lte" or "gte" && refType?.StartsWith("user", StringComparison.Ordinal) == true)
             return;
+        // Nor does a bound with a negative factor (measured: list1's negative spaces keep −0.41 of the font size
+        // rather than −0.82 of the title's height that their paired bounds would make of them).
+        if (op is "lte" or "gte" && fact < 0)
+            return;
 
         foreach (var target in targets)
         {
