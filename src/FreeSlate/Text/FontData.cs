@@ -36,7 +36,7 @@ public sealed class FontData : IDisposable
     {
     }
 
-    FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0)
+    FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0, float weight = 0)
     {
         Path = path;
         Family = family;
@@ -116,6 +116,17 @@ public sealed class FontData : IDisposable
         face = new Face(blob, index);
         font = new Font(face);
         font.SetScale(UnitsPerEm, UnitsPerEm);
+        // A variable font's weight axis; an instance of it set to the weight asked for.
+        var wght = new Tag('w', 'g', 'h', 't');
+        if (face.TryFindVariationAxis(wght, out var axis))
+        {
+            WeightAxis = (axis.MinValue, axis.DefaultValue, axis.MaxValue);
+            if (weight > 0)
+            {
+                Weight = Math.Clamp(weight, axis.MinValue, axis.MaxValue);
+                font.SetVariations([new Variation { Tag = wght, Value = Weight }]);
+            }
+        }
     }
 
     /// <summary>
@@ -196,7 +207,19 @@ public sealed class FontData : IDisposable
     public const double WidenedBold = 0.027;
 
     /// <summary>The same font with <paramref name="extra"/> em added to every glyph's advance (simulated bold of PostScript fonts).</summary>
-    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra);
+    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra, Weight);
+
+    /// <summary>The weight axis (wght) of a variable font: its lowest, default and highest weight; null for other fonts.</summary>
+    public (float Min, float Default, float Max)? WeightAxis { get; }
+
+    /// <summary>The weight this instance of a variable font is set to; 0 for the default instance.</summary>
+    public float Weight { get; }
+
+    /// <summary>Which instance of the font file this is ("" for the default one), for what tells instances apart.</summary>
+    public string Instance => Weight > 0 ? "wght=" + Weight.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+
+    /// <summary>The same variable font set to another weight (wght axis).</summary>
+    public FontData Weighted(float weight) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, weight);
 
     // GPOS kerning (the 'kern' feature) for PostScript fonts without a 'kern' table: PowerPoint kerns them so (measured
     // with an embedded CFF font), TrueType fonts only from their 'kern' table (Georgia, which has none, is not kerned).

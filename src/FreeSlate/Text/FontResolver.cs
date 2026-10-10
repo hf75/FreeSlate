@@ -63,6 +63,13 @@ public sealed class FontResolver(FontLocator locator)
         var data = face.Embedded?.Value is { } bytes
             ? embedded.GetOrAdd(face.Path, _ => new FontData(bytes, face.Path, face.Family))
             : Files.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
+        // Bold of a variable font is its weight axis at 700 (the Bold instance), also where the presentation embeds the
+        // same file as its bold face: PowerPoint shows it so (seen with an embedded Wix Madefor Display).
+        if (key.Item2 && data.WeightAxis is { Default: < 600, Max: >= 600 })
+        {
+            var weighted = (face.Embedded != null ? embedded : Files).GetOrAdd($"{face.Path}#{face.Index}#wght700", _ => data.Weighted(700));
+            return new ResolvedFont(weighted, false, key.Item3 && !face.Italic);
+        }
         if (key.Item2 && !face.Bold && data.IsPostScript)
         {
             var widened = (face.Embedded != null ? embedded : Files).GetOrAdd($"{face.Path}#{face.Index}#widened", _ => data.Widened(FontData.WidenedBold));
