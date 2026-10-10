@@ -597,7 +597,11 @@ public static class Engine
                     cross = Math.Min(cross, cap);
                 sizes.Add((length, cross));
             }
-            var widest = sizes.Max(z => z.Across);
+            // A composite without a size across, its content following its length, takes as much less room across as
+            // along (measured: hProcess10's pictures and texts, w 0.86 of their composite, leaving the arrows between
+            // them their full share).
+            var widest = sizes.Select((z, i) => shrink < 1 && children[i].AlgorithmType == "composite"
+                && Finite(children[i], horizontal ? "h" : "w") == null ? z.Across * shrink : z.Across).Max();
             var more = widest > boxAcross && widest > 0 ? boxAcross / widest : 1;
             // Children sticking out across only lose what sticks out (measured: hierarchy4's column, three rows high in a
             // one-row-high diagram, keeps its full width while its rows shrink to fit it), unless their size across

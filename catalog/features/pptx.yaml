@@ -1950,7 +1950,7 @@ areas:
           keeps its box while references see its constraint size; a composite root's drawing centered in the
           frame), lin (its rules on the children's length first, by halving to within a point of the room,
           font size rules in whole points, then uniform shrinking, a shrunk composite taking its content's
-          room; a lin child whose children all stay narrower across its line taking their room; the row as
+          room, along and, without a size of its own, across; a lin child whose children all stay narrower across its line taking their room; the row as
           long as the farthest a child reaches; sp only between neighbors without a spacer node; the row
           aligned in the node and each child across it; fallback 2D laid out at the own size and
           scaled; a tree alone on the line centered by itself; children's subtrees evaluated for its box
@@ -1983,8 +1983,8 @@ areas:
           widths growing in 32nds of the way to a rule's limit; descendants' text at the top level unless
           bullets start at its depth; the diagram laid out again with the pinned values. The output writes the
           shapes the way PowerPoint writes its drawing (text nodes' text taken by shapes showing the same
-          data, styles and colors by label). Measured against PowerPoint's drawings of the 159 layouts: 1339
-          of 1455 shapes within 1 %, 144 diagrams exact, 745 of 823 font sizes (151 shapes and 12 diagrams
+          data, styles and colors by label). Measured against PowerPoint's drawings of the 159 layouts: 1345
+          of 1455 shapes within 1 %, 145 diagrams exact, 745 of 823 font sizes (151 shapes and 12 diagrams
           before this engine work); against generated decks of snake, picture, cycle, radial and hierarchy
           layouts at 1 to 8 nodes: 541 of 542, 550 of 594, 311 of 320, 400 of 427 and 578 of 690 shapes;
           rendered with the drawings removed 94.1 % (38.5 % before), all color definitions and quick styles on
