@@ -7,7 +7,8 @@ namespace Fidelity.PowerPoint;
 /// Remaining text properties (catalog: text.fonts, text.body, text.runs): symbols inserted from symbol fonts (a:sym with
 /// characters at U+F000 to U+F0FF), line spacing in compatibility mode (a:bodyPr compatLnSpc), runs with normalized
 /// heights and horizontal numbers in vertical text (a:rPr normalizeH, kumimoji), line breaks of their own sizes,
-/// autofit's font scale (a:normAutofit fontScale), GPOS kerning of variable fonts and typefaces that are no family's name.
+/// autofit's font scale (a:normAutofit fontScale), GPOS kerning of variable fonts, typefaces that are no family's name
+/// and several lines on single-path WordArt transforms.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class TextMoreDeck
@@ -134,11 +135,22 @@ static class TextMoreDeck
             var box = Box(names, 30 + i / 4 * 460, 30 + i % 4 * 120, 440, 100, typefaces[i] + " Diskussion", 28);
             box.TextFrame2.TextRange.Font.Name = typefaces[i];
         }
+
+        // Several lines on a single-path WordArt transform (patched: circle, arch up, arch down) and a long line on a
+        // circle, which is not wrapped.
+        var warps = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        string[] warpTexts = ["Line one text\rLine two\rThird line here", "Line one text\rLine two\rThird line here",
+            "Line one text\rLine two\rThird line here", string.Join(' ', Enumerable.Repeat("TTT", 18))];
+        for (var i = 0; i < warpTexts.Length; i++)
+        {
+            var box = Box(warps, 40 + i * 225, 150, 200, 200, warpTexts[i], 18);
+            box.Height = 200f;
+        }
     }
 
     /// <summary>
     /// compatLnSpc on the second slide's right box; normalizeH and kumimoji on the third slide's right boxes; the font
-    /// scales of the fifth slide's boxes.
+    /// scales of the fifth slide's boxes; the WordArt transforms of the eighth slide's boxes.
     /// </summary>
     public static void Patch(string path)
     {
@@ -181,6 +193,13 @@ static class TextMoreDeck
                 else
                     body.AddFirst(fit);
             }
+        });
+        Edit("ppt/slides/slide8.xml", document =>
+        {
+            var shapes = document.Descendants(p + "sp").ToList();
+            string[] presets = ["textCircle", "textArchUp", "textArchDown", "textCircle"];
+            for (var i = 0; i < presets.Length; i++)
+                shapes[i].Descendants(a + "bodyPr").First().AddFirst(new XElement(a + "prstTxWarp", new XAttribute("prst", presets[i]), new XElement(a + "avLst")));
         });
     }
 }

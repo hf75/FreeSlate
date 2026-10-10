@@ -38,6 +38,8 @@ public static class PptxConverter
         .fs-model{position:absolute;left:0;top:0;width:100%;height:100%;visibility:hidden;pointer-events:none}
         .fs-model.playing{visibility:visible}
         .fs-modeled>svg{visibility:hidden}
+        .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;overflow:hidden;padding:5px 6px;font:11px/13px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;pointer-events:none}
+        .fs-nopic svg{vertical-align:top;margin-right:5px}
         .fs-play{position:fixed;right:16px;bottom:16px;width:44px;height:44px;border:0;border-radius:50%;background:#c43e1c;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
         body:has(.slide:target) .fs-play{display:none}
         .fs-show{position:fixed;inset:0;background:#000;z-index:2147483647;overflow:hidden;user-select:none}

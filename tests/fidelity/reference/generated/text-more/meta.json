@@ -1,8 +1,8 @@
 {
   "source": "tests/corpus/pptx/generated/text-more.pptx",
-  "sha256": "9c94191f5608e65f94e28047ead523923ef3f5832adf764da3dc5f8121368306",
+  "sha256": "fbf27780586f98e9bcf237be450aa894adaf594cb11805f763cfbe4f380fc545",
   "powerPoint": "16.0.20430",
   "width": 1280,
   "height": 720,
-  "slides": 7
+  "slides": 8
 }

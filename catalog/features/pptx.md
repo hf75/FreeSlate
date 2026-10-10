@@ -1102,7 +1102,7 @@ gradFill and pattFill inside a:ln.
 
 **Rendering:** SVG image with crop (srcRect; negative values pad) and the shape's geometry as clip path.
 
-**Office behaviour:** Verified with generated/pictures (99.5 %).
+**Office behaviour:** Verified with generated/pictures (99.5 %). A picture without its picture (an a:blip naming none, or a part the package lacks) shows PowerPoint's sign: a 1-pixel #6D6D6D frame on its edge, the broken-picture icon 6 pixels in and "The picture can't be displayed." in Office's language ("Das Bild kann nicht angezeigt werden."; Apache POI's missing-blip-fill, LibreOffice's tdf147586); the player words it in the viewer's language.
 
 **Elements (11):** [`a:cNvPicPr`](../format/namespaces/a.md#acnvpicpr), [`a:nvPicPr`](../format/namespaces/a.md#anvpicpr), [`a:pic`](../format/namespaces/a.md#apic), [`p:cNvPicPr`](../format/namespaces/p.md#pcnvpicpr), [`p:nvPicPr`](../format/namespaces/p.md#pnvpicpr), [`p:pic`](../format/namespaces/p.md#ppic), [`pic:cNvPicPr`](../format/namespaces/pic.md#piccnvpicpr), [`pic:cNvPr`](../format/namespaces/pic.md#piccnvpr), [`pic:nvPicPr`](../format/namespaces/pic.md#picnvpicpr), [`pic:pic`](../format/namespaces/pic.md#picpic), [`pic:spPr`](../format/namespaces/pic.md#picsppr)
 
@@ -1532,7 +1532,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
 
 **Rendering:** Glyph outlines from the font, bent along the warp's guide paths (41 presets) into SVG paths.
 
-**Office behaviour:** The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape. Presets with one or three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length (measured with textArchUp in generated/text-body). Verified with generated/text-effects (WordArt transforms).
+**Office behaviour:** The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper path, baselines on the lower one), over the whole text rectangle of the shape. Presets with one or three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length (measured with textArchUp in generated/text-body). Verified with generated/text-effects (WordArt transforms). Text on a single path (arches, circle; measured with probe decks of I strokes) is not wrapped. Every line follows a parallel of the path, a line pitch apart, on the side away from the box's center: on a circle or an arch up the last line lies on the path and the others outside it, under an arch down the first line lies on the path and the others below. Glyphs are spaced by arc length on their line's parallel, from the path's start (insets do not count), and then lowered: the line on the path has its baseline 0.79 em under the top of its line box below the path (eight fonts, 12 to 72 pt, within 0.01 em). Old WordArt scales all lines alike so that the longest fills the path. Known deviation: old WordArt with several lines on part of an elliptic arc comes out larger than in PowerPoint (LibreOffice's tdf125573).
 
 **Elements (1):** [`a:prstTxWarp`](../format/namespaces/a.md#aprsttxwarp)
 

@@ -3,6 +3,10 @@
  * and the slides' timing trees (PowerPoint's par/seq time containers and animation behaviours). */
 (() => {
   'use strict';
+  // A picture without its picture shows PowerPoint's sign; Office words it in its own language, here the viewer's.
+  if (/^de\b/i.test(navigator.language || ''))
+    document.querySelectorAll('.fs-nopic>span').forEach(span => { span.textContent = 'Das Bild kann nicht angezeigt werden.'; });
+
   const dataElement = document.getElementById('freeslate-data');
   const slides = [...document.querySelectorAll('section.slide')];
   if (!dataElement || slides.length === 0) return;

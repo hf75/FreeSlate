@@ -875,7 +875,11 @@ areas:
         status: done
         strategy: SVG image with crop (srcRect; negative values pad) and the shape's geometry as clip path.
         office: >-
-          Verified with generated/pictures (99.5 %).
+          Verified with generated/pictures (99.5 %). A picture without its picture (an a:blip naming none, or
+          a part the package lacks) shows PowerPoint's sign: a 1-pixel #6D6D6D frame on its edge, the
+          broken-picture icon 6 pixels in and "The picture can't be displayed." in Office's language ("Das
+          Bild kann nicht angezeigt werden."; Apache POI's missing-blip-fill, LibreOffice's tdf147586); the
+          player words it in the viewer's language.
 
       - id: picture.formats
         title: Raster image formats
@@ -1350,7 +1354,15 @@ areas:
           three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the
           line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length
           (measured with textArchUp in generated/text-body). Verified with generated/text-effects (WordArt
-          transforms).
+          transforms). Text on a single path (arches, circle; measured with probe decks of I strokes) is not
+          wrapped. Every line follows a parallel of the path, a line pitch apart, on the side away from the
+          box's center: on a circle or an arch up the last line lies on the path and the others outside it,
+          under an arch down the first line lies on the path and the others below. Glyphs are spaced by arc
+          length on their line's parallel, from the path's start (insets do not count), and then lowered: the
+          line on the path has its baseline 0.79 em under the top of its line box below the path (eight
+          fonts, 12 to 72 pt, within 0.01 em). Old WordArt scales all lines alike so that the longest fills
+          the path. Known deviation: old WordArt with several lines on part of an elliptic arc comes out
+          larger than in PowerPoint (LibreOffice's tdf125573).
 
       - id: text.threeD
         title: 3D text

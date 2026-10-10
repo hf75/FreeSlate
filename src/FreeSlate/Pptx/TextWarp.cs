@@ -34,9 +34,13 @@ public static class TextWarp
     /// Warps the glyphs into the preset's paths laid into <paramref name="box"/> (pixels); <paramref name="align"/> gives
     /// each line's paragraph alignment, its free space at the start and end of the text box and its width (pixels).
     /// </summary>
+    /// <summary>Presets with a single path (arches, circle), whose lines follow parallels of it and are not wrapped.</summary>
+    public static bool FollowsOnePath(GeometryDefinition definition) => definition.Paths.Count == 1;
+
     public static List<List<List<(double X, double Y)>>> Apply(GeometryDefinition definition, IEnumerable<Guide> adjustments,
         (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs, bool fromWordArt = false,
-        Func<int, (string Align, double Before, double After, double Width)>? align = null)
+        Func<int, (string Align, double Before, double After, double Width)>? align = null,
+        IReadOnlyList<(double Baseline, double Drop)>? lines = null)
     {
         var geometry = GeometryEvaluator.Evaluate(definition, box.W * Units.EmuPerPixel, box.H * Units.EmuPerPixel, adjustments);
         var paths = geometry.Paths
@@ -46,7 +50,7 @@ public static class TextWarp
         var result = glyphs.Select(g => g.Contours.Select(c => c.ToList()).ToList()).ToList();
         if (paths.Count == 0 || glyphs.Count == 0)
             return result;
-        var lines = glyphs.Max(g => g.Line) + 1;
+        var lineCount = glyphs.Max(g => g.Line) + 1;
 
         if (paths.Count % 2 == 0)
         {
@@ -54,7 +58,7 @@ public static class TextWarp
             var envelopes = paths.Count / 2;
             for (var e = 0; e < envelopes; e++)
             {
-                var members = Enumerable.Range(0, glyphs.Count).Where(i => Math.Min(envelopes - 1, glyphs[i].Line * envelopes / Math.Max(1, lines)) == e).ToList();
+                var members = Enumerable.Range(0, glyphs.Count).Where(i => Math.Min(envelopes - 1, glyphs[i].Line * envelopes / Math.Max(1, lineCount)) == e).ToList();
                 if (members.Count == 0) continue;
                 var (minX, minY, maxX, maxY) = Bounds(members.SelectMany(i => glyphs[i].Contours));
                 var (top, bottom) = (paths[2 * e], paths[2 * e + 1]);
@@ -76,12 +80,18 @@ public static class TextWarp
             return result;
         }
 
+        if (paths.Count == 1 && lines is { Count: > 0 } laidOut)
+        {
+            FollowPath(paths[0], box, glyphs, result, laidOut, fromWordArt, align);
+            return result;
+        }
+
         // One line per path, the middle path for a single line of a three-path preset.
-        for (var line = 0; line < lines; line++)
+        for (var line = 0; line < lineCount; line++)
         {
             var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == line).ToList();
             if (members.Count == 0) continue;
-            var path = paths[lines == 1 ? paths.Count / 2 : Math.Min(line, paths.Count - 1)];
+            var path = paths[lineCount == 1 ? paths.Count / 2 : Math.Min(line, paths.Count - 1)];
             var (minX, _, maxX, _) = Bounds(members.SelectMany(i => glyphs[i].Contours));
             var baseline = glyphs[members[0]].Baseline;
             // The line by its advances (its ink without the outer side bearings when unknown).
@@ -118,6 +128,66 @@ public static class TextWarp
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Lines on a single path (arches, circle), as measured in PowerPoint: every line follows a parallel of the path,
+    /// a line pitch apart, the lines lying on the side of the path away from the box's center (the rings of a circle
+    /// grow outwards with the last line innermost; under an arch down the first line lies on the path, the others
+    /// below it). The line next to the path has its baseline its drop below the path (0.79 em under the top of its
+    /// line box). Each line starts at its path's start or as aligned, insets not counted; glyphs stay rigid at their
+    /// size, and old WordArt (fromWordArt) scales all lines alike, so that the longest fills the path.
+    /// </summary>
+    static void FollowPath(Polyline path, (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs,
+        List<List<List<(double X, double Y)>>> result, IReadOnlyList<(double Baseline, double Drop)> lines, bool fromWordArt,
+        Func<int, (string Align, double Before, double After, double Width)>? align)
+    {
+        // Which side is up for the glyphs at the path's middle: away from the box's center or towards it.
+        var (middlePoint, middleTangent) = path.At(0.5);
+        var (cx, cy) = (box.L + box.W / 2, box.T + box.H / 2);
+        var outward = middleTangent.Y * (middlePoint.X - cx) - middleTangent.X * (middlePoint.Y - cy) >= 0;
+        var reference = outward ? lines.Count - 1 : 0;
+
+        var widths = Enumerable.Range(0, lines.Count).Select(i => Math.Max(1e-6, align?.Invoke(i).Width ?? 0)).ToList();
+        var scale = fromWordArt ? path.Length / widths.Max() : 1;
+        for (var line = 0; line < lines.Count; line++)
+        {
+            var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == line).ToList();
+            if (members.Count == 0)
+                continue;
+            // The line's parallel: a line pitch per line above the path (towards the glyphs' tops); glyphs are placed
+            // along it by arc length and then lowered by the drop (measured: the spacing of the glyphs is the spacing on
+            // the parallel, not on the lowered baseline).
+            var parallel = path.Offset((lines[reference].Baseline - lines[line].Baseline) * scale);
+            var drop = lines[reference].Drop * scale;
+            var (minX, _, maxX, _) = Bounds(members.SelectMany(i => glyphs[i].Contours));
+            var (mode, before, _, advance) = align?.Invoke(line) ?? ("l", minX - box.L, box.L + box.W - maxX, maxX - minX);
+            var width = Math.Max(1e-6, advance) * scale;
+            var lineStart = box.L + before;
+            var start = mode switch
+            {
+                "ctr" => (parallel.Length - width) / 2,
+                "r" => parallel.Length - width,
+                _ => 0,
+            };
+            var baseline = lines[line].Baseline;
+            foreach (var i in members)
+            {
+                var (glyphLeft, _, glyphRight, _) = Bounds(glyphs[i].Contours);
+                var middle = (glyphLeft + glyphRight) / 2;
+                var u = parallel.Length > 0 ? (start + (middle - lineStart) * scale) / parallel.Length : 0.5;
+                var (p, tangent) = parallel.At(u);
+                foreach (var contour in result[i])
+                {
+                    for (var k = 0; k < contour.Count; k++)
+                    {
+                        var along = (contour[k].X - middle) * scale;
+                        var height = (baseline - contour[k].Y) * scale - drop;
+                        contour[k] = (p.X + tangent.X * along + tangent.Y * height, p.Y + tangent.Y * along - tangent.X * height);
+                    }
+                }
+            }
+        }
     }
 
     static (double MinX, double MinY, double MaxX, double MaxY) Bounds(IEnumerable<List<(double X, double Y)>> contours)
@@ -238,6 +308,23 @@ public static class TextWarp
         }
 
         public double Length => lengths.Length > 0 ? lengths[^1] : 0;
+
+        /// <summary>The parallel curve <paramref name="distance"/> pixels to the left of the direction (up for text on it).</summary>
+        public Polyline Offset(double distance)
+        {
+            if (Math.Abs(distance) < 1e-9 || points.Count < 2)
+                return this;
+            var shifted = new List<(double X, double Y)>(points.Count);
+            for (var i = 0; i < points.Count; i++)
+            {
+                var (a, b) = (points[Math.Max(0, i - 1)], points[Math.Min(points.Count - 1, i + 1)]);
+                var (dx, dy) = (b.X - a.X, b.Y - a.Y);
+                var length = Math.Sqrt(dx * dx + dy * dy);
+                var (nx, ny) = length > 0 ? (dy / length, -dx / length) : (0.0, -1.0);
+                shifted.Add((points[i].X + nx * distance, points[i].Y + ny * distance));
+            }
+            return new Polyline(shifted);
+        }
 
         /// <summary>The point at a fraction of the length and the unit tangent there.</summary>
         public ((double X, double Y) Point, (double X, double Y) Tangent) At(double fraction)

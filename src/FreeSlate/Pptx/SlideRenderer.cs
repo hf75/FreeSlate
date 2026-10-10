@@ -565,7 +565,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append("</a>");
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
-            html.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide));
+            html.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide)).Append(MissingPicture(shape, part));
         if (solidBody)
         {
             html.Append("</div>");
@@ -803,6 +803,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// hidden until the player plays it. The p14:media part is preferred; trimming and fades travel as data
     /// attributes.
     /// </summary>
+    /// <summary>
+    /// PowerPoint's sign for a picture without its picture (an a:blip naming none, or a part the package lacks): a
+    /// 1-pixel grey frame on the picture's edge with the broken-picture icon and "The picture can't be displayed." at
+    /// its top left (measured: #6D6D6D, the icon 6 pixels in). PowerPoint words it in Office's language; the player
+    /// words it in the viewer's.
+    /// </summary>
+    string MissingPicture(XElement pic, string part)
+    {
+        var blip = pic.Element(Ns.P + "blipFill")?.Element(Ns.A + "blip");
+        var id = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value
+                 ?? blip?.Attribute(Ns.R + "embed")?.Value ?? blip?.Attribute(Ns.R + "link")?.Value;
+        var package = slide.Presentation.Package;
+        if (id != null && package.Relationship(part, id) is { } rel && (rel.External || package.Exists(rel.Target)))
+            return "";
+        // Media have content of their own.
+        var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");
+        if (nvPr != null && (nvPr.Elements().Any(e => e.Name.LocalName is "videoFile" or "audioFile" or "wavAudioFile" or "quickTimeFile")
+                             || nvPr.Descendants(P14 + "media").Any()))
+            return "";
+        return "<div class=\"fs-nopic\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 13 13\"><rect x=\".5\" y=\".5\" width=\"12\" height=\"12\" fill=\"#fff\" stroke=\"#808080\"/>" +
+               "<path d=\"M4 4l5 5M9 4l-5 5\" stroke=\"#e00000\" stroke-width=\"2\"/></svg><span>The picture can't be displayed.</span></div>";
+    }
+
     string Media(XElement pic, string part)
     {
         var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");
