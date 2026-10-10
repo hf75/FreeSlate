@@ -198,6 +198,18 @@ public static class Engine
                 Constraints.EvaluateOwn(child, pins);
             }
             first = false;
+            // A child of the root taller than the diagram is as high as it, a square one keeping its shape, and the values
+            // referring to it follow (measured: target3's outer circle, 0.6 of the width, no taller than the diagram).
+            if (node.Parent == null && node.H > 0
+                && child.Values.TryGetValue("h", out var tall) && double.IsFinite(tall) && tall > node.H + 1e-9)
+            {
+                var square = child.Values.TryGetValue("w", out var wide) && Math.Abs(wide - tall) < 1e-6;
+                pins.Set(child, "h", node.H);
+                if (square)
+                    pins.Set(child, "w", node.H);
+                Constraints.EvaluateList(node, pins);
+                Constraints.EvaluateOwn(child, pins);
+            }
             var (cx, cy, cw, ch) = KeepRatioBounds(node, child, ChildRect(child, node.W, node.H));
             Place(child, node.X + cx, node.Y + cy, cw, ch, pins);
         }

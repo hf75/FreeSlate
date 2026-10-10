@@ -451,7 +451,14 @@ public static class Constraints
     static double? Referenced(LayoutNode reference, string type, LayoutNode owner)
     {
         if (reference.Placed && reference != owner && type is "w" or "h")
-            return type == "w" ? reference.W : reference.H;
+        {
+            // Without the node's own offset (measured: target3's rectangles, as high as their circles and offset like
+            // them, offset once).
+            var size = type == "w" ? reference.W : reference.H;
+            if (reference.Values.TryGetValue(type + "Off", out var offset) && double.IsFinite(offset))
+                size -= offset;
+            return size;
+        }
         // An edge or center of a placed node where its values give none: its box in its parent's (measured: venn2's
         // inner circles centered on the outer one and ending at its bottom, which only its size places).
         if (reference.Placed && reference != owner && reference.Parent is { } parent
