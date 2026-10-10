@@ -1973,7 +1973,8 @@ areas:
           center; placed again once laid out where they join nodes outside their parent; connDist made equal
           at the shortest; curved ones with a diameter along
           their circle between their named points, a diameter of connDist following it, negative ones
-          counterclockwise; stems alone 0.6 of the height without heads; lines without a height having none).
+          counterclockwise, one from a node back to itself in a cycle closing the ring short of the node by
+          0.09°; stems alone 0.6 of the height without heads; lines without a height having none).
           Shapes turned by their rot take the size whose turned bounds are their box; a composite root is
           centered where its drawing fits the frame with its own connectors. Text fitting: every line its
           font's height times the line spacing, paragraphs apart by their space after, within the geometry's
@@ -1990,8 +1991,8 @@ areas:
           rendered with the drawings removed 94.1 % (38.5 % before), all color definitions and quick styles on
           a process 97.9 %. Missing: BendingPictureBlocks' pictures overhanging their composites, cycle3's
           long curves, NameandTitleOrganizationalChart's names narrower than their constraint,
-          HorizontalActionList's heights, a root scaled down to fit (AscendingPictureAccentProcess), radial6
-          with one node.
+          HorizontalActionList's heights, a root scaled down to fit (AscendingPictureAccentProcess), radial2's
+          and radial6's rings (1 to 2 % larger).
       - id: smartart.styles
         title: SmartArt styles and color definitions
         elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,

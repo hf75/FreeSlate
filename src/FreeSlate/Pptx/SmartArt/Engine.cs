@@ -1634,6 +1634,11 @@ public static class Engine
     static void Connector(LayoutNode connector, Pins pins)
     {
         var (start, end) = Ends(connector);
+        if (start != null && start == end && connector.Param("connRout") is "curve" or "longCurve" && connector.Parent is { AlgorithmType: "cycle" } ring)
+        {
+            Ring(connector, start, ring, pins);
+            return;
+        }
         if (start == null || end == null || start == end)
             return;
         if (connector.Param("connRout") is "curve" or "longCurve" && connector.Values.ContainsKey("arcR") && Value(connector, "arcR") > 0)
@@ -1929,6 +1934,31 @@ public static class Engine
         connector.Values["arcStart"] = begin;
         connector.Values["arcSweep"] = sweep;
         connector.Values["arcHead"] = Math.Min(head, sweep);
+        connector.Values["arcThickness"] = thickness;
+    }
+
+    /// <summary>
+    /// A curved connector from a node back to itself in a cycle: the whole circle through the node around the cycle's
+    /// middle, short of the node by 0.09° at each end (measured: radial6 with one node, its band from 0.09° to 359.91°).
+    /// </summary>
+    static void Ring(LayoutNode connector, LayoutNode node, LayoutNode ring, Pins pins)
+    {
+        var (cx, cy) = (ring.X + ring.W / 2, ring.Y + ring.H / 2);
+        var (nx, ny) = (node.X + node.W / 2, node.Y + node.H / 2);
+        var r = Math.Sqrt((nx - cx) * (nx - cx) + (ny - cy) * (ny - cy));
+        if (r < 1e-9)
+            return;
+        var way = Finite(connector, "diam") is < 0 ? -1 : 1;
+        const double Gap = 0.0909;
+        var angle = Math.Atan2(ny - cy, nx - cx) * 180 / Math.PI;
+        var thickness = Value(connector, "h") * connector.Scale;
+        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : 0.3) * thickness;
+        PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
+        connector.Rotation = 0;
+        (connector.Values["arcX"], connector.Values["arcY"], connector.Values["arcR"], connector.Values["arcDir"]) = (cx, cy, r, way);
+        connector.Values["arcStart"] = angle + way * Gap;
+        connector.Values["arcSweep"] = 360 - 2 * Gap;
+        connector.Values["arcHead"] = r > 0 ? Math.Min(0.5 * thickness / r * 180 / Math.PI, 360 - 2 * Gap) : 0;
         connector.Values["arcThickness"] = thickness;
     }
 
