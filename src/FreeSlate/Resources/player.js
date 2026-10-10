@@ -148,7 +148,7 @@
         visible: !hidden, opacity: 1, x: this.base.x, y: this.base.y, w: this.base.w, h: this.base.h,
         rot: 0, sx: 1, sy: 1, mx: 0, my: 0, shx: 0, shy: 0, clip: null, fill: null, color: null, stroke: null, fontSize: 1,
         weight: null, fontStyle: null, underline: null, family: null, fillOn: false, strokeOn: true, fillOpacity: 1,
-        strokeOpacity: 1, strokeWidth: null, gray: false,
+        strokeOpacity: 1, strokeWidth: null, gray: false, model: null,
       };
     }
 
@@ -200,6 +200,21 @@
         this.renderTextScale(sized ? 1 : s.fontSize || 1);
       }
       this.renderPaint(s);
+      this.renderModel(s.model);
+    }
+
+    /**
+     * Shows a 3D model's embedded animation (catalog: animation.pictures) at its state, on the model's canvas over
+     * PowerPoint's picture of it (the poster frame), which shows again without one.
+     */
+    renderModel(model) {
+      const key = model ? `${model.anim}|${model.value}` : '';
+      if (key === (this.modelKey || '')) return;
+      this.modelKey = key;
+      const canvas = this.svg ? null : this.el.querySelector('canvas.fs-model');
+      if (!canvas) return;
+      if (model) drawModel(canvas, model.anim, model.value);
+      else { canvas.classList.remove('playing'); this.el.classList.remove('fs-modeled'); }
     }
 
     /**
@@ -350,7 +365,45 @@
       }
       this.renderMask(null);
       this.renderPaint({ fill: null, stroke: null, color: null });
+      this.renderModel(null);
     }
+  }
+
+  /**
+   * The 3D models of the slides (catalog: picture.model3d), by canvas: read and loaded when first drawn, by the WebGL
+   * renderer (model3d.js) that documents with models carry. A model's embedded animations play by their number
+   * (attribute embeddedN: animation N - 1 of the glTF file) from 0 to 1 over its whole length (measured).
+   */
+  const models = new WeakMap();
+  function drawModel(canvas, anim, value) {
+    if (!window.FreeSlateModel3D) return;
+    let entry = models.get(canvas);
+    if (!entry) {
+      entry = { model: null, pose: null };
+      models.set(canvas, entry);
+      try {
+        const raw = atob(canvas.dataset.glb || ''), bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        const model = new window.FreeSlateModel3D.Model(canvas, bytes, JSON.parse(canvas.dataset.model || '{}'));
+        model.load().then(() => { entry.model = model; if (entry.pose) paintModel(canvas, entry); }, () => {});
+      } catch { return; }
+    }
+    entry.pose = { anim, value };
+    if (entry.model) paintModel(canvas, entry);
+  }
+  function paintModel(canvas, entry) {
+    const animations = entry.model.gltf.json.animations || [];
+    const { anim, value } = entry.pose;
+    if (anim < 0 || anim >= animations.length) return;
+    // The canvas draws as many pixels as it shows (the show scales the slide).
+    const box = canvas.getBoundingClientRect(), ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.min(4096, Math.round(box.width * ratio))), height = Math.max(1, Math.min(4096, Math.round(box.height * ratio)));
+    if (Math.abs(canvas.width - width) > 2 || Math.abs(canvas.height - height) > 2) { canvas.width = width; canvas.height = height; }
+    const clip = entry.model.clip(anim);
+    entry.model.draw(clip.index, Math.min(1, Math.max(0, value)) * clip.length);
+    // The model replaces PowerPoint's picture of it while it plays.
+    canvas.classList.add('playing');
+    canvas.parentElement.classList.add('fs-modeled');
   }
 
   function invert(m) {
@@ -734,7 +787,7 @@
     return p;
   }
 
-  const attributeKey = attribute => ({
+  const attributeKey = attribute => /^embedded\d+$/.test(attribute) ? 'model' : ({
     ppt_x: 'x', ppt_y: 'y', ppt_w: 'w', ppt_h: 'h', r: 'rot', 'style.rotation': 'rot', 'style.opacity': 'opacity',
     'style.visibility': 'visible', fillcolor: 'fill', 'fill.color': 'fill', 'stroke.color': 'stroke', 'style.color': 'color',
     'style.fontSize': 'fontSize', xshear: 'shx', yshear: 'shy', 'style.fontWeight': 'weight', 'style.fontStyle': 'fontStyle',
@@ -943,6 +996,7 @@
     else if (key === 'fontSize') state.fontSize = Number(value) || 1;
     else if (key === 'weight' || key === 'fontStyle' || key === 'underline' || key === 'family') state[key] = String(value);
     else if (key === 'fillOn' || key === 'strokeOn' || key === 'gray') state[key] = value === true || value === 'true';
+    else if (key === 'model') state.model = { anim: Number(attribute.slice(8)) - 1, value: Number(value) };
     else state[key] = numeric ? Number(value) : Number(formula(value)(vars));
   }
 

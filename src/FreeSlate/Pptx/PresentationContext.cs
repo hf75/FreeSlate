@@ -66,6 +66,9 @@ public sealed class PresentationContext : IDisposable
     public XElement? DefaultTextStyle { get; }
     public List<string> SlideParts { get; } = [];
 
+    /// <summary>Whether a slide has a 3D model, for which the document gets the WebGL renderer (catalog: picture.model3d).</summary>
+    public bool HasModels { get; set; }
+
     /// <summary>Font families of text the browser draws itself (not as glyph outlines), for font embedding.</summary>
     public HashSet<string> UsedFonts { get; } = new(StringComparer.OrdinalIgnoreCase);
 

@@ -51,7 +51,10 @@ public static class MarkupCompatibility
                 continue;
             }
             if (chosen.Name == Mc + "Fallback")
+            {
                 AnnotateZooms(alternate, chosen);
+                AnnotateModels(alternate, chosen);
+            }
             alternate.ReplaceWith(chosen.Elements());
         }
     }
@@ -79,6 +82,22 @@ public static class MarkupCompatibility
             if ((string?)properties?.Attribute("transitionDur") is { Length: > 0 } duration)
                 pictures[i].SetAttributeValue(Annotation + "zoomDur", duration);
         }
+    }
+
+    /// <summary>
+    /// 3D models (catalog: picture.model3d, animation.pictures) fall back to PowerPoint's picture of them: each
+    /// picture, in order, gets a copy of its model (am3d:model3d: the model file, the camera, the transform, the lights
+    /// and the embedded animation), which the player draws while the slide's timing animates the model.
+    /// </summary>
+    static void AnnotateModels(XElement alternate, XElement fallback)
+    {
+        XNamespace am3d = "http://schemas.microsoft.com/office/drawing/2017/model3d";
+        var models = alternate.Elements(Mc + "Choice").Descendants(am3d + "model3d").ToList();
+        if (models.Count == 0)
+            return;
+        var pictures = fallback.Descendants().Where(e => e.Name.LocalName == "pic").ToList();
+        for (var i = 0; i < models.Count && i < pictures.Count; i++)
+            pictures[i].Add(new XElement(Annotation + "model3d", new XElement(models[i])));
     }
 
     /// <summary>

@@ -565,7 +565,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append("</a>");
         html.Append("</svg>");
         if (shape.Name.LocalName == "pic")
-            html.Append(Media(shape, part));
+            html.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide));
         if (solidBody)
         {
             html.Append("</div>");

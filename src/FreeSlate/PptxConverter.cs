@@ -34,6 +34,9 @@ public static class PptxConverter
         .glyphs{position:absolute;left:0;top:0}
         .fs-media{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;visibility:hidden}
         .fs-media.playing{visibility:visible}
+        .fs-model{position:absolute;left:0;top:0;width:100%;height:100%;visibility:hidden;pointer-events:none}
+        .fs-model.playing{visibility:visible}
+        .fs-modeled>svg{visibility:hidden}
         .fs-play{position:fixed;right:16px;bottom:16px;width:44px;height:44px;border:0;border-radius:50%;background:#c43e1c;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:10}
         body:has(.slide:target) .fs-play{display:none}
         .fs-show{position:fixed;inset:0;background:#000;z-index:2147483647;overflow:hidden;user-select:none}
@@ -65,13 +68,18 @@ public static class PptxConverter
         """;
 
     /// <summary>The slide show player (catalog: interactivity.player), embedded in every document.</summary>
-    static readonly Lazy<string> Player = new(() =>
+    static readonly Lazy<string> Player = new(() => Script("player.js"));
+
+    /// <summary>The glTF reader and WebGL renderer of 3D models (catalog: picture.model3d), in documents that have one.</summary>
+    static readonly Lazy<string> Models = new(() => Script("model3d.js"));
+
+    static string Script(string name)
     {
-        using var stream = typeof(PptxConverter).Assembly.GetManifestResourceStream("player.js")
-                           ?? throw new InvalidOperationException("Missing resource player.js");
+        using var stream = typeof(PptxConverter).Assembly.GetManifestResourceStream(name)
+                           ?? throw new InvalidOperationException("Missing resource " + name);
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd().Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase);
-    });
+    }
 
     /// <summary>The HTML document of a presentation; a password-protected one needs its password.</summary>
     /// <param name="embeddedFontsFirst">
@@ -146,6 +154,8 @@ public static class PptxConverter
         html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"deck\">\n").Append(slides).Append("</main>\n");
         html.Append("<script type=\"application/json\" id=\"freeslate-data\">").Append(deck.Json(data)).Append("</script>\n");
+        if (context.HasModels)
+            html.Append("<script>").Append(Models.Value).Append("</script>\n");
         html.Append("<script>").Append(Player.Value).Append("</script>\n");
         html.Append("</body>\n</html>\n");
         return html.ToString();
