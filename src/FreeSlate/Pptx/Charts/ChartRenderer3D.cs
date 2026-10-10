@@ -99,9 +99,17 @@ public sealed partial class ChartRenderer
         public override (bool FromRight, bool FromAbove) Side => (Sx >= 0, Sy >= 0);
     }
 
-    /// <summary>The perspective view of charts without right-angle axes: the camera fits the box enlarged by 2.5 %.</summary>
+    /// <summary>
+    /// The perspective view of charts without right-angle axes. The camera fits the box each way on its own: its
+    /// place across is where the box centred across fills the plot area's width, its place up and down where the box
+    /// centred that way fills the height, and it backs off to 1.032 times the farther of both distances, so the box is
+    /// off centre the way it does not fill (measured on 40 empty column boxes with colored walls, standard and
+    /// clustered, rotations 10–80°, elevations 5–45°, perspectives 20–100, depths 40–400 % and seven plot areas: the
+    /// corners within 1–5 px, where centring both ways was up to 77 px off).
+    /// </summary>
     sealed class PerspectiveBox(View3D view) : Projection3D
     {
+        const double BackOff = 1.032;
         readonly Perspective camera = new(view.RotX, view.RotY);
         double cx, cy, cz;
 
@@ -114,8 +122,8 @@ public sealed partial class ChartRenderer
             foreach (var x in new[] { -hx, hx })
                 foreach (var y in new[] { -hy, hy })
                     foreach (var z in new[] { -hz, hz })
-                        volume.Add(camera.View(x * 1.025, y * 1.025, z * 1.025));
-            camera.Fit(volume, plot, view.Perspective / 2);
+                        volume.Add(camera.View(x, y, z));
+            camera.Fit(volume, plot, view.Perspective / 2, eachWay: true, BackOff);
         }
 
         public override (double X, double Y) Map(double x, double y, double z) => camera.Map(x - cx, y - cy, z - cz);
@@ -266,11 +274,17 @@ public sealed partial class ChartRenderer
         double Thickness(string wall) => (ChartModel.Number(model.Chart.Element(Ns.C + wall), "thickness") ?? 0) / 100;
         var (fromRight, fromAbove) = (Math.Sin(view.RotY * Math.PI / 180) >= 0, Math.Sin(view.RotX * Math.PI / 180) >= 0);
         var slabs = default(Slabs);
+        // A manual layout places the box's plot area itself (layoutTarget inner) or the area its labels share with it
+        // (measured: an inner layout 7 pt from the left and top, where COM reports the automatic plot area, moves the
+        // box 4 pt up and left, the automatic one lying 11 pt inside the chart on every side).
+        var manual = ManualPlot();
+        if (ManualOuterPlot() is { } placed)
+            outer = placed;
         var plot = outer;
         for (var pass = 0; pass < 3; pass++)
         {
             // The labels take their room from the plot area like on flat charts; the box fills the rest.
-            plot = Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout, !frame.Between);
+            plot = manual ?? Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout, !frame.Between);
             var ratio = view.HeightPercent is { } hp ? hp / 100 : plot.H / Math.Max(1, plot.W);
             // Areas with their categories on the box's edges span n - 1 category widths of n: the box keeps the
             // height of n - 1 (measured on 3D stacked areas of 5 and 8 categories, on the ticks and between them).
@@ -1067,7 +1081,7 @@ public sealed partial class ChartRenderer
             var paintAttributes = paint.Fill(shaded, width * PxPerPt, height * PxPerPt, defs);
             var seam = shaded is SolidFill s ? $" stroke=\"{s.Color.ToHex()}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"" + (s.Color.A < 0.999 ? $" stroke-opacity=\"{Units.Css4(s.Color.A)}\"" : "") : "";
             var face = $"<path d=\"{d}\"{paintAttributes}{(outline is { Visible: true } ? paint.Stroke(outline, 0, 0, defs) : seam)}/>";
-            if (shade < 1 && shaded is not SolidFill)
+            if (shade < 1 && shaded is not SolidFill and not NoFill)
                 face += $"<path d=\"{d}\" fill=\"#000\" fill-opacity=\"{Units.Css4(1 - shade)}\"/>";
             return face;
         }

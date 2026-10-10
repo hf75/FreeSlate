@@ -1764,9 +1764,17 @@ areas:
           the edges of area and surface charts stay within the outer edges and the series axis keeps a
           category label gap (measured on single boxes with colored walls at 20 rotations and 22
           category/series combinations, and with local/area3d, area3d3 and inset3d: 99.4 to 99.7 %). Without
-          right-angle axes a perspective camera looks at the plot area's centre with a field of view of
-          perspective/2 degrees spanning its height, the scene turned by rotY then rotX, and the geometry
-          enlarged by 2.5 % is centred and fills the plot area. One light shades everything (0.4 ambient plus
+          right-angle axes a perspective camera looks along the plot area's centre with a field of view of
+          perspective/2 degrees spanning its height, the scene turned by rotY then rotX, and the box is fitted
+          each way on its own: the camera's place across is where the box centred across fills the plot area's
+          width, its place up and down where the box centred that way fills the height, and it backs off along
+          its axis to 1.032 times the farther of both distances, keeping both places, so the box is off centre
+          the way it does not fill (rotY 40°: 28 px left of centre, 60°: 77 px on a 1037 px wide plot area).
+          The automatic plot area of 3D charts lies 11 pt inside the chart on every side (COM reports 7 pt
+          left and top); a manual inner layout places the box's plot area itself. Measured with local/persp5,
+          persp6m and persp7 (40 empty boxes with colored walls, standard and clustered, rotY 10–80°, rotX
+          5–45°, perspective 20–100, depth 40–400 %, seven plot areas): corners within 1 to 5 px, the decks at
+          98.5 to 99.5 %. One light shades everything (0.4 ambient plus
           n · (0.239, 0.357, −0.6)): fronts 1.0, tops and the floor 0.757, right sides and the side wall
           0.639, sloped area and line tops in between; cylinders and cones get measured gradients (1.07 − 0.47
           t², 1.13 − 0.48 t²), pyramids flat faces, cones and pyramids taper to the bar's end, the stack's end
@@ -1782,17 +1790,11 @@ areas:
           (c:thickness, a percentage of the box's smaller side: 10 % of a 0.82 high box reach 0.083 of its
           width) are slabs beside, below and behind the box that take their room in the fit, carry the labels
           on their outer faces and the gridlines across their front and end faces (generated/charts-data slide
-          6: 94.8 %, 57.7 % before). Checked with generated/charts-3d (88 %, 18 slides). Not yet: the
-          placement of clustered and stacked bars in perspective. Measured with local/persp5 (18 variants of
-          rotY, rotX, perspective, depth and plot size, walls colored, bars hidden) and persp6: the camera's
-          orientation, its field of view (perspective/2) and the box (height by the plot area's ratio, depth
-          by depthPercent) are as described within 1 to 2 px, but PowerPoint shifts the camera sideways
-          further than centring the box needs, so the box lies left of the plot area's centre (rotY 40°: 28
-          px, 60°: 77 px on a 1037 px wide plot area); the shift grows with the perspective, the plot area's
-          width/height ratio and a shallower box, vanishes for perspective 0 and for boxes deeper than about
-          half their width (standard charts), and is the same with a manual inner layout. A fixed larger
-          fitting volume, a fixed pivot, a one-step centring and a different projection for the fit do not
-          reproduce it.
+          6: 94.8 %, 57.7 % before). Bars without fill and line draw nothing, their faces unshaded. Checked
+          with generated/charts-3d (92.8 %, 18 slides; 88 % before the perspective fit) and local/persp to
+          persp4 (97.0 to 99.5 %). Not yet: 3D surfaces' facets are lit darker than PowerPoint's and fold
+          along other diagonals where the surface turns steeply, and wireframes' contour lines differ
+          (generated/charts-3d slides 12 and 13: 84.5 and 76.3 %).
 
       - id: chart.analysis
         title: Trendlines and error bars

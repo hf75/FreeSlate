@@ -54,61 +54,96 @@ public sealed partial class ChartRenderer
 
         /// <summary>
         /// Places the camera: the view-space points <paramref name="volume"/> (already enlarged) are projected centred in
-        /// the plot box and as large as it allows; <paramref name="fieldOfView"/> in degrees (at least 0.1).
+        /// the plot box and as large as it allows; <paramref name="fieldOfView"/> in degrees (at least 0.1). With
+        /// <paramref name="eachWay"/> the two ways are fitted on their own: the camera's place across is where the
+        /// projection centred across fills the box's width, its place up and down where the projection centred up and
+        /// down fills the height, and the camera backs off along its axis, keeping both places, to the farther of the
+        /// two distances times <paramref name="backOff"/>; the projection is then off centre the way it does not fill.
         /// </summary>
-        public void Fit(IReadOnlyList<(double X, double Y, double Z)> volume, Box plot, double fieldOfView)
+        public void Fit(IReadOnlyList<(double X, double Y, double Z)> volume, Box plot, double fieldOfView, bool eachWay = false, double backOff = 1)
         {
             centerX = plot.X + plot.W / 2;
             centerY = plot.Y + plot.H / 2;
             focal = plot.H / 2 / Math.Tan(Math.Max(0.1, fieldOfView) * Math.PI / 360);
             var nearest = volume.Min(v => v.Z);
             var limit = nearest < 0 ? 0.98 / -nearest : 1e6;
-            (double W, double H, double Cx, double Cy) Extent()
+            // The projection's extent and centre, and how fast the centre moves with the offsets: a point moves
+            // focal / depth per unit, the centre by the mean of its two outermost points.
+            (double W, double H, double Cx, double Cy, double Rx, double Ry) Extent()
             {
                 double x0 = double.MaxValue, x1 = double.MinValue, y0 = double.MaxValue, y1 = double.MinValue;
+                double dx0 = 1, dx1 = 1, dy0 = 1, dy1 = 1;
                 foreach (var v in volume)
                 {
+                    var depth = Math.Max(1e-6, scale * v.Z + 1);
                     var (px, py) = Project(v);
-                    (x0, x1, y0, y1) = (Math.Min(x0, px), Math.Max(x1, px), Math.Min(y0, py), Math.Max(y1, py));
+                    if (px < x0) (x0, dx0) = (px, depth);
+                    if (px > x1) (x1, dx1) = (px, depth);
+                    if (py < y0) (y0, dy0) = (py, depth);
+                    if (py > y1) (y1, dy1) = (py, depth);
                 }
-                return (x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2);
+                return (x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2, focal * (1 / dx0 + 1 / dx1) / 2, focal * (1 / dy0 + 1 / dy1) / 2);
             }
-            void Centre()
+            void Centre(bool across = true, bool up = true)
             {
-                // The projection's centre moves almost linearly with the offsets: a few corrections centre it.
+                // Newton steps: near the camera the centre moves much faster than focal per unit.
                 for (var i = 0; i < 40; i++)
                 {
-                    var (_, _, cx, cy) = Extent();
-                    if (Math.Abs(cx - centerX) < 1e-4 && Math.Abs(cy - centerY) < 1e-4)
+                    var (_, _, cx, cy, rx, ry) = Extent();
+                    var (ex, ey) = (across ? cx - centerX : 0, up ? cy - centerY : 0);
+                    if (Math.Abs(ex) < 1e-4 && Math.Abs(ey) < 1e-4)
                         break;
-                    offsetX -= (cx - centerX) / focal;
-                    offsetY += (cy - centerY) / focal;
+                    offsetX -= ex / rx;
+                    offsetY += ey / ry;
                 }
             }
-            double Fill()
+            // The fill grows with the scale (the camera comes closer): bisect for the largest scale filling the box.
+            void Bisect(Func<double> fill, double hi)
             {
-                Centre();
-                var (w, h, _, _) = Extent();
-                return Math.Max(w / plot.W, h / plot.H);
-            }
-            // The fill grows with the scale (the camera comes closer): bisect for a projection filling the box.
-            double lo = 0, hi = Math.Min(limit, 1);
-            scale = hi;
-            while (Fill() < 1 && hi < limit)
-            {
-                lo = hi;
-                hi = Math.Min(limit, hi * 2);
+                double lo = 0;
                 scale = hi;
+                while (fill() < 1 && hi < limit)
+                {
+                    lo = hi;
+                    hi = Math.Min(limit, hi * 2);
+                    scale = hi;
+                }
+                for (var i = 0; i < 60; i++)
+                {
+                    scale = (lo + hi) / 2;
+                    if (fill() > 1) hi = scale; else lo = scale;
+                }
+                scale = lo > 0 ? lo : hi;
+                fill();
             }
-            for (var i = 0; i < 60; i++)
+            if (!eachWay)
             {
-                scale = (lo + hi) / 2;
-                (offsetX, offsetY) = (0, 0);
-                if (Fill() > 1) hi = scale; else lo = scale;
+                Bisect(() =>
+                {
+                    (offsetX, offsetY) = (0, 0);
+                    Centre();
+                    var (w, h, _, _, _, _) = Extent();
+                    return Math.Max(w / plot.W, h / plot.H);
+                }, Math.Min(limit, 1));
+                return;
             }
-            scale = lo > 0 ? lo : hi;
-            (offsetX, offsetY) = (0, 0);
-            Fill();
+            // The width does not depend on the place up and down, nor the height on the place across.
+            Bisect(() =>
+            {
+                offsetX = 0;
+                Centre(up: false);
+                return Extent().W / plot.W;
+            }, Math.Min(limit, 1));
+            var (across, wide) = (offsetX / scale, scale);
+            Bisect(() =>
+            {
+                offsetY = 0;
+                Centre(across: false);
+                return Extent().H / plot.H;
+            }, Math.Min(limit, 1));
+            var (up, tall) = (offsetY / scale, scale);
+            scale = Math.Min(wide, tall) / backOff;
+            (offsetX, offsetY) = (across * scale, up * scale);
         }
     }
 
