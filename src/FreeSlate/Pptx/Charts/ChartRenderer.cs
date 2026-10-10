@@ -1497,17 +1497,32 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public required TextStyle Style { get; init; }
         public required AxisLayout Category { get; init; }
         public required List<(ChartGroup Group, ChartSeries Series)> Rows { get; init; }
+        /// <summary>The height of a row of one line.</summary>
         public required double RowHeight { get; init; }
+        public required double LineHeight { get; init; }
+        /// <summary>Every series name broken into the lines of the name column.</summary>
+        public required List<List<string>> Names { get; init; }
         public required double NameWidth { get; init; }
         public required bool Keys { get; init; }
+        /// <summary>The category names of the header row broken into the width of their columns (see FitDataTable).</summary>
+        public List<List<string>> Header { get; set; } = [];
 
-        /// <summary>The header row with the categories and one row per series.</summary>
-        public double Height => RowHeight * (Rows.Count + 1);
+        public double HeaderHeight => RowHeight + (Header.Count == 0 ? 0 : Header.Max(h => h.Count) - 1) * LineHeight;
+
+        public double SeriesHeight(int row) => RowHeight + (Names[row].Count - 1) * LineHeight;
+
+        /// <summary>The header row and one row per series, each taller by a line for every further line of its names.</summary>
+        public double Height => HeaderHeight + Enumerable.Range(0, Rows.Count).Sum(SeriesHeight);
     }
+
+    /// <summary>The padding between a data table cell's border and its text, also the gap after the names without keys.</summary>
+    const double DataTablePadding = 3.91;
 
     /// <summary>
     /// The data table of c:dTable, when the categories run along the bottom. Measured: rows are L + 0.0925 s + 2.4 pt
-    /// high; the name column holds the widest series name plus 1.0975 s + 2.89 pt (key and padding).
+    /// high; the name column holds the widest series name plus 1.0975 s + 2.89 pt (key and padding), at most a third
+    /// of the chart's width: longer names break between words, every further line making their row a line taller
+    /// (local/dtable, dtable2: chart widths of 400 to 900 pt).
     /// </summary>
     DataTableLayout? BuildDataTable(List<ChartGroup> groups, List<AxisLayout> axes)
     {
@@ -1518,7 +1533,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var rows = groups.Where(g => g.AxisIds.Contains(category.Axis.Id) && !g.IsScatter).SelectMany(g => g.Series.Select(s => (g, s))).ToList();
         var keys = ChartModel.Flag(element, "showKeys", false);
         var lineHeight = LineHeight(style);
-        var names = rows.Count == 0 ? 0 : rows.Max(r => Width(r.s.Name, style));
+        var padding = keys ? 1.0975 * style.Size + 2.89 : DataTablePadding;
+        var names = rows.Select(r => WrapWords(r.s.Name, style, width / 3 - padding)).ToList();
+        var widest = names.Count == 0 ? 0 : names.Max(lines => lines.Max(l => Width(l, style)));
         category.InTable = true;
         return new DataTableLayout
         {
@@ -1527,18 +1544,60 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             Category = category,
             Rows = rows,
             RowHeight = lineHeight + 0.0925 * style.Size + 2.4,
-            NameWidth = names + (keys ? 1.0975 * style.Size + 2.89 : 0.26 * lineHeight + 2),
+            LineHeight = lineHeight,
+            Names = names,
+            NameWidth = widest + padding,
             Keys = keys,
         };
     }
 
+    /// <summary>
+    /// Breaks the header row's category names into the width of their columns, the plot area's width over the
+    /// categories less 2.7 pt on each side (measured: a 57.4 pt name stays on one line in a 63.1 pt column and
+    /// breaks in a 62.4 pt one, so the padding lies between 2.53 and 2.87 pt).
+    /// </summary>
+    void FitDataTable(DataTableLayout table, double plotWidth)
+    {
+        var column = plotWidth / Math.Max(1, table.Category.Categories) - 2 * 2.7;
+        table.Header = table.Category.Labels.Take(table.Category.Categories).Select(l => WrapWords(l, table.Style, column)).ToList();
+    }
+
+    /// <summary>Text broken between words into lines of at most the given width (a longer word keeps a line of its own).</summary>
+    List<string> WrapWords(string text, TextStyle style, double limit)
+    {
+        var lines = new List<string>();
+        foreach (var paragraph in text.Split('\n'))
+        {
+            var line = "";
+            foreach (var word in paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var candidate = line.Length == 0 ? word : line + " " + word;
+                if (line.Length > 0 && Width(candidate, style) > limit)
+                {
+                    lines.Add(line);
+                    line = word;
+                }
+                else
+                    line = candidate;
+            }
+            lines.Add(line);
+        }
+        return lines;
+    }
+
     string DrawDataTable(DataTableLayout table, Box plot)
     {
+        if (table.Header.Count == 0)
+            FitDataTable(table, plot.W);
         var svg = new StringBuilder();
         var style = table.Style;
-        var lineHeight = LineHeight(style);
+        var lineHeight = table.LineHeight;
         var category = table.Category;
-        var (top, rowsTop, bottom) = (plot.Bottom, plot.Bottom + table.RowHeight, plot.Bottom + table.Height);
+        // Row edges: the header row, then the series rows.
+        var edges = new List<double> { plot.Bottom, plot.Bottom + table.HeaderHeight };
+        for (var r = 0; r < table.Rows.Count; r++)
+            edges.Add(edges[^1] + table.SeriesHeight(r));
+        var (top, rowsTop, bottom) = (edges[0], edges[1], edges[^1]);
         var (left, right) = (plot.X - table.NameWidth, plot.Right);
         var line = table.Element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
             ? OutlineReader.Merge([(ln, colors)])
@@ -1557,7 +1616,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             if (ChartModel.Flag(table.Element, "showHorzBorder", false))
             {
                 for (var r = 1; r <= table.Rows.Count; r++)
-                    svg.Append(GridLine(line, left, top + r * table.RowHeight, right, top + r * table.RowHeight));
+                    svg.Append(GridLine(line, left, edges[r], right, edges[r]));
             }
             if (ChartModel.Flag(table.Element, "showVertBorder", false))
             {
@@ -1566,32 +1625,39 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
         }
 
-        // Category names in the header row, then a row per series: key and name, values centered under their category.
-        double RowCenter(int row) => top + (row + 0.5) * table.RowHeight;
-        for (var i = 0; i < category.Categories && i < category.Labels.Count; i++)
+        // The baseline of line k of n lines centered in a row.
+        double Baseline(int row, int k, int n) => CenteredBaseline(style, (edges[row] + edges[row + 1]) / 2 + (k - (n - 1) / 2.0) * lineHeight);
+        // Category names in the header row (each line centered in its column), then a row per series: key and name
+        // (further lines of a long name centered under its widest line), values centered in their cells.
+        for (var i = 0; i < category.Categories && i < table.Header.Count; i++)
         {
-            var label = category.Labels[i];
             var center = (category.Boundary(i) + category.Boundary(i + 1)) / 2;
-            svg.Append(text.Label(label, style, center - Width(label, style) / 2, CenteredBaseline(style, RowCenter(0))));
+            var lines = table.Header[i];
+            for (var k = 0; k < lines.Count; k++)
+                svg.Append(text.Label(lines[k], style, center - Width(lines[k], style) / 2, Baseline(0, k, lines.Count)));
         }
         for (var r = 0; r < table.Rows.Count; r++)
         {
             var (group, series) = table.Rows[r];
-            var center = RowCenter(r + 1);
+            var names = table.Names[r];
+            var firstLine = (edges[r + 1] + edges[r + 2]) / 2 - (names.Count - 1) / 2.0 * lineHeight;
             if (table.Keys)
             {
                 var key = LegendKey * lineHeight;
                 var fill = group.HasLines ? SeriesOutline(group, series)?.Fill ?? PointFill(group, series, -1) : PointFill(group, series, -1);
-                svg.Append(Rect(new Box(left + 0.26 * lineHeight, center - key / 2, key, key), fill, null, snap: false));
+                svg.Append(Rect(new Box(left + 0.26 * lineHeight, firstLine - key / 2, key, key), fill, null, snap: false));
             }
-            svg.Append(text.Label(series.Name, style, left + (table.Keys ? 0.958 : 0.26) * lineHeight, CenteredBaseline(style, center)));
+            var nameLeft = left + (table.Keys ? 0.958 : 0.26) * lineHeight;
+            var widest = names.Max(l => Width(l, style));
+            for (var k = 0; k < names.Count; k++)
+                svg.Append(text.Label(names[k], style, nameLeft + (widest - Width(names[k], style)) / 2, Baseline(r + 1, k, names.Count)));
             for (var i = 0; i < category.Categories; i++)
             {
                 if (series.Values.ElementAtOrDefault(i) is not { } v)
                     continue;
                 var value = NumberFormat.Format(v, series.FormatCode, culture);
                 var middle = (category.Boundary(i) + category.Boundary(i + 1)) / 2;
-                svg.Append(text.Label(value, style, middle - Width(value, style) / 2, CenteredBaseline(style, center)));
+                svg.Append(text.Label(value, style, middle - Width(value, style) / 2, Baseline(r + 1, 0, 1)));
             }
         }
         return svg.ToString();
@@ -1609,6 +1675,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (table != null)
         {
             // The data table reaches 6 pt past the bottom of the plot area; its name column ends at the plot's left.
+            FitDataTable(table, previous.W);
             edges.Add("b");
             bottom = outer.Bottom + DataTableBleed - table.Height;
             left = outer.X + DataTableBleed + table.NameWidth;

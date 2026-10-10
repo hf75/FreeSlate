@@ -1901,7 +1901,7 @@ Charts are rendered from the values cached in the chart part; the embedded workb
 
 **Rendering:** Table of the series values below the plot area.
 
-**Office behaviour:** The table reaches 6 pt past the plot area's left and bottom edges; rows are L + 0.0925 s + 2.4 pt high and the name column holds the widest series name plus 1.0975 s + 2.89 pt (key 0.45 L at 0.26 L, text at 0.958 L); the plot area's left edge is the larger of the name column and the value labels, its bottom the table's top. Category labels move into the header row. Long series names that wrap are not handled yet.
+**Office behaviour:** The table reaches 6 pt past the plot area's left and bottom edges; rows are L + 0.0925 s + 2.4 pt high and the name column holds the widest series name plus 1.0975 s + 2.89 pt (key 0.45 L at 0.26 L, text at 0.958 L); the plot area's left edge is the larger of the name column and the value labels, its bottom the table's top. Category labels move into the header row. The name column is at most a third of the chart's width: longer names break between words, the further lines centered under the widest, the key beside the first, and every further line makes the row a line taller with its values centered; header names break in their column less 2.7 pt on each side (local/dtable, dtable2: 99.8 and 99.3 %). Without keys the names keep 3.91 pt from the plot area.
 
 **Elements (5):** [`c:dTable`](../format/namespaces/c.md#cdtable), [`c:showHorzBorder`](../format/namespaces/c.md#cshowhorzborder), [`c:showKeys`](../format/namespaces/c.md#cshowkeys), [`c:showOutline`](../format/namespaces/c.md#cshowoutline), [`c:showVertBorder`](../format/namespaces/c.md#cshowvertborder)
 
