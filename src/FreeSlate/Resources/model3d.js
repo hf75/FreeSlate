@@ -191,7 +191,9 @@
       const base = interpolation === 'CUBICSPLINE' ? (i * 3 + part) * n : i * n;
       return Array.from(output.subarray(base, base + n));
     };
-    if (time <= input[0]) return value(0, 1);
+    // Up to its first key a cubic spline is, in PowerPoint, the first key's in-tangent (measured: translation, scale
+    // and rotation); between keys it is the spline.
+    if (time <= input[0]) return value(0, interpolation === 'CUBICSPLINE' ? 0 : 1);
     const last = input.length - 1;
     if (time >= input[last]) return value(last, 1);
     let i = 0;
@@ -698,8 +700,16 @@
       const globals = this.globals();
       const width = this.canvas.width, height = this.canvas.height;
       gl.viewport(0, 0, width, height);
+      gl.disable(gl.SCISSOR_TEST);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // PowerPoint draws the model only inside its viewport, a square of viewportSz about the frame's center (measured).
+      const frame = this.spec.frame, viewport = this.spec.viewport;
+      if (viewport && (viewport < frame.w || viewport < frame.h)) {
+        const left = Math.max(0, (frame.w - viewport) / 2 / frame.w * width), bottom = Math.max(0, (frame.h - viewport) / 2 / frame.h * height);
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(Math.round(left), Math.round(bottom), Math.round(width - 2 * left), Math.round(height - 2 * bottom));
+      }
       gl.enable(gl.DEPTH_TEST);
       gl.useProgram(program);
       const { view, projection, eye } = this.camera();
