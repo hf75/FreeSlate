@@ -252,6 +252,7 @@ public sealed partial class ChartRenderer
         category.Categories = nCat;
         category.Labels = Enumerable.Range(0, nCat).Select(i => i < names.Count ? CategoryLabel(categoryAxis, series, names, i) : (i + 1).ToString(culture)).ToList();
         category.MaxLabelWidth = category.Labels.Max(l => Width(l, category.Style));
+        var categoryNames = category.Labels;
         var value = new AxisLayout { Axis = valueAxis, Groups = [group], Style = Style(valueAxis.TxPr, "valueAxis") };
         var seriesLayout = seriesAxis != null && rows
             ? new AxisLayout { Axis = seriesAxis, Groups = [group], Style = Style(seriesAxis.TxPr, "seriesAxis"), Labels = series.Select(s => s.Name).ToList() }
@@ -331,9 +332,24 @@ public sealed partial class ChartRenderer
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
             ScaleValueAxis3D(value, length);
-            // Category labels that do not fit under their categories turn by 45° like on flat charts.
+            // Category labels get 0.94 of their categories' share of the floor edge's width on the screen; ones that
+            // do not fit wrap at their spaces, and turn by 45° when a word alone does not fit (measured on clustered
+            // columns 300 to 840 pt wide with names of one to three words, turned 20° and 300°: 0.93 to 1.0 fit all).
             if (columns && category.HasLabels)
-                category.Rotation = Rotation(category, projection.Length((0, edgeY, behind ? d : 0), (frame.W, edgeY, behind ? d : 0)), threeD: true);
+            {
+                (category.Labels, category.MaxLabelWidth) = (categoryNames, categoryNames.Max(l => Width(l, category.Style)));
+                var (edgeStart, edgeEnd) = (projection.Map(0, edgeY, behind ? d : 0), projection.Map(frame.W, edgeY, behind ? d : 0));
+                var room = 0.94 * Math.Abs(edgeEnd.X - edgeStart.X);
+                category.Rotation = Rotation(category, room, threeD: true);
+                var wrapped = categoryNames.Select(l => WrapWords(l, category.Style, room / nCat)).ToList();
+                if (category.Rotation == -45 && category.DateStep == null && category.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot") is null or -60000000
+                    && wrapped.All(lines => lines.All(line => Width(line, category.Style) <= room / nCat)))
+                {
+                    category.Labels = wrapped.Select(lines => string.Join("\n", lines)).ToList();
+                    category.MaxLabelWidth = wrapped.Max(lines => lines.Max(line => Width(line, category.Style)));
+                    category.Rotation = 0;
+                }
+            }
         }
         var (w, h) = (frame.W, frame.H);
         var sideX = frame.SideX;
@@ -1111,7 +1127,9 @@ public sealed partial class ChartRenderer
         var style = layout.Style;
         var w = Width(label, style);
         if (layout.Rotation == 0)
-            return text.Label(label, style, at.X - w / 2, at.Y + CategoryLabelGap * style.Size + Ascent(style));
+            // Wrapped labels stack their lines, each centered.
+            return string.Concat(label.Split('\n').Select((line, k) =>
+                text.Label(line, style, at.X - Width(line, style) / 2, at.Y + CategoryLabelGap * style.Size + Ascent(style) + k * LineHeight(style))));
         var angle = Math.Abs(layout.Rotation) * Math.PI / 180;
         var anchorY = at.Y + CategoryLabelGap * style.Size + LineHeight(style) / 2 * Math.Cos(angle);
         return $"<g transform=\"translate({Px(at.X)} {Px(anchorY)}) rotate({Units.Css(layout.Rotation)})\">" +
