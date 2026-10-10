@@ -14,6 +14,14 @@ public static class Repo
     /// <summary>Our renderings, screenshots and the report (not committed).</summary>
     public static string Artifacts => Path.Combine(Root, "artifacts", "fidelity");
 
+    /// <summary>Test decks of other projects, downloaded by `fetch` (not committed, see <see cref="ExternalDecks"/>).</summary>
+    public static string External => Path.Combine(Root, "spec", "downloads", "testdecks");
+
+    /// <summary>PowerPoint's Open XML formats: presentation, macro-enabled presentation, template and show.</summary>
+    public static readonly string[] Extensions = [".pptx", ".pptm", ".potx", ".potm", ".ppsx", ".ppsm"];
+
+    const string ExternalPrefix = "external/";
+
     /// <summary>All decks of the corpus as paths relative to <see cref="Corpus"/> without extension, e.g. "generated/fills".</summary>
     public static List<string> Decks() =>
         Directory.Exists(Corpus)
@@ -24,7 +32,43 @@ public static class Repo
                 .ToList()
             : [];
 
-    public static string DeckFile(string deck) => Path.Combine(Corpus, deck + ".pptx");
+    /// <summary>The downloaded decks of other projects, named "external/&lt;source&gt;/…" without extension.</summary>
+    public static List<string> ExternalDecks() =>
+        Directory.Exists(External)
+            ? Directory.GetFiles(External, "*", SearchOption.AllDirectories)
+                .Where(f => Extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+                .Select(f => ExternalPrefix + Path.ChangeExtension(Path.GetRelativePath(External, f), null).Replace('\\', '/'))
+                .Order(StringComparer.Ordinal)
+                .ToList()
+            : [];
+
+    /// <summary>
+    /// The decks the command line names: a deck, or a folder standing for every deck in it ("generated", "external/poi");
+    /// without names the corpus (the downloaded decks only when named).
+    /// </summary>
+    public static List<string> Select(IReadOnlyList<string> names)
+    {
+        if (names.Count == 0)
+            return Decks();
+        var all = Decks().Concat(ExternalDecks()).ToList();
+        var result = new List<string>();
+        foreach (var name in names)
+        {
+            var folder = name.TrimEnd('/') + "/";
+            var inFolder = all.Where(d => d.StartsWith(folder, StringComparison.Ordinal)).ToList();
+            // A name that is no deck and no folder stays, so that commands report it.
+            result.AddRange(all.Contains(name) || inFolder.Count == 0 ? [name] : inFolder);
+        }
+        return result.Distinct().ToList();
+    }
+
+    public static string DeckFile(string deck)
+    {
+        if (!deck.StartsWith(ExternalPrefix, StringComparison.Ordinal))
+            return Path.Combine(Corpus, deck + ".pptx");
+        var stem = Path.Combine(External, deck[ExternalPrefix.Length..]);
+        return Extensions.Select(e => stem + e).FirstOrDefault(File.Exists) ?? stem + ".pptx";
+    }
 
     /// <summary>The password of a protected deck: the contents of its .password file next to it, or null.</summary>
     public static string? DeckPassword(string deck) =>

@@ -14,5 +14,8 @@ artifacts/
 tests/corpus/pptx/local/
 tests/fidelity/reference/local/
 
+# References of other projects' test decks (the decks live in spec/downloads/testdecks)
+tests/fidelity/reference/external/
+
 # Decks of users (their data stays out of git)
 tests/user/

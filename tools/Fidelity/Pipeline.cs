@@ -38,8 +38,17 @@ public static class Pipeline
 
             var watch = Stopwatch.StartNew();
             var htmlPath = Path.Combine(dir, "index.html");
-            // Fonts a deck embeds are used even where they are installed, as on a computer without them.
-            PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true);
+            try
+            {
+                // Fonts a deck embeds are used even where they are installed, as on a computer without them.
+                PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true);
+            }
+            catch (Exception e) when (e is not OutOfMemoryException)
+            {
+                // Damaged and encrypted decks among the downloaded ones; the others go on.
+                Console.WriteLine($"  failed    {deck}: {e.GetType().Name}: {e.Message.Split('\n')[0].Trim()}");
+                continue;
+            }
             var convertTime = watch.ElapsedMilliseconds;
             var slides = File.ReadAllText(htmlPath).Split("<section class=\"slide\"").Length - 1;
             var url = new Uri(htmlPath).AbsoluteUri;

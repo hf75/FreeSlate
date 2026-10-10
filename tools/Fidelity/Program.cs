@@ -9,7 +9,7 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 var command = args.FirstOrDefault() ?? "run";
 var rest = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
 var force = args.Contains("--force");
-var decks = rest.Count > 0 ? rest : Repo.Decks();
+var decks = Repo.Select(rest);
 
 switch (command)
 {
@@ -32,6 +32,9 @@ switch (command)
         break;
     case "harvest-cmyk" when OperatingSystem.IsWindows():
         CmykHarvest.Run();
+        break;
+    case "fetch":
+        ExternalDecks.Fetch();
         break;
     case "generate" or "reference" or "calibrate" or "animate-reference" or "transitions-reference" or "harvest-cmyk":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
@@ -87,7 +90,7 @@ switch (command)
         Console.WriteLine("""
             Fidelity: compares our HTML rendering with PowerPoint, slide by slide.
 
-              run [deck…]          render and compare (default)
+              run [deck…]          render and compare (default); a folder stands for its decks ("generated")
               render [deck…]       convert with the engine and take screenshots with a headless browser
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
               generate [deck…]     create the generated test decks with PowerPoint (Windows)
@@ -100,6 +103,7 @@ switch (command)
               jxr <dir>            decode every .jxr in a directory and compare it with the .png next to it
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
+              fetch                download other projects' test decks (spec/downloads/testdecks, decks "external/…")
             """);
         break;
 }

@@ -17,6 +17,7 @@ public sealed class PowerPointSession : IDisposable
 
     readonly dynamic app;
     readonly bool startedBySession;
+    readonly Process? process;
 
     public PowerPointSession()
     {
@@ -25,6 +26,40 @@ public sealed class PowerPointSession : IDisposable
                    ?? throw new InvalidOperationException("PowerPoint is not installed.");
         app = Activator.CreateInstance(type)!;
         Version = $"{app.Version}.{app.Build}";
+        if (startedBySession)
+        {
+            process = Process.GetProcessesByName("POWERPNT").FirstOrDefault();
+            // No alerts, and no macros from the decks it opens.
+            const int PpAlertsNone = 1, MsoAutomationSecurityForceDisable = 3;
+            try
+            {
+                app.DisplayAlerts = PpAlertsNone;
+                app.AutomationSecurity = MsoAutomationSecurityForceDisable;
+            }
+            catch (COMException) { }
+        }
+    }
+
+    /// <summary>
+    /// Limit for each step of a slide export (opening the deck, exporting a slide): PowerPoint may wait for a click on a
+    /// dialog nobody sees (a damaged file's repair prompt). Over the limit a PowerPoint this session started is ended,
+    /// which fails the step, and the session is <see cref="Broken"/>; null waits as long as it takes.
+    /// </summary>
+    public TimeSpan? StepLimit { get; set; }
+
+    /// <summary>Whether the watchdog ended PowerPoint; a broken session is to be replaced by a new one.</summary>
+    public bool Broken { get; private set; }
+
+    T Step<T>(Func<T> work)
+    {
+        if (StepLimit is not { } limit || process == null)
+            return work();
+        using var watchdog = new Timer(_ =>
+        {
+            Broken = true;
+            try { process.Kill(); } catch (InvalidOperationException) { }
+        }, null, limit, Timeout.InfiniteTimeSpan);
+        return work();
     }
 
     /// <summary>PowerPoint version and build, e.g. "16.0.20430".</summary>
@@ -69,7 +104,7 @@ public sealed class PowerPointSession : IDisposable
     public List<string> ExportSlides(string pptxPath, string outputDir, int? width = null, string? password = null)
     {
         Directory.CreateDirectory(outputDir);
-        var presentation = Open(pptxPath, password);
+        var presentation = Step(() => Open(pptxPath, password));
         try
         {
             double slideWidth = presentation.PageSetup.SlideWidth;   // points
@@ -82,7 +117,9 @@ public sealed class PowerPointSession : IDisposable
             for (var i = 1; i <= count; i++)
             {
                 var file = Path.Combine(outputDir, $"slide-{i:000}.png");
-                presentation.Slides[i].Export(file, "PNG", pixelWidth, pixelHeight);
+                var slide = presentation.Slides[i];
+                // A statement lambda: a dynamic call of the void Export has no value to return.
+                Step(() => { slide.Export(file, "PNG", pixelWidth, pixelHeight); return 0; });
                 files.Add(file);
             }
             return files;
@@ -223,12 +260,22 @@ public sealed class PowerPointSession : IDisposable
     {
         try
         {
-            if (startedBySession && (int)app.Presentations.Count == 0)
+            if (startedBySession && !Broken && (int)app.Presentations.Count == 0)
                 app.Quit();
+        }
+        catch (COMException) when (Broken)
+        {
+            // PowerPoint was ended by the watchdog.
         }
         finally
         {
             Marshal.FinalReleaseComObject(app);
+            // A PowerPoint this session started does not always end on Quit after damaged decks (seen with no
+            // presentation open and no window); it is ended after a while.
+            if (process is { } owned && !owned.WaitForExit(TimeSpan.FromSeconds(10)))
+            {
+                try { owned.Kill(); } catch (InvalidOperationException) { }
+            }
         }
     }
 }

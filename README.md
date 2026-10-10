@@ -54,6 +54,12 @@ Converts every deck of the corpus, takes a screenshot of each slide with headles
 PowerPoint's reference rendering. The report (`artifacts/fidelity/report.html`) shows reference, our rendering and a
 difference image for every slide. The score is the share of content pixels that match the reference within a small
 tolerance. On Windows with Office installed, `generate` rebuilds the test decks and `reference` re-renders the references.
+Decks are named by path (`generated/fills`); a folder stands for all decks in it (`run generated`).
+
+`fetch` downloads the test decks of other open-source projects (LibreOffice, Apache POI, Apache Tika, Open XML SDK,
+python-pptx; about 700 decks at pinned commits, each source's license in its `sources.json`) to
+`spec/downloads/testdecks/`. They stay out of git and are measured against PowerPoint like the corpus: `reference
+external` renders their references (damaged and encrypted files are skipped), `run external` scores them.
 
 `animate` compares animations the same way: `animate-reference` (Windows, Office and ffmpeg) exports PowerPoint's
 video of every animated slide and keeps every eighth frame in `tests/fidelity/reference/<deck>/anim/`; `animate` draws
