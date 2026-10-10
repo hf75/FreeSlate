@@ -1944,7 +1944,7 @@ areas:
                    dgm:catLst, dgm:cat, dgm:title, dgm:desc]
         priority: P3
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           Only for SmartArt without a saved drawing (files from other producers): layout algorithms (linear, snake,
           cycle, hierarchy, pyramid …) with constraints and rules.
@@ -2011,10 +2011,13 @@ areas:
           before this engine work); against generated decks of snake, picture, cycle, radial and hierarchy
           layouts at 1 to 8 nodes: 541 of 542, 550 of 594, 311 of 320, 412 of 427 and 578 of 690 shapes;
           rendered with the drawings removed 94.1 % (38.5 % before), all color definitions and quick styles on
-          a process 97.9 %. Missing: BendingPictureBlocks' pictures overhanging their composites, cycle3's
-          long curves, NameandTitleOrganizationalChart's names narrower than their constraint,
-          HorizontalActionList's heights, a root scaled down to fit (AscendingPictureAccentProcess), radial2's
-          ring (2 % smaller).
+          a process 97.9 %. Known deviations (only for diagrams saved without their drawing): HorizontalActionList's
+          description boxes, which PowerPoint keeps at one height for two or more nodes that depends on the
+          frame alone (250.3 pt in 840 x 460, 133 in 840 x 300, 285.1 in 600 x 460; one node fills the
+          composite), AscendingPictureAccentProcess's drawing, which PowerPoint shrinks by 0.74 to 0.93 for 2
+          to 5 nodes and centers by its outline, BendingPictureBlocks' pictures overhanging their composites,
+          cycle3's long curves, NameandTitleOrganizationalChart's names narrower than their constraint and
+          radial2's ring (2 % smaller), each within 1 to 7 % (sa_all: 13 of 159 layouts not exact).
       - id: smartart.styles
         title: SmartArt styles and color definitions
         elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,
