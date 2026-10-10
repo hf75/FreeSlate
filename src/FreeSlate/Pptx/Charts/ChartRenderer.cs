@@ -1690,15 +1690,21 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     static double AxisLabelOffset(AxisLayout layout) =>
         layout.Axis.IsValue ? 1 : (1 + (ChartModel.Number(layout.Axis.Element, "lblOffset") ?? 100) / 100) / 2;
 
-    /// <summary>Label rotation in degrees (negative rises to the right): the text body's own, else −45° when category labels do not fit.</summary>
-    static double Rotation(AxisLayout layout, double length)
+    /// <summary>
+    /// Label rotation in degrees (negative rises to the right): the text body's own, else −45° when category labels
+    /// do not fit. Flat charts thin out the labels of date axes instead; 3D charts label every date and turn them when
+    /// a label and a font size do not fit, the room flat charts keep between dates (charts-3d slide 18).
+    /// </summary>
+    static double Rotation(AxisLayout layout, double length, bool threeD = false)
     {
         var rot = layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot");
         if (rot is { } r && r != -60000000)
             return r / 60000.0;
-        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Categories == 0 || layout.DateStep != null)
+        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Categories == 0 || layout.DateStep != null && !threeD)
             return 0;
-        return layout.MaxLabelWidth > length / layout.Categories ? -45 : 0;
+        var dates = layout.DateStep != null || threeD && layout.Groups.Any(g => g.TimeUnit != null);
+        var needed = layout.MaxLabelWidth + (dates ? layout.Style.Size : 0);
+        return needed > length / layout.Categories ? -45 : 0;
     }
 
     /// <summary>The groups of an outer category level: from each named category to the next one (or the end).</summary>

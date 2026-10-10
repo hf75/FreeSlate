@@ -270,10 +270,12 @@ public sealed partial class ChartRenderer
         for (var pass = 0; pass < 3; pass++)
         {
             // The labels take their room from the plot area like on flat charts; the box fills the rest.
-            plot = Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout);
+            plot = Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout, !frame.Between);
             var ratio = view.HeightPercent is { } hp ? hp / 100 : plot.H / Math.Max(1, plot.W);
+            // Areas with their categories on the box's edges span n - 1 category widths of n: the box keeps the
+            // height of n - 1 (measured on 3D stacked areas of 5 and 8 categories, on the ticks and between them).
             if (columns)
-                (frame.W, frame.H) = (1, rows ? ratio * c * Math.Floor((nCat + nSer) / 2.0) : ratio);
+                (frame.W, frame.H) = (1, rows ? ratio * c * Math.Floor((nCat + nSer) / 2.0) : frame.Between ? ratio : ratio * (nCat - 1) * c);
             else
                 (frame.W, frame.H) = (1 / Math.Max(1e-9, ratio), 1);
             var unit = Math.Min(frame.W, frame.H);
@@ -286,7 +288,7 @@ public sealed partial class ChartRenderer
             ScaleValueAxis3D(value, length);
             // Category labels that do not fit under their categories turn by 45° like on flat charts.
             if (columns && category.HasLabels)
-                category.Rotation = Rotation(category, projection.Length((0, edgeY, 0), (frame.W, edgeY, 0)));
+                category.Rotation = Rotation(category, projection.Length((0, edgeY, 0), (frame.W, edgeY, 0)), threeD: true);
         }
         var (w, h) = (frame.W, frame.H);
         var sideX = frame.SideX;
@@ -818,7 +820,9 @@ public sealed partial class ChartRenderer
         var halfLength = Math.Sqrt(light.X * light.X + (light.Y + 1) * (light.Y + 1) + light.Z * light.Z);
         var half = (X: light.X / halfLength, Y: (light.Y + 1) / halfLength, Z: light.Z / halfLength);
 
-        var triangles = new List<(double Depth, (double X, double Z, double V)[] Corners)>();
+        // A height field is drawn back to front by its grid cells on the floor (steep facets would sort wrongly by
+        // their own centres), each cell's two triangles by theirs.
+        var triangles = new List<(double Cell, double Depth, (double X, double Z, double V)[] Corners)>();
         for (var k = 0; k + 1 < nSer; k++)
         {
             for (var i = 0; i + 1 < nCat; i++)
@@ -828,8 +832,9 @@ public sealed partial class ChartRenderer
                 var c = (X(i), Z(k + 1), Value(k + 1, i));
                 var e = (X(i + 1), Z(k + 1), Value(k + 1, i + 1));
                 (double X, double Z, double V)[][] pair = a.Item3 + e.Item3 >= c.Item3 + b.Item3 ? [[a, b, e], [a, e, c]] : [[c, a, b], [c, b, e]];
+                var cell = projection.Depth((X(i) + X(i + 1)) / 2, frame.FloorY, (Z(k) + Z(k + 1)) / 2);
                 foreach (var t in pair)
-                    triangles.Add((projection.Depth(t.Average(p => p.X), Height(t.Average(p => p.V)), t.Average(p => p.Z)), t));
+                    triangles.Add((cell, projection.Depth(t.Average(p => p.X), Height(t.Average(p => p.V)), t.Average(p => p.Z)), t));
             }
         }
 
@@ -870,7 +875,7 @@ public sealed partial class ChartRenderer
                 for (var k = 0; k + 1 < nSer; k++)
                     Edge((X(i), Z(k), Value(k, i)), (X(i), Z(k + 1), Value(k + 1, i)));
             // The contour lines where the surface crosses a band boundary, in the line of the band above.
-            foreach (var (_, corners) in triangles)
+            foreach (var (_, _, corners) in triangles)
             {
                 for (var band = 1; band < bands.Count; band++)
                 {
@@ -895,7 +900,7 @@ public sealed partial class ChartRenderer
             return svg.ToString();
         }
 
-        foreach (var (_, corners) in triangles.OrderByDescending(t => t.Depth))
+        foreach (var (_, _, corners) in triangles.OrderByDescending(t => t.Cell).ThenByDescending(t => t.Depth))
         {
             // The facet's normal in the box (y up): its value gradient over the floor.
             var p3 = corners.Select(p => (p.X, Y: Height(p.V), p.Z)).ToArray();
@@ -939,8 +944,13 @@ public sealed partial class ChartRenderer
         return bandFmt?.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
     }
 
-    /// <summary>The plot box the projected 3D box fits into: the outer plot area less the room of the axis labels.</summary>
-    Box Plot3D(Box outer, AxisLayout side, AxisLayout floor, AxisLayout? series)
+    /// <summary>
+    /// The plot area of a 3D chart inside its axis labels, as flat charts compute it (measured: the inner plot area
+    /// of a 3D stacked area equals the flat chart's): value labels beside it, category labels below it, labels
+    /// centered on the edges of charts whose categories sit on them (area and surface) within the outer edges, and
+    /// the series axis's labels right of it a category label gap away.
+    /// </summary>
+    Box Plot3D(Box outer, AxisLayout side, AxisLayout floor, AxisLayout? series, bool edgeCategories)
     {
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
         if (side.HasLabels && side.Labels.Count > 0)
@@ -949,11 +959,18 @@ public sealed partial class ChartRenderer
             left = Math.Max(left, outer.X - LabelBleed + widest + ValueLabelGap * side.Style.Size);
         }
         if (floor.HasLabels && floor.Labels.Count > 0)
+        {
             bottom = Math.Min(bottom, outer.Bottom + LabelBleed - LabelExtent(floor) - CategoryLabelGap * floor.Style.Size);
+            if (edgeCategories && floor.Rotation == 0 && !floor.Axis.IsValue)
+            {
+                left = Math.Max(left, outer.X + Width(floor.Labels[0], floor.Style) / 2);
+                right = Math.Min(right, outer.Right - Width(floor.Labels[^1], floor.Style) / 2);
+            }
+        }
         if (series is { HasLabels: true } && series.Labels.Count > 0)
         {
             var widest = series.Labels.Max(l => Width(l, series.Style));
-            right = Math.Min(right, outer.Right + LabelBleed - widest - ValueLabelGap * series.Style.Size);
+            right = Math.Min(right, outer.Right + LabelBleed - widest - CategoryLabelGap * series.Style.Size);
         }
         if (side is { HasLabels: true, Axis.IsValue: true })
             top = Math.Max(top, outer.Y - 6 + LineHeight(side.Style) / 2);
