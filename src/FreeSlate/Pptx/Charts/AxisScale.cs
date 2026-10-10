@@ -82,7 +82,11 @@ public static class AxisScaling
         var bottom = axis.Min == null && lo < 0 && dataMin < 0 && headroom ? lo - 0.05 * range : lo;
 
         var major = axis.MajorUnit is { } fixedMajor and > 0 ? fixedMajor : NiceUnit(top - bottom, Math.Max(1, maxIntervals));
-        var min = axis.Min ?? Math.Floor(AxisScale.Clean(bottom / major)) * major;
+        // With a fixed maximum and an automatic minimum the ticks count down from the maximum (measured: a maximum of
+        // 700000 and data down to -479325 give -700000 … 700000 by 200000).
+        var min = axis.Min ?? (axis.Max is { } ceiling
+            ? ceiling - Math.Ceiling(AxisScale.Clean((ceiling - bottom) / major)) * major
+            : Math.Floor(AxisScale.Clean(bottom / major)) * major);
         var max = axis.Max ?? Math.Ceiling(AxisScale.Clean(top / major)) * major;
         if (axis.Min == null && dataMin >= 0 && min < 0) min = 0;
         if (max <= min) max = min + major;

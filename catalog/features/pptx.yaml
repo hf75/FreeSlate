@@ -1592,7 +1592,8 @@ areas:
         strategy: Polylines with markers; smoothed lines need Office's Bézier construction.
         office: >-
           Verified with generated/charts and charts-data (smoothed lines: interior segments as PowerPoint's,
-          the end segments a little off).
+          the end segments a little off). A line chart without the c:marker flag shows markers on series without
+          a marker of their own (LibreOffice's tdf105517).
 
       - id: chart.pie
         title: Pie and doughnut charts
@@ -1652,7 +1653,9 @@ areas:
           it); the category axis draws neither line nor gridlines. The radar is centered in the plot area with
           radius min(W/2 - (widest label + 0.3056 s - 3.005), H/2 - (L + 0.3127 s - 5.248)), measured through
           COM with 25 layouts. Category labels stand 6 pt beyond their spoke, left- or right-aligned at the
-          sides and centered above and below.
+          sides and centered above and below. The value axis ends at the first major unit from the largest
+          value, without the 5 % headroom of other charts (measured: 7.9 on 0 … 8, 9.6 on 0 … 10); charts
+          without style part draw spokes only where the axis has a line of its own.
 
       - id: chart.stock
         title: Stock charts
@@ -1702,7 +1705,8 @@ areas:
           engine; date axes, logarithmic and reversed scales.
         office: >-
           Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets
-          5 % headroom; the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least
+          5 % headroom; with a fixed maximum and an automatic minimum the ticks count down from the maximum
+          (700000 over data down to -479325: -700000 … 700000); the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least
           1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
           shows the locale's short date. Numbers and dates take the system's regional format, not the chart's
           language (c:lang; measured: an en-US chart shows 2,5 on a German system); the converter takes it as an
@@ -1802,6 +1806,11 @@ areas:
           shrink by 1.785 × label size. A manual plot area layout places the inner plot area (layoutTarget
           inner) or, by default, the plot area with its axis labels (outer); w and h are sizes (wMode, hMode
           factor) or far edges (edge). Verified with generated/charts, charts-details and charts-data.
+          Line keys keep their size at every font size (legends of 7 to 24 pt): a 12 pt key box, the line
+          19.1 pt long about 12.79 pt from the entry's edge, the text at 24.31 pt; square keys scale with the
+          line height. Keys draw markers at most half the font size and lines and marker edges at most 0.375
+          times it wide (local/legacy-legend* decks). A dashed line key makes every key longer: the line from
+          3.05 to 29.31 pt, the text at 31.5 pt (local/legacy-longkey).
 
       - id: chart.dataTable
         title: Data tables
@@ -1830,7 +1839,10 @@ areas:
         status: done
         strategy: >-
           spPr and txPr of every chart element use the shared DrawingML fill, line, effect and text code; the chart
-          style and color parts (cs) only matter where a property is not set directly.
+          style and color parts (cs) only matter where a property is not set directly. Charts without a style part
+          are drawn in the look of their Office 2007 style (c:style, c14:style) from the theme's fill, line and
+          effect styles, measured in PowerPoint; series effects (a:effectLst, the styles' effect styles) are SVG
+          filters on bars, slices, areas, bubbles and markers.
         office: >-
           PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel
           grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
@@ -1838,6 +1850,22 @@ areas:
           base at their own proportions (stack) or one per c:pictureStackUnit of the value axis (stackScale),
           else stretches them over the bar (generated/charts-data). Verified with generated/charts, charts-
           more and charts-data.
+          A chart without style part (Office 2007/2010 and other programs) shows one of the 48 Office 2007 styles
+          (c:style, 2 without; measured with all styles, 1 to 14 series and themes whose fill, line and effect
+          styles can be told apart): style N has the color variant (N − 1) % 8 (grays, the accents in turn, one
+          accent) and the level (N − 1) / 8. Series colors cycle through the six grays (tx1 tinted 88, 55, 78, 92,
+          70, 30 %) or accents with c = n / 6 + 1 cycles (one-accent styles: one per series); cycle j is shaded
+          (before the middle) or tinted (after it) by 1.4 / (c + 1) per step in linear light, so six series are
+          already darker. Points take fill style 1 (levels 0, 1, 4) or 3 (2, 3, 5) in their color, edges line
+          style 1 in white (level 1) or shaded 50 % (level 4), effects effect style 2 (level 2) or 3 (3, 5).
+          Series lines are line style 1's width times 3, 5 or 7 (level 3), markers floor(2 w + 3) pt (w the
+          series line's own width or the style's) with an edge of line style 1 in the series color. Axis and grid lines are line style 1 in tx1 tinted 75 %; level
+          4 frames the chart area and tints the plot area 20 %, level 5 has a black chart area, a 95 % tx1 plot
+          area and white text. Text is 10 pt; titles are bold, 1.2 times the chart's text size (18 pt without
+          one), title paragraphs without a:pPr 18 pt regular whatever the size. The full look needs c14:style (Office
+          2010) or AppVersion 12 (Office 2007); otherwise (Office 2013 and later, other programs) PowerPoint
+          draws axis and grid lines black, level 4 plot areas in the full accent and dark gray edges black
+          (local/legacy-* decks).
 
       - id: chart.threeD
         title: 3D charts
@@ -1929,8 +1957,8 @@ areas:
           forward/backward forecast and fixed intercepts, drawn 1.5 pt dotted in the series color by default
           and clipped to the plot area. Equation and R squared labels show coefficients rounded to 4 decimals;
           the block is vertically centered on the trendline's end, its right edge 8.8 pt left of it
-          (measured). Legend entries follow the series; legends with trendlines give every entry a 2.156 L
-          key. Error bars: fixed value, percentage, standard error, custom values and standard deviation
+          (measured). Legend entries follow the series; a dashed key line (the dotted trendline's, or a
+          series') gives every entry a longer key of 31.5 pt (a solid trendline does not). Error bars: fixed value, percentage, standard error, custom values and standard deviation
           (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis.
 
       - id: chart.userShapes

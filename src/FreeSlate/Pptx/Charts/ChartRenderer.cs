@@ -26,11 +26,15 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     const double LabelCenterShift = 0.054;    // × s: labels sit this much higher than their centered line box
     const double LegendRowPadding = 5.85;     // added to L per legend row
     const double LegendKey = 0.45;            // × L, square legend keys
-    const double LegendLineKey = 0.8214;      // × L, the key box of line series
     const double LegendKeyLeft = 0.275;       // × L from the entry to a square key
     const double LegendText = 0.923;          // × L from the entry to the text after a square key
-    const double LegendLineCenter = 0.875, LegendLineHalf = 0.654, LegendLineText = 1.664;   // × L, line keys
-    const double LongKeyLineFrom = 0.209, LongKeyLineTo = 2.006, LongKeyMarker = 1.174, LongKeyText = 2.156;   // × L, with trendlines
+    // Line keys keep their size at every font size (measured with legends of 7 to 24 pt): a 12 pt key box, the line
+    // centered 12.79 pt from the entry's edge and 19.1 pt long, the text at 24.31 pt (points).
+    const double LegendLineKey = 12, LegendLineCenter = 12.79, LegendLineHalf = 9.56, LegendLineText = 24.31;
+    // × the legend's font size: the largest marker and line width in keys (measured with 7 to 14 pt legends).
+    const double LegendMarkerCap = 0.5, LegendLineCap = 0.375;
+    // Legends with a dashed line (a series' or trendline's) give every entry a longer key, also of a fixed size (points).
+    const double LongKeyLineFrom = 3.05, LongKeyLineTo = 29.31, LongKeyMarker = 17.15, LongKeyText = 31.5;
     const double VerticalLegendPadding = 1.5, VerticalLegendExtra = 3;
     const double TitlePaddingX = 3, TitlePaddingY = 1.5;
     const double TickLength = 3.75;           // 5 px
@@ -54,6 +58,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <summary>Every series' place in plot order (a:chart seriesIdx of chart builds).</summary>
     Dictionary<ChartSeries, int> plotOrder = [];
+
+    /// <summary>The chart group of every series.</summary>
+    Dictionary<ChartSeries, ChartGroup> groupOf = [];
     XElement? chartStyle;
     XElement? colorStyle;
     CultureInfo culture = CultureInfo.InvariantCulture;
@@ -89,8 +96,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// A legend entry. Series with a visible line get a wide line key; line-type series without a line (markers only,
     /// stock series) keep the square key's width and show just their marker there (measured).
     /// </summary>
-    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false,
-        bool Trendline = false);
+    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false);
 
     sealed class LegendLayout
     {
@@ -102,7 +108,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public XElement? SpPr { get; init; }
         public List<(LegendEntry Entry, double X, double RowCenter)> Placed { get; } = [];
 
-        /// <summary>Legends with trendline entries give every entry a longer key (2.156 L, measured).</summary>
+        /// <summary>Legends with a dashed line key (a series' or a trendline's) give every entry a longer key (31.5 pt, measured).</summary>
         public bool LongKeys { get; init; }
 
         /// <summary>The legend of an Office 2016 chart, laid out and drawn with its own metrics (see ExLegend).</summary>
@@ -195,6 +201,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         model = read;
         plotOrder = model.Groups.SelectMany(g => g.Series).OrderBy(s => s.Order).Select((s, i) => (Series: s, Place: i))
             .ToDictionary(p => p.Series, p => p.Place);
+        groupOf = model.Groups.SelectMany(g => g.Series.Select(s => (Series: s, Group: g))).ToDictionary(p => p.Series, p => p.Group);
         width = widthPt;
         height = heightPt;
         originX = originXPx;
@@ -202,6 +209,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         culture = slide.Presentation.Culture;
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
+        // Charts without style part look like Office 2007's (catalog: chart.formatting).
+        legacy = chartStyle == null && ex == null ? Legacy(model.ChartSpace, slide.Presentation.AppVersion) : null;
         colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
         // A chart can keep its own color mapping (measured: PowerPoint honors c:clrMapOvr against the slide's).
         if (model.ChartSpace.Element(Ns.C + "clrMapOvr") is { } mapping)
@@ -212,7 +221,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // The chart area's corners are rounded unless c:roundedCorners says otherwise (catalog: chart.part; measured:
         // PowerPoint rounds them where the element is missing too, by 9.8 pt at every chart size).
         var rounded = ChartModel.Flag(model.ChartSpace, "roundedCorners", true);
-        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false, rounded ? CornerRadius : 0));
+        (Fill? areaFill, List<(XElement, ColorContext)>? areaLine) = legacy != null ? LegacyChartArea() : (null, null);
+        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false, rounded ? CornerRadius : 0, areaFill, areaLine));
 
         var title = BuildTitle();
         var legend = BuildLegend(title);
@@ -314,7 +324,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <summary>Text style of a chart element: its own txPr, the chart's txPr, the style part, then 10 pt defaults.</summary>
     TextStyle Style(XElement? txPr, string styleElement, double defaultSize = 10) =>
-        text.ChartStyle(Layers(DefRPr(txPr), styleElement, new XElement(Ns.A + "defRPr", new XAttribute("sz", (int)(defaultSize * 100)))));
+        text.ChartStyle(Layers(DefRPr(txPr), styleElement, legacy != null
+            ? LegacyText(styleElement, defaultSize)
+            : new XElement(Ns.A + "defRPr", new XAttribute("sz", (int)(defaultSize * 100)))));
 
     static double Width(string value, TextStyle style) =>
         style.Font.Data.LayoutWidth(value, style.Size, style.Kerning, style.LetterSpacing);
@@ -373,7 +385,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var h = y1 - y0;
         if (w <= 0 || h <= 0)
             return "";
-        var fillAttributes = paint.Fill(fill, w, h, defs);
+        var fillAttributes = fill is GradientFill ? paint.Fill(fill, w, h, defs, offset: (x0, y0)) : paint.Fill(fill, w, h, defs);
         var stroke = paint.Stroke(outline, w, h, defs);
         var corners = radius > 0 ? $" rx=\"{Units.Css(Math.Min(radius * PxPerPt, Math.Min(w, h) / 2))}\"" : "";
         // Picture patterns start at the shape's own origin: the rectangle is drawn there and moved into place.
@@ -382,14 +394,54 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
     }
 
+    /// <summary>
+    /// Fill attributes of a shape within the given bounds (points): a gradient spans the shape's own box, as PowerPoint
+    /// shades every bar, slice, area, bubble and marker by itself.
+    /// </summary>
+    string FillOver(Fill fill, (double X, double Y, double W, double H) bounds) =>
+        fill is GradientFill
+            ? paint.Fill(fill, bounds.W * PxPerPt, bounds.H * PxPerPt, defs, offset: (bounds.X * PxPerPt, bounds.Y * PxPerPt))
+            : paint.Fill(fill, bounds.W * PxPerPt, bounds.H * PxPerPt, defs);
+
+    static (double X, double Y, double W, double H) Bounds(IEnumerable<(double X, double Y)> points)
+    {
+        double x0 = double.PositiveInfinity, y0 = double.PositiveInfinity, x1 = double.NegativeInfinity, y1 = double.NegativeInfinity;
+        foreach (var (x, y) in points)
+        {
+            (x0, y0, x1, y1) = (Math.Min(x0, x), Math.Min(y0, y), Math.Max(x1, x), Math.Max(y1, y));
+        }
+        return double.IsInfinity(x0) ? default : (x0, y0, x1 - x0, y1 - y0);
+    }
+
+    /// <summary>The box of a pie or doughnut slice (see <see cref="Slice"/>): its corners and the circle's extremes it spans.</summary>
+    static (double X, double Y, double W, double H) SliceBounds(double cx, double cy, double r, double inner, double start, double sweep)
+    {
+        if (sweep >= 359.999)
+            return (cx - r, cy - r, 2 * r, 2 * r);
+        (double X, double Y) Point(double radius, double degrees) =>
+            (cx + Math.Sin(degrees * Math.PI / 180) * radius, cy - Math.Cos(degrees * Math.PI / 180) * radius);
+        var points = new List<(double X, double Y)> { Point(r, start), Point(r, start + sweep), inner > 0 ? Point(inner, start) : (cx, cy) };
+        if (inner > 0)
+            points.Add(Point(inner, start + sweep));
+        for (var quadrant = Math.Ceiling(start / 90) * 90; quadrant < start + sweep; quadrant += 90)
+            points.Add(Point(r, quadrant));
+        return Bounds(points);
+    }
+
     /// <summary>A fill of the chart part: picture fills find their image among the chart's own relationships.</summary>
     Fill ReadFill(XElement fill) => FillReader.Read(fill, colors, slide.Images(chartPart), slide.ImageSizes(chartPart));
 
-    /// <summary>Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title).</summary>
-    string Area(XElement? spPr, Box box, bool snap, double radius = 0)
+    /// <summary>
+    /// Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title), over a default fill
+    /// and line (the style's).
+    /// </summary>
+    string Area(XElement? spPr, Box box, bool snap, double radius = 0, Fill? defaultFill = null, List<(XElement, ColorContext)>? defaultLine = null)
     {
-        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : Fill.None;
-        var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : defaultFill ?? Fill.None;
+        var layers = new List<(XElement, ColorContext)>(defaultLine ?? []);
+        if (spPr?.Element(Ns.A + "ln") is { } ln)
+            layers.Add((ln, colors));
+        var outline = layers.Count > 0 ? OutlineReader.Merge(layers) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
         return Rect(box, fill, outline, snap, radius);
@@ -401,6 +453,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (outline is not { Visible: true } || outline.Fill is not SolidFill solid)
             return outline is { Visible: true } ? $"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>" : "";
         var thickness = Math.Max(1, Math.Round(Units.ToPx(outline.WidthEmu)));
+        if (outline.Dash != "solid")
+        {
+            // Dashed lines keep their dashes: a stroke along the snapped center line, as wide as the snapped line, from
+            // a whole pixel, so that the dashes (whole multiples of the width) end on pixel edges like PowerPoint's.
+            var line = outline with { WidthEmu = thickness * 9525 };
+            if (Math.Abs(y1 - y2) < 1e-9)
+            {
+                var center = Math.Round(originY + y1 * PxPerPt - thickness / 2) - originY + thickness / 2;
+                return $"<path d=\"M{Units.Css(SnapX(x1))} {Units.Css(center)}H{Px(x2)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>";
+            }
+            var middle = Math.Round(originX + x1 * PxPerPt - thickness / 2) - originX + thickness / 2;
+            return $"<path d=\"M{Units.Css(middle)} {Units.Css(SnapY(y1))}V{Px(y2)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>";
+        }
         var color = solid.Color.A < 0.999 ? $" fill=\"{solid.Color.ToHex()}\" fill-opacity=\"{Units.Css4(solid.Color.A)}\"" : $" fill=\"{solid.Color.ToHex()}\"";
         if (Math.Abs(y1 - y2) < 1e-9)
         {
@@ -421,13 +486,20 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return null;
 
         var txPr = element?.Element(Ns.C + "txPr");
-        var layers = Layers(DefRPr(txPr), "title", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")));
+        var layers = Layers(DefRPr(txPr), "title", legacy != null
+            ? LegacyText("title", 18)
+            : new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")));
+        // Office 2007 titles are 1.2 times the chart's text size where it has one (measured: 16.8 pt with 14 pt).
+        if (legacy != null && DefRPr(model.ChartSpace.Element(Ns.C + "txPr")).Int("sz") is { } chartSize)
+            layers.Insert(1, new XElement(Ns.A + "defRPr", new XAttribute("sz", ((int)Math.Round(chartSize * 1.2)).ToString(CultureInfo.InvariantCulture))));
         // Office 2016 charts give their title the chart's width less its margins (measured: 115 pt in a 130 pt chart).
         var maxWidth = ex != null ? width - 2 * ExMargin : width * 0.8;
         LaidOutText layout;
         TextStyle style;
         if (element?.Element(Ns.C + "tx")?.Element(Ns.C + "rich") is { } rich)
         {
+            if (legacy != null)
+                rich = LegacyTitleText(rich);
             layout = text.ChartRich(rich, layers, maxWidth, wrap: true);
             style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
         }
@@ -1047,7 +1119,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 foreach (var trendline in series.Element.Elements(Ns.C + "trendline"))
                 {
                     if (!deleted.Contains(index++))
-                        entries.Add(new LegendEntry(TrendName(trendline, series), Fill.None, TrendOutline(trendline, group, series), true, null, series.Index, Trendline: true));
+                        entries.Add(new LegendEntry(TrendName(trendline, series), Fill.None, TrendOutline(trendline, group, series), true, null, series.Index));
                 }
             }
         }
@@ -1067,11 +1139,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             Box = new Box(0, 0, 0, 0),
             Overlay = ChartModel.Flag(element, "overlay", false),
             SpPr = element.Element(Ns.C + "spPr"),
-            LongKeys = entries.Any(e => e.Trendline),
+            LongKeys = entries.Any(e => e.LineKey && e.Outline is { Visible: true, Dash: not "solid" }),
         };
 
-        // An entry is [key/2][key][key/2][text]; square keys are 0.45 L wide, line keys 0.82 L.
-        double Key(LegendEntry e) => (layout.LongKeys ? LongKeyText / 2 : e.LineKey ? LegendLineKey : LegendKey) * lineHeight;
+        // An entry is [key/2][key][key/2][text]; square keys are 0.45 L wide, line keys 12 pt.
+        double Key(LegendEntry e) => layout.LongKeys ? LongKeyText / 2 : e.LineKey ? LegendLineKey : LegendKey * lineHeight;
         var widths = entries.Select(e => 2 * Key(e) + Width(e.Text, style)).ToList();
 
         Box box;
@@ -1141,29 +1213,32 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             }
             var baseline = CenteredBaseline(style, center);
-            // Key geometry in line heights from the entry's left edge: line keys, square keys, or the longer keys
-            // of legends with trendlines.
+            // Key geometry in points from the entry's left edge: line keys, square keys (in line heights), or the
+            // longer keys of legends with a dashed line.
             double lineFrom = LegendLineCenter - LegendLineHalf, lineTo = LegendLineCenter + LegendLineHalf, markerAt, squareAt, textAt;
             if (legend.LongKeys)
-                (lineFrom, lineTo, markerAt, squareAt, textAt) = (LongKeyLineFrom, LongKeyLineTo, entry.LineKey ? (LongKeyLineFrom + LongKeyLineTo) / 2 : LongKeyMarker, LongKeyText / 2 - LegendKey / 2, LongKeyText);
+                (lineFrom, lineTo, markerAt, squareAt, textAt) = (LongKeyLineFrom, LongKeyLineTo,
+                    entry.LineKey ? (LongKeyLineFrom + LongKeyLineTo) / 2 : LongKeyMarker, LongKeyText / 2 - LegendKey / 2 * lineHeight, LongKeyText);
             else if (entry.LineKey)
-                (markerAt, squareAt, textAt) = (LegendLineCenter, LegendKeyLeft, LegendLineText);
+                (markerAt, squareAt, textAt) = (LegendLineCenter, LegendKeyLeft * lineHeight, LegendLineText);
             else
-                (markerAt, squareAt, textAt) = (LegendKeyLeft + LegendKey / 2, LegendKeyLeft, LegendText);
+                (markerAt, squareAt, textAt) = ((LegendKeyLeft + LegendKey / 2) * lineHeight, LegendKeyLeft * lineHeight, LegendText * lineHeight);
+            // Keys draw lines and markers no larger than the legend's font allows.
+            var keyLine = entry.Outline is { } entryLine ? entryLine with { WidthEmu = Math.Min(entryLine.WidthEmu, LegendLineCap * style.Size * 12700) } : null;
             if (entry.LineKey)
             {
-                if (entry.Outline is { Visible: true } line)
+                if (keyLine is { Visible: true } line)
                 {
-                    var (a, b) = (SnapPoint((left + lineFrom * lineHeight, center), line), SnapPoint((left + lineTo * lineHeight, center), line));
+                    var (a, b) = (SnapPoint((left + lineFrom, center), line), SnapPoint((left + lineTo, center), line));
                     svg.Append($"<path d=\"M{Px(a.X)} {Px(a.Y)}L{Px(b.X)} {Px(b.Y)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                 }
                 if (entry.Marker != null)
-                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt * lineHeight, center, entry.Fill, entry.Outline));
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt, center, entry.Fill, entry.Outline, style.Size));
             }
             else if (entry.MarkerOnly)
             {
                 if (entry.Marker != null)
-                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt * lineHeight, center, entry.Fill, entry.Outline));
+                    svg.Append(DrawMarker(entry.Marker, entry.MarkerIndex, left + markerAt, center, entry.Fill, entry.Outline, style.Size));
             }
             else
             {
@@ -1172,26 +1247,32 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (entry.Circle)
                 {
                     // Bubble series show a round key.
-                    var (kx, r) = (left + squareAt * lineHeight + key / 2, key / 2);
-                    svg.Append($"<circle cx=\"{Px(kx)}\" cy=\"{Px(center)}\" r=\"{Px(r)}\"{paint.Fill(entry.Fill, key, key, defs)}{paint.Stroke(outline, key, key, defs)}/>");
+                    var (kx, r) = (left + squareAt + key / 2, key / 2);
+                    svg.Append($"<circle cx=\"{Px(kx)}\" cy=\"{Px(center)}\" r=\"{Px(r)}\"{FillOver(entry.Fill, (kx - r, center - r, key, key))}{paint.Stroke(outline, key, key, defs)}/>");
                 }
                 else
                 {
                     // Hollow keys (wireframe surfaces) draw their outline on whole pixels like PowerPoint's.
                     var hollow = entry.Fill is NoFill;
-                    svg.Append(Rect(new Box(left + squareAt * lineHeight, center - key / 2, key, key), entry.Fill, outline, snap: hollow, nudge: hollow ? 0.5 : 0));
+                    svg.Append(Rect(new Box(left + squareAt, center - key / 2, key, key), entry.Fill, outline, snap: hollow, nudge: hollow ? 0.5 : 0));
                 }
             }
-            svg.Append(text.Label(entry.Text, style, left + textAt * lineHeight, baseline));
+            svg.Append(text.Label(entry.Text, style, left + textAt, baseline));
         }
         return svg.ToString();
     }
 
     // ---------------------------------------------------------------- series colors
 
-    /// <summary>The automatic color of series or point <paramref name="index"/>: the chart's color style, else the accents.</summary>
-    RgbColor AutoColor(int index)
+    /// <summary>
+    /// The automatic color of series or point <paramref name="index"/> of <paramref name="count"/> (default: the chart's
+    /// series): the chart's color style, else the colors of the Office 2007 style of a chart without style part, else
+    /// the accents.
+    /// </summary>
+    RgbColor AutoColor(int index, int? count = null)
     {
+        if (legacy != null && colorStyle == null)
+            return LegacyColor(index, count ?? AllSeriesCount);
         var palette = colorStyle?.Elements().Where(e => e.Name.Namespace == Ns.A).ToList() ?? [];
         var variations = colorStyle?.Elements(Ns.Cs + "variation").ToList() ?? [];
         if (palette.Count == 0)
@@ -1211,12 +1292,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // LibreOffice's tdf150176 and tdf146756, the first slice in the series' bg2).
         if (FillReader.FindFill(series.SpPr) is { } fill)
             return ReadFill(fill);
-        if (point >= 0 && group.VaryColors && group.Series.Count == 1)
-            return new SolidFill(AutoColor(point));
-        if (group.IsLine || group.IsScatter)
-            return new SolidFill(AutoColor(series.Index));
-        return new SolidFill(AutoColor(series.Index));
+        var color = AutoPointColor(group, series, point);
+        return legacy != null ? LegacyFill(color) : new SolidFill(color);
     }
+
+    /// <summary>The automatic color of a data point (−1: of the series): by point where the group varies colors, else the series'.</summary>
+    RgbColor AutoPointColor(ChartGroup group, ChartSeries series, int point) =>
+        point >= 0 && group.VaryColors && group.Series.Count == 1 ? AutoColor(point, series.Values.Count) : AutoColor(series.Index);
 
     /// <summary>
     /// How a picture fills a point (c:pictureOptions of the point, else of the series): stretched (the default),
@@ -1261,22 +1343,34 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return (fill, line);
     }
 
+    /// <summary>
+    /// The edge of a bar, area, slice or bubble: the point's own a:ln, else the series', over the automatic edge of the
+    /// Office 2007 style of a chart without style part.
+    /// </summary>
     Outline? PointOutline(ChartSeries series, int point)
     {
+        var layers = legacy != null && groupOf.TryGetValue(series, out var group) ? LegacyEdge(group, series, point) : [];
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && dPt.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } own)
-            return OutlineReader.Merge([(own, colors)]);
-        return series.SpPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
+            layers.Add((own, colors));
+        else if (series.SpPr?.Element(Ns.A + "ln") is { } ln)
+            layers.Add((ln, colors));
+        return layers.Count > 0 ? OutlineReader.Merge(layers) : null;
     }
 
-    /// <summary>The line of a line or scatter series: its own a:ln, else an automatic 2.25 pt line.</summary>
+    /// <summary>
+    /// The line of a line or scatter series: its own a:ln over an automatic line (2.25 pt; in charts without style
+    /// part the Office 2007 style's); the edge of other series.
+    /// </summary>
     Outline? SeriesOutline(ChartGroup group, ChartSeries series)
     {
         var own = series.SpPr?.Element(Ns.A + "ln");
         if (!group.HasLines)
-            return own != null ? OutlineReader.Merge([(own, colors)]) : null;
-        var automatic = new XElement(Ns.A + "ln", new XAttribute("w", "28575"), new XAttribute("cap", "rnd"),
-            new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", AutoColor(series.Index).ToHex().TrimStart('#')))),
-            new XElement(Ns.A + "round"));
+            return PointOutline(series, -1);
+        var automatic = legacy != null
+            ? LegacySeriesLine(AutoColor(series.Index))
+            : new XElement(Ns.A + "ln", new XAttribute("w", "28575"), new XAttribute("cap", "rnd"),
+                new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", AutoColor(series.Index).ToHex().TrimStart('#')))),
+                new XElement(Ns.A + "round"));
         var layers = new List<(XElement, ColorContext)> { (automatic, colors) };
         if (own != null) layers.Add((own, colors));
         return OutlineReader.Merge(layers);
@@ -1448,7 +1542,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
 
         var svg = new StringBuilder();
-        svg.Append(Area(model.PlotArea?.Element(Ns.C + "spPr"), plot, snap: false));
+        svg.Append(Area(model.PlotArea?.Element(Ns.C + "spPr"), plot, snap: false, defaultFill: legacy != null ? LegacyPlotArea() : null));
 
         foreach (var layout in axes.Where(a => a.Visible || a.Axis.MajorGridlines != null))
             svg.Append(Gridlines(layout, plot));
@@ -1916,8 +2010,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             : ex == null ? 4 * style.Size
             : Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size;
         var maxIntervals = Math.Clamp((int)Math.Floor((divided ?? length) / Math.Max(1, extent)), 1, 10);
-        // Histograms of Office 2016 charts end at the first major unit past their largest bin (measured: 24 on 0 … 25).
-        layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: ex?.Layout != "clusteredColumn");
+        // Histograms of Office 2016 charts end at the first major unit past their largest bin (measured: 24 on 0 … 25),
+        // radar charts at the first one from their largest value (measured: 7.9 on 0 … 8, 9.6 on 0 … 10).
+        var headroom = ex?.Layout != "clusteredColumn" && !layout.Groups.Any(g => g.IsRadar);
+        layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom);
 
         // Bubbles have to fit: the data range grows by each bubble's radius in axis units until the scale settles.
         var bubbles = layout.Groups.Where(g => g.IsBubble).ToList();
@@ -2134,17 +2230,24 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return svg.ToString();
     }
 
-    /// <summary>The line of c:majorGridlines or c:minorGridlines: its own, else 0.75 pt light gray.</summary>
+    /// <summary>
+    /// The line of c:majorGridlines or c:minorGridlines: its own, else 0.75 pt light gray (charts without style part:
+    /// the Office 2007 style's, under their own).
+    /// </summary>
     Outline GridOutline(XElement gridlines) =>
-        gridlines.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, colors)])
-            : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
+        LineOver(gridlines.Element(Ns.C + "spPr")?.Element(Ns.A + "ln"), new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng"));
 
-    /// <summary>The line of an axis: its own, else 0.75 pt gray.</summary>
+    /// <summary>The line of an axis: its own, else 0.75 pt gray (charts without style part: as gridlines).</summary>
     Outline AxisOutline(ChartAxis axis) =>
-        axis.SpPr?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, colors)])
-            : new Outline(9525, new SolidFill(RgbColor.FromHex("BFBFBF")), "solid", "flat", "round", 8, "sng");
+        LineOver(axis.SpPr?.Element(Ns.A + "ln"), new Outline(9525, new SolidFill(RgbColor.FromHex("BFBFBF")), "solid", "flat", "round", 8, "sng"));
+
+    /// <summary>An axis or grid line: its own a:ln (in charts without style part over the style's line), else the default.</summary>
+    Outline LineOver(XElement? own, Outline automatic)
+    {
+        if (legacy != null)
+            return OutlineReader.Merge(own != null ? [LegacyAxisLine(), (own, colors)] : [LegacyAxisLine()])!;
+        return own != null ? OutlineReader.Merge([(own, colors)])! : automatic;
+    }
 
     string AxisLine(AxisLayout layout, List<AxisLayout> axes, Box plot)
     {
@@ -2403,10 +2506,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         : picture.NaturalSize.W > 0 ? across * picture.NaturalSize.H / picture.NaturalSize.W : across;
                     if (group.Horizontal && picture.NaturalSize.H > 0 && options.Format == "stack")
                         tile = across * picture.NaturalSize.W / picture.NaturalSize.H;
-                    svg.Append(Part(series, i, StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile))));
+                    svg.Append(ShapePart(series, i, StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile))));
                 }
                 else
-                    svg.Append(Part(series, i, Rect(box, barFill, barOutline, snap: true)));
+                    svg.Append(ShapePart(series, i, Rect(box, barFill, barOutline, snap: true)));
 
                 if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw && !Beyond(value, to))
                 {
@@ -2478,7 +2581,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 for (var i = 0; i < points.Count; i++)
                 {
                     if (points[i] is { } p)
-                        svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
+                        svg.Append(ShapePart(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
                 }
             }
             for (var i = 0; i < points.Count; i++)
@@ -2577,7 +2680,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 d.Append('L').Append(Px(b.Item1)).Append(' ').Append(Px(b.Item2));
             }
             d.Append('Z');
-            svg.Append(Part(series, -1, $"<path d=\"{d}\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(PointOutline(series, -1), 0, 0, defs)}/>"));
+            var area = Bounds(top.Concat(top.Select((_, i) => horizontal ? (category.Center(i), baseline[i]) : (baseline[i], category.Center(i)))));
+            svg.Append(ShapePart(series, -1, $"<path d=\"{d}\"{FillOver(PointFill(group, series, -1), area)}{paint.Stroke(PointOutline(series, -1), 0, 0, defs)}/>"));
             if (group.Stacked)
             {
                 for (var i = 0; i < top.Count; i++)
@@ -2617,7 +2721,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (x is not { } xv || series.Values[i] is not { } yv || d <= 0)
                     continue;
                 var (cx, cy, r) = (xAxis.Map(xv), yAxis.Map(yv), d / 2);
-                svg.Append(Part(series, i, $"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{paint.Fill(PointFill(group, series, i), d, d, defs)}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>"));
+                svg.Append(ShapePart(series, i, $"<circle cx=\"{Px(cx)}\" cy=\"{Px(cy)}\" r=\"{Px(r)}\"{FillOver(PointFill(group, series, i), (cx - r, cy - r, 2 * r, 2 * r))}{paint.Stroke(PointOutline(series, i), d, d, defs)}/>"));
                 if (DataLabel(group, series, i) is { } spec)
                     LabelAtPoint(spec, LabelText(spec, series, i, yv, 0), cx, cy, spec.Position ?? "r", r + BubbleLabelGap);
             }
@@ -2652,7 +2756,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 for (var i = 0; i < points.Count; i++)
                 {
                     if (points[i] is { } p)
-                        svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, -1), outline)));
+                        svg.Append(ShapePart(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, -1), outline)));
                 }
             }
         }
@@ -2787,20 +2891,31 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             ? (ChartModel.Val(group.Element, "scatterStyle") ?? "marker") is "marker" or "lineMarker" or "smoothMarker"
             : group.IsRadar
                 ? ChartModel.Val(group.Element, "radarStyle") == "marker"
-                : ChartModel.Flag(group.Element, "marker", false);
+                // A line chart without the flag shows markers (measured: LibreOffice's tdf105517); stock charts have none.
+                : ChartModel.Flag(group.Element, "marker", group.Type == "lineChart");
         return groupMarkers ? own ?? new XElement(Ns.C + "marker") : null;
     }
 
-    string DrawMarker(XElement marker, int seriesIndex, double x, double y, Fill seriesFill, Outline? seriesLine)
+    /// <param name="keySize">The font size of the legend whose key the marker is: keys cap its size and edge (see LegendMarkerCap).</param>
+    string DrawMarker(XElement marker, int seriesIndex, double x, double y, Fill seriesFill, Outline? seriesLine, double? keySize = null)
     {
         var symbol = ChartModel.Val(marker, "symbol") ?? MarkerCycle[seriesIndex % MarkerCycle.Length];
         if (symbol == "auto") symbol = MarkerCycle[seriesIndex % MarkerCycle.Length];
-        var size = Math.Clamp(ChartModel.Number(marker, "size") ?? 5, 2, 72);
+        var size = Math.Clamp(ChartModel.Number(marker, "size") ?? (legacy != null ? LegacyMarkerSize(seriesLine) : 5), 2, 72);
+        if (keySize is { } key)
+            size = Math.Min(size, LegendMarkerCap * key);
         var spPr = marker.Element(Ns.C + "spPr");
         var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : seriesFill is NoFill ? new SolidFill(seriesLine?.Fill is SolidFill sf ? sf.Color : RgbColor.Black) : seriesFill;
-        var line = spPr?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, colors)])
+        var layers = new List<(XElement, ColorContext)>();
+        if (legacy != null)
+            layers.Add(LegacyMarkerEdge(seriesLine is { Visible: true, Fill: SolidFill lineFill } ? lineFill.Color : AutoColor(seriesIndex)));
+        if (spPr?.Element(Ns.A + "ln") is { } ln)
+            layers.Add((ln, colors));
+        var line = layers.Count > 0
+            ? OutlineReader.Merge(layers)
             : seriesLine is { Visible: true } ? seriesLine with { WidthEmu = 9525, Dash = "solid" } : null;
+        if (keySize is { } font && line != null)
+            line = line with { WidthEmu = Math.Min(line.WidthEmu, LegendLineCap * font * 12700) };
         // A dot is a small circle half the marker size (measured).
         var r = symbol == "dot" ? size / 4 : size / 2;
         string d = symbol switch
@@ -2820,7 +2935,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var open = symbol is "x" or "plus" or "star";
         return open
             ? $"<path d=\"{d}\" fill=\"none\"{paint.Stroke(line ?? new Outline(9525, fill, "solid", "flat", "round", 8, "sng"), 0, 0, defs)}/>"
-            : $"<path d=\"{d}\"{paint.Fill(fill, 0, 0, defs)}{paint.Stroke(line, 0, 0, defs)}/>";
+            : $"<path d=\"{d}\"{FillOver(fill, (x - r, y - r, 2 * r, 2 * r))}{paint.Stroke(line, 0, 0, defs)}/>";
     }
 
     // ---------------------------------------------------------------- trendlines and error bars
@@ -3454,7 +3569,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     var d = new StringBuilder();
                     for (var i = 0; i < corners.Count; i++)
                         d.Append(i == 0 ? 'M' : 'L').Append(Px(corners[i].X)).Append(' ').Append(Px(corners[i].Y));
-                    svg.Append(Part(series, -1, $"<path d=\"{d}Z\"{paint.Fill(PointFill(group, series, -1), 0, 0, defs)}{paint.Stroke(outline, 0, 0, defs)}/>"));
+                    svg.Append(ShapePart(series, -1, $"<path d=\"{d}Z\"{FillOver(PointFill(group, series, -1), Bounds(corners))}{paint.Stroke(outline, 0, 0, defs)}/>"));
                     continue;
                 }
                 var points = Enumerable.Range(0, n).Select(i => series.Values.ElementAtOrDefault(i) is { } v ? At(i, Radius(v)) : ((double X, double Y)?)null).ToList();
@@ -3476,7 +3591,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     for (var i = 0; i < points.Count; i++)
                     {
                         if (points[i] is { } p)
-                            svg.Append(Part(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
+                            svg.Append(ShapePart(series, i, DrawMarker(marker, series.Index, p.X, p.Y, PointFill(group, series, i), outline)));
                     }
                 }
                 for (var i = 0; i < points.Count; i++)
@@ -3487,7 +3602,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
         }
 
-        if (!valueAxis.Deleted && AxisOutline(valueAxis) is { Visible: true } spokes)
+        // Charts without style part draw spokes only where the axis has a line of its own (measured).
+        if (!valueAxis.Deleted && (legacy == null || valueAxis.SpPr?.Element(Ns.A + "ln") != null) && AxisOutline(valueAxis) is { Visible: true } spokes)
         {
             for (var i = 0; i < n; i++)
                 svg.Append(Polyline([(cx, cy), At(i, radius)], spokes, closed: false));
@@ -3593,7 +3709,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                                 ?? ChartModel.Number(series.Element, "explosion") ?? 0;
                 var mid = (angle + sweep / 2) * Math.PI / 180;
                 var (ox, oy) = (Math.Sin(mid) * outer * explosion / 100, -Math.Cos(mid) * outer * explosion / 100);
-                svg.Append(Part(series, i, $"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
+                svg.Append(ShapePart(series, i, $"<path d=\"{Slice(cx + ox, cy + oy, outer, inner, angle, sweep)}\"{FillOver(PointFill(group, series, i), SliceBounds(cx + ox, cy + oy, outer, inner, angle, sweep))}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
                 if (DataLabel(group, series, i) is { } spec)
                 {
                     if (doughnut)
@@ -3678,11 +3794,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             if (second.Contains(i) || values[i] <= 0)
                 continue;
             var sweep = values[i] / total * 360;
-            svg.Append(Part(series, i, $"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
+            svg.Append(ShapePart(series, i, $"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{FillOver(PointFill(group, series, i), SliceBounds(cx, cy, r, 0, angle, sweep))}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
             angle += sweep;
         }
         if (other > 0)
-            svg.Append(Part(series, n, $"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{paint.Fill(PointFill(group, series, n), 0, 0, defs)}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>"));
+            svg.Append(ShapePart(series, n, $"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{FillOver(PointFill(group, series, n), SliceBounds(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep))}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>"));
 
         // The second plot.
         var secondLeft = left + diameter * (1 + gap);
@@ -3695,7 +3811,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var i in second.OrderBy(i => i))
             {
                 var h = other > 0 ? values[i] / other * height : 0;
-                svg.Append(Part(series, i, Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true)));
+                svg.Append(ShapePart(series, i, Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true)));
                 y += h;
             }
             (top, bottom) = ((secondLeft, cy - height / 2), (secondLeft, cy + height / 2));
@@ -3707,7 +3823,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var i in second.OrderBy(i => i))
             {
                 var sweep = other > 0 ? values[i] / other * 360 : 0;
-                svg.Append(Part(series, i, $"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{paint.Fill(PointFill(group, series, i), 0, 0, defs)}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
+                svg.Append(ShapePart(series, i, $"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{FillOver(PointFill(group, series, i), SliceBounds(cx2, cy, r2, 0, a, sweep))}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
                 a += sweep;
             }
             (top, bottom) = ((cx2, cy - r2), (cx2, cy + r2));

@@ -40,6 +40,11 @@ public static class MarkupCompatibility
         {
             if (alternate.Parent == null)
                 continue;   // inside an alternative that was already removed
+            if (ChartStyle(alternate) is { } style)
+            {
+                alternate.ReplaceWith(style);
+                continue;
+            }
             var chosen = alternate.Elements(Mc + "Choice").FirstOrDefault(IsSupported)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsEquation)
@@ -98,6 +103,28 @@ public static class MarkupCompatibility
         var pictures = fallback.Descendants().Where(e => e.Name.LocalName == "pic").ToList();
         for (var i = 0; i < models.Count && i < pictures.Count; i++)
             pictures[i].Add(new XElement(Annotation + "model3d", new XElement(models[i])));
+    }
+
+    /// <summary>
+    /// The chart style of an Office 2010 chart (c14:style 101–148, catalog: chart.formatting): the fallback's content with
+    /// its c:style (else one with the c14 style's number less 100) marked as written by Office 2010, which makes
+    /// PowerPoint draw a chart without style part in the Office 2007 look of that style; null where the alternative
+    /// holds no c14:style.
+    /// </summary>
+    static List<XElement>? ChartStyle(XElement alternate)
+    {
+        XNamespace c14 = "http://schemas.microsoft.com/office/drawing/2007/8/2/chart";
+        XNamespace c = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+        if (alternate.Elements(Mc + "Choice").Elements(c14 + "style").FirstOrDefault() is not { } office2010)
+            return null;
+        var content = alternate.Element(Mc + "Fallback")?.Elements().Select(e => new XElement(e)).ToList() ?? [];
+        if (content.FirstOrDefault(e => e.Name == c + "style") is not { } style)
+        {
+            style = new XElement(c + "style", int.TryParse((string?)office2010.Attribute("val"), out var value) && value > 100 ? new XAttribute("val", value - 100) : null);
+            content.Add(style);
+        }
+        style.SetAttributeValue(Annotation + "c14", "1");
+        return content;
     }
 
     /// <summary>

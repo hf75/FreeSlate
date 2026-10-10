@@ -85,6 +85,22 @@ public sealed class PresentationContext : IDisposable
     public System.Globalization.CultureInfo Culture { get; init; } = System.Globalization.CultureInfo.CurrentCulture;
 
     /// <summary>
+    /// The major version of the application that saved the presentation (docProps/app.xml AppVersion: 12 Office 2007,
+    /// 14 Office 2010 …), null where the package does not say; charts without style part look by it (catalog: chart.formatting).
+    /// </summary>
+    public int? AppVersion => (appVersion ??= new Lazy<int?>(ReadAppVersion)).Value;
+
+    Lazy<int?>? appVersion;
+
+    int? ReadAppVersion()
+    {
+        XNamespace ep = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties";
+        var part = Package.FirstRelationship("/", "extended-properties")?.Target;
+        var value = part != null && Package.Exists(part) ? Load(part).Root?.Element(ep + "AppVersion")?.Value : null;
+        return int.TryParse(value?.Split('.')[0].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var major) ? major : null;
+    }
+
+    /// <summary>
     /// The fonts embedded in the presentation (p:embeddedFontLst, catalog: text.embeddedFonts), one face per style:
     /// Embedded OpenType as PowerPoint writes it, or a plain TrueType/OpenType font; decoded when first used.
     /// </summary>
