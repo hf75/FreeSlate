@@ -1798,9 +1798,15 @@ areas:
           with the larger sum, facets are lit 0.821 + 0.313 n·(0.768, 0.182, −0.614) for the normal as the
           camera sees it in perspective and 0.641 + 0.380 n·(0.616, 0.491, −0.616) in the box with right-angle
           axes, their walls 0.4 + 0.75 n·(0.572, 0.586, −0.574) for the inner normal (seen by the camera, or
-          in the box with right-angle axes); at rotY 0 the side wall stands on the left. Not yet: walls,
-          gridlines and labels of views from behind (rotY between 90° and 270°), which PowerPoint moves to
-          the far sides, and wireframes' contour lines (generated/charts-3d slide 13: 76.3 %).
+          in the box with right-angle axes); at rotY 0 the side wall stands on the left. Views from other
+          sides (local/backview, rotY 100° to 300°, 95.1 %): seen from behind (the camera beyond the middle of
+          the box's depth) the back wall stands at the near end of the data and the floor's labels run along
+          its near edge; the vertical axis always stands at the box's left end (x = 0), on whichever of its
+          two edges lies outside on the screen, from behind on the right where its labels take no room;
+          labels along a floor edge within 34° of the horizontal stand under it, else beside it away from the
+          box (categories under at 27° and 32°, beside at 36°; series under at 12°, beside at 41°). Not yet:
+          category labels that PowerPoint wraps under a rising edge (rotY 300°), and wireframes' contour lines
+          (generated/charts-3d slide 13: 76.3 %).
 
       - id: chart.analysis
         title: Trendlines and error bars

@@ -286,11 +286,21 @@ public sealed partial class ChartRenderer
         var manual = ManualPlot();
         if (ManualOuterPlot() is { } placed)
             outer = placed;
+        // Seen from behind (the camera beyond the middle of the box's depth, in perspective at rotations between
+        // about 90° and 270°) the back wall stands at the near end of the data and the floor's labels run along its
+        // near edge. The vertical axis always stands at the box's left end (x = 0), on whichever of its two edges
+        // there lies outside on the screen, its labels and their room on that side: from behind on the right
+        // (measured on columns and surfaces turned 100° to 300°). The first pass guesses from the rotation, the
+        // others ask the camera.
+        var behind = !view.RightAngleAxes && Math.Cos(view.RotY * Math.PI / 180) < 0;
+        var axisRight = behind;
+        // The labels along the floor's near edges: under an edge within 34° of the horizontal, else beside it.
+        (bool Under, bool Right)? floorAt = null, seriesAt = null;
         var plot = outer;
         for (var pass = 0; pass < 3; pass++)
         {
             // The labels take their room from the plot area like on flat charts; the box fills the rest.
-            plot = manual ?? Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout, !frame.Between);
+            plot = manual ?? Plot3D(outer, columns ? value : category, columns ? category : value, seriesLayout, !frame.Between, axisRight, floorAt, seriesAt);
             var ratio = view.HeightPercent is { } hp ? hp / 100 : plot.H / Math.Max(1, plot.W);
             // Areas with their categories on the box's edges span n - 1 category widths of n: the box keeps the
             // height of n - 1 (measured on 3D stacked areas of 5 and 8 categories, on the ticks and between them).
@@ -305,13 +315,25 @@ public sealed partial class ChartRenderer
             var (side, floor, back) = (Thickness("sideWall") * unit, Thickness("floor") * unit, Thickness("backWall") * unit);
             slabs = new Slabs(fromRight ? side : 0, fromRight ? 0 : side, fromAbove ? floor : 0, fromAbove ? 0 : floor, back);
             projection.Fit(frame.W, frame.H, d, plot, slabs);
+            behind = !projection.NearerBelow(2, d / 2);
+            axisRight = projection.Map(0, 0, d / 2).X > projection.Map(frame.W / 2, 0, d / 2).X;
+            if (!view.RightAngleAxes)
+            {
+                // Under an edge within 34° of the horizontal, else beside it away from the box (measured: categories
+                // under at 27° and 32°, beside at 36°; series under at 12°, beside at 41°).
+                (bool, bool) Placement((double X, double Y) a, (double X, double Y) b) =>
+                    (Math.Abs(b.Y - a.Y) < Math.Tan(34 * Math.PI / 180) * Math.Abs(b.X - a.X), (a.X + b.X) / 2 > projection.Map(frame.W / 2, frame.H / 2, d / 2).X);
+                var (front, near) = (behind ? d : 0, frame.SideX == 0 ? frame.W : 0);
+                floorAt = Placement(projection.Map(0, frame.FloorY, front), projection.Map(frame.W, frame.FloorY, front));
+                seriesAt = Placement(projection.Map(near, frame.FloorY, 0), projection.Map(near, frame.FloorY, d));
+            }
             // The value scale follows the box's edge halfway back (in perspective the front edge looks longer).
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
             ScaleValueAxis3D(value, length);
             // Category labels that do not fit under their categories turn by 45° like on flat charts.
             if (columns && category.HasLabels)
-                category.Rotation = Rotation(category, projection.Length((0, edgeY, 0), (frame.W, edgeY, 0)), threeD: true);
+                category.Rotation = Rotation(category, projection.Length((0, edgeY, behind ? d : 0), (frame.W, edgeY, behind ? d : 0)), threeD: true);
         }
         var (w, h) = (frame.W, frame.H);
         var sideX = frame.SideX;
@@ -320,6 +342,11 @@ public sealed partial class ChartRenderer
         var sideOuter = sideX == 0 ? -slabs.Left : w + slabs.Right;
         var floorOuter = floorY == 0 ? -slabs.Below : h + slabs.Above;
         var (farX, topY) = (sideX == 0 ? w : 0, floorY == 0 ? h : 0);
+        var (frontZ, backZ, backOuter) = behind ? (d, 0.0, -slabs.Behind) : (0.0, d, d + slabs.Behind);
+        // The vertical axis (values of columns, categories of bars) at the box's left end, on the side wall's outer
+        // face when the wall stands there, on the outer of its two edges.
+        var axisX = sideX == 0 ? sideOuter : 0.0;
+        var axisZ = projection.Map(axisX, 0, d).X > projection.Map(axisX, 0, 0).X == axisRight ? d : 0.0;
 
         var svg = new StringBuilder();
         string Quad(params (double X, double Y, double Z)[] corners) =>
@@ -336,9 +363,9 @@ public sealed partial class ChartRenderer
             return Math.Min(1, 0.4 + 0.75 * Math.Max(0, n.X * 0.572 + n.Y * 0.586 - n.Z * 0.574));
         }
         if (slabs.Behind > 0)
-            svg.Append(WallSlab(model.Chart.Element(Ns.C + "backWall"), projection, (0, 0, d), (w, h, d + slabs.Behind)));
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + "backWall"), projection, (0, 0, Math.Min(backZ, backOuter)), (w, h, Math.Max(backZ, backOuter))));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, d), (w, 0, d), (w, h, d), (0, h, d)), WallShade((0, 0, -1), 1)));
+            svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, backZ), (w, 0, backZ), (w, h, backZ), (0, h, backZ)), WallShade((0, 0, behind ? 1 : -1), 1)));
         if (sideOuter != sideX)
             svg.Append(WallSlab(model.Chart.Element(Ns.C + "sideWall"), projection, (Math.Min(sideX, sideOuter), 0, 0), (Math.Max(sideX, sideOuter), h, d)));
         else
@@ -364,8 +391,8 @@ public sealed partial class ChartRenderer
             {
                 var p = frame.ValuePos(t);
                 svg.Append(columns
-                    ? Line(outline, (sideOuter, p, 0), (sideX, p, 0), (sideX, p, d), (farX, p, d), (farX, p, d + slabs.Behind))
-                    : Line(outline, (p, floorOuter, 0), (p, floorY, 0), (p, floorY, d), (p, topY, d), (p, topY, d + slabs.Behind)));
+                    ? Line(outline, (sideOuter, p, frontZ), (sideX, p, frontZ), (sideX, p, backZ), (farX, p, backZ), (farX, p, backOuter))
+                    : Line(outline, (p, floorOuter, frontZ), (p, floorY, frontZ), (p, floorY, backZ), (p, topY, backZ), (p, topY, backOuter)));
             }
         }
         if (categoryAxis.MajorGridlines is { } categoryGrid)
@@ -375,8 +402,8 @@ public sealed partial class ChartRenderer
             {
                 var p = frame.CategoryPos(frame.Between ? i * c : Math.Min(i, nCat - 1) / (double)Math.Max(1, nCat - 1));
                 svg.Append(columns
-                    ? Line(outline, (p, floorOuter, 0), (p, floorY, 0), (p, floorY, d), (p, topY, d), (p, topY, d + slabs.Behind))
-                    : Line(outline, (sideOuter, p, 0), (sideX, p, 0), (sideX, p, d), (farX, p, d), (farX, p, d + slabs.Behind)));
+                    ? Line(outline, (p, floorOuter, frontZ), (p, floorY, frontZ), (p, floorY, backZ), (p, topY, backZ), (p, topY, backOuter))
+                    : Line(outline, (sideOuter, p, frontZ), (sideX, p, frontZ), (sideX, p, backZ), (farX, p, backZ), (farX, p, backOuter)));
             }
         }
 
@@ -393,17 +420,17 @@ public sealed partial class ChartRenderer
         // axis along the floor's far side.
         var categoryOutline = AxisOutline(categoryAxis);
         if (AxisOutline(valueAxis) is { Visible: true } valueLine && !valueAxis.Deleted)
-            svg.Append(columns ? Line(valueLine, (sideOuter, 0, 0), (sideOuter, h, 0)) : Line(valueLine, (0, floorOuter, 0), (w, floorOuter, 0)));
+            svg.Append(columns ? Line(valueLine, (axisX, 0, axisZ), (axisX, h, axisZ)) : Line(valueLine, (0, floorOuter, frontZ), (w, floorOuter, frontZ)));
         if (categoryOutline is { Visible: true } && !categoryAxis.Deleted)
         {
-            svg.Append(columns ? Line(categoryOutline, (0, floorOuter, 0), (w, floorOuter, 0)) : Line(categoryOutline, (sideOuter, 0, 0), (sideOuter, h, 0)));
+            svg.Append(columns ? Line(categoryOutline, (0, floorOuter, frontZ), (w, floorOuter, frontZ)) : Line(categoryOutline, (axisX, 0, axisZ), (axisX, h, axisZ)));
             if (categoryAxis.MajorTickMark is "out" or "cross" && columns)
             {
                 // Ticks run 5 px down from the floor's front edge at the category boundaries (or points).
                 for (var i = 0; i <= (frame.Between ? nCat : nCat - 1); i++)
                 {
                     var p = frame.CategoryPos(frame.Between ? i * c : i / (double)Math.Max(1, nCat - 1));
-                    var (x, y) = projection.Map(p, floorOuter, 0);
+                    var (x, y) = projection.Map(p, floorOuter, frontZ);
                     svg.Append(GridLine(categoryOutline, x, y, x, y + TickLength));
                 }
             }
@@ -428,31 +455,45 @@ public sealed partial class ChartRenderer
         if (value.HasLabels)
         {
             for (var i = 0; i < value.Labels.Count && i < valuePositions.Count; i++)
-                svg.Append(columns ? SideLabel(value, value.Labels[i], projection.Map(sideOuter, valuePositions[i], 0)) : FloorLabel(value, value.Labels[i], projection.Map(valuePositions[i], floorOuter, 0)));
+                svg.Append(columns ? SideLabel(value, value.Labels[i], projection.Map(axisX, valuePositions[i], axisZ), axisRight) : FloorLabel(value, value.Labels[i], projection.Map(valuePositions[i], floorOuter, frontZ)));
         }
         if (category.HasLabels)
         {
             var tickRoom = categoryOutline is { Visible: true } && categoryAxis.MajorTickMark is "out" or "cross" && !categoryAxis.Deleted ? TickLength : 0;
+            // Along a floor edge steeper than 34° the labels stand beside it, away from the box (measured on columns
+            // turned 40° to 300°).
+            var steep = columns && floorAt is { Under: false };
+            var beside = floorAt is { Right: true };
             for (var i = 0; i < nCat; i++)
             {
                 var p = frame.CategoryCenter(i);
-                var at = columns ? projection.Map(p, floorOuter, 0) : projection.Map(sideOuter, p, 0);
-                svg.Append(columns ? FloorLabel(category, category.Labels[i], (at.X, at.Y + tickRoom)) : SideLabel(category, category.Labels[i], at));
+                var at = columns ? projection.Map(p, floorOuter, frontZ) : projection.Map(axisX, p, axisZ);
+                svg.Append(!columns ? SideLabel(category, category.Labels[i], at, axisRight)
+                    : steep ? SideLabel(category, category.Labels[i], at, beside)
+                    : FloorLabel(category, category.Labels[i], (at.X, at.Y + tickRoom)));
             }
         }
         if (seriesLayout is { HasLabels: true })
         {
-            // Labels closer than a line apart show every second (third …) one, starting with the first.
+            // Labels closer than a line apart show every second (third …) one, starting with the first; along an
+            // edge within 34° of the horizontal they stand under it (measured at 260° and 300°).
             var edge = sideX == 0 ? w : 0;
-            var spacing = nSer > 1 ? Math.Abs(projection.Map(edge, floorY, frame.SeriesPos(0)).Y - projection.Map(edge, floorY, frame.SeriesPos(1)).Y) : 0;
-            var lineHeight = LineHeight(seriesLayout.Style);
+            var under = seriesAt is { Under: true };
+            var (p0, p1) = nSer > 1 ? (projection.Map(edge, floorY, frame.SeriesPos(0)), projection.Map(edge, floorY, frame.SeriesPos(1))) : default;
+            var spacing = nSer > 1 ? (under ? Math.Abs(p1.X - p0.X) : Math.Abs(p1.Y - p0.Y)) : 0;
+            var lineHeight = under ? seriesLayout.Labels.Max(l => Width(l, seriesLayout.Style)) : LineHeight(seriesLayout.Style);
             var step = nSer > 1 && spacing < lineHeight && spacing > 1e-6 ? (int)Math.Ceiling(lineHeight / spacing) : 1;
             for (var k = 0; k < nSer; k += step)
             {
                 var (x, y) = projection.Map(edge, floorY, frame.SeriesPos(k));
                 var label = seriesLayout.Labels[k];
                 var s = seriesLayout.Style.Size;
-                var left = sideX == 0 ? x + ValueLabelGap * s : x - ValueLabelGap * s - Width(label, seriesLayout.Style);
+                if (under)
+                {
+                    svg.Append(FloorLabel(seriesLayout, label, (x, y)));
+                    continue;
+                }
+                var left = seriesAt?.Right ?? true ? x + ValueLabelGap * s : x - ValueLabelGap * s - Width(label, seriesLayout.Style);
                 svg.Append(text.Label(label, seriesLayout.Style, left, CenteredBaseline(seriesLayout.Style, y)));
             }
         }
@@ -980,17 +1021,26 @@ public sealed partial class ChartRenderer
     /// The plot area of a 3D chart inside its axis labels, as flat charts compute it (measured: the inner plot area
     /// of a 3D stacked area equals the flat chart's): value labels beside it, category labels below it, labels
     /// centered on the edges of charts whose categories sit on them (area and surface) within the outer edges, and
-    /// the series axis's labels right of it a category label gap away.
+    /// the series axis's labels right of it a category label gap away; the side labels go right of it on charts
+    /// seen from behind (<paramref name="sideRight"/>). Labels along a floor edge that runs more up than across
+    /// stand beside it and take their room on that side instead of below (<paramref name="floorAt"/>,
+    /// <paramref name="seriesAt"/>; series labels along an edge running more across stand under it).
     /// </summary>
-    Box Plot3D(Box outer, AxisLayout side, AxisLayout floor, AxisLayout? series, bool edgeCategories)
+    Box Plot3D(Box outer, AxisLayout side, AxisLayout floor, AxisLayout? series, bool edgeCategories, bool sideRight = false,
+        (bool Under, bool Right)? floorAt = null, (bool Under, bool Right)? seriesAt = null)
     {
+        var (floorUnder, floorRight) = floorAt ?? (true, false);
+        var (seriesUnder, seriesRight) = seriesAt ?? (false, true);
         double left = outer.X, top = outer.Y, right = outer.Right, bottom = outer.Bottom;
         if (side.HasLabels && side.Labels.Count > 0)
         {
+            // On the right (charts seen from behind) they take no room (measured: the box reaches as far right as
+            // without labels).
             var widest = side.Labels.Max(l => Width(l, side.Style));
-            left = Math.Max(left, outer.X - LabelBleed + widest + ValueLabelGap * side.Style.Size);
+            if (!sideRight)
+                left = Math.Max(left, outer.X - LabelBleed + widest + ValueLabelGap * side.Style.Size);
         }
-        if (floor.HasLabels && floor.Labels.Count > 0)
+        if (floor.HasLabels && floor.Labels.Count > 0 && floorUnder)
         {
             bottom = Math.Min(bottom, outer.Bottom + LabelBleed - LabelExtent(floor) - CategoryLabelGap * floor.Style.Size);
             if (edgeCategories && floor.Rotation == 0 && !floor.Axis.IsValue)
@@ -999,10 +1049,23 @@ public sealed partial class ChartRenderer
                 right = Math.Min(right, outer.Right - Width(floor.Labels[^1], floor.Style) / 2);
             }
         }
+        else if (floor.HasLabels && floor.Labels.Count > 0)
+        {
+            var widest = floor.Labels.Max(l => Width(l, floor.Style));
+            if (floorRight)
+                right = Math.Min(right, outer.Right + LabelBleed - widest - ValueLabelGap * floor.Style.Size);
+            else
+                left = Math.Max(left, outer.X - LabelBleed + widest + ValueLabelGap * floor.Style.Size);
+        }
         if (series is { HasLabels: true } && series.Labels.Count > 0)
         {
             var widest = series.Labels.Max(l => Width(l, series.Style));
-            right = Math.Min(right, outer.Right + LabelBleed - widest - CategoryLabelGap * series.Style.Size);
+            if (seriesUnder)
+                bottom = Math.Min(bottom, outer.Bottom + LabelBleed - LineHeight(series.Style) - CategoryLabelGap * series.Style.Size);
+            else if (seriesRight)
+                right = Math.Min(right, outer.Right + LabelBleed - widest - CategoryLabelGap * series.Style.Size);
+            else
+                left = Math.Max(left, outer.X - LabelBleed + widest + CategoryLabelGap * series.Style.Size);
         }
         if (side is { HasLabels: true, Axis.IsValue: true })
             top = Math.Max(top, outer.Y - 6 + LineHeight(side.Style) / 2);
@@ -1036,9 +1099,9 @@ public sealed partial class ChartRenderer
         layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, style));
     }
 
-    /// <summary>A label right-aligned before a point on the side wall's front edge, centered on it.</summary>
-    string SideLabel(AxisLayout layout, string label, (double X, double Y) at) =>
-        text.Label(label, layout.Style, at.X - ValueLabelGap * layout.Style.Size - Width(label, layout.Style), CenteredBaseline(layout.Style, at.Y));
+    /// <summary>A label right-aligned before a point on the vertical axis's edge (left-aligned after it on the right), centered on it.</summary>
+    string SideLabel(AxisLayout layout, string label, (double X, double Y) at, bool right = false) =>
+        text.Label(label, layout.Style, right ? at.X + ValueLabelGap * layout.Style.Size : at.X - ValueLabelGap * layout.Style.Size - Width(label, layout.Style), CenteredBaseline(layout.Style, at.Y));
 
     /// <summary>A label centered under a point on the floor's front edge, or turned with its end (rising) or start at it.</summary>
     string FloorLabel(AxisLayout layout, string label, (double X, double Y) at)
