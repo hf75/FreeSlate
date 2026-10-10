@@ -7,6 +7,7 @@ and later the foundation of an editor.
 
 | Path | Content |
 |---|---|
+| `FreeSlate.slnx` | the solution: engine and presenter, so the presenter is always built against the current engine |
 | `src/FreeSlate/` | the rendering engine (PPTX → HTML for now) |
 | `src/FreeSlate.Presenter/` | a small Avalonia app that opens a presentation and runs its slide show |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog and checks the feature catalogs |
@@ -38,6 +39,10 @@ dotnet run --project src/FreeSlate.Presenter -- deck.pptx
 
 The presenter (Avalonia 12) converts the presentation and shows the document in the platform's web view (WebView2 on
 Windows); *Präsentation starten* runs the slide show full screen. Arrow keys, space and Escape work as in PowerPoint.
+
+In Visual Studio, open `FreeSlate.slnx` rather than the presenter's project file: Visual Studio builds referenced
+projects only when they belong to the solution, so a presenter opened on its own runs against the engine as it was
+last built.
 
 ## Measuring fidelity
 
