@@ -1947,8 +1947,9 @@ areas:
           keeps its box while references see its constraint size; a composite root's drawing centered in the
           frame), lin (its rules on the children's length first, by halving to within a point of the room,
           font size rules in whole points, then uniform shrinking, a shrunk composite taking its content's
-          room; the row as long as the farthest a child reaches; sp only between neighbors without a spacer
-          node; the row aligned in the node and each child across it; fallback 2D laid out at the own size and
+          room; a lin child whose children all stay narrower across its line taking their room; the row as
+          long as the farthest a child reaches; sp only between neighbors without a spacer node; the row
+          aligned in the node and each child across it; fallback 2D laid out at the own size and
           scaled; a tree alone on the line centered by itself; children's subtrees evaluated for its box
           before they are measured), snake (rules in 32nds of the way, fixed and balanced breakpoints, cells
           in place by their box and the grid aligned by the room their shapes take, short rows from their
@@ -1964,8 +1965,10 @@ areas:
           half their sibSp above the line; bent connectors; texts' values evaluated again as drawn), pyra
           (text rectangles 0.65 of a level's width, the apex's whole box), connectors between the shapes they
           join (named ends found inside the transitions' nodes, the diagram's own, the siblings named or the
-          one node of that name; straight ones between named points, the radial points where a cycle's circle
-          meets the nodes, or a center; connDist made equal at the shortest; curved ones with a diameter along
+          one node of that name; straight ones between named points, an automatic end at the middle of its
+          node's side nearest to the named one, the radial points where a cycle's circle meets the nodes, or a
+          center; placed again once laid out where they join nodes outside their parent; connDist made equal
+          at the shortest; curved ones with a diameter along
           their circle between their named points, a diameter of connDist following it, negative ones
           counterclockwise; stems alone 0.6 of the height without heads; lines without a height having none).
           Shapes turned by their rot take the size whose turned bounds are their box; a composite root is
@@ -1977,15 +1980,15 @@ areas:
           widths growing in 32nds of the way to a rule's limit; descendants' text at the top level unless
           bullets start at its depth; the diagram laid out again with the pinned values. The output writes the
           shapes the way PowerPoint writes its drawing (text nodes' text taken by shapes showing the same
-          data, styles and colors by label). Measured against PowerPoint's drawings of the 159 layouts: 1313
-          of 1455 shapes within 1 %, 141 diagrams exact, 734 of 823 font sizes (151 shapes and 12 diagrams
+          data, styles and colors by label). Measured against PowerPoint's drawings of the 159 layouts: 1324
+          of 1455 shapes within 1 %, 142 diagrams exact, 739 of 823 font sizes (151 shapes and 12 diagrams
           before this engine work); against generated decks of snake, picture, cycle, radial and hierarchy
           layouts at 1 to 8 nodes: 541 of 542, 550 of 594, 311 of 320, 400 of 427 and 578 of 690 shapes;
           rendered with the drawings removed 94.1 % (38.5 % before), all color definitions and quick styles on
           a process 97.9 %. Missing: BendingPictureBlocks' pictures overhanging their composites, cycle3's
-          long curves, NameandTitleOrganizationalChart's names narrower than their constraint, SubStepProcess'
-          lines, list1's paired bounds, HorizontalActionList's heights, target3's circle taller than the
-          diagram, a root scaled down to fit (AscendingPictureAccentProcess), radial6 with one node.
+          long curves, NameandTitleOrganizationalChart's names narrower than their constraint, list1's paired
+          bounds, HorizontalActionList's heights, target3's circle taller than the diagram, a root scaled down
+          to fit (AscendingPictureAccentProcess), radial6 with one node.
       - id: smartart.styles
         title: SmartArt styles and color definitions
         elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,

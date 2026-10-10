@@ -35,6 +35,7 @@ public static class Engine
             for (var round = 0; round < 8 && Fitting.Fit(root, measure, pins); round++)
                 Run(root, w, h, pins);
         }
+        Reconnect(root, pins);
         // A composite root's drawing, where it fits the frame with the root's own connectors, is centered in it
         // (measured: AccentedPicture's picture and descriptions, pyramid2, funnel1; gear1's arrows reach beyond the
         // frame, its gears stay; the roots that align their children themselves, lin and snake, keep it where they put
@@ -44,6 +45,30 @@ public static class Engine
             && all.W <= w + 1e-6 && all.H <= h + 1e-6)
             Translate(root, (w - drawn.W) / 2 - drawn.X, (h - drawn.H) / 2 - drawn.Y);
         return root;
+    }
+
+    /// <summary>
+    /// Connectors that join a node outside their parent's subtree are placed again once every node stands where its
+    /// ancestors moved it (measured: SubStepProcess's lines from a step's circle, beside the column of its sub-steps,
+    /// to the middle of the rows' sides).
+    /// </summary>
+    static void Reconnect(LayoutNode root, Pins pins)
+    {
+        static bool Within(LayoutNode node, LayoutNode ancestor)
+        {
+            for (var n = node; n != null; n = n.Parent)
+                if (n == ancestor)
+                    return true;
+            return false;
+        }
+        foreach (var connector in root.Descendants().Where(n => n.AlgorithmType == "conn").ToList())
+        {
+            if (connector.Parent is not { AlgorithmType: not ("hierRoot" or "hierChild") } parent)
+                continue;
+            var (start, end) = Ends(connector);
+            if (start != null && end != null && (!Within(start, parent) || !Within(end, parent)))
+                Connector(connector, pins);
+        }
     }
 
     /// <summary>The pins of the layout running on this thread, for extents that arrange a subtree (hierarchies).</summary>
@@ -271,6 +296,17 @@ public static class Engine
             return (minX, minY, maxX - minX, maxY - minY);
         }
         var (growsW, growsH) = (Grows(node, "w"), Grows(node, "h"));
+        // A lin node all of whose children stay narrower across its own line takes the room of the widest, centered
+        // (measured: SubStepProcess' column of sub-steps, 0.77 of its width, between the step circles; hProcess3's
+        // columns keep their box with a spacer as wide as them).
+        if (node.AlgorithmType == "lin" && children.Count > 0 && w is { } boxW && h is { } boxH && !growsW && !growsH)
+        {
+            var vertical = (node.Param("linDir") ?? "fromL") is "fromT" or "fromB";
+            var across = children.Max(c => ChildRect(c, boxW, boxH) is var r ? vertical ? r.W : r.H : 0);
+            var full = vertical ? boxW : boxH;
+            if (across > 0 && across < full - 1e-6)
+                return vertical ? ((boxW - across) / 2, 0, across, boxH) : (0, (boxH - across) / 2, boxW, across);
+        }
         if (node.AlgorithmType == "lin" && children.Count > 0 && (w == null || h == null || growsW || growsH))
         {
             var horizontal = (node.Param("linDir") ?? "fromL") is "fromL" or "fromR";
@@ -286,6 +322,24 @@ public static class Engine
         // A leaf's own size, its offsets added (ChildRect).
         var (_, _, ow, oh) = ChildRect(node, 0, 0);
         return (0, 0, ow, oh);
+    }
+
+    /// <summary>A placed lin node's room: its box, narrowed across its line to its children where all are narrower (see Extent).</summary>
+    static (double X, double Y, double W, double H) LinRoom(LayoutNode node)
+    {
+        var box = (node.X, node.Y, node.W, node.H);
+        if (Grows(node, "w") || Grows(node, "h"))
+            return box;
+        var kids = node.Children.Where(c => c.AlgorithmType != "conn" && c.Placed).ToList();
+        if (kids.Count == 0)
+            return box;
+        if ((node.Param("linDir") ?? "fromL") is "fromT" or "fromB")
+        {
+            var (low, high) = (kids.Min(k => Math.Min(k.X, k.X + k.W)), kids.Max(k => Math.Max(k.X, k.X + k.W)));
+            return high - low > 0 && high - low < node.W - 1e-6 && low >= node.X - 1e-6 && high <= node.X + node.W + 1e-6 ? (low, node.Y, high - low, node.H) : box;
+        }
+        var (top, bottom) = (kids.Min(k => Math.Min(k.Y, k.Y + k.H)), kids.Max(k => Math.Max(k.Y, k.Y + k.H)));
+        return bottom - top > 0 && bottom - top < node.H - 1e-6 && top >= node.Y - 1e-6 && bottom <= node.Y + node.H + 1e-6 ? (node.X, top, node.W, bottom - top) : box;
     }
 
     /// <summary>
@@ -588,8 +642,9 @@ public static class Engine
         }
 
         // A lin child takes the room of its box (measured: hProcess3's columns, their text below a spacer that draws
-        // nothing), any other the room its drawn shapes take.
-        var bounds = children.Select(c => c.AlgorithmType == "lin" ? (c.X, c.Y, c.W, c.H) : Bounds(c)).ToList();
+        // nothing) or, where all its children are narrower across its line, of them (see Extent), any other the room
+        // its drawn shapes take.
+        var bounds = children.Select(c => c.AlgorithmType == "lin" ? LinRoom(c) : Bounds(c)).ToList();
         var total = Reach(children, bounds.Select(b => horizontal ? b.W : b.H).ToList(), gap * factor);
         var order = (direction is "fromR" or "fromB" ? Enumerable.Range(0, children.Count).Reverse() : Enumerable.Range(0, children.Count)).ToList();
         double After(int k) => k + 1 < order.Count && Spaced(children[order[k]], children[order[k + 1]]) ? gap * factor : 0;
@@ -1639,6 +1694,13 @@ public static class Engine
         static List<string> Named(string? points) =>
             points?.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries).Where(p => p is not ("auto" or "radial" or "ctr")).ToList() ?? [];
         var (begins, ends) = (Named(connector.Param("begPts")), Named(connector.Param("endPts")));
+        // One end named, the other automatic: that end at the middle of its node's side nearest to the named point
+        // (measured: SubStepProcess's lines from a step's circle to the left or right middle of its sub-steps' rows).
+        List<string> sides = ["tCtr", "midL", "midR", "bCtr"];
+        if (!radial && begins.Count > 0 && ends.Count == 0 && connector.Param("endPts") is null or "auto")
+            ends = sides;
+        else if (!radial && ends.Count > 0 && begins.Count == 0 && connector.Param("begPts") is null or "auto")
+            begins = sides;
         var named = !radial && begins.Count > 0 && ends.Count > 0;
         if (named)
         {
