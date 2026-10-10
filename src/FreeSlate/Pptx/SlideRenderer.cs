@@ -304,12 +304,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var shape3d = camera != null ? Shape3D(chain, style) : null;
         if (camera != null && shape3d.Long("z") is { } offset)
             camera = camera with { Offset = Units.ToPx(offset) };
-        var lighting = Lighting.For(scene3d, shape3d);
         var (topWidth, topHeight, topProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelT"), pw, ph);
         var (bottomWidth, bottomHeight, bottomProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelB"), pw, ph);
         var beveled = topWidth > 0;
         var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
         var contourWidth = Units.ToPx(shape3d.Long("contourW") ?? 0);
+        var lighting = Lighting.For(scene3d, shape3d, flat: depth <= 0.01 && !beveled && bottomWidth <= 0 && contourWidth <= 0.01);
         // The contour does not reach in front of the shape's plane: unless the top bevel is as high as the contour's
         // radius, the body moves back by the difference (measured).
         if (camera != null && contourWidth / 2 > topHeight)
@@ -443,6 +443,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             defs.Append($"<clipPath id=\"{clip}\"><path d=\"{Solid.PathData(solidOutlines.Select(o => Solid.Inset(o, topWidth)))}\"/></clipPath>");
             shapeMarkup = $"<g clip-path=\"url(#{clip})\">{shapeMarkup}</g>";
         }
+        // A translucent material (clear, translucentPowder) lets the background through the front face, lit with its
+        // highlights added in full; the text on it stays opaque (measured). An effect graph keeps the face opaque.
+        var faceOpacity = camera != null && dag == null ? lighting.OpacityAt((0, 0, 1), camera.View((0, 0, 0))) : 1;
+        var frontShade = camera != null ? lighting.Shade((0, 0, 1), camera.View((0, 0, 0))) : default;
+        if (faceOpacity < 1 && shapeMarkup.Length > 0)
+            shapeMarkup = $"<g opacity=\"{Units.Css4(faceOpacity)}\" filter=\"url(#{LitFilter(Lighting.Through(frontShade, faceOpacity), defs)})\">{shapeMarkup}</g>";
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
@@ -512,7 +518,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 backdropText = false;
             }
             if (textCamera != null && glyphOutlines is { Count: > 0 })
-                textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d), textShape3d, glyphOutlines, textMarkup, pw, ph);
+                textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d, flat: (textShape3d.Long("extrusionH") ?? 0) <= 0 && textShape3d?.Element(Ns.A + "bevelT") == null
+                                                                                      && textShape3d?.Element(Ns.A + "bevelB") == null && (textShape3d.Long("contourW") ?? 0) <= 0),
+                    textShape3d, glyphOutlines, textMarkup, pw, ph);
             else if (flatText)
                 textLayer = textMarkup.Length > 0
                     ? $"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><g transform=\"rotate({Units.Css(rotation)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g></svg>"
@@ -520,7 +528,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (dag != null)
                 dagText = textMarkup;
             else
+            {
+                if (faceOpacity < 1 && textMarkup.Length > 0)
+                    textMarkup = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{textMarkup}</g>";
                 body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
+            }
         }
         if (backdropText)
             html.Replace(BackdropTextToken, "");
@@ -542,15 +554,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 element => paint.Fill(FillReader.Read(element, slide.Colors, slide.Images(part), slide.ImageSizes(part)), pw, ph, defs, rotation, origin), matrix);
             content = graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), paths.ToString() + ends + dagText));
         }
-        if (camera != null && content.Length > 0)
-        {
-            // The front face is lit like the rest of the 3D shape (its normal faces the front).
-            var (diffuse, specular) = lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
-            var lit = $"l{++litFilters}";
-            defs.Append($"<filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
-                        $"{Units.Css4(diffuse.R)} 0 0 0 {Units.Css4(specular.R)} 0 {Units.Css4(diffuse.G)} 0 0 {Units.Css4(specular.G)} 0 0 {Units.Css4(diffuse.B)} 0 {Units.Css4(specular.B)} 0 0 0 1 0\"/></filter>");
-            content = $"<g filter=\"url(#{lit})\">{content}</g>";
-        }
+        // The front face is lit like the rest of the 3D shape (its normal faces the front); a translucent one has
+        // lit its drawing and its text apart.
+        if (camera != null && content.Length > 0 && faceOpacity >= 1)
+            content = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{content}</g>";
         if (defs.Length > 0)
             html.Append("<defs>").Append(defs).Append("</defs>");
         html.Append(content);
@@ -653,6 +660,16 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static int litFilters;
 
+    /// <summary>A filter lighting its content with a shade (color · diffuse + specular per channel); returns its id.</summary>
+    static string LitFilter(((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade, StringBuilder defs)
+    {
+        var (diffuse, specular) = shade;
+        var lit = $"l{++litFilters}";
+        defs.Append($"<filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
+                    $"{Units.Css4(diffuse.R)} 0 0 0 {Units.Css4(specular.R)} 0 {Units.Css4(diffuse.G)} 0 0 {Units.Css4(specular.G)} 0 0 {Units.Css4(diffuse.B)} 0 {Units.Css4(specular.B)} 0 0 0 1 0\"/></filter>");
+        return lit;
+    }
+
     /// <summary>
     /// 3D text (catalog: text.threeD): the glyphs' body in the text body's own scene (a:bodyPr/a:scene3d, a:sp3d), drawn
     /// like a 3D shape's along the glyph outlines (extrusion, bevels, back, contour; the extrusion in the text's color
@@ -712,12 +729,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             clip = $"<defs><clipPath id=\"{id}\"><path d=\"{Solid.PathData(face)}\" fill-rule=\"evenodd\"/></clipPath></defs>";
             textMarkup = $"{clip}<g clip-path=\"url(#{id})\">{textMarkup}</g>";
         }
-        // The front face is lit like the rest of the body (its normal faces the front).
-        var (diffuse, specular) = lighting.Shade((0, 0, 1), camera.View((0, 0, 0)));
-        var lit = $"l{++litFilters}";
-        textMarkup = $"<defs><filter id=\"{lit}\" color-interpolation-filters=\"sRGB\"><feColorMatrix type=\"matrix\" values=\"" +
-                     $"{Units.Css4(diffuse.R)} 0 0 0 {Units.Css4(specular.R)} 0 {Units.Css4(diffuse.G)} 0 0 {Units.Css4(specular.G)} 0 0 {Units.Css4(diffuse.B)} 0 {Units.Css4(specular.B)} 0 0 0 1 0\"/></filter></defs>" +
-                     $"<g filter=\"url(#{lit})\">{textMarkup}</g>";
+        // The front face is lit like the rest of the body (its normal faces the front), translucent with a translucent
+        // material like a shape's.
+        var frontView = camera.View((0, 0, 0));
+        var opacity = lighting.OpacityAt((0, 0, 1), frontView);
+        var textDefs = new StringBuilder();
+        var lit = LitFilter(Lighting.Through(lighting.Shade((0, 0, 1), frontView), opacity), textDefs);
+        textMarkup = $"<defs>{textDefs}</defs><g filter=\"url(#{lit})\"{(opacity < 1 ? $" opacity=\"{Units.Css4(opacity)}\"" : "")}>{textMarkup}</g>";
         result.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, sceneWidth, sceneHeight, 0, false, false)}\">" +
                       $"<svg width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{textMarkup}</svg></div>");
         var contourColor = shape3d?.Element(Ns.A + "contourClr") is { } contourClr ? slide.Colors.ResolveChild(contourClr) : null;

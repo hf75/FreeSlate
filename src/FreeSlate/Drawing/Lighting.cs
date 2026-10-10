@@ -6,9 +6,12 @@ namespace FreeSlate.Drawing;
 /// Lighting of 3D shapes (catalog: effect.scene3d): per channel, a color becomes color · diffuse + specular. The lights
 /// stay with the scene while the camera turns about the shape, so a face's diffuse light depends only on its normal in
 /// the scene. Every light rig and material was fitted to PowerPoint's rendering of extruded cubes and cylinders and of
-/// tilted bevels seen from many sides, rendered in two base colors so that diffuse and specular separate per channel:
-/// Lambert diffuse and Phong highlights with one shininess per material; materials add highlights tinted by the
-/// surface (metals), darken the diffuse light towards the silhouette (dkEdge, powders) and add white there (powders).
+/// tilted bevels seen from many sides, and of cubes seen from 25 sides on black and gray slides, rendered in two base
+/// colors so that diffuse and specular separate per channel: Lambert diffuse and Phong highlights (Blinn for the
+/// legacy and powder materials) with one shininess per material; materials add highlights tinted by the surface
+/// (metals), darken the diffuse light towards the silhouette and add white there (metals, dkEdge, softEdge, powders),
+/// mix white into the surface color (powder); translucent materials let the background through (see
+/// <see cref="Opacity"/>).
 /// Normals use x right, y down and z towards the front. The rig turns with a:lightRig/@dir (45° steps clockwise from
 /// t) and a:lightRig/a:rot.
 /// </summary>
@@ -29,8 +32,24 @@ public sealed record Lighting
     /// <summary>The diffuse light fades towards the silhouette: it is multiplied by 1 − Strength · (1 − n·v)^Power.</summary>
     public (double Strength, double Power) Edge { get; init; } = (0, 1);
 
-    /// <summary>White added to every face, and more towards the silhouette: Base + Rim · (1 − n·v).</summary>
+    /// <summary>White added to every face, and more towards the silhouette: Base + Rim · (1 − n·v)^<see cref="SheenPower"/>.</summary>
     public (double Base, double Rim) Sheen { get; init; }
+
+    /// <summary>See <see cref="Sheen"/>.</summary>
+    public double SheenPower { get; init; } = 1;
+
+    /// <summary>The share of the diffuse light that falls on the surface as white instead of its color (powder's pastel look).</summary>
+    public double Pastel { get; init; }
+
+    /// <summary>
+    /// Translucent materials (clear, translucentPowder) let what lies behind a face show through: the face's opacity
+    /// is Base + Facing · (n·v), the same in every channel; null for opaque materials. Only the faces towards the eye
+    /// are drawn (measured: a clear box shows the background through one face, not two).
+    /// </summary>
+    public (double Base, double Facing)? Opacity { get; init; }
+
+    /// <summary>Highlights from the half vector between light and eye (Blinn) instead of the reflected light (Phong).</summary>
+    public bool HalfVector { get; init; }
 
     /// <summary>threePt from the top with warmMatte: key light upper left front, fill lower right front, back light lower left behind.</summary>
     public static readonly Lighting Default = new()
@@ -45,12 +64,16 @@ public sealed record Lighting
         ],
     };
 
-    /// <summary>The lighting of a shape from its a:scene3d light rig and a:sp3d material.</summary>
-    public static Lighting For(XElement? scene3d, XElement? sp3d)
+    /// <summary>
+    /// The lighting of a shape from its a:scene3d light rig and a:sp3d material; <paramref name="flat"/> for a shape
+    /// without a body (no extrusion, bevel or contour), which some materials light differently (see
+    /// <see cref="LightRigs.WithMaterial"/>).
+    /// </summary>
+    public static Lighting For(XElement? scene3d, XElement? sp3d, bool flat = false)
     {
         var rigElement = scene3d?.Element(Ns.A + "lightRig");
         var rig = LightRigs.Get(rigElement?.Str("rig")) ?? Default;
-        rig = LightRigs.WithMaterial(rig, sp3d?.Str("prstMaterial"));
+        rig = LightRigs.WithMaterial(rig, sp3d?.Str("prstMaterial"), flat);
         // The rig's direction turns it clockwise in 45° steps; a:rot adds a turn about the view axis (rev) and the
         // other axes (lat, lon).
         var turn = (rigElement?.Str("dir") ?? "t") switch
@@ -92,17 +115,52 @@ public sealed record Lighting
             if (nl <= 0)
                 continue;
             diffuse = (diffuse.R + light.Diffuse.R * nl, diffuse.G + light.Diffuse.G * nl, diffuse.B + light.Diffuse.B * nl);
-            // Phong: the light reflected about the normal, against the direction to the eye.
-            var (rx, ry, rz) = (2 * nl * n.X - x, 2 * nl * n.Y - y, 2 * nl * n.Z - z);
-            var lobe = Math.Pow(Math.Max(0, rx * v.X + ry * v.Y + rz * v.Z), Shininess);
+            double lobe;
+            if (HalfVector)
+            {
+                // Blinn: the normal against the half vector between the light and the eye.
+                var h = Normalize((x + v.X, y + v.Y, z + v.Z));
+                lobe = Math.Pow(Math.Max(0, n.X * h.X + n.Y * h.Y + n.Z * h.Z), Shininess);
+            }
+            else
+            {
+                // Phong: the light reflected about the normal, against the direction to the eye.
+                var (rx, ry, rz) = (2 * nl * n.X - x, 2 * nl * n.Y - y, 2 * nl * n.Z - z);
+                lobe = Math.Pow(Math.Max(0, rx * v.X + ry * v.Y + rz * v.Z), Shininess);
+            }
             highlight = (highlight.R + light.Specular.R * lobe, highlight.G + light.Specular.G * lobe, highlight.B + light.Specular.B * lobe);
         }
         var facing = Math.Clamp(n.X * v.X + n.Y * v.Y + n.Z * v.Z, 0, 1);
         var edge = Edge.Strength == 0 ? 1 : Math.Max(0, 1 - Edge.Strength * Math.Pow(1 - facing, Edge.Power));
-        var sheen = Sheen.Base + Sheen.Rim * (1 - facing);
-        return ((diffuse.R * edge + Tint * highlight.R, diffuse.G * edge + Tint * highlight.G, diffuse.B * edge + Tint * highlight.B),
-            (White * highlight.R + sheen, White * highlight.G + sheen, White * highlight.B + sheen));
+        var sheen = Sheen.Base + Sheen.Rim * Math.Pow(1 - facing, SheenPower);
+        diffuse = (diffuse.R * edge, diffuse.G * edge, diffuse.B * edge);
+        var (colored, white) = (1 - Pastel, Pastel);
+        return ((diffuse.R * colored + Tint * highlight.R, diffuse.G * colored + Tint * highlight.G, diffuse.B * colored + Tint * highlight.B),
+            (diffuse.R * white + White * highlight.R + sheen, diffuse.G * white + White * highlight.G + sheen, diffuse.B * white + White * highlight.B + sheen));
     }
+
+    /// <summary>The opacity of a face with normal <paramref name="n"/> seen from <paramref name="v"/>: below 1 for translucent materials.</summary>
+    public double OpacityAt((double X, double Y, double Z) n, (double X, double Y, double Z) v)
+    {
+        if (Opacity is not var (bias, facing))
+            return 1;
+        n = Normalize(n);
+        v = Normalize(v);
+        return Math.Clamp(bias + facing * Math.Clamp(n.X * v.X + n.Y * v.Y + n.Z * v.Z, 0, 1), 0, 1);
+    }
+
+    /// <summary>
+    /// A shade for a face drawn with the given opacity: its highlights still add in full, so they brighten the face's
+    /// color by highlight / opacity, which saturates at white (measured: clear faces in a highlight blend white with
+    /// their opacity, below it the added light does not depend on the opacity).
+    /// </summary>
+    public static ((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) Through(
+        ((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade, double opacity) =>
+        opacity >= 1 ? shade : Divided(shade, Math.Max(opacity, 1e-6));
+
+    static ((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) Divided(
+        ((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade, double opacity) =>
+        (shade.Diffuse, (shade.Specular.R / opacity, shade.Specular.G / opacity, shade.Specular.B / opacity));
 
     /// <summary>A color lit by a shade.</summary>
     public static RgbColor Apply(RgbColor color, ((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade) => new(

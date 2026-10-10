@@ -835,11 +835,19 @@ areas:
           back. The contour is an unlit tube of contourW (black by default) around the rims, creases and
           silhouettes; a face coming towards the eye covers all but r·cos α of its inner half, and the body
           moves back so that the tube does not reach in front of the shape's plane. Materials were fitted
-          against threePt: matte without highlights, plastic and metal with stronger and tighter ones, metals
-          partly tinted; powders, dkEdge and softEdge fade towards the silhouette, powders whiten there; flat
-          ignores the light's direction; legacyWireframe draws every mesh edge, hidden ones included. Pictures
-          and gradients keep their texture on the bevel. clear is approximated by its fitted shading without
-          transparency.
+          against threePt, the latest on cubes from 25 sides on black and gray slides (local/cubes-*, within
+          1 to 3.5 levels rms): matte without highlights, plastic and metal with stronger and tighter ones,
+          metals partly tinted, the legacy materials' and the powders' from the half vector; metals, dkEdge,
+          softEdge and the powders fade towards the silhouette, metals, softEdge and the powders whiten there
+          ((1 − n·v)^3.8 for metal and softEdge), powder mixes half white into the surface color; flat ignores
+          the light's direction; legacyWireframe draws every mesh edge, hidden ones included. clear and
+          translucentPowder are translucent, the same in every channel: clear most transparent facing the eye
+          (opacity 1 − 0.9 n·v), translucentPowder towards the silhouette (0.7 n·v); only faces towards the
+          eye are drawn, the highlights add in full (the color brightens by highlight / opacity and saturates
+          at white) and text on the front face stays opaque (local/clear, clearA-C). Without a body (no
+          extrusion, bevel or contour) the powders show warmMatte's light with their broad highlights only, no
+          pastel look and nothing towards the silhouette (local/powder, matflat1-2). Pictures and gradients
+          keep their texture on the bevel.
 
   - id: picture
     title: Pictures and media

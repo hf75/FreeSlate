@@ -128,19 +128,24 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         var view = camera.View(center);
         if (normal.X * view.X + normal.Y * view.Y + normal.Z * view.Z <= 1e-9)
             return;
-        var lit = Lighting.Apply(color, lighting.Shade(normal, view)).ToHex();
+        var opacity = lighting.OpacityAt(normal, view);
+        var lit = Lit(color, normal, view, opacity);
         var fill = $"fill=\"{lit}\"";
+        var translucent = opacity < 1;
         if (smooth is var (na, nb))
         {
-            var (ca, cb) = (Lighting.Apply(color, lighting.Shade(na, view)).ToHex(), Lighting.Apply(color, lighting.Shade(nb, view)).ToHex());
-            if (ca != cb)
+            var (oa, ob) = (lighting.OpacityAt(na, view), lighting.OpacityAt(nb, view));
+            var (ca, cb) = (Lit(color, na, view, oa), Lit(color, nb, view, ob));
+            if (ca != cb || Math.Abs(oa - ob) > 0.004)
             {
                 var (pa, pb) = (Screen(polygon[0]), Screen(polygon[1]));
                 var id = $"sg{++gradients}";
                 defs.Append($"<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" x1=\"{Units.Css(pa.X)}\" y1=\"{Units.Css(pa.Y)}\" x2=\"{Units.Css(pb.X)}\" y2=\"{Units.Css(pb.Y)}\">" +
-                            $"<stop offset=\"0\" stop-color=\"{ca}\"/><stop offset=\"1\" stop-color=\"{cb}\"/></linearGradient>");
+                            $"<stop offset=\"0\" stop-color=\"{ca}\"{StopOpacity(oa)}/><stop offset=\"1\" stop-color=\"{cb}\"{StopOpacity(ob)}/></linearGradient>");
                 fill = $"fill=\"url(#{id})\"";
                 lit = $"url(#{id})";
+                // The gradient carries the opacity.
+                opacity = 1;
             }
         }
         var d = new StringBuilder();
@@ -149,9 +154,18 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
             var (x, y) = Screen(polygon[i]);
             d.Append(i == 0 ? 'M' : 'L').Append(Units.Css(x)).Append(' ').Append(Units.Css(y));
         }
-        // A hairline in the face's color closes the seams between neighbouring faces.
-        faces.Add((camera.Place(center).Z, $"<path d=\"{d}Z\" {fill} stroke=\"{lit}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>"));
+        // A hairline in the face's color closes the seams between neighbouring faces; translucent faces go without (it
+        // would show as a darker seam).
+        faces.Add((camera.Place(center).Z, translucent
+            ? $"<path d=\"{d}Z\" {fill}{(opacity < 1 ? $" opacity=\"{Units.Css4(opacity)}\"" : "")}/>"
+            : $"<path d=\"{d}Z\" {fill} stroke=\"{lit}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>"));
     }
+
+    /// <summary>A color lit for a face with the given normal and opacity, as hex.</summary>
+    string Lit(RgbColor color, (double X, double Y, double Z) normal, (double X, double Y, double Z) view, double opacity) =>
+        Lighting.Apply(color, Lighting.Through(lighting.Shade(normal, view), opacity)).ToHex();
+
+    static string StopOpacity(double opacity) => opacity < 1 ? $" stop-opacity=\"{Units.Css4(opacity)}\"" : "";
 
     /// <summary>The extruded sides between z = <paramref name="front"/> and z = <paramref name="back"/>.</summary>
     public void Extrusion(List<List<(double X, double Y)>> outlines, double front, double back, RgbColor color)
@@ -198,8 +212,10 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     {
         if (line is { } lineColor && lineWidth > 0.01)
         {
-            Area(outlines, z, lineColor, 0);
-            Area(outlines.Select(o => Inset(o, lineWidth)).ToList(), z, color, 1e-6);
+            var inner = outlines.Select(o => Inset(o, lineWidth)).ToList();
+            // A translucent back shows the line's band only (even-odd), not the fill over the line.
+            Area(lighting.Opacity != null ? [.. outlines, .. inner] : outlines, z, lineColor, 0);
+            Area(inner, z, color, 1e-6);
         }
         else
         {
@@ -217,7 +233,8 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         var view = camera.View(center);
         if (-view.Z <= 1e-9)
             return;
-        var lit = Lighting.Apply(color, lighting.Shade((0, 0, -1), view)).ToHex();
+        var opacity = lighting.OpacityAt((0, 0, -1), view);
+        var lit = Lit(color, (0, 0, -1), view, opacity);
         var d = new StringBuilder();
         foreach (var outline in outlines)
         {
@@ -229,7 +246,9 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
             }
             d.Append('Z');
         }
-        faces.Add((camera.Place(center).Z + bias, $"<path d=\"{d}\" fill=\"{lit}\" fill-rule=\"evenodd\" stroke=\"{lit}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>"));
+        faces.Add((camera.Place(center).Z + bias, opacity < 1
+            ? $"<path d=\"{d}\" fill=\"{lit}\" fill-rule=\"evenodd\" opacity=\"{Units.Css4(opacity)}\"/>"
+            : $"<path d=\"{d}\" fill=\"{lit}\" fill-rule=\"evenodd\" stroke=\"{lit}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>"));
     }
 
     /// <summary>
@@ -293,8 +312,10 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
                         continue;
                     // Outwards and towards the front (top) or the back (bottom).
                     var normal = bottom ? Normalize((inward.X * slope, inward.Y * slope, -1)) : Normalize((-inward.X * slope, -inward.Y * slope, 1));
-                    var shade = lighting.Shade(normal, camera.View((outer[i].X, outer[i].Y, z0)));
-                    var hex = stripColor is { } c ? Lighting.Apply(c, shade).ToHex() : $"{shade.Diffuse.R:F2}/{shade.Specular.R:F2}";
+                    var view = camera.View((outer[i].X, outer[i].Y, z0));
+                    var shade = lighting.Shade(normal, view);
+                    var opacity = lighting.OpacityAt(normal, view);
+                    var hex = stripColor is { } c ? Lit(c, normal, view, opacity) + (opacity < 1 ? $"/{opacity:F2}" : "") : $"{shade.Diffuse.R:F2}/{shade.Specular.R:F2}";
                     if (run != null && hex != runColor)
                         Flush();
                     if (run == null)

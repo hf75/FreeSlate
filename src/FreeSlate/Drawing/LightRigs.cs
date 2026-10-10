@@ -155,26 +155,48 @@ public static class LightRigs
     /// A material: its lighting under threePt (key, fill and back light with their diffuse and highlight strengths) and,
     /// for the other rigs, how it scales their diffuse light and highlights and what ambient light it adds.
     /// </summary>
-    sealed record Material(Lighting ThreePt, double Diffuse, double Specular, double Ambient);
+    sealed record Material(Lighting ThreePt, double Diffuse, double Specular, double Ambient)
+    {
+        /// <summary>
+        /// The lighting of a shape without a body, when it differs: the powders show neither their pastel look nor
+        /// anything towards the silhouette there, only warmMatte's light with their broad highlights (measured: a flat
+        /// powder square is as saturated as a matte one, an extruded or bevelled one pale).
+        /// </summary>
+        public Lighting? Flat { get; init; }
+    }
+
+    /// <summary>The powders' lighting on a shape without a body (see <see cref="Material.Flat"/>).</summary>
+    static readonly Lighting FlatPowder = Lighting.Default with { Shininess = 10.2343, HalfVector = true };
 
     /// <summary>
     /// The materials against warmMatte (the default, fitted with the rig itself): matte has no highlights, plastics and
-    /// metals stronger and tighter ones, metals partly tinted; powders, dkEdge and softEdge fade towards the silhouette,
-    /// powders whiten there; flat ignores the direction of the light. legacyWireframe draws the edges only.
+    /// metals stronger and tighter ones, metals partly tinted, the legacy materials' from the half vector; metals,
+    /// dkEdge, softEdge and the powders fade towards the silhouette, metals, softEdge and the powders whiten there,
+    /// powder mixes half white into the surface color; flat ignores the direction of the light. legacyWireframe draws
+    /// the edges only. clear and translucentPowder are translucent: clear lit like warmMatte with tight highlights,
+    /// most transparent facing the eye (opacity 1 − 0.9 n·v), translucentPowder with broad half-vector highlights,
+    /// most transparent towards the silhouette (opacity 0.7 n·v). Fitted to cubes from 25 sides on black and gray
+    /// slides (within 1 to 3.5 levels rms; matte, plastic, flat and softmetal from earlier fits within 1 to 3.6).
     /// </summary>
     static readonly Dictionary<string, Material> Materials = new()
     {
         ["legacyMatte"] = new(ThreePt(0.0029, 2.8548, (1.135, 0), (0.4911, 0), (0.9757, 0)) with { White = 0 }, 1.0005, 0, -0.0019),
-        ["legacyPlastic"] = new(ThreePt(0.001, 9.3786, (1.1388, 1.3053), (0.4945, 0.4376), (0.9758, 0.1966)) with { White = 1.0642, Sheen = (0.0051, -0.0173) }, 1.0033, 2.51, -0.0038),
-        ["legacyMetal"] = new(ThreePt(0.0271, 8.9858, (0.8724, 0.3235), (0.3746, 0.135), (0.7707, 0.1207)) with { White = 0, Tint = 3.4784, Edge = (0.1711, 0.1258) }, 0.7759, 0.7496, 0.0234),
+        ["legacyPlastic"] = new(ThreePt(0.0038, 31.9023, (1.1393, 1.1128), (0.4883, 0.4841), (0.9681, 0.974)) with { White = 1.0126, Tint = 0.0775, Edge = (0.4309, 10), Sheen = (-0.0108, 0.012), HalfVector = true }, 1, 3.34, -0.001),
+        ["legacyMetal"] = new(ThreePt(0.0076, 31.5868, (0.7623, 0.31), (0.3203, 0.1361), (0.6517, 0.2712)) with { White = 0.0093, Tint = 3.6003, Edge = (0.4417, 10), Sheen = (-0.0097, 0.0066), HalfVector = true }, 0.665, 0.93, 0.0044),
         ["matte"] = new(ThreePt(0.0029, 2.8548, (1.135, 0), (0.4911, 0), (0.9757, 0)) with { White = 0 }, 1.0005, 0, -0.0019),
         ["plastic"] = new(ThreePt(0.0011, 12.6566, (1.1379, 0.5866), (0.4948, 0.2494), (0.9761, 0.4735)) with { White = 1.2086 }, 1.0032, 1.6947, -0.0037),
-        ["metal"] = new(ThreePt(0.0202, 12.2255, (1.1225, 1.2136), (0.4644, 0.4671), (0.9376, 0.8456)) with { White = 1.398, Edge = (0.7319, 3.2338), Sheen = (-0.0554, 0.2718) }, 0.9707, 3.2694, 0.0155),
-        ["translucentPowder"] = new(ThreePt(0.0033, 2.8347, (0.8279, 0.7164), (0.3572, 0.2764), (0.7107, 0.3559)) with { White = 0.4028, Edge = (1.1534, 0.8806), Sheen = (0.3422, 0.7711) }, 0.729, 1.7454, -0.0002),
-        ["powder"] = new(ThreePt(0, 1.1066, (0.5745, 0.6946), (0.2503, 0.2288), (0.4906, 0.176)) with { White = 0.6822, Edge = (0.8994, 1.8132), Sheen = (0.2748, 0.4418) }, 0.5058, 1.4228, -0.0024),
-        ["dkEdge"] = new(ThreePt(0.004, 37.7727, (1.1409, 0.8348), (0.4994, 0.3451), (0.9825, 0.6205)) with { White = 1.5311, Edge = (0.9471, 1.8995) }, 1.0085, 2.33, -0.0008),
-        ["softEdge"] = new(ThreePt(0.0067, 35.9382, (1.1347, 1.0315), (0.4926, 0.3954), (0.9787, 0.6396)) with { White = 1.3239, Edge = (0.8627, 3.4521), Sheen = (-0.0502, 0.2627) }, 1.0021, 2.6744, 0.0019),
-        ["clear"] = new(ThreePt(0.0308, 0.5717, (0.3092, 0.4661), (0.1516, 0.2575), (0.3253, 0.253)) with { White = 0.4257, Sheen = (0.6767, -0.5) }, 0.3023, 1.2639, 0.0293),
+        ["metal"] = new(ThreePt(-0.0017, 12.6795, (1.1302, 1.1265), (0.4971, 0.4681), (0.9532, 0.9479)) with { White = 1.3488, Edge = (1.0618, 3.8949), Sheen = (-0.0025, 1), SheenPower = 3.8396 }, 1, 3.28, -0.0065),
+        ["translucentPowder"] = new(ThreePt(0.0267, 10.2343, (1.0595, 0.3429), (0.4983, 0.1492), (0.8641, 0.2894)) with { Edge = (1.3993, 2.7303), Sheen = (-0.0103, 0.178), Opacity = (0, 0.7), HalfVector = true }, 0.93, 1.01, 0.0222)
+        {
+            Flat = FlatPowder with { Opacity = (0, 0.7) },
+        },
+        ["powder"] = new(ThreePt(0.0207, 10.0022, (1.3554, 0.3365), (0.6038, 0.1477), (1.144, 0.296)) with { White = 1.0092, Edge = (0.682, 0.7436), Sheen = (-0.1319, 0.7996), Pastel = 0.4999, HalfVector = true }, 1.2, 1.01, 0.015)
+        {
+            Flat = FlatPowder,
+        },
+        ["dkEdge"] = new(ThreePt(0.0073, 37.7881, (1.1298, 0.8082), (0.4919, 0.3335), (0.9581, 0.7028)) with { White = 1.5246, Edge = (1.017, 2.0928), Sheen = (-0.0084, 0) }, 1, 2.38, 0.0025),
+        ["softEdge"] = new(ThreePt(-0.002, 37.2637, (1.1353, 0.8638), (0.498, 0.3579), (0.9692, 0.737)) with { White = 1.4179, Edge = (1.3146, 4.5239), Sheen = (-0.0029, 0.9408), SheenPower = 3.8473 }, 1, 2.53, -0.0068),
+        ["clear"] = new(ThreePt(-0.0133, 21.0893, (1.1241, 0.711), (0.5038, 0.3014), (0.9802, 0.612)) with { Opacity = (1, -0.9) }, 1, 2.09, -0.018),
         ["flat"] = new(ThreePt(0.9965, 52.4429, (0, 0.867), (0.0025, 0.374), (0.0257, 0.6807)) with { White = 1.1054, Edge = (0.8745, 3.6749) }, 0.0108, 2.487, 0.9964),
         ["softmetal"] = new(ThreePt(0.0098, 8.2035, (1.1305, 0.6404), (0.4998, 0.2708), (0.966, 0.517)) with { White = 0.9108, Tint = 0.8945 }, 0.9983, 1.8483, 0.005),
     };
@@ -189,11 +211,16 @@ public static class LightRigs
             L(lights[2].Direction.X, lights[2].Direction.Y, lights[2].Direction.Z, back.Diffuse, back.Specular));
     }
 
-    /// <summary>The rig as a material reflects it (warmMatte, the default, leaves it unchanged).</summary>
-    public static Lighting WithMaterial(Lighting rig, string? material)
+    /// <summary>
+    /// The rig as a material reflects it (warmMatte, the default, leaves it unchanged); <paramref name="flat"/> for a
+    /// shape without a body (see <see cref="Material.Flat"/>).
+    /// </summary>
+    public static Lighting WithMaterial(Lighting rig, string? material, bool flat = false)
     {
         if (material == null || !Materials.TryGetValue(material, out var m))
             return rig;
+        if (flat && m.Flat is { } plain)
+            return ReferenceEquals(rig, Lighting.Default) ? plain : plain with { Ambient = rig.Ambient, Lights = rig.Lights };
         if (ReferenceEquals(rig, Lighting.Default))
             return m.ThreePt;
         static (double R, double G, double B) Scale((double R, double G, double B) c, double f) => (c.R * f, c.G * f, c.B * f);
