@@ -375,7 +375,7 @@ public sealed partial class ChartRenderer
     {
         var language = PresentationLanguage();
         var german = language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
-        culture = ChartModel.Culture(language);
+        culture = slide.Presentation.Culture;
         chartStyle = Related("chartStyle");
         var plotArea = new XElement(Ns.C + "plotArea", C("layout"));
         var deletedEntries = new List<int>();

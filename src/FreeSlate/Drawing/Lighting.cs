@@ -87,6 +87,24 @@ public sealed record Lighting
         return rev == 0 && lat == 0 && lon == 0 ? rig : rig.Turned(lat, lon, rev);
     }
 
+    /// <summary>
+    /// The rig kept with the viewer of a camera that turns the scene (legacy cameras, see <see cref="Camera.Legacy"/>):
+    /// its lights turned back into the scene by the transpose of the camera's turns about the horizontal and vertical
+    /// axes; the turn in the picture plane takes the lights along.
+    /// </summary>
+    public Lighting WithViewer(Camera camera)
+    {
+        var r = (camera with { Z = 0 }).Rotation();
+        return this with
+        {
+            Lights = Lights.Select(l =>
+            {
+                var (x, y, z) = l.Direction;
+                return l with { Direction = (r[0] * x + r[3] * y + r[6] * z, r[1] * x + r[4] * y + r[7] * z, r[2] * x + r[5] * y + r[8] * z) };
+            }).ToList(),
+        };
+    }
+
     /// <summary>The rig turned: about the vertical axis by lon, the horizontal axis by lat, the view axis by rev (clockwise on screen).</summary>
     public Lighting Turned(double lat, double lon, double rev)
     {

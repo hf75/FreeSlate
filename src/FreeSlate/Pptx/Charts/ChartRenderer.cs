@@ -118,6 +118,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public bool HasLabels => Visible && Axis.TickLabelPosition != "none" && !InTable;
         public AxisScale Scale { get; set; }
         public List<string> Labels { get; set; } = [];
+
+        /// <summary>The category labels before they wrap at a vertical axis (see WrapVerticalLabels).</summary>
+        public List<string> Names { get; set; } = [];
+
+        /// <summary>Labels cut short with an ellipsis after their last line.</summary>
+        public HashSet<int> Cut { get; } = [];
         public double MaxLabelWidth { get; set; }
         public int Categories { get; set; }
 
@@ -184,7 +190,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // Office 2016 charts are drawn in a classic chart frame (catalog: chart.ex).
         if (ChartExModel.Read(document) is { } chartEx)
             document = ClassicFrame(ex = chartEx);
-        if (ChartModel.Read(document) is not { } read)
+        if (ChartModel.Read(document, slide.Presentation.Culture) is not { } read)
             return "";
         model = read;
         plotOrder = model.Groups.SelectMany(g => g.Series).OrderBy(s => s.Order).Select((s, i) => (Series: s, Place: i))
@@ -193,7 +199,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         height = heightPt;
         originX = originXPx;
         originY = originYPx;
-        culture = ChartModel.Culture(ChartModel.Val(model.ChartSpace, "lang"));
+        culture = slide.Presentation.Culture;
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
         colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
@@ -1016,8 +1022,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             }
             var list = group.Series.Select((s, k) => (s, k)).ToList();
-            if (group.IsBar && group.Horizontal && !group.Stacked)
-                list.Reverse();   // clustered bars: the legend lists the series in their visual order
+            // Clustered bars, and stacked columns and areas beside a legend at the side, list their series in their
+            // visual order (measured: LibreOffice's stacked-non-stacked-mix-y-axis, Series 3, 2, 1 at the right).
+            var side = (ChartModel.Val(element, "legendPos") ?? "r") is "r" or "l";
+            if (group.IsBar && group.Horizontal && !group.Stacked || side && group.Stacked && (group.IsBar && !group.Horizontal || group.IsArea))
+                list.Reverse();
             foreach (var (series, k) in list)
             {
                 if (!deleted.Contains(series.Index))
@@ -1198,10 +1207,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         if (point >= 0 && series.Points.TryGetValue(point, out var dPt) && FillReader.FindFill(dPt.Element(Ns.C + "spPr")) is { } own)
             return ReadFill(own);
-        if (point >= 0 && group.VaryColors && group.Series.Count == 1)
-            return new SolidFill(AutoColor(point));
+        // A fill of the series' own colors its points without one, even where the colors vary by point (measured:
+        // LibreOffice's tdf150176 and tdf146756, the first slice in the series' bg2).
         if (FillReader.FindFill(series.SpPr) is { } fill)
             return ReadFill(fill);
+        if (point >= 0 && group.VaryColors && group.Series.Count == 1)
+            return new SolidFill(AutoColor(point));
         if (group.IsLine || group.IsScatter)
             return new SolidFill(AutoColor(series.Index));
         return new SolidFill(AutoColor(series.Index));
@@ -1364,6 +1375,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 layout.DateStep = major is { } m && m > 0 ? Math.Max(1, (int)Math.Round(m * perMajor)) : 0;
             }
             layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => l.Split('\n').Max(line => Width(line, layout.Style)));
+            layout.Names = layout.Labels;
         }
 
         // A plot area placed by hand with its labels replaces the automatic one (measured: the labels fit inside it).
@@ -1396,17 +1408,24 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         bubbleBase = 0.2307 * Math.Min(plot.W, plot.H) + 2.65;
         for (var pass = 0; pass < 3; pass++)
         {
+            // A horizontal value axis divides the plot area's width before the labels beside it take their room, also
+            // where the plot area is placed by hand (measured: bar charts with category labels of a third or half the
+            // chart's width; LibreOffice's tdf48041).
             foreach (var layout in axes.Where(a => a.Axis.IsValue))
-                ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H);
+                ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H, layout.Axis.Horizontal && ex == null ? outer.W : null);
             if (inner != null)
             {
                 // A plot area placed by hand still turns category labels that do not fit (measured: −45° in a
-                // 150 pt wide plot area with four categories).
+                // 150 pt wide plot area with four categories); labels beside a vertical axis wrap at half the chart's
+                // width less the value labels' overhangs, and all labels stay inside the chart.
                 foreach (var layout in axes.Where(a => a.HasLabels))
                 {
                     layout.Rotation = Rotation(layout, layout.Axis.Horizontal ? plot.W : plot.H);
                     layout.Inside = LabelsInside(layout, axes);
+                    if (!layout.Inside && !layout.Axis.IsValue && !layout.Axis.Horizontal && layout.Rotation == 0 && layout.Levels.Count == 0)
+                        WrapVerticalLabels(layout, axes, width, plot.H);
                 }
+                plot = LabelsInChart(plot, axes);
                 break;
             }
             var next = ex != null
@@ -1687,6 +1706,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             layout.Inside = LabelsInside(layout, axes);
             if (layout.Inside)
                 continue;
+            if (!layout.Axis.IsValue && !layout.Axis.Horizontal && layout.Rotation == 0 && layout.Levels.Count == 0)
+                WrapVerticalLabels(layout, axes, outer.W, previous.H);
             edges.Add(layout.Axis.Position);
             var extent = LabelExtent(layout);
             var bleed = layout.Titled ? -TitlePaddingY : manual ? 0 : LabelBleed;
@@ -1750,6 +1771,65 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <summary>
+    /// A plot area placed by hand keeps its axis labels inside the chart: it moves left as far as the value label
+    /// centered on its right edge comes closer than 6 pt to the chart's edge, then gives up width on the left to the
+    /// labels beside a left axis, which start 0.5 pt inside the chart (measured: LibreOffice's tdf48041 and variants
+    /// of its layout).
+    /// </summary>
+    Box LabelsInChart(Box plot, List<AxisLayout> axes)
+    {
+        foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Axis.IsValue && a.Axis.Horizontal && a.Labels.Count > 0))
+        {
+            var last = layout.Axis.Reversed ? layout.Labels[0] : layout.Labels[^1];
+            var reach = plot.Right + Width(last, layout.Style) / 2 + 6 - width;
+            if (reach > 0)
+                plot = plot with { X = plot.X - reach };
+        }
+        foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Axis.Position == "l"))
+        {
+            var need = 0.5 + LabelExtent(layout) + ValueLabelGap * layout.Style.Size;
+            if (plot.X < need)
+                plot = new Box(need, plot.Y, Math.Max(1, plot.Right - need), plot.H);
+        }
+        return plot;
+    }
+
+    /// <summary>
+    /// Category labels beside a vertical axis wrap at half the outer plot area's width less the overhangs of the value
+    /// labels centered on the plot's left and right edges, and keep only the lines that fit their category's height, the
+    /// last one ending in an ellipsis (measured: bar charts 200 to 950 pt wide with 9 to 24 pt labels, value labels of
+    /// several widths or none).
+    /// </summary>
+    void WrapVerticalLabels(AxisLayout layout, List<AxisLayout> axes, double outerWidth, double length)
+    {
+        var value = axes.FirstOrDefault(a => a.Axis.Id == layout.Axis.CrossAxisId && a.Axis.IsValue && a.Axis.Horizontal && a.HasLabels && a.Labels.Count > 0);
+        var overhangs = value == null ? 0 : (Width(value.Labels[0], value.Style) + Width(value.Labels[^1], value.Style)) / 2;
+        var limit = Math.Max(1, (outerWidth - overhangs) / 2);
+        var style = layout.Style;
+        var room = Math.Max(1, (int)Math.Floor(length / Math.Max(1, layout.Categories) / LineHeight(style) + 1e-9));
+        const string ellipsis = "\u2026";
+        layout.Cut.Clear();
+        layout.Labels = layout.Names.Select((name, i) =>
+        {
+            var lines = WrapWords(name, style, limit);
+            if (lines.Count <= room)
+                return string.Join("\n", lines);
+            layout.Cut.Add(i);
+            // The last line that fits takes the words that fit with the ellipsis after them.
+            var words = string.Join(" ", lines.Skip(room - 1)).Split(' ');
+            var last = words[0];
+            foreach (var word in words.Skip(1))
+            {
+                if (Width(last + " " + word + ellipsis, style) > limit)
+                    break;
+                last += " " + word;
+            }
+            return string.Join("\n", lines.Take(room - 1).Append(last + ellipsis));
+        }).ToList();
+        layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => l.Split('\n').Max(line => Width(line, style)));
+    }
+
+    /// <summary>
     /// The factor on the default gap between a category axis and its labels (c:lblOffset, percent): half of the gap
     /// stays, the other half follows the percentage (measured: offsets of 0, 200, 400 and 1000 put 12 pt labels 0.5,
     /// 1.5, 2.5 and 5.5 default gaps below the axis).
@@ -1810,13 +1890,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return layout.Axis.Position is "b" or "l" ? !atStart && value < cross.Scale.Max : false;
     }
 
-    void ScaleValueAxis(AxisLayout layout, double length)
+    /// <param name="length">The axis's length in the plot area.</param>
+    /// <param name="divided">The length the axis divides into intervals where that is not its own.</param>
+    void ScaleValueAxis(AxisLayout layout, double length, double? divided = null)
     {
         double min = double.PositiveInfinity, max = double.NegativeInfinity;
-        var percent = false;
+        // A 100 % axis only where every group on it stacks to 100 %; mixed with others, the fractions are plotted as
+        // values (measured: LibreOffice's stacked-non-stacked-mix-y-axis, a 100 % area at 1 beside columns up to 7).
+        var percent = layout.Groups.Count > 0 && layout.Groups.All(g => g.PercentStacked);
         foreach (var group in layout.Groups)
         {
-            percent |= group.PercentStacked;
             foreach (var (lo, hi) in Ranges(group, layout.Axis))
             {
                 min = Math.Min(min, lo);
@@ -1826,13 +1909,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (double.IsInfinity(min)) (min, max) = (0, 1);
 
         var style = layout.Style;
-        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or one label wide plus three font
-        // sizes (measured: a 252 pt bubble axis up to 3.1 takes steps of 1, a 377 pt one steps of 0.5, a 418 pt
-        // scatter axis up to 9 steps of 2).
-        var extent = layout.Axis.Horizontal
-            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size
-            : LineHeight(style) * 1.1;
-        var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
+        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or four font sizes wide, however
+        // wide the labels are (horizontal axes; measured: bar and scatter charts 150 to 900 pt wide with 9 and 12 pt
+        // labels, which overlap where they are wider). Office 2016 charts keep one label wide plus three font sizes.
+        var extent = !layout.Axis.Horizontal ? LineHeight(style) * 1.1
+            : ex == null ? 4 * style.Size
+            : Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size;
+        var maxIntervals = Math.Clamp((int)Math.Floor((divided ?? length) / Math.Max(1, extent)), 1, 10);
         // Histograms of Office 2016 charts end at the first major unit past their largest bin (measured: 24 on 0 … 25).
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: ex?.Layout != "clusteredColumn");
 
@@ -1942,7 +2025,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     string Format(AxisLayout layout)
     {
-        if (layout.Groups.Any(g => g.PercentStacked) && (layout.Axis.SourceLinked || layout.Axis.FormatCode == "General"))
+        if (layout.Groups.Count > 0 && layout.Groups.All(g => g.PercentStacked) && (layout.Axis.SourceLinked || layout.Axis.FormatCode == "General"))
             return "0%";
         if (layout.Axis.SourceLinked)
             return layout.Groups.SelectMany(g => g.Series).FirstOrDefault()?.FormatCode ?? layout.Axis.FormatCode;
@@ -2154,6 +2237,23 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
             switch (layout.Axis.Position)
             {
+                case "l" or "r" when label.Contains('\n'):
+                {
+                    // Wrapped labels: a block as wide as its longest line beside the axis, the lines centered in it
+                    // and the block centered on the category; a label cut short centers its last line without the
+                    // ellipsis (measured).
+                    var lines = label.Split('\n');
+                    var block = lines.Max(line => Width(line, style));
+                    var blockLeft = layout.Axis.Position == "l" ? left - ValueLabelGap * s - block : right + ValueLabelGap * s;
+                    var baseline = CenteredBaseline(style, p) - (lines.Length - 1) * lineHeight / 2;
+                    for (var k = 0; k < lines.Length; k++)
+                    {
+                        var centered = k == lines.Length - 1 && layout.Cut.Contains(i) ? lines[k][..^1] : lines[k];
+                        svg.Append(text.Label(lines[k], style, blockLeft + (block - Width(centered, style)) / 2, baseline));
+                        baseline += lineHeight;
+                    }
+                    break;
+                }
                 case "l":
                     svg.Append(text.Label(label, style, left - ValueLabelGap * s - w, CenteredBaseline(style, p)));
                     if (i == 0)

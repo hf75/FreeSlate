@@ -3,6 +3,9 @@ using Fidelity;
 using Fidelity.Compare;
 using Fidelity.PowerPoint;
 
+// PowerPoint shows chart numbers in the system's regional format, which the references were made with; the tool
+// itself reads and writes invariantly.
+Repo.Regional = CultureInfo.CurrentCulture;
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 

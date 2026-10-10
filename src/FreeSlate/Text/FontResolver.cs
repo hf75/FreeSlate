@@ -62,6 +62,7 @@ public sealed class FontResolver(FontLocator locator)
     [
         ("Arial", "Arial"), ("Helv", "Arial"), ("Times", "Times New Roman"), ("Courier", "Courier New"),
         ("Segoe", "Segoe UI"), ("Palatino", "Palatino Linotype"), ("Lucida Console", "Consolas"),
+        ("Liberation Sans", "Arial"), ("Liberation Serif", "Times New Roman"), ("DejaVu Sans", "Verdana"),
     ];
 
     static readonly string[] StyleWords = ["Bold", "Italic", "Oblique", "Regular", "Light", "Semibold", "Medium", "Black", "Narrow", "Condensed"];
@@ -71,7 +72,9 @@ public sealed class FontResolver(FontLocator locator)
     /// with installed fonts. In this order: a style word run on is dropped (TahomaBold, VerdanaBold, Lucida ConsoleBold:
     /// the family, regular); a name beginning with Arial, Helv, Times, Courier, Segoe, Palatino or Lucida Console takes
     /// a family whatever follows (ArialMT, Arial-BoldMT, ArialNarrow, Helvetica Neue, TimesNewRomanPSMT, SegoeUI,
-    /// Segoe UI Bold, Lucida ConsoleX: Arial, Times New Roman, Segoe UI, Consolas, in the run's style); a trailing
+    /// Segoe UI Bold, Lucida ConsoleX: Arial, Times New Roman, Segoe UI, Consolas, in the run's style), as do the free
+    /// families Liberation Sans, Liberation Serif and DejaVu Sans (Arial, Times New Roman, Verdana; Liberation Mono,
+    /// DejaVu Serif, Arimo, Tinos, Carlito and Caladea stay unmatched); a trailing
     /// " Bold" or " Italic" sets the style (Cambria Bold); what follows a hyphen is dropped (Georgia-Bold, Tahoma-Foo:
     /// the family, regular). Other names stay unmatched (TahomaX, Tahoma Foo, Verdanaa, CambriaMath, Consola, XArial).
     /// </summary>

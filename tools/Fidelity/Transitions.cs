@@ -127,7 +127,7 @@ public static class Transitions
                 Directory.Delete(dir, recursive: true);
             Directory.CreateDirectory(dir);
             var htmlPath = Path.Combine(dir, "index.html");
-            FreeSlate.PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck));
+            FreeSlate.PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), culture: Repo.Regional);
             var url = new Uri(htmlPath).AbsoluteUri;
             var samples = info.Slides.Where(s => only == null || only.Contains(s.Slide))
                 .SelectMany(s => s.Samples.Select(f => (s.Slide, s.Start, Frame: f))).ToList();

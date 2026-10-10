@@ -310,6 +310,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
         var contourWidth = Units.ToPx(shape3d.Long("contourW") ?? 0);
         var lighting = Lighting.For(scene3d, shape3d, flat: depth <= 0.01 && !beveled && bottomWidth <= 0 && contourWidth <= 0.01);
+        if (camera is { Legacy: true })
+            lighting = lighting.WithViewer(camera);
         // The contour does not reach in front of the shape's plane: unless the top bevel is as high as the contour's
         // radius, the body moves back by the difference (measured).
         if (camera != null && contourWidth / 2 > topHeight)
@@ -1315,7 +1317,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var (cx, cy) = (bx + bw / 2, by + bh / 2);
         var rotFlip = Matrix.Translate(cx, cy).Then(Matrix.Rotate(rotation)).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-cx, -cy));
 
-        var groupFill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, slide.Colors, slide.Images(part)) : null;
+        var groupFill = FillReader.FindFill(spPr) is { } f ? FillReader.Read(f, slide.Colors, slide.Images(part), slide.ImageSizes(part)) : null;
         if (groupFill is GroupFill)
             groupFill = placement.GroupFill;
 
@@ -1606,7 +1608,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (bg == null)
                 continue;
             if (bg.Element(Ns.P + "bgPr") is { } bgPr && FillReader.FindFill(bgPr) is { } f)
-                fill = FillReader.Read(f, slide.Colors, slide.Images(part!));
+                fill = FillReader.Read(f, slide.Colors, slide.Images(part!), slide.ImageSizes(part!));
             else if (bg.Element(Ns.P + "bgRef") is { } bgRef && slide.Theme.FillStyle(bgRef.Int("idx") ?? 0) is { } themed)
                 fill = slide.ThemedFill(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(bgRef)));
             break;

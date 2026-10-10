@@ -143,7 +143,13 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
 
         foreach (var edge in edges.Values)
             Draw(borders, defs, edge.Outline, edge.X1, edge.Y1, edge.X2, edge.Y2);
-        var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + fills + borders + texts;
+        // The table's effects (a:tblPr/a:effectLst): the cells' fills and borders cast its shadow and glow, the text
+        // does not; translucent fills let the shadow show through (measured: LibreOffice's table-shadow-blur).
+        var body = fills.ToString() + borders;
+        if (SvgEffects.Filter(tblPr?.Element(Ns.A + "effectLst"), slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs,
+                parts: SvgEffects.Parts.Outer) is { } outer)
+            body = $"<g filter=\"url(#{outer})\">{body}</g>" + body;
+        var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + body + texts;
         return (svg, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
     }
 
@@ -244,7 +250,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     Fill CellFill(XElement? tcPr, List<XElement> parts)
     {
         if (FillReader.FindFill(tcPr) is { } own)
-            return FillReader.Read(own, slide.Colors, slide.Images(slide.SlidePart));
+            return FillReader.Read(own, slide.Colors, slide.Images(slide.SlidePart), slide.ImageSizes(slide.SlidePart));
         for (var i = parts.Count - 1; i >= 0; i--)
         {
             var tcStyle = parts[i].Element(Ns.A + "tcStyle");

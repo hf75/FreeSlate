@@ -79,6 +79,12 @@ public sealed class PresentationContext : IDisposable
     public FontResolver Fonts { get; }
 
     /// <summary>
+    /// The regional format of numbers and dates in charts: PowerPoint takes the system's, not the chart's language
+    /// (measured: an en-US chart shows 2,5 on a German system).
+    /// </summary>
+    public System.Globalization.CultureInfo Culture { get; init; } = System.Globalization.CultureInfo.CurrentCulture;
+
+    /// <summary>
     /// The fonts embedded in the presentation (p:embeddedFontLst, catalog: text.embeddedFonts), one face per style:
     /// Embedded OpenType as PowerPoint writes it, or a plain TrueType/OpenType font; decoded when first used.
     /// </summary>

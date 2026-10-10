@@ -729,7 +729,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }
 
         var painted = style.Paint is not null and not NoFill || style.Line != null;
-        var outlined = (style.Size * PxPerPt >= HintedBelow || painted) && !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
+        // 3D text (Outlines collected) needs the glyphs' outlines at every size.
+        var outlined = (style.Size * PxPerPt >= HintedBelow || painted || Outlines != null) && !data.IsColor && !style.Font.SyntheticBold && !style.Font.SyntheticItalic
                        && glyphs.All(g => g.Id != 0 || g.Cluster < text.Length && char.IsWhiteSpace(text[g.Cluster]));
         var family = data.Family;
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
@@ -1120,6 +1121,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     {
         var pPr = p.Element(Ns.A + "pPr");
         var level = Math.Clamp(pPr.Int("lvl") ?? 0, 0, 8);
+        // The paragraph's own default run properties (a:pPr/a:defRPr) come before the list styles (measured: POI's
+        // bug63290, a run without properties in the paragraph's red 40 pt).
+        if (pPr?.Element(Ns.A + "defRPr") is { } defaults)
+            sources = [new ListStyleSource(new XElement(Ns.A + "lstStyle", new XElement(Ns.A + $"lvl{level + 1}pPr", defaults))), .. sources];
         string? P(string name) => ParagraphAttr(pPr, sources, level, name);
         static double Points(string? emu) => long.TryParse(emu, out var v) ? v / Units.EmuPerPoint : 0;
 

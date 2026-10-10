@@ -604,7 +604,8 @@ areas:
           Tiles are sized from the picture's own resolution; PowerPoint ignores blipFill dpi (measured).
           Verified with generated/pictures and fills; a:blip cstate (compression) does not change the picture.
           A shape's blipFill without stretch or tile is tiled at the picture's own size (LibreOffice
-          tdf128596); pictures keep stretching.
+          tdf128596); pictures keep stretching. Slide backgrounds, group fills and table cells tile at the
+          picture's own size too (LibreOffice tdf152070: a 300 dpi tile at 60 x 70 %).
 
       - id: fill.group
         title: Group fill
@@ -667,7 +668,9 @@ areas:
           Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the
           line shortened under the head.
         office: >-
-          Verified with generated/lines (arrowhead types, widths and lengths).
+          Heads are multiples of the line width but never smaller than a 2 pt line's (measured: medium heads 6 pt
+          wide on lines of 0.25 to 2 pt, three widths beyond; LibreOffice's fdo47434). Verified with
+          generated/lines (arrowhead types, widths and lengths).
 
       - id: line.compound
         title: Compound lines
@@ -816,7 +819,11 @@ areas:
         office: >-
           Measured on generated/three-d: the presets' angles and fields of view (30 cameras, corners within
           0.4 pt; the eye stands 907.5 pt / 2 / tan(fov / 2) in front of the shape); oblique presets shear by
-          0.3 of the depth (legacy ones 0.5), legacy perspective presets by 0.133 per axis. All 27 light rigs
+          0.3 of the depth (legacy ones 0.5), legacy perspective presets by 0.133 per axis. Legacy oblique
+          cameras with a rotation of their own turn the scene before they shear it, their light rig staying with
+          the viewer under the turns about the horizontal and vertical axes and turning along in the picture
+          plane (LibreOffice's Scene3d_legacyObliqueBottomRight 51.5 to 97.3 %, Scene3d_lightRig_legacyCamera
+          41.2 to 98.4 %); how modern oblique cameras turn is not measured yet (Scene3d_obliqueTopRight). All 27 light rigs
           were fitted on extruded cubes, cylinders and tilted bevels rendered in two base colors (rms below
           0.03, brightRoom 0.05); dir turns a rig in 45° steps clockwise, a:rot turns it further. sp3d z moves
           the shape along its own axis (perspective enlarges it, turned cameras shift it). Shadows and glow of
@@ -933,7 +940,10 @@ areas:
           (local/palette, EMF and WMF). Monochrome pattern brushes (EMF CreateMonoBrush, WMF
           DIBCREATEPATTERNBRUSH with BS_PATTERN) paint in the text and background colors as GDI does, not in their
           palette's black and white (measured with the previews of ActiveX toggle buttons and scroll bars, whose
-          dithers PowerPoint draws in the control's colors). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
+          dithers PowerPoint draws in the control's colors). A bitmap's negative width or height reaches from
+          its origin the other way, its first column or row at the origin, as in GDI's StretchBlt (LibreOffice's
+          tdf149206: an EMF named .wmf whose screenshot sits 750 x -600 under a window turned upside down, 29.2 to
+          83.5 %). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
           draw nothing, color management records leave the colors as they are, and OpenGL records are not
           drawn. Verified
           with generated/metafiles (PowerPoint's EMF and WMF exports, GDI+ dual and GDI-only recordings, GDI
@@ -1207,7 +1217,9 @@ areas:
           glyph's ink from the baseline to the font's ascent (OS/2 usWinAscent; measured: all letters of 32 pt
           Calibri 40 px tall, descenders lifted); kumimoji keeps digits upright in vertical text. A line break's
           own size (a:br a:rPr) sizes its line only when the line has no other text: a 60 pt break after 20 pt
-          text leaves the line 24 pt high, alone it makes it 72 pt (generated/text-more, slide 4). altLang,
+          text leaves the line 24 pt high, alone it makes it 72 pt (generated/text-more, slide 4). A
+          paragraph's own default run properties (a:pPr/a:defRPr) format its runs before the list styles do
+          (POI's bug63290: a run without properties in the paragraph's red 40 pt). altLang,
           bmk, dirty, err, noProof, smtClean and smtId are editing state. Verified with generated/text-basic,
           text-underline and text-more.
 
@@ -1226,7 +1238,10 @@ areas:
           Helv, Times, Courier, Segoe, Palatino or Lucida Console takes Arial, Arial, Times New Roman, Courier
           New, Segoe UI, Palatino Linotype or Consolas whatever follows (ArialMT, TimesNewRomanPSMT, SegoeUI);
           a trailing " Bold" or " Italic" sets the style (Cambria Bold); a hyphen ends the name (Georgia-Bold:
-          Georgia, regular). Other names, also PostScript names such as CambriaMath, become Calibri
+          Georgia, regular). The free families Liberation Sans, Liberation Serif and DejaVu Sans (also DejaVu
+          Sans Mono) take Arial, Times New Roman and Verdana when they are not installed; Liberation Mono,
+          DejaVu Serif, Arimo, Tinos, Carlito and Caladea do not (measured by line widths; LibreOffice's
+          3d_rotated_text). Other names, also PostScript names such as CambriaMath, become Calibri
           (generated/text-more, slide 7). Characters
           inserted from symbol fonts (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym):
           Wingdings 1 to 3, Symbol and Webdings render with their own glyphs (generated/text-more). charset,
@@ -1382,7 +1397,9 @@ areas:
           glyphs, not of the shape (measured). A bevel wider than half a glyph stroke is cut at the ridge with
           its height in proportion; PowerPoint shades such ridges somewhat differently (thin beveled text
           looks lighter there). Text in a 3D-turned shape turns with the shape's front face; a:flatTx keeps it
-          out of the scene, facing the viewer at the shape's place (measured). Checked with generated/text-3d
+          out of the scene, facing the viewer at the shape's place (measured). Small 3D text is drawn from its
+          outlines too (LibreOffice's 3d_rotated_text: 18 pt text turned a quarter, 41.6 to 91.4 %). Checked
+          with generated/text-3d
           (97.1 %): extruded and beveled under a legacy perspective, turned only, beveled in a shape, extruded
           in a color of its own, flat text.
 
@@ -1464,7 +1481,8 @@ areas:
           Row heights (a:tr/@h) are minimums; PowerPoint grows rows to fit their text. A right-to-left table
           (tblPr rtl) mirrors its cells with their left and right borders, not the text in them
           (generated/tables). Verified with generated/tables (97.7 %); a:headers and a:header only name cells
-          for accessibility.
+          for accessibility. The table's effects (a:tblPr/a:effectLst) are cast by the cells' fills and borders,
+          not the text; translucent fills show the shadow through (LibreOffice's table-shadow-blur).
 
       - id: table.cells
         title: Cell formatting
@@ -1594,7 +1612,8 @@ areas:
           start (clockwise) where the combined slice ends, the bar's first point on top; series lines
           (c:serLines) join the combined slice's edges to the second plot's top and bottom. Measured with
           generated/charts- details: 0.06 -> 0.97 on that slide. Verified with generated/charts, charts-
-          details and local/pielabels.
+          details and local/pielabels. A fill of the series' own colors the points without one even where
+          the colors vary by point (LibreOffice's tdf150176 and tdf146756: the first slice in bg2).
 
       - id: chart.area
         title: Area charts
@@ -1685,7 +1704,9 @@ areas:
           Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets
           5 % headroom; the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least
           1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
-          shows the locale's short date. Category labels that do not fit rotate by -45 degrees, with the end
+          shows the locale's short date. Numbers and dates take the system's regional format, not the chart's
+          language (c:lang; measured: an en-US chart shows 2,5 on a German system); the converter takes it as an
+          option, the current culture by default. Category labels that do not fit rotate by -45 degrees, with the end
           of their middle line at the category; labels of an axis crossing inside the plot area stay at the
           axis. Display units (c:dispUnits: built-in or custom) divide the value labels, and their label
           (c:dispUnitsLbl) shows its own text or the unit's name in the chart's language (German Office:
@@ -1694,8 +1715,19 @@ areas:
           th, their labels keep lblOffset % of the default distance; numeric categories (dates on a date axis)
           take the axis's number format, months abbreviated as Office does (German: Mrz, Jun, Sep). A plot
           area placed by hand (c:manualLayout) still turns category labels that do not fit by -45 degrees.
-          Horizontal value axes keep each interval at least one label wide plus two font sizes (measured: a
-          252 pt bubble axis up to 3.1 steps by 1, a 377 pt one by 0.5). Multi-level categories
+          Horizontal value axes divide the plot area's width before the labels beside it take their room into
+          intervals of at least four font sizes, however wide their labels are, which then overlap (measured:
+          bar and scatter charts 150 to 900 pt wide with 9 and 12 pt labels; Office 2016 charts keep one label
+          wide plus three font sizes). Category labels beside a vertical axis (bar charts) wrap at half the
+          outer plot area's width less half the first and half the last value label, keep the lines that fit
+          their category's height with an ellipsis after the last (centered without it), and stand as blocks
+          as wide as their longest line beside the axis, their lines centered (measured: bar charts 200 to
+          950 pt wide with 9 to 24 pt labels and value labels of several widths or none; local probes). A plot
+          area placed by hand wraps them at half the chart's width less those overhangs and keeps all labels
+          inside the chart: it moves left until the value label at its right edge is 6 pt inside, then gives
+          up width on the left to the labels beside it (LibreOffice's tdf48041: 60.8 to 90.2 %). Not yet: the
+          plot area of narrow bar charts whose labels nearly fill their categories starts lower in PowerPoint.
+          Multi-level categories
           (c:multiLvlStrRef) put every outer level in a row of its own, the label gap below the categories,
           each name centered over its group with lines along the group edges from the axis through the row;
           with c:noMultiLvlLbl the names join their group's first label as further lines. Labels may hold line
@@ -2076,7 +2108,11 @@ areas:
           widths growing in 32nds of the way to a rule's limit; descendants' text at the top level unless
           bullets start at its depth; the diagram laid out again with the pinned values. The output writes the
           shapes the way PowerPoint writes its drawing (text nodes' text taken by shapes showing the same
-          data, styles and colors by label). Measured against PowerPoint's drawings of the 159 layouts: 1349
+          data, styles and colors by label); a data point's own formatting (dgm:pt/dgm:spPr) colors the
+          shape showing its text, unless that shape hides its geometry, before the shape's presentation
+          point's (LibreOffice's smartart-cycle-matrix: 75.3 to 98.7 %); bulleted text hangs by 4.5 pt per
+          size class (4.5 pt below 12 pt, 9 below 16, 13.5 below 20, 18 below 28, then 22.5; measured on
+          PowerPoint's drawings of one diagram at 22 sizes). Measured against PowerPoint's drawings of the 159 layouts: 1349
           of 1455 shapes within 1 %, 146 diagrams exact, 745 of 823 font sizes (151 shapes and 12 diagrams
           before this engine work); against generated decks of snake, picture, cycle, radial and hierarchy
           layouts at 1 to 8 nodes: 541 of 542, 550 of 594, 311 of 320, 412 of 427 and 578 of 690 shapes;
@@ -2087,7 +2123,9 @@ areas:
           composite), AscendingPictureAccentProcess's drawing, which PowerPoint shrinks by 0.74 to 0.93 for 2
           to 5 nodes and centers by its outline, BendingPictureBlocks' pictures overhanging their composites,
           cycle3's long curves, NameandTitleOrganizationalChart's names narrower than their constraint and
-          radial2's ring (2 % smaller), each within 1 to 7 % (sa_all: 13 of 159 layouts not exact).
+          radial2's ring (2 % smaller), each within 1 to 7 % (sa_all: 13 of 159 layouts not exact), and
+          process3 with very short text, which PowerPoint sets at 34 pt where the engine finds 25 pt
+          (LibreOffice's smartart-accent-process).
       - id: smartart.styles
         title: SmartArt styles and color definitions
         elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,

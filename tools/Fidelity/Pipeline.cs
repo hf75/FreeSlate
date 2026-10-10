@@ -41,7 +41,7 @@ public static class Pipeline
             try
             {
                 // Fonts a deck embeds are used even where they are installed, as on a computer without them.
-                PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true);
+                PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true, culture: Repo.Regional);
             }
             catch (Exception e) when (e is not OutOfMemoryException)
             {

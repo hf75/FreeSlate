@@ -6,7 +6,7 @@ namespace FreeSlate.Html;
 
 /// <summary>
 /// Draws arrowheads (a:headEnd at the start of an open path, a:tailEnd at its end) and pulls the line back under
-/// them, as PowerPoint does (catalog: line.ends). Sizes are multiples of the line width: sm 2, med 3, lg 5.
+/// them, as PowerPoint does (catalog: line.ends). Sizes are multiples of the line width (at least 2 pt): sm 2, med 3, lg 5.
 /// </summary>
 public static class LineEnds
 {
@@ -81,8 +81,11 @@ public static class LineEnds
         pullback = 0;
         if (u == default)
             return "";
-        var length = lineWidth * Factor(end.Length);
-        var width = lineWidth * Factor(end.Width);
+        // Heads of lines thinner than 2 pt keep the size of a 2 pt line's (measured: medium heads 6 pt wide on lines
+        // of 0.25 to 2 pt, 3 widths wide beyond).
+        var size = Math.Max(lineWidth, 2 * 96 / 72.0);
+        var length = size * Factor(end.Length);
+        var width = size * Factor(end.Width);
         var v = (X: -u.Y, Y: u.X);
         string P(double along, double across) =>
             $"{Units.Css(tip.X + u.X * along + v.X * across)} {Units.Css(tip.Y + u.Y * along + v.Y * across)}";

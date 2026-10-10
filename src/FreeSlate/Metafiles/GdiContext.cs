@@ -652,11 +652,10 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         var image = bitmap;
         if (source is { } src && bitmap.Rgba != null && (src.X != 0 || src.Y != 0 || src.W != bitmap.Width || src.H != bitmap.Height))
             image = Crop(bitmap, src);
+        // A negative width or height reaches from the origin the other way, the bitmap's first column or row at the
+        // origin (GDI's StretchBlt; LibreOffice's tdf149206: 750 × −600 under a window flipped upside down).
         var t = Xform.Translate(x, y).Then(Total);
-        var flipX = w < 0;
-        var flipY = h < 0;
-        var local = Xform.Scale(flipX ? -1 : 1, flipY ? -1 : 1).Then(Xform.Translate(flipX ? -w : 0, flipY ? -h : 0));
-        var matrix = local.Then(t);
+        var matrix = Xform.Scale(w < 0 ? -1 : 1, h < 0 ? -1 : 1).Then(t);
         Svg.Add($"<image width=\"{SvgWriter.Num(Math.Abs(w))}\" height=\"{SvgWriter.Num(Math.Abs(h))}\" transform=\"{matrix.Svg()}\" preserveAspectRatio=\"none\" href=\"{image.DataUri()}\"/>", State.Clip);
     }
 

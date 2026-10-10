@@ -88,9 +88,12 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         var perspective = preset.StartsWith("perspective", StringComparison.Ordinal) || preset.StartsWith("legacyPerspective", StringComparison.Ordinal);
         var oblique = preset.StartsWith("oblique", StringComparison.Ordinal) || preset.StartsWith("legacyOblique", StringComparison.Ordinal);
         var (x, y, z, fov) = Presets.TryGetValue(preset, out var p) ? p : (0, 0, 0, preset.StartsWith("legacyPerspective", StringComparison.Ordinal) ? 65 : 45);
-        if (camera.Element(Ns.A + "rot") is { } rot)
+        var legacy = preset.StartsWith("legacy", StringComparison.Ordinal);
+        // An explicit rotation replaces the preset's (60000ths of a degree; lon and rev turn the other way). Legacy
+        // oblique cameras turn the scene before they shift it (measured: LibreOffice's Scene3d_legacyObliqueBottomRight
+        // and Scene3d_lightRig_legacyCamera); how the other oblique cameras turn is not measured yet, they stay unturned.
+        if (camera.Element(Ns.A + "rot") is { } rot && (legacy || !oblique))
         {
-            // An explicit rotation replaces the preset's (60000ths of a degree; lon and rev turn the other way).
             x = -(rot.Long("lon") ?? 0) / 60000.0;
             y = (rot.Long("lat") ?? 0) / 60000.0;
             z = -(rot.Long("rev") ?? 0) / 60000.0;
@@ -111,8 +114,16 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
             perspective = false;
             oblique = true;
         }
-        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique) { Shear = shear, Zoom = zoom > 0 ? zoom : 1 };
+        return new Camera(x, y, z, Math.Clamp(fov, 1, 179), perspective, oblique) { Shear = shear, Zoom = zoom > 0 ? zoom : 1, Legacy = legacy };
     }
+
+    /// <summary>
+    /// A legacy camera (legacyOblique…, legacyPerspective…): its light rig stays with the viewer while the scene turns
+    /// about the horizontal and vertical axes and turns along in the picture plane, where the other cameras' rigs turn
+    /// with the scene (measured: the front of a shape turned by 300° about the vertical axis dark under a legacy
+    /// camera, lit under orthographicFront; a legacy oblique scene turned by 10° and 20° in the plane lit as PowerPoint).
+    /// </summary>
+    public bool Legacy { get; init; }
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
     public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9)
@@ -145,10 +156,10 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// <summary>A point or direction of the scene turned into the view (x right, y down, z towards the eye).</summary>
     public (double X, double Y, double Z) Turn((double X, double Y, double Z) p)
     {
-        if (Oblique)
-            return (p.X - p.Z * Shear.X, p.Y - p.Z * Shear.Y, p.Z);
         var r = Rotation();
-        return (r[0] * p.X + r[1] * p.Y + r[2] * p.Z, r[3] * p.X + r[4] * p.Y + r[5] * p.Z, r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
+        var q = (X: r[0] * p.X + r[1] * p.Y + r[2] * p.Z, Y: r[3] * p.X + r[4] * p.Y + r[5] * p.Z, Z: r[6] * p.X + r[7] * p.Y + r[8] * p.Z);
+        // Oblique cameras turn the scene by their rotation (a:rot) too, then shift it by depth.
+        return Oblique ? (q.X - q.Z * Shear.X, q.Y - q.Z * Shear.Y, q.Z) : q;
     }
 
     /// <summary>
@@ -176,13 +187,14 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// </summary>
     public (double X, double Y, double Z) View((double X, double Y, double Z) scenePoint)
     {
+        var r = Rotation();
         if (Oblique)
         {
-            // Oblique projections look along the shear.
+            // Oblique projections look along the shear, turned back into the scene with the transpose.
             var length = Math.Sqrt(Shear.X * Shear.X + Shear.Y * Shear.Y + 1);
-            return (Shear.X / length, Shear.Y / length, 1 / length);
+            var (vx, vy, vz) = (Shear.X / length, Shear.Y / length, 1 / length);
+            return (r[0] * vx + r[3] * vy + r[6] * vz, r[1] * vx + r[4] * vy + r[7] * vz, r[2] * vx + r[5] * vy + r[8] * vz);
         }
-        var r = Rotation();
         // The eye sits at (0, 0, d) in view coordinates; turned back into the scene with the transpose.
         var (ex, ey, ez) = Perspective ? (0.0, 0.0, Distance) : (0.0, 0.0, 1.0);
         var eye = (X: r[0] * ex + r[3] * ey + r[6] * ez, Y: r[1] * ex + r[4] * ey + r[7] * ez, Z: r[2] * ex + r[5] * ey + r[8] * ez);
@@ -198,7 +210,18 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         var o = Offset;
         double[] about;
         if (Oblique)
-            about = [1, 0, 0, 0, 0, 1, 0, 0, -Shear.X, -Shear.Y, 1, 0, -o * Shear.X, -o * Shear.Y, 0, 1];
+        {
+            // x' = turned x − Sx · turned z (the offset included), likewise y; z' = turned z without the offset.
+            var r = Rotation();
+            var (sx, sy) = Shear;
+            about =
+            [
+                r[0] - sx * r[6], r[3] - sy * r[6], r[6], 0,
+                r[1] - sx * r[7], r[4] - sy * r[7], r[7], 0,
+                r[2] - sx * r[8], r[5] - sy * r[8], r[8], 0,
+                (r[2] - sx * r[8]) * o, (r[5] - sy * r[8]) * o, 0, 1,
+            ];
+        }
         else
         {
             var r = Rotation();

@@ -86,9 +86,12 @@ public static class TextBody
         foreach (var (source, level) in paragraphs)
         {
             var size = level == 0 ? primary : secondary;
+            // Bulleted text hangs by a step of 4.5 pt per size class (measured on PowerPoint's drawings: one step below
+            // 12 pt, two below 16, three below 20, four below 28, five from 28 on), each level indented by it.
+            var hang = 4.5 * (size < 12 ? 1 : size < 16 ? 2 : size < 20 ? 3 : size < 28 ? 4 : 5);
             var pPr = new XElement(A + "pPr",
-                new XAttribute("marL", level == 0 ? "0" : Emu(22.5 * level)), new XAttribute("lvl", level),
-                new XAttribute("indent", level == 0 ? "0" : Emu(-22.5)), new XAttribute("algn", level == 0 ? parentAlign : childAlign),
+                new XAttribute("marL", level == 0 ? "0" : Emu(hang * level)), new XAttribute("lvl", level),
+                new XAttribute("indent", level == 0 ? "0" : Emu(-hang)), new XAttribute("algn", level == 0 ? parentAlign : childAlign),
                 new XAttribute("defTabSz", Emu(3.5 * size)),
                 new XElement(A + "lnSpc", new XElement(A + "spcPct", new XAttribute("val", "90000"))),
                 new XElement(A + "spcBef", new XElement(A + "spcPct", new XAttribute("val", "0"))),

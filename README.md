@@ -54,7 +54,9 @@ Converts every deck of the corpus, takes a screenshot of each slide with headles
 PowerPoint's reference rendering. The report (`artifacts/fidelity/report.html`) shows reference, our rendering and a
 difference image for every slide. The score is the share of content pixels that match the reference within a small
 tolerance. On Windows with Office installed, `generate` rebuilds the test decks and `reference` re-renders the references.
-Decks are named by path (`generated/fills`); a folder stands for all decks in it (`run generated`).
+Decks are named by path (`generated/fills`); a folder stands for all decks in it (`run generated`). PowerPoint shows
+chart numbers in the system's regional format; the tool converts in the system's format too, so the references
+(made on a German system) match where the comparison runs with the same format.
 
 `fetch` downloads the test decks of other open-source projects (LibreOffice, Apache POI, Apache Tika, Open XML SDK,
 python-pptx; about 700 decks at pinned commits, each source's license in its `sources.json`) to

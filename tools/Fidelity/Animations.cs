@@ -112,7 +112,7 @@ public static class Animations
                 Directory.Delete(dir, recursive: true);
             Directory.CreateDirectory(dir);
             var htmlPath = Path.Combine(dir, "index.html");
-            FreeSlate.PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck));
+            FreeSlate.PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), culture: Repo.Regional);
             var url = new Uri(htmlPath).AbsoluteUri;
             var samples = info.Slides.SelectMany(s => s.Samples.Select(f => (s.Slide, Frame: f))).ToList();
             var scores = new ConcurrentBag<SlideResult>();

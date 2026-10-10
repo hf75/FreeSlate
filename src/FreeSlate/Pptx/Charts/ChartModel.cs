@@ -143,7 +143,8 @@ public sealed class ChartModel
 
     public ChartAxis? Axis(int id) => Axes.FirstOrDefault(a => a.Id == id);
 
-    public static ChartModel? Read(XDocument document)
+    /// <param name="culture">The regional format numeric categories are shown in.</param>
+    public static ChartModel? Read(XDocument document, CultureInfo culture)
     {
         var space = document.Root;
         var chart = space?.Element(Ns.C + "chart");
@@ -156,7 +157,6 @@ public sealed class ChartModel
             Chart = chart,
             AutoTitleDeleted = Flag(chart, "autoTitleDeleted", false),
         };
-        var culture = Culture(Val(space, "lang"));
         var plotArea = chart.Element(Ns.C + "plotArea");
         foreach (var element in plotArea?.Elements() ?? [])
         {
@@ -177,7 +177,7 @@ public sealed class ChartModel
         return model;
     }
 
-    /// <summary>The culture of the chart's c:lang: built-in date formats and decimal separators follow it.</summary>
+    /// <summary>The culture of a language tag (invariant for none or an unknown one).</summary>
     public static CultureInfo Culture(string? lang)
     {
         try { return lang != null ? CultureInfo.GetCultureInfo(lang) : CultureInfo.InvariantCulture; }

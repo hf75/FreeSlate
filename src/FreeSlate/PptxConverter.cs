@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using FreeSlate.Fonts;
@@ -88,10 +89,18 @@ public static class PptxConverter
     /// <param name="embeddedFontsFirst">
     /// Use the fonts embedded in the presentation even where the same family is installed (as on a computer without them).
     /// </param>
+    /// <param name="culture">
+    /// The regional format of numbers and dates in charts, the system's (<see cref="CultureInfo.CurrentCulture"/>) as in
+    /// PowerPoint when null.
+    /// </param>
     /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
-    public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false)
+    public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
+        CultureInfo? culture = null)
     {
-        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst);
+        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst)
+        {
+            Culture = culture ?? CultureInfo.CurrentCulture,
+        };
         var deck = new DeckInfo(context);
         var paint = new SvgPaint();
         var width = Units.ToPx(context.SlideWidth);
@@ -164,10 +173,11 @@ public static class PptxConverter
         return html.ToString();
     }
 
-    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false)
+    public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
+        CultureInfo? culture = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password, embeddedFontsFirst));
+        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password, embeddedFontsFirst, culture));
     }
 
     /// <summary>

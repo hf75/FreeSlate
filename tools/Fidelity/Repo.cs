@@ -14,6 +14,9 @@ public static class Repo
     /// <summary>Our renderings, screenshots and the report (not committed).</summary>
     public static string Artifacts => Path.Combine(Root, "artifacts", "fidelity");
 
+    /// <summary>The system's regional format, in which PowerPoint shows chart numbers and the references show them.</summary>
+    public static System.Globalization.CultureInfo Regional { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
+
     /// <summary>Test decks of other projects, downloaded by `fetch` (not committed, see <see cref="ExternalDecks"/>).</summary>
     public static string External => Path.Combine(Root, "spec", "downloads", "testdecks");
 

@@ -455,11 +455,14 @@ public static class Output
             spPr.Add(new XElement(A + "scene3d", scene.Elements()));
         if (!hidden && styling.StyleElement(label, "sp3d") is { } sp3d && (sp3d.HasAttributes || sp3d.HasElements))
             spPr.Add(new XElement(A + "sp3d", sp3d.Attributes(), sp3d.Elements()));
-        // Formatting of the shape saved with its presentation point overrides the style.
-        if (node.Saved?.Element.Element(D + "spPr") is { } own)
+        // Formatting saved with the data point whose text the shape shows (a node's own fill or line), then the one
+        // saved with the shape's presentation point, override the style; shapes without geometry stay invisible
+        // (measured: LibreOffice's smartart-cycle-matrix, the quadrant of B1 filled and the box of B2 outlined in
+        // accent 6).
+        static bool IsFill(XElement e) => e.Name.LocalName.EndsWith("Fill", StringComparison.Ordinal);
+        foreach (var own in new[] { hidden ? null : node.Text.FirstOrDefault()?.Element.Element(D + "spPr"), node.Saved?.Element.Element(D + "spPr") })
         {
-            static bool IsFill(XElement e) => e.Name.LocalName.EndsWith("Fill", StringComparison.Ordinal);
-            foreach (var element in own.Elements().Where(e => e.Name.LocalName != "xfrm"))
+            foreach (var element in own?.Elements().Where(e => e.Name.LocalName != "xfrm") ?? [])
             {
                 foreach (var replaced in spPr.Elements().Where(e => e.Name == element.Name || IsFill(element) && IsFill(e)).ToList())
                     replaced.Remove();
