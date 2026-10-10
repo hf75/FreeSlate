@@ -916,7 +916,8 @@ public sealed partial class ChartRenderer
         var svg = new StringBuilder();
         if (wireframe)
         {
-            // Grid lines along the categories and along the series, each piece in the line of its band.
+            // Grid lines along the categories and along the series, each piece in the line of its band; a level
+            // piece on a band boundary belongs to the band below (measured on single wireframe cells).
             void Edge((double X, double Z, double V) p, (double X, double Z, double V) q)
             {
                 for (var band = 0; band < bands.Count; band++)
@@ -925,15 +926,15 @@ public sealed partial class ChartRenderer
                     double t0 = 0, t1 = 1;
                     if (Math.Abs(q.V - p.V) < 1e-12)
                     {
-                        var inside = (band == 0 || p.V >= low) && (band == bands.Count - 1 || p.V <= high);
+                        var inside = (band == 0 || p.V > low) && (band == bands.Count - 1 || p.V <= high);
                         if (!inside) continue;
                     }
                     else
                     {
-                        var (lo, hi) = ((low - p.V) / (q.V - p.V), (high - p.V) / (q.V - p.V));
+                        // The first and last bands reach on below and above their limits, along the edge either way.
+                        var (lowV, highV) = (band == 0 ? double.NegativeInfinity : low, band == bands.Count - 1 ? double.PositiveInfinity : high);
+                        var (lo, hi) = ((lowV - p.V) / (q.V - p.V), (highV - p.V) / (q.V - p.V));
                         if (lo > hi) (lo, hi) = (hi, lo);
-                        if (band == 0) lo = double.NegativeInfinity;
-                        if (band == bands.Count - 1) hi = double.PositiveInfinity;
                         (t0, t1) = (Math.Max(0, lo), Math.Min(1, hi));
                         if (t1 - t0 < 1e-9) continue;
                     }
@@ -949,7 +950,8 @@ public sealed partial class ChartRenderer
             for (var i = 0; i < nCat; i++)
                 for (var k = 0; k + 1 < nSer; k++)
                     Edge((X(i), Z(k), Value(k, i)), (X(i), Z(k + 1), Value(k + 1, i)));
-            // The contour lines where the surface crosses a band boundary, in the line of the band above.
+            // The contour lines where the surface crosses a band boundary, in the line of the band below (measured
+            // on single wireframe cells).
             foreach (var (_, _, corners) in triangles)
             {
                 for (var band = 1; band < bands.Count; band++)
@@ -967,7 +969,7 @@ public sealed partial class ChartRenderer
                     }
                     if (crossing.Count != 2)
                         continue;
-                    var line = BandLine(group, band) ?? new Outline(9525, fills[band], "solid", "flat", "round", 8, "sng");
+                    var line = BandLine(group, band - 1) ?? new Outline(9525, fills[band - 1], "solid", "flat", "round", 8, "sng");
                     var (u, v) = (projection.Map(crossing[0].X, Height(level), crossing[0].Z), projection.Map(crossing[1].X, Height(level), crossing[1].Z));
                     svg.Append($"<path d=\"M{XY(u)}L{XY(v)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                 }

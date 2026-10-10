@@ -1804,9 +1804,12 @@ areas:
           its near edge; the vertical axis always stands at the box's left end (x = 0), on whichever of its
           two edges lies outside on the screen, from behind on the right where its labels take no room;
           labels along a floor edge within 34° of the horizontal stand under it, else beside it away from the
-          box (categories under at 27° and 32°, beside at 36°; series under at 12°, beside at 41°). Not yet:
-          category labels that PowerPoint wraps under a rising edge (rotY 300°), and wireframes' contour lines
-          (generated/charts-3d slide 13: 76.3 %).
+          box (categories under at 27° and 32°, beside at 36°; series under at 12°, beside at 41°).
+          Wireframes (local/wire and wire2, single cells with bands every 2): grid pieces in their band's
+          line, a level piece on a band boundary in the band below, contour lines in the line of the band
+          below (generated/charts-3d slide 13: 87.7 %, 76.3 % before). Not yet: category labels that
+          PowerPoint wraps under a rising edge (rotY 300°), and the topmost contour of cells rising like a
+          plane, which PowerPoint draws in the band above (but not in saddles).
 
       - id: chart.analysis
         title: Trendlines and error bars
