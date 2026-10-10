@@ -792,6 +792,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
 
+    /// <summary>Extensions of media files a linked video or sound may point to; other web addresses are web players.</summary>
+    static readonly HashSet<string> MediaExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp4", ".m4v", ".mov", ".webm", ".ogv", ".ogg", ".mkv", ".avi", ".wmv", ".mpg", ".mpeg", ".mp3", ".m4a", ".aac", ".wav", ".wma", ".flac", ".opus",
+    };
+
     /// <summary>
     /// The audio or video of a picture (catalog: picture.media): an HTML media element over the poster picture,
     /// hidden until the player plays it. The p14:media part is preferred; trimming and fades travel as data
@@ -816,7 +822,14 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (rel.External)
             {
                 if (Uri.TryCreate(rel.Target, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+                {
+                    // An online video (Insert > Online video: a link to a web player such as YouTube's embed page)
+                    // plays in a frame, loaded only when it plays.
+                    if (video && !MediaExtensions.Contains(Path.GetExtension(uri.AbsolutePath)))
+                        return $"<iframe class=\"fs-media\" data-src=\"{System.Net.WebUtility.HtmlEncode(rel.Target)}\" " +
+                               "allow=\"autoplay; encrypted-media; picture-in-picture; fullscreen\" allowfullscreen referrerpolicy=\"strict-origin-when-cross-origin\"></iframe>";
                     source = rel.Target;
+                }
             }
             else if (package.Exists(rel.Target))
             {

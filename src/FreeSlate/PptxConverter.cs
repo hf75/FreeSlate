@@ -34,6 +34,7 @@ public static class PptxConverter
         .glyphs{position:absolute;left:0;top:0}
         .fs-media{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;visibility:hidden}
         .fs-media.playing{visibility:visible}
+        iframe.fs-media{border:0}
         .fs-model{position:absolute;left:0;top:0;width:100%;height:100%;visibility:hidden;pointer-events:none}
         .fs-model.playing{visibility:visible}
         .fs-modeled>svg{visibility:hidden}

@@ -19,7 +19,7 @@
     <Panel>
       <TextBlock Name="Placeholder" Text="Wähle eine PowerPoint-Präsentation (.pptx) aus."
                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" />
-      <NativeWebView Name="Web" IsVisible="False" />
+      <NativeWebView Name="Web" IsVisible="False" Focusable="True" />
     </Panel>
   </DockPanel>
 </Window>

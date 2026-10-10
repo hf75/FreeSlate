@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         })();
         """;
 
+    readonly DocumentServer server = new();
     string? locked;                       // a presentation waiting for its password
     bool showing;
     WindowState stateBeforeShow = WindowState.Normal;
@@ -66,23 +67,37 @@ public partial class MainWindow : Window
                 FocusPage();
         };
         AddHandler(KeyDownEvent, OnShowKey, RoutingStrategies.Tunnel);
+        Closed += (_, _) => server.Dispose();
     }
 
+    /// <summary>Keys the window gets during the show go to the page as the keys the player knows.</summary>
     async void OnShowKey(object? sender, KeyEventArgs e)
     {
         if (!showing)
             return;
-        var command = e.Key switch
+        var key = e.Key switch
         {
-            Key.Escape => "FreeSlate.stop()",
-            Key.Right or Key.Down or Key.Space or Key.PageDown or Key.Enter or Key.N => "FreeSlate.next()",
-            Key.Left or Key.Up or Key.Back or Key.PageUp or Key.P => "FreeSlate.previous()",
+            Key.Escape => "Escape",
+            Key.Right => "ArrowRight",
+            Key.Left => "ArrowLeft",
+            Key.Up => "ArrowUp",
+            Key.Down => "ArrowDown",
+            Key.PageUp => "PageUp",
+            Key.PageDown => "PageDown",
+            Key.Home => "Home",
+            Key.End => "End",
+            Key.Space => " ",
+            Key.Enter => "Enter",
+            Key.Back => "Backspace",
+            >= Key.D0 and <= Key.D9 => ((char)('0' + (e.Key - Key.D0))).ToString(),
+            >= Key.NumPad0 and <= Key.NumPad9 => ((char)('0' + (e.Key - Key.NumPad0))).ToString(),
+            >= Key.A and <= Key.Z => ((char)('a' + (e.Key - Key.A))).ToString(),
             _ => null,
         };
-        if (command == null)
+        if (key == null)
             return;
         e.Handled = true;
-        await Web.InvokeScript(command);
+        await Web.InvokeScript($"document.dispatchEvent(new KeyboardEvent('keydown', {{ key: {System.Text.Json.JsonSerializer.Serialize(key)}, bubbles: true }}))");
     }
 
     void FocusPage() => Dispatcher.UIThread.Post(() => Web.Focus(), DispatcherPriority.Background);
@@ -128,7 +143,7 @@ public partial class MainWindow : Window
             PasswordPanel.IsVisible = false;
             Placeholder.IsVisible = false;
             Web.IsVisible = true;
-            Web.Navigate(new Uri(document));
+            Web.Navigate(server.Publish(document));
             Title = $"{name} – FreeSlate Presenter";
             StatusText.Text = name;
         }

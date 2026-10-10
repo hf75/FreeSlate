@@ -968,8 +968,10 @@ areas:
           Bookmarks (p14:bmkLst) travel with the media element and start the trigger sequences that wait for
           them (p14:bmkTgt, evt onMediaBookmark); caption and subtitle tracks (p173:tracksInfo) become WebVTT
           text tracks of the video; a file's declared media type (contentType) is kept. CD audio (a:audioCd
-          with its a:st and a:end track times) cannot play from a document. Verified with generated/media
-          (99.4 %).
+          with its a:st and a:end track times) cannot play from a document. Online videos (a:videoFile linked
+          to a web player such as YouTube's embed page) play in a frame that loads the player only when it
+          plays; YouTube refuses to play in a page opened from a file (error 153), so the presenter app
+          serves the document over localhost. Verified with generated/media (99.4 %).
 
       - id: picture.ole
         title: OLE objects, ActiveX controls and signature lines
