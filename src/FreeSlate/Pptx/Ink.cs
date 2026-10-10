@@ -21,7 +21,8 @@ static class Ink
     /// <summary>Whether a part is ink: InkML, or InkActionML (ink recorded for replay).</summary>
     public static bool IsInk(XDocument part) => part.Root?.Name == InkMl + "ink" || part.Root?.Name == InkAction + "actions";
 
-    sealed record Brush(double Width, RgbColor Color, double Opacity, bool Rectangle, bool Highlighter = false, bool IgnorePressure = false);
+    sealed record Brush(double Width, RgbColor Color, double Opacity, bool Rectangle, bool Highlighter = false, bool IgnorePressure = false,
+        bool FitToCurve = false);
 
     /// <summary>SVG markup of an InkML part drawn into a box of <paramref name="width"/> × <paramref name="height"/> pixels.</summary>
     public static string Render(XDocument ink, double width, double height)
@@ -115,10 +116,23 @@ static class Ink
                 continue;
             }
             var d = new StringBuilder();
-            for (var i = 0; i < points.Count; i++)
+            var screenPoints = points.Select(p => (X: ox + (p.X - minX) * sx, Y: oy + (p.Y - minY) * sy)).ToList();
+            // fitToCurve draws a smooth curve through the points (PowerPoint draws the stroke as cubic Beziers fitted to
+            // them, a pressure-following one as a polyline through the points moved onto that curve; dense ink stays
+            // within half a pixel of its polyline either way, measured).
+            var pieces = brush.FitToCurve && points.Count > 2 ? CurveFit.Fit(screenPoints) : [];
+            if (pieces.Count > 0)
             {
-                var (x, y) = (ox + (points[i].X - minX) * sx, oy + (points[i].Y - minY) * sy);
-                d.Append(i == 0 ? 'M' : 'L').Append(Units.Css(x)).Append(' ').Append(Units.Css(y));
+                d.Append('M').Append(Units.Css(pieces[0].A.X)).Append(' ').Append(Units.Css(pieces[0].A.Y));
+                foreach (var piece in pieces)
+                    d.Append('C').Append(Units.Css(piece.B.X)).Append(' ').Append(Units.Css(piece.B.Y)).Append(' ')
+                        .Append(Units.Css(piece.C.X)).Append(' ').Append(Units.Css(piece.C.Y)).Append(' ')
+                        .Append(Units.Css(piece.D.X)).Append(' ').Append(Units.Css(piece.D.Y));
+            }
+            else
+            {
+                for (var i = 0; i < screenPoints.Count; i++)
+                    d.Append(i == 0 ? 'M' : 'L').Append(Units.Css(screenPoints[i].X)).Append(' ').Append(Units.Css(screenPoints[i].Y));
             }
             if (points.Count == 1)
                 d.Append("h0.01");   // a dot
@@ -146,7 +160,8 @@ static class Ink
         // transparency: 0 (opaque) to 255; highlighters (maskPen) show half.
         var opacity = 1 - Math.Clamp(Number(Property("transparency"), 0), 0, 255) / 255;
         var highlighter = Property("rasterOp") == "maskPen";
-        return new Brush(width, color, opacity, Property("tip") == "rectangle", highlighter, Property("ignorePressure") is "1" or "true");
+        return new Brush(width, color, opacity, Property("tip") == "rectangle", highlighter, Property("ignorePressure") is "1" or "true",
+            Property("fitToCurve") is "1" or "true");
     }
 
     /// <summary>Points per centimeter of the context's X channel (1000 by default).</summary>
