@@ -3155,10 +3155,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var fills = Enumerable.Range(0, bands.Count).Select(b => BandFill(group, b)).ToList();
         var svg = new StringBuilder();
 
-        // Facets are lit like PowerPoint's 3D surface (fitted to its rendering): ambient 0.52, diffuse 0.595 from
-        // the upper right at 31.1° elevation, and a specular highlight; heights rise 0.6 × the surface height
-        // over the value range (an approximation).
-        var height = 0.6 * plot.H / Math.Max(1e-9, scale.Max - scale.Min);
+        // Facets are lit like PowerPoint's 3D surface (fitted to its rendering): 0.52 + 0.595 n·l for light from
+        // the upper right at 31.1° elevation, and a specular highlight. The box seen from the top is as high as
+        // 0.6 × its base scaled by the inner plot area's height over its width (measured with tilted planes in
+        // square, wide and tall charts: the same slope shades darker the taller the plot area).
+        var height = 0.6 * plot.H * (inner.H / Math.Max(1e-9, inner.W)) / Math.Max(1e-9, scale.Max - scale.Min);
         var elevation = 31.1 * Math.PI / 180;
         var light = (X: Math.Cos(elevation) * Math.Sqrt(0.5), Y: Math.Cos(elevation) * Math.Sqrt(0.5), Z: Math.Sin(elevation));
         var halfLength = Math.Sqrt(light.X * light.X + light.Y * light.Y + (light.Z + 1) * (light.Z + 1));
@@ -3174,7 +3175,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var gy = ((c.V - a.V) * ux - (b.V - a.V) * wx) / det;
             var (nx, ny) = (-height * gx, -height * gy);
             var length = Math.Sqrt(nx * nx + ny * ny + 1);
-            var diffuse = 0.52 + 0.595 * Math.Max(0, (nx * light.X + ny * light.Y + light.Z) / length);
+            // Facets turned away from the light keep darkening (measured: 0.4 at n·l = −0.18).
+            var diffuse = Math.Max(0, 0.52 + 0.595 * (nx * light.X + ny * light.Y + light.Z) / length);
             var specular = Math.Min(0.15, 0.278 * Math.Pow(Math.Max(0, (nx * half.X + ny * half.Y + half.Z) / length), 26.8));
             List<(double X, double Y, double V)> triangle = [a, b, c];
             for (var band = 0; band < bands.Count; band++)

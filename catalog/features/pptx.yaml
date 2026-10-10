@@ -1594,8 +1594,10 @@ areas:
           Contour (top view) charts: the band scale is the value axis without headroom; the surface is a top
           view of a 3D box whose sides are proportional to the category and series counts, 97.3 % of the inner
           plot area. Each grid cell splits along the diagonal with the larger value sum; facets are lit with
-          ambient 0.52 + diffuse 0.595 (light from the upper right at 31 degrees) plus a specular highlight
-          (fitted to PowerPoint's rendering); the height scale is an approximation. 3D surfaces (meshes cut
+          0.52 + 0.595 n·l (light from the upper right at 31 degrees; facets turned away keep darkening) plus
+          a specular highlight; the top view's box is 0.6 × its base high, scaled by the inner plot area's
+          height over its width (measured with tilted planes in square, wide and tall charts, local/contour:
+          within 2 levels). 3D surfaces (meshes cut
           into the value bands, drawn back to front by their grid cells) and wireframes (band-colored grid and
           contour lines) are drawn with chart.threeD. Contour charts verified with generated/charts-more; 3D
           surfaces see chart.threeD.
