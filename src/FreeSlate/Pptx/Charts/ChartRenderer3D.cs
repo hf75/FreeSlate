@@ -56,6 +56,9 @@ public sealed partial class ChartRenderer
         /// <summary>Whether the viewer looks at the box from its right (else from its left) and from above (else from below).</summary>
         public abstract (bool FromRight, bool FromAbove) Side { get; }
 
+        /// <summary>A direction of the box as the camera sees it (x right, y up, z away); right-angle axes keep the box's own.</summary>
+        public virtual (double X, double Y, double Z) Seen((double X, double Y, double Z) direction) => direction;
+
         /// <summary>The length of a segment of the box on the chart.</summary>
         public double Length((double X, double Y, double Z) a, (double X, double Y, double Z) b)
         {
@@ -138,6 +141,8 @@ public sealed partial class ChartRenderer
 
         public override double Depth(double x, double y, double z) => camera.View(x - cx, y - cy, z - cz).Z;
 
+        public override (double X, double Y, double Z) Seen((double X, double Y, double Z) direction) => camera.View(direction.X, direction.Y, direction.Z);
+
         public override bool NearerBelow(int axis, double plane)
         {
             var eye = camera.ToModel(camera.Eye);
@@ -148,8 +153,9 @@ public sealed partial class ChartRenderer
         {
             get
             {
+                // An eye right in front counts as from the right (measured: at rotY 0 the side wall stands on the left).
                 var eye = camera.ToModel(camera.Eye);
-                return (eye.X > 0, eye.Y > 0);
+                return (eye.X > -1e-9, eye.Y > -1e-9);
             }
         }
     }
@@ -288,8 +294,11 @@ public sealed partial class ChartRenderer
             var ratio = view.HeightPercent is { } hp ? hp / 100 : plot.H / Math.Max(1, plot.W);
             // Areas with their categories on the box's edges span n - 1 category widths of n: the box keeps the
             // height of n - 1 (measured on 3D stacked areas of 5 and 8 categories, on the ticks and between them).
+            // Surfaces are ⌊(categories + series − 1) / 2⌋ category widths high (measured on 16 grids of 2 to 8
+            // categories and 2 to 5 series, in perspective and with right-angle axes).
+            var rowWidths = Math.Floor((nCat + nSer - (group.IsSurface ? 1 : 0)) / 2.0);
             if (columns)
-                (frame.W, frame.H) = (1, rows ? ratio * c * Math.Floor((nCat + nSer) / 2.0) : frame.Between ? ratio : ratio * (nCat - 1) * c);
+                (frame.W, frame.H) = (1, rows ? ratio * c * rowWidths : frame.Between ? ratio : ratio * (nCat - 1) * c);
             else
                 (frame.W, frame.H) = (1 / Math.Max(1e-9, ratio), 1);
             var unit = Math.Min(frame.W, frame.H);
@@ -316,19 +325,28 @@ public sealed partial class ChartRenderer
         string Quad(params (double X, double Y, double Z)[] corners) =>
             string.Concat(corners.Select((p, i) => (i == 0 ? "M" : "L") + XY(projection.Map(p.X, p.Y, p.Z)))) + "Z";
         // The walls are lit like the faces of a box: the back wall like a front, the side wall like a side, the
-        // floor like a top.
+        // floor like a top. Surface charts light them for their inner normals, 0.4 + 0.75 n · (0.572, 0.586,
+        // −0.574), as the camera sees them in perspective and as they are with right-angle axes (measured on walls
+        // seen from 13 sides).
+        double WallShade((double X, double Y, double Z) inner, double box)
+        {
+            if (!group.IsSurface)
+                return box;
+            var n = projection.Seen(inner);
+            return Math.Min(1, 0.4 + 0.75 * Math.Max(0, n.X * 0.572 + n.Y * 0.586 - n.Z * 0.574));
+        }
         if (slabs.Behind > 0)
             svg.Append(WallSlab(model.Chart.Element(Ns.C + "backWall"), projection, (0, 0, d), (w, h, d + slabs.Behind)));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, d), (w, 0, d), (w, h, d), (0, h, d)), 1));
+            svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, d), (w, 0, d), (w, h, d), (0, h, d)), WallShade((0, 0, -1), 1)));
         if (sideOuter != sideX)
             svg.Append(WallSlab(model.Chart.Element(Ns.C + "sideWall"), projection, (Math.Min(sideX, sideOuter), 0, 0), (Math.Max(sideX, sideOuter), h, d)));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "sideWall"), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), SideShade));
+            svg.Append(Wall(model.Chart.Element(Ns.C + "sideWall"), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), WallShade((sideX == 0 ? 1 : -1, 0, 0), SideShade)));
         if (floorOuter != floorY)
             svg.Append(WallSlab(model.Chart.Element(Ns.C + "floor"), projection, (0, Math.Min(floorY, floorOuter), 0), (w, Math.Max(floorY, floorOuter), d)));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "floor"), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), TopShade));
+            svg.Append(Wall(model.Chart.Element(Ns.C + "floor"), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), WallShade((0, floorY == 0 ? 1 : -1, 0), TopShade)));
 
         // Gridlines on the back wall and on the wall or floor beside the value axis; on thick walls they also cross
         // the side wall's (or floor's) front face and the back wall's end (measured).
@@ -808,9 +826,9 @@ public sealed partial class ChartRenderer
 
     /// <summary>
     /// The surface of a 3D surface chart: the grid of categories (left to right, on their ticks) and series (front to
-    /// back, on theirs) at the values' heights, cut into triangles along each cell's diagonal with the larger sum and
-    /// every triangle into the value axis' bands, each piece in its band's fill lit for the triangle's slope (the
-    /// light of flat surface charts); a wireframe draws the grid lines in the bands' lines instead.
+    /// back, on theirs) at the values' heights, cut into triangles along each cell's diagonal with the larger sum
+    /// (measured on folded cells) and every triangle into the value axis' bands, each piece in its band's fill lit for
+    /// the triangle's slope; a wireframe draws the grid lines in the bands' lines instead.
     /// </summary>
     string SurfaceSeries3D(ChartGroup group, Frame3D frame)
     {
@@ -828,11 +846,13 @@ public sealed partial class ChartRenderer
         double Value(int k, int i) => series[k].Values.ElementAtOrDefault(i) ?? 0;
         double Height(double v) => frame.ValuePos(v);
 
-        // The light of flat surface charts, turned into the box: from the upper right at 31.1° elevation.
-        var elevation = 31.1 * Math.PI / 180;
-        var light = (X: Math.Cos(elevation) * Math.Sqrt(0.5), Y: Math.Sin(elevation), Z: Math.Cos(elevation) * Math.Sqrt(0.5));
-        var halfLength = Math.Sqrt(light.X * light.X + (light.Y + 1) * (light.Y + 1) + light.Z * light.Z);
-        var half = (X: light.X / halfLength, Y: (light.Y + 1) / halfLength, Z: light.Z / halfLength);
+        // The light of 3D surfaces (measured on single cells of known slope in 39 views): in perspective it stays with
+        // the camera, 0.821 + 0.313 n · (0.768, 0.182, −0.614) for the normal as the camera sees it (x right, y up,
+        // z away); with right-angle axes it stays with the box, 0.641 + 0.380 n · (0.616, 0.491, −0.616) at any
+        // rotation.
+        var (ambient, strength, light) = projection is PerspectiveBox
+            ? (0.821, 0.313, (X: 0.768, Y: 0.182, Z: -0.614))
+            : (0.641, 0.380, (X: 0.616, Y: 0.491, Z: -0.616));
 
         // A height field is drawn back to front by its grid cells on the floor (steep facets would sort wrongly by
         // their own centres), each cell's two triangles by theirs.
@@ -924,9 +944,8 @@ public sealed partial class ChartRenderer
             var length = Math.Sqrt(n.Item1 * n.Item1 + n.Item2 * n.Item2 + n.Item3 * n.Item3);
             if (length < 1e-12)
                 continue;
-            n = (n.Item1 / length, n.Item2 / length, n.Item3 / length);
-            var diffuse = 0.52 + 0.595 * Math.Max(0, n.Item1 * light.X + n.Item2 * light.Y + n.Item3 * light.Z);
-            var specular = Math.Min(0.15, 0.278 * Math.Pow(Math.Max(0, n.Item1 * half.X + n.Item2 * half.Y + n.Item3 * half.Z), 26.8));
+            var seen = projection.Seen((n.Item1 / length, n.Item2 / length, n.Item3 / length));
+            var diffuse = Math.Max(0, ambient + strength * (seen.X * light.X + seen.Y * light.Y + seen.Z * light.Z));
             List<(double X, double Y, double V)> triangle = [.. corners.Select(p => (p.X, p.Z, p.V))];
             for (var band = 0; band < bands.Count; band++)
             {
@@ -938,8 +957,7 @@ public sealed partial class ChartRenderer
                 var d = string.Concat(part.Select((p, idx) => (idx == 0 ? "M" : "L") + XY(projection.Map(p.X, Height(p.V), p.Y)))) + "Z";
                 if (fills[band] is SolidFill solid)
                 {
-                    static double Channel(double v, double diffuse, double specular) => Math.Clamp(v * diffuse + specular, 0, 1);
-                    var lit = new RgbColor(Channel(solid.Color.R, diffuse, specular), Channel(solid.Color.G, diffuse, specular), Channel(solid.Color.B, diffuse, specular), solid.Color.A);
+                    var lit = new RgbColor(Math.Min(1, solid.Color.R * diffuse), Math.Min(1, solid.Color.G * diffuse), Math.Min(1, solid.Color.B * diffuse), solid.Color.A);
                     svg.Append($"<path d=\"{d}\"{paint.Fill(new SolidFill(lit), 0, 0, defs)} stroke=\"{lit.ToHex()}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>");
                 }
                 else

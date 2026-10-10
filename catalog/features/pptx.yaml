@@ -1792,9 +1792,15 @@ areas:
           on their outer faces and the gridlines across their front and end faces (generated/charts-data slide
           6: 94.8 %, 57.7 % before). Bars without fill and line draw nothing, their faces unshaded. Checked
           with generated/charts-3d (92.8 %, 18 slides; 88 % before the perspective fit) and local/persp to
-          persp4 (97.0 to 99.5 %). Not yet: 3D surfaces' facets are lit darker than PowerPoint's and fold
-          along other diagonals where the surface turns steeply, and wireframes' contour lines differ
-          (generated/charts-3d slides 12 and 13: 84.5 and 76.3 %).
+          persp4 (97.0 to 99.5 %). 3D surfaces (measured with local/surf3d, surf3d2, surfbox and surfwalls:
+          single cells of known slope, folded cells, 16 grids and walls seen from 13 sides, 93.7 to 98.5 %):
+          the box is ⌊(categories + series − 1)/2⌋ category widths high, each cell folds along the diagonal
+          with the larger sum, facets are lit 0.821 + 0.313 n·(0.768, 0.182, −0.614) for the normal as the
+          camera sees it in perspective and 0.641 + 0.380 n·(0.616, 0.491, −0.616) in the box with right-angle
+          axes, their walls 0.4 + 0.75 n·(0.572, 0.586, −0.574) for the inner normal (seen by the camera, or
+          in the box with right-angle axes); at rotY 0 the side wall stands on the left. Not yet: walls,
+          gridlines and labels of views from behind (rotY between 90° and 270°), which PowerPoint moves to
+          the far sides, and wireframes' contour lines (generated/charts-3d slide 13: 76.3 %).
 
       - id: chart.analysis
         title: Trendlines and error bars
