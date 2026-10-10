@@ -1013,8 +1013,24 @@ areas:
         priority: P2
         difficulty: 1
         status: done
-        strategy: Show the fallback picture; real 3D (glTF with WebGL) is an option for later.
-        office: PowerPoint saves a rendered picture of the model as mc:Fallback.
+        strategy: >-
+          Show PowerPoint's picture of the model (mc:Fallback); while the slide show animates the model, our own
+          glTF 2.0 reader and WebGL2 renderer (model3d.js, only in documents with models) draws it on a canvas
+          over the picture, lit and tone mapped like PowerPoint.
+        office: >-
+          PowerPoint stores the model as GLB (am3d:model3d r:embed) with a rendered picture of it (am3d:raster,
+          Office3DRenderer, 2 px per point, also the mc:Fallback picture). The camera (pos, up, lookAt in EMU,
+          36,000,000 EMU to the meter) looks at the model; a perspective's fov spans the square objViewport
+          (viewportSz) about the frame's center, of which the frame shows its middle, and nothing is drawn
+          outside that square. The model's transform: model units to meters (meterPerModelUnit), preTrans,
+          scale, rotation about x, then y, then z (60000ths of a degree), postTrans. Lighting, measured with
+          generated spheres and mirror balls: a studio environment (a room with windows, reconstructed from the
+          mirror balls) for diffuse light and reflections (split sum, GGX), the slide's point lights (candela,
+          inverse square, linear scRGB colors) and its ambient light; emissive counts half; base color factors
+          are kept in 8 bits; the result goes through PowerPoint's tone curve (s = 1 - exp(-(2.358 u^0.666 +
+          1.886 u)) per channel, u in the units in which an unlit material shows its base color). Our renders of
+          calibration spheres and boxes are within 1 to 5 of 255 on average; contact shadows (ambient
+          occlusion) are not drawn.
 
       - id: picture.liveFeed
         title: Cameo and live camera feeds
@@ -2265,7 +2281,21 @@ areas:
         elements: [aanim:animPr]
         priority: P3
         difficulty: 2
-        strategy: Playback settings of animated pictures.
+        status: done
+        strategy: >-
+          Play the embedded animations of 3D models in the slide show with our own glTF renderer: skins, node
+          transforms (linear, step and cubic spline keys) and morph targets, posed at the effect's progress.
+        office: >-
+          A 3D model's embedded animations (a3danim:embedAnim with aanim:animPr, a3danim:posterFrame) play in
+          the slide show only through the slide's timing: PowerPoint adds a Scene effect (presetID 100, emph,
+          with the slide's start, repeatCount indefinite) whose p:anim takes attrName embeddedN from 0 to 1:
+          the glTF file's animation N - 1 (not embedAnim's animId) over its whole length, stretched to the
+          effect's duration; without the effect the model stands still at its poster frame (measured with
+          PowerPoint's videos). animPr (length, count, auto, offset, st, end) and the poster frame describe
+          the playback in PowerPoint's own views; the document shows the poster frame, as printed. PowerPoint
+          offers only skeletal animations: a model whose animations move plain nodes or morph targets gets
+          none. Before its first key a cubic spline is, in PowerPoint, that key's in-tangent. Checked with
+          generated/models (99.8 % of PowerPoint's video frames) and a rigged fox (local, 99.7 %).
 
       - id: animation.laser
         title: Recorded laser pointer

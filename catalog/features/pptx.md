@@ -29,12 +29,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 20 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Slide transitions](#transition) | 5 | 0 | 2 | 3 | 0 | 3.8 | 0 | 5 |
-| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 0 | 7 |
+| [Animations](#animation) | 8 | 0 | 5 | 1 | 2 | 3.1 | 0 | 8 |
 | [Slide show and interactivity](#interactivity) | 3 | 0 | 2 | 1 | 0 | 2.3 | 0 | 3 |
 | [Comments and review](#review) | 2 | 0 | 0 | 0 | 2 | 2.0 | 0 | 2 |
 | [Legacy content](#legacy) | 1 | 0 | 0 | 0 | 1 | 4.0 | 0 | 1 |
 | [Rendering engine (cross-cutting)](#engine) | 4 | 4 | 0 | 0 | 0 | 3.2 | 0 | 4 |
-| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **0** | **145** |
+| **Total** | **146** | **38** | **43** | **35** | **30** | **2.6** | **0** | **146** |
 
 <a id="package"></a>
 
@@ -1226,9 +1226,9 @@ The content type behind a:blip/@r:embed.
 
 `picture.model3d` · P2 · difficulty 1 · done
 
-**Rendering:** Show the fallback picture; real 3D (glTF with WebGL) is an option for later.
+**Rendering:** Show PowerPoint's picture of the model (mc:Fallback); while the slide show animates the model, our own glTF 2.0 reader and WebGL2 renderer (model3d.js, only in documents with models) draws it on a canvas over the picture, lit and tone mapped like PowerPoint.
 
-**Office behaviour:** PowerPoint saves a rendered picture of the model as mc:Fallback.
+**Office behaviour:** PowerPoint stores the model as GLB (am3d:model3d r:embed) with a rendered picture of it (am3d:raster, Office3DRenderer, 2 px per point, also the mc:Fallback picture). The camera (pos, up, lookAt in EMU, 36,000,000 EMU to the meter) looks at the model; a perspective's fov spans the square objViewport (viewportSz) about the frame's center, of which the frame shows its middle, and nothing is drawn outside that square. The model's transform: model units to meters (meterPerModelUnit), preTrans, scale, rotation about x, then y, then z (60000ths of a degree), postTrans. Lighting, measured with generated spheres and mirror balls: a studio environment (a room with windows, reconstructed from the mirror balls) for diffuse light and reflections (split sum, GGX), the slide's point lights (candela, inverse square, linear scRGB colors) and its ambient light; emissive counts half; base color factors are kept in 8 bits; the result goes through PowerPoint's tone curve (s = 1 - exp(-(2.358 u^0.666 + 1.886 u)) per channel, u in the units in which an unlit material shows its base color). Our renders of calibration spheres and boxes are within 1 to 5 of 255 on average; contact shadows (ambient occlusion) are not drawn.
 
 **Elements (35):** [`a3danim:animPr`](../format/namespaces/a3danim.md#a3danimanimpr), [`a3danim:embedAnim`](../format/namespaces/a3danim.md#a3danimembedanim), [`a3danim:extLst`](../format/namespaces/a3danim.md#a3danimextlst), [`a3danim:posterFrame`](../format/namespaces/a3danim.md#a3danimposterframe), [`am3d:ambientLight`](../format/namespaces/am3d.md#am3dambientlight), [`am3d:attrSrcUrl`](../format/namespaces/am3d.md#am3dattrsrcurl), [`am3d:blip`](../format/namespaces/am3d.md#am3dblip), [`am3d:camera`](../format/namespaces/am3d.md#am3dcamera), [`am3d:clr`](../format/namespaces/am3d.md#am3dclr), [`am3d:dirLight`](../format/namespaces/am3d.md#am3ddirlight), [`am3d:extLst`](../format/namespaces/am3d.md#am3dextlst), [`am3d:illuminance`](../format/namespaces/am3d.md#am3dilluminance), [`am3d:intensity`](../format/namespaces/am3d.md#am3dintensity), [`am3d:lookAt`](../format/namespaces/am3d.md#am3dlookat), [`am3d:meterPerModelUnit`](../format/namespaces/am3d.md#am3dmeterpermodelunit), [`am3d:model3d`](../format/namespaces/am3d.md#am3dmodel3d), [`am3d:objViewport`](../format/namespaces/am3d.md#am3dobjviewport), [`am3d:orthographic`](../format/namespaces/am3d.md#am3dorthographic), [`am3d:perspective`](../format/namespaces/am3d.md#am3dperspective), [`am3d:pos`](../format/namespaces/am3d.md#am3dpos), [`am3d:postTrans`](../format/namespaces/am3d.md#am3dposttrans), [`am3d:preTrans`](../format/namespaces/am3d.md#am3dpretrans), [`am3d:ptLight`](../format/namespaces/am3d.md#am3dptlight), [`am3d:raster`](../format/namespaces/am3d.md#am3draster), [`am3d:rot`](../format/namespaces/am3d.md#am3drot), [`am3d:scale`](../format/namespaces/am3d.md#am3dscale), [`am3d:spPr`](../format/namespaces/am3d.md#am3dsppr), [`am3d:spotLight`](../format/namespaces/am3d.md#am3dspotlight), [`am3d:sx`](../format/namespaces/am3d.md#am3dsx), [`am3d:sy`](../format/namespaces/am3d.md#am3dsy), [`am3d:sz`](../format/namespaces/am3d.md#am3dsz), [`am3d:trans`](../format/namespaces/am3d.md#am3dtrans), [`am3d:unkLight`](../format/namespaces/am3d.md#am3dunklight), [`am3d:up`](../format/namespaces/am3d.md#am3dup), [`am3d:winViewport`](../format/namespaces/am3d.md#am3dwinviewport)
 
@@ -2170,7 +2170,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | [Build lists](#animation.build) | P1 | ●●●○○ | done | 11 | 9 |
 | [Effect presets](#animation.presets) | P1 | ●●●○○ | done | 0 | 0 |
 | [Media control and bookmarks](#animation.media) | P2 | ●●●○○ | done | 12 | 3 |
-| [Animated pictures](#animation.pictures) | P3 | ●●○○○ | todo | 1 | 0 |
+| [Animated pictures](#animation.pictures) | P3 | ●●○○○ | done | 1 | 0 |
 | [Recorded laser pointer](#animation.laser) | P3 | ●●●○○ | done | 4 | 0 |
 
 <a id="animation.timing"></a>
@@ -2267,9 +2267,11 @@ presetClass, presetID and presetSubtype on p:cTn.
 
 ### Animated pictures
 
-`animation.pictures` · P3 · difficulty 2 · todo
+`animation.pictures` · P3 · difficulty 2 · done
 
-**Rendering:** Playback settings of animated pictures.
+**Rendering:** Play the embedded animations of 3D models in the slide show with our own glTF renderer: skins, node transforms (linear, step and cubic spline keys) and morph targets, posed at the effect's progress.
+
+**Office behaviour:** A 3D model's embedded animations (a3danim:embedAnim with aanim:animPr, a3danim:posterFrame) play in the slide show only through the slide's timing: PowerPoint adds a Scene effect (presetID 100, emph, with the slide's start, repeatCount indefinite) whose p:anim takes attrName embeddedN from 0 to 1: the glTF file's animation N - 1 (not embedAnim's animId) over its whole length, stretched to the effect's duration; without the effect the model stands still at its poster frame (measured with PowerPoint's videos). animPr (length, count, auto, offset, st, end) and the poster frame describe the playback in PowerPoint's own views; the document shows the poster frame, as printed. PowerPoint offers only skeletal animations: a model whose animations move plain nodes or morph targets gets none. Before its first key a cubic spline is, in PowerPoint, that key's in-tangent. Checked with generated/models (99.8 % of PowerPoint's video frames) and a rigged fox (local, 99.7 %).
 
 **Elements (1):** [`aanim:animPr`](../format/namespaces/aanim.md#aanimanimpr)
 
