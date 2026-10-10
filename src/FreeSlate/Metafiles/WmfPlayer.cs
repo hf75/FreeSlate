@@ -343,7 +343,10 @@ public sealed class WmfPlayer
                 break;
             case 0x0142:   // DIBCREATEPATTERNBRUSH
             {
-                var bitmap = DibAt(p + 4, size - 4, U16(p + 2));
+                // A monochrome pattern (BS_PATTERN) is drawn in the text and background colors, as GDI paints monochrome
+                // brushes (measured: an ActiveX toggle button's pink 50 % dither of white and its background color).
+                var monochrome = U16(p) == 3 ? (gdi.Resolve(s.TextColor), gdi.Resolve(s.BkColor)) : ((uint, uint)?)null;
+                var bitmap = DibAt(p + 4, size - 4, U16(p + 2), monochrome);
                 AddObject(new GdiBrush { Style = bitmap != null ? 3 : 0, Pattern = bitmap, Color = 0x808080 });
                 break;
             }
@@ -398,7 +401,7 @@ public sealed class WmfPlayer
     }
 
     /// <summary>A DIB; with <paramref name="usage"/> DIB_PAL_COLORS (1) its color table indexes the selected palette.</summary>
-    Bitmap? DibAt(int p, int length, int usage = 0)
+    Bitmap? DibAt(int p, int length, int usage = 0, (uint Zero, uint One)? monochrome = null)
     {
         if (length < 12)
             return null;
@@ -410,7 +413,8 @@ public sealed class WmfPlayer
         var bitsOffset = headerSize + paletteSize;
         if (bitsOffset > length)
             return null;
-        return Dib.Decode(Span(p, bitsOffset), Span(p + bitsOffset, length - bitsOffset), logicalPalette: usage == 1 ? gdi.State.Palette.Entries : null);
+        return Dib.Decode(Span(p, bitsOffset), Span(p + bitsOffset, length - bitsOffset), monochrome: monochrome,
+            logicalPalette: usage == 1 ? gdi.State.Palette.Entries : null);
     }
 
     void DrawDib(uint rop, int p, int length, double x, double y, double w, double h, (int X, int Y, int W, int H)? source, int usage = 0)

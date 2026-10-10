@@ -930,7 +930,10 @@ areas:
           containers, transforms, clips). Logical palettes are played: CreatePalette, SelectPalette,
           SetPaletteEntries, ResizePalette and AnimatePalette, PALETTEINDEX colors and DIB_PAL_COLORS bitmaps
           against the selected palette (the default one has the 20 static colors), PALETTERGB as its own color
-          (local/palette, EMF and WMF). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
+          (local/palette, EMF and WMF). Monochrome pattern brushes (EMF CreateMonoBrush, WMF
+          DIBCREATEPATTERNBRUSH with BS_PATTERN) paint in the text and background colors as GDI does, not in their
+          palette's black and white (measured with the previews of ActiveX toggle buttons and scroll bars, whose
+          dithers PowerPoint draws in the control's colors). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
           draw nothing, color management records leave the colors as they are, and OpenGL records are not
           drawn. Verified
           with generated/metafiles (PowerPoint's EMF and WMF exports, GDI+ dual and GDI-only recordings, GDI
