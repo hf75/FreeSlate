@@ -274,7 +274,7 @@ public static class TextLayout
         }
         foreach (var s in segments.Where(s => !s.IsBreak && !s.IsTab))
         {
-            s.Width = Measure(all, styles, s.Start, s.End);
+            s.Width = Measure(all, styles, s.Start, s.End) + KerningAcross(all, styles, s.End);
             var trailing = s.End;
             while (trailing > s.Start && all[trailing - 1] == ' ') trailing--;
             s.TrailingWidth = s.Width - Measure(all, styles, s.Start, trailing);
@@ -670,6 +670,21 @@ public static class TextLayout
         }
         var tab = paragraph.DefaultTabSize <= 0 ? 72 : paragraph.DefaultTabSize;
         return (Math.Floor(x / tab + 1e-9) + 1) * tab;
+    }
+
+    /// <summary>
+    /// The kerning between the characters before and at <paramref name="at"/> when both belong to one format run:
+    /// PowerPoint kerns across break opportunities too (measured: the pair "-J" of "IT-Jobs").
+    /// </summary>
+    static double KerningAcross(string all, List<TextStyle> styles, int at)
+    {
+        if (at <= 0 || at >= all.Length || !ReferenceEquals(styles[at - 1], styles[at]) || !styles[at].Kerning || styles[at].Inline != null
+            || char.IsSurrogate(all[at - 1]) || char.IsSurrogate(all[at]) || all[at - 1] is '\n' or '\t' || all[at] is '\n' or '\t')
+            return 0;
+        var style = styles[at];
+        var data = style.Font.Data;
+        return data.LayoutAdvances(all.Substring(at - 1, 2), style.Size, true, style.LetterSpacing)[0]
+               - data.LayoutAdvances(all.Substring(at - 1, 1), style.Size, true, style.LetterSpacing)[0];
     }
 
     static double Measure(string all, List<TextStyle> styles, int start, int end)
