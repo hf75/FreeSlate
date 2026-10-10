@@ -1928,7 +1928,9 @@ public static class Engine
         var head = r > 0 ? 0.5 * thickness / r * 180 / Math.PI : 0;
         // A line's box is the circle's (dim 1D, measured: cycle5's), an arrow's reaches beyond it, a band without heads
         // half its width (measured: VerticalCurvedList's, 0.6 of its thickness wide).
-        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : 0.3) * thickness;
+        // In a cycle the band lies a quarter of its width further in (measured: radial6's ring, its outer edge 0.15 of
+        // the connector's height beyond the nodes' centers).
+        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : connector.Parent?.AlgorithmType == "cycle" ? 0.15 : 0.3) * thickness;
         PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
         connector.Rotation = 0;
         connector.Values["arcStart"] = begin;
@@ -1952,7 +1954,7 @@ public static class Engine
         const double Gap = 0.0909;
         var angle = Math.Atan2(ny - cy, nx - cx) * 180 / Math.PI;
         var thickness = Value(connector, "h") * connector.Scale;
-        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : 0.3) * thickness;
+        var reach = connector.Param("dim") == "1D" ? r : r + (ArcHeads(connector) ? 0.65 : 0.15) * thickness;
         PlaceConnector(connector, cx - reach, cy - reach, 2 * reach, 2 * reach, pins);
         connector.Rotation = 0;
         (connector.Values["arcX"], connector.Values["arcY"], connector.Values["arcR"], connector.Values["arcDir"]) = (cx, cy, r, way);
