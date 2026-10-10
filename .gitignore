@@ -13,3 +13,6 @@ artifacts/
 # Local scratch decks and their references (not part of the corpus)
 tests/corpus/pptx/local/
 tests/fidelity/reference/local/
+
+# Decks of users (their data stays out of git)
+tests/user/

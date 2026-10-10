@@ -16,6 +16,7 @@ public readonly record struct ShapedGlyph(uint Id, int Cluster, double Advance, 
 public sealed class FontData : IDisposable
 {
     static readonly Feature[] NoLigaturesNoKerning = Parse("-liga", "-clig", "-kern");
+    static readonly Feature[] NoLigatures = Parse("-liga", "-clig");
 
     readonly Blob blob;
     readonly Face face;
@@ -35,12 +36,13 @@ public sealed class FontData : IDisposable
     {
     }
 
-    FontData(byte[] data, string path, string family, int index, bool inMemory)
+    FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0)
     {
         Path = path;
         Family = family;
         Index = index;
         memory = inMemory ? data : null;
+        this.advanceExtra = advanceExtra;
         var offset = data.Length > 12 && data[0] == 't' && data[1] == 't' && data[2] == 'c' && data[3] == 'f'
             ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + 4 * index))
             : 0;
@@ -91,6 +93,8 @@ public sealed class FontData : IDisposable
         WinDescent = winDescent / UnitsPerEm;
 
         kerningPairs = tables.TryGetValue("kern", out var kernOffset) ? ReadKerning(data, kernOffset) : null;
+        IsPostScript = tables.ContainsKey("CFF ") || tables.ContainsKey("CFF2");
+        gposKerning = kerningPairs == null && IsPostScript && tables.ContainsKey("GPOS");
         IsColor = tables.ContainsKey("COLR") || tables.ContainsKey("CBDT") || tables.ContainsKey("sbix") || tables.ContainsKey("SVG ");
         if (tables.TryGetValue("post", out var post) && post + 12 <= data.Length)
         {
@@ -108,10 +112,22 @@ public sealed class FontData : IDisposable
         if (UnderlineThickness <= 0) (UnderlinePosition, UnderlineThickness) = (0.1, 0.05);
         if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
 
-        blob = inMemory ? Blob.FromStream(new MemoryStream(data)) : Blob.FromFile(path);
+        blob = inMemory ? NativeBlob(data) : Blob.FromFile(path);
         face = new Face(blob, index);
         font = new Font(face);
         font.SetScale(UnitsPerEm, UnitsPerEm);
+    }
+
+    /// <summary>
+    /// A blob of a font in memory, in native memory of its own: HarfBuzz reads a font when first used, and the managed
+    /// array HarfBuzzSharp's Blob.FromStream points to may have been moved by the garbage collector by then (an embedded
+    /// font then had no glyphs at all and its text fell back to another font).
+    /// </summary>
+    static Blob NativeBlob(byte[] data)
+    {
+        var memory = System.Runtime.InteropServices.Marshal.AllocHGlobal(Math.Max(1, data.Length));
+        System.Runtime.InteropServices.Marshal.Copy(data, 0, memory, data.Length);
+        return new Blob(memory, data.Length, MemoryMode.ReadOnly, () => System.Runtime.InteropServices.Marshal.FreeHGlobal(memory));
     }
 
     readonly Dictionary<string, int> tableOffsets;
@@ -168,6 +184,24 @@ public sealed class FontData : IDisposable
 
     /// <summary>Color fonts (COLR, CBDT, sbix, SVG): their glyphs are left to the browser.</summary>
     public bool IsColor { get; }
+
+    /// <summary>Fonts with PostScript outlines (CFF), which PowerPoint kerns and emboldens otherwise than TrueType fonts.</summary>
+    public bool IsPostScript { get; }
+
+    /// <summary>
+    /// What simulated bold adds to every glyph's advance of a PostScript font, in em; PowerPoint draws the glyphs
+    /// themselves as they are (measured with an embedded CFF font: 0.027 em per character, spaces too, from 40 to
+    /// 48 pt). TrueType fonts keep their advances and are emboldened a little instead.
+    /// </summary>
+    public const double WidenedBold = 0.027;
+
+    /// <summary>The same font with <paramref name="extra"/> em added to every glyph's advance (simulated bold of PostScript fonts).</summary>
+    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra);
+
+    // GPOS kerning (the 'kern' feature) for PostScript fonts without a 'kern' table: PowerPoint kerns them so (measured
+    // with an embedded CFF font), TrueType fonts only from their 'kern' table (Georgia, which has none, is not kerned).
+    readonly bool gposKerning;
+    readonly double advanceExtra;
 
     /// <summary>Height of the capitals (OS/2 sCapHeight) in em; 0.7 when the font does not say.</summary>
     public double CapHeight { get; } = 0.7;
@@ -239,7 +273,8 @@ public sealed class FontData : IDisposable
     }
 
     /// <summary>
-    /// The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table. Pieces of
+    /// The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table (PostScript fonts
+    /// without one: from GPOS). Pieces of
     /// different scripts are shaped separately in logical order, so right-to-left pieces keep their own order
     /// inside a left-to-right line.
     /// </summary>
@@ -274,6 +309,18 @@ public sealed class FontData : IDisposable
         font.Shape(buffer, NoLigaturesNoKerning);
         var infos = buffer.GlyphInfos;
         var positions = buffer.GlyphPositions;
+        // GPOS kerning: what shaping with the 'kern' feature changes in each advance.
+        GlyphPosition[]? kerned = null;
+        if (kerning && gposKerning)
+        {
+            using var withKerning = new Buffer();
+            withKerning.AddUtf16(text);
+            withKerning.GuessSegmentProperties();
+            if (rightToLeft)
+                withKerning.Direction = Direction.RightToLeft;
+            font.Shape(withKerning, NoLigatures);
+            kerned = withKerning.GlyphPositions.Length == positions.Length ? withKerning.GlyphPositions : null;
+        }
         var result = new ShapedGlyph[infos.Length];
         for (var i = 0; i < infos.Length; i++)
         {
@@ -281,7 +328,10 @@ public sealed class FontData : IDisposable
             if (kerning && kerningPairs != null && i + 1 < infos.Length
                 && kerningPairs.TryGetValue(infos[i].Codepoint << 16 | infos[i + 1].Codepoint & 0xFFFF, out var value))
                 kern = (double)value / UnitsPerEm;
-            result[i] = new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster, (double)positions[i].XAdvance / UnitsPerEm, kern,
+            else if (kerned != null)
+                kern = (double)(kerned[i].XAdvance - positions[i].XAdvance) / UnitsPerEm;
+            var advance = (double)positions[i].XAdvance / UnitsPerEm + (positions[i].XAdvance != 0 ? advanceExtra : 0);
+            result[i] = new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster, advance, kern,
                 (double)positions[i].XOffset / UnitsPerEm, (double)positions[i].YOffset / UnitsPerEm);
         }
         return result;

@@ -3,8 +3,12 @@ using FreeSlate.Fonts;
 
 namespace FreeSlate.Text;
 
-/// <summary>A font chosen for a run: the file to measure with and whether the browser has to synthesize the style.</summary>
-public sealed record ResolvedFont(FontData Data, bool SyntheticBold, bool SyntheticItalic);
+/// <summary>
+/// A font chosen for a run: the file to measure with and whether the browser has to synthesize the style;
+/// <paramref name="WidenedBold"/>: bold of a PostScript font without a bold face, which PowerPoint simulates by wider
+/// advances alone (<see cref="FontData.WidenedBold"/>), its glyphs drawn as they are.
+/// </summary>
+public sealed record ResolvedFont(FontData Data, bool SyntheticBold, bool SyntheticItalic, bool WidenedBold = false);
 
 /// <summary>
 /// Maps a typeface and style to a font file. Missing families fall back to Calibri like in PowerPoint, whatever
@@ -59,6 +63,11 @@ public sealed class FontResolver(FontLocator locator)
         var data = face.Embedded?.Value is { } bytes
             ? embedded.GetOrAdd(face.Path, _ => new FontData(bytes, face.Path, face.Family))
             : Files.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
+        if (key.Item2 && !face.Bold && data.IsPostScript)
+        {
+            var widened = (face.Embedded != null ? embedded : Files).GetOrAdd($"{face.Path}#{face.Index}#widened", _ => data.Widened(FontData.WidenedBold));
+            return new ResolvedFont(widened, false, key.Item3 && !face.Italic, WidenedBold: true);
+        }
         return new ResolvedFont(data, key.Item2 && !face.Bold, key.Item3 && !face.Italic);
     });
 }

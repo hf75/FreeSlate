@@ -799,7 +799,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             ? $" x=\"{Units.Css(x * PxPerPt + run.Width * PxPerPt)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\""
             : $" x=\"{xs}\"";
         sb.Append($"<text{(outlined ? " class=\"sel\"" : "")}{placement} y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\'"))}'\" font-size=\"{Px(style.Size)}\"");
-        if (style.Bold) sb.Append(" font-weight=\"700\"");
+        // Simulated bold of a PostScript font only widens the text; its glyphs stay regular (measured).
+        if (style.Bold && !style.Font.WidenedBold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         if (!outlined)
         {
