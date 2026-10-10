@@ -32,13 +32,18 @@ public sealed class FontResolver(FontLocator locator)
         Find(family, bold, italic) ?? Fallbacks.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null)
         ?? throw new InvalidOperationException("No usable font found (not even a fallback).");
 
+    /// <summary>A typeface of a presentation's text: the family, else the one PowerPoint takes for the name (<see cref="Named"/>), else the fallback.</summary>
+    public ResolvedFont ResolveTypeface(string typeface, bool bold, bool italic) =>
+        Find(typeface, bold, italic) ?? Named(typeface, bold, italic) ?? Resolve(typeface, bold, italic);
+
     /// <summary>
-    /// The font for <paramref name="text"/>: the family if it is installed and has every glyph, else the first of
-    /// <paramref name="candidates"/> that has them, else the family (or its fallback) anyway.
+    /// The font for <paramref name="text"/>: the family (or the one PowerPoint takes for its name) if it is there and
+    /// has every glyph, else the first of <paramref name="candidates"/> that has them, else that family (or the
+    /// fallback) anyway.
     /// </summary>
     public ResolvedFont ResolveCovering(string family, bool bold, bool italic, string text, IEnumerable<string> candidates)
     {
-        var found = Find(family, bold, italic);
+        var found = Find(family, bold, italic) ?? Named(family, bold, italic);
         if (found != null && found.Data.Covers(text))
             return found;
         // A family that is not there at all is replaced like PowerPoint replaces it, if the substitute has the glyphs.
@@ -49,7 +54,54 @@ public sealed class FontResolver(FontLocator locator)
             if (Find(candidate, bold, italic) is { } alternative && alternative.Data.Covers(text))
                 return alternative;
         }
-        return Resolve(family, bold, italic);
+        return found ?? Resolve(family, bold, italic);
+    }
+
+    /// <summary>Names PowerPoint takes for a family whatever follows them (measured with installed fonts).</summary>
+    static readonly (string Prefix, string Family)[] NamePrefixes =
+    [
+        ("Arial", "Arial"), ("Helv", "Arial"), ("Times", "Times New Roman"), ("Courier", "Courier New"),
+        ("Segoe", "Segoe UI"), ("Palatino", "Palatino Linotype"), ("Lucida Console", "Consolas"),
+    ];
+
+    static readonly string[] StyleWords = ["Bold", "Italic", "Oblique", "Regular", "Light", "Semibold", "Medium", "Black", "Narrow", "Condensed"];
+
+    /// <summary>
+    /// The family PowerPoint draws for a typeface that is no family's name, or null (then it draws Calibri), measured
+    /// with installed fonts. In this order: a style word run on is dropped (TahomaBold, VerdanaBold, Lucida ConsoleBold:
+    /// the family, regular); a name beginning with Arial, Helv, Times, Courier, Segoe, Palatino or Lucida Console takes
+    /// a family whatever follows (ArialMT, Arial-BoldMT, ArialNarrow, Helvetica Neue, TimesNewRomanPSMT, SegoeUI,
+    /// Segoe UI Bold, Lucida ConsoleX: Arial, Times New Roman, Segoe UI, Consolas, in the run's style); a trailing
+    /// " Bold" or " Italic" sets the style (Cambria Bold); what follows a hyphen is dropped (Georgia-Bold, Tahoma-Foo:
+    /// the family, regular). Other names stay unmatched (TahomaX, Tahoma Foo, Verdanaa, CambriaMath, Consola, XArial).
+    /// </summary>
+    ResolvedFont? Named(string typeface, bool bold, bool italic)
+    {
+        foreach (var word in StyleWords)
+        {
+            if (typeface.Length > word.Length && typeface.EndsWith(word, StringComparison.OrdinalIgnoreCase)
+                && Find(typeface[..^word.Length], bold, italic) is { } runOn)
+                return runOn;
+        }
+        foreach (var (prefix, family) in NamePrefixes)
+        {
+            if (typeface.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return Find(family, bold, italic);
+        }
+        var words = typeface.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var count = words.Length;
+        var (styledBold, styledItalic) = (bold, italic);
+        while (count > 1 && (words[count - 1].Equals("Bold", StringComparison.OrdinalIgnoreCase) || words[count - 1].Equals("Italic", StringComparison.OrdinalIgnoreCase)))
+        {
+            styledBold |= words[count - 1].Equals("Bold", StringComparison.OrdinalIgnoreCase);
+            styledItalic |= words[count - 1].Equals("Italic", StringComparison.OrdinalIgnoreCase);
+            count--;
+        }
+        if (count < words.Length && Find(string.Join(' ', words[..count]), styledBold, styledItalic) is { } styled)
+            return styled;
+        if (typeface.IndexOf('-') is > 0 and var hyphen && Find(typeface[..hyphen], bold, italic) is { } beforeHyphen)
+            return beforeHyphen;
+        return null;
     }
 
     ResolvedFont? Find(string family, bool bold, bool italic) => cache.GetOrAdd((family, bold, italic), key =>

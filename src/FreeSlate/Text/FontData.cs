@@ -10,13 +10,15 @@ public readonly record struct ShapedGlyph(uint Id, int Cluster, double Advance, 
 
 /// <summary>
 /// A loaded font file: the vertical metrics PowerPoint's line model needs and a HarfBuzz font for shaping.
-/// Advances are measured unhinted in font units. Kerning comes from the legacy 'kern' table only, as in
-/// PowerPoint (GDI kerning pairs): GPOS-only pairs are not kerned (measured with the text-snap deck).
+/// Advances are measured unhinted in font units. Kerning comes from the legacy 'kern' table, as in PowerPoint
+/// (GDI kerning pairs, measured with the text-snap deck); fonts without one are kerned from GPOS only where
+/// PowerPoint lays them out as OpenType fonts (PostScript and variable fonts).
 /// </summary>
 public sealed class FontData : IDisposable
 {
     static readonly Feature[] NoLigaturesNoKerning = Parse("-liga", "-clig", "-kern");
     static readonly Feature[] NoLigatures = Parse("-liga", "-clig");
+    static readonly Feature[] NoAlternatesNoKerning = Parse("-liga", "-clig", "-calt", "-kern");
 
     readonly Blob blob;
     readonly Face face;
@@ -84,7 +86,9 @@ public sealed class FontData : IDisposable
             ascent = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(tables["hhea"] + 4));
             descent = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(tables["hhea"] + 6));
         }
-        AscentRatio = ascent + descent > 0 ? ascent / (ascent + descent) : 0.8;
+        // The typo line gap goes above the text.
+        var gapAbove = Math.Max(0, lineGap);
+        AscentRatio = ascent + descent > 0 ? (gapAbove + ascent) / (gapAbove + ascent + descent) : 0.8;
         UnitsPerEm = UnitsPerEm == 0 ? 1000 : UnitsPerEm;
         Ascent = ascent / UnitsPerEm;
         Descent = descent / UnitsPerEm;
@@ -94,7 +98,8 @@ public sealed class FontData : IDisposable
 
         kerningPairs = tables.TryGetValue("kern", out var kernOffset) ? ReadKerning(data, kernOffset) : null;
         IsPostScript = tables.ContainsKey("CFF ") || tables.ContainsKey("CFF2");
-        gposKerning = kerningPairs == null && IsPostScript && tables.ContainsKey("GPOS");
+        openType = IsPostScript || tables.ContainsKey("fvar");
+        gposKerning = kerningPairs == null && openType && tables.ContainsKey("GPOS");
         IsColor = tables.ContainsKey("COLR") || tables.ContainsKey("CBDT") || tables.ContainsKey("sbix") || tables.ContainsKey("SVG ");
         if (tables.TryGetValue("post", out var post) && post + 12 <= data.Length)
         {
@@ -180,8 +185,10 @@ public sealed class FontData : IDisposable
     public int UnitsPerEm { get; }
 
     /// <summary>
-    /// Share of the line height above the baseline at single spacing: ascent / (ascent + descent), with the typo
-    /// metrics if the font sets USE_TYPO_METRICS, else the Windows metrics (measured against PowerPoint).
+    /// Share of the line height above the baseline at single spacing: with the typo metrics if the font sets
+    /// USE_TYPO_METRICS, the line gap above the ascent, (gap + ascent) / (gap + ascent + descent); else the Windows
+    /// metrics, ascent / (ascent + descent) (measured against PowerPoint: Gabriola, whose gap is 0.7 em, sits 6 pt
+    /// lower at 40 pt than without its gap; Bahnschrift and Cambria Math 1.5 pt).
     /// </summary>
     public double AscentRatio { get; }
 
@@ -221,8 +228,12 @@ public sealed class FontData : IDisposable
     /// <summary>The same variable font set to another weight (wght axis).</summary>
     public FontData Weighted(float weight) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, weight);
 
-    // GPOS kerning (the 'kern' feature) for PostScript fonts without a 'kern' table: PowerPoint kerns them so (measured
-    // with an embedded CFF font), TrueType fonts only from their 'kern' table (Georgia, which has none, is not kerned).
+    // PostScript and variable fonts, which PowerPoint lays out as OpenType fonts: without a 'kern' table they are kerned
+    // from GPOS (measured with an embedded CFF font, an embedded variable font, Bahnschrift, Segoe UI Variable and
+    // Sitka) and contextual alternates apply (Cascadia Code's calt ligatures). Static TrueType fonts are kerned only from
+    // their 'kern' table (Gabriola, Javanese Text, Yu Mincho: GPOS pairs, but not kerned) and take no contextual
+    // alternates in simple scripts (Segoe Script's x keeps its joining stroke).
+    readonly bool openType;
     readonly bool gposKerning;
     readonly double advanceExtra;
 
@@ -296,10 +307,9 @@ public sealed class FontData : IDisposable
     }
 
     /// <summary>
-    /// The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table (PostScript fonts
-    /// without one: from GPOS). Pieces of
-    /// different scripts are shaped separately in logical order, so right-to-left pieces keep their own order
-    /// inside a left-to-right line.
+    /// The glyphs of <paramref name="text"/> without ligatures; kerning from the legacy 'kern' table (PostScript and
+    /// variable fonts without one: from GPOS). Pieces of different scripts are shaped separately in logical order, so
+    /// right-to-left pieces keep their own order inside a left-to-right line.
     /// </summary>
     public ShapedGlyph[] Glyphs(string text, bool kerning, bool rightToLeft = false)
     {
@@ -329,7 +339,9 @@ public sealed class FontData : IDisposable
         buffer.GuessSegmentProperties();
         if (rightToLeft)
             buffer.Direction = Direction.RightToLeft;
-        font.Shape(buffer, NoLigaturesNoKerning);
+        var simple = buffer.Script == Script.Latin || buffer.Script == Script.Greek || buffer.Script == Script.Cyrillic
+            || buffer.Script == Script.Common || buffer.Script == Script.Inherited;
+        font.Shape(buffer, !openType && simple ? NoAlternatesNoKerning : NoLigaturesNoKerning);
         var infos = buffer.GlyphInfos;
         var positions = buffer.GlyphPositions;
         // GPOS kerning: what shaping with the 'kern' feature changes in each advance.

@@ -181,7 +181,8 @@ public sealed class LaidOutText
 /// <item>Single line height S = 1.2 × font size; multiples scale it; exact spacing is rounded to whole points.</item>
 /// <item>At single spacing the baseline sits at S × ascent ratio of the font. Above single spacing it sits at
 /// H × min(0.75, ascent ratio); below, at max(S × ratio − (S − H), H × min(0.75, ratio)).</item>
-/// <item>Each line takes the largest ascent and descent of its runs; bullets do not count.</item>
+/// <item>Each line takes the largest ascent and descent of its runs; bullets do not count, nor does the line break
+/// ending a line with text (an empty line is as high as its break).</item>
 /// <item>Space before is ignored for the first paragraph, space after for the last, unless the body asks for them
 /// (bodyPr spcFirstLastPara); percentages refer to 1.2 × font size.</item>
 /// <item>Widths add up glyph advances rounded to PowerPoint's master units (1/8 point), see
@@ -364,11 +365,13 @@ public static class TextLayout
         List<(int Start, int End, double X)> pieces, double lineStart, double contentEnd, double width,
         bool first, bool last, double bulletWidth)
     {
-        // Vertical metrics: the largest ascent and descent of the line's runs (the paragraph mark if empty).
+        // Vertical metrics: the largest ascent and descent of the line's runs. The line break ending it counts only
+        // on an otherwise empty line (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt
+        // break alone makes it 72 pt); an empty last line takes the paragraph mark's.
         double ascent = 0, descent = 0;
-        var lineStyles = pieces.SelectMany(p => Enumerable.Range(p.Start, Math.Max(1, p.End - p.Start)))
+        var lineStyles = pieces.Where(p => p.End > p.Start).SelectMany(p => Enumerable.Range(p.Start, p.End - p.Start))
             .Where(i => i < styles.Count).Select(i => styles[i]).Distinct().ToList();
-        if (lineStyles.Count == 0 || pieces.All(p => p.End == p.Start && (p.Start >= all.Length || all[p.Start] == '\n')))
+        if (lineStyles.Count == 0)
             lineStyles = pieces.Count > 0 && pieces[0].Start < styles.Count ? [styles[pieces[0].Start]] : [paragraph.EndStyle];
         foreach (var style in lineStyles)
         {

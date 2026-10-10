@@ -5,8 +5,9 @@ namespace Fidelity.PowerPoint;
 
 /// <summary>
 /// Remaining text properties (catalog: text.fonts, text.body, text.runs): symbols inserted from symbol fonts (a:sym with
-/// characters at U+F000 to U+F0FF), line spacing in compatibility mode (a:bodyPr compatLnSpc) and runs with normalized
-/// heights and horizontal numbers in vertical text (a:rPr normalizeH, kumimoji).
+/// characters at U+F000 to U+F0FF), line spacing in compatibility mode (a:bodyPr compatLnSpc), runs with normalized
+/// heights and horizontal numbers in vertical text (a:rPr normalizeH, kumimoji), line breaks of their own sizes,
+/// autofit's font scale (a:normAutofit fontScale), GPOS kerning of variable fonts and typefaces that are no family's name.
 /// </summary>
 [SupportedOSPlatform("windows")]
 static class TextMoreDeck
@@ -69,9 +70,76 @@ static class TextMoreDeck
             var vertical = Box(runs, left, 180, 200, 330, "縦書き 2024年 AB", 32);
             vertical.TextFrame2.Orientation = 5;   // msoTextOrientationVerticalFarEast
         }
+
+        // Line breaks (a:br) of their own sizes: after text they leave the line as it is, alone they size it. The
+        // first box is built like a title seen in a user's deck: 90 % spacing, centered and overflowing.
+        var breaks = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        (string Text, float Size)[][] parts =
+        [
+            [("Opening Lecture", 29), ("\v", 53), ("THE TITLE", 60), ("\v", 26), ("\v", 26), ("Subject: ", 26),
+                ("Shared Workshops", 24), ("\v", 24), ("\v", 24), ("March 2024", 18)],
+            [("abc", 20), ("\v", 60), ("def", 20), ("\v", 10), ("ghi", 40), ("\v", 10), ("jkl", 20)],
+            [("abc", 20), ("\v", 20), ("\v", 60), ("\v", 10), ("def", 20), ("\v", 40), ("\v", 20), ("ghi", 20)],
+        ];
+        (float Left, float Top, float Width, float Height)[] frames = [(30, 180, 430, 165), (500, 20, 200, 500), (730, 20, 200, 500)];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var box = Box(breaks, frames[i].Left, frames[i].Top, frames[i].Width, frames[i].Height, string.Concat(parts[i].Select(part => part.Text)));
+            box.Height = frames[i].Height;   // AddTextbox fitted the box to its empty text
+            var range = box.TextFrame2.TextRange;
+            var start = 1;
+            foreach (var (text, size) in parts[i])
+            {
+                range.Characters(start, text.Length).Font.Size = size;
+                start += text.Length;
+            }
+            if (i == 0)
+            {
+                box.TextFrame2.VerticalAnchor = 3;   // msoAnchorMiddle
+                range.ParagraphFormat.SpaceWithin = 0.9f;
+            }
+        }
+
+        // Autofit's font scale on text of several sizes: unscaled, then 90 %, 77.5 % and 62.5 % (patched).
+        var autofit = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        int[] sizes = [29, 26, 25, 24, 18, 15, 11];
+        for (var i = 0; i < 4; i++)
+        {
+            var box = Box(autofit, 20 + i * 235, 20, 225, 500, string.Join("\r", sizes.Select(size => $"Shrunk {size} pt")));
+            box.Height = 500f;
+            var range = box.TextFrame2.TextRange;
+            for (var line = 0; line < sizes.Length; line++)
+                range.Paragraphs(line + 1).Font.Size = sizes[line];
+        }
+
+        // Kerning of fonts without a 'kern' table: from GPOS for variable fonts (Bahnschrift, also bold at its weight
+        // axis), not for static TrueType fonts with GPOS pairs (Gabriola).
+        var gpos = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        (string Font, bool Bold)[] kerned = [("Bahnschrift", false), ("Bahnschrift", true), ("Gabriola", false)];
+        for (var i = 0; i < kerned.Length; i++)
+        {
+            var box = Box(gpos, 30, 30 + i * 120, 900, 100, "AVAWAYATAV To Wa Yo LT Te Vo P. F, r. y.", 44);
+            var range = box.TextFrame2.TextRange;
+            range.Font.Name = kerned[i].Font;
+            range.Font.Bold = kerned[i].Bold ? PowerPointSession.MsoTrue : PowerPointSession.MsoFalse;
+            range.Font.Kerning = 12f;
+        }
+
+        // Typefaces that are no family's name: PowerPoint finds a family for some (PostScript names, style words,
+        // hyphens, a few name beginnings) and draws the others in Calibri.
+        var names = CorpusGenerator.AddSlide((dynamic)presentation, CorpusGenerator.LayoutBlank);
+        string[] typefaces = ["SegoeUI", "ArialMT", "TimesNewRomanPSMT", "Georgia-Bold", "TahomaBold", "Cambria Bold", "CambriaMath", "TahomaX"];
+        for (var i = 0; i < typefaces.Length; i++)
+        {
+            var box = Box(names, 30 + i / 4 * 460, 30 + i % 4 * 120, 440, 100, typefaces[i] + " Diskussion", 28);
+            box.TextFrame2.TextRange.Font.Name = typefaces[i];
+        }
     }
 
-    /// <summary>compatLnSpc on the second slide's right box; normalizeH and kumimoji on the third slide's right boxes.</summary>
+    /// <summary>
+    /// compatLnSpc on the second slide's right box; normalizeH and kumimoji on the third slide's right boxes; the font
+    /// scales of the fifth slide's boxes.
+    /// </summary>
     public static void Patch(string path)
     {
         using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Update);
@@ -99,6 +167,20 @@ static class TextMoreDeck
                 rPr.SetAttributeValue("normalizeH", "1");
             foreach (var rPr in shapes[3].Descendants(a + "rPr"))
                 rPr.SetAttributeValue("kumimoji", "1");
+        });
+        Edit("ppt/slides/slide5.xml", document =>
+        {
+            var shapes = document.Descendants(p + "sp").ToList();
+            string[] scales = ["90000", "77500", "62500"];
+            for (var i = 0; i < scales.Length; i++)
+            {
+                var body = shapes[i + 1].Descendants(a + "bodyPr").First();
+                var fit = new XElement(a + "normAutofit", new XAttribute("fontScale", scales[i]));
+                if (body.Elements().FirstOrDefault(e => e.Name.LocalName is "noAutofit" or "normAutofit" or "spAutoFit") is { } old)
+                    old.ReplaceWith(fit);
+                else
+                    body.AddFirst(fit);
+            }
         });
     }
 }

@@ -1278,7 +1278,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         var font = ParagraphElement(pPr, sources, level, "buFontTx", "buFont");
         var resolved = font?.Name.LocalName == "buFont" && slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
-            ? fonts.Resolve(family, textStyle.Bold, textStyle.Italic)
+            ? fonts.ResolveTypeface(family, textStyle.Bold, textStyle.Italic)
             : textStyle.Font;
         // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them:
         // PowerPoint numbers in MS Gothic (East Asian), Arial (Arabic, Hebrew) and Nirmala UI (Indic scripts), whatever
@@ -1338,7 +1338,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         FontSlot slot = FontSlot.Latin, string? script = null, string? symbolFont = null)
     {
         string? R(string name) => RunAttr(rPr, sources, level, name);
-        var size = (double.TryParse(R("sz"), out var sz) ? sz / 100 : 18) * fontScale * (runOverride?.Size ?? 1);
+        var size = double.TryParse(R("sz"), out var sz) ? sz / 100 : 18;
+        // Autofit shrinks text to whole points, halves rounded up (measured at 90 %: 26 pt is laid out at 23 pt and
+        // 25 pt, 22.5 scaled, at 23 pt too; at 62.5 %: 18 pt at 11 pt).
+        if (fontScale != 1)
+            size = Math.Max(1, Math.Floor(size * fontScale + 0.5 + 1e-9));
+        size *= runOverride?.Size ?? 1;
         var bold = runOverride?.Bold ?? R("b") is "1" or "true";
         var italic = runOverride?.Italic ?? R("i") is "1" or "true";
 
@@ -1368,7 +1373,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             family = animated;
         var resolved = text != null
             ? fonts.ResolveCovering(family, bold, italic, text, Scripts.Fallbacks(slot, script))
-            : fonts.Resolve(family, bold, italic);
+            : fonts.ResolveTypeface(family, bold, italic);
 
         // kern: kerning applies from this size (hundredths of a point) up; without it PowerPoint does not kern.
         var kern = double.TryParse(R("kern"), out var k) ? k / 100 : double.MaxValue;
