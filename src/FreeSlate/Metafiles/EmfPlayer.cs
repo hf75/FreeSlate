@@ -50,6 +50,7 @@ public sealed class EmfPlayer
     int I32(int offset) => offset + 4 <= data.Length ? BinaryPrimitives.ReadInt32LittleEndian(data.AsSpan(offset)) : 0;
     uint U32(int offset) => offset + 4 <= data.Length ? BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(offset)) : 0;
     short I16(int offset) => offset + 2 <= data.Length ? BinaryPrimitives.ReadInt16LittleEndian(data.AsSpan(offset)) : (short)0;
+    ushort U16(int offset) => offset + 2 <= data.Length ? BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(offset)) : (ushort)0;
     float F32(int offset) => offset + 4 <= data.Length ? BinaryPrimitives.ReadSingleLittleEndian(data.AsSpan(offset)) : 0;
 
     void Play()
@@ -144,7 +145,7 @@ public sealed class EmfPlayer
             case 15:   // SETPIXELV
             {
                 var (px, py) = gdi.ToDevice(I32(o + 8), I32(o + 12));
-                svg.Add($"<rect x=\"{SvgWriter.Num(px)}\" y=\"{SvgWriter.Num(py)}\" width=\"1\" height=\"1\" fill=\"{SvgWriter.Color(U32(o + 16))}\"/>", s.Clip);
+                svg.Add($"<rect x=\"{SvgWriter.Num(px)}\" y=\"{SvgWriter.Num(py)}\" width=\"1\" height=\"1\" fill=\"{SvgWriter.Color(gdi.Resolve(U32(o + 16)))}\"/>", s.Clip);
                 break;
             }
             case 17: s.MapMode = I32(o + 8); break;
@@ -197,6 +198,40 @@ public sealed class EmfPlayer
                 gdi.Objects[I32(o + 8)] = new GdiBrush { Style = I32(o + 12), Color = U32(o + 16), Hatch = I32(o + 20) };
                 break;
             case 40: gdi.Objects.Remove(I32(o + 8)); break;
+            case 48:   // SELECTPALETTE
+            {
+                var handle = U32(o + 8);
+                if ((handle & 0x80000000) != 0)
+                    gdi.SelectStock((int)(handle & 0x7FFFFFFF));
+                else if (gdi.Objects.TryGetValue((int)handle, out var palette) && palette is GdiPalette)
+                    gdi.Select(palette);
+                break;
+            }
+            case 49:   // CREATEPALETTE: version, entry count, entries (red, green, blue, flags)
+                gdi.Objects[I32(o + 8)] = new GdiPalette { Entries = PaletteEntries(o + 16, U16(o + 14)) };
+                break;
+            case 50:   // SETPALETTEENTRIES
+                if (gdi.Objects.TryGetValue(I32(o + 8), out var changed) && changed is GdiPalette target)
+                {
+                    var (first, count) = ((int)U32(o + 12), (int)U32(o + 16));
+                    var entries = PaletteEntries(o + 20, count);
+                    var merged = target.Entries.ToList();
+                    while (merged.Count < first + count)
+                        merged.Add(0);
+                    for (var i = 0; i < count; i++)
+                        merged[first + i] = entries[i];
+                    target.Entries = [.. merged];
+                }
+                break;
+            case 51:   // RESIZEPALETTE
+                if (gdi.Objects.TryGetValue(I32(o + 8), out var resized) && resized is GdiPalette sized)
+                {
+                    var entries = sized.Entries;
+                    Array.Resize(ref entries, Math.Clamp((int)U32(o + 12), 0, 1024));
+                    sized.Entries = entries;
+                }
+                break;
+            case 52: break;   // REALIZEPALETTE: the selected palette is used as it is
             case 41:   // ANGLEARC
             {
                 var (cx, cy, r) = ((double)I32(o + 8), (double)I32(o + 12), (double)U32(o + 16));
@@ -238,7 +273,7 @@ public sealed class EmfPlayer
                 break;
             case 72:   // FRAMERGN
                 if (gdi.Objects.TryGetValue(I32(o + 28), out var frameBrush) && frameBrush is GdiBrush frame)
-                    svg.Add($"<path d=\"{Region(o + 40, I32(o + 24))}\" fill=\"none\" stroke=\"{SvgWriter.Color(frame.Color)}\" stroke-width=\"{Math.Max(1, I32(o + 32))}\"/>", s.Clip);
+                    svg.Add($"<path d=\"{Region(o + 40, I32(o + 24))}\" fill=\"none\" stroke=\"{SvgWriter.Color(gdi.Resolve(frame.Color))}\" stroke-width=\"{Math.Max(1, I32(o + 32))}\"/>", s.Clip);
                 break;
             case 74:   // PAINTRGN
                 svg.Add($"<path d=\"{Region(o + 28, I32(o + 24))}\"{gdi.FillPaint(s.Brush)}/>", s.Clip);
@@ -254,7 +289,7 @@ public sealed class EmfPlayer
                 break;
             case 78:   // MASKBLT: the source where the mask is set (the foreground operation), the destination elsewhere
             {
-                var source = Dib.Decode(Span(o + I32(o + 84), I32(o + 88)), Span(o + I32(o + 92), I32(o + 96)));
+                var source = Dib.Decode(Span(o + I32(o + 84), I32(o + 88)), Span(o + I32(o + 92), I32(o + 96)), logicalPalette: PaletteFor(U32(o + 80)));
                 if (source == null)
                     break;
                 var mask = MaskBits(o, o + 112);
@@ -264,7 +299,7 @@ public sealed class EmfPlayer
             }
             case 79:   // PLGBLT: the source rectangle mapped onto a parallelogram, masked like MASKBLT
             {
-                var source = Dib.Decode(Span(o + I32(o + 96), I32(o + 100)), Span(o + I32(o + 104), I32(o + 108)));
+                var source = Dib.Decode(Span(o + I32(o + 96), I32(o + 100)), Span(o + I32(o + 104), I32(o + 108)), logicalPalette: PaletteFor(U32(o + 92)));
                 if (source == null)
                     break;
                 var mask = MaskBits(o, o + 124);
@@ -281,14 +316,14 @@ public sealed class EmfPlayer
             }
             case 80:   // SETDIBITSTODEVICE
             {
-                var bitmap = Dib.Decode(Span(o + I32(o + 48), I32(o + 52)), Span(o + I32(o + 56), I32(o + 60)));
+                var bitmap = Dib.Decode(Span(o + I32(o + 48), I32(o + 52)), Span(o + I32(o + 56), I32(o + 60)), logicalPalette: PaletteFor(U32(o + 64)));
                 if (bitmap != null)
                     gdi.Image(bitmap, I32(o + 24), I32(o + 28), I32(o + 40), I32(o + 44), (I32(o + 32), I32(o + 36), I32(o + 40), I32(o + 44)));
                 break;
             }
             case 81:   // STRETCHDIBITS
             {
-                var bitmap = Dib.Decode(Span(o + I32(o + 48), I32(o + 52)), Span(o + I32(o + 56), I32(o + 60)));
+                var bitmap = Dib.Decode(Span(o + I32(o + 48), I32(o + 52)), Span(o + I32(o + 56), I32(o + 60)), logicalPalette: PaletteFor(U32(o + 64)));
                 if (bitmap != null)
                     Raster(U32(o + 68), bitmap, IsMonochrome(o + I32(o + 48)), I32(o + 24), I32(o + 28), I32(o + 72), I32(o + 76), (I32(o + 32), I32(o + 36), I32(o + 40), I32(o + 44)));
                 break;
@@ -301,8 +336,9 @@ public sealed class EmfPlayer
                 break;
             case 93 or 94:   // CREATEMONOBRUSH, CREATEDIBPATTERNBRUSHPT
             {
-                var monochrome = type == 93 ? (s.TextColor, s.BkColor) : ((uint, uint)?)null;
-                var bitmap = Dib.Decode(Span(o + I32(o + 16), I32(o + 20)), Span(o + I32(o + 24), I32(o + 28)), monochrome: monochrome);
+                var monochrome = type == 93 ? (gdi.Resolve(s.TextColor), gdi.Resolve(s.BkColor)) : ((uint, uint)?)null;
+                var bitmap = Dib.Decode(Span(o + I32(o + 16), I32(o + 20)), Span(o + I32(o + 24), I32(o + 28)), monochrome: monochrome,
+                    logicalPalette: type == 94 ? PaletteFor(U32(o + 12)) : null);
                 gdi.Objects[I32(o + 8)] = new GdiBrush { Style = bitmap != null ? 3 : 0, Pattern = bitmap, Color = 0x808080 };
                 break;
             }
@@ -587,9 +623,21 @@ public sealed class EmfPlayer
                 svg.Add($"<path d=\"{gdi.RectPath(x, y, x + cx, y + cy)}\" fill=\"{color}\"/>", gdi.State.Clip);
             return;
         }
-        var bitmap = Dib.Decode(Span(o + offBmi, cbBmi), Span(o + offBits, cbBits));
+        var bitmap = Dib.Decode(Span(o + offBmi, cbBmi), Span(o + offBits, cbBits), logicalPalette: PaletteFor(U32(o + 80)));
         if (bitmap != null)
             Raster(rop, bitmap, IsMonochrome(o + offBmi), x, y, cx, cy, (sx, sy, scx, scy));
+    }
+
+    /// <summary>The selected palette for bitmaps whose color table indexes it (DIB_PAL_COLORS).</summary>
+    uint[]? PaletteFor(uint usage) => usage == 1 ? gdi.State.Palette.Entries : null;
+
+    /// <summary>Palette entries (red, green, blue, flags) as COLORREFs.</summary>
+    uint[] PaletteEntries(int offset, int count)
+    {
+        var entries = new uint[Math.Clamp(count, 0, 1024)];
+        for (var i = 0; i < entries.Length; i++)
+            entries[i] = (uint)(data[offset + i * 4] | (data[offset + i * 4 + 1] << 8) | (data[offset + i * 4 + 2] << 16));
+        return entries;
     }
 
     bool IsMonochrome(int header) => I32(header) >= 12 && (I32(header) == 12 ? I16(header + 10) : I16(header + 14)) == 1;
@@ -671,7 +719,7 @@ public sealed class EmfPlayer
         var cbBits = I32(o + 96);
         var (scx, scy) = (I32(o + 100), I32(o + 104));
         var perPixel = !transparent && ((function >> 24) & 0xFF) == 1;   // AC_SRC_ALPHA
-        var bitmap = Dib.Decode(Span(o + offBmi, cbBmi), Span(o + offBits, cbBits), useAlpha: perPixel);
+        var bitmap = Dib.Decode(Span(o + offBmi, cbBmi), Span(o + offBits, cbBits), useAlpha: perPixel, logicalPalette: PaletteFor(U32(o + 80)));
         if (bitmap == null)
             return;
         if (transparent)

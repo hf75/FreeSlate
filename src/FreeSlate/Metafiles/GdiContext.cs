@@ -39,6 +39,28 @@ public sealed class GdiFont
     public string Face { get; init; } = "Arial";
 }
 
+/// <summary>
+/// A logical palette (CreatePalette): its entries as COLORREFs. Colors given as PALETTEINDEX take the entry of the
+/// palette selected when drawing; bitmaps with DIB_PAL_COLORS index it from their color table.
+/// </summary>
+public sealed class GdiPalette
+{
+    public uint[] Entries { get; set; } = [];
+
+    /// <summary>
+    /// The default palette (DEFAULT_PALETTE): the 20 static system colors, as PowerPoint plays PALETTEINDEX against it
+    /// (measured: index 3 is dark yellow).
+    /// </summary>
+    public static readonly GdiPalette Default = new()
+    {
+        Entries =
+        [
+            0x000000, 0x000080, 0x008000, 0x008080, 0x800000, 0x800080, 0x808000, 0xC0C0C0, 0xC0DCC0, 0xF0CAA6,
+            0xF0FBFF, 0xA4A0A0, 0x808080, 0x0000FF, 0x00FF00, 0x00FFFF, 0xFF0000, 0xFF00FF, 0xFFFF00, 0xFFFFFF,
+        ],
+    };
+}
+
 /// <summary>Graphics state saved and restored by SaveDC/RestoreDC.</summary>
 public sealed class GdiState
 {
@@ -63,6 +85,7 @@ public sealed class GdiState
     public bool Clockwise { get; set; }
     public int Rop2 { get; set; } = 13;
     public int TextCharExtra { get; set; }
+    public GdiPalette Palette { get; set; } = GdiPalette.Default;
 
     public GdiState Clone() => (GdiState)MemberwiseClone();
 }
@@ -139,10 +162,26 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             State = saved.Pop();
     }
 
+    /// <summary>
+    /// A COLORREF as the RGB it draws: PALETTEINDEX (high byte 1) takes the selected palette's entry, PALETTERGB (2)
+    /// its own color (PowerPoint draws on a true-color surface, measured).
+    /// </summary>
+    public uint Resolve(uint colorRef)
+    {
+        if ((colorRef >> 24) == 1)
+        {
+            var entries = State.Palette.Entries;
+            var index = (int)(colorRef & 0xFFFF);
+            return entries.Length == 0 ? 0 : entries[Math.Min(index, entries.Length - 1)] & 0xFFFFFF;
+        }
+        return colorRef & 0xFFFFFF;
+    }
+
     public void SelectStock(int index)
     {
         switch (index)
         {
+            case 15: State.Palette = GdiPalette.Default; break;   // DEFAULT_PALETTE
             case 0: State.Brush = new GdiBrush { Color = 0xFFFFFF }; break;
             case 1: State.Brush = new GdiBrush { Color = 0xC0C0C0 }; break;
             case 2: State.Brush = new GdiBrush { Color = 0x808080 }; break;
@@ -165,6 +204,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             case GdiPen pen: State.Pen = pen; break;
             case GdiBrush brush: State.Brush = brush; break;
             case GdiFont font: State.Font = font; break;
+            case GdiPalette palette: State.Palette = palette; break;
         }
     }
 
@@ -446,7 +486,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
                 return $" fill=\"url(#{id})\"";
             }
             default:
-                return $" fill=\"{SvgWriter.Color(brush.Color)}\"";
+                return $" fill=\"{SvgWriter.Color(Resolve(brush.Color))}\"";
         }
     }
 
@@ -464,7 +504,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             4 => x == 3 || y == 3,
             _ => x == y || x == 7 - y,
         };
-        var tile = SvgWriter.HatchTile(Set, Rgba(brush.Color), State.BkMode == 2 ? Rgba(State.BkColor) : null);
+        var tile = SvgWriter.HatchTile(Set, Rgba(Resolve(brush.Color)), State.BkMode == 2 ? Rgba(Resolve(State.BkColor)) : null);
         // Hatches are 8 × 8 pixels of the output device, not of the reference device.
         var scale = SvgWriter.Num(UnitsPerPixel);
         Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({scale})\">{tile}</pattern>");
@@ -478,7 +518,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         var scale = Total.AverageScale;
         var width = pen.Geometric || pen.Width > 1 ? pen.Width * scale : 0;
         var color = pen.Brush is { Style: 0 } b ? b.Color : pen.Color;
-        var sb = new StringBuilder($" stroke=\"{SvgWriter.Color(color)}\"");
+        var sb = new StringBuilder($" stroke=\"{SvgWriter.Color(Resolve(color))}\"");
         if (width < 1)
             sb.Append(" stroke-width=\"1\" vector-effect=\"non-scaling-stroke\"");
         else
@@ -526,7 +566,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
 
         if (opaqueRect is { } o)
         {
-            Svg.Add($"<path d=\"{RectPath(o.L, o.T, o.R, o.B)}\" fill=\"{SvgWriter.Color(s.BkColor)}\"/>", s.Clip);
+            Svg.Add($"<path d=\"{RectPath(o.L, o.T, o.R, o.B)}\" fill=\"{SvgWriter.Color(Resolve(s.BkColor))}\"/>", s.Clip);
         }
 
         // Advances in logical units: given, else measured with the font (plus character extra).
@@ -583,7 +623,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         var element = $"<text x=\"{xs}\" y=\"0\"{transform} font-family=\"{SvgWriter.Escape(Family(font.Face))}\" font-size=\"{SvgWriter.Num(size)}\"" +
                       (font.Weight >= 600 ? " font-weight=\"bold\"" : "") + (font.Italic ? " font-style=\"italic\"" : "") +
                       (decoration.Length > 0 ? $" text-decoration=\"{decoration}\"" : "") +
-                      $" fill=\"{SvgWriter.Color(s.TextColor)}\" xml:space=\"preserve\">{SvgWriter.Escape(text)}</text>";
+                      $" fill=\"{SvgWriter.Color(Resolve(s.TextColor))}\" xml:space=\"preserve\">{SvgWriter.Escape(text)}</text>";
         var clip = clipRect is { } r ? new Clip { Parent = s.Clip, Path = RectPath(r.L, r.T, r.R, r.B) } : s.Clip;
         Svg.Add(element, clip);
         if ((s.TextAlign & 1) != 0)

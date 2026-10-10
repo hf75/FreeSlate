@@ -35,8 +35,10 @@ public static class Dib
     /// Decodes a DIB from its header bytes and pixel bytes. <paramref name="useAlpha"/> keeps the alpha channel of
     /// 32-bit pixels (AlphaBlend with per-pixel alpha); otherwise they are opaque. For monochrome bitmaps
     /// <paramref name="monochrome"/> replaces the two palette colors (pattern brushes use text and background color).
+    /// With <paramref name="logicalPalette"/> (DIB_PAL_COLORS) the color table holds 16-bit indexes into that palette.
     /// </summary>
-    public static Bitmap? Decode(ReadOnlySpan<byte> header, ReadOnlySpan<byte> bits, bool useAlpha = false, (uint Zero, uint One)? monochrome = null)
+    public static Bitmap? Decode(ReadOnlySpan<byte> header, ReadOnlySpan<byte> bits, bool useAlpha = false, (uint Zero, uint One)? monochrome = null,
+        uint[]? logicalPalette = null)
     {
         if (header.Length < 12)
             return null;
@@ -99,10 +101,18 @@ public static class Dib
         // Palette for indexed bitmaps.
         var paletteCount = bpp <= 8 ? (colorsUsed > 0 ? colorsUsed : 1 << bpp) : 0;
         var palette = new uint[Math.Max(paletteCount, 2)];
-        for (var i = 0; i < paletteCount && paletteOffset + i * paletteEntrySize + 3 <= header.Length; i++)
+        if (logicalPalette is { Length: > 0 })
         {
-            var p = header[(paletteOffset + i * paletteEntrySize)..];
-            palette[i] = (uint)(p[2] | (p[1] << 8) | (p[0] << 16));   // as COLORREF (R in low byte)
+            for (var i = 0; i < paletteCount && paletteOffset + i * 2 + 2 <= header.Length; i++)
+                palette[i] = logicalPalette[Math.Min(BinaryPrimitives.ReadUInt16LittleEndian(header[(paletteOffset + i * 2)..]), logicalPalette.Length - 1)];
+        }
+        else
+        {
+            for (var i = 0; i < paletteCount && paletteOffset + i * paletteEntrySize + 3 <= header.Length; i++)
+            {
+                var p = header[(paletteOffset + i * paletteEntrySize)..];
+                palette[i] = (uint)(p[2] | (p[1] << 8) | (p[0] << 16));   // as COLORREF (R in low byte)
+            }
         }
         if (bpp == 1 && monochrome is { } mono)
         {

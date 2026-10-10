@@ -173,6 +173,32 @@ public sealed class WmfPlayer
         switch (function)
         {
             case 0x0201: s.BkColor = U32(p); break;
+            case 0x0234:   // SELECTPALETTE
+                if (U16(p) < slots.Count && slots[U16(p)] is GdiPalette palette)
+                    gdi.Select(palette);
+                break;
+            case 0x0035: break;   // REALIZEPALETTE: the selected palette is used as it is
+            case 0x0037 or 0x0436:   // SETPALENTRIES, ANIMATEPALETTE: entries of the selected palette
+                if (s.Palette != GdiPalette.Default)
+                {
+                    var (first, count) = ((int)U16(p), (int)U16(p + 2));
+                    var merged = s.Palette.Entries.ToList();
+                    while (merged.Count < first + count)
+                        merged.Add(0);
+                    var entries = PaletteEntries(p + 4, count);
+                    for (var i = 0; i < entries.Length; i++)
+                        merged[first + i] = entries[i];
+                    s.Palette.Entries = [.. merged];
+                }
+                break;
+            case 0x0139:   // RESIZEPALETTE
+                if (s.Palette != GdiPalette.Default)
+                {
+                    var entries = s.Palette.Entries;
+                    Array.Resize(ref entries, Math.Clamp((int)U16(p), 0, 1024));
+                    s.Palette.Entries = entries;
+                }
+                break;
             case 0x0102: s.BkMode = U16(p); break;
             case 0x0104: s.Rop2 = U16(p); break;
             case 0x0106: s.PolyFillMode = U16(p); break;
@@ -216,7 +242,7 @@ public sealed class WmfPlayer
             case 0x041F:
             {
                 var (px, py) = gdi.ToDevice(I16(p + 6), I16(p + 4));
-                svg.Add($"<rect x=\"{SvgWriter.Num(px)}\" y=\"{SvgWriter.Num(py)}\" width=\"1\" height=\"1\" fill=\"{SvgWriter.Color(U32(p))}\"/>", s.Clip);
+                svg.Add($"<rect x=\"{SvgWriter.Num(px)}\" y=\"{SvgWriter.Num(py)}\" width=\"1\" height=\"1\" fill=\"{SvgWriter.Color(gdi.Resolve(U32(p)))}\"/>", s.Clip);
                 break;
             }
             case 0x0521:   // TEXTOUT
@@ -317,12 +343,14 @@ public sealed class WmfPlayer
                 break;
             case 0x0142:   // DIBCREATEPATTERNBRUSH
             {
-                var bitmap = DibAt(p + 4, size - 4);
+                var bitmap = DibAt(p + 4, size - 4, U16(p + 2));
                 AddObject(new GdiBrush { Style = bitmap != null ? 3 : 0, Pattern = bitmap, Color = 0x808080 });
                 break;
             }
             case 0x01F9: AddObject(new GdiBrush { Color = 0x808080 }); break;   // CREATEPATTERNBRUSH (old bitmaps)
-            case 0x00F7: AddObject(new object()); break;                        // CREATEPALETTE
+            case 0x00F7:   // CREATEPALETTE: version, entry count, entries (red, green, blue, flags)
+                AddObject(new GdiPalette { Entries = PaletteEntries(p + 4, U16(p + 2)) });
+                break;
             case 0x06FF: AddObject(ReadRegion(p)); break;                       // CREATEREGION
             case 0x0940:   // DIBBITBLT
             {
@@ -348,19 +376,29 @@ public sealed class WmfPlayer
                 var rop = U32(p);
                 var (sh, sw, sy, sx) = (I16(p + 6), I16(p + 8), I16(p + 10), I16(p + 12));
                 var (dh, dw, dy, dx) = (I16(p + 14), I16(p + 16), I16(p + 18), I16(p + 20));
-                DrawDib(rop, p + 22, size - 22, dx, dy, dw, dh, (sx, sy, sw, sh));
+                DrawDib(rop, p + 22, size - 22, dx, dy, dw, dh, (sx, sy, sw, sh), U16(p + 4));
                 break;
             }
             case 0x0D33:   // SETDIBTODEV
             {
                 var (h, w, y, x) = (I16(p + 10), I16(p + 12), I16(p + 14), I16(p + 16));
-                DrawDib(0x00CC0020, p + 18, size - 18, x, y, w, h, null);
+                DrawDib(0x00CC0020, p + 18, size - 18, x, y, w, h, null, U16(p));
                 break;
             }
         }
     }
 
-    Bitmap? DibAt(int p, int length)
+    /// <summary>Palette entries (red, green, blue, flags) as COLORREFs.</summary>
+    uint[] PaletteEntries(int offset, int count)
+    {
+        var entries = new uint[Math.Clamp(count, 0, 1024)];
+        for (var i = 0; i < entries.Length; i++)
+            entries[i] = (uint)(data[offset + i * 4] | (data[offset + i * 4 + 1] << 8) | (data[offset + i * 4 + 2] << 16));
+        return entries;
+    }
+
+    /// <summary>A DIB; with <paramref name="usage"/> DIB_PAL_COLORS (1) its color table indexes the selected palette.</summary>
+    Bitmap? DibAt(int p, int length, int usage = 0)
     {
         if (length < 12)
             return null;
@@ -368,18 +406,18 @@ public sealed class WmfPlayer
         var bpp = headerSize == 12 ? U16(p + 10) : U16(p + 14);
         var compression = headerSize == 12 ? 0 : (int)U32(p + 16);
         var colorsUsed = headerSize == 12 ? 0 : (int)U32(p + 32);
-        var paletteSize = bpp <= 8 ? (colorsUsed > 0 ? colorsUsed : 1 << bpp) * (headerSize == 12 ? 3 : 4) : compression == 3 && headerSize == 40 ? 12 : 0;
+        var paletteSize = bpp <= 8 ? (colorsUsed > 0 ? colorsUsed : 1 << bpp) * (usage == 1 ? 2 : headerSize == 12 ? 3 : 4) : compression == 3 && headerSize == 40 ? 12 : 0;
         var bitsOffset = headerSize + paletteSize;
         if (bitsOffset > length)
             return null;
-        return Dib.Decode(Span(p, bitsOffset), Span(p + bitsOffset, length - bitsOffset));
+        return Dib.Decode(Span(p, bitsOffset), Span(p + bitsOffset, length - bitsOffset), logicalPalette: usage == 1 ? gdi.State.Palette.Entries : null);
     }
 
-    void DrawDib(uint rop, int p, int length, double x, double y, double w, double h, (int X, int Y, int W, int H)? source)
+    void DrawDib(uint rop, int p, int length, double x, double y, double w, double h, (int X, int Y, int W, int H)? source, int usage = 0)
     {
         if (rop is 0x008800C6 or 0x00AA0029 or 0x00550009)
             return;
-        var bitmap = DibAt(p, length);
+        var bitmap = DibAt(p, length, usage);
         if (bitmap == null)
             return;
         if (rop == 0x00EE0086) bitmap = bitmap.WithTransparentColor(0);

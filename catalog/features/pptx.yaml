@@ -907,8 +907,12 @@ areas:
           DIB transfers, AlphaBlend, TransparentBlt, gradient fills, hatch and pattern brushes in output
           pixels) and the EMF+ records of dual and EMF+ only files (fills and outlines with solid, hatch,
           texture, linear and path gradient brushes, paths, regions, images, strings, driver strings,
-          containers, transforms, clips); palettes, color management, OpenGL records, escapes and flood fills
-          are not drawn (rare in Office content). Verified
+          containers, transforms, clips). Logical palettes are played: CreatePalette, SelectPalette,
+          SetPaletteEntries, ResizePalette and AnimatePalette, PALETTEINDEX colors and DIB_PAL_COLORS bitmaps
+          against the selected palette (the default one has the 20 static colors), PALETTERGB as its own color
+          (local/palette, EMF and WMF). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
+          draw nothing, color management records leave the colors as they are, and OpenGL records are not
+          drawn. Verified
           with generated/metafiles (PowerPoint's EMF and WMF exports, GDI+ dual and GDI-only recordings, GDI
           records: 96.2 %; hatches come out smoothed in Chromium where GDI sets whole pixels).
 
