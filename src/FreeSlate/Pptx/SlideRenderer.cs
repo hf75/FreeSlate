@@ -218,6 +218,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         Camera? textCamera = null;
         var flatText = false;
         var textLayer = "";
+        var backdropText = false;
         var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
             ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
             : ((Fill Fill, string Blend)?)null;
@@ -380,9 +381,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     if (flatOutline.Length == 0 || SvgEffects.Filter(layerEffects, slide.Colors, pw, ph, planeDefs, parts: SvgEffects.Parts.Outer) is not { } planeFilter)
                         continue;
                     var moved = backdrop with { Anchor = (backdrop.Anchor.X + shift.X, backdrop.Anchor.Y + shift.Y, backdrop.Anchor.Z) };
+                    // The shadow of the shape's text lies over the shape's own, darker where they overlap (measured: a
+                    // floor plane shows the text in the shape's shadow); the text follows once it is laid out.
+                    var textShadow = layerEffects.Element(Ns.A + "outerShdw") != null ? $"<g filter=\"url(#{planeFilter})\">{BackdropTextToken}</g>" : "";
+                    backdropText |= textShadow.Length > 0;
                     planeEffects += $"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{OnBackdrop(camera!, pw, ph, rotation, flipH, flipV, moved)}\">" +
                                     $"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{planeDefs}</defs>" +
-                                    $"<path d=\"{flatOutline}\" fill=\"#000\" filter=\"url(#{planeFilter})\"/></svg></div>";
+                                    $"<path d=\"{flatOutline}\" fill=\"#000\" filter=\"url(#{planeFilter})\"/>{textShadow}</svg></div>";
                 }
                 planeBehind = backdrop.Anchor.Z < back - 0.01;
             }
@@ -500,6 +505,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 textMarkup = $"<g transform=\"rotate({Units.Css(textTurn)} {Units.Css(textCenter.X)} {Units.Css(textCenter.Y)})\">{textMarkup}</g>";
             if (shapeLink != null)
                 textMarkup = UnlinkText(textMarkup);   // links cannot nest
+            // The text's silhouette in a backdrop's shadow: its glyphs without ids, links or effects of their own.
+            if (backdropText)
+            {
+                html.Replace(BackdropTextToken, Silhouette(textMarkup));
+                backdropText = false;
+            }
             if (textCamera != null && glyphOutlines is { Count: > 0 })
                 textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d), textShape3d, glyphOutlines, textMarkup, pw, ph);
             else if (flatText)
@@ -511,6 +522,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else
                 body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
         }
+        if (backdropText)
+            html.Replace(BackdropTextToken, "");
         var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs, matrix);
         if (dag != null)
         {
@@ -1264,6 +1277,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     static readonly XNamespace Adec = "http://schemas.microsoft.com/office/drawing/2017/decorative";
 
     /// <summary>Text markup without its run links (inside a linked shape).</summary>
+    /// <summary>Marks where a backdrop's shadow takes the shape's text once it is laid out.</summary>
+    const string BackdropTextToken = "\u0001backdrop-text\u0001";
+
+    /// <summary>Text markup as a silhouette for a shadow: without ids (the text itself keeps them), links and filters.</summary>
+    static string Silhouette(string markup) =>
+        System.Text.RegularExpressions.Regex.Replace(UnlinkText(markup), " (?:id|filter)=\"[^\"]*\"", "");
+
     static string UnlinkText(string markup) =>
         System.Text.RegularExpressions.Regex.Replace(markup, "<a(?: [^>]*)?>(?:<title>[^<]*</title>)?|</a>", "");
 
