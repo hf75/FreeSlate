@@ -96,8 +96,11 @@ public sealed class ColorContext(Theme theme, IReadOnlyDictionary<string, string
                 case "blue": color = Channel(color, 2, _ => val); break;
                 case "blueMod": color = Channel(color, 2, c => c * val); break;
                 case "blueOff": color = Channel(color, 2, c => c + val); break;
-                case "gamma": color = color.ToLinear(); break;
-                case "invGamma": color = color.FromLinear(); break;
+                // gamma applies the sRGB gamma shift (encodes), invGamma its inverse: gamma, shade and invGamma, as
+                // converted PowerPoint 97 decks write them, shade in sRGB (measured: 0066CC shaded to 46.275 % is
+                // 002F5E, 94 of 204).
+                case "gamma": color = color.FromLinear(); break;
+                case "invGamma": color = color.ToLinear(); break;
             }
             color = color.Clamp();
         }

@@ -190,7 +190,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
-        var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part, Units.ToPx(bw)) : ResolveFill(chain, style, placement.GroupFill);
+        var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part, Units.ToPx(bw)) : ResolveFill(chain, placement.GroupFill);
         // A shape filled with the slide's background shows the part of the background behind it.
         if (shape.Name.LocalName == "sp" && shape.Bool("useBgFill") == true)
         {
@@ -201,7 +201,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // Presets that cannot shade along their outline draw such a gradient as a circle gradient.
         if (fill is GradientFill { Path: "shape" } alongOutline && !definition.ShadeShape)
             fill = alongOutline with { Path = "circle" };
-        var outline = ResolveOutline(chain, style);
+        var outline = ResolveOutline(chain);
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
 
         var defs = new StringBuilder();
@@ -225,7 +225,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // Picture borders lie outside the picture (measured: a 6 pt border ends where the picture begins).
         var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
         // A picture can have a fill of its own behind it, visible through its transparent parts.
-        var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, style, placement.GroupFill) : Fill.None;
+        var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, placement.GroupFill) : Fill.None;
         var axisAligned = IsAxisAligned(ToPx(matrix));
         // PowerPoint fills all paths of a geometry before it strokes them (measured: the outline of a first path
         // lies on the fill of a second one); while no stroked path comes before a filled one, that is the same as
@@ -1041,6 +1041,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var drawingId = dataModel.Descendants(Dsp + "dataModelExt").FirstOrDefault()?.Str("relId");
         var drawingPart = drawingId != null ? package.Relationship(part, drawingId)?.Target : null;
         var tree = drawingPart != null && package.Exists(drawingPart) ? slide.Presentation.Load(drawingPart).Root?.Element(Dsp + "spTree") : null;
+        // A drawing without shapes (written so by other programs) counts as none: PowerPoint lays the diagram out
+        // anew (measured with LibreOffice's test decks, whose drawings are emptied).
+        if (tree != null && !tree.Elements().Any(e => e.Name.LocalName is "sp" or "grpSp" or "cxnSp" or "pic" or "graphicFrame"))
+            tree = null;
         XElement? DiagramPart(string attribute) =>
             relIds.Attribute(Ns.R + attribute) is { } id && package.Relationship(part, id.Value)?.Target is { } target && package.Exists(target)
                 ? slide.Presentation.Load(target).Root
@@ -1452,34 +1456,57 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         return index >= 1 && index <= slide.Theme.EffectStyles.Count ? Of(slide.Theme.EffectStyles[index - 1]) : null;
     }
 
-    Fill ResolveFill(List<PartElement> chain, XElement? style, Fill? groupFill)
+    /// <summary>
+    /// The shape's fill, level by level from the shape up through its layout and master placeholders: a level's own
+    /// fill, else its style's fillRef (measured: a slide title's own style fill beats the master title's explicit
+    /// noFill).
+    /// </summary>
+    Fill ResolveFill(List<PartElement> chain, Fill? groupFill)
     {
-        foreach (var s in chain)
+        for (var level = 0; level < chain.Count; level++)
         {
-            if (FillReader.FindFill(SpPr(s.Element)) is { } f)
+            if (FillReader.FindFill(SpPr(chain[level].Element)) is { } f)
             {
-                var fill = FillReader.Read(f, slide.Colors, slide.Images(s.Part), slide.ImageSizes(s.Part));
+                // A gradient without stops takes the stops of the style's gradient, in its own direction (measured with
+                // an ellipse whose gradFill has only a:lin: PowerPoint draws the theme's gradient in accent 1).
+                if (f.Name.LocalName == "gradFill" && f.Element(Ns.A + "gsLst") == null
+                    && chain.Skip(level).Select(s => StyleFill(s.Element)).FirstOrDefault(t => t != null) is { Style.Name.LocalName: "gradFill" } gradient
+                    && gradient.Style.Element(Ns.A + "gsLst") is { } stops)
+                {
+                    var merged = new XElement(f);
+                    merged.AddFirst(new XElement(stops));
+                    return FillReader.Read(merged, gradient.Colors);
+                }
+                var fill = FillReader.Read(f, slide.Colors, slide.Images(chain[level].Part), slide.ImageSizes(chain[level].Part));
                 return fill is GroupFill ? groupFill ?? Fill.None : fill;
             }
-        }
-        if (style?.Element(Ns.A + "fillRef") is { } fillRef && (fillRef.Int("idx") ?? 0) > 0
-            && slide.Theme.FillStyle(fillRef.Int("idx")!.Value) is { } themed)
-        {
-            return FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
+            if (StyleFill(chain[level].Element) is { } themed)
+                return slide.ThemedFill(themed.Style, themed.Colors);
         }
         return Fill.None;
     }
 
-    Outline? ResolveOutline(List<PartElement> chain, XElement? style)
+    /// <summary>The fill a shape's own style refers to (p:style/a:fillRef) in the style's color, or null.</summary>
+    (XElement Style, ColorContext Colors)? StyleFill(XElement shape) =>
+        shape.Element(Ns.P + "style")?.Element(Ns.A + "fillRef") is { } fillRef && (fillRef.Int("idx") ?? 0) > 0
+        && slide.Theme.FillStyle(fillRef.Int("idx")!.Value) is { } styleFill
+            ? (styleFill, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)))
+            : null;
+
+    /// <summary>
+    /// The shape's outline: the levels' lines from the master placeholder down to the shape, each level's style line
+    /// under its own line (as for fills, a slide title's style line beats the master's explicit a:ln noFill).
+    /// </summary>
+    Outline? ResolveOutline(List<PartElement> chain)
     {
         var layers = new List<(XElement, ColorContext)>();
-        if (style?.Element(Ns.A + "lnRef") is { } lnRef && (lnRef.Int("idx") ?? 0) > 0
-            && slide.Theme.LineStyle(lnRef.Int("idx")!.Value) is { } themed)
-        {
-            layers.Add((themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(lnRef))));
-        }
         for (var i = chain.Count - 1; i >= 0; i--)
         {
+            if (chain[i].Element.Element(Ns.P + "style")?.Element(Ns.A + "lnRef") is { } lnRef && (lnRef.Int("idx") ?? 0) > 0
+                && slide.Theme.LineStyle(lnRef.Int("idx")!.Value) is { } themed)
+            {
+                layers.Add((themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(lnRef))));
+            }
             if (SpPr(chain[i].Element)?.Element(Ns.A + "ln") is { } ln)
                 layers.Add((ln, slide.Colors));
         }
@@ -1543,7 +1570,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                $"<rect width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{paintAttributes}/></svg>";
     }
 
-    /// <summary>The slide's background fill: its own, else the layout's, else the master's; white without any.</summary>
+    /// <summary>
+    /// The slide's background fill: its own, else the layout's, else the master's; without any the color bg1 maps to
+    /// (measured: a layout mapping bg1 to dk1 gives its slides a black background).
+    /// </summary>
     Fill SlideBackground()
     {
         var fill = Fill.None as Fill;
@@ -1555,9 +1585,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (bg.Element(Ns.P + "bgPr") is { } bgPr && FillReader.FindFill(bgPr) is { } f)
                 fill = FillReader.Read(f, slide.Colors, slide.Images(part!));
             else if (bg.Element(Ns.P + "bgRef") is { } bgRef && slide.Theme.FillStyle(bgRef.Int("idx") ?? 0) is { } themed)
-                fill = FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(bgRef)));
+                fill = slide.ThemedFill(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(bgRef)));
             break;
         }
-        return fill is NoFill ? new SolidFill(RgbColor.White) : fill;
+        return fill is NoFill ? new SolidFill(slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "bg1")))) : fill;
     }
 }

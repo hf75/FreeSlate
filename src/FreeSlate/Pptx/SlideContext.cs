@@ -23,7 +23,7 @@ public sealed class SlideContext
         {
             var target = part != null ? package.FirstRelationship(part, "themeOverride")?.Target : null;
             if (target != null && package.Exists(target) && presentation.Load(target).Root is { } themeOverride)
-                Theme = Theme.WithOverride(themeOverride);
+                Theme = Theme.WithOverride(themeOverride, target);
         }
 
         // Color map: the master's p:clrMap, overridden by the layout's and then the slide's p:clrMapOvr.
@@ -54,4 +54,11 @@ public sealed class SlideContext
 
     /// <summary>Picture sizes for tiled fills of the given part.</summary>
     public Func<string, double, (double W, double H)> ImageSizes(string part) => (id, dpi) => Presentation.ImageSize(part, id, dpi);
+
+    /// <summary>
+    /// A fill of the theme's style matrix (fillRef, bgRef) in the given colors; its pictures come from the part the style
+    /// is defined in (catalog: theme.formatScheme).
+    /// </summary>
+    public Fill ThemedFill(XElement style, ColorContext colors) =>
+        Theme.PartOf(style) is { } part ? FillReader.Read(style, colors, Images(part), ImageSizes(part)) : FillReader.Read(style, colors);
 }

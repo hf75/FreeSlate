@@ -17,20 +17,29 @@ public sealed class Theme
     public List<XElement> EffectStyles { get; } = [];
     public List<XElement> BackgroundFillStyles { get; } = [];
 
-    public static Theme Load(XDocument? document)
+    /// <param name="part">The theme's part: pictures of its fill styles are relationships of it.</param>
+    public static Theme Load(XDocument? document, string? part = null)
     {
         var theme = new Theme();
         var elements = document?.Root?.Element(Ns.A + "themeElements");
         if (elements != null)
-            theme.Read(elements);
+            theme.Read(elements, part);
         return theme;
     }
+
+    /// <summary>
+    /// The part a style of the format scheme comes from (the theme's or a theme override's): the r:embed of a picture
+    /// fill style (a textured background, bgFillStyleLst) is a relationship of that part, not of the slide.
+    /// </summary>
+    public static string? PartOf(XElement style) => style.Annotation<StylePart>()?.Path;
+
+    sealed record StylePart(string Path);
 
     /// <summary>
     /// A copy with the parts of an a:themeOverride (catalog: theme.override): a layout or slide can replace the
     /// color, font or format scheme of its master's theme.
     /// </summary>
-    public Theme WithOverride(XElement themeOverride)
+    public Theme WithOverride(XElement themeOverride, string? part = null)
     {
         var theme = new Theme
         {
@@ -42,12 +51,12 @@ public sealed class Theme
         theme.LineStyles.AddRange(LineStyles);
         theme.EffectStyles.AddRange(EffectStyles);
         theme.BackgroundFillStyles.AddRange(BackgroundFillStyles);
-        theme.Read(themeOverride);
+        theme.Read(themeOverride, part);
         return theme;
     }
 
     /// <summary>Reads the schemes present in a:themeElements or a:themeOverride.</summary>
-    void Read(XElement elements)
+    void Read(XElement elements, string? part)
     {
         var theme = this;
         foreach (var entry in elements.Element(Ns.A + "clrScheme")?.Elements() ?? [])
@@ -90,6 +99,11 @@ public sealed class Theme
                 {
                     list.Clear();
                     list.AddRange(styles.Elements());
+                    foreach (var style in styles.Elements())
+                    {
+                        if (part != null && style.Annotation<StylePart>() == null)
+                            style.AddAnnotation(new StylePart(part));
+                    }
                 }
             }
             Replace(theme.FillStyles, "fillStyleLst");

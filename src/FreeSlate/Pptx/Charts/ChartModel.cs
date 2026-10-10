@@ -164,7 +164,7 @@ public sealed class ChartModel
             if (name.EndsWith("Chart", StringComparison.Ordinal))
                 model.Groups.Add(ReadGroup(element, culture));
             else if (name is "catAx" or "valAx" or "dateAx" or "serAx")
-                model.Axes.Add(ReadAxis(element));
+                model.Axes.Add(ReadAxis(element, model.Groups));
         }
         var date1904 = Flag(space, "date1904", false);
         foreach (var group in model.Groups)
@@ -305,16 +305,34 @@ public sealed class ChartModel
         };
     }
 
-    static ChartAxis ReadAxis(XElement element)
+    /// <summary>
+    /// An axis's side as its chart type has it: a bar chart's category axis is vertical and its value axis horizontal,
+    /// column, line and area charts the other way round, whatever c:axPos says (measured: a bar chart saved with its
+    /// category axis at "b" shows horizontal bars with the categories on the left). A side across is mirrored (b and l,
+    /// t and r); scatter, bubble and radar charts keep theirs.
+    /// </summary>
+    static string Side(string position, string kind, ChartGroup? group)
+    {
+        if (group == null || kind == "serAx" || group.Element.Name.LocalName is not ("barChart" or "bar3DChart" or "lineChart"
+                or "line3DChart" or "areaChart" or "area3DChart" or "stockChart"))
+            return position;
+        var vertical = kind is "catAx" or "dateAx" ? group.Horizontal : !group.Horizontal;
+        if (vertical == (position is "l" or "r"))
+            return position;
+        return position switch { "b" => "l", "t" => "r", "l" => "b", "r" => "t", _ => position };
+    }
+
+    static ChartAxis ReadAxis(XElement element, IReadOnlyList<ChartGroup> groups)
     {
         var scaling = element.Element(Ns.C + "scaling");
         var numFmt = element.Element(Ns.C + "numFmt");
         var crossesAt = Number(element, "crossesAt");
+        var id = element.Element(Ns.C + "axId").Int("val") ?? 0;
         return new ChartAxis
         {
             Element = element,
-            Id = element.Element(Ns.C + "axId").Int("val") ?? 0,
-            Position = Val(element, "axPos") ?? "l",
+            Id = id,
+            Position = Side(Val(element, "axPos") ?? "l", element.Name.LocalName, groups.FirstOrDefault(g => g.AxisIds.Contains(id))),
             Deleted = Flag(element, "delete", false),
             Min = Number(scaling, "min"),
             Max = Number(scaling, "max"),

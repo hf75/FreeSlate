@@ -120,6 +120,10 @@ public static class FillReader
                     return Fill.None;
                 var stretch = fill.Element(Ns.A + "stretch");
                 var tile = fill.Element(Ns.A + "tile");
+                // A shape's picture fill without a fill mode is tiled at the picture's own size (measured: a check
+                // mark repeated over a shape, LibreOffice's tdf128596); pictures (p:blipFill) keep stretching.
+                if (stretch == null && tile == null && fill.Name.Namespace == Ns.A)
+                    tile = new XElement(Ns.A + "tile");
                 return new PictureFill(image, Rect(fill.Element(Ns.A + "srcRect")), Rect(stretch?.Element(Ns.A + "fillRect")), tile != null)
                 {
                     Filter = Html.BlipEffects.Filter(blip, colors),

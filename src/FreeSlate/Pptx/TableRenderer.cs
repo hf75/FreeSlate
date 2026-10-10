@@ -153,7 +153,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             return FillReader.Read(own, slide.Colors);
         var tblBg = style?.Element(Ns.A + "tblBg");
         if (tblBg?.Element(Ns.A + "fillRef") is { } fillRef && slide.Theme.FillStyle(fillRef.Int("idx") ?? 0) is { } themed)
-            return FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
+            return slide.ThemedFill(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
         if (tblBg?.Element(Ns.A + "fill")?.Elements().FirstOrDefault() is { } fill)
             return FillReader.Read(fill, slide.Colors);
         return Fill.None;
@@ -172,15 +172,14 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
 
     /// <summary>
     /// The table style: inline a:tableStyle, else a:tableStyleId looked up in ppt/tableStyles.xml, else among
-    /// PowerPoint's built-in styles (named by files from other producers without defining them).
+    /// PowerPoint's built-in styles (named by files from other producers without defining them). A table without a
+    /// style id is drawn in No Style, Table Grid (measured: the same black grid, not the presentation's default style).
     /// </summary>
     XElement? Style(XElement? tblPr)
     {
         if (tblPr?.Element(Ns.A + "tableStyle") is { } inline)
             return inline;
-        var id = tblPr?.Element(Ns.A + "tableStyleId")?.Value;
-        if (id == null)
-            return null;
+        var id = tblPr?.Element(Ns.A + "tableStyleId")?.Value ?? "{5940675A-B579-460E-94D1-54222C63F5DA}";
         var package = slide.Presentation.Package;
         var part = package.FirstRelationship(slide.Presentation.PresentationPart, "tableStyles")?.Target;
         var own = part != null && package.Exists(part)
@@ -252,7 +251,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             if (tcStyle?.Element(Ns.A + "fill") is { } fill && FillReader.FindFill(fill) is { } styled)
                 return FillReader.Read(styled, slide.Colors);
             if (tcStyle?.Element(Ns.A + "fillRef") is { } fillRef && slide.Theme.FillStyle(fillRef.Int("idx") ?? 0) is { } themed)
-                return FillReader.Read(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
+                return slide.ThemedFill(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(fillRef)));
         }
         return Fill.None;
     }

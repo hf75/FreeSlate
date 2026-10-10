@@ -136,7 +136,7 @@ public sealed class PresentationContext : IDisposable
         if (!themes.TryGetValue(masterPart, out var theme))
         {
             var themePart = Package.FirstRelationship(masterPart, "theme")?.Target;
-            theme = Theme.Load(themePart != null && Package.Exists(themePart) ? Load(themePart) : null);
+            theme = Theme.Load(themePart != null && Package.Exists(themePart) ? Load(themePart) : null, themePart);
             themes[masterPart] = theme;
         }
         return theme;
@@ -158,13 +158,20 @@ public sealed class PresentationContext : IDisposable
             {
                 "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/webp" => Native(type, Package.ReadBytes(rel.Target)),
                 "image/svg+xml" => $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
-                _ when metafile => Metafiles.MetafileConverter.ToDataUri(Package.ReadBytes(rel.Target), $"mf{images.Count}_", displayWidth),
+                // A metafile part may hold a raster picture (a PNG named .emf), which PowerPoint shows by its bytes.
+                _ when metafile => Package.ReadBytes(rel.Target) is var bytes && IsMetafile(bytes)
+                    ? Metafiles.MetafileConverter.ToDataUri(bytes, $"mf{images.Count}_", displayWidth)
+                    : Converted(bytes),
                 _ => Converted(Package.ReadBytes(rel.Target)),
             };
             images[key] = uri;
         }
         return uri;
     }
+
+    /// <summary>EMF (a header record, type 1) or WMF (placeable, or a memory or disk metafile header).</summary>
+    static bool IsMetafile(byte[] data) =>
+        data is [0x01, 0x00, 0x00, 0x00, ..] or [0xD7, 0xCD, 0xC6, 0x9A, ..] or [0x01 or 0x02, 0x00, 0x09, 0x00, ..];
 
     /// <summary>
     /// A picture under a content type browsers show, unless its bytes are a format they do not: PowerPoint names
