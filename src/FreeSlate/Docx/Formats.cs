@@ -58,6 +58,10 @@ public sealed class RunFormat
     /// <summary>Horizontal scale in percent (w:w).</summary>
     public double? Scale;
 
+    /// <summary>The width the run's text is fit to (w:fitText, here in points) and the id that joins runs fit together.</summary>
+    public double? FitText;
+    public string? FitTextId;
+
     public string? Language, LanguageEastAsia, LanguageBidi;
 
     /// <summary>w14:ligatures (catalog: run.openType).</summary>
@@ -175,6 +179,10 @@ public sealed class RunFormat
                 case "spacing": Spacing = e.Twips("val") ?? Spacing; break;
                 case "kern": Kern = e.Number("val") is { } kern ? kern / 2 : Kern; break;
                 case "w": Scale = e.Number("val") ?? Scale; break;
+                case "fitText":
+                    FitText = e.Twips("val") ?? FitText;
+                    FitTextId = e.Attr("id") ?? FitTextId;
+                    break;
                 case "lang":
                     Language = e.Val() ?? Language;
                     LanguageEastAsia = e.Attr("eastAsia") ?? LanguageEastAsia;

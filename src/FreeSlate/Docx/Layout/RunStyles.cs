@@ -170,6 +170,8 @@ public sealed class RunStyles(DocumentContext context)
             ScriptShift = scriptShift,
             Spacing = format.Spacing ?? 0,
             Scale = (format.Scale ?? 100) / 100,
+            FitText = format.FitText is { } fit && fit > 0 ? fit : null,
+            FitTextId = format.FitTextId,
             Caps = format.Caps == true,
             SmallCaps = format.SmallCaps == true,
             Effects = TextEffects.EffectList(format),

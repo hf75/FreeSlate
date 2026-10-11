@@ -54,6 +54,10 @@ public sealed record RunStyle(
     /// <summary>Horizontal scale (w:w), 1 = 100 %.</summary>
     public double Scale { get; init; } = 1;
 
+    /// <summary>The width the text is fit to (w:fitText) in points and the id of the runs fit together, or null.</summary>
+    public double? FitText { get; init; }
+    public string? FitTextId { get; init; }
+
     public bool Caps { get; init; }
     public bool SmallCaps { get; init; }
     public string? Language { get; init; }

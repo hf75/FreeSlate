@@ -260,6 +260,60 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
+    /// <summary>
+    /// Text fit to a width (w:fitText, catalog: run.spacing), as Word prints it (measured with docx/local/fittext and
+    /// fittext2): neighboring runs with the same id fit together; text wider than the width is scaled horizontally to
+    /// it, narrower text spreads its characters with equal gaps between them, the last at the end (Word also narrows
+    /// spread characters a little, to between (n − 1)/n of their width and all of it, which is left out here).
+    /// </summary>
+    void FitText(string text, List<RunStyle> charStyles, double[] advances)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (charStyles[i].FitText is not { } width)
+                continue;
+            var id = charStyles[i].FitTextId;
+            var end = i;
+            while (end + 1 < text.Length && charStyles[end + 1].FitText is { } next && Math.Abs(next - width) < 0.01
+                   && charStyles[end + 1].FitTextId == id && text[end + 1] is not ('\n' or '\f' or '\v'))
+                end++;
+            var natural = 0.0;
+            var count = 0;
+            for (var k = i; k <= end; k++)
+            {
+                natural += advances[k];
+                if (advances[k] > 0)
+                    count++;
+            }
+            if (natural > width + 0.01)
+            {
+                // Too wide: the glyphs narrow to the width (one style object per style it had, so pieces stay whole).
+                var scale = width / natural;
+                var narrowed = new Dictionary<RunStyle, RunStyle>(ReferenceEqualityComparer.Instance);
+                for (var k = i; k <= end; k++)
+                {
+                    if (!narrowed.TryGetValue(charStyles[k], out var style))
+                        narrowed[charStyles[k]] = style = charStyles[k] with { Scale = charStyles[k].Scale * scale };
+                    charStyles[k] = style;
+                    advances[k] *= scale;
+                }
+            }
+            else if (count > 0)
+            {
+                // Narrower: equal gaps between the characters, the last one ending at the width.
+                var gaps = Math.Max(1, count - 1);
+                var gap = (width - natural) / gaps;
+                var last = Enumerable.Range(i, end - i + 1).Last(k => advances[k] > 0);
+                for (var k = i; k <= end; k++)
+                {
+                    if (advances[k] > 0 && (k < last || count == 1))
+                        advances[k] += gap;
+                }
+            }
+            i = end;
+        }
+    }
+
     /// <summary>The rubies and the two-lines-in-one runs of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, RubyInline> rubies = [];
     readonly Dictionary<int, TextInline> combined = [];
@@ -408,6 +462,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var advances = Advances(text, charStyles, CharacterExtra);
         AutoSpace(text, charStyles, advances, format);
         BorderRoom(text, charStyles, advances);
+        FitText(text, charStyles, advances);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
@@ -675,6 +730,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, _) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles, CharacterExtra);
         BorderRoom(text, charStyles, advances);
+        FitText(text, charStyles, advances);
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
