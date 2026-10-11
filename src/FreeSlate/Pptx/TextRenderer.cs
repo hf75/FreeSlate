@@ -164,11 +164,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var columns = Math.Clamp(int.TryParse(Body("numCol"), out var columnCount) ? columnCount : 1, 1, 16);
         var columnGap = (long.TryParse(Body("spcCol"), out var gap) ? gap : 0) / Units.EmuPerPoint;
         var columnWidth = columns > 1 ? Math.Max(0, (width - (columns - 1) * columnGap) / columns) : width;
-        // WordArt transforms bend the glyph outlines into the preset's paths in the shape's text rectangle; text on a
-        // single path (arches, circle) is not wrapped (measured: a long line runs once around the circle).
+        // WordArt transforms bend the glyph outlines into the preset's paths in the shape's text rectangle; text following
+        // paths (arches, circle, button) is not wrapped (measured: a long line runs once around the circle, and stays
+        // whole on the button's lower arc).
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
         var warpDefinition = warp?.Str("prst") is { } preset ? TextWarp.Definition(preset) : null;
-        var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsOnePath(warpDefinition));
+        var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsPaths(warpDefinition));
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
         var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
@@ -453,9 +454,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return (line.Align, (left + start) * PxPerPt - box.L, box.L + box.W - (left + start + line.Width) * PxPerPt, line.Width * PxPerPt);
         }
         // Every line's baseline and how far below a single path it lies when it is the line next to it: 0.79 em under
-        // the top of its line box (measured with eight fonts on circles, 12 to 72 pt).
-        var lines = layout.Lines.Select(l => ((top + Snap(offset + l.Baseline)) * PxPerPt,
-            (l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8)) * PxPerPt)).ToList();
+        // the top of its line box (measured with eight fonts on circles, 12 to 72 pt); and its line box.
+        var lines = layout.Lines.Select(l =>
+        {
+            var baseline = (top + Snap(offset + l.Baseline)) * PxPerPt;
+            return new TextWarp.Line(baseline, (l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8)) * PxPerPt,
+                baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt);
+        }).ToList();
         var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines);
         for (var i = 0; i < warped.Count && Outlines != null; i++)
             Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color));
