@@ -412,6 +412,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     contentEnd--;
                     contentX -= advances[contentEnd];
                 }
+                // A line ending at a soft hyphen shows a hyphen, which has to fit too (catalog: run.content).
+                if (contentEnd > i && text[contentEnd - 1] == '\u00AD')
+                    contentX += HyphenWidth(charStyles[contentEnd - 1]);
                 var innerSpaces = spaces;
                 for (var k = i; k < contentEnd; k++)
                 {
@@ -775,6 +778,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return (text.ToString(), list, labelLength);
     }
 
+    /// <summary>The width of the hyphen a soft hyphen shows at a line's end, in the run's style.</summary>
+    static double HyphenWidth(RunStyle style) =>
+        style.Font.Data.GlyphsWithFeatures("-", style.Features, language: style.Language).Sum(g => g.Advance) * style.Size * style.Scale + style.Spacing;
+
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
     static double[] Advances(string text, List<RunStyle> charStyles)
     {
@@ -887,13 +894,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             if (i > pieceStart && text[pieceStart] is not ('\t' or '\n' or '\f' or '\v'))
             {
+                // A soft hyphen where the line breaks shows as a hyphen (measured with docx/local/run-content).
+                var hyphen = i == end && end < text.Length && text[end - 1] == '\u00AD';
+                var pieceAdvances = advances[pieceStart..i];
+                if (hyphen)
+                    pieceAdvances[^1] = HyphenWidth(charStyles[end - 1]);
                 var piece = new Piece
                 {
-                    Text = text[pieceStart..i],
+                    Text = hyphen ? text[pieceStart..(i - 1)] + "-" : text[pieceStart..i],
                     Style = charStyles[pieceStart],
                     X = x,
                     Start = pieceStart,
-                    Advances = advances[pieceStart..i],
+                    Advances = pieceAdvances,
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
                     Equation = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var math) ? math.Equation : null,

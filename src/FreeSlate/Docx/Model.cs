@@ -626,9 +626,36 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (!field.Hidden)
                         field.Target(content).Add(new BreakInline("textWrapping", null, format));
                     break;
-                case "noBreakHyphen":
+                case "dayShort" or "dayLong" or "monthShort" or "monthLong" or "yearShort" or "yearLong":
+                    // Date blocks show today's date in the run's language, else the regional one: 11, Sonntag, 10,
+                    // Oktober, 26, 2026 (measured with docx/local/run-content).
                     if (!field.Hidden)
-                        field.Target(content).Add(new TextInline("‑", format));
+                    {
+                        var culture = context.Culture;
+                        try
+                        {
+                            if (format.Language is { Length: > 0 } language)
+                                culture = System.Globalization.CultureInfo.GetCultureInfo(language);
+                        }
+                        catch (System.Globalization.CultureNotFoundException) { }
+                        var today = DateTime.Now;
+                        var shown = e.Name.LocalName switch
+                        {
+                            "dayShort" => today.Day.ToString(culture),
+                            "dayLong" => culture.DateTimeFormat.GetDayName(today.DayOfWeek),
+                            "monthShort" => today.Month.ToString(culture),
+                            "monthLong" => culture.DateTimeFormat.GetMonthName(today.Month),
+                            "yearShort" => (today.Year % 100).ToString("00", culture),
+                            _ => today.Year.ToString(culture),
+                        };
+                        field.Target(content).Add(new TextInline(shown, format));
+                    }
+                    break;
+                case "noBreakHyphen":
+                    // Word prints the font's own hyphen, which no line breaks after (a word joiner keeps it with the
+                    // next character; fonts such as Arial have no U+2011, measured with docx/local/run-content).
+                    if (!field.Hidden)
+                        field.Target(content).Add(new TextInline("-\u2060", format));
                     break;
                 case "softHyphen":
                     if (!field.Hidden)

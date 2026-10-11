@@ -51,7 +51,7 @@ public static class DocxConverter
     public static string ToHtml(string docxPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
         CultureInfo? culture = null)
     {
-        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts);
+        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture };
         var reader = new ModelReader(context);
         var blocks = reader.Body();
         var styles = new RunStyles(context);

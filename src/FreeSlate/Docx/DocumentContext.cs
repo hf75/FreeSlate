@@ -48,6 +48,9 @@ public sealed class DocumentContext : IDisposable
     public FontLocator FontLocator { get; }
     public FontResolver Fonts { get; }
 
+    /// <summary>The regional format for dates the document shows (date blocks, fields), the system's by default.</summary>
+    public System.Globalization.CultureInfo Culture { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
+
     /// <summary>The interval of the default tab stops in points (w:defaultTabStop, 720 twips when absent).</summary>
     public double DefaultTabStop { get; }
 
