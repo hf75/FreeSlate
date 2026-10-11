@@ -769,11 +769,25 @@ areas:
                    w:suppressAutoHyphens]
         priority: P1
         difficulty: 4
-        status: todo
+        status: done
         strategy: >-
           Automatic hyphenation per language with our own pattern-based hyphenator; which word breaks Word chooses
           with its proofing dictionaries is measured on generated documents. Soft and non-breaking hyphens are run
           content (run.content).
+        office: >-
+          Automatic hyphenation (w:autoHyphenation) by Liang's algorithm with the hyph-utf8 patterns of German
+          (reformed spelling) and American and British English, by the language of each word (w:lang, else the
+          document's culture), at least 2 letters before and 2 (German) or 3 (English) after a break;
+          w:suppressAutoHyphens turns it off for a paragraph, w:doNotHyphenateCaps for words in capitals,
+          w:consecutiveHyphenLimit limits the lines in a row that end with a hyphen. As Word breaks (measured with
+          docx/local/hyph-a to -d and hyph-fit, every line as in Word): the word that does not fit breaks at its last
+          place where its part and a hyphen fit; justified lines may squeeze their spaces by 23 % for it (Word takes
+          21.9 %, not 25.2 %); other lines break so only where they would end more than the hyphenation zone short:
+          0.25 in from Word 2013 on whatever w:hyphenationZone says (zones of 0, 0.25 and 1 in break alike),
+          w:hyphenationZone in older compatibility modes; a word longer than a line breaks at its last fitting place;
+          a line ending with a hyphen does not end a column or page. Known deviations: Word's own dictionaries may
+          allow other places than the patterns (it leaves un-characteristically whole); other languages are not
+          hyphenated.
 
       - id: paragraph.outline
         title: Outline levels and collapsed headings
@@ -2948,16 +2962,19 @@ areas:
         title: Line layout
         priority: P0
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           The text engine of pptx `engine.textLayout` (done) extended by Word's rules: line height from the font's
           metrics and line spacing, tabs, justification, East Asian grid and kinsoku, hyphenation, inline objects,
           lines shortened by floating objects.
         office: >-
           Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between
-          characters; trailing spaces hang past the end. Glyphs are drawn as browser text at positions from our
-          layout; Word's PDF and ours go through the same rasterizer, so equal positions give equal pixels. Still
-          open: hyphenation, East Asian grid and compression rules.
+          characters; trailing spaces hang past the end; justified lines squeeze spaces by up to a fifth for one more
+          word (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
+          snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
+          Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same
+          rasterizer, so equal positions give equal pixels. Punctuation compression changed nothing in Word's printout
+          (docx/local/ec-*).
 
       - id: engine.floats
         title: Floating objects and text wrapping
