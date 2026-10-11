@@ -151,13 +151,16 @@ public readonly record struct LineSlot(double Offset, double Height, double Text
 /// </summary>
 public sealed record PageFields(int Page, string PageFormat, int Pages, int SectionPages)
 {
+    /// <summary>The chapter number and its separator before page numbers (w:pgNumType w:chapStyle), or "".</summary>
+    public string Chapter { get; init; } = "";
+
     /// <summary>The field's result here, or null for fields the layout does not compute.</summary>
     public string? Value(FieldInline field)
     {
         var format = NumberText.FieldFormat(field.NumberFormat);
         return field.Type switch
         {
-            "PAGE" => NumberText.Format(Page, format ?? PageFormat),
+            "PAGE" => Chapter + NumberText.Format(Page, format ?? PageFormat),
             "NUMPAGES" => NumberText.Format(Pages, format),
             "SECTIONPAGES" => NumberText.Format(SectionPages, format),
             _ => null,

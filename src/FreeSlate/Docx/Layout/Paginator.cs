@@ -23,6 +23,12 @@ public sealed class PageBox
     /// <summary>The footnotes that begin on the page, in the order of their references.</summary>
     public List<string> Footnotes { get; } = [];
 
+    /// <summary>The number of the last chapter heading on the page or before it (section.pageNumbers), or "".</summary>
+    public string Chapter { get; set; } = "";
+
+    /// <summary>What PAGE fields put before the page number: the chapter number and its separator, or "".</summary>
+    public string ChapterPrefix => Section.ChapterLevel != null && Chapter.Length > 0 ? Chapter + Section.ChapterSeparator : "";
+
     /// <summary>The height of the footnotes of a page of several columns, which their text must leave free.</summary>
     public double NoteBand { get; set; }
     public List<PlacedLine> Lines { get; } = [];
@@ -631,7 +637,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var sectionPages = pages.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).ToDictionary(g => g.Key, g => g.Count());
             foreach (var p in pages)
             {
-                var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex));
+                var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex)) { Chapter = p.ChapterPrefix };
                 if (p.Header != null)
                     Story(p.Header, p, fields, header: true).AddTo(p);
                 if (p.Footer != null)
@@ -643,6 +649,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>The first section whose endnotes are still to come.</summary>
     int endnotesFrom;
+
+    /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
+    string chapter = "";
 
     void StartSection(SectionProperties properties, bool first)
     {
@@ -706,6 +715,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             SectionIndex = sectionIndex,
             FirstOfSection = firstOfSection,
             Blank = blank,
+            Chapter = chapter,
             Header = reader != null && !blank ? properties.Headers.GetValueOrDefault(type) : null,
             Footer = reader != null && !blank ? properties.Footers.GetValueOrDefault(type) : null,
             TextLeft = left,
@@ -1609,6 +1619,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y) { Numbered = format.SuppressLineNumbers != true });
+            // A chapter heading numbers its page and the pages after it (measured with docx/local/chapter: a page with
+            // the end of one chapter and the start of the next has the next's number).
+            if (k == 0 && paragraph.Label is { Own.Length: > 0 } chapterLabel && section.ChapterLevel is { } chapterLevel && format.OutlineLevel == chapterLevel - 1)
+                page.Chapter = chapter = chapterLabel.Own;
             here++;
             y += line.Height;
             columnEmpty = false;

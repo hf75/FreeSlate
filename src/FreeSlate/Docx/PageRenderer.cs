@@ -126,7 +126,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         // The insets count from the geometry's text rectangle (rounded corners, ellipses).
         var (gl, gt, gr, gb) = shape != null ? Drawings.ShapeTextRect(shape, w, h) : default;
         (l, t, r, b) = (l + gl, t + gt, r + gr, b + gb);
-        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0);
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
         var (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, w - l - r), fields);
         var free = h - t - b - height;
         var top = y + t + ((string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 });

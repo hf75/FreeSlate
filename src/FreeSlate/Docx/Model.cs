@@ -128,6 +128,13 @@ public sealed class SectionProperties
     public int? PageNumberStart;
     public string PageNumberFormat = "decimal";
 
+    /// <summary>
+    /// Chapter numbers before page numbers (w:pgNumType w:chapStyle, w:chapSep): the heading level whose number they
+    /// show, or null, and the separator.
+    /// </summary>
+    public int? ChapterLevel;
+    public string ChapterSeparator = "-";
+
     /// <param name="resolve">Finds the part a relationship id of the main document points to.</param>
     public static SectionProperties Read(XElement? sectPr, Func<string, string?>? resolve = null)
     {
@@ -146,6 +153,11 @@ public sealed class SectionProperties
         var numbering = sectPr.Child("pgNumType");
         s.PageNumberStart = (int?)numbering.Number("start");
         s.PageNumberFormat = numbering.Attr("fmt") ?? "decimal";
+        s.ChapterLevel = (int?)numbering.Number("chapStyle") is { } chapter and >= 1 and <= 9 ? chapter : null;
+        s.ChapterSeparator = numbering.Attr("chapSep") switch
+        {
+            "period" => ".", "colon" => ":", "emDash" => "\u2014", "enDash" => "\u2013", _ => "-",
+        };
         var size = sectPr.Child("pgSz");
         s.PageWidth = size.Twips("w") ?? s.PageWidth;
         s.PageHeight = size.Twips("h") ?? s.PageHeight;
@@ -563,7 +575,7 @@ public sealed partial class ModelReader(DocumentContext context)
             levelRun.Apply(next.Level.RunProperties);
             var numberFormat = mark.Clone();
             numberFormat.Overlay(levelRun);
-            label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level);
+            label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level) { Own = next.Own };
         }
         // The margins of the HTML divisions around the paragraph add to its indents (catalog: paragraph.htmlDivs).
         if (context.Divs.Chain(format.DivId) is { Count: > 0 } divs)

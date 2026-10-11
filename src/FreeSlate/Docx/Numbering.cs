@@ -54,7 +54,11 @@ public sealed class NumberingLevel
 }
 
 /// <summary>A paragraph's number: its text, the formatting it is drawn with, what follows it and how it aligns.</summary>
-public sealed record ListLabel(string Text, RunFormat Format, string Suffix, string Justification, NumberingLevel Level);
+public sealed record ListLabel(string Text, RunFormat Format, string Suffix, string Justification, NumberingLevel Level)
+{
+    /// <summary>The number of the label's own level in its format, without the text around it (a chapter's number).</summary>
+    public string Own { get; init; } = "";
+}
 
 /// <summary>
 /// The numbering part (catalog: numbering.definitions): abstract numbering definitions with their nine levels,
@@ -175,8 +179,11 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     readonly Dictionary<string, Counters> lists = new(StringComparer.Ordinal);
     readonly HashSet<string> started = new(StringComparer.Ordinal);
 
-    /// <summary>The number of the next paragraph of a numbering instance at a level, or null where it has none.</summary>
-    public (string Text, NumberingLevel Level)? Next(string? numId, int ilvl)
+    /// <summary>
+    /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
+    /// where it has none.
+    /// </summary>
+    public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl)
     {
         if (definitions.Find(numId) is not { } instance)
             return null;
@@ -206,7 +213,8 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             if (restart == null || restart > 0 && ilvl < restart)
                 counters.Used[d] = false;
         }
-        return (Text(instance, counters, ilvl, level), level);
+        var own = level.Format is "none" or "bullet" ? "" : NumberText.Format(counters.Values[ilvl], level.Legal ? "decimal" : level.Format);
+        return (Text(instance, counters, ilvl, level), level, own);
     }
 
     static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level)
