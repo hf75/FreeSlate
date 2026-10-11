@@ -677,6 +677,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         columnTop = y;
         columnEmpty = true;
         flow.Clear();
+        if (!blank)
+            ContinueNotes();
     }
 
     /// <summary>
@@ -815,14 +817,62 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return (left + index * (width + s.ColumnSpace), width);
     }
 
-    /// <summary>Where the body text ends: above the footnotes the page holds.</summary>
-    double Bottom => page!.BodyBottom - notesHeight;
+    /// <summary>Where the body text ends: above the footnotes the page holds, or where a note continued past it filled it.</summary>
+    double Bottom => Math.Min(page!.BodyBottom - notesHeight, bodyEnd ?? double.MaxValue);
 
     Dictionary<string, List<Block>>? footnotes;
 
     /// <summary>The footnotes referenced on the current page and the height they take (with the separator).</summary>
     readonly List<string> pageNotes = [];
     double notesHeight;
+
+    /// <summary>
+    /// A note split at the bottom of the current page: its id and the part shown here; what continues of it (and of
+    /// the notes after it on its line) on the next page; the part of such a continuation the current page shows; and
+    /// where the body text had to end once the note filled the page.
+    /// </summary>
+    (string Id, NoteBox Shown)? splitNote;
+    NoteBox? carried, carriedHere;
+    double? bodyEnd;
+
+    /// <summary>A footnote (or a separator) laid out in a width: its lines and fills from its top, and its height.</summary>
+    sealed record NoteBox(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height)
+    {
+        /// <summary>
+        /// The note cut where <paramref name="room"/> points end, between lines: the lines that end within them, and the
+        /// rest moved up to begin at the top; no part shown where not even the first line fits, no rest where all fit.
+        /// </summary>
+        public (NoteBox? Shown, NoteBox? Remainder) Cut(double room)
+        {
+            if (Height <= room + 0.01)
+                return (this, null);
+            var cut = Lines.Select(l => l.Top).Where(t => t > 0.01 && Lines.Where(l => l.Top < t - 0.01).All(l => l.Top + l.Line.Height <= room + 0.01))
+                .DefaultIfEmpty(0).Max();
+            if (cut <= 0.01)
+                return (null, this);
+            var shown = Lines.Where(l => l.Top < cut - 0.01).ToList();
+            return (new NoteBox(shown, Fills.Where(f => f.Y < cut).ToList(), Strokes.Where(s => s.Y1 < cut).ToList(), shown.Max(l => l.Top + l.Line.Height)),
+                new NoteBox(Lines.Where(l => l.Top >= cut - 0.01).Select(l => l with { Top = l.Top - cut }).ToList(),
+                    Fills.Where(f => f.Y >= cut).Select(f => f with { Y = f.Y - cut }).ToList(),
+                    Strokes.Where(s => s.Y1 >= cut).Select(s => s.Offset(0, -cut)).ToList(), Height - cut));
+        }
+    }
+
+    readonly Dictionary<(string, double), NoteBox> noteBoxes = [];
+
+    /// <summary>A footnote laid out in the current page's text width.</summary>
+    NoteBox Note(string id)
+    {
+        var width = page!.TextWidth;
+        if (noteBoxes.TryGetValue((id, width), out var box))
+            return box;
+        var (lines, fills, strokes, height) = footnotes != null && footnotes.TryGetValue(id, out var blocks)
+            ? tables.Blocks(blocks, width, null) : ([], [], [], 0);
+        return noteBoxes[(id, width)] = new NoteBox(lines, fills, strokes, height);
+    }
+
+    /// <summary>The separator above the first footnote of a page.</summary>
+    double SeparatorHeight => footnotes != null && footnotes.ContainsKey("separator") ? Note("separator").Height : 0;
 
     /// <summary>
     /// The height footnotes need below the text (catalog: note.footnotes): their content in the text width, and the
@@ -832,43 +882,104 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (ids == null || footnotes == null || page == null)
             return 0;
-        var height = 0.0;
-        foreach (var id in ids)
-        {
-            if (footnotes.TryGetValue(id, out var blocks))
-                height += tables.Blocks(blocks, page.TextWidth, null).Height;
-        }
-        if (height > 0 && pageNotes.Count == 0 && footnotes.TryGetValue("separator", out var separator))
-            height += tables.Blocks(separator, page.TextWidth, null).Height;
+        var height = ids.Where(footnotes.ContainsKey).Sum(id => Note(id).Height);
+        if (height > 0 && pageNotes.Count == 0 && carriedHere == null)
+            height += SeparatorHeight;
         return height;
+    }
+
+    /// <summary>Takes the notes of a line or row onto the current page.</summary>
+    void AddNotes(IEnumerable<string>? ids)
+    {
+        if (ids == null || footnotes == null)
+            return;
+        var added = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
+        notesHeight += NotesHeight(added);
+        pageNotes.AddRange(added);
+    }
+
+    /// <summary>The height of the current page's notes again, after notes left it.</summary>
+    void RecountNotes()
+    {
+        var kept = pageNotes.ToList();
+        pageNotes.Clear();
+        notesHeight = carriedHere != null ? SeparatorHeight + carriedHere.Height : 0;
+        notesHeight += NotesHeight(kept);
+        pageNotes.AddRange(kept);
+        if (splitNote is { } split)
+            notesHeight -= Note(split.Id).Height - split.Shown.Height;
+    }
+
+    /// <summary>
+    /// A line whose notes do not fit below it with the text above (measured with docx/local/fnpages-a and -d): it
+    /// stays on the page where its notes but the last fit and the last shows a line at least; that note shows as many
+    /// lines as the page holds, the rest continues on the next page under the separator before that page's own
+    /// notes, and the page takes no more text.
+    /// </summary>
+    bool SplitNotes(List<string> ids, double room)
+    {
+        if (footnotes == null)
+            return false;
+        ids = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
+        if (ids.Count == 0)
+            return false;
+        room -= pageNotes.Count == 0 && carriedHere == null ? SeparatorHeight : 0;
+        var whole = ids.Take(ids.Count - 1).Sum(id => Note(id).Height);
+        if (whole > room + 0.01)
+            return false;
+        var (shown, rest) = Note(ids[^1]).Cut(room - whole);
+        if (shown == null || rest == null)
+            return false;
+        AddNotes(ids);
+        splitNote = (ids[^1], shown);
+        notesHeight -= Note(ids[^1]).Height - shown.Height;
+        carried = rest;
+        return true;
     }
 
     /// <summary>The current page's footnotes at its bottom, above the bottom margin, under their separator.</summary>
     void PlaceNotes()
     {
-        if (page == null || pageNotes.Count == 0 || footnotes == null)
+        if (page == null || pageNotes.Count == 0 && carriedHere == null || footnotes == null)
         {
             pageNotes.Clear();
             notesHeight = 0;
+            (splitNote, carriedHere, bodyEnd) = (null, null, null);
             return;
         }
-        var top = page.BodyBottom - notesHeight;
-        var blocks = new List<Block>();
-        if (footnotes.TryGetValue("separator", out var separator))
-            blocks.AddRange(separator);
-        foreach (var id in pageNotes)
+        var at = page.BodyBottom - notesHeight;
+        void Put(NoteBox box)
         {
-            if (footnotes.TryGetValue(id, out var note))
-                blocks.AddRange(note);
+            foreach (var line in box.Lines)
+                page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = at + line.Top });
+            foreach (var fill in box.Fills)
+                page.Borders.Add(fill with { X = page.TextLeft + fill.X, Y = at + fill.Y });
+            page.Strokes.AddRange(box.Strokes.Select(s => s.Offset(page.TextLeft, at)));
+            at += box.Height;
         }
-        var (lines, fills, strokes, _) = tables.Blocks(blocks, page.TextWidth, null);
-        foreach (var line in lines)
-            page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = top + line.Top });
-        foreach (var fill in fills)
-            page.Borders.Add(fill with { X = page.TextLeft + fill.X, Y = top + fill.Y });
-        page.Strokes.AddRange(strokes.Select(s => s.Offset(page.TextLeft, top)));
+        if (footnotes.ContainsKey("separator"))
+            Put(Note("separator"));
+        if (carriedHere != null)
+            Put(carriedHere);
+        foreach (var id in pageNotes)
+            Put(splitNote is { } split && split.Id == id ? split.Shown : Note(id));
         pageNotes.Clear();
         notesHeight = 0;
+        (splitNote, carriedHere, bodyEnd) = (null, null, null);
+    }
+
+    /// <summary>
+    /// The part of a note continued from the page before that a new page shows (Word's continuation separator prints as
+    /// its separator, measured with docx/local/fnpages-a and -d), leaving the text some room on pages it would fill.
+    /// </summary>
+    void ContinueNotes()
+    {
+        if (carried == null || page == null)
+            return;
+        var room = page.BodyBottom - page.BodyTop - SeparatorHeight - 36;
+        var (shown, rest) = carried.Cut(Math.Max(room, carried.Lines.Count > 0 ? carried.Lines[0].Line.Height : 0));
+        (carriedHere, carried) = (shown ?? carried, shown == null ? null : rest);
+        notesHeight = SeparatorHeight + carriedHere.Height;
     }
 
     void NextColumn(bool natural)
@@ -922,16 +1033,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             (left, width) = Column(column);
             tableTop = y;
         }
+        // Footnotes of a row's cells need room below it as a paragraph's do.
+        List<string> NotesOf(RowBox row) => row.Lines.SelectMany(l => l.Line.Notes ?? []).ToList();
         for (var r = 0; r < box.Rows.Count; r++)
         {
             var row = box.Rows[r];
-            while (y + row.Height > Bottom + 0.01)
+            while (y + row.Height > Bottom - NotesHeight(NotesOf(row)) + 0.01)
             {
                 // A row that does not fit splits at a line of each cell (unless it may not split, measured with
                 // docx/local/tbl-autofit), else moves on; a row taller than a page that cannot split overflows.
                 if (Bottom - y > row.TopWidth + 1 && row.Split(Bottom - y) is { } parts)
                 {
                     PlaceRow(parts.Head, left);
+                    AddNotes(NotesOf(parts.Head));
                     last = parts.Head;
                     row = parts.Tail;
                 }
@@ -948,6 +1062,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
             }
             PlaceRow(row, left);
+            AddNotes(NotesOf(row));
             last = row;
         }
         // A table that another table follows directly continues in it: Word joins them, one line between (measured
@@ -1304,9 +1419,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         for (var k = 0; k < lines.Count; k++)
         {
             var line = lines[k];
-            // A line with footnote references needs room for their notes too.
+            // A line with footnote references needs room for their notes too; a note too long for the rest of the page
+            // continues on the next.
             var notesNeeded = NotesHeight(line.Notes);
-            if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
+            var split = false;
+            if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + line.FitHeight <= Bottom + 0.01
+                && SplitNotes(line.Notes!, Bottom - y - line.FitHeight))
+                split = true;
+            else if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -1325,16 +1445,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         for (var m = k - back; m < k; m++)
                         {
                             foreach (var id in lines[m].Notes ?? [])
+                            {
                                 pageNotes.Remove(id);
+                                if (splitNote?.Id == id)
+                                    (splitNote, carried, bodyEnd) = (null, null, null);
+                            }
                         }
-                        notesHeight = 0;
-                        if (pageNotes.Count > 0)
-                        {
-                            var kept = pageNotes.ToList();
-                            pageNotes.Clear();
-                            notesHeight = NotesHeight(kept);
-                            pageNotes.AddRange(kept);
-                        }
+                        RecountNotes();
                         k -= back;
                         line = lines[k];
                     }
@@ -1357,11 +1474,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             here++;
             y += line.Height;
             columnEmpty = false;
-            if (line.Notes is { Count: > 0 } lineNotes && footnotes != null)
-            {
-                notesHeight += NotesHeight(lineNotes);
-                pageNotes.AddRange(lineNotes);
-            }
+            if (split)
+                bodyEnd = y;
+            else
+                AddNotes(line.Notes);
             if (line.EndBreak is "page")
             {
                 NewPage(section);
