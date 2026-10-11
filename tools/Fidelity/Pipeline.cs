@@ -3,6 +3,7 @@ using System.Diagnostics;
 using FreeSlate;
 using Fidelity.Compare;
 using Fidelity.Rendering;
+using Fidelity.Word;
 
 namespace Fidelity;
 
@@ -31,8 +32,7 @@ public static class Pipeline
         {
             if (Repo.IsDocument(deck))
             {
-                // catalog: engine.fidelity (docx). Word documents have references, not yet a renderer.
-                Console.WriteLine($"  skipped   {deck}: no DOCX renderer yet");
+                RenderDocument(browser, profiles, deck);
                 continue;
             }
             var reference = References.Load(deck);
@@ -73,6 +73,73 @@ public static class Pipeline
             });
             Console.WriteLine($"  rendered  {deck}: {slides} slides (convert {convertTime} ms, screenshots {watch.ElapsedMilliseconds - convertTime} ms)");
         }
+    }
+
+    /// <summary>
+    /// A Word document: converted with the engine, printed to PDF by the browser and rasterized by the same PDF renderer
+    /// as Word's reference (on Windows), so that both sides go through one rasterizer and the score measures the layout
+    /// and the drawing rather than two renderers' antialiasing; elsewhere, or with FIDELITY_DOCX_SCREENSHOTS=1, every
+    /// page is a screenshot at the size of Word's page (816 × 1056 for a letter page without reference).
+    /// </summary>
+    static void RenderDocument(Browser browser, ConcurrentBag<string> profiles, string deck)
+    {
+        var dir = OutputDir(deck);
+        Directory.CreateDirectory(dir);
+        foreach (var old in Directory.GetFiles(dir, "*.png"))
+            File.Delete(old);
+        var watch = Stopwatch.StartNew();
+        var htmlPath = Path.Combine(dir, "index.html");
+        try
+        {
+            // Printed on paper larger than the pages (browsers round paper sizes); the rasterizer cuts Word's page sizes out.
+            DocxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), paperExtra: 12);
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
+            Console.WriteLine($"  failed    {deck}: {e.GetType().Name}: {e.Message.Split('\n')[0].Trim()}");
+            return;
+        }
+        var convertTime = watch.ElapsedMilliseconds;
+        var pages = File.ReadAllText(htmlPath).Split("<section class=\"page ").Length - 1;
+        var url = new Uri(htmlPath).AbsoluteUri;
+        if (OperatingSystem.IsWindows() && Environment.GetEnvironmentVariable("FIDELITY_DOCX_SCREENSHOTS") != "1")
+        {
+            profiles.TryTake(out var profile);
+            try
+            {
+                var pdf = Path.Combine(dir, "ours.pdf");
+                browser.PrintToPdf(url, pdf, profile!);
+                var reference = References.DocumentPdf(deck);
+                var sizes = File.Exists(reference) ? new PdfText(reference).Pages.Select(p => (p.Width, p.Height)).ToList() : null;
+                PdfPages.Rasterize(pdf, dir, References.DocumentScale, sizes);
+            }
+            finally
+            {
+                profiles.Add(profile!);
+            }
+            Console.WriteLine($"  rendered  {deck}: {pages} pages (convert {convertTime} ms, print and rasterize {watch.ElapsedMilliseconds - convertTime} ms)");
+            return;
+        }
+        Parallel.For(1, pages + 1, new ParallelOptions { MaxDegreeOfParallelism = Parallelism }, i =>
+        {
+            var referencePage = Path.Combine(References.Dir(deck), References.ImageName(deck, i));
+            var (width, height) = (816, 1056);
+            if (File.Exists(referencePage) && SkiaSharp.SKCodec.Create(referencePage) is { } codec)
+            {
+                using (codec)
+                    (width, height) = (codec.Info.Width, codec.Info.Height);
+            }
+            profiles.TryTake(out var profile);
+            try
+            {
+                browser.Screenshot($"{url}#page-{i}", Path.Combine(dir, References.ImageName(deck, i)), width, height, profile!);
+            }
+            finally
+            {
+                profiles.Add(profile!);
+            }
+        });
+        Console.WriteLine($"  rendered  {deck}: {pages} pages (convert {convertTime} ms, screenshots {watch.ElapsedMilliseconds - convertTime} ms)");
     }
 
     public static List<DeckResult> Compare(IEnumerable<string> decks)

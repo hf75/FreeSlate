@@ -91,6 +91,44 @@ switch (command)
     case "fonts":
         EmbeddedFonts.Extract(decks);
         break;
+    case "font-metrics":
+        // Vertical metrics of fonts (hhea, OS/2 typo and win), in em.
+        WordMetrics.Metrics(rest.Select(f => f.Replace('_', ' ')));
+        break;
+    case "font-pairs":
+        // Kerning of character pairs in a font (first argument): GPOS and the legacy kern table.
+        WordMetrics.Pairs(rest[0], rest.Skip(1).Select(p => p.Replace('_', ' ')));
+        break;
+    case "word-lines":
+        // Our layout of Word documents line by line against Word's (--all: every line, not only those that differ).
+        WordLines.Compare(decks, args.Contains("--all"));
+        break;
+    case "word-glyphs":
+        // Which width rule Word follows: its glyph positions against our advances under several hypotheses.
+        WordMetrics.Glyphs(rest, args.Contains("--verbose"));
+        break;
+    case "pdf-text":
+        // Word's layout as its PDF export shows it (after `reference`): a row per line, --glyphs a row per glyph.
+        foreach (var name in rest)
+        {
+            var pdf = name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? name : References.DocumentPdf(name);
+            var layout = new PdfText(pdf);
+            Console.WriteLine($"{name}: {string.Join(", ", layout.Pages.Select(p => $"page {p.Number} {p.Width:0.###}×{p.Height:0.###}"))}");
+            foreach (var line in layout.Lines())
+            {
+                var (first, last) = (line[0], line[^1]);
+                var fonts = string.Join(", ", line.Select(g => $"{g.Font} {g.Size:0.##}").Distinct());
+                Console.WriteLine($"  p{first.Page} y={first.Y,8:0.000} x={first.X,8:0.000}..{last.X + last.Advance,8:0.000}  {fonts}  {string.Concat(line.Select(g => g.Text))}");
+                if (args.Contains("--glyphs"))
+                {
+                    foreach (var g in line)
+                        Console.WriteLine($"      {g.X,9:0.000} {g.Advance,7:0.000} {g.Code,5} {g.Text}");
+                }
+            }
+            foreach (var r in layout.Rects.Where(r => r.Width < 500 || r.Height < 500))
+                Console.WriteLine($"  rect p{r.Page} x={r.X:0.000} y={r.Y:0.000} w={r.Width:0.000} h={r.Height:0.000} {(r.Filled ? "fill" : "stroke")} {r.Color}");
+        }
+        break;
     case "jxr":
         JpegXrCheck.Run(rest.FirstOrDefault() ?? ".");
         break;
@@ -123,6 +161,7 @@ switch (command)
               transitions [deck…]  compare the player's slide transitions with PowerPoint's videos
               transitions-reference [deck…]  sample PowerPoint's videos of the transitions (Windows, ffmpeg); --force
               fonts [deck…]        write the decks' embedded fonts as TrueType files to artifacts/fidelity/fonts
+              pdf-text [doc…]      the lines (--glyphs: glyphs) of Word's PDF export of documents, as Word laid them out
               jxr <dir>            decode every .jxr in a directory and compare it with the .png next to it
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)

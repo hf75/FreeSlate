@@ -184,7 +184,7 @@ public static class PptxConverter
     /// @font-face rules for used fonts that the browser cannot find by name: the fonts the presentation embeds
     /// (catalog: text.embeddedFonts) and fonts that are not installed, such as Office cloud fonts.
     /// </summary>
-    static string FontFaces(IEnumerable<string> families, FontLocator fonts)
+    internal static string FontFaces(IEnumerable<string> families, FontLocator fonts)
     {
         var css = new StringBuilder();
         foreach (var family in families.Order(StringComparer.OrdinalIgnoreCase))

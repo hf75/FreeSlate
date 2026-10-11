@@ -62,4 +62,38 @@ public sealed class Browser(string executable)
         if (!File.Exists(pngPath))
             throw new InvalidOperationException($"Browser produced no screenshot for {url}");
     }
+
+    /// <summary>Prints the page to PDF as the browser prints it (its @page rules decide the paper), without header and footer.</summary>
+    public void PrintToPdf(string url, string pdfPath, string profileDirectory)
+    {
+        Directory.CreateDirectory(profileDirectory);
+        if (File.Exists(pdfPath))
+            File.Delete(pdfPath);
+        var info = new ProcessStartInfo(Executable)
+        {
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            CreateNoWindow = true,
+        };
+        foreach (var arg in new[]
+                 {
+                     "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--disable-extensions",
+                     "--no-pdf-header-footer", $"--user-data-dir={profileDirectory}", "--virtual-time-budget=5000",
+                     $"--print-to-pdf={pdfPath}", url,
+                 })
+        {
+            info.ArgumentList.Add(arg);
+        }
+        using var process = Process.Start(info)!;
+        process.StandardOutput.ReadToEndAsync();
+        process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(120_000))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"Browser did not finish printing: {url}");
+        }
+        if (!File.Exists(pdfPath))
+            throw new InvalidOperationException($"Browser produced no PDF for {url}");
+    }
 }

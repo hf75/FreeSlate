@@ -21,6 +21,8 @@ switch (command)
         break;
     case "features":
         return FeatureCommand.Run();
+    case "text" when args.Length == 3:
+        return SpecText.Print(args[1], args[2]);
     case "all":
         await Fetch.RunAsync();
         MsXsdExtractor.Run(NamespaceRegistry.Load());
@@ -34,6 +36,8 @@ switch (command)
               extract-xsd  extract the Office extension schemas from the MS-* PDFs to spec/ms-xsd
               catalog      build the section index and the format catalog in catalog/
               features     check the curated feature catalogs (catalog/features/*.yaml) and write their reports
+              text D S     print section S of document D (ECMA-376-1, ECMA-376-4, MS-OI29500 …); for MS-OI29500 S
+                           may be the ISO/IEC 29500 section the notes are about
               all          all of the above
             """);
         break;

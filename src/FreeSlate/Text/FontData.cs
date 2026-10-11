@@ -372,6 +372,74 @@ public sealed class FontData : IDisposable
         return result;
     }
 
+    /// <summary>
+    /// The glyphs of <paramref name="text"/> shaped with exactly the OpenType features given ("kern", "-liga", …), in
+    /// logical order for left-to-right text; advances and offsets in em include what GPOS positioning adds, Kerning
+    /// stays 0. Word chooses its features itself (kerning by size, ligatures and contextual alternates by the run's
+    /// settings), unlike PowerPoint (<see cref="Glyphs"/>).
+    /// </summary>
+    public ShapedGlyph[] GlyphsWithFeatures(string text, IReadOnlyList<string> features, bool rightToLeft = false, string? language = null)
+    {
+        if (text.Length == 0)
+            return [];
+        var parsed = features.Select(f => Feature.TryParse(f, out var feature) ? feature : throw new ArgumentException(f)).ToArray();
+        List<string> pieces = rightToLeft ? [text] : Scripts.Split(text).Select(p => p.Text).ToList();
+        var result = new List<ShapedGlyph>();
+        var offset = 0;
+        foreach (var piece in pieces)
+        {
+            using var buffer = new Buffer();
+            buffer.AddUtf16(piece);
+            buffer.GuessSegmentProperties();
+            if (rightToLeft)
+                buffer.Direction = Direction.RightToLeft;
+            if (language != null)
+                buffer.Language = new Language(language);
+            font.Shape(buffer, parsed);
+            var infos = buffer.GlyphInfos;
+            var positions = buffer.GlyphPositions;
+            for (var i = 0; i < infos.Length; i++)
+            {
+                var advance = (double)positions[i].XAdvance / UnitsPerEm + (positions[i].XAdvance != 0 ? advanceExtra : 0);
+                result.Add(new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster + offset, advance, 0,
+                    (double)positions[i].XOffset / UnitsPerEm, (double)positions[i].YOffset / UnitsPerEm));
+            }
+            offset += piece.Length;
+        }
+        return result.ToArray();
+    }
+
+    /// <summary>The kerning of a glyph pair in the legacy 'kern' table in em, 0 when there is none.</summary>
+    public double LegacyKerning(uint left, uint right) =>
+        kerningPairs != null && kerningPairs.TryGetValue(left << 16 | right & 0xFFFF, out var value) ? (double)value / UnitsPerEm : 0;
+
+    /// <summary>The line metrics of the hhea table in em: ascender, descender (positive below) and line gap.</summary>
+    public (double Ascender, double Descender, double LineGap) Hhea
+    {
+        get
+        {
+            var hhea = Table("hhea");
+            return hhea == null || hhea.Length < 10
+                ? (Ascent, Descent, LineGap)
+                : (BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(4)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(6)) / (double)UnitsPerEm,
+                    BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(8)) / (double)UnitsPerEm);
+        }
+    }
+
+    /// <summary>The OS/2 typographic metrics in em (ascender, descender positive below, line gap) and whether USE_TYPO_METRICS is set.</summary>
+    public (double Ascender, double Descender, double LineGap, bool Use)? Typo
+    {
+        get
+        {
+            var os2 = Table("OS/2");
+            if (os2 == null || os2.Length < 78)
+                return null;
+            var selection = BinaryPrimitives.ReadUInt16BigEndian(os2.AsSpan(62));
+            return (BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(68)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(70)) / (double)UnitsPerEm,
+                BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(72)) / (double)UnitsPerEm, (selection & 0x80) != 0);
+        }
+    }
+
     /// <summary>The outline of a glyph as SVG path data in font units, y down; "" for glyphs without contours.</summary>
     public string Outline(uint glyph) => outlines.GetOrAdd(glyph, g => GlyphOutlines.Draw(font, g));
 

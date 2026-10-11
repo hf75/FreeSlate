@@ -12,8 +12,11 @@ public static class PdfPages
 {
     static string Script => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "rasterize-pdf.ps1");
 
-    /// <summary>Writes page-001.png, page-002.png … at 96 dpi times <paramref name="scale"/>; returns the files in page order.</summary>
-    public static List<string> Rasterize(string pdf, string outputDir, double scale = 1)
+    /// <summary>
+    /// Writes page-001.png, page-002.png … at 96 dpi times <paramref name="scale"/>; returns the files in page order.
+    /// With <paramref name="sizes"/> (points) page i is cut to that size from its top left.
+    /// </summary>
+    public static List<string> Rasterize(string pdf, string outputDir, double scale = 1, IReadOnlyList<(double Width, double Height)>? sizes = null)
     {
         Directory.CreateDirectory(outputDir);
         var info = new ProcessStartInfo("powershell.exe")
@@ -28,6 +31,7 @@ public static class PdfPages
                      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", Script,
                      "-Pdf", Path.GetFullPath(pdf), "-Out", Path.GetFullPath(outputDir),
                      "-Scale", scale.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                     "-Sizes", string.Join(',', (sizes ?? []).Select(s => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{s.Width}x{s.Height}"))),
                  })
         {
             info.ArgumentList.Add(arg);

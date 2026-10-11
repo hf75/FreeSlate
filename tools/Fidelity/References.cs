@@ -34,6 +34,12 @@ public static class References
     /// <summary>The file name of the reference image (and of our screenshot) of slide or page <paramref name="number"/>.</summary>
     public static string ImageName(string deck, int number) => Repo.IsDocument(deck) ? $"page-{number:000}.png" : $"slide-{number:000}.png";
 
+    /// <summary>
+    /// Pixels per CSS pixel at which Word documents are rasterized (1 = 96 dpi): Word's PDF and ours both go through
+    /// Windows' PDF renderer, so that text drawn at the same positions gives the same pixels.
+    /// </summary>
+    public const double DocumentScale = 1;
+
     /// <summary>Word's PDF export of a document, kept for measuring (not committed: it embeds font subsets).</summary>
     public static string DocumentPdf(string deck) => Path.Combine(Repo.Artifacts, deck, "reference.pdf");
 
@@ -161,7 +167,7 @@ public static class References
         try
         {
             var pages = word.ExportPdf(source, pdf, password);
-            var files = PdfPages.Rasterize(pdf, dir);
+            var files = PdfPages.Rasterize(pdf, dir, DocumentScale);
             if (files.Count == 0)
             {
                 Console.WriteLine($"  skipped     {deck} (no pages)");
