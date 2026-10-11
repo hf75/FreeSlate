@@ -751,6 +751,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         void AddText(string value, RunFormat format, string? link = null)
         {
+            // Medium and high kashida justification lengthen every Arabic word by two or three kashidas.
+            if (paragraph.Format.Justification is "mediumKashida" or "highKashida")
+                value = Kashidas(value, paragraph.Format.Justification == "mediumKashida" ? 2 : 3);
             if (link != null)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true)
@@ -1346,6 +1349,65 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             line.Height += line.RaisedAbove + line.LoweredBelow;
             line.Baseline += line.RaisedAbove;
         }
+    }
+
+    /// <summary>
+    /// Arabic words lengthened by kashidas (U+0640) for medium and high kashida justification (w:jc mediumKashida,
+    /// highKashida; catalog: paragraph.basic), as Word inserts them (measured with docx/local/kashida: two or three
+    /// in every word, the lines breaking with them): at one place a word joins, chosen by the priorities of Arabic
+    /// justification: after seen or sad, before a final teh marbuta, heh or dal, before a final alef, tah, lam or
+    /// kaf, before a medial beh, before a final waw, ain, qaf or feh, before any other final letter; the last such
+    /// place of a word where several have the same priority.
+    /// </summary>
+    static string Kashidas(string value, int count)
+    {
+        static bool Arabic(char c) => c is >= '\u0620' and <= '\u06FF' && CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark;
+        static bool RightJoining(char c) => c is '\u0622' or '\u0623' or '\u0624' or '\u0625' or '\u0627' or '\u0629' or '\u062F' or '\u0630'
+            or '\u0631' or '\u0632' or '\u0648' or '\u0671' or '\u0672' or '\u0673' or '\u0675' or '\u0676' or '\u0677'
+            or >= '\u0688' and <= '\u0699' or '\u06C0' or >= '\u06C3' and <= '\u06CB' or '\u06CD' or '\u06CF' or '\u06D2'
+            or '\u06D3' or '\u06D5' or '\u06EE' or '\u06EF';
+        static bool Joins(char c) => Arabic(c) && c is not ('\u0621' or '\u0674' or '\u06DD');
+        static bool JoinsLeft(char c) => Joins(c) && !RightJoining(c);
+        if (!value.Any(Arabic))
+            return value;
+        var sb = new StringBuilder(value.Length + 16);
+        var start = 0;
+        while (start < value.Length)
+        {
+            var end = start;
+            while (end < value.Length && !char.IsWhiteSpace(value[end]))
+                end++;
+            // The letters of the word (marks stay with theirs).
+            var letters = Enumerable.Range(start, end - start).Where(i => Joins(value[i])).ToList();
+            var (best, at) = (int.MaxValue, -1);
+            for (var k = 0; k + 1 < letters.Count; k++)
+            {
+                var (a, b) = (value[letters[k]], value[letters[k + 1]]);
+                if (letters[k + 1] - letters[k] > 1 && Enumerable.Range(letters[k] + 1, letters[k + 1] - letters[k] - 1).Any(i => !char.IsWhiteSpace(value[i]) && CharUnicodeInfo.GetUnicodeCategory(value[i]) != UnicodeCategory.NonSpacingMark))
+                    continue;
+                if (!JoinsLeft(a) || a == '\u0644' && b is '\u0622' or '\u0623' or '\u0625' or '\u0627')
+                    continue;
+                var final = RightJoining(b) || k + 2 >= letters.Count;
+                var priority = a is '\u0633' or '\u0634' or '\u0635' or '\u0636' ? 1
+                    : final && b is '\u0629' or '\u0647' or '\u062F' or '\u0630' ? 2
+                    : final && b is '\u0627' or '\u0622' or '\u0623' or '\u0625' or '\u0671' or '\u0637' or '\u0638' or '\u0644' or '\u0643' or '\u06A9' or '\u06AF' ? 3
+                    : !final && b is '\u0628' or '\u062A' or '\u062B' or '\u0646' or '\u064A' or '\u0626' or '\u067E' or '\u06CC' ? 4
+                    : final && b is '\u0648' or '\u0639' or '\u063A' or '\u0642' or '\u0641' ? 5
+                    : final ? 6 : int.MaxValue;
+                if (priority <= best && priority != int.MaxValue)
+                    (best, at) = (priority, letters[k + 1]);
+            }
+            for (var i = start; i < end; i++)
+            {
+                if (i == at)
+                    sb.Append('\u0640', count);
+                sb.Append(value[i]);
+            }
+            while (end < value.Length && char.IsWhiteSpace(value[end]))
+                sb.Append(value[end++]);
+            start = end;
+        }
+        return sb.ToString();
     }
 
     static bool Justified(ParagraphFormat format) =>

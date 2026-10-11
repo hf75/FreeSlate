@@ -1401,6 +1401,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
     }
 
+    /// <summary>
+    /// How far a paragraph with mirrored indents (w:mirrorIndents) moves on an even page: its left indent becomes the
+    /// inside one, its right the outside, the two trading places where page numbers are even; its lines break as they
+    /// would (measured with docx/local/mirror).
+    /// </summary>
+    double Mirror(ParagraphFormat format) =>
+        format.MirrorIndents == true && page!.DisplayNumber % 2 == 0 ? (format.Right ?? 0) - (format.Left ?? 0) : 0;
+
     void PlaceRow(RowBox row, double left)
     {
         var anchors = new List<CellAnchor>();
@@ -1600,7 +1608,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
-            page!.Lines.Add(new PlacedLine(line, left, y) { Numbered = format.SuppressLineNumbers != true });
+            page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y) { Numbered = format.SuppressLineNumbers != true });
             here++;
             y += line.Height;
             columnEmpty = false;
@@ -1630,7 +1638,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 y += frame.Bottom is { Visible: true } b ? b.Space + b.Total : 0;
             if (boxPage != page)
                 boxTop = page!.BodyTop;
-            frame.Draw(page!, left, width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
+            frame.Draw(page!, left + Mirror(format), width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
                 between: continues && boxPage == page ? betweenAt : null);
         }
         for (var d = divisions.Count - 1; d >= 0; d--)
