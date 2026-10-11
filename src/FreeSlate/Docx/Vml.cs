@@ -476,6 +476,9 @@ public static class Vml
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : null;
     }
 
+    /// <summary>A length of a VML style attribute in points (width, height …), or null.</summary>
+    public static double? StyleLength(string? style, string name) => Length(Style(style).GetValueOrDefault(name));
+
     static Dictionary<string, string> Style(string? style)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

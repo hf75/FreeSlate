@@ -66,12 +66,26 @@ public sealed class NumberingDefinitions
     readonly Dictionary<string, XElement> instances = new(StringComparer.Ordinal);
     readonly StyleSheet styles;
 
+    /// <summary>The pictures of picture bullets (w:numPicBullet) by id: a w:pict or w:drawing.</summary>
+    readonly Dictionary<string, XElement> pictures = new(StringComparer.Ordinal);
+
+    /// <summary>The numbering part, which the pictures' relationships belong to.</summary>
+    public string? Part { get; init; }
+
+    /// <summary>The picture (w:pict or w:drawing) of a picture bullet id, or null.</summary>
+    public XElement? PictureBullet(string id) => pictures.GetValueOrDefault(id);
+
     public NumberingDefinitions(XDocument? document, StyleSheet styles)
     {
         this.styles = styles;
         var root = document?.Root;
         if (root == null)
             return;
+        foreach (var bullet in root.Elements(Wml.W + "numPicBullet"))
+        {
+            if (bullet.Attr("numPicBulletId") is { } id && bullet.Elements().FirstOrDefault() is { } picture)
+                pictures.TryAdd(id, picture);
+        }
         foreach (var a in root.Elements(Wml.W + "abstractNum"))
         {
             if (a.Attr("abstractNumId") is { } id)

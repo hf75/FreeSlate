@@ -1,5 +1,6 @@
 using System.Text;
 using System.Globalization;
+using System.Xml.Linq;
 using FreeSlate.Text;
 
 namespace FreeSlate.Docx.Layout;
@@ -775,7 +776,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var labelLength = 0;
         if (paragraph.Label is { } label)
         {
-            AddText(label.Text, label.Format);
+            if (PictureBullet(label) is { } picture)
+            {
+                objects[text.Length] = picture;
+                text.Append('\uFFFC');
+                list.Add(styles.Style(label.Format, WordSlot.Ascii));
+            }
+            else
+                AddText(label.Text, label.Format);
             labelLength = text.Length;
             if (label.Suffix == "tab")
             {
@@ -793,6 +801,47 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The width of the hyphen a soft hyphen shows at a line's end, in the run's style.</summary>
     static double HyphenWidth(RunStyle style) =>
         style.Font.Data.GlyphsWithFeatures("-", style.Features, language: style.Language).Sum(g => g.Advance) * style.Size * style.Scale + style.Spacing;
+
+    /// <summary>
+    /// A picture bullet (w:lvlPicBulletId, catalog: numbering.pictureBullets) as an inline picture: about 2 pt less high
+    /// than the number's font size (0.996 × size − 1.97 pt), as wide as its aspect ratio makes it, standing on the
+    /// baseline where the number would (measured with docx/local/picture-bullets2: 8 to 48 pt make 6 to 45.85 pt
+    /// pictures); null without one.
+    /// </summary>
+    DrawingInline? PictureBullet(ListLabel label)
+    {
+        if (label.Level.PictureBullet is not { } id || context.Numbering.PictureBullet(id) is not { } picture || context.Numbering.Part is not { } part)
+            return null;
+        XNamespace v = "urn:schemas-microsoft-com:vml";
+        var embed = picture.Descendants(v + "imagedata").Select(i => (string?)i.Attribute(Wml.R + "id")).FirstOrDefault(r => r != null)
+                    ?? picture.Descendants(FreeSlate.Ns.A + "blip").Select(b => (string?)b.Attribute(Wml.R + "embed")).FirstOrDefault(r => r != null);
+        if (embed == null)
+            return null;
+        // The picture's aspect ratio from its VML style or its extent.
+        var aspect = 1.0;
+        if (picture.Descendants(v + "shape").FirstOrDefault()?.Attribute("style")?.Value is { } style
+            && Vml.StyleLength(style, "width") is { } sw && Vml.StyleLength(style, "height") is { } sh && sh > 0)
+            aspect = sw / sh;
+        else if (picture.Descendants(Drawings.Wp + "extent").FirstOrDefault() is { } extent
+            && double.TryParse((string?)extent.Attribute("cx"), System.Globalization.CultureInfo.InvariantCulture, out var cx)
+            && double.TryParse((string?)extent.Attribute("cy"), System.Globalization.CultureInfo.InvariantCulture, out var cy) && cy > 0)
+            aspect = cx / cy;
+        var height = Math.Max(1, 0.996 * styles.Style(label.Format, WordSlot.Ascii).Size - 1.97);
+        var (w, h) = ((long)Math.Round(height * aspect * 12700), (long)Math.Round(height * 12700));
+        var a = FreeSlate.Ns.A;
+        XNamespace pic = "http://schemas.openxmlformats.org/drawingml/2006/picture";
+        var drawing = new XElement(Drawings.Wp + "inline",
+            new XElement(Drawings.Wp + "extent", new XAttribute("cx", w), new XAttribute("cy", h)),
+            new XElement(Drawings.Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "Picture bullet")),
+            new XElement(a + "graphic", new XElement(a + "graphicData", new XAttribute("uri", pic.NamespaceName),
+                new XElement(pic + "pic",
+                    new XElement(pic + "nvPicPr", new XElement(pic + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")), new XElement(pic + "cNvPicPr")),
+                    new XElement(pic + "blipFill", new XElement(a + "blip", new XAttribute(Wml.R + "embed", embed)), new XElement(a + "stretch", new XElement(a + "fillRect"))),
+                    new XElement(pic + "spPr",
+                        new XElement(a + "xfrm", new XElement(a + "off", new XAttribute("x", 0), new XAttribute("y", 0)), new XElement(a + "ext", new XAttribute("cx", w), new XAttribute("cy", h))),
+                        new XElement(a + "prstGeom", new XAttribute("prst", "rect"), new XElement(a + "avLst")))))));
+        return new DrawingInline(drawing, part, label.Format);
+    }
 
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
     static double[] Advances(string text, List<RunStyle> charStyles)

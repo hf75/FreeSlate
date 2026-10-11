@@ -27,7 +27,7 @@ public sealed class DocumentContext : IDisposable
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
-        Numbering = new NumberingDefinitions(Related("numbering"), Styles);
+        Numbering = new NumberingDefinitions(Related("numbering"), Styles) { Part = Package.FirstRelationship(MainPart, "numbering")?.Target };
         FontTable = new FontTable(Related("fontTable"));
         DecimalSymbol = Settings.Child("decimalSymbol").Val() is { Length: > 0 } symbol ? symbol[0] : '.';
     }
