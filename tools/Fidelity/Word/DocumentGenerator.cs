@@ -49,6 +49,7 @@ public static partial class DocumentGenerator
         ("shapes-effects", ShapesAndTextEffects),
         ("revisions", Revisions),
         ("content-controls", ContentControls),
+        ("form-fields", FormFields),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

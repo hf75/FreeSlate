@@ -168,6 +168,19 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(placed.Top + placed.Line.Height / 2 - 0.3)}\" width=\"{Px(piece.Width)}\" height=\"{Px(0.6)}\" fill=\"#000\"/>");
                     continue;
                 }
+                // A check box form field: a square 2.28 pt smaller than its cell, 1.08 pt in from its left and bottom,
+                // crossed when checked, in 0.48 pt lines (measured with docx/local/form-boxes).
+                if (piece.CheckBox is { } box)
+                {
+                    var (_, boxBelow) = WordFonts.LineMetrics(piece.Style.Font.Data, box.Size ?? piece.Style.Size);
+                    var side = piece.Width - 2.28;
+                    var bottom = baseline + boxBelow - 1.08;
+                    var (bx, top) = (x + 1.08, bottom - side);
+                    svg.Append($"<rect x=\"{Px(bx)}\" y=\"{Px(top)}\" width=\"{Px(side)}\" height=\"{Px(side)}\" fill=\"none\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
+                    if (box.Checked)
+                        svg.Append($"<path d=\"M{Px(bx)} {Px(top)}L{Px(bx + side)} {Px(bottom)}M{Px(bx + side)} {Px(top)}L{Px(bx)} {Px(bottom)}\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
+                    continue;
+                }
                 // An equation: its glyphs and rules, its characters transparent on top for selection.
                 if (piece.Equation is { } equation)
                 {

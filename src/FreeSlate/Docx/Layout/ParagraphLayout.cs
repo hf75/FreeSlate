@@ -34,6 +34,9 @@ public sealed class Piece
     /// <summary>An equation the piece stands for (one object replacement character), or null.</summary>
     public Equations.Equation? Equation { get; init; }
 
+    /// <summary>A legacy check box form field the piece stands for, or null.</summary>
+    public CheckBoxInline? CheckBox { get; init; }
+
     /// <summary>Where a display equation's line stands from the paragraph's left indent (m:jc, m:wrapIndent), or null.</summary>
     public double? DisplayX { get; init; }
 
@@ -181,6 +184,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
 
+    /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
+    readonly Dictionary<int, CheckBoxInline> boxes = [];
+
+    /// <summary>
+    /// A check box form field's metrics: a character of the run's font at the box's size, its advance the font's line
+    /// height (measured with docx/local/form-boxes: Arial 8 to 36 pt and Aptos).
+    /// </summary>
+    (double Above, double Below) BoxMetrics(CheckBoxInline box) =>
+        styles.Style(box.Format, WordSlot.Ascii) is var style ? WordFonts.LineMetrics(style.Font.Data, box.Size ?? style.Size) : default;
+
     /// <summary>The equations of the paragraph being laid out, by their place in its text, display lines with their place.</summary>
     readonly Dictionary<int, (Equations.Equation Equation, double? DisplayX)> equations = [];
 
@@ -277,6 +290,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             advances[index] = drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
+        foreach (var (index, box) in boxes)
+            advances[index] = BoxMetrics(box) is var (a, b) ? a + b : 0;
         foreach (var (index, continuation) in separators)
             advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
@@ -580,6 +595,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
         objects.Clear();
+        boxes.Clear();
         equations.Clear();
         anchored.Clear();
         permissions.Clear();
@@ -682,6 +698,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case DrawingInline drawing:
                     objects[text.Length] = drawing;
+                    text.Append('\uFFFC');
+                    list.Add(styles.Style(format, WordSlot.Ascii));
+                    break;
+                case CheckBoxInline box:
+                    boxes[text.Length] = box;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
@@ -846,6 +867,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
                     Equation = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var math) ? math.Equation : null,
+                    CheckBox = text[pieceStart] == '\uFFFC' && boxes.TryGetValue(pieceStart, out var box) ? box : null,
                     DisplayX = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var display) ? display.DisplayX : null,
                     Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
                     Link = links.Count > 0 ? LinkAt(pieceStart) : null,
@@ -891,6 +913,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var drawings = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
+            // A check box form field stands like a character of its size.
+            if (piece.CheckBox is { } checkBox)
+            {
+                var (boxAbove, boxBelow) = BoxMetrics(checkBox);
+                above = Math.Max(above, boxAbove);
+                below = Math.Max(below, boxBelow);
+                raised = Math.Max(raised, boxAbove);
+                lowered = Math.Max(lowered, boxBelow);
+                largest = Math.Max(largest, boxAbove + boxBelow);
+                any = true;
+                continue;
+            }
             // An equation stands on the baseline with its ascent and descent; the line spacing's extra comes from the
             // fonts, the paragraph mark's where no text is beside it (measured with docx/local/eq-shaded: a display
             // equation's line is its ascent, its descent and the mark's extra high).

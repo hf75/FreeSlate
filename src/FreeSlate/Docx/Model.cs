@@ -24,6 +24,12 @@ public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inli
 /// <summary>Where a bookmark starts (w:bookmarkStart, catalog: field.bookmarks): an anchor in the HTML.</summary>
 public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format);
 
+/// <summary>
+/// A legacy check box form field (FORMCHECKBOX, catalog: field.forms): checked or not, its size in points (null: the
+/// run's font size).
+/// </summary>
+public sealed record CheckBoxInline(bool Checked, double? Size, RunFormat Format) : Inline(Format);
+
 /// <summary>The start or end of an editable range (w:permStart, w:permEnd, catalog: review.permissions).</summary>
 public sealed record PermissionInline(bool Start, RunFormat Format) : Inline(Format);
 
@@ -553,6 +559,22 @@ public sealed partial class ModelReader(DocumentContext context)
                     switch (e.Attr("fldCharType"))
                     {
                         case "begin":
+                            // Legacy form fields show their state: a check box drawn as a box, a drop-down its entry.
+                            if (e.Child("ffData") is { } form && !field.Hidden)
+                            {
+                                if (form.Child("checkBox") is { } box)
+                                {
+                                    var on = box.Child("checked") is { } c ? c.OnOff() ?? true : box.Child("default").Val() is "1" or "true" or "on";
+                                    field.Target(content).Add(new CheckBoxInline(on, box.Child("size").Number("val") is { } half ? half / 2 : null, format));
+                                }
+                                else if (form.Child("ddList") is { } list)
+                                {
+                                    var entries = list.Elements(Wml.W + "listEntry").Select(x => x.Val() ?? "").ToList();
+                                    var index = list.Child("result").Number("val") is { } chosen ? (int)chosen : list.Child("default").Number("val") is { } preset ? (int)preset : 0;
+                                    if (index >= 0 && index < entries.Count)
+                                        field.Target(content).Add(new TextInline(entries[index], format));
+                                }
+                            }
                             field.Frames.Push(new FieldState.Frame(format));
                             break;
                         case "separate" when field.Frames.Count > 0:

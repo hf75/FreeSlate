@@ -92,3 +92,35 @@ public static partial class DocumentGenerator
         document.ContentControls.Add(Repeating, section.Range);
     }
 }
+
+public static partial class DocumentGenerator
+{
+    /// <summary>Legacy form fields: check boxes (checked, unchecked, of a fixed size), text inputs and a drop-down.</summary>
+    static void FormFields(Writer w)
+    {
+        // WdFieldType
+        const int TextInput = 70, CheckBox = 71, DropDown = 83;
+        var document = w.Document;
+        w.Paragraph("Form fields", StyleHeading1);
+        dynamic Field(int type, string label)
+        {
+            var paragraph = w.Paragraph(label + " ");
+            var end = paragraph.Range;
+            end.MoveEnd(1, -1);
+            end.Collapse(0);
+            return document.FormFields.Add(end, type);
+        }
+        Field(CheckBox, "Unchecked box:");
+        Field(CheckBox, "Checked box:").CheckBox.Value = true;
+        var sized = Field(CheckBox, "Box of 16 pt:");
+        sized.CheckBox.AutoSize = false;
+        sized.CheckBox.Size = 16f;
+        sized.CheckBox.Value = true;
+        Field(TextInput, "Empty text input:");
+        Field(TextInput, "Filled text input:").Result = "Entered text";
+        var list = Field(DropDown, "Drop-down:");
+        list.DropDown.ListEntries.Add("First");
+        list.DropDown.ListEntries.Add("Second");
+        list.DropDown.Value = 2;
+    }
+}
