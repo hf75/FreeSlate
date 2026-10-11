@@ -1088,13 +1088,31 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>
     /// The bidirectional levels of a paragraph's text (UAX #9 through <see cref="Bidi.Levels"/>), or null where all of
     /// it reads left to right: the paragraph's direction (w:bidi) is the base, neutrals of right-to-left runs (w:rtl,
-    /// w:dir) read right to left, and runs inside a w:bdo take its direction whatever their characters.
+    /// w:dir) read right to left, and runs inside a w:bdo take its direction whatever their characters. In a
+    /// left-to-right paragraph right-to-left runs are embeddings of their own, reversed as a whole ("abc def!" in a
+    /// w:rtl run shows "!abc def", measured with docx/local/bidi).
     /// </summary>
     static byte[]? BidiLevels(string text, List<RunStyle> styles, bool rightToLeft)
     {
         if (!rightToLeft && !styles.Any(s => s.RightToLeft || s.Override == "rtl") && !Bidi.HasRightToLeft(text))
             return null;
         var levels = Bidi.Levels(text, rightToLeft, i => i < styles.Count && styles[i].RightToLeft ? true : null);
+        if (!rightToLeft)
+        {
+            for (var i = 0; i < text.Length && i < styles.Count;)
+            {
+                if (!styles[i].RightToLeft || text[i] is '\t' or '\n' or '\f' or '\v')
+                {
+                    i++;
+                    continue;
+                }
+                var j = i;
+                while (j < text.Length && j < styles.Count && styles[j].RightToLeft && text[j] is not ('\t' or '\n' or '\f' or '\v'))
+                    j++;
+                Bidi.Levels(text[i..j], true).CopyTo(levels, i);
+                i = j;
+            }
+        }
         var baseLevel = rightToLeft ? 1 : 0;
         for (var i = 0; i < text.Length && i < styles.Count; i++)
         {

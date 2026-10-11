@@ -15,13 +15,13 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 0 |
-| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 0 |
+| [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 2 |
+| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 1 |
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
-| [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
-| [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 3 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 5 |
+| [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 2 |
+| [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 2 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 5 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 6 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 1 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
@@ -43,8 +43,8 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
-| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 1 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **124** |
+| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 4 |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **137** |
 
 <a id="package"></a>
 
@@ -54,8 +54,8 @@ ZIP container, relationships, markup compatibility and metadata.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Package, content types and relationships](#package.opc) | P0 | ●○○○○ | todo | 5 | 0 |
-| [Markup compatibility and extension lists](#package.mce) | P0 | ●●○○○ | todo | 27 | 3 |
+| [Package, content types and relationships](#package.opc) | P0 | ●○○○○ | done | 5 | 0 |
+| [Markup compatibility and extension lists](#package.mce) | P0 | ●●○○○ | done | 27 | 3 |
 | [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | todo | 9 | 0 |
 | [Encrypted and write-protected files](#package.encryption) | P2 | ●●○○○ | todo | 0 | 0 |
 | [Document properties](#package.properties) | P3 | ●○○○○ | todo | 73 | 16 |
@@ -66,9 +66,11 @@ ZIP container, relationships, markup compatibility and metadata.
 
 ### Package, content types and relationships
 
-`package.opc` · P0 · difficulty 1 · todo
+`package.opc` · P0 · difficulty 1 · done
 
 **Rendering:** As pptx `package.opc` (done): parts are found through relationships, never by path. Word's main part is the officeDocument relationship of the package; styles, numbering, settings, fonts, notes, comments, headers and footers hang off it.
+
+**Office behaviour:** Shared with pptx: the main part is the package's officeDocument relationship; styles, settings, theme, numbering, font table, notes, headers and footers are found through its relationships, pictures and charts through those of the part that refers to them; nothing is found by its path.
 
 **Elements (5):** [`ct:Default`](../format/namespaces/ct.md#ctdefault), [`ct:Override`](../format/namespaces/ct.md#ctoverride), [`ct:Types`](../format/namespaces/ct.md#cttypes), [`pr:Relationship`](../format/namespaces/pr.md#prrelationship), [`pr:Relationships`](../format/namespaces/pr.md#prrelationships)
 
@@ -76,11 +78,13 @@ ZIP container, relationships, markup compatibility and metadata.
 
 ### Markup compatibility and extension lists
 
-`package.mce` · P0 · difficulty 2 · todo
+`package.mce` · P0 · difficulty 2 · done
 
 mc:AlternateContent, mc:Ignorable and the extLst/ext mechanism every newer feature uses.
 
 **Rendering:** As pptx `package.mce` (done): take the first mc:Choice whose Requires prefixes we implement, else mc:Fallback. Word writes its 2010 drawing objects (wps, wpg, wpc) in mc:Choice with a VML w:pict in mc:Fallback, so implementing the Choice side makes the VML path the exception.
+
+**Office behaviour:** Shared with pptx: every part is read with mc:AlternateContent resolved, the first mc:Choice whose required namespaces the engine implements, else mc:Fallback. Word's 2010 shapes, groups, canvases and drawing extensions (wps, wpg, wpc, wp14) take the Choice, so VML is only read where a document has nothing else; ignorable elements and extension lists the engine does not know are skipped.
 
 **Elements (27):** [`a14:extLst`](../format/namespaces/a14.md#a14extlst), [`a3danim:extLst`](../format/namespaces/a3danim.md#a3danimextlst), [`a:ext`](../format/namespaces/a.md#aext), [`a:extLst`](../format/namespaces/a.md#aextlst), [`aanim:extLst`](../format/namespaces/aanim.md#aanimextlst), [`am3d:extLst`](../format/namespaces/am3d.md#am3dextlst), [`ask:extLst`](../format/namespaces/ask.md#askextlst), [`asl:extLst`](../format/namespaces/asl.md#aslextlst), [`c:ext`](../format/namespaces/c.md#cext), [`c:extLst`](../format/namespaces/c.md#cextlst), [`cdr14:extLst`](../format/namespaces/cdr14.md#cdr14extlst), [`cs:extLst`](../format/namespaces/cs.md#csextlst), [`cx:ext`](../format/namespaces/cx.md#cxext), [`cx:extLst`](../format/namespaces/cx.md#cxextlst), [`dgm:extLst`](../format/namespaces/dgm.md#dgmextlst), [`dsp:extLst`](../format/namespaces/dsp.md#dspextlst), [`oac:extLst`](../format/namespaces/oac.md#oacextlst), [`pic14:extLst`](../format/namespaces/pic14.md#pic14extlst), [`thm15:extLst`](../format/namespaces/thm15.md#thm15extlst), [`w14:extLst`](../format/namespaces/w14.md#w14extlst), [`w16cei:extLst`](../format/namespaces/w16cei.md#w16ceiextlst), [`w16cex:extLst`](../format/namespaces/w16cex.md#w16cexextlst), [`w16cur:ext`](../format/namespaces/w16cur.md#w16curext), [`wp:extLst`](../format/namespaces/wp.md#wpextlst), [`wpc:extLst`](../format/namespaces/wpc.md#wpcextlst), [`wpg:extLst`](../format/namespaces/wpg.md#wpgextlst), [`wps:extLst`](../format/namespaces/wps.md#wpsextlst)
 
@@ -158,7 +162,7 @@ Properties Office keeps for older versions or for converted VML content.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Document and body](#document.body) | P0 | ●○○○○ | todo | 2 | 2 |
+| [Document and body](#document.body) | P0 | ●○○○○ | done | 2 | 2 |
 | [Page background](#document.background) | P2 | ●●○○○ | partial | 4 | 2 |
 | [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | todo | 3 | 1 |
 | [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | todo | 1 | 1 |
@@ -168,9 +172,11 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Document and body
 
-`document.body` · P0 · difficulty 1 · todo
+`document.body` · P0 · difficulty 1 · done
 
 **Rendering:** The body's block content (paragraphs, tables, content controls, custom XML, section properties) flows through the layout engine into pages; the last w:sectPr of the body describes the last section.
+
+**Office behaviour:** The body's paragraphs, tables, content controls and custom XML flow through the layout into pages; each section's w:sectPr in the last paragraph of the section, the body's own w:sectPr for the last section.
 
 **Elements (2):** [`w:body`](../format/namespaces/w.md#wbody), [`w:document`](../format/namespaces/w.md#wdocument)
 
@@ -343,17 +349,19 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Paragraph, character, table and numbering styles](#style.definitions) | P0 | ●●●○○ | todo | 21 | 20 |
-| [Document defaults](#style.defaults) | P0 | ●●○○○ | todo | 3 | 0 |
+| [Paragraph, character, table and numbering styles](#style.definitions) | P0 | ●●●○○ | done | 21 | 20 |
+| [Document defaults](#style.defaults) | P0 | ●●○○○ | done | 3 | 0 |
 | [Latent styles](#style.latent) | P3 | ●○○○○ | todo | 2 | 2 |
 
 <a id="style.definitions"></a>
 
 ### Paragraph, character, table and numbering styles
 
-`style.definitions` · P0 · difficulty 3 · todo
+`style.definitions` · P0 · difficulty 3 · done
 
 **Rendering:** Resolve properties in the order of ISO/IEC 29500 17.7.2: document defaults, table style, numbering, paragraph style, run style, direct formatting, each style through its basedOn chain. Toggle properties (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow) flip along the style chain instead of overriding.
+
+**Office behaviour:** Formatting resolves as ISO/IEC 29500 17.7.2 says: document defaults, table style (with its conditional formats), numbering, paragraph style, character style and direct formatting, each style through its basedOn chain (cycles cut); toggle properties (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow) flip along the chain (17.7.3); default paragraph, character and table styles apply where none is named. The other elements are for editing and change nothing printed.
 
 **Elements (21):** [`w:aliases`](../format/namespaces/w.md#waliases), [`w:autoRedefine`](../format/namespaces/w.md#wautoredefine), [`w:basedOn`](../format/namespaces/w.md#wbasedon), [`w:hidden`](../format/namespaces/w.md#whidden), [`w:link`](../format/namespaces/w.md#wlink), [`w:locked`](../format/namespaces/w.md#wlocked), [`w:name`](../format/namespaces/w.md#wname), [`w:next`](../format/namespaces/w.md#wnext), [`w:pStyle`](../format/namespaces/w.md#wpstyle), [`w:personal`](../format/namespaces/w.md#wpersonal), [`w:personalCompose`](../format/namespaces/w.md#wpersonalcompose), [`w:personalReply`](../format/namespaces/w.md#wpersonalreply), [`w:qFormat`](../format/namespaces/w.md#wqformat), [`w:rStyle`](../format/namespaces/w.md#wrstyle), [`w:rsid`](../format/namespaces/w.md#wrsid), [`w:semiHidden`](../format/namespaces/w.md#wsemihidden), [`w:style`](../format/namespaces/w.md#wstyle), [`w:styles`](../format/namespaces/w.md#wstyles), [`w:tblStyle`](../format/namespaces/w.md#wtblstyle), [`w:uiPriority`](../format/namespaces/w.md#wuipriority), [`w:unhideWhenUsed`](../format/namespaces/w.md#wunhidewhenused)
 
@@ -365,9 +373,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Document defaults
 
-`style.defaults` · P0 · difficulty 2 · todo
+`style.defaults` · P0 · difficulty 2 · done
 
 **Rendering:** The base of every property chain; Word's own defaults apply where the part leaves a property out.
+
+**Office behaviour:** w:rPrDefault and w:pPrDefault are the base of every chain; where they leave a property out Word's own defaults hold: Times New Roman 10 pt, single spacing, no space between paragraphs (docx/local/defaults- empty, 94.3 %). A document without a styles part gets the defaults of Word's Normal template: Aptos 12 pt, complex scripts in Arial, kerning, standard and contextual ligatures, 8 pt after paragraphs, 1.16 lines (docx/local/defaults-none, 91.7 %).
 
 **Elements (3):** [`w:docDefaults`](../format/namespaces/w.md#wdocdefaults), [`w:pPrDefault`](../format/namespaces/w.md#wpprdefault), [`w:rPrDefault`](../format/namespaces/w.md#wrprdefault)
 
@@ -393,17 +403,19 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Font table and substitution](#font.table) | P0 | ●●●○○ | todo | 9 | 8 |
+| [Font table and substitution](#font.table) | P0 | ●●●○○ | done | 9 | 8 |
 | [Embedded fonts](#font.embedded) | P2 | ●●○○○ | todo | 7 | 5 |
-| [Theme fonts](#font.theme) | P0 | ●●○○○ | todo | 1 | 1 |
+| [Theme fonts](#font.theme) | P0 | ●●○○○ | done | 1 | 1 |
 
 <a id="font.table"></a>
 
 ### Font table and substitution
 
-`font.table` · P0 · difficulty 3 · todo
+`font.table` · P0 · difficulty 3 · done
 
 **Rendering:** Fonts a document names but the machine lacks are replaced the way Word does it, using the font table's alternate name, PANOSE, family, pitch and character set; shared with pptx `engine.fonts`.
+
+**Office behaviour:** A family the machine lacks is replaced as Word replaces it: a family known by the name (PostScript and other platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier, Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName, then a font for the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5: PMingLiU, Arabic: Sakkal Majalla, Hebrew: Arial, Thai: Browallia New), else Cambria for serif fonts (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt). Caladea and Carlito stand in where Cambria and Calibri are missing too.
 
 **Elements (9):** [`w:altName`](../format/namespaces/w.md#waltname), [`w:charset`](../format/namespaces/w.md#wcharset), [`w:family`](../format/namespaces/w.md#wfamily), [`w:font`](../format/namespaces/w.md#wfont), [`w:fonts`](../format/namespaces/w.md#wfonts), [`w:notTrueType`](../format/namespaces/w.md#wnottruetype), [`w:panose1`](../format/namespaces/w.md#wpanose1), [`w:pitch`](../format/namespaces/w.md#wpitch), [`w:sig`](../format/namespaces/w.md#wsig)
 
@@ -429,11 +441,13 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Theme fonts
 
-`font.theme` · P0 · difficulty 2 · todo
+`font.theme` · P0 · difficulty 2 · done
 
 rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's major and minor fonts.
 
 **Rendering:** Resolve theme font references against a:fontScheme (theme.fonts); w:themeFontLang picks the script-specific entries of the theme for East Asian and complex-script text.
+
+**Office behaviour:** rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme take the theme's major or minor font of their script. Where the theme's East Asian or complex script font is empty, the theme's a:font for the script of the language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, zh-TW: Hant, ko-KR: Hang, ar-SA: Arab, he-IL: Hebr …) is taken; without one, East Asian text keeps the run's Latin font and complex scripts take Times New Roman, both then falling back by glyph; the runs' own languages do not matter (docx/local/tf-de, tf-ja, tf- zh, tf-ko, tf-he, tf-none: the East Asian lines within 0.1 pt).
 
 **Elements (1):** [`w:themeFontLang`](../format/namespaces/w.md#wthemefontlang)
 
@@ -451,8 +465,8 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Underline, strike, caps, highlight, borders and shading](#run.decoration) | P0 | ●●○○○ | partial | 13 | 12 |
 | [Character spacing, scale, kerning and position](#run.spacing) | P1 | ●●○○○ | partial | 5 | 4 |
 | [Hidden text](#run.hidden) | P1 | ●●○○○ | done | 3 | 2 |
-| [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | todo | 7 | 7 |
-| [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | todo | 14 | 3 |
+| [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | done | 7 | 7 |
+| [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | done | 14 | 3 |
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | todo | 10 | 6 |
 | [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | todo | 2 | 1 |
 | [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | partial | 38 | 0 |
@@ -527,9 +541,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Right-to-left and complex scripts
 
-`run.complexScript` · P1 · difficulty 4 · todo
+`run.complexScript` · P1 · difficulty 4 · done
 
 **Rendering:** Complex-script runs use their own font, size, bold and italic; reordering and shaping as in pptx `text.rtl` (done), with w:bdo and w:dir as explicit embeddings.
+
+**Office behaviour:** Complex script text takes the w:cs font with w:szCs, w:bCs and w:iCs. Bidirectional levels follow UAX #9 with the paragraph's direction as the base, neutrals of w:rtl and w:dir runs reading right to left and w:bdo forcing its direction; lines are reordered between their tabs, right-to-left pieces reach the browser whole from their right end (shaped, mirrored brackets) and justification widens their spaces. Clusters of several characters (marks, conjuncts, emoji sequences) are drawn whole (docx/local/bidi 94.1 %, fallback-marks 93.3 %). Word reverses a w:rtl run of Latin letters as a unit with its neutrals ("abc def!" shows "!abc def"); here only its neutrals turn.
 
 **Elements (7):** [`w:bCs`](../format/namespaces/w.md#wbcs), [`w:bdo`](../format/namespaces/w.md#wbdo), [`w:cs`](../format/namespaces/w.md#wcs), [`w:dir`](../format/namespaces/w.md#wdir), [`w:iCs`](../format/namespaces/w.md#wics), [`w:rtl`](../format/namespaces/w.md#wrtl), [`w:szCs`](../format/namespaces/w.md#wszcs)
 
@@ -541,9 +557,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Breaks, symbols and special characters
 
-`run.content` · P0 · difficulty 2 · todo
+`run.content` · P0 · difficulty 2 · done
 
 **Rendering:** Page, column and text-wrapping breaks (with clear) go to the layout engine; w:sym characters are drawn from their symbol font (private use area F000-F0FF). w:lastRenderedPageBreak is where Word broke the page when it last saved: not rendered, but a free check of our pagination.
+
+**Office behaviour:** Page and column breaks go to the paginator, text wrapping breaks (and w:cr) end the line; with w:clear the next line moves below the floating objects of the side it clears (an object on the left half of the column is on the left; docx/local/br-clear 99.8 %). Tabs go to the tab stops; w:sym characters are drawn from their symbol font. A line breaking at a soft hyphen shows a hyphen, which has to fit; a no-break hyphen prints the font's hyphen kept with the next character; date blocks show today's day, weekday, month, month name and year in the run's language, else the regional one (docx/local/run-content 96.6 %). w:lastRenderedPageBreak and w16se:symEx (its fallback character is taken) draw nothing of their own.
 
 **Elements (14):** [`w16se:symEx`](../format/namespaces/w16se.md#w16sesymex), [`w:br`](../format/namespaces/w.md#wbr), [`w:cr`](../format/namespaces/w.md#wcr), [`w:dayLong`](../format/namespaces/w.md#wdaylong), [`w:dayShort`](../format/namespaces/w.md#wdayshort), [`w:lastRenderedPageBreak`](../format/namespaces/w.md#wlastrenderedpagebreak), [`w:monthLong`](../format/namespaces/w.md#wmonthlong), [`w:monthShort`](../format/namespaces/w.md#wmonthshort), [`w:noBreakHyphen`](../format/namespaces/w.md#wnobreakhyphen), [`w:softHyphen`](../format/namespaces/w.md#wsofthyphen), [`w:sym`](../format/namespaces/w.md#wsym), [`w:tab`](../format/namespaces/w.md#wtab), [`w:yearLong`](../format/namespaces/w.md#wyearlong), [`w:yearShort`](../format/namespaces/w.md#wyearshort)
 
@@ -638,7 +656,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | done | 5 | 3 |
 | [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | todo | 2 | 1 |
 | [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | todo | 14 | 8 |
-| [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | todo | 2 | 2 |
+| [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | done | 2 | 2 |
 | [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | todo | 5 | 2 |
 | [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | done | 2 | 1 |
 | [HTML divisions](#paragraph.htmlDivs) | P2 | ●●●○○ | todo | 11 | 5 |
@@ -755,9 +773,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Right-to-left paragraphs and text direction
 
-`paragraph.bidi` · P1 · difficulty 4 · todo
+`paragraph.bidi` · P1 · difficulty 4 · done
 
 **Rendering:** Right-to-left paragraphs mirror indents and alignment; vertical text direction in frames and cells.
+
+**Office behaviour:** A right-to-left paragraph (w:bidi) is laid out from its start edge and mirrored: w:left and w:start indent the right side, left and start alignment align right, tab stops count from the right margin and trailing spaces hang past the left one (docx/local/bidi: single and justified lines, indents, first line indent, tabs, mixed text, numbers and brackets as in Word). Vertical text (w:textDirection) is turned in table cells (table.cells); frames are paragraph.frames.
 
 **Elements (2):** [`w:bidi`](../format/namespaces/w.md#wbidi), [`w:textDirection`](../format/namespaces/w.md#wtextdirection)
 
@@ -3257,21 +3277,23 @@ Features without elements of their own that decide the fidelity of everything el
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [HTML output](#engine.output) | P0 | ●●●○○ | todo | 0 | 0 |
+| [HTML output](#engine.output) | P0 | ●●●○○ | done | 0 | 0 |
 | [Pagination](#engine.pagination) | P0 | ●●●●● | partial | 0 | 0 |
 | [Line layout](#engine.lineLayout) | P0 | ●●●●● | partial | 0 | 0 |
 | [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | partial | 0 | 0 |
 | [Table layout](#engine.tableLayout) | P0 | ●●●●● | done | 0 | 0 |
-| [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | todo | 0 | 0 |
-| [Fidelity measurement](#engine.fidelity) | P0 | ●●●○○ | todo | 0 | 0 |
+| [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | done | 0 | 0 |
+| [Fidelity measurement](#engine.fidelity) | P0 | ●●●○○ | done | 0 | 0 |
 
 <a id="engine.output"></a>
 
 ### HTML output
 
-`engine.output` · P0 · difficulty 3 · todo
+`engine.output` · P0 · difficulty 3 · done
 
 **Rendering:** One self-contained HTML file: fixed-size page boxes with absolutely positioned glyph runs, SVG for drawings, embedded fonts and pictures; print CSS keeps one page per sheet.
+
+**Office behaviour:** One self-contained HTML file: a fixed-size section per page with a named @page per paper size (printed, every page keeps its size), text as SVG text at our positions in the fonts we measured with (fonts the browser cannot find by name, such as Office cloud fonts, embedded), drawings, charts, SmartArt and equations as SVG, pictures embedded, bookmarks as anchors and hyperlinks as links.
 
 <a id="engine.pagination"></a>
 
@@ -3317,17 +3339,21 @@ Features without elements of their own that decide the fidelity of everything el
 
 ### Font resolution and fallback
 
-`engine.fonts` · P0 · difficulty 4 · todo
+`engine.fonts` · P0 · difficulty 4 · done
 
 **Rendering:** As pptx `engine.fonts` (done) with Word's font substitution (font.table).
+
+**Office behaviour:** Installed, embedded and Office cloud fonts (Aptos) as in pptx, with Word's own substitution of missing families (font.table) and theme fonts (font.theme). A character the run's font lacks is measured and drawn in the font Word falls back to, by range: emoji Segoe UI Emoji (also before U+FE0F); symbols, dingbats, arrows and Braille Segoe UI Symbol; letterlike and mathematical symbols, technical symbols and enclosed numbers Cambria Math (enclosed letters then MS Gothic or MS Mincho); geometric shapes Arial; Thai, Lao and Khmer Leelawadee UI; Indic scripts Nirmala UI; Georgian Sylfaen; Ethiopic Ebrima; Cherokee Gadugi; Syriac Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun Gothic or Batang beside serif and East Asian fonts; Chinese characters and kana MS Mincho, then PMingLiU or Microsoft JhengHei. Lines grow with the fallback's metrics as in Word; spaces and format characters stay in the run's font, marks with their base (docx/local/fallback-arial 96.1 %, fallback-calibri 95.7 %, fallback-times 97 %, every line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat.
 
 <a id="engine.fidelity"></a>
 
 ### Fidelity measurement
 
-`engine.fidelity` · P0 · difficulty 3 · todo
+`engine.fidelity` · P0 · difficulty 3 · done
 
 **Rendering:** Word (COM) exports every reference document to PDF; its pages are rasterized and compared with our pages like the PowerPoint references, on documents Word generates by COM and on external test documents.
+
+**Office behaviour:** Word (COM) exports every reference document to PDF; Chrome prints our HTML to PDF and the same rasterizer (Windows.Data.Pdf) renders both, page by page at 96 dpi, for the pixel and SSIM scores; pdf-text and word- lines compare Word's PDF layout with ours line by line and glyph by glyph. 29 documents generated by Word through COM (docx/generated, 92.6 % overall) and local probes for each measured rule. The rasterizer ignores the soft masks Chrome writes (reflections, soft edges), which MuPDF shows.
 
 <a id="unassigned-elements"></a>
 

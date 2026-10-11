@@ -41,11 +41,15 @@ areas:
         elements: [ct:Types, ct:Default, ct:Override, pr:Relationships, pr:Relationship]
         priority: P0
         difficulty: 1
-        status: todo
+        status: done
         strategy: >-
           As pptx `package.opc` (done): parts are found through relationships, never by path. Word's main part is the
           officeDocument relationship of the package; styles, numbering, settings, fonts, notes, comments, headers and
           footers hang off it.
+        office: >-
+          Shared with pptx: the main part is the package's officeDocument relationship; styles, settings, theme,
+          numbering, font table, notes, headers and footers are found through its relationships, pictures and charts
+          through those of the part that refers to them; nothing is found by its path.
 
       - id: package.mce
         title: Markup compatibility and extension lists
@@ -56,11 +60,16 @@ areas:
                    wps:extLst, w16cei:extLst, w16cex:extLst, w16cur:ext]
         priority: P0
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           As pptx `package.mce` (done): take the first mc:Choice whose Requires prefixes we implement, else
           mc:Fallback. Word writes its 2010 drawing objects (wps, wpg, wpc) in mc:Choice with a VML w:pict in
           mc:Fallback, so implementing the Choice side makes the VML path the exception.
+        office: >-
+          Shared with pptx: every part is read with mc:AlternateContent resolved, the first mc:Choice whose required
+          namespaces the engine implements, else mc:Fallback. Word's 2010 shapes, groups, canvases and drawing
+          extensions (wps, wpg, wpc, wp14) take the Choice, so VML is only read where a document has nothing else;
+          ignorable elements and extension lists the engine does not know are skipped.
 
       - id: package.compatibility
         title: Compatibility leftovers
@@ -117,10 +126,13 @@ areas:
         elements: [w:document, w:body]
         priority: P0
         difficulty: 1
-        status: todo
+        status: done
         strategy: >-
           The body's block content (paragraphs, tables, content controls, custom XML, section properties) flows
           through the layout engine into pages; the last w:sectPr of the body describes the last section.
+        office: >-
+          The body's paragraphs, tables, content controls and custom XML flow through the layout into pages; each
+          section's w:sectPr in the last paragraph of the section, the body's own w:sectPr for the last section.
 
       - id: document.background
         title: Page background
@@ -272,20 +284,32 @@ areas:
                    w:personalReply, w:rsid, w:pStyle, w:rStyle, w:tblStyle]
         priority: P0
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           Resolve properties in the order of ISO/IEC 29500 17.7.2: document defaults, table style, numbering,
           paragraph style, run style, direct formatting, each style through its basedOn chain. Toggle properties
           (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow) flip along the style
           chain instead of overriding.
+        office: >-
+          Formatting resolves as ISO/IEC 29500 17.7.2 says: document defaults, table style (with its conditional
+          formats), numbering, paragraph style, character style and direct formatting, each style through its basedOn
+          chain (cycles cut); toggle properties (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint,
+          outline, shadow) flip along the chain (17.7.3); default paragraph, character and table styles apply where
+          none is named. The other elements are for editing and change nothing printed.
 
       - id: style.defaults
         title: Document defaults
         elements: [w:docDefaults, w:rPrDefault, w:pPrDefault]
         priority: P0
         difficulty: 2
-        status: todo
+        status: done
         strategy: The base of every property chain; Word's own defaults apply where the part leaves a property out.
+        office: >-
+          w:rPrDefault and w:pPrDefault are the base of every chain; where they leave a property out Word's own
+          defaults hold: Times New Roman 10 pt, single spacing, no space between paragraphs (docx/local/defaults-
+          empty, 94.3 %). A document without a styles part gets the defaults of Word's Normal template: Aptos 12 pt,
+          complex scripts in Arial, kerning, standard and contextual ligatures, 8 pt after paragraphs, 1.16 lines
+          (docx/local/defaults-none, 91.7 %).
 
       - id: style.latent
         title: Latent styles
@@ -303,10 +327,19 @@ areas:
         elements: [w:fonts, w:font, w:altName, w:charset, w:family, w:panose1, w:pitch, w:sig, w:notTrueType]
         priority: P0
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           Fonts a document names but the machine lacks are replaced the way Word does it, using the font table's
           alternate name, PANOSE, family, pitch and character set; shared with pptx `engine.fonts`.
+        office: >-
+          A family the machine lacks is replaced as Word replaces it: a family known by the name (PostScript and other
+          platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
+          Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName, then a font for
+          the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft
+          YaHei, Big5: PMingLiU, Arabic: Sakkal Majalla, Hebrew: Arial, Thai: Browallia New), else Cambria for serif
+          fonts (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their
+          PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt). Caladea
+          and Carlito stand in where Cambria and Calibri are missing too.
 
       - id: font.embedded
         title: Embedded fonts
@@ -325,10 +358,17 @@ areas:
         elements: [w:themeFontLang]
         priority: P0
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           Resolve theme font references against a:fontScheme (theme.fonts); w:themeFontLang picks the script-specific
           entries of the theme for East Asian and complex-script text.
+        office: >-
+          rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme take the theme's major or minor font of their
+          script. Where the theme's East Asian or complex script font is empty, the theme's a:font for the script of
+          the language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, zh-TW: Hant, ko-KR: Hang, ar-SA: Arab, he-IL:
+          Hebr …) is taken; without one, East Asian text keeps the run's Latin font and complex scripts take Times New
+          Roman, both then falling back by glyph; the runs' own languages do not matter (docx/local/tf-de, tf-ja, tf-
+          zh, tf-ko, tf-he, tf-none: the East Asian lines within 0.1 pt).
 
   - id: run
     title: Runs and character formatting
@@ -395,10 +435,18 @@ areas:
         elements: [w:rtl, w:cs, w:bCs, w:iCs, w:szCs, w:bdo, w:dir]
         priority: P1
         difficulty: 4
-        status: todo
+        status: done
         strategy: >-
           Complex-script runs use their own font, size, bold and italic; reordering and shaping as in pptx
           `text.rtl` (done), with w:bdo and w:dir as explicit embeddings.
+        office: >-
+          Complex script text takes the w:cs font with w:szCs, w:bCs and w:iCs. Bidirectional levels follow UAX #9
+          with the paragraph's direction as the base, neutrals of w:rtl and w:dir runs reading right to left and w:bdo
+          forcing its direction; lines are reordered between their tabs, right-to-left pieces reach the browser whole
+          from their right end (shaped, mirrored brackets) and justification widens their spaces. Clusters of several
+          characters (marks, conjuncts, emoji sequences) are drawn whole (docx/local/bidi 94.1 %, fallback-marks 93.3
+          %). Word reverses a w:rtl run of Latin letters as a unit with its neutrals ("abc def!" shows "!abc def");
+          here only its neutrals turn.
 
       - id: run.content
         title: Breaks, symbols and special characters
@@ -406,11 +454,19 @@ areas:
                    w:dayShort, w:monthLong, w:monthShort, w:yearLong, w:yearShort, w16se:symEx]
         priority: P0
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           Page, column and text-wrapping breaks (with clear) go to the layout engine; w:sym characters are drawn from
           their symbol font (private use area F000-F0FF). w:lastRenderedPageBreak is where Word broke the page when
           it last saved: not rendered, but a free check of our pagination.
+        office: >-
+          Page and column breaks go to the paginator, text wrapping breaks (and w:cr) end the line; with w:clear the
+          next line moves below the floating objects of the side it clears (an object on the left half of the column
+          is on the left; docx/local/br-clear 99.8 %). Tabs go to the tab stops; w:sym characters are drawn from their
+          symbol font. A line breaking at a soft hyphen shows a hyphen, which has to fit; a no-break hyphen prints the
+          font's hyphen kept with the next character; date blocks show today's day, weekday, month, month name and
+          year in the run's language, else the regional one (docx/local/run-content 96.6 %). w:lastRenderedPageBreak
+          and w16se:symEx (its fallback character is taken) draw nothing of their own.
 
       - id: run.ruby
         title: Ruby (phonetic guides)
@@ -594,8 +650,14 @@ areas:
         elements: [w:bidi, w:textDirection]
         priority: P1
         difficulty: 4
-        status: todo
+        status: done
         strategy: Right-to-left paragraphs mirror indents and alignment; vertical text direction in frames and cells.
+        office: >-
+          A right-to-left paragraph (w:bidi) is laid out from its start edge and mirrored: w:left and w:start indent
+          the right side, left and start alignment align right, tab stops count from the right margin and trailing
+          spaces hang past the left one (docx/local/bidi: single and justified lines, indents, first line indent,
+          tabs, mixed text, numbers and brackets as in Word). Vertical text (w:textDirection) is turned in table cells
+          (table.cells); frames are paragraph.frames.
 
       - id: paragraph.hyphenation
         title: Hyphenation
@@ -2668,10 +2730,15 @@ areas:
         title: HTML output
         priority: P0
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           One self-contained HTML file: fixed-size page boxes with absolutely positioned glyph runs, SVG for
           drawings, embedded fonts and pictures; print CSS keeps one page per sheet.
+        office: >-
+          One self-contained HTML file: a fixed-size section per page with a named @page per paper size (printed,
+          every page keeps its size), text as SVG text at our positions in the fonts we measured with (fonts the
+          browser cannot find by name, such as Office cloud fonts, embedded), drawings, charts, SmartArt and equations
+          as SVG, pictures embedded, bookmarks as anchors and hyperlinks as links.
 
       - id: engine.pagination
         title: Pagination
@@ -2731,14 +2798,32 @@ areas:
         title: Font resolution and fallback
         priority: P0
         difficulty: 4
-        status: todo
+        status: done
         strategy: As pptx `engine.fonts` (done) with Word's font substitution (font.table).
+        office: >-
+          Installed, embedded and Office cloud fonts (Aptos) as in pptx, with Word's own substitution of missing
+          families (font.table) and theme fonts (font.theme). A character the run's font lacks is measured and drawn
+          in the font Word falls back to, by range: emoji Segoe UI Emoji (also before U+FE0F); symbols, dingbats,
+          arrows and Braille Segoe UI Symbol; letterlike and mathematical symbols, technical symbols and enclosed
+          numbers Cambria Math (enclosed letters then MS Gothic or MS Mincho); geometric shapes Arial; Thai, Lao and
+          Khmer Leelawadee UI; Indic scripts Nirmala UI; Georgian Sylfaen; Ethiopic Ebrima; Cherokee Gadugi; Syriac
+          Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun Gothic or Batang beside
+          serif and East Asian fonts; Chinese characters and kana MS Mincho, then PMingLiU or Microsoft JhengHei.
+          Lines grow with the fallback's metrics as in Word; spaces and format characters stay in the run's font,
+          marks with their base (docx/local/fallback-arial 96.1 %, fallback-calibri 95.7 %, fallback-times 97 %, every
+          line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat.
 
       - id: engine.fidelity
         title: Fidelity measurement
         priority: P0
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           Word (COM) exports every reference document to PDF; its pages are rasterized and compared with our pages
           like the PowerPoint references, on documents Word generates by COM and on external test documents.
+        office: >-
+          Word (COM) exports every reference document to PDF; Chrome prints our HTML to PDF and the same rasterizer
+          (Windows.Data.Pdf) renders both, page by page at 96 dpi, for the pixel and SSIM scores; pdf-text and word-
+          lines compare Word's PDF layout with ours line by line and glyph by glyph. 29 documents generated by Word
+          through COM (docx/generated, 92.6 % overall) and local probes for each measured rule. The rasterizer ignores
+          the soft masks Chrome writes (reflections, soft edges), which MuPDF shows.
