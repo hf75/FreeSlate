@@ -34,6 +34,7 @@ public static partial class DocumentGenerator
         ("tables", Tables),
         ("breaks", Breaks),
         ("drawings", Drawings),
+        ("textboxes", TextBoxes),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

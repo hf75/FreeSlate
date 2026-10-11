@@ -9,7 +9,7 @@ namespace FreeSlate.Docx;
 /// Draws laid-out pages as SVG (catalog: engine.output): glyphs as outlines in font units placed with &lt;use&gt;,
 /// a transparent text layer on top for selection and search, decorations as rectangles.
 /// </summary>
-public sealed class PageRenderer(DocumentContext context, Drawings? drawings = null)
+public sealed class PageRenderer(DocumentContext context, Drawings? drawings = null, TableLayout? blocks = null)
 {
     const double PxPerPt = 96.0 / 72.0;
 
@@ -35,7 +35,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         if (drawings != null)
         {
             foreach (var drawing in page.Drawings.Where(d => d.Behind).OrderBy(d => d.Order))
-                svg.Append(drawings.Render(drawing));
+                svg.Append(Drawing(drawing, page));
         }
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
         var selection = new StringBuilder();
@@ -43,14 +43,61 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         foreach (var (x, top, bottom) in page.ColumnLines)
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         // Table shading, then table borders, below the text.
-        foreach (var fill in page.Shading.Concat(page.Borders))
+        Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
+        Lines(page.Lines, svg, selection, front);
+        svg.Append(selection);
+        svg.Append("</svg>");
+        if (drawings != null)
+        {
+            foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
+                svg.Append(Drawing(drawing, page));
+        }
+        svg.Append("</section>\n");
+        return svg.ToString();
+    }
+
+    void Fills(IEnumerable<FillRect> fills, IEnumerable<Stroke> strokes, StringBuilder svg)
+    {
+        foreach (var fill in fills)
             svg.Append($"<rect x=\"{Px(fill.X)}\" y=\"{Px(fill.Y)}\" width=\"{Px(fill.Width)}\" height=\"{Px(fill.Height)}\" fill=\"{fill.Color.ToHex()}\"/>");
-        foreach (var s in page.Strokes)
+        foreach (var s in strokes)
         {
             var dash = s.Dash is { } pattern ? $" stroke-dasharray=\"{string.Join(' ', pattern.Split(' ').Select(v => Units.Css(double.Parse(v, CultureInfo.InvariantCulture) * PxPerPt)))}\"" : "";
             svg.Append($"<line x1=\"{Px(s.X1)}\" y1=\"{Px(s.Y1)}\" x2=\"{Px(s.X2)}\" y2=\"{Px(s.Y2)}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"{dash}/>");
         }
-        foreach (var placed in page.Lines)
+    }
+
+    /// <summary>
+    /// A drawing and, over it, its text box's content (catalog: drawing.textBoxes): laid out in the shape's rectangle
+    /// less the insets of wps:bodyPr (0.1 in left and right, 0.05 in top and bottom by default), at the top, the
+    /// middle or the bottom.
+    /// </summary>
+    string Drawing(PlacedDrawing drawing, PageBox page)
+    {
+        var html = drawings!.Render(drawing);
+        if (drawing.Text is not { Count: > 0 } text || blocks == null)
+            return html;
+        var body = drawing.Body;
+        double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
+        var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0);
+        var (lines, fills, strokes, height) = blocks.Blocks(text, Math.Max(1, drawing.Width - l - r), fields);
+        var free = drawing.Height - t - b - height;
+        var top = drawing.Y + t + ((string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 });
+        var left = drawing.X + l;
+        var width = page.Width * PxPerPt;
+        var heightPx = page.Height * PxPerPt;
+        var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
+        Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
+        var selection = new StringBuilder();
+        Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, []);
+        svg.Append(selection).Append("</svg>");
+        return html + svg;
+    }
+
+    void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front)
+    {
+        foreach (var placed in lines)
         {
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
@@ -75,7 +122,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 {
                     var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
                     var (w, h) = Drawings.Extent(inline.Drawing);
-                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h));
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h) { Text = inline.Text });
                     continue;
                 }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
@@ -91,15 +138,6 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             if (placed.Angle != 0)
                 svg.Append("</g>");
         }
-        svg.Append(selection);
-        svg.Append("</svg>");
-        if (drawings != null)
-        {
-            foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
-                svg.Append(drawings.Render(drawing));
-        }
-        svg.Append("</section>\n");
-        return svg.ToString();
     }
 
     /// <summary>The x position (points from the piece's start) of every UTF-16 unit, justification included.</summary>

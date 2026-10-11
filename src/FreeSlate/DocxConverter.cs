@@ -50,7 +50,7 @@ public static class DocxConverter
         var layout = new ParagraphLayout(context, styles);
         var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection());
         var drawings = new Drawings(context);
-        var renderer = new PageRenderer(context, drawings);
+        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout));
         var body = new StringBuilder();
         // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
         var papers = new List<(double Width, double Height)>();

@@ -7,12 +7,19 @@ namespace FreeSlate.Docx;
 /// <summary>A drawing in a run (w:drawing/wp:inline, catalog: drawing.inline): it stands in the line like a character.</summary>
 public sealed record DrawingInline(XElement Drawing, string Part, RunFormat Format) : Inline(Format)
 {
+    /// <summary>The content of the shape's text box (wps:txbx/w:txbxContent), or null.</summary>
+    public List<Block>? Text { get; init; }
+
     /// <summary>The box the drawing takes in the line: its extent with the effect extents around it, in points.</summary>
     public (double Width, double Height) Box => Drawings.Box(Drawing);
 }
 
 /// <summary>A floating drawing anchored at its run (w:drawing/wp:anchor, catalog: drawing.anchor); it takes no room in the line.</summary>
-public sealed record AnchorInline(XElement Anchor, string Part, RunFormat Format) : Inline(Format);
+public sealed record AnchorInline(XElement Anchor, string Part, RunFormat Format) : Inline(Format)
+{
+    /// <summary>The content of the shape's text box (wps:txbx/w:txbxContent), or null.</summary>
+    public List<Block>? Text { get; init; }
+}
 
 /// <summary>A drawing placed on a page: its element, the part its relationships belong to and its extent's box.</summary>
 public sealed record PlacedDrawing(XElement Drawing, string Part, double X, double Y, double Width, double Height)
@@ -22,6 +29,12 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
 
     /// <summary>The stacking order among floating drawings (wp:anchor/@relativeHeight); inline drawings 0.</summary>
     public long Order { get; init; }
+
+    /// <summary>The content of the shape's text box, laid out in its inner rectangle and drawn over the shape.</summary>
+    public List<Block>? Text { get; init; }
+
+    /// <summary>The text box's body properties (insets, vertical anchor) of the shape (wps:bodyPr).</summary>
+    public XElement? Body => Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")?.Element(Drawings.Wps + "bodyPr");
 }
 
 /// <summary>
@@ -50,6 +63,10 @@ public sealed class Drawings(DocumentContext context)
 
     /// <summary>The fonts the drawings' text uses.</summary>
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];
+
+    /// <summary>The text box content element of a drawing's shape (wps:txbx/w:txbxContent), or null.</summary>
+    public static XElement? TextBoxContent(XElement drawing) =>
+        drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "txbx")?.Element(Wml.W + "txbxContent");
 
     /// <summary>A drawing's extent with its effect extents, in points.</summary>
     public static (double Width, double Height) Box(XElement drawing)

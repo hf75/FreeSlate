@@ -238,6 +238,22 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>
+    /// The blocks of a drawing's text box (catalog: drawing.textBoxes), read like body content; a table's style does
+    /// not reach into text boxes in its cells.
+    /// </summary>
+    List<Block>? TextBox(XElement drawing)
+    {
+        if (Drawings.TextBoxContent(drawing) is not { } content)
+            return null;
+        var (savedParagraph, savedRun) = (tableParagraph, tableRun);
+        (tableParagraph, tableRun) = (null, null);
+        var blocks = new List<Block>();
+        ReadBlocks(content, blocks);
+        (tableParagraph, tableRun) = (savedParagraph, savedRun);
+        return blocks;
+    }
+
+    /// <summary>
     /// Where complex fields stand: a field's instruction is collected until w:fldChar separate, its result shows after
     /// it; the result of a page field (PAGE, NUMPAGES …) is kept apart, the layout computes it.
     /// </summary>
@@ -353,10 +369,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     {
                         foreach (var d in e.Elements())
                         {
+                            var text = TextBox(d);
                             if (d.Name == Drawings.Wp + "inline")
-                                field.Target(content).Add(new DrawingInline(d, currentPart, format));
+                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text });
                             else if (d.Name == Drawings.Wp + "anchor")
-                                field.Target(content).Add(new AnchorInline(d, currentPart, format));
+                                field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text });
                         }
                     }
                     break;

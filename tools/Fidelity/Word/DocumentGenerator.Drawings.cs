@@ -51,6 +51,25 @@ public static partial class DocumentGenerator
         Place(floating, 300, 650, WrapNone);
     }
 
+    /// <summary>Text boxes and shapes with text: a text box with two paragraphs, a shape with centered text, a text box anchored at the bottom.</summary>
+    static void TextBoxes(Writer w)
+    {
+        // MsoTextOrientation, MsoVerticalAnchor
+        const int Horizontal = 1, AnchorBottom = 4;
+        w.Paragraph("Text boxes", StyleHeading1);
+        var anchor = w.Paragraph(Prose.Decisions);
+        var box = w.Document.Shapes.AddTextbox(Horizontal, 72, 200, 200, 120, anchor.Range);
+        Place(box, 72, 200, WrapNone);
+        box.TextFrame.TextRange.Text = "A text box with a first paragraph of some length that wraps.\rAnd a second paragraph.";
+        var shape = w.Document.Shapes.AddShape(ShapeRoundedRectangle, 320, 200, 180, 100, anchor.Range);
+        Place(shape, 320, 200, WrapNone);
+        shape.TextFrame.TextRange.Text = "Text in a shape";
+        var bottom = w.Document.Shapes.AddTextbox(Horizontal, 72, 360, 200, 100, anchor.Range);
+        Place(bottom, 72, 360, WrapNone);
+        bottom.TextFrame.TextRange.Text = "Anchored at the bottom";
+        bottom.TextFrame.VerticalAnchor = AnchorBottom;
+    }
+
     /// <summary>A collapsed range at the end of a paragraph, before its mark.</summary>
     static dynamic End(dynamic paragraph)
     {

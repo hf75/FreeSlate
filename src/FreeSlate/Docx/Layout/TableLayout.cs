@@ -789,6 +789,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return (min, max);
     }
 
+    /// <summary>
+    /// Blocks laid out in a width as in a table cell or a text box: lines, fills and strokes relative to their top
+    /// left, and their height.
+    /// </summary>
+    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields)
+    {
+        var content = Content(blocks, width, fields);
+        return (content.Lines, content.Fills, content.Strokes, content.Height);
+    }
+
     /// <summary>A cell's content laid out: lines, fills and strokes relative to its text's top left, its height, its place.</summary>
     sealed record CellContent(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height, double Left = 0, double Width = 0, double Thickness = 0);
 

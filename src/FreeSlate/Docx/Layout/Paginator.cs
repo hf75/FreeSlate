@@ -479,6 +479,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             Behind = (string?)element.Attribute("behindDoc") is "1" or "true",
             Order = long.TryParse((string?)element.Attribute("relativeHeight"), out var order) ? order : 0,
+            Text = anchor.Text,
         };
 
         double Position(XElement? position, double origin, double size, double extent, bool odd, bool horizontal)
