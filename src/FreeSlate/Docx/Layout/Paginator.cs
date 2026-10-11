@@ -392,6 +392,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
         pendingAfter = SpaceAfter(paragraph, index + 1 < paragraphs.Count ? paragraphs[index + 1] : null);
+        // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).
+        lines[^1].BarExtension = pendingAfter;
         if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
             flow[^1].After = pendingAfter;
         page!.TrailingSpace = pendingAfter;

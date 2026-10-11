@@ -110,15 +110,33 @@ public static class WordLines
         {
             foreach (var placed in page.Lines)
             {
-                var pieces = placed.Line.Pieces.Where(p => !p.IsTab).ToList();
-                var text = Normalize(string.Concat(placed.Line.Pieces.Select(p => p.IsTab ? "" : p.Text)));
-                if (pieces.Count == 0 || text.Length == 0)
-                    continue;
-                var first = pieces.First(p => p.Text.Trim().Length > 0);
-                var lastPiece = pieces.Last(p => p.Text.Trim().Length > 0);
-                var x0 = placed.Left + first.X + Leading(first);
-                var x1 = placed.Left + lastPiece.X + Trimmed(lastPiece);
-                result.Add((page.Number, placed.Top + placed.Line.Baseline - first.Style.Raise, x0, x1, text));
+                // Pieces of drawn text, a tab's leader as its characters; a tab without leader more than 24 pt wide
+                // separates segments, as Word's lines are split.
+                var segment = new List<(double X0, double X1, string Text, double Raise)>();
+                void Close()
+                {
+                    var text = Normalize(string.Concat(segment.Select(s => s.Text)));
+                    var visible = segment.Where(s => s.Text.Trim().Length > 0).ToList();
+                    if (text.Length > 0 && visible.Count > 0)
+                        result.Add((page.Number, placed.Top + placed.Line.Baseline - visible[0].Raise, visible[0].X0, visible[^1].X1, text));
+                    segment.Clear();
+                }
+                foreach (var piece in placed.Line.Pieces)
+                {
+                    var x = placed.Left + piece.X;
+                    if (piece.IsTab)
+                    {
+                        var leader = TabLeader.Positions(piece, x);
+                        if (leader.Count > 0 && TabLeader.Character(piece.Leader) is { } c)
+                            segment.Add((leader[0], leader[^1] + (leader.Count > 1 ? leader[^1] - leader[^2] : 0), new string(c, leader.Count), 0));
+                        // Word draws a tab as a space: the gap starts after it.
+                        else if (piece.Width - piece.Style.Font.Data.GlyphsWithFeatures(" ", piece.Style.Features)[0].Advance * piece.Style.Size > 24)
+                            Close();
+                        continue;
+                    }
+                    segment.Add((x + Leading(piece), x + Trimmed(piece), piece.Text, piece.Style.Raise));
+                }
+                Close();
             }
         }
         return result;

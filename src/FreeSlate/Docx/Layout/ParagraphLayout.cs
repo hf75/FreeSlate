@@ -56,6 +56,12 @@ public sealed class Line
     /// <summary>The height the line needs on the page.</summary>
     public double FitHeight => Height - Overhang;
 
+    /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
+    public List<double>? Bars { get; set; }
+
+    /// <summary>How far below the line its bars reach: the space after the paragraph, on its last line.</summary>
+    public double BarExtension { get; set; }
+
     /// <summary>The break that ends the line: none, a line break, a page break or a column break.</summary>
     public string? EndBreak { get; set; }
 
@@ -144,7 +150,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 if (c == '\t')
                 {
-                    x = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, out _);
+                    var to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out _);
+                    if (to > limit + 0.005)
+                    {
+                        // A tab whose stop lies past the right margin starts the next line; at a line's start it fills
+                        // the line and its text follows on the next (measured with docx/local/tab-break).
+                        if (HasContent(text, lineStart, i))
+                        {
+                            end = i;
+                            lastFit = i;
+                            break;
+                        }
+                        i++;
+                        end = i;
+                        lastFit = i;
+                        break;
+                    }
+                    x = to;
                     i++;
                     end = i;
                     continue;
@@ -205,7 +227,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (lastFit < 0)
                 lastFit = end;
 
-            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd);
+            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit);
             line.EndBreak = endBreak;
             lines.Add(line);
             first = false;
@@ -214,15 +236,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 break;
         }
         if (lines.Count == 0)
-            lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine - labelShift, format, left, firstLine, mark, labelEnd));
+            lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine - labelShift, format, left, firstLine, mark, labelEnd, width - right));
         // A paragraph that ends with a break has an empty last line.
         if (lines[^1].EndBreak is "line" && lineStart >= text.Length)
-            lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0));
+            lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0, width - right));
         lines[^1].Last = true;
 
         foreach (var line in lines)
             Align(line, format, width - right, left + (line.First ? firstLine - labelShift : 0));
         Space(lines, format);
+        if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
+        {
+            foreach (var line in lines)
+                line.Bars = bars;
+        }
         return lines;
     }
 
@@ -343,7 +370,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// it, aligned left, centered, right or on the decimal point; a hanging first line stops at the left indent; past
     /// the custom stops the default stops continue (multiples of w:defaultTabStop from the margin).
     /// </summary>
-    double TabStop(ParagraphFormat format, double x, string text, int tab, List<RunStyle> charStyles, double[] advances, double left, double firstLine, out TabStop? stop)
+    /// <param name="limit">The right indent: centered, right and decimal stops past it align at it (measured with docx/local/tab-break).</param>
+    double TabStop(ParagraphFormat format, double x, string text, int tab, List<RunStyle> charStyles, double[] advances, double left, double firstLine, double limit, out TabStop? stop)
     {
         stop = null;
         if (firstLine < 0 && x < left - 0.005)
@@ -367,9 +395,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 width += advances[k];
             var start = t.Align switch
             {
+                "center" or "right" or "end" or "decimal" when t.Position > limit + 0.005 => limit - width,
                 "center" => t.Position - width / 2,
                 "right" or "end" => t.Position - width,
-                "decimal" => DecimalStart(text, tab + 1, end, advances, t.Position, width),
+                "decimal" => DecimalStart(text, tab + 1, end, advances, t.Position, width, context.DecimalSymbol),
                 _ => t.Position,
             };
             return Math.Max(x, start);
@@ -378,9 +407,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return (Math.Floor(x / interval + 1e-6) + 1) * interval;
     }
 
-    static double DecimalStart(string text, int start, int end, double[] advances, double position, double width)
+    /// <summary>
+    /// Where text after a decimal tab starts: its decimal symbol at the stop, or its end where it has none (measured
+    /// with docx/generated/tabs: with the German decimal comma, 12.5 ends at the stop).
+    /// </summary>
+    static double DecimalStart(string text, int start, int end, double[] advances, double position, double width, char symbol)
     {
-        var point = text.IndexOf('.', start, end - start);
+        var point = text.IndexOf(symbol, start, end - start);
         if (point < 0)
             return position - width;
         var before = 0.0;
@@ -391,7 +424,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <param name="labelEnd">Where the list number (and a space after it) ends in the text.</param>
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
-        ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd)
+        ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit)
     {
         var line = new Line { First = start == 0 };
         var x = startX;
@@ -416,7 +449,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             if (i < end && text[i] == '\t')
             {
-                var to = TabStop(format, x, text, i, charStyles, advances, left, firstLine, out var stop);
+                // A tab reaching past the right margin ends at it.
+                var to = Math.Min(TabStop(format, x, text, i, charStyles, advances, left, firstLine, limit, out var stop), Math.Max(x, limit));
                 line.Pieces.Add(new Piece
                 {
                     Text = "\t",

@@ -37,6 +37,9 @@ public sealed class PageRenderer(DocumentContext context)
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         foreach (var placed in page.Lines)
         {
+            // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
+            foreach (var bar in placed.Line.Bars ?? [])
+                svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
             var baseline = placed.Top + placed.Line.Baseline;
             foreach (var piece in placed.Line.Pieces)
             {
@@ -45,7 +48,11 @@ public sealed class PageRenderer(DocumentContext context)
                 if (!piece.IsTab && (piece.Style.Highlight ?? piece.Style.Shading) is { } back)
                     svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above)}\" width=\"{Px(piece.Width)}\" height=\"{Px(placed.Line.Above + placed.Line.Below)}\" fill=\"{back.ToHex()}\"/>");
                 if (piece.IsTab)
+                {
+                    if (piece.Leader != null)
+                        svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise));
                     continue;
+                }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
                 if (browser)
                     svg.Append(BrowserText(piece, x, baseline - piece.Style.Raise));
@@ -187,6 +194,22 @@ public sealed class PageRenderer(DocumentContext context)
         if (Math.Abs(style.Scale - 1) > 1e-6)
             sb.Append($" transform=\"translate({Units.Css(x * PxPerPt)} 0) scale({Units.Css4(style.Scale)} 1) translate({Units.Css(-x * PxPerPt)} 0)\"");
         sb.Append('>').Append(WebUtility.HtmlEncode(piece.Text)).Append("</text>");
+        return sb.ToString();
+    }
+
+    /// <summary>A tab's leader: its character repeated where <see cref="TabLeader"/> puts it, in the tab's font and color.</summary>
+    string LeaderText(Piece tab, double x, double baseline)
+    {
+        var positions = TabLeader.Positions(tab, x);
+        if (positions.Count == 0 || TabLeader.Character(tab.Leader) is not { } c)
+            return "";
+        var style = tab.Style;
+        var family = style.Font.Data.Family;
+        context.UsedFonts.Add(family);
+        var sb = new StringBuilder($"<text x=\"{string.Join(' ', positions.Select(p => Units.Css(p * PxPerPt)))}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"");
+        if (style.Bold || tab.Leader == "heavy") sb.Append(" font-weight=\"700\"");
+        if (style.Italic) sb.Append(" font-style=\"italic\"");
+        sb.Append(" style=\"font-kerning:none\">").Append(WebUtility.HtmlEncode(new string(c, positions.Count))).Append("</text>");
         return sb.ToString();
     }
 

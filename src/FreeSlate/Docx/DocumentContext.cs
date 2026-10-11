@@ -28,6 +28,7 @@ public sealed class DocumentContext : IDisposable
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
         Numbering = new NumberingDefinitions(Related("numbering"), Styles);
+        DecimalSymbol = Settings.Child("decimalSymbol").Val() is { Length: > 0 } symbol ? symbol[0] : '.';
     }
 
     public OpcPackage Package { get; }
@@ -42,6 +43,9 @@ public sealed class DocumentContext : IDisposable
 
     /// <summary>The interval of the default tab stops in points (w:defaultTabStop, 720 twips when absent).</summary>
     public double DefaultTabStop { get; }
+
+    /// <summary>The character decimal tab stops align on (w:decimalSymbol, the language's decimal separator).</summary>
+    public char DecimalSymbol { get; }
 
     /// <summary>The glyph outlines the document uses, defined once.</summary>
     public Html.GlyphCache Glyphs { get; } = new();
