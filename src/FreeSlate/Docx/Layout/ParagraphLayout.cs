@@ -93,6 +93,9 @@ public sealed class Line
     /// <summary>Where in the line (from the column's left edge) each of its drawings is anchored, for relativeFrom="character".</summary>
     public Dictionary<AnchorInline, double>? AnchorX { get; set; }
 
+    /// <summary>The brackets of editable ranges in the line: where (from the column's left edge) and whether they open.</summary>
+    public List<(double X, bool Start)>? Brackets { get; set; }
+
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
     public List<double>? Bars { get; set; }
 
@@ -228,6 +231,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The floating drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, AnchorInline Anchor)> anchored = [];
+
+    /// <summary>The starts and ends of editable ranges of the paragraph being laid out, by their place in its text.</summary>
+    readonly List<(int Index, bool Start)> permissions = [];
 
     /// <summary>The footnote references of the paragraph being laid out: where each stands and its note.</summary>
     readonly List<(int Index, string Id)> notes = [];
@@ -468,6 +474,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
         }
+        // Where the editable ranges begin and end in their lines: at the character after their start, after the
+        // character before their end.
+        if (permissions.Count > 0)
+        {
+            var starts = lines.Select(l => l.Pieces.Where(p => p.Start >= 0).Select(p => p.Start).DefaultIfEmpty(int.MaxValue).Min()).ToList();
+            foreach (var (index, start) in permissions)
+            {
+                var k = starts.FindLastIndex(s => s <= index);
+                if (k < 0)
+                    k = 0;
+                (lines[k].Brackets ??= []).Add((CharacterX(lines[k], index), start));
+            }
+        }
         // Where the drawings are anchored in their lines, once the lines are aligned: at the start of the character
         // before the anchor (measured with docx/local/anchor-char: after a space, a letter or a tab).
         foreach (var line in lines)
@@ -563,6 +582,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         objects.Clear();
         equations.Clear();
         anchored.Clear();
+        permissions.Clear();
         var breakAfterDisplay = false;
         links.Clear();
         notes.Clear();
@@ -656,6 +676,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case AnchorInline anchor:
                     anchored.Add((text.Length, anchor));
+                    break;
+                case PermissionInline permission:
+                    permissions.Add((text.Length, permission.Start));
                     break;
                 case DrawingInline drawing:
                     objects[text.Length] = drawing;

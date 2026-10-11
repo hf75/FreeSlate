@@ -85,6 +85,29 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
 
     Drawing.ColorContext? colors;
 
+    /// <summary>
+    /// The page background (catalog: document.background): the fill of w:background or its v:background on a
+    /// rectangle the size of the page, behind everything; Word prints it whether or not w:displayBackgroundShape is
+    /// set (measured with docx/local/misc-nothing, misc-nobg).
+    /// </summary>
+    public string Background(double width, double height)
+    {
+        if (Vml.BackgroundFill(context.Background, Colors) is not { } fill)
+            return "";
+        var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
+        var drawing = new XElement(Wp + "anchor",
+            new XElement(Wp + "extent", new XAttribute("cx", cx), new XAttribute("cy", cy)),
+            new XElement(Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "Background")),
+            new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XAttribute("uri", Wps.NamespaceName),
+                new XElement(Wps + "wsp", new XElement(Wps + "cNvSpPr"),
+                    new XElement(Wps + "spPr",
+                        new XElement(Ns.A + "xfrm", new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)), new XElement(Ns.A + "ext", new XAttribute("cx", cx), new XAttribute("cy", cy))),
+                        new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                        fill, new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
+                    new XElement(Wps + "bodyPr")))));
+        return Render(new PlacedDrawing(drawing, context.MainPart, 0, 0, width, height));
+    }
+
     /// <summary>The fonts the drawings' text uses.</summary>
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];
 

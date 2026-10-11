@@ -339,6 +339,33 @@ public static class Vml
         static XElement Pt(long x, long y) => new(Ns.A + "pt", new XAttribute("x", x), new XAttribute("y", y));
     }
 
+    /// <summary>
+    /// The page background (catalog: document.background): a v:background's fill, else w:background's color, as a
+    /// DrawingML fill; null without one.
+    /// </summary>
+    public static XElement? BackgroundFill(XElement? background, Drawing.ColorContext colors)
+    {
+        if (background == null)
+            return null;
+        if (background.Element(V + "background") is { } vml)
+            return Fill(vml, null);
+        var color = (string?)background.Attribute(Wml.W + "color");
+        if ((string?)background.Attribute(Wml.W + "themeColor") is { } theme)
+        {
+            var scheme = new XElement(Ns.A + "schemeClr", new XAttribute("val", theme switch
+            {
+                "dark1" => "dk1", "light1" => "lt1", "dark2" => "dk2", "light2" => "lt2", "text1" => "tx1", "text2" => "tx2",
+                "background1" => "bg1", "background2" => "bg2", "hyperlink" => "hlink", "followedHyperlink" => "folHlink", var other => other,
+            }));
+            if ((string?)background.Attribute(Wml.W + "themeTint") is { } tint && int.TryParse(tint, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var t))
+                scheme.Add(new XElement(Ns.A + "tint", new XAttribute("val", t * 100000 / 255)));
+            if ((string?)background.Attribute(Wml.W + "themeShade") is { } shade && int.TryParse(shade, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var s))
+                scheme.Add(new XElement(Ns.A + "shade", new XAttribute("val", s * 100000 / 255)));
+            return new XElement(Ns.A + "solidFill", scheme);
+        }
+        return color is { Length: 6 } hex && hex != "auto" ? new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", hex))) : null;
+    }
+
     static XElement Fill(XElement shape, XElement? type)
     {
         var fill = shape.Element(V + "fill") ?? type?.Element(V + "fill");
@@ -350,8 +377,8 @@ public static class Vml
             var angle = double.TryParse((string?)fill?.Attribute("angle"), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) ? degrees : 0;
             return new XElement(Ns.A + "gradFill",
                 new XElement(Ns.A + "gsLst",
-                    new XElement(Ns.A + "gs", new XAttribute("pos", 0), Solid(color, opacity)),
-                    new XElement(Ns.A + "gs", new XAttribute("pos", 100000), Solid(color2, opacity))),
+                    new XElement(Ns.A + "gs", new XAttribute("pos", 0), Solid(color, opacity).Elements().First()),
+                    new XElement(Ns.A + "gs", new XAttribute("pos", 100000), Solid(color2, opacity).Elements().First())),
                 new XElement(Ns.A + "lin", new XAttribute("ang", (long)Math.Round(((90 - angle) % 360 + 360) % 360 * 60000)), new XAttribute("scaled", 0)));
         }
         if (kind is "frame" or "tile" && ((string?)fill?.Attribute(R + "id") ?? (string?)fill?.Attribute(O + "relid")) is { } picture)

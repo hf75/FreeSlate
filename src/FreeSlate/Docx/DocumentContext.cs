@@ -33,6 +33,9 @@ public sealed class DocumentContext : IDisposable
 
     public OpcPackage Package { get; }
     public string MainPart { get; }
+
+    /// <summary>The document's page background (w:background), or null.</summary>
+    public XElement? Background => Document?.Root?.Element(Wml.W + "background");
     public XDocument Document { get; }
     public StyleSheet Styles { get; }
     public XElement? Settings { get; }

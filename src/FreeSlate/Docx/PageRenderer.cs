@@ -35,10 +35,11 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var svg = new StringBuilder();
         defs.Clear();
         svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
-        // Drawings behind the text first, the text, then inline drawings and the drawings in front of the text.
+        // The page background, drawings behind the text, the text, then inline drawings and the drawings in front.
         var front = new List<PlacedDrawing>();
         if (drawings != null)
         {
+            svg.Append(drawings.Background(page.Width, page.Height));
             foreach (var drawing in page.Drawings.Where(d => d.Behind).OrderBy(d => d.Order))
                 svg.Append(Drawing(drawing, page));
         }
@@ -138,6 +139,16 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             var baseline = placed.Top + placed.Line.Baseline;
             if (placed.Angle != 0)
                 svg.Append($"<g transform=\"rotate({Units.Css(placed.Angle)} {Px(placed.Left + placed.PivotX)} {Px(placed.Top + placed.PivotY)})\">");
+            // Editable ranges (w:permStart, w:permEnd): gray brackets 0.24 pt thin through the line (measured with
+            // docx/local/misc-nothing).
+            foreach (var (bracketX, start) in placed.Line.Brackets ?? [])
+            {
+                var (bx, top, bottom) = (placed.Left + bracketX, placed.Top, placed.Top + placed.Line.Height);
+                var tick = start ? bx - 0.24 : bx - 0.36;
+                svg.Append($"<rect x=\"{Px(start ? bx - 0.24 : bx)}\" y=\"{Px(top + 0.38)}\" width=\"{Px(0.24)}\" height=\"{Px(bottom - top - 0.6)}\" fill=\"#7f7f7f\"/>");
+                svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(top + 0.14)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
+                svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(bottom - 0.22)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
+            }
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;

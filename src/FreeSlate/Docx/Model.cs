@@ -24,6 +24,9 @@ public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inli
 /// <summary>Where a bookmark starts (w:bookmarkStart, catalog: field.bookmarks): an anchor in the HTML.</summary>
 public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format);
 
+/// <summary>The start or end of an editable range (w:permStart, w:permEnd, catalog: review.permissions).</summary>
+public sealed record PermissionInline(bool Start, RunFormat Format) : Inline(Format);
+
 /// <summary>
 /// An equation (catalog: math): an m:oMath in the text, or a display equation of an m:oMathPara on lines of its own,
 /// justified by m:jc or the settings' m:defJc; its runs formatted by their w:rPr over the paragraph's style.
@@ -459,6 +462,9 @@ public sealed partial class ModelReader(DocumentContext context)
                     link = saved;
                     break;
                 }
+                case "permStart" or "permEnd":
+                    field.Target(content).Add(new PermissionInline(e.Name.LocalName == "permStart", context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    break;
                 case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
                     field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)));
                     break;
