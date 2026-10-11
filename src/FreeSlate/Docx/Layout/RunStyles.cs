@@ -128,28 +128,46 @@ public sealed class RunStyles(DocumentContext context)
         var font = context.FontTable.Resolve(context.Fonts, family, bold, italic);
         var color = Color(format);
         var vertical = format.VerticalAlign;
-        // Super- and subscript (catalog: run.decoration): 58 % of the size, raised by 33 % or lowered by 8 % of it
-        // (measured with docx/generated/character-formats: 12 pt text has a 6.96 pt superscript 3.96 pt up and a
-        // subscript 0.96 pt down; LibreOffice uses the same factors for Word's).
-        var scriptSize = vertical is "superscript" or "subscript" ? size * 0.58 : size;
+        // Super- and subscript (catalog: run.decoration), as Word sets them (measured with docx/local/supsizes and
+        // supsizes2: Arial, Calibri, Times New Roman, Segoe UI, Cambria, Aptos and Courier New from 8 to 48 pt): the
+        // font's OS/2 superscript or subscript size in whole half-points; a superscript raised by the font's
+        // superscript offset or, where its top would stand above the line's (its ascent over the font's ascent and
+        // line gap), as far as that leaves it, a subscript lowered by the subscript offset or as far as its bottom stays
+        // on the line's, both in whole half-points (exact where the offsets decide, within half a point where the
+        // line does; Garamond from 12 pt on takes other sizes in Word).
+        var data = font.Data;
+        var scriptSize = size;
+        var scriptShift = 0.0;
+        if (vertical is "superscript" or "subscript")
+        {
+            var superscript = vertical == "superscript";
+            scriptSize = Math.Round(size * 2 * (superscript ? data.SuperscriptSize : data.SubscriptSize), MidpointRounding.AwayFromZero) / 2;
+            var (above, below) = WordFonts.LineMetrics(data, size);
+            var shift = superscript
+                ? Math.Min(data.SuperscriptOffset * size, above - WordFonts.Ascent(data) * scriptSize)
+                : Math.Min(data.SubscriptOffset * size, below - WordFonts.LineMetrics(data, scriptSize).Below);
+            scriptShift = (superscript ? 1 : -1) * Math.Round(Math.Max(0, shift) * 2, MidpointRounding.AwayFromZero) / 2;
+        }
+        var raise = (format.Position ?? 0) + scriptShift;
         if (smallCapital)
             scriptSize = SmallCapsSize(scriptSize);
-        var raise = (format.Position ?? 0) + vertical switch
-        {
-            "superscript" => size * 0.33,
-            "subscript" => -size * 0.08,
-            _ => 0,
-        };
         return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
         {
             Underline = format.Underline is { } u && u != "none" ? u : null,
             UnderlineColor = format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
             Strike = format.Strike == true,
             DoubleStrike = format.DoubleStrike == true,
+            Emboss = format.Emboss == true,
+            Imprint = format.Imprint == true,
+            Hollow = format.Outline == true,
+            Shadow = format.Shadow == true,
+            Border = format.Border is { Visible: true } border ? border : null,
             Hidden = format.Vanish == true || format.SpecVanish == true,
             Highlight = WordFonts.Highlight(format.Highlight),
-            Shading = format.ShadingFill is { Length: 6 } fill && fill != "auto" ? RgbColor.FromHex(fill) : null,
+            Shading = format.ShadingPattern != null || format.ShadingFill != null ? Shading.Color(format.ShadingPattern, format.ShadingColor, format.ShadingFill) : null,
             Raise = raise,
+            ScriptBase = vertical is "superscript" or "subscript" ? size : null,
+            ScriptShift = scriptShift,
             Spacing = format.Spacing ?? 0,
             Scale = (format.Scale ?? 100) / 100,
             Caps = format.Caps == true,

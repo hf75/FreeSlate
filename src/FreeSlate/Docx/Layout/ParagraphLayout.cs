@@ -15,6 +15,9 @@ public sealed class Piece
     /// <summary>Where the piece's text begins in its paragraph's text; -1 for tabs and spacers.</summary>
     public int Start { get; init; } = -1;
 
+    /// <summary>Room before the piece's first character, in its first advance: a run border's line and space.</summary>
+    public double Lead { get; init; }
+
     /// <summary>The advance of every UTF-16 unit in points (a cluster's advance on its first unit, spacing and scale included).</summary>
     public required double[] Advances { get; init; }
 
@@ -221,6 +224,33 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, CheckBoxInline> boxes = [];
 
+    /// <summary>The room run borders take before the first character of their boxes, by its place in the text.</summary>
+    readonly Dictionary<int, double> leads = [];
+
+    /// <summary>
+    /// Run borders (w:bdr, catalog: run.decoration) take room in the line: their lines and space before the first and
+    /// after the last character of a box, neighboring runs with the same border sharing one box (measured with
+    /// docx/local/ulsizes: the text stands the border's lines and space, both floored to Word's 0.12 pt dots, inside
+    /// the frame, and the next text as far outside it).
+    /// </summary>
+    void BorderRoom(string text, List<RunStyle> charStyles, double[] advances)
+    {
+        leads.Clear();
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (charStyles[i].Border is not { } border || i > 0 && Equals(charStyles[i - 1].Border, border) && text[i - 1] is not ('\n' or '\f' or '\v'))
+                continue;
+            var end = i;
+            while (end + 1 < text.Length && Equals(charStyles[end + 1].Border, border) && text[end + 1] is not ('\n' or '\f' or '\v'))
+                end++;
+            var room = PageBorders.Room(border);
+            leads[i] = room;
+            advances[i] += room;
+            advances[end] += room;
+            i = end;
+        }
+    }
+
     /// <summary>The rubies and the two-lines-in-one runs of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, RubyInline> rubies = [];
     readonly Dictionary<int, TextInline> combined = [];
@@ -368,6 +398,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles, CharacterExtra);
         AutoSpace(text, charStyles, advances, format);
+        BorderRoom(text, charStyles, advances);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
@@ -634,6 +665,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         displayWidth = double.MaxValue;
         var (text, charStyles, _) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles, CharacterExtra);
+        BorderRoom(text, charStyles, advances);
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
@@ -1083,6 +1115,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     X = x,
                     Start = pieceStart,
                     Advances = pieceAdvances,
+                    Lead = leads.GetValueOrDefault(pieceStart),
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
                     Equation = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var math) ? math.Equation : null,
@@ -1185,11 +1218,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 drawings = true;
                 continue;
             }
-            var (a, b) = piece.Style.Metrics;
+            // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
+            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase) : piece.Style.Metrics;
+            var lift = piece.Style.Raise - piece.Style.ScriptShift;
             above = Math.Max(above, a);
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
             var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
-            raised = Math.Max(raised, a + piece.Style.Raise + reachAbove);
+            raised = Math.Max(raised, a + lift + reachAbove);
             any = true;
             // A list number's ascent counts, its descent not (measured with docx/local/num-rules: a 16 pt number
             // before 12 pt Arial makes the line 17.52 pt high, its ascent and the text's descent).
@@ -1197,7 +1232,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             below = Math.Max(below, b);
             largest = Math.Max(largest, a + b);
-            lowered = Math.Max(lowered, b - piece.Style.Raise + reachBelow);
+            lowered = Math.Max(lowered, b - lift + reachBelow);
         }
         if (drawings && !any)
         {

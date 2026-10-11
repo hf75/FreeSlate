@@ -20,12 +20,33 @@ public sealed record RunStyle(
     public RgbColor? UnderlineColor { get; init; }
     public bool Strike { get; init; }
     public bool DoubleStrike { get; init; }
+
+    /// <summary>
+    /// Emboss, imprint, outline (hollow letters) and shadow (w:emboss, w:imprint, w:outline, w:shadow; catalog:
+    /// run.decoration), which Word draws as copies of the text.
+    /// </summary>
+    public bool Emboss { get; init; }
+    public bool Imprint { get; init; }
+    public bool Hollow { get; init; }
+    public bool Shadow { get; init; }
+
+    /// <summary>The border around the run's text (w:bdr) where one shows, or null.</summary>
+    public BorderLine? Border { get; init; }
+
     public bool Hidden { get; init; }
     public RgbColor? Highlight { get; init; }
     public RgbColor? Shading { get; init; }
 
     /// <summary>How far the baseline is raised (points; negative lowers it): w:position and super/subscript.</summary>
     public double Raise { get; init; }
+
+    /// <summary>
+    /// For super- and subscripts the size of the text they belong to and the part of <see cref="Raise"/> they add: they
+    /// stand within the line that size makes (measured with docx/local/raised: unlike w:position, they make no line
+    /// higher).
+    /// </summary>
+    public double? ScriptBase { get; init; }
+    public double ScriptShift { get; init; }
 
     /// <summary>Extra space after every character in points (w:spacing).</summary>
     public double Spacing { get; init; }
@@ -64,6 +85,11 @@ public sealed record RunStyle(
 /// <summary>What Word takes from fonts (catalog: engine.fonts, engine.lineLayout); every rule measured against Word.</summary>
 public static class WordFonts
 {
+    /// <summary>The ascent of a font's glyphs above the baseline in em, without the line gap (as <see cref="LineMetrics"/> takes it).</summary>
+    public static double Ascent(FontData font) =>
+        font.EastAsian ? font.WinAscent + 0.15 * (font.WinAscent + font.WinDescent)
+        : font.Typo is { Use: true } typo ? typo.Ascender : font.WinAscent;
+
     /// <summary>
     /// The part of a single-spaced line above and below the baseline in points (measured with 14 fonts, docx/local/lm-*):
     /// the line is as high as the font's hhea ascender, descender and line gap together; the baseline sits below the

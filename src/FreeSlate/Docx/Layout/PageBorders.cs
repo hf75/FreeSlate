@@ -94,6 +94,26 @@ public static class PageBorders
         return new PageBorderBox(fills, strokes, borders.Attr("zOrder") != "back");
     }
 
+    /// <summary>The room a run border takes beside its text: its space and its lines (catalog: run.decoration).</summary>
+    public static double Room(BorderLine line) => SideOf(line) is { } side ? Device(line.Space) + side.Total : 0;
+
+    /// <summary>
+    /// A frame of one line whose outer edges are a box's (run borders, catalog: run.decoration): its sides drawn as a
+    /// page border's are, the gaps of double lines left open (measured with docx/local/ulsizes).
+    /// </summary>
+    public static PageBorderBox? Frame(BorderLine line, double left, double top, double right, double bottom)
+    {
+        if (SideOf(line) is not { } side)
+            return null;
+        var fills = new List<FillRect>();
+        var strokes = new List<Stroke>();
+        Draw(side, true, false, top, left, right, side, side, fills, strokes, false);
+        Draw(side, true, true, bottom, left, right, side, side, fills, strokes, false);
+        Draw(side, false, false, left, top, bottom, side, side, fills, strokes, false);
+        Draw(side, false, true, right, top, bottom, side, side, fills, strokes, false);
+        return new PageBorderBox(fills, strokes, true);
+    }
+
     /// <summary>A side's stripes from its outer edge inwards: the bottom's and the right's are the last first.</summary>
     static IEnumerable<(double Width, Kind Kind)> Outward(Side? side, bool far) =>
         side == null ? [] : far ? Enumerable.Reverse(side.Stripes) : side.Stripes;
@@ -103,7 +123,7 @@ public static class PageBorders
     /// left), between <paramref name="from"/> and <paramref name="to"/>, the outer edges of the sides it meets: a
     /// stripe reaches into a corner as far as the sides it meets have stripes further out than its own.
     /// </summary>
-    static void Draw(Side side, bool horizontal, bool far, double edge, double from, double to, Side? start, Side? end, List<FillRect> fills, List<Stroke> strokes)
+    static void Draw(Side side, bool horizontal, bool far, double edge, double from, double to, Side? start, Side? end, List<FillRect> fills, List<Stroke> strokes, bool gaps = true)
     {
         var line = side.Line;
         var w = side.Total;
@@ -157,6 +177,12 @@ public static class PageBorders
         var k = 0;
         foreach (var (thickness, kind) in Outward(side, far))
         {
+            if (kind == Kind.Gap && !gaps)
+            {
+                depth += thickness;
+                k++;
+                continue;
+            }
             var color = kind switch
             {
                 Kind.Gap => RgbColor.White,
@@ -194,9 +220,12 @@ public static class PageBorders
     static string Pattern(params double[] lengths) => string.Join(' ', lengths.Select(Units.Css));
 
     /// <summary>A side's line and stripes, or null where it has none.</summary>
-    static Side? Read(XElement? e)
+    static Side? Read(XElement? e) => BorderLine.Read(e) is { Visible: true } line ? SideOf(line) : null;
+
+    /// <summary>A line's stripes, or null where it shows none.</summary>
+    static Side? SideOf(BorderLine line)
     {
-        if (BorderLine.Read(e) is not { Visible: true } line)
+        if (!line.Visible)
             return null;
         var w = Device(line.Width);
         var (thin, half, wide) = (Device(0.75), Device(line.Width / 2), Device(1.5));

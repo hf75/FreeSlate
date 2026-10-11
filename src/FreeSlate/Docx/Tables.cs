@@ -187,13 +187,14 @@ public readonly record struct TableWidth(double Value, string Type)
 public static class Shading
 {
     /// <summary>The color a shading paints, or null where it paints nothing.</summary>
-    public static RgbColor? Color(XElement? shd)
+    public static RgbColor? Color(XElement? shd) => shd == null ? null : Color(shd.Val(), shd.Attr("color"), shd.Attr("fill"));
+
+    /// <summary>The color a w:shd's pattern, pattern color and fill show as.</summary>
+    public static RgbColor? Color(string? val, string? patternColor, string? fillColor)
     {
-        if (shd == null)
-            return null;
-        var pattern = shd.Val() ?? "clear";
-        var fill = shd.Attr("fill") is { Length: 6 } f ? RgbColor.FromHex(f) : (RgbColor?)null;
-        var color = shd.Attr("color") is { Length: 6 } c ? RgbColor.FromHex(c) : RgbColor.Black;
+        var pattern = val ?? "clear";
+        var fill = fillColor is { Length: 6 } f ? RgbColor.FromHex(f) : (RgbColor?)null;
+        var color = patternColor is { Length: 6 } c ? RgbColor.FromHex(c) : RgbColor.Black;
         if (pattern is "nil")
             return null;
         if (pattern is "clear")

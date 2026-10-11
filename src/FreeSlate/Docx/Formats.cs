@@ -38,6 +38,9 @@ public sealed class RunFormat
     /// <summary>w:u: the underline style and its color.</summary>
     public string? Underline, UnderlineColor;
 
+    /// <summary>w:bdr: the border around the run's text (catalog: run.decoration).</summary>
+    public BorderLine? Border;
+
     public string? Highlight;
 
     /// <summary>w:shd: pattern, pattern color and fill.</summary>
@@ -156,6 +159,7 @@ public sealed class RunFormat
                     UnderlineColor = e.Attr("color") ?? UnderlineColor;
                     break;
                 case "highlight": Highlight = e.Val(); break;
+                case "bdr": Border = BorderLine.Read(e); break;
                 case "shd":
                     ShadingPattern = e.Val();
                     ShadingColor = e.Attr("color");

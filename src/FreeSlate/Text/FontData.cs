@@ -113,7 +113,11 @@ public sealed class FontData : IDisposable
         {
             StrikeoutThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 26)) / (double)UnitsPerEm;
             StrikeoutPosition = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 28)) / (double)UnitsPerEm;
+            double Em(int offset) => BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + offset)) / (double)UnitsPerEm;
+            (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) = (Em(12), Em(16), Em(20), Em(24));
         }
+        if (SuperscriptSize <= 0 || SubscriptSize <= 0)
+            (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) = (0.65, 0.14, 0.65, 0.48);
         if (UnderlineThickness <= 0) (UnderlinePosition, UnderlineThickness) = (0.1, 0.05);
         if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
 
@@ -249,6 +253,18 @@ public sealed class FontData : IDisposable
     public double StrikeoutPosition { get; }
 
     public double StrikeoutThickness { get; }
+
+    /// <summary>
+    /// The size of sub- and superscripts and how far below and above the baseline they stand (OS/2 ySubscriptYSize,
+    /// ySubscriptYOffset, ySuperscriptYSize, ySuperscriptYOffset), in em.
+    /// </summary>
+    public double SubscriptSize { get; }
+
+    public double SubscriptOffset { get; }
+
+    public double SuperscriptSize { get; }
+
+    public double SuperscriptOffset { get; }
 
     /// <summary>GDI's ascent and descent (OS/2 usWinAscent/usWinDescent) in em; metafile text is placed with them.</summary>
     public double WinAscent { get; }

@@ -165,6 +165,9 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(top + 0.14)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
                 svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(bottom - 0.22)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
             }
+            // Run borders behind the text; underlines and strikethrough end with the line's content.
+            svg.Append(RunBorders(placed.Line, placed.Left, baseline));
+            var contentEnd = placed.Left + ContentEnd(placed.Line);
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
@@ -244,19 +247,24 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 // Hyperlinks wrap their text (catalog: field.hyperlinks); bookmarks are anchors in the page.
                 if (piece.Link != null)
                     svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
+                // Emboss, imprint and shadow lay copies of the text behind it; emboss and imprint move the text.
+                var textBaseline = baseline - piece.Style.Raise - piece.Shift;
+                var (copies, moveX, moveY) = Relief(piece, x, textBaseline);
+                svg.Append(copies);
                 if (browser)
-                    svg.Append(WithEffects(piece, BrowserText(piece, x, baseline - piece.Style.Raise - piece.Shift), x, baseline - piece.Style.Raise - piece.Shift));
+                    svg.Append(WithEffects(piece, BrowserText(piece, x + moveX, textBaseline + moveY), x + moveX, textBaseline + moveY));
                 else
                 {
-                    svg.Append(Glyphs(piece, x, baseline - piece.Style.Raise - piece.Shift));
-                    selection.Append(SelectionText(piece, x, baseline - piece.Style.Raise - piece.Shift));
+                    svg.Append(Glyphs(piece, x + moveX, textBaseline + moveY));
+                    selection.Append(SelectionText(piece, x + moveX, textBaseline + moveY));
                 }
-                svg.Append(Decorations(piece, x, baseline - piece.Style.Raise - piece.Shift));
+                svg.Append(Strikes(piece, x, textBaseline, contentEnd));
                 if (piece.Style.Emphasis is { } emphasis)
                     svg.Append(EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift));
                 if (piece.Link != null)
                     svg.Append("</a>");
             }
+            svg.Append(Underlines(placed.Line, placed.Left, baseline, contentEnd));
             if (placed.Angle != 0)
                 svg.Append("</g>");
         }
@@ -276,6 +284,9 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 x += piece.SpaceExtra;
         }
         positions[^1] = x;
+        // A run border's room before the first character is in its advance.
+        if (piece.Text.Length > 0)
+            positions[0] = piece.Lead;
         return positions;
     }
 
@@ -320,52 +331,347 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var transform = $"translate({Units.Css4(x * PxPerPt)} {Units.Css4(baseline * PxPerPt)}) scale({Units.Scale(scale)})";
         if (style.Font.SyntheticItalic)
             transform += " skewX(-12)";
-        var stroke = style.Font.SyntheticBold
-            ? $" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(data.UnitsPerEm * 0.025)}\" stroke-linejoin=\"round\""
-            : "";
-        return $"<g transform=\"{transform}\" fill=\"{style.Color.ToHex()}\"{stroke}>{units}</g>";
+        var paint = style.Hollow
+            ? $"fill=\"{(style.Shadow ? "#FFFFFF" : "none")}\" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(0.14 * PxPerPt / scale)}\" stroke-linejoin=\"round\""
+            : $"fill=\"{style.Color.ToHex()}\"" + (style.Font.SyntheticBold
+                ? $" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(data.UnitsPerEm * 0.025)}\" stroke-linejoin=\"round\""
+                : "");
+        return $"<g transform=\"{transform}\" {paint}>{units}</g>";
     }
 
-    /// <summary>Underline and strikethrough from the font's own positions and thicknesses (catalog: run.decoration).</summary>
-    static string Decorations(Piece piece, double x, double baseline)
+    /// <summary>Word's device dot, in points: it prints at 600 dpi and draws its lines on whole dots.</summary>
+    const double Dot = 0.12;
+
+    /// <summary>A length in whole dots of Word's device.</summary>
+    static int Dots(double points) => (int)Math.Round(points / Dot, MidpointRounding.AwayFromZero);
+
+    /// <summary>Where a line's content ends (from the column's left edge): its last character but spaces, or tab.</summary>
+    static double ContentEnd(Line line)
+    {
+        var end = double.NegativeInfinity;
+        foreach (var piece in line.Pieces)
+        {
+            if (piece.IsTab)
+            {
+                if (piece.Start >= 0)
+                    end = Math.Max(end, piece.X + piece.Width);
+                continue;
+            }
+            var kept = piece.Text.TrimEnd(' ').Length;
+            if (kept > 0)
+                end = Math.Max(end, piece.X + (kept == piece.Text.Length ? piece.Width : Positions(piece)[kept]));
+        }
+        return end;
+    }
+
+    /// <summary>
+    /// Strikethrough (catalog: run.decoration) through a piece at its own baseline and size, as Word prints it
+    /// (measured with docx/local/ulsizes: Arial, Times New Roman, Calibri and Courier New from 8 to 72 pt, and
+    /// docx/local/ulmixed: superscripts and raised text): a line from the font's strikeout position down, as thick as
+    /// its strikeout size, both on whole device dots; double strikethrough is that line moved up and down by its
+    /// thickness. Spaces at the end of the line are not struck through.
+    /// </summary>
+    static string Strikes(Piece piece, double x, double baseline, double contentEnd)
     {
         var style = piece.Style;
-        if (style.Underline == null && !style.Strike && !style.DoubleStrike)
+        if (!style.Strike && !style.DoubleStrike || piece.IsTab)
             return "";
-        var data = style.Font.Data;
-        var width = piece.Width;
-        // Trailing spaces of the line are not underlined.
-        var trimmed = piece.Text.TrimEnd(' ');
-        if (trimmed.Length < piece.Text.Length)
-            width = Positions(piece)[trimmed.Length];
+        var width = Math.Min(piece.Width, contentEnd - x);
         if (width <= 0)
             return "";
-        var sb = new StringBuilder();
-        var color = (style.UnderlineColor ?? style.Color).ToHex();
-        if (style.Underline != null)
+        var data = style.Font.Data;
+        var top = Dots(data.StrikeoutPosition * style.Size);
+        var thickness = Math.Max(1, Dots(data.StrikeoutThickness * style.Size));
+        var color = style.Color.ToHex();
+        string Line(int from) => $"<rect x=\"{Px(x)}\" y=\"{Px(baseline + from * Dot)}\" width=\"{Px(width)}\" height=\"{Px(thickness * Dot)}\" fill=\"{color}\"/>";
+        return style.DoubleStrike ? Line(-top - thickness) + Line(-top + thickness) : Line(-top);
+    }
+
+    /// <summary>
+    /// A font's underlines at a size, in device dots below the baseline, as Word prints them (measured with
+    /// docx/local/ulsizes: Arial, Times New Roman, Calibri and Courier New from 8 to 72 pt): a single line from the
+    /// font's underline position, as thick as its underline thickness; double lines half as thick (rounded up), the
+    /// first from half the position (rounded up), the second ending with the single line or 8 dots below the first,
+    /// whichever is lower; a thick line from the first double line's top to the second's; a wave from the first
+    /// double line's top, half the double lines' band less 3 dots high (rounded up). Small sizes of Arial and Courier
+    /// New stand up to 3 dots higher in Word.
+    /// </summary>
+    readonly record struct UnderlineMetrics(int Top, int Thickness, int DoubleTop, int DoubleThickness, int Gap, int Heavy, int Wave)
+    {
+        public static UnderlineMetrics Of(FreeSlate.Text.FontData data, double size)
         {
-            var thickness = Math.Max(0.5, data.UnderlineThickness * style.Size) * (style.Underline.Contains("thick", StringComparison.OrdinalIgnoreCase) || style.Underline.EndsWith("Heavy", StringComparison.Ordinal) ? 2 : 1);
-            // The font's underline position is the top of the line (measured: Aptos 12 pt, post -100/2048 em, Word's
-            // rectangle starts 0.6 pt below the baseline on its 600 dpi device).
-            var y = baseline + data.UnderlinePosition * style.Size;
-            sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{color}\"/>");
-            if (style.Underline == "double")
-                sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y + thickness * 1.5)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{color}\"/>");
+            var top = Dots(data.UnderlinePosition * size);
+            var thickness = Math.Max(1, Dots(data.UnderlineThickness * size));
+            var doubleTop = (int)Math.Ceiling(top / 2.0);
+            var doubleThickness = (thickness + 1) / 2;
+            var bottom = Math.Max(top + thickness, doubleTop + 2 * doubleThickness + 8);
+            return new(top, thickness, doubleTop, doubleThickness, bottom - doubleTop - 2 * doubleThickness,
+                bottom - doubleThickness - doubleTop, (int)Math.Ceiling((bottom - doubleTop - 3) / 2.0));
         }
-        if (style.Strike || style.DoubleStrike)
+    }
+
+    /// <summary>The dashes and gaps of a dotted or dashed underline in points, whatever the text's size (measured).</summary>
+    static double[]? DashPattern(string kind) => kind switch
+    {
+        "dotted" or "dottedHeavy" => [1.44, 1.44],
+        "dash" or "dashedHeavy" => [3.96, 1.92],
+        "dashLong" or "dashLongHeavy" => [7.92, 3.96],
+        "dotDash" or "dashDotHeavy" => [3.0, 0.96, 0.96, 0.96],
+        "dotDotDash" or "dashDotDotHeavy" => [2.16, 0.72, 0.72, 0.72, 0.72, 0.72],
+        _ => null,
+    };
+
+    /// <summary>Whether a piece carries its underline: text and tabs, not objects or the spacers past floating objects.</summary>
+    static bool Underlined(Piece piece) =>
+        piece.Style.Underline != null && piece.Width > 0 && (!piece.IsTab || piece.Start >= 0) && piece.Drawing == null
+        && piece.Equation == null && piece.CheckBox == null && piece.Ruby == null && piece.Combined == null && !piece.Separator;
+
+    /// <summary>
+    /// The underlines of a line (catalog: run.decoration), as Word prints them (measured with docx/local/underlines,
+    /// ulsizes and ulmixed): neighboring pieces with the same underline share one, its color changing with theirs.
+    /// </summary>
+    string Underlines(Line line, double left, double baseline, double contentEnd)
+    {
+        var sb = new StringBuilder();
+        var pieces = line.Pieces;
+        for (var i = 0; i < pieces.Count; i++)
         {
-            var thickness = Math.Max(0.5, data.StrikeoutThickness * style.Size);
-            var y = baseline - data.StrikeoutPosition * style.Size;
-            var textColor = style.Color.ToHex();
-            if (style.DoubleStrike)
-            {
-                sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y - thickness * 1.5)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{textColor}\"/>");
-                sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y + thickness * 0.5)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{textColor}\"/>");
-            }
-            else
-                sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y - thickness / 2)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{textColor}\"/>");
+            if (!Underlined(pieces[i]))
+                continue;
+            var kind = pieces[i].Style.Underline!;
+            var j = i;
+            while (j + 1 < pieces.Count && pieces[j + 1].Style.Underline == kind && Underlined(pieces[j + 1])
+                   && Math.Abs(pieces[j + 1].X - pieces[j].X - pieces[j].Width) < 0.01)
+                j++;
+            sb.Append(Underline(pieces.GetRange(i, j - i + 1), kind, left, baseline, contentEnd));
+            i = j;
         }
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// One underline under neighboring pieces: at the lowest of their baselines (superscripts and raised text with
+    /// others underline at the others' baseline, alone at their own), its lines the width-weighted average of the
+    /// lines of the pieces on that baseline (docx/local/ulmixed: 12 and 36 pt, Arial with Times New Roman and Courier
+    /// New, within a dot), to the end of the line's content. Dots and dashes have fixed lengths from the underline's
+    /// start; waves are 2.4 pt long, their crests on the page's 2.4 pt grid. "words" leaves out spaces and tabs.
+    /// </summary>
+    string Underline(List<Piece> segment, string kind, double left, double lineBaseline, double contentEnd)
+    {
+        double BaselineOf(Piece p) => lineBaseline - p.Style.Raise - p.Shift;
+        var baseline = segment.Max(BaselineOf);
+        var on = segment.Where(p => BaselineOf(p) >= baseline - 0.01).ToList();
+        var metrics = on.Select(p => (Metrics: UnderlineMetrics.Of(p.Style.Font.Data, p.Style.Size), p.Width)).ToList();
+        var total = metrics.Sum(m => m.Width);
+        int Average(Func<UnderlineMetrics, int> value) =>
+            (int)Math.Round(metrics.Sum(m => value(m.Metrics) * m.Width) / total, MidpointRounding.AwayFromZero);
+        var (top, thickness) = (Average(m => m.Top), Average(m => m.Thickness));
+        var (doubleTop, doubleThickness, gap) = (Average(m => m.DoubleTop), Average(m => m.DoubleThickness), Average(m => m.Gap));
+        var (heavy, wave) = (Average(m => m.Heavy), Average(m => m.Wave));
+
+        // The stretches to draw, in their colors.
+        var origin = left + segment[0].X;
+        var ranges = new List<(double From, double To, string Color)>();
+        void Add(double from, double to, string color)
+        {
+            to = Math.Min(to, contentEnd);
+            if (to - from < 1e-6)
+                return;
+            if (ranges.Count > 0 && ranges[^1].Color == color && Math.Abs(ranges[^1].To - from) < 0.01)
+                ranges[^1] = (ranges[^1].From, to, color);
+            else
+                ranges.Add((from, to, color));
+        }
+        foreach (var piece in segment)
+        {
+            var color = (piece.Style.UnderlineColor ?? piece.Style.Color).ToHex();
+            var x = left + piece.X;
+            if (kind != "words")
+            {
+                Add(x, x + piece.Width, color);
+                continue;
+            }
+            if (piece.IsTab)
+                continue;
+            var positions = Positions(piece);
+            for (var k = 0; k < piece.Text.Length; k++)
+            {
+                if (char.IsWhiteSpace(piece.Text[k]))
+                    continue;
+                var end = k;
+                while (end + 1 < piece.Text.Length && !char.IsWhiteSpace(piece.Text[end + 1]))
+                    end++;
+                Add(x + positions[k], x + positions[end + 1], color);
+                k = end;
+            }
+        }
+
+        var sb = new StringBuilder();
+        string Rect(double from, double to, int at, int height, string color) =>
+            $"<rect x=\"{Px(from)}\" y=\"{Px(baseline + at * Dot)}\" width=\"{Px(to - from)}\" height=\"{Px(height * Dot)}\" fill=\"{color}\"/>";
+        var heavyBand = kind is "dottedHeavy" or "dashedHeavy" or "dashLongHeavy" or "dashDotHeavy" or "dashDotDotHeavy";
+        foreach (var (from, to, color) in ranges)
+        {
+            switch (kind)
+            {
+                case "double":
+                    sb.Append(Rect(from, to, doubleTop, doubleThickness, color));
+                    sb.Append(Rect(from, to, doubleTop + doubleThickness + gap, doubleThickness, color));
+                    break;
+                case "thick":
+                    sb.Append(Rect(from, to, doubleTop, heavy, color));
+                    break;
+                case "wave" or "wavyHeavy":
+                    sb.Append(Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + wave) * Dot, kind == "wave" ? 0.24 : 0.96, color));
+                    break;
+                case "wavyDouble":
+                {
+                    var height = (int)Math.Ceiling((wave - 3) / 2.0);
+                    sb.Append(Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + height) * Dot, 0.24, color));
+                    sb.Append(Wave(from, to, baseline + (doubleTop + wave - height) * Dot, baseline + (doubleTop + wave) * Dot, 0.24, color));
+                    break;
+                }
+                default:
+                    var (at, height2) = heavyBand ? (doubleTop, heavy) : (top, thickness);
+                    if (DashPattern(kind) is { } pattern)
+                    {
+                        // Dashes from the underline's start, cut at the stretch's ends.
+                        var period = pattern.Sum();
+                        for (var start = origin + Math.Floor((from - origin) / period + 1e-9) * period; start < to; start += period)
+                        {
+                            var dash = start;
+                            for (var k = 0; k < pattern.Length; k++)
+                            {
+                                var (a, b) = (Math.Max(dash, from), Math.Min(dash + pattern[k], to));
+                                if (k % 2 == 0 && b - a > 1e-6)
+                                    sb.Append(Rect(a, b, at, height2, color));
+                                dash += pattern[k];
+                            }
+                        }
+                    }
+                    else
+                        sb.Append(Rect(from, to, at, height2, color));
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// A wave from one x to another between two heights, as Word prints it (measured): half waves 1.2 pt long, each an
+    /// S-curve with level ends, the crests (at <paramref name="top"/>) on the page's 2.4 pt grid.
+    /// </summary>
+    static string Wave(double from, double to, double top, double bottom, double width, string color)
+    {
+        const double half = 1.2;
+        // The share t of a half wave's curve where it has come u of its length (x = 1.5 t - 1.5 t² + t³, rising).
+        static double At(double u)
+        {
+            double lo = 0, hi = 1;
+            for (var k = 0; k < 40; k++)
+            {
+                var t = (lo + hi) / 2;
+                if (1.5 * t - 1.5 * t * t + t * t * t < u) lo = t; else hi = t;
+            }
+            return (lo + hi) / 2;
+        }
+        static (double X, double Y) Lerp((double X, double Y) a, (double X, double Y) b, double t) => (a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+        var d = new StringBuilder();
+        for (var n = (long)Math.Floor(from / half); n * half < to - 1e-9; n++)
+        {
+            var a = n * half;
+            var (y0, y1) = n % 2 == 0 ? (top, bottom) : (bottom, top);
+            (double X, double Y) p0 = (a, y0), p1 = (a + half / 2, y0), p2 = (a + half / 2, y1), p3 = (a + half, y1);
+            var t1 = to < a + half ? At((to - a) / half) : 1;
+            var t0 = from > a ? At((from - a) / half) : 0;
+            // The curve up to t1, then its part from t0 on (de Casteljau).
+            if (t1 < 1)
+            {
+                var (q01, q12, q23) = (Lerp(p0, p1, t1), Lerp(p1, p2, t1), Lerp(p2, p3, t1));
+                var (r0, r1) = (Lerp(q01, q12, t1), Lerp(q12, q23, t1));
+                (p1, p2, p3) = (q01, r0, Lerp(r0, r1, t1));
+                t0 /= t1;
+            }
+            if (t0 > 0)
+            {
+                var (q01, q12, q23) = (Lerp(p0, p1, t0), Lerp(p1, p2, t0), Lerp(p2, p3, t0));
+                var (r0, r1) = (Lerp(q01, q12, t0), Lerp(q12, q23, t0));
+                (p0, p1, p2) = (Lerp(r0, r1, t0), r1, q23);
+            }
+            if (d.Length == 0)
+                d.Append($"M{Px(p0.X)} {Px(p0.Y)}");
+            d.Append($"C{Px(p1.X)} {Px(p1.Y)} {Px(p2.X)} {Px(p2.Y)} {Px(p3.X)} {Px(p3.Y)}");
+        }
+        return d.Length == 0 ? "" : $"<path d=\"{d}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{Px(width)}\"/>";
+    }
+
+    /// <summary>
+    /// Run borders (w:bdr, catalog: run.decoration) of a line: neighboring pieces with the same border share a frame,
+    /// its lines and space outside the text from its start to its end and the font's height above and below the
+    /// baseline (measured with docx/local/underlines and ulsizes: Arial 10 to 24 pt, within 0.1 pt).
+    /// </summary>
+    string RunBorders(Line line, double left, double baseline)
+    {
+        var sb = new StringBuilder();
+        var pieces = line.Pieces;
+        for (var i = 0; i < pieces.Count; i++)
+        {
+            if (pieces[i].Style.Border is not { } border)
+                continue;
+            var j = i;
+            while (j + 1 < pieces.Count && Equals(pieces[j + 1].Style.Border, border))
+                j++;
+            var box = pieces.GetRange(i, j - i + 1);
+            var at = baseline - box[0].Style.Raise - box[0].Shift;
+            var (above, below) = (box.Max(p => p.Style.Metrics.Above), box.Max(p => p.Style.Metrics.Below));
+            var room = PageBorders.Room(border);
+            if (PageBorders.Frame(border, left + box[0].X, at - above - room, left + box[^1].X + box[^1].Width, at + below + room) is { } frame)
+                Fills(frame.Fills, frame.Strokes, sb);
+            i = j;
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Emboss, imprint and shadow (catalog: run.decoration) as Word prints them (measured with docx/local/underlines
+    /// and ulsizes, 10 to 48 pt): emboss lays the text in gray (#999999) where it stands and in black 1.92 pt up and
+    /// left, and moves the text itself 0.96 pt up and left; imprint does the same down and right, the gray copy over
+    /// the black one; a shadow is the text in light gray (#C0C0C0) a 24th of its size (in whole dots) down and right.
+    /// Returns the copies, which are not selectable, and how far the text moves.
+    /// </summary>
+    (string Copies, double Dx, double Dy) Relief(Piece piece, double x, double baseline)
+    {
+        var style = piece.Style;
+        if (!style.Emboss && !style.Imprint && !style.Shadow || string.IsNullOrWhiteSpace(piece.Text))
+            return ("", 0, 0);
+        var sb = new StringBuilder("<g aria-hidden=\"true\" style=\"user-select:none\">");
+        void Copy(FreeSlate.Drawing.RgbColor color, double dx, double dy) =>
+            sb.Append(BrowserText(new Piece
+            {
+                Text = piece.Text, Style = style with { Color = color, Hollow = false, TextFill = null, Outline = null },
+                X = piece.X, Advances = piece.Advances, Lead = piece.Lead, Level = piece.Level,
+                SpaceExtra = piece.SpaceExtra, JustifiedSpaces = piece.JustifiedSpaces,
+            }, x + dx, baseline + dy));
+        var gray = FreeSlate.Drawing.RgbColor.FromHex("999999");
+        double move = 0;
+        if (style.Shadow)
+        {
+            var offset = Dots(style.Size / 24) * Dot;
+            Copy(FreeSlate.Drawing.RgbColor.FromHex("C0C0C0"), offset, offset);
+        }
+        if (style.Emboss)
+        {
+            Copy(gray, 0, 0);
+            Copy(FreeSlate.Drawing.RgbColor.Black, -1.92, -1.92);
+            move = -0.96;
+        }
+        else if (style.Imprint)
+        {
+            Copy(FreeSlate.Drawing.RgbColor.Black, 1.92, 1.92);
+            Copy(gray, 0, 0);
+            move = 0.96;
+        }
+        return (sb.Append("</g>").ToString(), move, move);
     }
 
     /// <summary>Text the browser draws (and selects), every character at its position, in the run's font and color.</summary>
@@ -544,6 +850,10 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
     string TextPaint(Piece piece, double x, double baseline)
     {
         var style = piece.Style;
+        // Outline (w:outline): the letters' outlines 0.14 pt wide in the text's color, hollow, or white over a shadow
+        // (measured with docx/local/ulsizes from 10 to 48 pt).
+        if (style.Hollow)
+            return $" fill=\"{(style.Shadow ? "#FFFFFF" : "none")}\" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Px(0.14)}\" stroke-linejoin=\"round\"";
         if (style.TextFill == null && style.Outline == null || drawings == null)
             return $" fill=\"{style.Color.ToHex()}\"";
         var (above, below) = style.Metrics;
