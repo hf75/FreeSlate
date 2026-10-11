@@ -427,12 +427,15 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
 
     /// <summary>
     /// The words of a piece (each with the spaces after it) holding a glyph that depends on its neighbors: a cluster of
-    /// several characters, or a glyph other than the character's own with the run's features.
+    /// several characters, or a glyph other than the character's own with the run's features. Besides ligatures and
+    /// alternates the run turns on, these are the clusters every font forms: combining marks, emoji sequences and the
+    /// conjuncts and contextual forms of complex scripts (catalog: run.complexScript, engine.fonts).
     /// </summary>
     static List<(int From, int To)> ContextualWords(RunStyle style, string text)
     {
         var result = new List<(int, int)>();
-        if (!style.Features.Any(f => f is "liga" or "clig" or "calt" or "hlig" or "dlig" || f.StartsWith("ss", StringComparison.Ordinal)))
+        if (!style.Features.Any(f => f is "liga" or "clig" or "calt" or "hlig" or "dlig" || f.StartsWith("ss", StringComparison.Ordinal))
+            && !text.Any(c => c >= 0x300))
             return result;
         var data = style.Font.Data;
         var glyphs = data.GlyphsWithFeatures(text, style.Features, language: style.Language);

@@ -43,6 +43,80 @@ public sealed class RunStyles(DocumentContext context)
         }
     }
 
+    readonly System.Collections.Concurrent.ConcurrentDictionary<(RunStyle, string), RunStyle> fallbacks = new();
+
+    /// <summary>
+    /// The style of a character the run's font lacks (catalog: engine.fonts): the same formatting in the first font of
+    /// Word's fallbacks for the character that has it, or null where none has. Word measures the line with that font
+    /// too (lines with Segoe UI Symbol are 15.96 pt in 12 pt Arial). Spaces, format characters and the private use
+    /// area stay in the run's font (empty text form fields of en spaces keep Aptos's line height,
+    /// docx/generated/form-fields; the shaper gives missing spaces their widths).
+    /// </summary>
+    /// <param name="emoji">Whether an emoji variation selector (U+FE0F) follows: the character is shown as emoji.</param>
+    public RunStyle? Fallback(RunStyle style, int c, bool emoji = false)
+    {
+        if (c < 0x80 || c is >= 0xE000 and <= 0xF8FF || System.Text.Rune.IsWhiteSpace(new System.Text.Rune(c))
+            || System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) is System.Globalization.UnicodeCategory.Format
+                or System.Globalization.UnicodeCategory.Control or System.Globalization.UnicodeCategory.NonSpacingMark
+                or System.Globalization.UnicodeCategory.EnclosingMark)
+            return null;
+        foreach (var family in emoji ? ["Segoe UI Emoji", .. Fallbacks(c, style.Font.Data.Serif, style.Language)] : Fallbacks(c, style.Font.Data.Serif, style.Language))
+        {
+            if (context.Fonts.TryResolveTypeface(family, style.Bold, style.Italic) is { } font && font.Data.HasGlyph(c))
+                return fallbacks.GetOrAdd((style, family), _ => style with { Font = font });
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The fonts Word falls back to for a character the run's font lacks, measured with docx/local/fallback-arial,
+    /// fallback-calibri and fallback-times (Word 16, Windows 11): emoji Segoe UI Emoji; symbols, dingbats and Braille
+    /// Segoe UI Symbol; letterlike symbols, mathematical operators and alphanumerics, technical symbols and enclosed
+    /// numbers Cambria Math (enclosed letters then MS Gothic, or MS Mincho for serif fonts); geometric shapes Arial;
+    /// Thai, Lao and Khmer Leelawadee UI; Indic scripts and Sinhala Nirmala UI; Georgian Sylfaen; Ethiopic Ebrima;
+    /// Cherokee Gadugi; Syriac Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun
+    /// Gothic (Batang for serif fonts); Chinese characters and kana MS Mincho, or the Chinese fonts for Chinese.
+    /// </summary>
+    static IEnumerable<string> Fallbacks(int c, bool serif, string? language)
+    {
+        if (c >= 0x1F000 && c <= 0x1FAFF || EmojiPresentation(c))
+            return ["Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"];
+        return c switch
+        {
+            >= 0x2100 and <= 0x214F or >= 0x2200 and <= 0x23FF or >= 0x1D400 and <= 0x1D7FF or >= 0x27C0 and <= 0x27EF or >= 0x2980 and <= 0x2AFF
+                => ["Cambria Math", "Segoe UI Symbol", "STIX Two Math", "DejaVu Sans"],
+            >= 0x2460 and <= 0x24FF => ["Cambria Math", serif ? "MS Mincho" : "MS Gothic", "Segoe UI Symbol"],
+            >= 0x25A0 and <= 0x25FF => ["Arial", "Segoe UI Symbol", "DejaVu Sans"],
+            >= 0x2190 and <= 0x21FF or >= 0x2600 and <= 0x27BF or >= 0x27F0 and <= 0x297F or >= 0x2800 and <= 0x28FF or >= 0x2B00 and <= 0x2BFF
+                => ["Segoe UI Symbol", "Noto Sans Symbols", "Noto Sans Symbols 2", "DejaVu Sans"],
+            >= 0x0E00 and <= 0x0EFF or >= 0x1780 and <= 0x17FF => ["Leelawadee UI", "Tahoma", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer"],
+            >= 0x0900 and <= 0x0DFF => ["Nirmala UI", "Mangal", "Noto Sans Devanagari"],
+            >= 0x10A0 and <= 0x10FF => ["Sylfaen", "Noto Sans Georgian"],
+            >= 0x1200 and <= 0x139F => ["Ebrima", "Nyala", "Noto Sans Ethiopic"],
+            >= 0x13A0 and <= 0x13FF => ["Gadugi", "Plantagenet Cherokee", "Noto Sans Cherokee"],
+            >= 0x0700 and <= 0x074F => ["Segoe UI Historic", "Estrangelo Edessa", "Noto Sans Syriac"],
+            >= 0x0F00 and <= 0x0FFF => ["Microsoft Himalaya", "Noto Serif Tibetan"],
+            >= 0x1000 and <= 0x109F => ["Myanmar Text", "Noto Sans Myanmar"],
+            >= 0x1100 and <= 0x11FF or >= 0x3130 and <= 0x318F or >= 0xAC00 and <= 0xD7AF
+                => serif ? ["Batang", "Malgun Gothic", "Noto Serif CJK KR"] : ["Malgun Gothic", "Batang", "Noto Sans CJK KR"],
+            >= 0x2E80 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFF00 and <= 0xFFEF or >= 0x20000 and <= 0x2FFFF => language switch
+            {
+                "zh-CN" or "zh-SG" => ["Microsoft YaHei", "SimSun", "MS Mincho", "Noto Sans CJK SC"],
+                "zh-TW" or "zh-HK" or "zh-MO" => ["PMingLiU", "Microsoft JhengHei", "MS Mincho", "Noto Sans CJK TC"],
+                "ko-KR" => ["Malgun Gothic", "Batang", "MS Mincho", "Noto Sans CJK KR"],
+                _ => ["MS Mincho", "Yu Mincho", "SimSun", "Microsoft YaHei", "Noto Serif CJK JP"],
+            },
+            _ => ["Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "DejaVu Sans"],
+        };
+    }
+
+    /// <summary>Characters shown as emoji by default (Unicode's Emoji_Presentation in the basic plane).</summary>
+    static bool EmojiPresentation(int c) => c is 0x231A or 0x231B or >= 0x23E9 and <= 0x23EC or 0x23F0 or 0x23F3 or 0x25FD or 0x25FE
+        or 0x2614 or 0x2615 or >= 0x2648 and <= 0x2653 or 0x267F or 0x2693 or 0x26A1 or 0x26AA or 0x26AB or 0x26BD or 0x26BE
+        or 0x26C4 or 0x26C5 or 0x26CE or 0x26D4 or 0x26EA or 0x26F2 or 0x26F3 or 0x26F5 or 0x26FA or 0x26FD or 0x2705
+        or 0x270A or 0x270B or 0x2728 or 0x274C or 0x274E or >= 0x2753 and <= 0x2755 or 0x2757 or >= 0x2795 and <= 0x2797
+        or 0x27B0 or 0x27BF or 0x2B1B or 0x2B1C or 0x2B50 or 0x2B55;
+
     /// <summary>The size of the small capitals of text this size: 80 % on whole half points (12 pt → 9.5 pt, measured).</summary>
     public static double SmallCapsSize(double size) => Math.Round(size * 0.8 * 2, MidpointRounding.AwayFromZero) / 2;
 

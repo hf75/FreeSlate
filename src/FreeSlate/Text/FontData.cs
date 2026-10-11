@@ -426,6 +426,19 @@ public sealed class FontData : IDisposable
         }
     }
 
+    /// <summary>Whether the font has a glyph for the character.</summary>
+    public bool HasGlyph(int c) => font.TryGetGlyph((uint)c, out var glyph) && glyph != 0;
+
+    /// <summary>Whether the font has serifs by its PANOSE numbers: a Latin text face with a serif style of 2 to 10.</summary>
+    public bool Serif
+    {
+        get
+        {
+            var os2 = Table("OS/2");
+            return os2 != null && os2.Length >= 42 && os2[32] == 2 && os2[33] is >= 2 and <= 10;
+        }
+    }
+
     /// <summary>
     /// Whether the font is made for East Asian text: its OS/2 code page range names a Japanese, Chinese or Korean code
     /// page (JIS, GB 2312, Wansung, Big5, Johab).

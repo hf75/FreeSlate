@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using FreeSlate.Text;
 
 namespace FreeSlate.Docx.Layout;
@@ -612,11 +613,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 return;   // hidden text is not printed (Word's PDF export leaves it out)
             // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
             var small = format.SmallCaps == true && format.Caps != true;
-            foreach (var rune in value.EnumerateRunes())
+            RunStyle? previous = null;
+            var runes = value.EnumerateRunes().ToList();
+            for (var r = 0; r < runes.Count; r++)
             {
+                var rune = runes[r];
                 var lower = small && Rune.IsLower(rune);
                 var shown = format.Caps == true || lower ? Rune.ToUpperInvariant(rune) : rune;
                 var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
+                // A character the font lacks is drawn and measured in Word's fallback font; marks, joiners and
+                // variation selectors stay with the character before them.
+                if (previous != null && previous != style && Rune.GetUnicodeCategory(shown) is UnicodeCategory.NonSpacingMark
+                        or UnicodeCategory.EnclosingMark or UnicodeCategory.Format)
+                    style = previous;
+                else if (!style.Font.Data.HasGlyph(shown.Value) && styles.Fallback(style, shown.Value, r + 1 < runes.Count && runes[r + 1].Value == 0xFE0F) is { } fallback)
+                    style = fallback;
+                previous = style;
                 var s = shown.ToString();
                 text.Append(s);
                 for (var k = 0; k < s.Length; k++)
