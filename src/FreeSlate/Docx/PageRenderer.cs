@@ -32,6 +32,9 @@ public sealed class PageRenderer(DocumentContext context)
         svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
         var selection = new StringBuilder();
+        // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
+        foreach (var (x, top, bottom) in page.ColumnLines)
+            svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         foreach (var placed in page.Lines)
         {
             var baseline = placed.Top + placed.Line.Baseline;
@@ -142,8 +145,10 @@ public sealed class PageRenderer(DocumentContext context)
         if (style.Underline != null)
         {
             var thickness = Math.Max(0.5, data.UnderlineThickness * style.Size) * (style.Underline.Contains("thick", StringComparison.OrdinalIgnoreCase) || style.Underline.EndsWith("Heavy", StringComparison.Ordinal) ? 2 : 1);
+            // The font's underline position is the top of the line (measured: Aptos 12 pt, post -100/2048 em, Word's
+            // rectangle starts 0.6 pt below the baseline on its 600 dpi device).
             var y = baseline + data.UnderlinePosition * style.Size;
-            sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y - thickness / 2)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{color}\"/>");
+            sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{color}\"/>");
             if (style.Underline == "double")
                 sb.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y + thickness * 1.5)}\" width=\"{Px(width)}\" height=\"{Px(thickness)}\" fill=\"{color}\"/>");
         }

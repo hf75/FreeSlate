@@ -127,6 +127,8 @@ switch (command)
             }
             foreach (var r in layout.Rects.Where(r => r.Width < 500 || r.Height < 500))
                 Console.WriteLine($"  rect p{r.Page} x={r.X:0.000} y={r.Y:0.000} w={r.Width:0.000} h={r.Height:0.000} {(r.Filled ? "fill" : "stroke")} {r.Color}");
+            foreach (var l in layout.Segments)
+                Console.WriteLine($"  line p{l.Page} {l.X0:0.000},{l.Y0:0.000} → {l.X1:0.000},{l.Y1:0.000} width {l.Width:0.###} {l.Color}");
         }
         break;
     case "jxr":

@@ -14,7 +14,7 @@ public enum WordSlot { Ascii, HAnsi, EastAsia, ComplexScript }
 /// </summary>
 public sealed class RunStyles(DocumentContext context)
 {
-    readonly ConditionalWeakTable<RunFormat, Dictionary<WordSlot, RunStyle>> cache = new();
+    readonly ConditionalWeakTable<RunFormat, Dictionary<(WordSlot, bool), RunStyle>> cache = new();
 
     /// <summary>The slot a character's font comes from: ASCII, East Asian, complex script or high ANSI.</summary>
     public static WordSlot SlotOf(int c, RunFormat format)
@@ -31,18 +31,22 @@ public sealed class RunStyles(DocumentContext context)
         };
     }
 
-    public RunStyle Style(RunFormat format, WordSlot slot)
+    /// <param name="smallCapital">A lowercase letter of small caps text, drawn as a capital at the small caps size.</param>
+    public RunStyle Style(RunFormat format, WordSlot slot, bool smallCapital = false)
     {
         var bySlot = cache.GetOrCreateValue(format);
         lock (bySlot)
         {
-            if (!bySlot.TryGetValue(slot, out var style))
-                bySlot[slot] = style = Create(format, slot);
+            if (!bySlot.TryGetValue((slot, smallCapital), out var style))
+                bySlot[(slot, smallCapital)] = style = Create(format, slot, smallCapital);
             return style;
         }
     }
 
-    RunStyle Create(RunFormat format, WordSlot slot)
+    /// <summary>The size of the small capitals of text this size: 80 % on whole half points (12 pt → 9.5 pt, measured).</summary>
+    public static double SmallCapsSize(double size) => Math.Round(size * 0.8 * 2, MidpointRounding.AwayFromZero) / 2;
+
+    RunStyle Create(RunFormat format, WordSlot slot, bool smallCapital)
     {
         var complex = slot == WordSlot.ComplexScript;
         var bold = (complex ? format.BoldComplex : format.Bold) == true;
@@ -52,12 +56,16 @@ public sealed class RunStyles(DocumentContext context)
         var font = context.Fonts.ResolveTypeface(family, bold, italic);
         var color = Color(format);
         var vertical = format.VerticalAlign;
-        // Super- and subscript: smaller text raised or lowered (catalog: run.decoration); the factors are Word's to measure.
-        var scriptSize = vertical is "superscript" or "subscript" ? size * 0.65 : size;
+        // Super- and subscript (catalog: run.decoration): 58 % of the size, raised by 33 % or lowered by 8 % of it
+        // (measured with docx/generated/character-formats: 12 pt text has a 6.96 pt superscript 3.96 pt up and a
+        // subscript 0.96 pt down; LibreOffice uses the same factors for Word's).
+        var scriptSize = vertical is "superscript" or "subscript" ? size * 0.58 : size;
+        if (smallCapital)
+            scriptSize = SmallCapsSize(scriptSize);
         var raise = (format.Position ?? 0) + vertical switch
         {
             "superscript" => size * 0.33,
-            "subscript" => -size * 0.14,
+            "subscript" => -size * 0.08,
             _ => 0,
         };
         return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size), bold, italic)

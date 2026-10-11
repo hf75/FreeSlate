@@ -1,3 +1,4 @@
+using System.Text;
 using FreeSlate.Text;
 
 namespace FreeSlate.Docx.Layout;
@@ -34,6 +35,10 @@ public sealed class Line
     public double Baseline { get; set; }
     public double Above { get; set; }
     public double Below { get; set; }
+
+    /// <summary>How far raised and lowered text (w:position, super- and subscript) reaches beyond Above and Below.</summary>
+    public double RaisedAbove { get; set; }
+    public double LoweredBelow { get; set; }
 
     /// <summary>The break that ends the line: none, a line break, a page break or a column break.</summary>
     public string? EndBreak { get; set; }
@@ -200,11 +205,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 {
                     if (format.Vanish == true)
                         continue;   // hidden text is not printed (Word's PDF export leaves it out)
-                    var value = format.Caps == true || format.SmallCaps == true ? t.Text.ToUpperInvariant() : t.Text;
-                    foreach (var rune in value.EnumerateRunes())
+                    // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
+                    var small = format.SmallCaps == true && format.Caps != true;
+                    foreach (var rune in t.Text.EnumerateRunes())
                     {
-                        var style = styles.Style(format, RunStyles.SlotOf(rune.Value, format));
-                        var s = rune.ToString();
+                        var lower = small && Rune.IsLower(rune);
+                        var shown = format.Caps == true || lower ? Rune.ToUpperInvariant(rune) : rune;
+                        var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
+                        var s = shown.ToString();
                         text.Append(s);
                         for (var k = 0; k < s.Length; k++)
                             list.Add(style);
@@ -351,22 +359,27 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         // Vertical metrics: the largest parts above and below the baseline of the line's runs (raised runs reach
         // further); an empty line takes its break's or the paragraph mark's.
-        double above = 0, below = 0;
+        double above = 0, below = 0, raised = 0, lowered = 0;
         var any = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
             var (a, b) = piece.Style.Metrics;
-            above = Math.Max(above, a + piece.Style.Raise);
-            below = Math.Max(below, b - piece.Style.Raise);
+            above = Math.Max(above, a);
+            below = Math.Max(below, b);
+            raised = Math.Max(raised, a + piece.Style.Raise);
+            lowered = Math.Max(lowered, b - piece.Style.Raise);
             any = true;
         }
         if (!any)
         {
             var style = end > start && start < charStyles.Count ? charStyles[start] : mark;
             (above, below) = style.Metrics;
+            (raised, lowered) = (above, below);
         }
         line.Above = above;
         line.Below = below;
+        line.RaisedAbove = Math.Max(0, raised - above);
+        line.LoweredBelow = Math.Max(0, lowered - below);
         return line;
     }
 
@@ -374,7 +387,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// Line heights and baselines by the paragraph's line spacing (measured with 14 fonts, docx/local/lm-*): auto is a
     /// multiple of the natural height with the baseline where single spacing puts it (the extra goes below); exact is
     /// the height given with the baseline at 80 % of it whatever the font; at least grows the line, the extra going
-    /// above the text.
+    /// above the text. Raised and lowered text adds what it reaches beyond, outside the multiple (measured with
+    /// docx/generated/character-formats: text 3 pt up and 3 pt down makes a 1.15 line 6 pt higher, not 6.95 pt).
     /// </summary>
     static void Space(List<Line> lines, ParagraphFormat format)
     {
@@ -388,7 +402,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 case "exact":
                     line.Height = value / 20;
                     line.Baseline = 0.8 * line.Height;
-                    break;
+                    continue;
                 case "atLeast":
                     line.Height = Math.Max(value / 20, natural);
                     line.Baseline = line.Height - line.Below;
@@ -398,6 +412,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     line.Baseline = line.Above;
                     break;
             }
+            line.Height += line.RaisedAbove + line.LoweredBelow;
+            line.Baseline += line.RaisedAbove;
         }
     }
 

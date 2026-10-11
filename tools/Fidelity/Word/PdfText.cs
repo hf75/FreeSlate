@@ -15,6 +15,9 @@ public sealed record PdfGlyph(int Page, string Text, double X, double Y, double 
 /// <summary>A filled or stroked rectangle on a page (underlines, borders, shading), from the page's top left in points.</summary>
 public sealed record PdfRect(int Page, double X, double Y, double Width, double Height, bool Filled, string Color);
 
+/// <summary>A stroked straight line on a page (borders, rules, column separators), from the page's top left in points.</summary>
+public sealed record PdfSegment(int Page, double X0, double Y0, double X1, double Y1, double Width, string Color);
+
 /// <summary>The size of a page in points.</summary>
 public sealed record PdfPage(int Number, double Width, double Height);
 
@@ -33,6 +36,7 @@ public sealed class PdfText
     public List<PdfPage> Pages { get; } = [];
     public List<PdfGlyph> Glyphs { get; } = [];
     public List<PdfRect> Rects { get; } = [];
+    public List<PdfSegment> Segments { get; } = [];
 
     static PdfText() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -269,6 +273,9 @@ public sealed class PdfText
         Font? font = null;
         double size = 0, charSpacing = 0, wordSpacing = 0, scale = 1, leading = 0, rise = 0;
         var path = new List<(double X, double Y, double W, double H)>();
+        var segments = new List<(double X0, double Y0, double X1, double Y1)>();
+        (double X, double Y) point = (0, 0);
+        var lineWidth = 1.0;
 
         (double X, double Y) ToPage(double x, double y, Matrix m)
         {
@@ -338,6 +345,12 @@ public sealed class PdfText
                     }
                     break;
                 case "re": path.Add((N(0), N(1), N(2), N(3))); break;
+                case "m": point = (N(0), N(1)); break;
+                case "l":
+                    segments.Add((point.X, point.Y, N(0), N(1)));
+                    point = (N(0), N(1));
+                    break;
+                case "w": lineWidth = N(0); break;
                 case "f": case "F": case "f*": case "B": case "B*": case "S": case "s": case "b": case "b*":
                     foreach (var (x, y, w, h) in path)
                     {
@@ -346,9 +359,19 @@ public sealed class PdfText
                         var filled = op.Name is not ("S" or "s");
                         Rects.Add(new PdfRect(page, Math.Min(x0, x1), Math.Min(y0, y1), Math.Abs(x1 - x0), Math.Abs(y1 - y0), filled, filled ? fill : stroke));
                     }
+                    if (op.Name is "S" or "s" or "B" or "B*" or "b" or "b*")
+                    {
+                        foreach (var (sx0, sy0, sx1, sy1) in segments)
+                        {
+                            var (a0, b0) = ToPage(sx0, sy0, Matrix.Identity);
+                            var (a1, b1) = ToPage(sx1, sy1, Matrix.Identity);
+                            Segments.Add(new PdfSegment(page, a0, b0, a1, b1, lineWidth * Math.Abs(ctm.A), stroke));
+                        }
+                    }
                     path.Clear();
+                    segments.Clear();
                     break;
-                case "n": path.Clear(); break;
+                case "n": path.Clear(); segments.Clear(); break;
             }
             operands.Clear();
         }

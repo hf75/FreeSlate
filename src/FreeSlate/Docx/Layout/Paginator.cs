@@ -9,6 +9,13 @@ public sealed class PageBox
     public int Number { get; init; }
     public required SectionProperties Section { get; init; }
     public List<PlacedLine> Lines { get; } = [];
+
+    /// <summary>The space after the paragraph that ends on this page, which vertical alignment counts.</summary>
+    public double TrailingSpace { get; set; }
+
+    /// <summary>Lines between columns (w:cols/@sep): x, top and bottom in points.</summary>
+    public List<(double X, double Top, double Bottom)> ColumnLines { get; } = [];
+
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
 }
@@ -17,8 +24,11 @@ public sealed class PageBox
 /// Breaks the body into pages (catalog: engine.pagination, section.page, section.columns, paragraph.pagination):
 /// sections start on a new page, an even or odd page or continue on the same page; lines fill the columns of the
 /// text area; paragraphs keep their spacing (the larger of the space after the one and before the next, measured
-/// with docx/generated/text-basic, as ISO/IEC 29500 17.3.1.33 says), lose the space before at the top of a page they
-/// were pushed onto, keep with the next paragraph, keep their lines together and avoid widows and orphans.
+/// with docx/generated/text-basic, as ISO/IEC 29500 17.3.1.33 says), keep with the next paragraph, keep their lines
+/// together and avoid widows and orphans. At the top of a page the space before depends on how the page began
+/// (measured with docx/local/sp-pagetop): all of it on the first page, after a section break what the larger space
+/// has more than the space after the section's last paragraph, none after a page or column break, a page break
+/// before or a natural break.
 /// </summary>
 public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
 {
@@ -30,7 +40,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
     int column;
     double y;
     bool columnEmpty = true;
-    bool pushed;              // the column's first paragraph came over by a natural page or column break
+
+    /// <summary>Where the current section's columns begin on this page (below an earlier section of the page).</summary>
+    double columnTop;
+
+    /// <summary>The lines of the current section on this page with the space before each, for balancing its columns.</summary>
+    readonly List<FlowLine> flow = [];
+
+    /// <summary>
+    /// A line of the current section on this page: its place in the page's lines, the space before it where it does
+    /// not begin a column (and where it does, for the first), its paragraph and its place in it.
+    /// </summary>
+    sealed record FlowLine(int Index, double Gap, double FirstGap, int Paragraph, int Line, int Lines, bool Widows, bool KeepNext, bool KeepLines)
+    {
+        /// <summary>The space after the line's paragraph when the line is its last.</summary>
+        public double After { get; set; }
+    }
+
+    /// <summary>Whether the section before ended with balanced columns, whose height holds their last space after.</summary>
+    bool balanced;
+
+    int paragraphNumber;
+    /// <summary>How the current column began, which decides the space before its first paragraph.</summary>
+    enum Top { Document, Section, Break, Continuous }
+
+    Top top = Top.Document;
     double pendingAfter;      // space after the previous paragraph
     ParagraphBlock? previous;
 
@@ -57,6 +91,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             var paragraphs = sectionBlocks.OfType<ParagraphBlock>().ToList();
             for (var i = 0; i < paragraphs.Count; i++)
                 Place(paragraphs, i);
+            // A continuous section break balances the columns above it.
+            if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1)
+                Balance();
+            CloseColumns();
         }
         if (pages.Count == 0)
             NewPage(lastSection);
@@ -75,20 +113,29 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             // Even and odd page sections leave a blank page where the parity does not fit.
             if (!first && (start == "evenPage" && page!.Number % 2 == 1 || start == "oddPage" && page!.Number % 2 == 0))
                 NewPage(properties);
-            pushed = false;
+            top = first ? Top.Document : Top.Section;
             return;
         }
+        // A continuous section goes on below what the page holds already, its first paragraph spaced as any other.
+        columnTop = y;
+        column = 0;
+        columnEmpty = true;
+        top = Top.Continuous;
+        flow.Clear();
         if (start == "nextColumn")
             NextColumn(natural: false);
     }
 
     void NewPage(SectionProperties properties)
     {
+        CloseColumns();
         page = new PageBox { Number = pages.Count + 1, Section = properties };
         pages.Add(page);
         column = 0;
         y = properties.Top;
+        columnTop = y;
         columnEmpty = true;
+        flow.Clear();
     }
 
     (double Left, double Width) Column(int index)
@@ -112,12 +159,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         if (column + 1 < section.Columns)
         {
             column++;
-            y = section.Top;
+            y = columnTop;
         }
         else
             NewPage(section);
         columnEmpty = true;
-        pushed = natural;
+        top = Top.Break;
     }
 
     void Place(List<ParagraphBlock> paragraphs, int index)
@@ -130,13 +177,25 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         if (format.PageBreakBefore == true && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
         {
             NewPage(section);
-            pushed = false;
+            top = Top.Break;
             (left, width) = Column(column);
         }
 
         // Space between this paragraph and the previous one.
         var before = SpaceBefore(paragraph);
-        var gap = columnEmpty ? (pushed ? 0 : before) : Math.Max(pendingAfter, before);
+        var gap = !columnEmpty ? Math.Max(pendingAfter, before) : top switch
+        {
+            Top.Document => before,
+            Top.Section => Math.Max(0, before - pendingAfter),
+            // Below balanced columns, whose height holds the space after their last paragraphs, what the space before
+            // has more than that space after (measured with page-setup: the heading of the three-column section stands
+            // level with the other columns, its 8 pt before already in the 8 pt after above).
+            Top.Continuous => balanced ? Math.Max(0, before - pendingAfter) : Math.Max(pendingAfter, before),
+            _ => 0,
+        };
+        balanced = false;
+        // The space a balanced column gives the paragraph where it does not begin the column.
+        var flowGap = Math.Max(pendingAfter, before);
 
         // Keep with next and keep lines together: move the paragraph to the next column when it (and the first line
         // of the next paragraph) does not fit here but would fit in an empty column.
@@ -185,15 +244,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
                 here = 0;
                 hereAtTop = true;
             }
+            flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
+                widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left, y));
             here++;
             y += line.Height;
             columnEmpty = false;
-            pushed = false;
             if (line.EndBreak is "page")
             {
                 NewPage(section);
-                pushed = false;
+                top = Top.Break;
                 (left, width) = Column(column);
                 here = 0;
                 hereAtTop = true;
@@ -207,7 +267,136 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             }
         }
         pendingAfter = SpaceAfter(paragraph, index + 1 < paragraphs.Count ? paragraphs[index + 1] : null);
+        if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
+            flow[^1].After = pendingAfter;
+        page!.TrailingSpace = pendingAfter;
         previous = paragraph;
+        paragraphNumber++;
+    }
+
+    /// <summary>
+    /// Balances the columns of the current section on this page (catalog: section.columns): its lines are counted, not
+    /// measured, and spread over the columns, as many in each as the least count that holds them all, the first columns
+    /// taking the extra lines (measured with docx/local/cols-balance: 9 lines go 5/4, 15 lines 8/7; in
+    /// docx/generated/page-setup a heading and 60 lines go 31/30 although the first column is 42 pt longer), with the
+    /// rules of page breaks (widows and orphans, keep with next, keep lines together); the next section begins below
+    /// the longest column.
+    /// </summary>
+    void Balance()
+    {
+        if (page == null || flow.Count == 0)
+            return;
+        var items = flow;
+        var heights = items.Select(f => page.Lines[f.Index].Line.Height).ToList();
+        var columns = section.Columns;
+
+        // Where a column may end before item b, moved back by the page break rules; -1 when the column began there.
+        int BreakBefore(int b, int columnStart)
+        {
+            var moved = true;
+            while (moved && b > columnStart)
+            {
+                moved = false;
+                var item = items[b];
+                if (item.Widows && item.Lines > 1)
+                {
+                    // A single last line goes with the line before it; a single first line goes with its paragraph.
+                    if (item.Line == item.Lines - 1 && item.Line >= 1)
+                    {
+                        b -= item.Line >= 2 ? 1 : item.Line;
+                        moved = true;
+                        continue;
+                    }
+                    if (item.Line == 1)
+                    {
+                        b -= 1;
+                        moved = true;
+                        continue;
+                    }
+                }
+                if (item.KeepLines && item.Line > 0)
+                {
+                    b -= item.Line;
+                    moved = true;
+                    continue;
+                }
+                // The paragraph before keeps with this one.
+                if (item.Line == 0 && b > 0 && items[b - 1].KeepNext)
+                {
+                    b -= items[b - 1].Line + 1;
+                    moved = true;
+                }
+            }
+            return b > columnStart ? b : -1;
+        }
+
+        List<(int Column, double Top)>? Place(int count)
+        {
+            var placement = new List<(int Column, double Top)>();
+            var c = 0;
+            var used = 0.0;
+            var columnStart = 0;
+            var bottom = Bottom - columnTop;
+            for (var i = 0; i < items.Count; i++)
+            {
+                var g = i == 0 ? items[0].FirstGap : used > 0 ? items[i].Gap : 0;
+                if (used > 0 && (i - columnStart >= count || used + g + heights[i] > bottom + 0.01))
+                {
+                    var b = BreakBefore(i, columnStart);
+                    if (b < 0)
+                        b = i;
+                    c++;
+                    if (c >= columns)
+                        return null;
+                    placement.RemoveRange(b, placement.Count - b);
+                    i = b;
+                    columnStart = b;
+                    used = 0;
+                    g = 0;
+                }
+                placement.Add((c, used + g));
+                used += g + heights[i];
+            }
+            return placement;
+        }
+
+        List<(int Column, double Top)>? result = null;
+        for (var count = (items.Count + columns - 1) / columns; result == null && count <= items.Count; count++)
+            result = Place(count);
+        if (result == null)
+            return;
+        var bottom = columnTop;
+        for (var i = 0; i < items.Count; i++)
+        {
+            var (c, offset) = result[i];
+            var old = page.Lines[items[i].Index];
+            page.Lines[items[i].Index] = old with { Left = Column(c).Left, Top = columnTop + offset };
+            // A column ends below its last line and the space after its paragraph (measured with page-setup: the
+            // next section's heading stands its space after and its own space before below the longest column).
+            var columnEnds = i + 1 == items.Count || result[i + 1].Column != c;
+            bottom = Math.Max(bottom, columnTop + offset + old.Line.Height + (columnEnds ? items[i].After : 0));
+        }
+        y = bottom;
+        column = 0;
+        balanced = true;
+    }
+
+    /// <summary>
+    /// The lines between the columns of the current section on this page (w:cols/@sep): in the middle of each space
+    /// between columns, from the columns' top to the bottom of the longest column (measured with page-setup, page 5).
+    /// </summary>
+    void CloseColumns()
+    {
+        if (page == null || flow.Count == 0 || !section.ColumnSeparator || section.Columns < 2)
+            return;
+        var bottom = flow.Max(f => page.Lines[f.Index].Top + page.Lines[f.Index].Line.Height);
+        for (var c = 0; c + 1 < section.Columns; c++)
+        {
+            var (left, width) = Column(c);
+            var next = Column(c + 1).Left;
+            page.ColumnLines.Add(((left + width + next) / 2, columnTop, bottom));
+        }
+        flow.Clear();
     }
 
     /// <summary>The height a paragraph needs at least: its first two lines with widow control, else its first.</summary>
@@ -244,7 +433,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
     bool SameStyle(ParagraphBlock a, ParagraphBlock b) =>
         context.Styles.ParagraphStyleOf(a.Format.Style) == context.Styles.ParagraphStyleOf(b.Format.Style);
 
-    /// <summary>Vertical alignment of the page's text (w:vAlign): centered, at the bottom or spread.</summary>
+    /// <summary>
+    /// Vertical alignment of the page's text (w:vAlign): centered or at the bottom, the text counted from the top
+    /// margin (with the space before its first paragraph) to the space after its last paragraph (measured with
+    /// page-setup, page 4).
+    /// </summary>
     static void AlignVertically(PageBox page)
     {
         var align = page.Section.VerticalAlign;
@@ -252,7 +445,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             return;
         var top = page.Section.Top;
         var bottom = page.Section.PageHeight - page.Section.Bottom;
-        var used = page.Lines.Max(l => l.Top + l.Line.Height) - top;
+        var used = page.Lines.Max(l => l.Top + l.Line.Height) + page.TrailingSpace - top;
         var shift = align == "center" ? (bottom - top - used) / 2 : bottom - top - used;
         for (var i = 0; i < page.Lines.Count; i++)
             page.Lines[i] = page.Lines[i] with { Top = page.Lines[i].Top + shift };

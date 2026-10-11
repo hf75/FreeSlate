@@ -14,19 +14,39 @@ public static class WordLines
     {
         foreach (var document in documents)
         {
-            // Word writes trailing spaces as glyphs; the line ends at its last visible glyph.
+            // Word writes trailing spaces as glyphs; the line ends at its last visible glyph. Lines of columns side by
+            // side are told apart by the gap between them.
             var word = new PdfText(References.DocumentPdf(document)).Lines()
+                .SelectMany(SplitAtGaps)
                 .Select(l => (Page: l[0].Page, Y: l[0].Y, X0: l[0].X, X1: l.Where(g => g.Text.Trim().Length > 0).Select(g => g.X + g.Advance).DefaultIfEmpty(l[0].X).Last(),
                     Text: Normalize(string.Concat(l.Select(g => g.Text)))))
                 .ToList();
             var ours = Ours(Repo.DeckFile(document), Repo.DeckPassword(document));
+            if (Environment.GetEnvironmentVariable("FS_OURS") is { } only)
+            {
+                foreach (var o in ours.Where(o => only == "" || o.Page.ToString() == only))
+                    Console.WriteLine($"  ours p{o.Page} y={o.Y,8:0.00} x={o.X0,8:0.00}..{o.X1,8:0.00}  {Clip(o.Text)}");
+            }
             Console.WriteLine($"{document}: Word {word.Count} lines, ours {ours.Count}");
             var used = new HashSet<int>();
             double sumDy = 0, sumDx = 0;
             var matched = 0;
             foreach (var w in word)
             {
-                var index = ours.FindIndex(o => !used.Contains(ours.IndexOf(o)) && o.Text == w.Text);
+                // The same text may stand more than once (columns, repeated paragraphs): the nearest unused line.
+                var index = -1;
+                var best = double.MaxValue;
+                for (var k = 0; k < ours.Count; k++)
+                {
+                    if (used.Contains(k) || ours[k].Text != w.Text)
+                        continue;
+                    var distance = (ours[k].Page != w.Page ? 10000 : 0) + Math.Abs(ours[k].Y - w.Y) + Math.Abs(ours[k].X0 - w.X0);
+                    if (distance < best)
+                    {
+                        best = distance;
+                        index = k;
+                    }
+                }
                 if (index < 0)
                 {
                     Console.WriteLine($"  p{w.Page} y={w.Y,8:0.00} only Word: {Clip(w.Text)}");
@@ -51,6 +71,23 @@ public static class WordLines
             if (matched > 0)
                 Console.WriteLine($"  matched {matched}, mean |dy| {sumDy / matched:0.000}, mean |dx0| {sumDx / matched:0.000}");
         }
+    }
+
+    /// <summary>A line of glyphs split where more than 24 pt lie between one glyph's end and the next glyph.</summary>
+    static IEnumerable<List<PdfGlyph>> SplitAtGaps(List<PdfGlyph> line)
+    {
+        var current = new List<PdfGlyph>();
+        foreach (var g in line)
+        {
+            if (current.Count > 0 && g.X - (current[^1].X + current[^1].Advance) > 24)
+            {
+                yield return current;
+                current = [];
+            }
+            current.Add(g);
+        }
+        if (current.Count > 0)
+            yield return current;
     }
 
     static string Clip(string text) => text.Length > 70 ? text[..70] + "…" : text;
