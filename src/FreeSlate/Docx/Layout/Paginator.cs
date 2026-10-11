@@ -260,6 +260,98 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides"));
     }
 
+    /// <summary>
+    /// A text frame or drop cap (w:framePr, catalog: paragraph.frames): consecutive paragraphs with the same frame
+    /// properties, measured with docx/local/frames. The frame takes no room in the text: it is w:w wide (else as wide
+    /// as its widest content) and stands w:x from, or aligned (w:xAlign) in, its column (hAnchor text), the margin or
+    /// the page, w:y below the top of the paragraph after it (vAnchor text), the margin or the page; text wraps around
+    /// it, kept w:hSpace and w:vSpace away (not beside it with wrap notBeside, over it with wrap none). A drop cap is a
+    /// frame of its letter at the start of the paragraph after it, a margin drop cap left of the column.
+    /// </summary>
+    /// <returns>The index of the first block after the frame.</returns>
+    int PlaceFrame(List<Block> blocks, int index)
+    {
+        var first = (ParagraphBlock)blocks[index];
+        var properties = first.Format.Frame!;
+        var group = new List<ParagraphBlock> { first };
+        var end = index + 1;
+        while (end < blocks.Count && blocks[end] is ParagraphBlock { EndsSection: null } p && p.Format.Frame is { } other && XNode.DeepEquals(other, properties))
+        {
+            group.Add(p);
+            end++;
+        }
+        var (left, width) = Column(column);
+        double Twips(string name) => properties.Twips(name) ?? 0;
+        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p).Max);
+        var laid = group.Select(p => layout.Layout(p, frameWidth)).ToList();
+        var content = 0.0;
+        for (var k = 0; k < group.Count; k++)
+            content += (k > 0 ? Math.Max(SpaceAfter(group[k - 1], group[k]), SpaceBefore(group[k])) : 0) + laid[k].Sum(l => l.Height);
+        // The paragraphs' borders frame the content: their top and bottom lines with their space take room.
+        var frameBorders = Frame.Read(first.Format);
+        var borderTop = frameBorders?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
+        content += borderTop + (frameBorders?.Bottom is { Visible: true } bb ? bb.Space + bb.Total : 0);
+        var height = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
+        var dropCap = properties.Attr("dropCap");
+        // The paragraph the frame belongs to: the first after it.
+        var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
+        var textTop = y + (columnEmpty ? 0 : Math.Max(pendingAfter, next != null ? SpaceBefore(next) : 0));
+        var (frameLeft, frameSpan) = properties.Attr("hAnchor") switch
+        {
+            "page" when dropCap is not "margin" => (0.0, page!.Width),
+            "margin" or "page" => (page!.TextLeft, page.TextWidth),
+            _ => (left, width),
+        };
+        var (frameTop, frameHeight) = properties.Attr("vAnchor") switch
+        {
+            "page" => (0.0, page!.Height),
+            "margin" => (page!.BodyTop, page.BodyBottom - page.BodyTop),
+            _ => (textTop, 0.0),
+        };
+        var odd = page!.DisplayNumber % 2 == 1;
+        var hSpace = Twips("hSpace");
+        var x = dropCap == "margin" ? left - frameWidth - hSpace
+            : dropCap == "drop" ? left
+            : properties.Attr("xAlign") switch
+            {
+                "left" => frameLeft,
+                "right" => frameLeft + frameSpan - frameWidth,
+                "center" => frameLeft + (frameSpan - frameWidth) / 2,
+                "inside" => odd ? frameLeft : frameLeft + frameSpan - frameWidth,
+                "outside" => odd ? frameLeft + frameSpan - frameWidth : frameLeft,
+                _ => frameLeft + Twips("x"),
+            };
+        var top = dropCap is "drop" or "margin" ? textTop : properties.Attr("yAlign") switch
+        {
+            "top" or "inside" => frameTop,
+            "bottom" or "outside" => frameTop + frameHeight - height,
+            "center" => frameTop + (frameHeight - height) / 2,
+            "inline" => textTop,
+            _ => frameTop + Twips("y"),
+        };
+        // The frame's lines, its paragraphs' borders around the whole frame.
+        var lineTop = top + borderTop;
+        for (var k = 0; k < group.Count; k++)
+        {
+            if (k > 0)
+                lineTop += Math.Max(SpaceAfter(group[k - 1], group[k]), SpaceBefore(group[k]));
+            foreach (var line in laid[k])
+            {
+                page.Lines.Add(new PlacedLine(line, x, lineTop));
+                lineTop += line.Height;
+            }
+        }
+        frameBorders?.Draw(page, x, frameWidth, first.Format, top, top + height, top: true, bottom: true, between: null);
+        // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
+        var vSpace = Twips("vSpace");
+        var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
+        var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
+        if (properties.Attr("wrap") != "none")
+            page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
+                properties.Attr("wrap") == "notBeside", "bothSides"));
+        return end;
+    }
+
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
 
@@ -453,6 +545,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 if (sectionBlocks[i] is TableBlock)
                     PlaceTable(sectionBlocks, i);
+                else if (sectionBlocks[i] is ParagraphBlock { Format.Frame: not null, EndsSection: null })
+                    i = PlaceFrame(sectionBlocks, i) - 1;
                 else
                     Place(sectionBlocks, i);
             }
