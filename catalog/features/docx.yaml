@@ -621,7 +621,7 @@ areas:
         elements: [w:p, w:pPr, w:pStyle, w:jc, w:ind, w:mirrorIndents]
         priority: P0
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left,
           center, right, justified, distributed and the Arabic kashida variants.
@@ -629,8 +629,14 @@ areas:
           Justified lines may squeeze the spaces between their words by a fifth to take one more word (ten Courier New
           words fit a column 12 pt narrower than they are, not 13 pt; docx/local/jc-compress); left, centered and
           right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified
-          paragraph keeps its natural spacing unless it was squeezed. Still open: w:mirrorIndents and the kashida
-          variants.
+          paragraph keeps its natural spacing unless it was squeezed. Mirrored indents (w:mirrorIndents) trade the
+          left and right indent on pages with even numbers, the lines breaking as on odd pages (docx/local/mirror:
+          every line as in Word). Medium and high kashida justification lengthen every Arabic word by two or three
+          kashidas at one joining place, chosen by the Arabic justification priorities (after seen or sad, before a
+          final teh marbuta, heh or dal, before a final alef, tah, lam or kaf, before a medial beh, before a final
+          waw, ain, qaf or feh, before another final letter), and justify with them (docx/local/kashida). Known
+          deviations: low kashida justification widens spaces where Word inserts single kashidas; lines with kashidas
+          break up to a word differently.
 
       - id: paragraph.spacing
         title: Line and paragraph spacing
@@ -922,12 +928,14 @@ areas:
         elements: [w:pgNumType, w:pgNum]
         priority: P0
         difficulty: 2
-        status: partial
+        status: done
         strategy: Number format and restart per section, chapter numbers from heading styles; PAGE fields read them.
         office: >-
           PAGE shows the page number in the section's format (w:pgNumType/@fmt) unless the field's own \* switch names
-          one; w:pgNumType/@start restarts the count at the section's first page (docx/local/hf-parity). Still open:
-          chapter numbers (w:chapStyle, w:chapSep).
+          one; w:pgNumType/@start restarts the count at the section's first page (docx/local/hf-parity). With chapter
+          numbers (w:chapStyle) the number of the last heading of that level on the page or before it, in its level's
+          format alone (Chapter B shows B), stands before it with the separator of w:chapSep (hyphen, period, colon,
+          em dash, en dash; docx/local/chapter: a page ending one chapter and starting the next shows the next's).
 
       - id: section.docGrid
         title: Document grid
@@ -1034,13 +1042,15 @@ areas:
                    w:hMerge, w:gridBefore, w:gridAfter, w:wBefore, w:wAfter, w:hidden, w:bidiVisual]
         priority: P0
         difficulty: 3
-        status: partial
+        status: done
         strategy: Grid columns, horizontal spans, vertical merges, rows that skip grid columns, right-to-left tables.
         office: >-
           Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one
           higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the
           first column at the right, the table at the right margin); tables that follow each other directly are joined
-          with one line between (docx/local/tbl-geom, tbl-features). Still open: w:hMerge of old documents.
+          with one line between (docx/local/tbl-geom, tbl-features). Horizontal merges of old documents (w:hMerge): a
+          cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does
+          not show) and takes the right border of the last (docx/local/hmerge, 99.8 %).
 
       - id: table.width
         title: Table and column widths (autofit)
