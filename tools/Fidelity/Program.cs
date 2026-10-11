@@ -176,7 +176,7 @@ return 0;
 static void Summarize(List<DeckResult> results)
 {
     foreach (var r in results)
-        Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} slides)");
+        Console.WriteLine($"  {r.Deck,-32} {r.Score * 100,6:0.0} %   SSIM {r.Ssim:0.000}   ({r.Slides.Count} {(Repo.IsDocument(r.Deck) ? "pages" : "slides")})");
     if (results.Count > 0)
         Console.WriteLine($"  {"overall",-32} {results.SelectMany(r => r.Slides).Average(s => s.Score.Score) * 100,6:0.0} %");
     Console.WriteLine($"Report: {Report.Write(results)}");

@@ -20,14 +20,14 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 0 | 0 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 0 | 0 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 3 | 1 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 2 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 0 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 0 | 0 |
-| [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 0 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 2 | 1 |
+| [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
 | [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 0 |
 | [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 0 | 0 |
-| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 0 | 0 |
+| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 1 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 0 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 0 |
 | [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 0 | 0 |
@@ -43,8 +43,8 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 0 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 0 |
-| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 0 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **0** | **0** |
+| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 2 | 0 |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **9** | **6** |
 
 <a id="package"></a>
 
@@ -445,10 +445,10 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Runs, fonts, size and color](#run.basic) | P0 | ●●○○○ | todo | 10 | 21 |
-| [Underline, strike, caps, highlight, borders and shading](#run.decoration) | P0 | ●●○○○ | todo | 13 | 12 |
-| [Character spacing, scale, kerning and position](#run.spacing) | P1 | ●●○○○ | todo | 5 | 4 |
-| [Hidden text](#run.hidden) | P1 | ●●○○○ | todo | 3 | 2 |
+| [Runs, fonts, size and color](#run.basic) | P0 | ●●○○○ | partial | 10 | 21 |
+| [Underline, strike, caps, highlight, borders and shading](#run.decoration) | P0 | ●●○○○ | partial | 13 | 12 |
+| [Character spacing, scale, kerning and position](#run.spacing) | P1 | ●●○○○ | partial | 5 | 4 |
+| [Hidden text](#run.hidden) | P1 | ●●○○○ | done | 3 | 2 |
 | [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | todo | 7 | 7 |
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | todo | 14 | 3 |
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | todo | 10 | 6 |
@@ -461,9 +461,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Runs, fonts, size and color
 
-`run.basic` · P0 · difficulty 2 · todo
+`run.basic` · P0 · difficulty 2 · partial
 
 **Rendering:** Each run picks one of its four fonts (ascii, hAnsi, eastAsia, cs) per character by Unicode range and the w:hint attribute, then is measured and broken into lines by our text engine (engine.lineLayout).
+
+**Office behaviour:** Widths are the fonts' advances shaped by HarfBuzz at the nominal size (not rounded to the 600 dpi device); GPOS kerning only where w:kern is set and the size reaches its threshold, ligatures and contextual alternates only per w14:ligatures and w14:cntxtAlts (measured with docx/generated/text-fonts: positions within 0.1 pt per line without kerning). Theme fonts and theme colors resolve through the theme and the settings' color scheme mapping. Still open: font fallback for missing glyphs per Word's rules.
 
 **Elements (10):** [`w:b`](../format/namespaces/w.md#wb), [`w:color`](../format/namespaces/w.md#wcolor), [`w:i`](../format/namespaces/w.md#wi), [`w:lang`](../format/namespaces/w.md#wlang), [`w:r`](../format/namespaces/w.md#wr), [`w:rFonts`](../format/namespaces/w.md#wrfonts), [`w:rPr`](../format/namespaces/w.md#wrpr), [`w:rStyle`](../format/namespaces/w.md#wrstyle), [`w:sz`](../format/namespaces/w.md#wsz), [`w:t`](../format/namespaces/w.md#wt)
 
@@ -475,9 +477,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Underline, strike, caps, highlight, borders and shading
 
-`run.decoration` · P0 · difficulty 2 · todo
+`run.decoration` · P0 · difficulty 2 · partial
 
 **Rendering:** Drawn with the glyph runs as SVG: 18 underline styles with their own color, single and double strike, highlight and shading behind the line box, run borders merged across adjacent runs with the same border.
+
+**Office behaviour:** Superscript and subscript are 58 % of the size, raised by 33 % or lowered by 8 % of it; small caps are 80 % of the size rounded to half points (12 pt to 9.5 pt); single underline lies at the font's post table underline position and thickness; highlight and shading cover the line's natural box (ascent above the baseline, the rest below), measured with docx/generated/character-formats. Still open: the other underline styles (double lines 0.12 pt apart by 1.08 pt, dotted 1.44 pt dots every 2.88 pt, wavy), emboss, imprint, outline and shadow, which Word draws as several copies of the text, and run borders.
 
 **Elements (13):** [`w:bdr`](../format/namespaces/w.md#wbdr), [`w:caps`](../format/namespaces/w.md#wcaps), [`w:dstrike`](../format/namespaces/w.md#wdstrike), [`w:emboss`](../format/namespaces/w.md#wemboss), [`w:highlight`](../format/namespaces/w.md#whighlight), [`w:imprint`](../format/namespaces/w.md#wimprint), [`w:outline`](../format/namespaces/w.md#woutline), [`w:shadow`](../format/namespaces/w.md#wshadow), [`w:shd`](../format/namespaces/w.md#wshd), [`w:smallCaps`](../format/namespaces/w.md#wsmallcaps), [`w:strike`](../format/namespaces/w.md#wstrike), [`w:u`](../format/namespaces/w.md#wu), [`w:vertAlign`](../format/namespaces/w.md#wvertalign)
 
@@ -489,9 +493,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Character spacing, scale, kerning and position
 
-`run.spacing` · P1 · difficulty 2 · todo
+`run.spacing` · P1 · difficulty 2 · partial
 
 **Rendering:** Applied in measurement; kerning from the font's kern/GPOS data above the w:kern threshold size.
+
+**Office behaviour:** Character spacing is added after every cluster, horizontal scale stretches the advances, raised and lowered text adds what it reaches beyond the line outside the line spacing multiple (text 3 pt up and 3 pt down makes a 1.15 line 6 pt higher, not 6.95 pt; docx/generated/character-formats). Still open: w:fitText.
 
 **Elements (5):** [`w:fitText`](../format/namespaces/w.md#wfittext), [`w:kern`](../format/namespaces/w.md#wkern), [`w:position`](../format/namespaces/w.md#wposition), [`w:spacing`](../format/namespaces/w.md#wspacing), [`w:w`](../format/namespaces/w.md#ww)
 
@@ -503,9 +509,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Hidden text
 
-`run.hidden` · P1 · difficulty 2 · todo
+`run.hidden` · P1 · difficulty 2 · done
 
 **Rendering:** Hidden runs take no space in the printed layout unless Word is measured to print them.
+
+**Office behaviour:** Hidden text (w:vanish, w:specVanish) is left out of Word's PDF export and takes no space; the layout drops it the same way.
 
 **Elements (3):** [`w:specVanish`](../format/namespaces/w.md#wspecvanish), [`w:vanish`](../format/namespaces/w.md#wvanish), [`w:webHidden`](../format/namespaces/w.md#wwebhidden)
 
@@ -615,9 +623,9 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Paragraphs, alignment and indentation](#paragraph.basic) | P0 | ●●●○○ | todo | 6 | 14 |
-| [Line and paragraph spacing](#paragraph.spacing) | P0 | ●●●●○ | todo | 2 | 2 |
-| [Keep with next, keep lines together, widow control, page break before](#paragraph.pagination) | P0 | ●●●●○ | todo | 4 | 2 |
+| [Paragraphs, alignment and indentation](#paragraph.basic) | P0 | ●●●○○ | partial | 6 | 14 |
+| [Line and paragraph spacing](#paragraph.spacing) | P0 | ●●●●○ | done | 2 | 2 |
+| [Keep with next, keep lines together, widow control, page break before](#paragraph.pagination) | P0 | ●●●●○ | done | 4 | 2 |
 | [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | todo | 8 | 35 |
 | [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | todo | 5 | 3 |
 | [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | todo | 2 | 1 |
@@ -631,9 +639,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Paragraphs, alignment and indentation
 
-`paragraph.basic` · P0 · difficulty 3 · todo
+`paragraph.basic` · P0 · difficulty 3 · partial
 
 **Rendering:** Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left, center, right, justified, distributed and the Arabic kashida variants.
+
+**Office behaviour:** Justified lines may squeeze the spaces between their words by a fifth to take one more word (ten Courier New words fit a column 12 pt narrower than they are, not 13 pt; docx/local/jc-compress); left, centered and right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified paragraph keeps its natural spacing unless it was squeezed. Still open: w:mirrorIndents and the kashida variants.
 
 **Elements (6):** [`w:ind`](../format/namespaces/w.md#wind), [`w:jc`](../format/namespaces/w.md#wjc), [`w:mirrorIndents`](../format/namespaces/w.md#wmirrorindents), [`w:p`](../format/namespaces/w.md#wp), [`w:pPr`](../format/namespaces/w.md#wppr), [`w:pStyle`](../format/namespaces/w.md#wpstyle)
 
@@ -645,9 +655,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Line and paragraph spacing
 
-`paragraph.spacing` · P0 · difficulty 4 · todo
+`paragraph.spacing` · P0 · difficulty 4 · done
 
 **Rendering:** Line spacing auto (multiples of the font's single line height), exact and at least; spacing before and after, auto spacing of HTML paragraphs, contextual spacing between paragraphs of the same style. How Word derives single line height from the font tables is measured, not assumed.
+
+**Office behaviour:** A single line is the font's hhea ascender, descender and line gap; the baseline lies the larger of the line gaps (hhea against OS/2 win, as DirectWrite does; OS/2 typo metrics where USE_TYPO_METRICS is set) plus the ascent below the line's top. Auto spacing multiplies the line and puts the extra below the text, exact spacing puts the baseline at 80 % of the height whatever the font, at least spacing puts the extra above (measured with 14 fonts, docx/local/lm-*). The space between paragraphs is the larger of the space after the one and before the next (docx/generated/text-basic, as ISO/IEC 29500 17.3.1.33 says); contextual spacing drops both between paragraphs of the same style.
 
 **Elements (2):** [`w:contextualSpacing`](../format/namespaces/w.md#wcontextualspacing), [`w:spacing`](../format/namespaces/w.md#wspacing)
 
@@ -659,9 +671,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Keep with next, keep lines together, widow control, page break before
 
-`paragraph.pagination` · P0 · difficulty 4 · todo
+`paragraph.pagination` · P0 · difficulty 4 · done
 
 **Rendering:** Constraints for the page breaker (engine.pagination).
+
+**Office behaviour:** At the top of a page the space before is kept on the document's first page, after a section break only what it has more than the space after the section's last paragraph, and dropped after page and column breaks, page break before and natural breaks (docx/local/sp-pagetop). The extra space of auto line spacing below the last line may hang past the bottom margin (a line whose text ends 0.4 pt above the margin stays, docx/generated/headers-footers). Keep with next, keep lines together and widow control move whole paragraphs or two lines (docx/generated/breaks).
 
 **Elements (4):** [`w:keepLines`](../format/namespaces/w.md#wkeeplines), [`w:keepNext`](../format/namespaces/w.md#wkeepnext), [`w:pageBreakBefore`](../format/namespaces/w.md#wpagebreakbefore), [`w:widowControl`](../format/namespaces/w.md#wwidowcontrol)
 
@@ -839,11 +853,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | todo | 9 | 7 |
-| [Columns](#section.columns) | P1 | ●●●●○ | todo | 2 | 2 |
+| [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | partial | 9 | 7 |
+| [Columns](#section.columns) | P1 | ●●●●○ | done | 2 | 2 |
 | [Page borders](#section.pageBorders) | P2 | ●●●○○ | todo | 8 | 29 |
 | [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | todo | 2 | 1 |
-| [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | todo | 2 | 1 |
+| [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | partial | 2 | 1 |
 | [Document grid](#section.docGrid) | P1 | ●●●●○ | todo | 1 | 0 |
 | [Printer and book fold settings](#section.printing) | P3 | ●●○○○ | todo | 6 | 5 |
 
@@ -851,9 +865,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page size, margins and section breaks
 
-`section.page` · P0 · difficulty 3 · todo
+`section.page` · P0 · difficulty 3 · partial
 
 **Rendering:** Every section starts on a new page, an even or odd page (inserting a blank page) or continues on the same page; orientation, margins with gutter, mirrored margins and vertical alignment of the page content.
+
+**Office behaviour:** Sections start on a new page, continue, or start on an odd or even page; odd and even mean the page numbers, not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored margins any section whose first number has the parity of the page before gets a blank page before it (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES. Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the space after its last (docx/generated/page-setup, page 4). Still open: w:formProt (nothing to draw) and page sizes beyond what browsers print.
 
 **Elements (9):** [`w:formProt`](../format/namespaces/w.md#wformprot), [`w:gutterAtTop`](../format/namespaces/w.md#wgutterattop), [`w:mirrorMargins`](../format/namespaces/w.md#wmirrormargins), [`w:pgMar`](../format/namespaces/w.md#wpgmar), [`w:pgSz`](../format/namespaces/w.md#wpgsz), [`w:rtlGutter`](../format/namespaces/w.md#wrtlgutter), [`w:sectPr`](../format/namespaces/w.md#wsectpr), [`w:type`](../format/namespaces/w.md#wtype), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -865,9 +881,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Columns
 
-`section.columns` · P1 · difficulty 4 · todo
+`section.columns` · P1 · difficulty 4 · done
 
 **Rendering:** Equal or individual column widths with separator lines; a continuous section break balances the columns above it.
+
+**Office behaviour:** A continuous section break balances the columns above it by line count, not height: as many lines in each column as the least count that holds them all, the first columns taking the extra lines, with widow, keep- with-next and keep-together rules (9 lines go 5/4, docx/local/cols-balance; a heading and 60 lines go 31/30 although the first column is 42 pt longer, docx/generated/page-setup). The columns end below the space after their last paragraph; the next section's first paragraph keeps what its space before has more. Separator lines are 0.75 pt wide in the middle of the gap, from the columns' top to the bottom of the longest column.
 
 **Elements (2):** [`w:col`](../format/namespaces/w.md#wcol), [`w:cols`](../format/namespaces/w.md#wcols)
 
@@ -907,9 +925,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page numbering
 
-`section.pageNumbers` · P0 · difficulty 2 · todo
+`section.pageNumbers` · P0 · difficulty 2 · partial
 
 **Rendering:** Number format and restart per section, chapter numbers from heading styles; PAGE fields read them.
+
+**Office behaviour:** PAGE shows the page number in the section's format (w:pgNumType/@fmt) unless the field's own \* switch names one; w:pgNumType/@start restarts the count at the section's first page (docx/local/hf-parity). Still open: chapter numbers (w:chapStyle, w:chapSep).
 
 **Elements (2):** [`w:pgNum`](../format/namespaces/w.md#wpgnum), [`w:pgNumType`](../format/namespaces/w.md#wpgnumtype)
 
@@ -949,15 +969,17 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Headers and footers](#headerFooter.parts) | P0 | ●●●○○ | todo | 6 | 6 |
+| [Headers and footers](#headerFooter.parts) | P0 | ●●●○○ | done | 6 | 6 |
 
 <a id="headerFooter.parts"></a>
 
 ### Headers and footers
 
-`headerFooter.parts` · P0 · difficulty 3 · todo
+`headerFooter.parts` · P0 · difficulty 3 · done
 
 **Rendering:** First, even and default headers per section, inherited from the previous section when missing; laid out by the same engine at w:header/w:footer distance. A header taller than the top margin pushes the body down.
+
+**Office behaviour:** The header starts w:header below the page's top edge with the space before its first paragraph; the footer ends w:footer above the bottom edge with the space after its last. A header reaching below the top margin pushes the body down to its end including that space after, a footer reaching above the bottom margin moves the body's end up (docx/local/hf-tall, hf-short). The first page of a section with a title page has the first header, even page numbers the even header when the settings ask for different odd and even headers; a section without a header of a type inherits the previous section's, and a type no section gives is an empty header. Word's footers stand 0.14 pt lower than the footer distance says (its 600 dpi device grid), which the layout does not copy.
 
 **Elements (6):** [`w:evenAndOddHeaders`](../format/namespaces/w.md#wevenandoddheaders), [`w:footerReference`](../format/namespaces/w.md#wfooterreference), [`w:ftr`](../format/namespaces/w.md#wftr), [`w:hdr`](../format/namespaces/w.md#whdr), [`w:headerReference`](../format/namespaces/w.md#wheaderreference), [`w:titlePg`](../format/namespaces/w.md#wtitlepg)
 
@@ -1133,8 +1155,8 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Simple and complex fields](#field.structure) | P0 | ●●●○○ | todo | 5 | 1 |
-| [Field evaluation](#field.evaluation) | P1 | ●●●●○ | todo | 4 | 3 |
+| [Simple and complex fields](#field.structure) | P0 | ●●●○○ | done | 5 | 1 |
+| [Field evaluation](#field.evaluation) | P1 | ●●●●○ | partial | 4 | 3 |
 | [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | todo | 6 | 4 |
 | [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | todo | 2 | 2 |
 | [Legacy form fields](#field.forms) | P2 | ●●●○○ | todo | 25 | 15 |
@@ -1144,9 +1166,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Simple and complex fields
 
-`field.structure` · P0 · difficulty 3 · todo
+`field.structure` · P0 · difficulty 3 · done
 
 **Rendering:** Show the cached result between the separate and end field characters, nested fields included; which fields Word recomputes when it prints (PAGE, NUMPAGES ...) is measured (field.evaluation).
+
+**Office behaviour:** Field instructions are hidden, results between the separate and end characters show, nested fields included (a field inside another's instruction is part of the instruction). The results of PAGE, NUMPAGES and SECTIONPAGES are computed after pagination (field.evaluation); others keep their saved result.
 
 **Elements (5):** [`w:delInstrText`](../format/namespaces/w.md#wdelinstrtext), [`w:fldChar`](../format/namespaces/w.md#wfldchar), [`w:fldData`](../format/namespaces/w.md#wflddata), [`w:fldSimple`](../format/namespaces/w.md#wfldsimple), [`w:instrText`](../format/namespaces/w.md#winstrtext)
 
@@ -1158,11 +1182,13 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Field evaluation
 
-`field.evaluation` · P1 · difficulty 4 · todo
+`field.evaluation` · P1 · difficulty 4 · partial
 
 The 72 field codes of the format catalog (field-codes.md): page and section numbers, references, sequences, dates, document properties, formulas, IF, TOC and index entries.
 
 **Rendering:** Page-dependent fields (PAGE, NUMPAGES, SECTIONPAGES, PAGEREF, STYLEREF in headers) are computed after pagination; others keep their cached result unless Word is measured to update them.
+
+**Office behaviour:** PAGE, NUMPAGES and SECTIONPAGES are computed for every header and footer after pagination, with the number format switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Other fields keep their saved results. Still open: PAGEREF, STYLEREF, SEQ, dates and the rest of the field codes.
 
 **Elements (4):** [`w:docVar`](../format/namespaces/w.md#wdocvar), [`w:docVars`](../format/namespaces/w.md#wdocvars), [`w:listSeparator`](../format/namespaces/w.md#wlistseparator), [`w:updateFields`](../format/namespaces/w.md#wupdatefields)
 
@@ -2968,8 +2994,8 @@ Features without elements of their own that decide the fidelity of everything el
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [HTML output](#engine.output) | P0 | ●●●○○ | todo | 0 | 0 |
-| [Pagination](#engine.pagination) | P0 | ●●●●● | todo | 0 | 0 |
-| [Line layout](#engine.lineLayout) | P0 | ●●●●● | todo | 0 | 0 |
+| [Pagination](#engine.pagination) | P0 | ●●●●● | partial | 0 | 0 |
+| [Line layout](#engine.lineLayout) | P0 | ●●●●● | partial | 0 | 0 |
 | [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | todo | 0 | 0 |
 | [Table layout](#engine.tableLayout) | P0 | ●●●●● | todo | 0 | 0 |
 | [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | todo | 0 | 0 |
@@ -2987,17 +3013,21 @@ Features without elements of their own that decide the fidelity of everything el
 
 ### Pagination
 
-`engine.pagination` · P0 · difficulty 5 · todo
+`engine.pagination` · P0 · difficulty 5 · partial
 
 **Rendering:** Page breaking with widow and orphan control, keep with next, keep lines together, page and column breaks, table rows that split or repeat, footnotes that share the page with their references, section breaks of all types and continuous sections with balanced columns.
+
+**Office behaviour:** Pages, columns, sections, headers and footers and the paragraph keep rules match Word's line positions within 0.1 pt on the generated documents (word-lines). Still open: tables, footnotes, floating objects.
 
 <a id="engine.lineLayout"></a>
 
 ### Line layout
 
-`engine.lineLayout` · P0 · difficulty 5 · todo
+`engine.lineLayout` · P0 · difficulty 5 · partial
 
 **Rendering:** The text engine of pptx `engine.textLayout` (done) extended by Word's rules: line height from the font's metrics and line spacing, tabs, justification, East Asian grid and kinsoku, hyphenation, inline objects, lines shortened by floating objects.
+
+**Office behaviour:** Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between characters; trailing spaces hang past the end. Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same rasterizer, so equal positions give equal pixels. Still open: hyphenation, East Asian grid and compression rules.
 
 <a id="engine.floats"></a>
 

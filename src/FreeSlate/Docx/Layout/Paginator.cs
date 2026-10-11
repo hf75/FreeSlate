@@ -10,6 +10,28 @@ public sealed class PageBox
     public required SectionProperties Section { get; init; }
     public List<PlacedLine> Lines { get; } = [];
 
+    /// <summary>The page's number as PAGE fields show it (w:pgNumType restarts it; catalog: section.pageNumbers).</summary>
+    public int DisplayNumber { get; init; }
+
+    /// <summary>The index of the page's section and whether the page is the section's first.</summary>
+    public int SectionIndex { get; init; }
+    public bool FirstOfSection { get; init; }
+
+    /// <summary>The header and footer parts of the page, or null (catalog: headerFooter.parts).</summary>
+    public string? Header { get; init; }
+    public string? Footer { get; init; }
+
+    /// <summary>Where the body begins and ends: at the margins, or below a header and above a footer that reach past them.</summary>
+    public double BodyTop { get; set; }
+    public double BodyBottom { get; set; }
+
+    /// <summary>The left edge and the width of the text area (mirrored margins and the gutter placed).</summary>
+    public double TextLeft { get; init; }
+    public double TextWidth { get; init; }
+
+    /// <summary>A page left blank so that the next section starts on an odd or even page.</summary>
+    public bool Blank { get; init; }
+
     /// <summary>The space after the paragraph that ends on this page, which vertical alignment counts.</summary>
     public double TrailingSpace { get; set; }
 
@@ -30,13 +52,15 @@ public sealed class PageBox
 /// has more than the space after the section's last paragraph, none after a page or column break, a page break
 /// before or a natural break.
 /// </summary>
-public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
+/// <param name="reader">Reads the header and footer parts; without it pages have none.</param>
+public sealed class Paginator(DocumentContext context, ParagraphLayout layout, ModelReader? reader = null)
 {
     readonly List<PageBox> pages = [];
 
     // The current position: page, column, the top of the next line and whether the column is still empty.
     PageBox? page;
     SectionProperties section = new();
+    int sectionIndex;
     int column;
     double y;
     bool columnEmpty = true;
@@ -83,10 +107,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             }
         }
         sections.Add((current, lastSection));
+        // A section without a header or footer of a type has the previous section's (ISO/IEC 29500 17.10.5).
+        for (var s = 1; s < sections.Count; s++)
+        {
+            foreach (var (type, part) in sections[s - 1].Properties.Headers)
+                sections[s].Properties.Headers.TryAdd(type, part);
+            foreach (var (type, part) in sections[s - 1].Properties.Footers)
+                sections[s].Properties.Footers.TryAdd(type, part);
+        }
 
         for (var s = 0; s < sections.Count; s++)
         {
             var (sectionBlocks, properties) = sections[s];
+            sectionIndex = s;
             StartSection(properties, s == 0);
             var paragraphs = sectionBlocks.OfType<ParagraphBlock>().ToList();
             for (var i = 0; i < paragraphs.Count; i++)
@@ -97,9 +130,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             CloseColumns();
         }
         if (pages.Count == 0)
-            NewPage(lastSection);
+            NewPage(lastSection, firstOfSection: true);
         foreach (var p in pages)
             AlignVertically(p);
+        if (reader != null)
+        {
+            // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
+            var sectionPages = pages.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).ToDictionary(g => g.Key, g => g.Count());
+            foreach (var p in pages)
+            {
+                var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex));
+                if (p.Header != null)
+                    p.Lines.AddRange(Story(p.Header, p, fields, header: true).Lines);
+                if (p.Footer != null)
+                    p.Lines.AddRange(Story(p.Footer, p, fields, header: false).Lines);
+            }
+        }
         return pages;
     }
 
@@ -109,10 +155,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         section = properties;
         if (page == null || start != "continuous" && start != "nextColumn")
         {
-            NewPage(properties);
-            // Even and odd page sections leave a blank page where the parity does not fit.
-            if (!first && (start == "evenPage" && page!.Number % 2 == 1 || start == "oddPage" && page!.Number % 2 == 0))
-                NewPage(properties);
+            // Odd page numbers are right-hand pages: an odd or even page section leaves a blank page where the next
+            // number has the wrong parity, and with different odd and even headers or mirrored margins so does any
+            // section whose first number has the parity of the page before (measured with docx/local/hf-oddpage,
+            // hf-restart-*: page numbers decide, not the sheets).
+            if (!first && pages.Count > 0)
+            {
+                var previousNumber = pages[^1].DisplayNumber;
+                var next = properties.PageNumberStart ?? previousNumber + 1;
+                var sides = context.Settings.Child("evenAndOddHeaders").OnOff() == true || context.Settings.Child("mirrorMargins").OnOff() == true;
+                if (start == "oddPage" && next % 2 == 0 || start == "evenPage" && next % 2 == 1 || sides && next % 2 == previousNumber % 2)
+                    NewPage(pages[^1].Section, blank: true);
+            }
+            NewPage(properties, firstOfSection: true);
             top = first ? Top.Document : Top.Section;
             return;
         }
@@ -126,33 +181,102 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             NextColumn(natural: false);
     }
 
-    void NewPage(SectionProperties properties)
+    /// <param name="blank">A page left blank before a section: it has a number but no header or footer.</param>
+    void NewPage(SectionProperties properties, bool firstOfSection = false, bool blank = false)
     {
         CloseColumns();
-        page = new PageBox { Number = pages.Count + 1, Section = properties };
+        var number = firstOfSection && properties.PageNumberStart is { } restart ? restart
+            : pages.Count == 0 ? 1 : pages[^1].DisplayNumber + 1;
+        // The first page of a section with a title page has the first header; with different odd and even pages
+        // (w:evenAndOddHeaders) even pages have the even one; a type the sections do not give is an empty header.
+        var type = firstOfSection && properties.TitlePage ? "first"
+            : number % 2 == 0 && context.Settings.Child("evenAndOddHeaders").OnOff() == true ? "even" : "default";
+        // Mirrored margins swap the left and right margins of even pages; the gutter is on the inside, at the top
+        // (w:gutterAtTop) or on the right (w:rtlGutter).
+        var even = number % 2 == 0 && context.Settings.Child("mirrorMargins").OnOff() == true;
+        var gutterAtTop = context.Settings.Child("gutterAtTop").OnOff() == true;
+        var rightGutter = properties.Element.Child("rtlGutter").OnOff() == true;
+        var gutterLeft = !gutterAtTop && (even ? rightGutter : !rightGutter);
+        var left = (even ? properties.Right : properties.Left) + (gutterLeft ? properties.Gutter : 0);
+        var width = properties.PageWidth - properties.Left - properties.Right - (gutterAtTop ? 0 : properties.Gutter);
+        page = new PageBox
+        {
+            Number = pages.Count + 1,
+            Section = properties,
+            DisplayNumber = number,
+            SectionIndex = sectionIndex,
+            FirstOfSection = firstOfSection,
+            Blank = blank,
+            Header = reader != null && !blank ? properties.Headers.GetValueOrDefault(type) : null,
+            Footer = reader != null && !blank ? properties.Footers.GetValueOrDefault(type) : null,
+            TextLeft = left,
+            TextWidth = Math.Max(1, width),
+        };
+        // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
+        // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
+        // measured with docx/local/hf-tall, hf-short).
+        page.BodyTop = properties.Top + (gutterAtTop ? properties.Gutter : 0);
+        page.BodyBottom = properties.PageHeight - properties.Bottom;
+        if (page.Header != null && !properties.TopFixed)
+            page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
+        if (page.Footer != null && !properties.BottomFixed)
+            page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
         pages.Add(page);
         column = 0;
-        y = properties.Top;
+        y = page.BodyTop;
         columnTop = y;
         columnEmpty = true;
         flow.Clear();
     }
 
+    /// <summary>
+    /// A header or footer laid out on a page of a section (catalog: headerFooter.parts): across the text area, a
+    /// header from w:header below the page's top edge, a footer ending w:footer above its bottom edge; where its
+    /// content begins and ends.
+    /// </summary>
+    (List<PlacedLine> Lines, double Top, double Bottom) Story(string part, PageBox on, PageFields? fields, bool header)
+    {
+        var s = on.Section;
+        var lines = new List<PlacedLine>();
+        var left = on.TextLeft;
+        var width = on.TextWidth;
+        var y = 0.0;
+        double after = 0;
+        ParagraphBlock? before = null;
+        foreach (var paragraph in reader!.Story(part).OfType<ParagraphBlock>())
+        {
+            var gap = before == null ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
+            y += gap;
+            foreach (var line in layout.Layout(paragraph, width, fields))
+            {
+                lines.Add(new PlacedLine(line, left, y));
+                y += line.Height;
+            }
+            after = paragraph.Format.After ?? 0;
+            before = paragraph;
+        }
+        y += after;
+        var top = header ? s.Header : s.PageHeight - s.Footer - y;
+        for (var i = 0; i < lines.Count; i++)
+            lines[i] = lines[i] with { Top = lines[i].Top + top };
+        return (lines, top, top + y);
+    }
+
     (double Left, double Width) Column(int index)
     {
         var s = section;
-        var left = s.Left + s.Gutter;
+        var left = page!.TextLeft;
         if (s.ColumnWidths is { Count: > 0 } widths)
         {
             for (var k = 0; k < index && k < widths.Count; k++)
                 left += widths[k].Width + widths[k].Space;
             return (left, widths[Math.Min(index, widths.Count - 1)].Width);
         }
-        var width = (s.TextWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
+        var width = (page.TextWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
         return (left + index * (width + s.ColumnSpace), width);
     }
 
-    double Bottom => section.PageHeight - section.Bottom;
+    double Bottom => page!.BodyBottom;
 
     void NextColumn(bool natural)
     {
@@ -201,11 +325,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         // of the next paragraph) does not fit here but would fit in an empty column.
         if (!columnEmpty)
         {
-            var needed = gap + (format.KeepLines == true ? lines.Sum(l => l.Height) : FirstLines(lines, format));
+            var needed = gap + (format.KeepLines == true ? Needed(lines) : FirstLines(lines, format));
             if (format.KeepNext == true && index + 1 < paragraphs.Count)
                 needed = gap + lines.Sum(l => l.Height) + KeptNext(paragraphs, index + 1, width);
             // What does not fit even an empty column is broken anyway.
-            if (y + needed > Bottom + 0.01 && needed - gap <= Bottom - section.Top + 0.01)
+            if (y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01)
             {
                 NextColumn(natural: true);
                 (left, width) = Column(column);
@@ -221,7 +345,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         for (var k = 0; k < lines.Count; k++)
         {
             var line = lines[k];
-            if (y + line.Height > Bottom + 0.01 && !columnEmpty)
+            if (y + line.FitHeight > Bottom + 0.01 && !columnEmpty)
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -235,6 +359,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
                     if (back > 0 && back <= here && !(hereAtTop && back == here))
                     {
                         page!.Lines.RemoveRange(page.Lines.Count - back, back);
+                        flow.RemoveAll(f => f.Index >= page.Lines.Count);
                         k -= back;
                         line = lines[k];
                     }
@@ -288,6 +413,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             return;
         var items = flow;
         var heights = items.Select(f => page.Lines[f.Index].Line.Height).ToList();
+        var fits = items.Select(f => page.Lines[f.Index].Line.FitHeight).ToList();
         var columns = section.Columns;
 
         // Where a column may end before item b, moved back by the page break rules; -1 when the column began there.
@@ -340,7 +466,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
             for (var i = 0; i < items.Count; i++)
             {
                 var g = i == 0 ? items[0].FirstGap : used > 0 ? items[i].Gap : 0;
-                if (used > 0 && (i - columnStart >= count || used + g + heights[i] > bottom + 0.01))
+                if (used > 0 && (i - columnStart >= count || used + g + fits[i] > bottom + 0.01))
                 {
                     var b = BreakBefore(i, columnStart);
                     if (b < 0)
@@ -401,7 +527,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
 
     /// <summary>The height a paragraph needs at least: its first two lines with widow control, else its first.</summary>
     static double FirstLines(List<Line> lines, ParagraphFormat format) =>
-        lines.Take((format.WidowControl ?? true) && lines.Count > 1 ? 2 : 1).Sum(l => l.Height);
+        Needed(lines.Take((format.WidowControl ?? true) && lines.Count > 1 ? 2 : 1).ToList());
+
+    /// <summary>The height lines need on a page: all of them, the last without what may hang past the bottom.</summary>
+    static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
 
     /// <summary>What a kept-with-next paragraph needs of the following ones: their keep chain and the first lines of the last.</summary>
     double KeptNext(List<ParagraphBlock> paragraphs, int index, double width)
@@ -443,8 +572,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout)
         var align = page.Section.VerticalAlign;
         if (align is not ("center" or "bottom") || page.Lines.Count == 0)
             return;
-        var top = page.Section.Top;
-        var bottom = page.Section.PageHeight - page.Section.Bottom;
+        var top = page.BodyTop;
+        var bottom = page.BodyBottom;
         var used = page.Lines.Max(l => l.Top + l.Line.Height) + page.TrailingSpace - top;
         var shift = align == "center" ? (bottom - top - used) / 2 : bottom - top - used;
         for (var i = 0; i < page.Lines.Count; i++)

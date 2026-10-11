@@ -14,6 +14,38 @@ public sealed record TabInline(RunFormat Format) : Inline(Format);
 /// <summary>A break (w:br, w:cr, catalog: run.content): textWrapping (a line break), page or column, with its clear.</summary>
 public sealed record BreakInline(string Type, string? Clear, RunFormat Format) : Inline(Format);
 
+/// <summary>
+/// A field whose result depends on the page it stands on (PAGE, NUMPAGES, SECTIONPAGES; catalog: field.evaluation):
+/// its instruction and the result Word saved, which stands where the page is not known.
+/// </summary>
+public sealed record FieldInline(string Instruction, RunFormat Format, List<Inline> Cached) : Inline(Format)
+{
+    /// <summary>The field's type, the instruction's first word in capitals ("PAGE").</summary>
+    public string Type => TypeOf(Instruction);
+
+    /// <summary>The number format of the field's \* switch ("Arabic", "roman", "ALPHABETIC" …), or null.</summary>
+    public string? NumberFormat
+    {
+        get
+        {
+            var parts = Instruction.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i + 1 < parts.Length; i++)
+            {
+                if (parts[i] == "\\*" && !parts[i + 1].Equals("MERGEFORMAT", StringComparison.OrdinalIgnoreCase)
+                    && !parts[i + 1].Equals("CHARFORMAT", StringComparison.OrdinalIgnoreCase))
+                    return parts[i + 1];
+            }
+            return null;
+        }
+    }
+
+    public static string TypeOf(string instruction) =>
+        instruction.Trim().Split(' ', 2)[0].ToUpperInvariant();
+
+    /// <summary>The fields whose result the layout computes.</summary>
+    public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES";
+}
+
 /// <summary>A block of the body: a paragraph or a table.</summary>
 public abstract record Block;
 
@@ -32,6 +64,7 @@ public sealed class SectionProperties
 {
     public double PageWidth = 612, PageHeight = 792;
     public double Top = 72, Bottom = 72, Left = 72, Right = 72, Header = 36, Footer = 36, Gutter;
+    public bool TopFixed, BottomFixed;
     public string Start = "nextPage";
     public int Columns = 1;
     public double ColumnSpace = 36;
@@ -40,17 +73,43 @@ public sealed class SectionProperties
     public string VerticalAlign = "top";
     public XElement? Element;
 
-    public static SectionProperties Read(XElement? sectPr)
+    /// <summary>The header and footer parts the section names, by type: default, first, even (catalog: headerFooter.parts).</summary>
+    public Dictionary<string, string> Headers = new(StringComparer.Ordinal), Footers = new(StringComparer.Ordinal);
+
+    /// <summary>Whether the section's first page has a header and footer of its own (w:titlePg).</summary>
+    public bool TitlePage;
+
+    /// <summary>The page numbering of the section (w:pgNumType): the number of its first page, or null to go on, and the format.</summary>
+    public int? PageNumberStart;
+    public string PageNumberFormat = "decimal";
+
+    /// <param name="resolve">Finds the part a relationship id of the main document points to.</param>
+    public static SectionProperties Read(XElement? sectPr, Func<string, string?>? resolve = null)
     {
         var s = new SectionProperties { Element = sectPr };
         if (sectPr == null)
             return s;
+        foreach (var (name, into) in new[] { ("headerReference", s.Headers), ("footerReference", s.Footers) })
+        {
+            foreach (var reference in sectPr.Elements(Wml.W + name))
+            {
+                if (reference.Attr(Wml.R + "id") is { } id && resolve?.Invoke(id) is { } part)
+                    into[reference.Attr("type") ?? "default"] = part;
+            }
+        }
+        s.TitlePage = sectPr.Child("titlePg").OnOff() == true;
+        var numbering = sectPr.Child("pgNumType");
+        s.PageNumberStart = (int?)numbering.Number("start");
+        s.PageNumberFormat = numbering.Attr("fmt") ?? "decimal";
         var size = sectPr.Child("pgSz");
         s.PageWidth = size.Twips("w") ?? s.PageWidth;
         s.PageHeight = size.Twips("h") ?? s.PageHeight;
         var margins = sectPr.Child("pgMar");
-        s.Top = margins.Twips("top") ?? s.Top;
-        s.Bottom = margins.Twips("bottom") ?? s.Bottom;
+        // A negative top or bottom margin is kept whatever the header or footer needs (ISO/IEC 29500 17.6.11).
+        var top = margins.Twips("top") ?? s.Top;
+        var bottom = margins.Twips("bottom") ?? s.Bottom;
+        (s.Top, s.TopFixed) = (Math.Abs(top), top < 0);
+        (s.Bottom, s.BottomFixed) = (Math.Abs(bottom), bottom < 0);
         s.Left = margins.Twips("left") ?? s.Left;
         s.Right = margins.Twips("right") ?? s.Right;
         s.Header = margins.Twips("header") ?? s.Header;
@@ -66,9 +125,6 @@ public sealed class SectionProperties
         s.VerticalAlign = sectPr.Child("vAlign").Val() ?? "top";
         return s;
     }
-
-    /// <summary>The width of the text area (between the margins, without the gutter).</summary>
-    public double TextWidth => Math.Max(1, PageWidth - Left - Right - Gutter);
 }
 
 /// <summary>
@@ -89,7 +145,24 @@ public sealed class ModelReader(DocumentContext context)
     }
 
     /// <summary>The properties of the document's last section (the body's own w:sectPr).</summary>
-    public SectionProperties LastSection() => SectionProperties.Read(context.Document.Root.Child("body").Child("sectPr"));
+    public SectionProperties LastSection() => SectionProperties.Read(context.Document.Root.Child("body").Child("sectPr"), Resolve);
+
+    /// <summary>The part a relationship id of the main document points to, where it exists.</summary>
+    string? Resolve(string id) =>
+        context.Package.Relationship(context.MainPart, id) is { External: false } rel && context.Package.Exists(rel.Target) ? rel.Target : null;
+
+    readonly Dictionary<string, List<Block>> stories = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The blocks of a header or footer part (catalog: headerFooter.parts), read once.</summary>
+    public List<Block> Story(string part)
+    {
+        if (stories.TryGetValue(part, out var blocks))
+            return blocks;
+        blocks = [];
+        if (context.Load(part).Root is { } root)
+            ReadBlocks(root, blocks);
+        return stories[part] = blocks;
+    }
 
     void ReadBlocks(XElement container, List<Block> blocks)
     {
@@ -131,15 +204,31 @@ public sealed class ModelReader(DocumentContext context)
         ReadInlines(p, styleId, content, field);
         return new ParagraphBlock(p, format, content, mark)
         {
-            EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr) : null,
+            EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve) : null,
         };
     }
 
-    /// <summary>Where a complex field stands: its instructions are hidden until w:fldChar separate, its result shows.</summary>
+    /// <summary>
+    /// Where complex fields stand: a field's instruction is collected until w:fldChar separate, its result shows after
+    /// it; the result of a page field (PAGE, NUMPAGES …) is kept apart, the layout computes it.
+    /// </summary>
     sealed class FieldState
     {
-        public readonly Stack<bool> InResult = new();
-        public bool Hidden => InResult.Count > 0 && !InResult.Peek();
+        public sealed class Frame(RunFormat format)
+        {
+            public readonly System.Text.StringBuilder Instruction = new();
+            public readonly RunFormat Format = format;
+            public bool InResult;
+            public List<Inline>? Cached;
+        }
+
+        public readonly Stack<Frame> Frames = new();
+
+        /// <summary>Inside a field's instruction, also that of an outer field (a nested field is part of it).</summary>
+        public bool Hidden => Frames.Any(f => !f.InResult);
+
+        /// <summary>Where result content goes: the saved result of the innermost page field, else the paragraph.</summary>
+        public List<Inline> Target(List<Inline> content) => Frames.FirstOrDefault(f => f.Cached != null)?.Cached ?? content;
     }
 
     void ReadInlines(XElement container, string? paragraphStyle, List<Inline> content, FieldState field)
@@ -155,6 +244,11 @@ public sealed class ModelReader(DocumentContext context)
                     break;
                 case "hyperlink" or "smartTag" or "customXml" or "ins" or "moveTo" or "bdo" or "dir":
                     ReadInlines(e, paragraphStyle, content, field);
+                    break;
+                case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
+                    var cached = new List<Inline>();
+                    ReadInlines(e, paragraphStyle, cached, new FieldState());
+                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null), cached));
                     break;
                 case "fldSimple":
                     ReadInlines(e, paragraphStyle, content, field);
@@ -181,38 +275,49 @@ public sealed class ModelReader(DocumentContext context)
                 case "fldChar":
                     switch (e.Attr("fldCharType"))
                     {
-                        case "begin": field.InResult.Push(false); break;
-                        case "separate":
-                            if (field.InResult.Count > 0) { field.InResult.Pop(); field.InResult.Push(true); }
+                        case "begin":
+                            field.Frames.Push(new FieldState.Frame(format));
                             break;
-                        case "end":
-                            if (field.InResult.Count > 0) field.InResult.Pop();
+                        case "separate" when field.Frames.Count > 0:
+                            var frame = field.Frames.Peek();
+                            frame.InResult = true;
+                            if (FieldInline.IsPageField(frame.Instruction.ToString()))
+                                frame.Cached = [];
+                            break;
+                        case "end" when field.Frames.Count > 0:
+                            var ended = field.Frames.Pop();
+                            if (ended.Cached != null)
+                                field.Target(content).Add(new FieldInline(ended.Instruction.ToString(), ended.Cached.FirstOrDefault()?.Format ?? ended.Format, ended.Cached));
                             break;
                     }
                     break;
+                case "instrText":
+                    if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
+                        field.Frames.Peek().Instruction.Append(e.Value);
+                    break;
                 case "t":
                     if (!field.Hidden)
-                        content.Add(new TextInline(e.Value, format));
+                        field.Target(content).Add(new TextInline(e.Value, format));
                     break;
                 case "tab":
                     if (!field.Hidden)
-                        content.Add(new TabInline(format));
+                        field.Target(content).Add(new TabInline(format));
                     break;
                 case "br":
                     if (!field.Hidden)
-                        content.Add(new BreakInline(e.Attr("type") ?? "textWrapping", e.Attr("clear"), format));
+                        field.Target(content).Add(new BreakInline(e.Attr("type") ?? "textWrapping", e.Attr("clear"), format));
                     break;
                 case "cr":
                     if (!field.Hidden)
-                        content.Add(new BreakInline("textWrapping", null, format));
+                        field.Target(content).Add(new BreakInline("textWrapping", null, format));
                     break;
                 case "noBreakHyphen":
                     if (!field.Hidden)
-                        content.Add(new TextInline("‑", format));
+                        field.Target(content).Add(new TextInline("‑", format));
                     break;
                 case "softHyphen":
                     if (!field.Hidden)
-                        content.Add(new TextInline("­", format));
+                        field.Target(content).Add(new TextInline("­", format));
                     break;
                 case "sym":
                     if (!field.Hidden && e.Attr("char") is { } code && int.TryParse(code, System.Globalization.NumberStyles.HexNumber, null, out var value))
@@ -220,7 +325,7 @@ public sealed class ModelReader(DocumentContext context)
                         var symbol = format.Clone();
                         symbol.Ascii = symbol.HAnsi = e.Attr("font") ?? symbol.Ascii;
                         symbol.AsciiTheme = symbol.HAnsiTheme = null;
-                        content.Add(new TextInline(char.ConvertFromUtf32(value), symbol));
+                        field.Target(content).Add(new TextInline(char.ConvertFromUtf32(value), symbol));
                     }
                     break;
             }

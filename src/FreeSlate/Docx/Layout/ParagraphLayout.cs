@@ -40,11 +40,41 @@ public sealed class Line
     public double RaisedAbove { get; set; }
     public double LoweredBelow { get; set; }
 
+    /// <summary>
+    /// The part of the height below the text that may hang past the bottom of the page: the extra space of multiple
+    /// line spacing (measured with docx/generated/headers-footers: a line of Aptos 12 pt at 1.16 lines whose text
+    /// ends 0.4 pt above the bottom margin stays on the page, its full height reaching 1.9 pt past it).
+    /// </summary>
+    public double Overhang { get; set; }
+
+    /// <summary>The height the line needs on the page.</summary>
+    public double FitHeight => Height - Overhang;
+
     /// <summary>The break that ends the line: none, a line break, a page break or a column break.</summary>
     public string? EndBreak { get; set; }
 
     public bool First { get; init; }
     public bool Last { get; set; }
+}
+
+/// <summary>
+/// The values of the page fields where a paragraph stands (catalog: field.evaluation, section.pageNumbers): the page's
+/// number and its section's number format, the document's pages and the section's.
+/// </summary>
+public sealed record PageFields(int Page, string PageFormat, int Pages, int SectionPages)
+{
+    /// <summary>The field's result here, or null for fields the layout does not compute.</summary>
+    public string? Value(FieldInline field)
+    {
+        var format = NumberText.FieldFormat(field.NumberFormat);
+        return field.Type switch
+        {
+            "PAGE" => NumberText.Format(Page, format ?? PageFormat),
+            "NUMPAGES" => NumberText.Format(Pages, format),
+            "SECTIONPAGES" => NumberText.Format(SectionPages, format),
+            _ => null,
+        };
+    }
 }
 
 /// <summary>
@@ -57,10 +87,11 @@ public sealed class Line
 public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
     /// <summary>Lays out a paragraph in a column <paramref name="width"/> points wide.</summary>
-    public List<Line> Layout(ParagraphBlock paragraph, double width)
+    /// <param name="fields">The page fields' values; without them, fields show the result Word saved.</param>
+    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null)
     {
         var format = paragraph.Format;
-        var (text, charStyles) = Flatten(paragraph);
+        var (text, charStyles) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles);
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
         var mark = styles.Style(paragraph.MarkFormat, WordSlot.Ascii);
@@ -192,33 +223,44 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>The paragraph's text with a style per character: tabs \t, line breaks \n, page breaks \f, column breaks \v.</summary>
-    (string Text, List<RunStyle> Styles) Flatten(ParagraphBlock paragraph)
+    (string Text, List<RunStyle> Styles) Flatten(ParagraphBlock paragraph, PageFields? fields)
     {
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
-        foreach (var inline in paragraph.Content)
+
+        void AddText(string value, RunFormat format)
+        {
+            if (format.Vanish == true)
+                return;   // hidden text is not printed (Word's PDF export leaves it out)
+            // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
+            var small = format.SmallCaps == true && format.Caps != true;
+            foreach (var rune in value.EnumerateRunes())
+            {
+                var lower = small && Rune.IsLower(rune);
+                var shown = format.Caps == true || lower ? Rune.ToUpperInvariant(rune) : rune;
+                var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
+                var s = shown.ToString();
+                text.Append(s);
+                for (var k = 0; k < s.Length; k++)
+                    list.Add(style);
+            }
+        }
+
+        void Add(Inline inline)
         {
             var format = inline.Format;
             switch (inline)
             {
                 case TextInline t:
-                {
-                    if (format.Vanish == true)
-                        continue;   // hidden text is not printed (Word's PDF export leaves it out)
-                    // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
-                    var small = format.SmallCaps == true && format.Caps != true;
-                    foreach (var rune in t.Text.EnumerateRunes())
-                    {
-                        var lower = small && Rune.IsLower(rune);
-                        var shown = format.Caps == true || lower ? Rune.ToUpperInvariant(rune) : rune;
-                        var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
-                        var s = shown.ToString();
-                        text.Append(s);
-                        for (var k = 0; k < s.Length; k++)
-                            list.Add(style);
-                    }
+                    AddText(t.Text, format);
                     break;
-                }
+                case FieldInline field when fields?.Value(field) is { } value:
+                    AddText(value, format);
+                    break;
+                case FieldInline field:
+                    foreach (var cached in field.Cached)
+                        Add(cached);
+                    break;
                 case TabInline:
                     text.Append('\t');
                     list.Add(styles.Style(format, WordSlot.Ascii));
@@ -229,6 +271,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
             }
         }
+
+        foreach (var inline in paragraph.Content)
+            Add(inline);
         return (text.ToString(), list);
     }
 
@@ -410,6 +455,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 default:
                     line.Height = natural * value / 240;
                     line.Baseline = line.Above;
+                    line.Overhang = Math.Max(0, line.Height - natural);
                     break;
             }
             line.Height += line.RaisedAbove + line.LoweredBelow;

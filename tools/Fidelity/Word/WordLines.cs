@@ -101,7 +101,7 @@ public static class WordLines
         var reader = new ModelReader(context);
         var styles = new RunStyles(context);
         var layout = new ParagraphLayout(context, styles);
-        var pages = new Paginator(context, layout).Paginate(reader.Body(), reader.LastSection());
+        var pages = new Paginator(context, layout, reader).Paginate(reader.Body(), reader.LastSection());
         var result = new List<(int, double, double, double, string)>();
         foreach (var page in pages)
         {

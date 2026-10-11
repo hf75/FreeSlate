@@ -8,9 +8,13 @@ public static class Wml
 {
     public static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
     public static readonly XNamespace W14 = "http://schemas.microsoft.com/office/word/2010/wordml";
+    public static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
     /// <summary>The value of a w: attribute.</summary>
     public static string? Attr(this XElement? element, string name) => (string?)element?.Attribute(W + name);
+
+    /// <summary>The value of an attribute of another namespace (r:id).</summary>
+    public static string? Attr(this XElement? element, XName name) => (string?)element?.Attribute(name);
 
     /// <summary>The w:val attribute.</summary>
     public static string? Val(this XElement? element) => element.Attr("val");
