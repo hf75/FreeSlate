@@ -139,7 +139,21 @@ public static class WordLines
                 Close();
             }
         }
-        return result;
+        // Lines of table cells side by side on one baseline are one line in Word's PDF where less than 24 pt lie
+        // between them.
+        var merged = new List<(int Page, double Y, double X0, double X1, string Text)>();
+        foreach (var line in result.OrderBy(l => l.Item1).ThenBy(l => Math.Round(l.Item2, 1)).ThenBy(l => l.Item3))
+        {
+            if (merged.Count > 0 && merged[^1].Page == line.Item1 && Math.Abs(merged[^1].Y - line.Item2) < 0.05
+                && line.Item3 - merged[^1].X1 < 27 && line.Item3 > merged[^1].X0)
+            {
+                var m = merged[^1];
+                merged[^1] = (m.Page, m.Y, m.X0, line.Item4, m.Text + " " + line.Item5);
+            }
+            else
+                merged.Add(line);
+        }
+        return merged;
     }
 
     static double Leading(Piece piece)

@@ -38,6 +38,10 @@ public sealed class PageBox
     /// <summary>Lines between columns (w:cols/@sep): x, top and bottom in points.</summary>
     public List<(double X, double Top, double Bottom)> ColumnLines { get; } = [];
 
+    /// <summary>Table cell shading and table borders, drawn in this order below the text.</summary>
+    public List<FillRect> Shading { get; } = [];
+    public List<FillRect> Borders { get; } = [];
+
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
 }
@@ -56,6 +60,7 @@ public sealed class PageBox
 public sealed class Paginator(DocumentContext context, ParagraphLayout layout, ModelReader? reader = null)
 {
     readonly List<PageBox> pages = [];
+    readonly TableLayout tables = new(context, layout);
 
     // The current position: page, column, the top of the next line and whether the column is still empty.
     PageBox? page;
@@ -121,9 +126,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var (sectionBlocks, properties) = sections[s];
             sectionIndex = s;
             StartSection(properties, s == 0);
-            var paragraphs = sectionBlocks.OfType<ParagraphBlock>().ToList();
-            for (var i = 0; i < paragraphs.Count; i++)
-                Place(paragraphs, i);
+            for (var i = 0; i < sectionBlocks.Count; i++)
+            {
+                if (sectionBlocks[i] is TableBlock)
+                    PlaceTable(sectionBlocks, i);
+                else
+                    Place(sectionBlocks, i);
+            }
             // A continuous section break balances the columns above it.
             if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1)
                 Balance();
@@ -291,9 +300,74 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         top = Top.Break;
     }
 
-    void Place(List<ParagraphBlock> paragraphs, int index)
+    /// <summary>
+    /// Places a table row by row (catalog: table.rows): a row that does not fit goes to the next column or page,
+    /// where the table's header rows are repeated first; where the table breaks, the line below the last row of the
+    /// page closes it. The paragraph before keeps its space after above the table.
+    /// </summary>
+    void PlaceTable(List<Block> blocks, int index)
     {
-        var paragraph = paragraphs[index];
+        var table = (TableBlock)blocks[index];
+        var (left, width) = Column(column);
+        var box = tables.Layout(table.Table, width);
+        if (!columnEmpty)
+            y += pendingAfter;
+        var headers = box.Rows.TakeWhile(r => r.Header).ToList();
+        RowBox? last = null;
+        for (var r = 0; r < box.Rows.Count; r++)
+        {
+            var row = box.Rows[r];
+            if (y + row.Height > Bottom + 0.01 && !columnEmpty)
+            {
+                if (last != null)
+                    PlaceFills(last.BottomBorders, page!.Borders, left, y);
+                NextColumn(natural: true);
+                (left, width) = Column(column);
+                if (!row.Header)
+                {
+                    foreach (var header in headers)
+                    {
+                        PlaceRow(header, left);
+                        last = header;
+                    }
+                }
+            }
+            PlaceRow(row, left);
+            last = row;
+        }
+        // A table that another table follows directly continues in it: Word joins them, one line between (measured
+        // with docx/local/tbl-geom).
+        if (last != null && !(index + 1 < blocks.Count && blocks[index + 1] is TableBlock))
+        {
+            PlaceFills(last.BottomBorders, page!.Borders, left, y);
+            y += last.BottomBorderWidth;
+        }
+        pendingAfter = 0;
+        page!.TrailingSpace = 0;
+        previous = null;
+        paragraphNumber++;
+    }
+
+    void PlaceRow(RowBox row, double left)
+    {
+        foreach (var line in row.Lines)
+            page!.Lines.Add(new PlacedLine(line.Line, left + line.Left, y + line.Top));
+        PlaceFills(row.Shading, page!.Shading, left, y);
+        PlaceFills(row.Borders, page!.Borders, left, y);
+        y += row.Height;
+        columnEmpty = false;
+    }
+
+    static void PlaceFills(List<FillRect> fills, List<FillRect> into, double left, double top)
+    {
+        foreach (var fill in fills)
+            into.Add(fill with { X = left + fill.X, Y = top + fill.Y });
+    }
+
+    void Place(List<Block> blocks, int index)
+    {
+        var paragraph = (ParagraphBlock)blocks[index];
+        var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
         var format = paragraph.Format;
         var (left, width) = Column(column);
         var lines = layout.Layout(paragraph, width);
@@ -326,8 +400,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (!columnEmpty)
         {
             var needed = gap + (format.KeepLines == true ? Needed(lines) : FirstLines(lines, format));
-            if (format.KeepNext == true && index + 1 < paragraphs.Count)
-                needed = gap + lines.Sum(l => l.Height) + KeptNext(paragraphs, index + 1, width);
+            if (format.KeepNext == true && next != null)
+                needed = gap + lines.Sum(l => l.Height) + KeptNext(blocks, index + 1, width);
             // What does not fit even an empty column is broken anyway.
             if (y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01)
             {
@@ -391,7 +465,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 hereAtTop = true;
             }
         }
-        pendingAfter = SpaceAfter(paragraph, index + 1 < paragraphs.Count ? paragraphs[index + 1] : null);
+        pendingAfter = SpaceAfter(paragraph, next);
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).
         lines[^1].BarExtension = pendingAfter;
         if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
@@ -535,13 +609,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
 
     /// <summary>What a kept-with-next paragraph needs of the following ones: their keep chain and the first lines of the last.</summary>
-    double KeptNext(List<ParagraphBlock> paragraphs, int index, double width)
+    double KeptNext(List<Block> blocks, int index, double width)
     {
-        var next = paragraphs[index];
+        if (blocks[index] is not ParagraphBlock next || blocks[index - 1] is not ParagraphBlock before)
+            return 0;
         var lines = layout.Layout(next, width);
-        var gap = Math.Max(SpaceAfter(paragraphs[index - 1], next), SpaceBefore(next));
-        if (next.Format.KeepNext == true && index + 1 < paragraphs.Count && index < paragraphs.Count)
-            return gap + lines.Sum(l => l.Height) + KeptNext(paragraphs, index + 1, width);
+        var gap = Math.Max(SpaceAfter(before, next), SpaceBefore(next));
+        if (next.Format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock)
+            return gap + lines.Sum(l => l.Height) + KeptNext(blocks, index + 1, width);
         return gap + FirstLines(lines, next.Format);
     }
 
@@ -580,5 +655,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var shift = align == "center" ? (bottom - top - used) / 2 : bottom - top - used;
         for (var i = 0; i < page.Lines.Count; i++)
             page.Lines[i] = page.Lines[i] with { Top = page.Lines[i].Top + shift };
+        foreach (var fills in new[] { page.Shading, page.Borders })
+        {
+            for (var i = 0; i < fills.Count; i++)
+                fills[i] = fills[i] with { Y = fills[i].Y + shift };
+        }
     }
 }

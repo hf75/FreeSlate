@@ -35,6 +35,9 @@ public sealed class PageRenderer(DocumentContext context)
         // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
         foreach (var (x, top, bottom) in page.ColumnLines)
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
+        // Table shading, then table borders, below the text.
+        foreach (var fill in page.Shading.Concat(page.Borders))
+            svg.Append($"<rect x=\"{Px(fill.X)}\" y=\"{Px(fill.Y)}\" width=\"{Px(fill.Width)}\" height=\"{Px(fill.Height)}\" fill=\"{fill.Color.ToHex()}\"/>");
         foreach (var placed in page.Lines)
         {
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).

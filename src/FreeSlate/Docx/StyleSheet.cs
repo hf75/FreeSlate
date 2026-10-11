@@ -66,8 +66,13 @@ public sealed class StyleSheet
                 DefaultParagraphStyle ??= id;
             if (style.Default && style.Type == "character")
                 DefaultCharacterStyle ??= id;
+            if (style.Default && style.Type == "table")
+                DefaultTableStyle ??= id;
         }
     }
+
+    /// <summary>The default table style ("Normal Table"), applied where a table names none.</summary>
+    public string? DefaultTableStyle { get; }
 
     public StyleDefinition? Find(string? id) => id != null && styles.TryGetValue(id, out var style) ? style : null;
 
@@ -86,9 +91,12 @@ public sealed class StyleSheet
 
     /// <summary>The paragraph formatting of a paragraph with this style and direct formatting.</summary>
     /// <param name="numbering">The paragraph properties of the paragraph's list level, between the style and the direct formatting.</param>
-    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null)
+    /// <param name="table">The paragraph properties of the table style of the paragraph's cell, above the document defaults.</param>
+    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null, ParagraphFormat? table = null)
     {
         var result = DefaultParagraph.Clone();
+        if (table != null)
+            result.Overlay(table);
         foreach (var style in Chain(ParagraphStyleOf(styleId)))
         {
             var level = new ParagraphFormat();

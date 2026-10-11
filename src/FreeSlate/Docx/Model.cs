@@ -60,7 +60,7 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
-public sealed record TableBlock(XElement Element) : Block;
+public sealed record TableBlock(XElement Element, TableModel Table) : Block;
 
 /// <summary>Page and section properties of a section (w:sectPr, catalog: section.page, section.columns).</summary>
 public sealed class SectionProperties
@@ -136,7 +136,7 @@ public sealed class SectionProperties
 /// deletions and the instructions of fields are left out, field results stay (catalog: field.structure,
 /// review.revisions: the document as it reads with all changes accepted).
 /// </summary>
-public sealed class ModelReader(DocumentContext context)
+public sealed partial class ModelReader(DocumentContext context)
 {
     /// <summary>The list counters of the story being read: the body and every header, footer and note count on their own.</summary>
     ListCounter counter = new(context.Numbering);
@@ -186,7 +186,7 @@ public sealed class ModelReader(DocumentContext context)
                     blocks.Add(Paragraph(e));
                     break;
                 case "tbl":
-                    blocks.Add(new TableBlock(e));
+                    blocks.Add(Table(e));
                     break;
                 case "sdt":
                     if (e.Child("sdtContent") is { } content)
@@ -204,18 +204,18 @@ public sealed class ModelReader(DocumentContext context)
         var pPr = p.Child("pPr");
         var direct = new ParagraphFormat();
         direct.Apply(pPr);
-        var format = context.Styles.Paragraph(direct.Style, direct);
+        var format = context.Styles.Paragraph(direct.Style, direct, table: tableParagraph);
         var styleId = context.Styles.ParagraphStyleOf(direct.Style);
         var markDirect = new RunFormat();
         markDirect.Apply(pPr.Child("rPr"));
-        var mark = context.Styles.Run(styleId, markDirect.Style, markDirect);
+        var mark = context.Styles.Run(styleId, markDirect.Style, markDirect, tableRun);
         // A numbered paragraph takes the level's indentation and tabs over its style's, under its own (measured
         // with docx/generated/lists: a level indented 360 twips puts a List Paragraph, whose style says 720, at
         // 360); the number is drawn in the paragraph mark's formatting with the level's run properties over it.
         ListLabel? label = null;
         if (counter.Next(format.NumberingId, format.NumberingLevel ?? 0) is { } number)
         {
-            format = context.Styles.Paragraph(direct.Style, direct, number.Level.ParagraphProperties);
+            format = context.Styles.Paragraph(direct.Style, direct, number.Level.ParagraphProperties, tableParagraph);
             var levelRun = new RunFormat();
             levelRun.Apply(number.Level.RunProperties);
             var numberFormat = mark.Clone();
@@ -272,7 +272,7 @@ public sealed class ModelReader(DocumentContext context)
                 case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
                     var cached = new List<Inline>();
                     ReadInlines(e, paragraphStyle, cached, new FieldState());
-                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null), cached));
+                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun), cached));
                     break;
                 case "fldSimple":
                     ReadInlines(e, paragraphStyle, content, field);
@@ -289,7 +289,7 @@ public sealed class ModelReader(DocumentContext context)
     {
         var direct = new RunFormat();
         direct.Apply(r.Child("rPr"));
-        var format = context.Styles.Run(paragraphStyle, direct.Style, direct);
+        var format = context.Styles.Run(paragraphStyle, direct.Style, direct, tableRun);
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)
