@@ -16,20 +16,20 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 0 |
-| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 0 | 0 |
+| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 0 |
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 2 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 4 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 3 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 5 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 2 | 1 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 1 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
 | [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 2 | 0 |
 | [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 4 |
-| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 3 |
-| [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 0 |
-| [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 0 |
+| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 4 |
+| [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 3 |
+| [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 2 | 2 |
 | [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 1 | 6 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 6 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 2 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 1 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **21** | **116** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **124** |
 
 <a id="package"></a>
 
@@ -159,7 +159,7 @@ Properties Office keeps for older versions or for converted VML content.
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Document and body](#document.body) | P0 | ●○○○○ | todo | 2 | 2 |
-| [Page background](#document.background) | P2 | ●●○○○ | todo | 4 | 2 |
+| [Page background](#document.background) | P2 | ●●○○○ | partial | 4 | 2 |
 | [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | todo | 3 | 1 |
 | [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | todo | 1 | 1 |
 | [Building blocks (glossary document)](#document.glossary) | P3 | ●○○○○ | todo | 14 | 9 |
@@ -182,9 +182,11 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Page background
 
-`document.background` · P2 · difficulty 2 · todo
+`document.background` · P2 · difficulty 2 · partial
 
 **Rendering:** Color, gradient, texture or picture behind every page (w:background with its VML fill). Whether Word's PDF export includes it must be measured before it is drawn.
+
+**Office behaviour:** Word prints the page color whether or not w:displayBackgroundShape is set: w:background's color (theme colors with tint and shade) or the fill of its v:background (solid, gradient, picture), drawn behind everything on each page (docx/local/misc-nothing, misc-nobg). Still open: Word tiles and mirrors a VML gradient in bands of about 94 pt; it is drawn here as one gradient across the page.
 
 **Elements (4):** [`a15:backgroundPr`](../format/namespaces/a15.md#a15backgroundpr), [`v:background`](../format/namespaces/v.md#vbackground), [`w:background`](../format/namespaces/w.md#wbackground), [`w:displayBackgroundShape`](../format/namespaces/w.md#wdisplaybackgroundshape)
 
@@ -455,7 +457,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | todo | 2 | 1 |
 | [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | partial | 38 | 0 |
 | [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
-| [Animated text](#run.animated) | P3 | ●○○○○ | todo | 1 | 1 |
+| [Animated text](#run.animated) | P3 | ●○○○○ | done | 1 | 1 |
 
 <a id="run.basic"></a>
 
@@ -611,9 +613,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Animated text
 
-`run.animated` · P3 · difficulty 1 · todo
+`run.animated` · P3 · difficulty 1 · done
 
 **Rendering:** Screen-only effects of old Word versions (blinking, marching ants); not printed.
+
+**Office behaviour:** Animated text (w:effect) prints as plain text, as in Word (docx/local/misc-nothing).
 
 **Elements (1):** [`w:effect`](../format/namespaces/w.md#weffect)
 
@@ -636,7 +640,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | todo | 14 | 8 |
 | [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | todo | 2 | 2 |
 | [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | todo | 5 | 2 |
-| [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | todo | 2 | 1 |
+| [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | done | 2 | 1 |
 | [HTML divisions](#paragraph.htmlDivs) | P2 | ●●●○○ | todo | 11 | 5 |
 
 <a id="paragraph.basic"></a>
@@ -663,7 +667,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 **Rendering:** Line spacing auto (multiples of the font's single line height), exact and at least; spacing before and after, auto spacing of HTML paragraphs, contextual spacing between paragraphs of the same style. How Word derives single line height from the font tables is measured, not assumed.
 
-**Office behaviour:** A single line is the font's hhea ascender, descender and line gap; the baseline lies the larger of the line gaps (hhea against OS/2 win, as DirectWrite does; OS/2 typo metrics where USE_TYPO_METRICS is set) plus the ascent below the line's top. Auto spacing multiplies the line and puts the extra below the text, exact spacing puts the baseline at 80 % of the height whatever the font, at least spacing puts the extra above (measured with 14 fonts, docx/local/lm-*). The space between paragraphs is the larger of the space after the one and before the next (docx/generated/text-basic, as ISO/IEC 29500 17.3.1.33 says); contextual spacing drops both between paragraphs of the same style.
+**Office behaviour:** A single line is the font's hhea ascender, descender and line gap; the baseline lies the larger of the line gaps (hhea against OS/2 win, as DirectWrite does; OS/2 typo metrics where USE_TYPO_METRICS is set) plus the ascent below the line's top. Fonts for East Asian code pages (OS/2 ulCodePageRange1 bits 17 to 21) are 1.3 times their win ascent and descent high, the extra half above and half below, their line gap ignored (docx/local/ea-lines: MS Gothic, MS Mincho, Yu Gothic, SimSun, Malgun Gothic, Microsoft YaHei). Auto spacing multiplies the line and puts the extra below the text, exact spacing puts the baseline at 80 % of the height whatever the font, at least spacing puts the extra above (measured with 14 fonts, docx/local/lm-*). The space between paragraphs is the larger of the space after the one and before the next (docx/generated/text- basic, as ISO/IEC 29500 17.3.1.33 says); contextual spacing drops both between paragraphs of the same style.
 
 **Elements (2):** [`w:contextualSpacing`](../format/namespaces/w.md#wcontextualspacing), [`w:spacing`](../format/namespaces/w.md#wspacing)
 
@@ -779,9 +783,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Outline levels and collapsed headings
 
-`paragraph.outline` · P2 · difficulty 1 · todo
+`paragraph.outline` · P2 · difficulty 1 · done
 
 **Rendering:** Feeds TOC fields and the navigation pane; collapsed headings are expanded in the printed layout.
+
+**Office behaviour:** Outline levels feed TOC fields and draw nothing (docx/local/misc-nothing); collapsed headings (w15:collapsed) are laid out expanded, untested in Word.
 
 **Elements (2):** [`w15:collapsed`](../format/namespaces/w15.md#w15collapsed), [`w:outlineLvl`](../format/namespaces/w.md#woutlinelvl)
 
@@ -867,7 +873,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 |---|---|---|---|---:|---:|
 | [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | partial | 9 | 7 |
 | [Columns](#section.columns) | P1 | ●●●●○ | done | 2 | 2 |
-| [Page borders](#section.pageBorders) | P2 | ●●●○○ | todo | 8 | 29 |
+| [Page borders](#section.pageBorders) | P2 | ●●●○○ | partial | 8 | 29 |
 | [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | todo | 2 | 1 |
 | [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | partial | 2 | 1 |
 | [Document grid](#section.docGrid) | P1 | ●●●●○ | todo | 1 | 0 |
@@ -909,9 +915,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page borders
 
-`section.pageBorders` · P2 · difficulty 3 · todo
+`section.pageBorders` · P2 · difficulty 3 · partial
 
 **Rendering:** Line borders and the 165 art borders of the format catalog, measured from the page edge or the text, on all pages, the first page or all but the first.
+
+**Office behaviour:** Line borders as Word prints them: from the page's edge a side's outer edge stands its space from the edge, from the text its inner edge its space outside the margins and around a header and footer the page has (w:bordersDoNotSurroundHeader, w:bordersDoNotSurroundFooter); on all pages, the first or all but the first; in front of or behind the text. Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades; shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c: line styles 85 to 99.9 %). Waves and stroked dash-dots, pictures in Word, are drawn as lines. Not drawn: the art borders, Word's own pictures (the basic dots, dashes, squares and lines among them).
 
 **Elements (8):** [`w:alignBordersAndEdges`](../format/namespaces/w.md#walignbordersandedges), [`w:bordersDoNotSurroundFooter`](../format/namespaces/w.md#wbordersdonotsurroundfooter), [`w:bordersDoNotSurroundHeader`](../format/namespaces/w.md#wbordersdonotsurroundheader), [`w:bottom`](../format/namespaces/w.md#wbottom), [`w:left`](../format/namespaces/w.md#wleft), [`w:pgBorders`](../format/namespaces/w.md#wpgborders), [`w:right`](../format/namespaces/w.md#wright), [`w:top`](../format/namespaces/w.md#wtop)
 
@@ -1187,7 +1195,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Field evaluation](#field.evaluation) | P1 | ●●●●○ | partial | 4 | 3 |
 | [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | done | 6 | 4 |
 | [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | done | 2 | 2 |
-| [Legacy form fields](#field.forms) | P2 | ●●●○○ | todo | 25 | 15 |
+| [Legacy form fields](#field.forms) | P2 | ●●●○○ | done | 25 | 15 |
 | [Citations and bibliography](#field.citations) | P3 | ●●○○○ | todo | 75 | 7 |
 
 <a id="field.structure"></a>
@@ -1260,9 +1268,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Legacy form fields
 
-`field.forms` · P2 · difficulty 3 · todo
+`field.forms` · P2 · difficulty 3 · done
 
 **Rendering:** Text fields show their result, check boxes a box in their size (checked or not), drop-downs the selected entry.
+
+**Office behaviour:** Text inputs show their result, drop-downs their chosen entry (w:result, else w:default). A check box is a character of the run's font at its size (w:size, else the font size): its advance the font's line height, a square 2.28 pt smaller, 1.08 pt in from its left and above its bottom, in 0.48 pt lines, crossed when checked (docx/local/form-boxes: Arial 8 to 36 pt, fixed sizes; docx/generated/form-fields 94.1 %).
 
 **Elements (25):** [`w:calcOnExit`](../format/namespaces/w.md#wcalconexit), [`w:checkBox`](../format/namespaces/w.md#wcheckbox), [`w:checked`](../format/namespaces/w.md#wchecked), [`w:ddList`](../format/namespaces/w.md#wddlist), [`w:default`](../format/namespaces/w.md#wdefault), [`w:doNotShadeFormData`](../format/namespaces/w.md#wdonotshadeformdata), [`w:enabled`](../format/namespaces/w.md#wenabled), [`w:entryMacro`](../format/namespaces/w.md#wentrymacro), [`w:exitMacro`](../format/namespaces/w.md#wexitmacro), [`w:ffData`](../format/namespaces/w.md#wffdata), [`w:format`](../format/namespaces/w.md#wformat), [`w:formsDesign`](../format/namespaces/w.md#wformsdesign), [`w:helpText`](../format/namespaces/w.md#whelptext), [`w:label`](../format/namespaces/w.md#wlabel), [`w:listEntry`](../format/namespaces/w.md#wlistentry), [`w:maxLength`](../format/namespaces/w.md#wmaxlength), [`w:name`](../format/namespaces/w.md#wname), [`w:printFormsData`](../format/namespaces/w.md#wprintformsdata), [`w:result`](../format/namespaces/w.md#wresult), [`w:saveFormsData`](../format/namespaces/w.md#wsaveformsdata), [`w:size`](../format/namespaces/w.md#wsize), [`w:sizeAuto`](../format/namespaces/w.md#wsizeauto), [`w:statusText`](../format/namespaces/w.md#wstatustext), [`w:textInput`](../format/namespaces/w.md#wtextinput), [`w:type`](../format/namespaces/w.md#wtype)
 
@@ -1290,18 +1300,20 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Content controls](#sdt.structure) | P0 | ●●○○○ | todo | 16 | 13 |
-| [Content control types](#sdt.types) | P1 | ●●○○○ | todo | 28 | 1 |
+| [Content controls](#sdt.structure) | P0 | ●●○○○ | done | 16 | 13 |
+| [Content control types](#sdt.types) | P1 | ●●○○○ | done | 28 | 1 |
 | [Data binding](#sdt.dataBinding) | P2 | ●●●○○ | todo | 2 | 1 |
-| [Custom XML markup and smart tags](#sdt.customXml) | P2 | ●○○○○ | todo | 6 | 8 |
+| [Custom XML markup and smart tags](#sdt.customXml) | P2 | ●○○○○ | done | 6 | 8 |
 
 <a id="sdt.structure"></a>
 
 ### Content controls
 
-`sdt.structure` · P0 · difficulty 2 · todo
+`sdt.structure` · P0 · difficulty 2 · done
 
 **Rendering:** Block, row, cell and inline content controls render their content; frames and tags are screen-only.
+
+**Office behaviour:** Block, row, cell and inline content controls render their content; their frames, tags and titles are screen- only (docx/generated/content-controls 94.2 %).
 
 **Elements (16):** [`w15:appearance`](../format/namespaces/w15.md#w15appearance), [`w15:color`](../format/namespaces/w15.md#w15color), [`w:alias`](../format/namespaces/w.md#walias), [`w:alwaysShowPlaceholderText`](../format/namespaces/w.md#walwaysshowplaceholdertext), [`w:docPart`](../format/namespaces/w.md#wdocpart), [`w:id`](../format/namespaces/w.md#wid), [`w:lock`](../format/namespaces/w.md#wlock), [`w:placeholder`](../format/namespaces/w.md#wplaceholder), [`w:sdt`](../format/namespaces/w.md#wsdt), [`w:sdtContent`](../format/namespaces/w.md#wsdtcontent), [`w:sdtEndPr`](../format/namespaces/w.md#wsdtendpr), [`w:sdtPr`](../format/namespaces/w.md#wsdtpr), [`w:showingPlcHdr`](../format/namespaces/w.md#wshowingplchdr), [`w:tabIndex`](../format/namespaces/w.md#wtabindex), [`w:tag`](../format/namespaces/w.md#wtag), [`w:temporary`](../format/namespaces/w.md#wtemporary)
 
@@ -1313,9 +1325,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Content control types
 
-`sdt.types` · P1 · difficulty 2 · todo
+`sdt.types` · P1 · difficulty 2 · done
 
 **Rendering:** The content is already in the document; check boxes show the symbol of their state.
+
+**Office behaviour:** Every type prints the content Word stored: the check box's symbol, the chosen list entry, the date as formatted, the picture or its placeholder picture, each item of a repeating section; placeholders show their placeholder text in its style (docx/generated/content-controls 94.2 %).
 
 **Elements (28):** [`w14:checkbox`](../format/namespaces/w14.md#w14checkbox), [`w14:checked`](../format/namespaces/w14.md#w14checked), [`w14:checkedState`](../format/namespaces/w14.md#w14checkedstate), [`w14:entityPicker`](../format/namespaces/w14.md#w14entitypicker), [`w14:uncheckedState`](../format/namespaces/w14.md#w14uncheckedstate), [`w15:doNotAllowInsertDeleteSection`](../format/namespaces/w15.md#w15donotallowinsertdeletesection), [`w15:repeatingSection`](../format/namespaces/w15.md#w15repeatingsection), [`w15:repeatingSectionItem`](../format/namespaces/w15.md#w15repeatingsectionitem), [`w15:sectionTitle`](../format/namespaces/w15.md#w15sectiontitle), [`w:bibliography`](../format/namespaces/w.md#wbibliography), [`w:calendar`](../format/namespaces/w.md#wcalendar), [`w:citation`](../format/namespaces/w.md#wcitation), [`w:comboBox`](../format/namespaces/w.md#wcombobox), [`w:date`](../format/namespaces/w.md#wdate), [`w:dateFormat`](../format/namespaces/w.md#wdateformat), [`w:docPartCategory`](../format/namespaces/w.md#wdocpartcategory), [`w:docPartGallery`](../format/namespaces/w.md#wdocpartgallery), [`w:docPartList`](../format/namespaces/w.md#wdocpartlist), [`w:docPartObj`](../format/namespaces/w.md#wdocpartobj), [`w:docPartUnique`](../format/namespaces/w.md#wdocpartunique), [`w:dropDownList`](../format/namespaces/w.md#wdropdownlist), [`w:equation`](../format/namespaces/w.md#wequation), [`w:group`](../format/namespaces/w.md#wgroup), [`w:listItem`](../format/namespaces/w.md#wlistitem), [`w:picture`](../format/namespaces/w.md#wpicture), [`w:richText`](../format/namespaces/w.md#wrichtext), [`w:storeMappedDataAs`](../format/namespaces/w.md#wstoremappeddataas), [`w:text`](../format/namespaces/w.md#wtext)
 
@@ -1341,9 +1355,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Custom XML markup and smart tags
 
-`sdt.customXml` · P2 · difficulty 1 · todo
+`sdt.customXml` · P2 · difficulty 1 · done
 
 **Rendering:** Transparent containers; their content renders as if they were not there.
+
+**Office behaviour:** Custom XML elements and smart tags are transparent: their runs, paragraphs, tables, rows and cells render as if they were not there.
 
 **Elements (6):** [`w:attr`](../format/namespaces/w.md#wattr), [`w:customXml`](../format/namespaces/w.md#wcustomxml), [`w:customXmlPr`](../format/namespaces/w.md#wcustomxmlpr), [`w:showXMLTags`](../format/namespaces/w.md#wshowxmltags), [`w:smartTag`](../format/namespaces/w.md#wsmarttag), [`w:smartTagPr`](../format/namespaces/w.md#wsmarttagpr)
 
@@ -1357,18 +1373,20 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Comments](#review.comments) | P2 | ●●●○○ | todo | 18 | 4 |
-| [Tracked changes](#review.revisions) | P1 | ●●●○○ | todo | 39 | 40 |
-| [Editing permissions](#review.permissions) | P3 | ●○○○○ | todo | 2 | 2 |
-| [Proofing state](#review.proofing) | P3 | ●○○○○ | todo | 6 | 2 |
+| [Comments](#review.comments) | P2 | ●●●○○ | partial | 18 | 4 |
+| [Tracked changes](#review.revisions) | P1 | ●●●○○ | partial | 39 | 40 |
+| [Editing permissions](#review.permissions) | P3 | ●○○○○ | done | 2 | 2 |
+| [Proofing state](#review.proofing) | P3 | ●○○○○ | done | 6 | 2 |
 
 <a id="review.comments"></a>
 
 ### Comments
 
-`review.comments` · P2 · difficulty 3 · todo
+`review.comments` · P2 · difficulty 3 · partial
 
 **Rendering:** Shown next to the pages (not on them) with their ranges highlighted; whether and how Word's PDF export includes comments is measured.
+
+**Office behaviour:** Without markup Word prints nothing of comments, and neither do we: ranges, references and the comments part are skipped (docx/generated/revisions). Not shown: comments beside the pages as the markup view has them.
 
 **Elements (18):** [`w15:commentEx`](../format/namespaces/w15.md#w15commentex), [`w15:commentsEx`](../format/namespaces/w15.md#w15commentsex), [`w15:people`](../format/namespaces/w15.md#w15people), [`w15:person`](../format/namespaces/w15.md#w15person), [`w15:presenceInfo`](../format/namespaces/w15.md#w15presenceinfo), [`w16cei:commentEntityInfo`](../format/namespaces/w16cei.md#w16ceicommententityinfo), [`w16cei:extLst`](../format/namespaces/w16cei.md#w16ceiextlst), [`w16cex:commentExtensible`](../format/namespaces/w16cex.md#w16cexcommentextensible), [`w16cex:commentsExtensible`](../format/namespaces/w16cex.md#w16cexcommentsextensible), [`w16cex:extLst`](../format/namespaces/w16cex.md#w16cexextlst), [`w16cid:commentId`](../format/namespaces/w16cid.md#w16cidcommentid), [`w16cid:commentsIds`](../format/namespaces/w16cid.md#w16cidcommentsids), [`w:annotationRef`](../format/namespaces/w.md#wannotationref), [`w:comment`](../format/namespaces/w.md#wcomment), [`w:commentRangeEnd`](../format/namespaces/w.md#wcommentrangeend), [`w:commentRangeStart`](../format/namespaces/w.md#wcommentrangestart), [`w:commentReference`](../format/namespaces/w.md#wcommentreference), [`w:comments`](../format/namespaces/w.md#wcomments)
 
@@ -1380,9 +1398,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Tracked changes
 
-`review.revisions` · P1 · difficulty 3 · todo
+`review.revisions` · P1 · difficulty 3 · partial
 
 **Rendering:** Render the document with all changes accepted (final view); a markup view with colored insertions, struck deletions and change bars follows Word's simple and all markup views.
+
+**Office behaviour:** Printed as Word exports without markup: insertions and moved-to text stay, deletions and moved-from text are left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins the next, which keeps its own formatting and number; formatting changes show the new formatting (docx/generated/revisions 91.8 %). Not drawn: the markup views (colored insertions, struck deletions, change bars, balloons).
 
 **Elements (39):** [`w14:conflictDel`](../format/namespaces/w14.md#w14conflictdel), [`w14:conflictIns`](../format/namespaces/w14.md#w14conflictins), [`w14:customXmlConflictDelRangeEnd`](../format/namespaces/w14.md#w14customxmlconflictdelrangeend), [`w14:customXmlConflictDelRangeStart`](../format/namespaces/w14.md#w14customxmlconflictdelrangestart), [`w14:customXmlConflictInsRangeEnd`](../format/namespaces/w14.md#w14customxmlconflictinsrangeend), [`w14:customXmlConflictInsRangeStart`](../format/namespaces/w14.md#w14customxmlconflictinsrangestart), [`w:cellDel`](../format/namespaces/w.md#wcelldel), [`w:cellIns`](../format/namespaces/w.md#wcellins), [`w:cellMerge`](../format/namespaces/w.md#wcellmerge), [`w:customXmlDelRangeEnd`](../format/namespaces/w.md#wcustomxmldelrangeend), [`w:customXmlDelRangeStart`](../format/namespaces/w.md#wcustomxmldelrangestart), [`w:customXmlInsRangeEnd`](../format/namespaces/w.md#wcustomxmlinsrangeend), [`w:customXmlInsRangeStart`](../format/namespaces/w.md#wcustomxmlinsrangestart), [`w:customXmlMoveFromRangeEnd`](../format/namespaces/w.md#wcustomxmlmovefromrangeend), [`w:customXmlMoveFromRangeStart`](../format/namespaces/w.md#wcustomxmlmovefromrangestart), [`w:customXmlMoveToRangeEnd`](../format/namespaces/w.md#wcustomxmlmovetorangeend), [`w:customXmlMoveToRangeStart`](../format/namespaces/w.md#wcustomxmlmovetorangestart), [`w:del`](../format/namespaces/w.md#wdel), [`w:delText`](../format/namespaces/w.md#wdeltext), [`w:doNotTrackFormatting`](../format/namespaces/w.md#wdonottrackformatting), [`w:doNotTrackMoves`](../format/namespaces/w.md#wdonottrackmoves), [`w:ins`](../format/namespaces/w.md#wins), [`w:moveFrom`](../format/namespaces/w.md#wmovefrom), [`w:moveFromRangeEnd`](../format/namespaces/w.md#wmovefromrangeend), [`w:moveFromRangeStart`](../format/namespaces/w.md#wmovefromrangestart), [`w:moveTo`](../format/namespaces/w.md#wmoveto), [`w:moveToRangeEnd`](../format/namespaces/w.md#wmovetorangeend), [`w:moveToRangeStart`](../format/namespaces/w.md#wmovetorangestart), [`w:numberingChange`](../format/namespaces/w.md#wnumberingchange), [`w:pPrChange`](../format/namespaces/w.md#wpprchange), [`w:rPrChange`](../format/namespaces/w.md#wrprchange), [`w:revisionView`](../format/namespaces/w.md#wrevisionview), [`w:sectPrChange`](../format/namespaces/w.md#wsectprchange), [`w:tblGridChange`](../format/namespaces/w.md#wtblgridchange), [`w:tblPrChange`](../format/namespaces/w.md#wtblprchange), [`w:tblPrExChange`](../format/namespaces/w.md#wtblprexchange), [`w:tcPrChange`](../format/namespaces/w.md#wtcprchange), [`w:trPrChange`](../format/namespaces/w.md#wtrprchange), [`w:trackRevisions`](../format/namespaces/w.md#wtrackrevisions)
 
@@ -1394,9 +1414,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Editing permissions
 
-`review.permissions` · P3 · difficulty 1 · todo
+`review.permissions` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered.
+
+**Office behaviour:** Editable ranges print as gray (#7f7f7f) brackets: a 0.24 pt bar from 0.38 pt below the line's top to 0.22 pt above its bottom with 0.6 pt ticks at both ends, opening before the range's first character and closing after its last (docx/local/misc-nothing).
 
 **Elements (2):** [`w:permEnd`](../format/namespaces/w.md#wpermend), [`w:permStart`](../format/namespaces/w.md#wpermstart)
 
@@ -1408,9 +1430,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Proofing state
 
-`review.proofing` · P3 · difficulty 1 · todo
+`review.proofing` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; spelling marks are screen-only.
+
+**Office behaviour:** Spelling and grammar states and proofing settings draw nothing; Word's squiggles are screen-only (docx/local/misc-nothing).
 
 **Elements (6):** [`w:activeWritingStyle`](../format/namespaces/w.md#wactivewritingstyle), [`w:hideGrammaticalErrors`](../format/namespaces/w.md#whidegrammaticalerrors), [`w:hideSpellingErrors`](../format/namespaces/w.md#whidespellingerrors), [`w:noProof`](../format/namespaces/w.md#wnoproof), [`w:proofErr`](../format/namespaces/w.md#wprooferr), [`w:proofState`](../format/namespaces/w.md#wproofstate)
 

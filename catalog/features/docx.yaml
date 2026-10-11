@@ -127,10 +127,15 @@ areas:
         elements: [w:background, w:displayBackgroundShape, v:background, a15:backgroundPr]
         priority: P2
         difficulty: 2
-        status: todo
+        status: partial
         strategy: >-
           Color, gradient, texture or picture behind every page (w:background with its VML fill). Whether Word's PDF
           export includes it must be measured before it is drawn.
+        office: >-
+          Word prints the page color whether or not w:displayBackgroundShape is set: w:background's color (theme
+          colors with tint and shade) or the fill of its v:background (solid, gradient, picture), drawn behind
+          everything on each page (docx/local/misc-nothing, misc-nobg). Still open: Word tiles and mirrors a VML
+          gradient in bands of about 94 pt; it is drawn here as one gradient across the page.
 
       - id: document.altChunk
         title: Imported content (altChunk)
@@ -468,8 +473,10 @@ areas:
         elements: [w:effect]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Screen-only effects of old Word versions (blinking, marching ants); not printed.
+        office: >-
+          Animated text (w:effect) prints as plain text, as in Word (docx/local/misc-nothing).
 
   - id: paragraph
     title: Paragraphs
@@ -503,11 +510,13 @@ areas:
         office: >-
           A single line is the font's hhea ascender, descender and line gap; the baseline lies the larger of the line
           gaps (hhea against OS/2 win, as DirectWrite does; OS/2 typo metrics where USE_TYPO_METRICS is set) plus the
-          ascent below the line's top. Auto spacing multiplies the line and puts the extra below the text, exact
-          spacing puts the baseline at 80 % of the height whatever the font, at least spacing puts the extra above
-          (measured with 14 fonts, docx/local/lm-*). The space between paragraphs is the larger of the space after the
-          one and before the next (docx/generated/text-basic, as ISO/IEC 29500 17.3.1.33 says); contextual spacing
-          drops both between paragraphs of the same style.
+          ascent below the line's top. Fonts for East Asian code pages (OS/2 ulCodePageRange1 bits 17 to 21) are 1.3
+          times their win ascent and descent high, the extra half above and half below, their line gap ignored
+          (docx/local/ea-lines: MS Gothic, MS Mincho, Yu Gothic, SimSun, Malgun Gothic, Microsoft YaHei). Auto spacing
+          multiplies the line and puts the extra below the text, exact spacing puts the baseline at 80 % of the height
+          whatever the font, at least spacing puts the extra above (measured with 14 fonts, docx/local/lm-*). The
+          space between paragraphs is the larger of the space after the one and before the next (docx/generated/text-
+          basic, as ISO/IEC 29500 17.3.1.33 says); contextual spacing drops both between paragraphs of the same style.
 
       - id: paragraph.pagination
         title: Keep with next, keep lines together, widow control, page break before
@@ -605,8 +614,11 @@ areas:
         elements: [w:outlineLvl, w15:collapsed]
         priority: P2
         difficulty: 1
-        status: todo
+        status: done
         strategy: Feeds TOC fields and the navigation pane; collapsed headings are expanded in the printed layout.
+        office: >-
+          Outline levels feed TOC fields and draw nothing (docx/local/misc-nothing); collapsed headings
+          (w15:collapsed) are laid out expanded, untested in Word.
 
       - id: paragraph.htmlDivs
         title: HTML divisions
@@ -711,10 +723,20 @@ areas:
                    w:bordersDoNotSurroundFooter]
         priority: P2
         difficulty: 3
-        status: todo
+        status: partial
         strategy: >-
           Line borders and the 165 art borders of the format catalog, measured from the page edge or the text,
           on all pages, the first page or all but the first.
+        office: >-
+          Line borders as Word prints them: from the page's edge a side's outer edge stands its space from the edge,
+          from the text its inner edge its space outside the margins and around a header and footer the page has
+          (w:bordersDoNotSurroundHeader, w:bordersDoNotSurroundFooter); on all pages, the first or all but the first;
+          in front of or behind the text. Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
+          thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the
+          corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades;
+          shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c:
+          line styles 85 to 99.9 %). Waves and stroked dash-dots, pictures in Word, are drawn as lines. Not drawn: the
+          art borders, Word's own pictures (the basic dots, dashes, squares and lines among them).
 
       - id: section.lineNumbers
         title: Line numbers
@@ -988,8 +1010,13 @@ areas:
                    w:saveFormsData]
         priority: P2
         difficulty: 3
-        status: todo
+        status: done
         strategy: Text fields show their result, check boxes a box in their size (checked or not), drop-downs the selected entry.
+        office: >-
+          Text inputs show their result, drop-downs their chosen entry (w:result, else w:default). A check box is a
+          character of the run's font at its size (w:size, else the font size): its advance the font's line height, a
+          square 2.28 pt smaller, 1.08 pt in from its left and above its bottom, in 0.48 pt lines, crossed when
+          checked (docx/local/form-boxes: Arial 8 to 36 pt, fixed sizes; docx/generated/form-fields 94.1 %).
 
       - id: field.citations
         title: Citations and bibliography
@@ -1009,8 +1036,11 @@ areas:
                    w15:color]
         priority: P0
         difficulty: 2
-        status: todo
+        status: done
         strategy: Block, row, cell and inline content controls render their content; frames and tags are screen-only.
+        office: >-
+          Block, row, cell and inline content controls render their content; their frames, tags and titles are screen-
+          only (docx/generated/content-controls 94.2 %).
 
       - id: sdt.types
         title: Content control types
@@ -1021,8 +1051,12 @@ areas:
                    w15:repeatingSectionItem, w15:doNotAllowInsertDeleteSection, w15:sectionTitle]
         priority: P1
         difficulty: 2
-        status: todo
+        status: done
         strategy: The content is already in the document; check boxes show the symbol of their state.
+        office: >-
+          Every type prints the content Word stored: the check box's symbol, the chosen list entry, the date as
+          formatted, the picture or its placeholder picture, each item of a repeating section; placeholders show their
+          placeholder text in its style (docx/generated/content-controls 94.2 %).
 
       - id: sdt.dataBinding
         title: Data binding
@@ -1039,8 +1073,11 @@ areas:
         elements: [w:customXml, w:customXmlPr, w:attr, w:smartTag, w:smartTagPr, w:showXMLTags]
         priority: P2
         difficulty: 1
-        status: todo
+        status: done
         strategy: Transparent containers; their content renders as if they were not there.
+        office: >-
+          Custom XML elements and smart tags are transparent: their runs, paragraphs, tables, rows and cells render as
+          if they were not there.
 
   - id: review
     title: Comments, revisions and proofing
@@ -1052,10 +1089,13 @@ areas:
         namespaces: [w16cid, w16cex, w16cei]
         priority: P2
         difficulty: 3
-        status: todo
+        status: partial
         strategy: >-
           Shown next to the pages (not on them) with their ranges highlighted; whether and how Word's PDF export
           includes comments is measured.
+        office: >-
+          Without markup Word prints nothing of comments, and neither do we: ranges, references and the comments part
+          are skipped (docx/generated/revisions). Not shown: comments beside the pages as the markup view has them.
 
       - id: review.revisions
         title: Tracked changes
@@ -1066,18 +1106,28 @@ areas:
                    w:trackRevisions, w:revisionView, w:doNotTrackMoves, w:doNotTrackFormatting]
         priority: P1
         difficulty: 3
-        status: todo
+        status: partial
         strategy: >-
           Render the document with all changes accepted (final view); a markup view with colored insertions,
           struck deletions and change bars follows Word's simple and all markup views.
+        office: >-
+          Printed as Word exports without markup: insertions and moved-to text stay, deletions and moved-from text are
+          left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins the next,
+          which keeps its own formatting and number; formatting changes show the new formatting
+          (docx/generated/revisions 91.8 %). Not drawn: the markup views (colored insertions, struck deletions, change
+          bars, balloons).
 
       - id: review.permissions
         title: Editing permissions
         elements: [w:permStart, w:permEnd]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered.
+        office: >-
+          Editable ranges print as gray (#7f7f7f) brackets: a 0.24 pt bar from 0.38 pt below the line's top to 0.22 pt
+          above its bottom with 0.6 pt ticks at both ends, opening before the range's first character and closing
+          after its last (docx/local/misc-nothing).
 
       - id: review.proofing
         title: Proofing state
@@ -1085,8 +1135,11 @@ areas:
                    w:activeWritingStyle]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered; spelling marks are screen-only.
+        office: >-
+          Spelling and grammar states and proofing settings draw nothing; Word's squiggles are screen-only
+          (docx/local/misc-nothing).
 
   - id: drawing
     title: Drawing objects in text
