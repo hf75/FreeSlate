@@ -930,6 +930,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 || frame.Right is { Visible: true } || frame.Between is { Visible: true } || fill != null ? frame : null;
         }
 
+        /// <summary>The frame of an HTML division at its indents (the margins of it and the divisions around it).</summary>
+        public static Frame Division(HtmlDiv div, double indentLeft, double indentRight) => new()
+        {
+            Top = div.Top, Left = div.LeftLine, Bottom = div.Bottom, Right = div.RightLine,
+            indentLeft = indentLeft, indentRight = indentRight,
+        };
+
         /// <summary>Whether another paragraph's frame continues this one: the same borders, shading and indents.</summary>
         public bool Same(Frame? other) =>
             other != null && XNode.DeepEquals(borders, other.borders) && XNode.DeepEquals(shading, other.shading)
@@ -1035,7 +1042,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var boxTop = y;
         // The paragraph's top for drawings placed relative to it: its own space before lies inside it.
         var ownBefore = columnEmpty ? gap : Math.Max(0, gap - pendingAfter);
+        // HTML divisions with borders frame their paragraphs like paragraph borders, at the division's indents; a
+        // division's top line and space come before its first paragraph, its bottom line after its last (measured with
+        // docx/local/html-divs).
+        var divisions = Divisions(format.DivId);
+        var previousDivisions = previous != null ? context.Divs.Chain(previous.Format.DivId).Select(d => d.Id).ToHashSet() : [];
+        var nextDivisions = next != null ? context.Divs.Chain(next.Format.DivId).Select(d => d.Id).ToHashSet() : [];
+        var divisionTops = new double[divisions.Count];
+        for (var d = 0; d < divisions.Count; d++)
+            divisionTops[d] = y;
         y += gap;
+        for (var d = 0; d < divisions.Count; d++)
+        {
+            if (!columnEmpty && previousDivisions.Contains(divisions[d].Div.Id))
+                continue;
+            divisionTops[d] = y;
+            y += divisions[d].Frame.Top is { Visible: true } dt ? dt.Space + dt.Total : 0;
+        }
         var paragraphTop = (Page: page!, Top: y - ownBefore);
         var betweenAt = y;
         if (frame != null)
@@ -1175,6 +1198,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 boxTop = page!.BodyTop;
             frame.Draw(page!, left, width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
                 between: continues && boxPage == page ? betweenAt : null);
+        }
+        for (var d = divisions.Count - 1; d >= 0; d--)
+        {
+            var (div, divisionFrame) = divisions[d];
+            var opens = !previousDivisions.Contains(div.Id);
+            var closes = !nextDivisions.Contains(div.Id);
+            if (closes)
+                y += divisionFrame.Bottom is { Visible: true } db ? db.Space + db.Total : 0;
+            var divisionTop = boxPage != page ? page!.BodyTop : divisionTops[d];
+            divisionFrame.Draw(page!, left, width, format, divisionTop, y, top: opens || boxPage != page, bottom: closes, between: null);
         }
         foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
         {
@@ -1349,7 +1382,25 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (paragraph.Format.ContextualSpacing == true && previous != null && SameStyle(previous, paragraph))
             return 0;
+        // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph (measured with
+        // docx/local/html-divs).
+        if (paragraph.Format.BeforeAuto == true)
+            return pages.Count == 1 && page!.Lines.Count == 0 && previous == null ? 0 : 14;
         return paragraph.Format.Before ?? 0;
+    }
+
+    /// <summary>The bordered HTML divisions around a paragraph, the outermost first, with their frames at their indents.</summary>
+    List<(HtmlDiv Div, Frame Frame)> Divisions(string? id)
+    {
+        var result = new List<(HtmlDiv, Frame)>();
+        var (left, right) = (0.0, 0.0);
+        foreach (var div in context.Divs.Chain(id))
+        {
+            (left, right) = (left + div.Left, right + div.Right);
+            if (div.Bordered)
+                result.Add((div, Frame.Division(div, left, right)));
+        }
+        return result;
     }
 
     /// <summary>The space after a paragraph; contextual spacing drops it before a paragraph of the same style.</summary>
@@ -1357,6 +1408,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (paragraph.Format.ContextualSpacing == true && next != null && SameStyle(paragraph, next))
             return 0;
+        if (paragraph.Format.AfterAuto == true)
+            return 14;
         return paragraph.Format.After ?? 0;
     }
 

@@ -291,6 +291,9 @@ public sealed class ParagraphFormat
 
     public XElement? Borders, Shading, Frame;
 
+    /// <summary>The HTML division the paragraph belongs to (w:divId, catalog: paragraph.htmlDivs).</summary>
+    public string? DivId;
+
     public int? OutlineLevel;
 
     /// <summary>The paragraph's own run properties for its mark (w:pPr/w:rPr).</summary>
@@ -345,6 +348,7 @@ public sealed class ParagraphFormat
                 case "mirrorIndents": MirrorIndents = e.OnOff(); break;
                 case "snapToGrid": SnapToGrid = e.OnOff(); break;
                 case "suppressLineNumbers": SuppressLineNumbers = e.OnOff(); break;
+                case "divId": DivId = e.Val(); break;
                 case "wordWrap": WordWrap = e.OnOff(); break;
                 case "kinsoku": Kinsoku = e.OnOff(); break;
                 case "overflowPunct": OverflowPunctuation = e.OnOff(); break;

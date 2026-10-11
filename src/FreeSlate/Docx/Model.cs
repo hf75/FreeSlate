@@ -377,6 +377,12 @@ public sealed partial class ModelReader(DocumentContext context)
             numberFormat.Overlay(levelRun);
             label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level);
         }
+        // The margins of the HTML divisions around the paragraph add to its indents (catalog: paragraph.htmlDivs).
+        if (context.Divs.Chain(format.DivId) is { Count: > 0 } divs)
+        {
+            format.Left = (format.Left ?? 0) + divs.Sum(d => d.Left);
+            format.Right = (format.Right ?? 0) + divs.Sum(d => d.Right);
+        }
         var content = new List<Inline>();
         var field = new FieldState();
         ReadInlines(p, styleId, content, field);

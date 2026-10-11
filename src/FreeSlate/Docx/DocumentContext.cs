@@ -29,6 +29,7 @@ public sealed class DocumentContext : IDisposable
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
         Numbering = new NumberingDefinitions(Related("numbering"), Styles) { Part = Package.FirstRelationship(MainPart, "numbering")?.Target };
         FontTable = new FontTable(Related("fontTable"));
+        Divs = new HtmlDivs(Related("webSettings"));
         DecimalSymbol = Settings.Child("decimalSymbol").Val() is { Length: > 0 } symbol ? symbol[0] : '.';
     }
 
@@ -42,6 +43,9 @@ public sealed class DocumentContext : IDisposable
     public XElement? Settings { get; }
     public Theme Theme { get; }
     public NumberingDefinitions Numbering { get; }
+
+    /// <summary>The HTML divisions of the web settings (catalog: paragraph.htmlDivs).</summary>
+    public HtmlDivs Divs { get; }
 
     /// <summary>The font table, which decides the fonts for families the machine lacks (catalog: font.table).</summary>
     public FontTable FontTable { get; }
