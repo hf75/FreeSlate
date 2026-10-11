@@ -41,6 +41,12 @@ public static partial class DocumentGenerator
         ("graphics", Graphics),
         ("charts", ChartsAndDiagrams),
         ("equations", Equations),
+        ("pictures", Pictures),
+        ("charts-more", MoreCharts),
+        ("charts-more2", MoreCharts2),
+        ("charts-more3", MoreCharts3),
+        ("smartart", MoreSmartArt),
+        ("shapes-effects", ShapesAndTextEffects),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

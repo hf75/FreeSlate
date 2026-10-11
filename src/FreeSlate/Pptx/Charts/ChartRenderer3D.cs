@@ -332,6 +332,9 @@ public sealed partial class ChartRenderer
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
             ScaleValueAxis3D(value, length);
+            // A 3D surface's bands are the value axis's steps.
+            if (group.Type == "surface3DChart")
+                surfaceAxis = value.Scale;
             // Category labels get 0.94 of their categories' share of the floor edge's width on the screen; ones that
             // do not fit wrap at their spaces, and turn by 45° when a word alone does not fit (measured on clustered
             // columns 300 to 840 pt wide with names of one to three words, turned 20° and 300°: 0.93 to 1.0 fit all).

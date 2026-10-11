@@ -18,6 +18,7 @@ public sealed class WordSession : IDisposable
 
     readonly dynamic app;
     readonly Process? process;
+    readonly HashSet<int> excelBefore = Process.GetProcessesByName("EXCEL").Select(p => p.Id).ToHashSet();
 
     public WordSession()
     {
@@ -128,6 +129,11 @@ public sealed class WordSession : IDisposable
             if (process is { } owned && !owned.WaitForExit(TimeSpan.FromSeconds(10)))
             {
                 try { owned.Kill(); } catch (InvalidOperationException) { }
+            }
+            // Word leaves the Excel instances of chart data sheets running: end the windowless ones started meanwhile.
+            foreach (var excel in Process.GetProcessesByName("EXCEL").Where(p => !excelBefore.Contains(p.Id) && p.MainWindowHandle == IntPtr.Zero))
+            {
+                try { excel.Kill(); } catch (InvalidOperationException) { }
             }
         }
     }

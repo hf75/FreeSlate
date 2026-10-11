@@ -268,6 +268,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             body.Append(threeD);
             (axisGroups, radars, pies, surfaces) = ([], [], [], []);
+            // The legend of a 3D surface lists the bands of its value axis, known only now.
+            if (surfaceAxis != null && legend != null)
+                legend = BuildLegend(title);
         }
         if (axisGroups.Count > 0)
             body.Append(AxisChart(axisGroups, outer, legend, title));
@@ -2121,7 +2124,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <param name="length">The axis's length in the plot area.</param>
     /// <param name="divided">The length the axis divides into intervals where that is not its own.</param>
-    void ScaleValueAxis(AxisLayout layout, double length, double? divided = null)
+    /// <param name="interval">The least length of an interval where it is not the axis's own rule.</param>
+    void ScaleValueAxis(AxisLayout layout, double length, double? divided = null, double? interval = null)
     {
         double min = double.PositiveInfinity, max = double.NegativeInfinity;
         // A 100 % axis only where every group on it stacks to 100 %; mixed with others, the fractions are plotted as
@@ -2141,7 +2145,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or four font sizes wide, however
         // wide the labels are (horizontal axes; measured: bar and scatter charts 150 to 900 pt wide with 9 and 12 pt
         // labels, which overlap where they are wider). Office 2016 charts keep one label wide plus three font sizes.
-        var extent = !layout.Axis.Horizontal ? LineHeight(style) * 1.1
+        var extent = interval is { } least ? least
+            : !layout.Axis.Horizontal ? LineHeight(style) * 1.1
             : ex == null ? 4 * style.Size
             : Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size;
         var maxIntervals = Math.Clamp((int)Math.Floor((divided ?? length) / Math.Max(1, extent)), 1, 10);
@@ -3422,9 +3427,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     // ---------------------------------------------------------------- surface (contour)
 
+    /// <summary>The value axis of a 3D surface chart once laid out: its steps are the bands (measured: Word's surface).</summary>
+    AxisScale? surfaceAxis;
+
     /// <summary>The value axis of a surface chart's bands: zero-based like value axes, but without headroom (measured).</summary>
     AxisScale SurfaceScale(ChartGroup group)
     {
+        if (group.Type == "surface3DChart" && surfaceAxis is { } laidOut)
+            return laidOut;
         var axis = model.Axes.FirstOrDefault(a => a.IsValue && group.AxisIds.Contains(a.Id));
         var values = group.Series.SelectMany(s => s.Values).Select(v => v ?? 0).ToList();
         var (dataMin, dataMax) = values.Count == 0 ? (0.0, 1.0) : (values.Min(), values.Max());
@@ -3670,7 +3680,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             (cx, cy) = (outer.X + outer.W / 2, outer.Y + outer.H / 2);
             radius = Math.Max(1, Math.Min(outer.W / 2 - marginX, outer.H / 2 - marginY));
         }
-        ScaleValueAxis(value, radius);
+        // A radar divides its radius into intervals at least 1.2 font sizes long (measured: PowerPoint steps a radius of
+        // 109 pt with 18 pt labels by 2 up to 10, Word one of 82 pt with 9 pt labels by 5 up to 35).
+        ScaleValueAxis(value, radius, interval: 1.2 * value.Style.Size);
         (value.Start, value.End) = valueAxis.Reversed ? (radius, 0.0) : (0.0, radius);
         var direction = categoryAxis?.Reversed == true ? -1 : 1;
         double Angle(int i) => direction * 2 * Math.PI * i / n;
