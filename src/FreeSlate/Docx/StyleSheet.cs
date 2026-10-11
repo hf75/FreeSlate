@@ -35,11 +35,32 @@ public sealed class StyleSheet
     /// <summary>The default character style ("Default Paragraph Font").</summary>
     public string? DefaultCharacterStyle { get; }
 
+    /// <summary>
+    /// The document defaults Word gives a document without a styles part: those of its own Normal template, Aptos
+    /// 12 pt (East Asian text falling back from it) with complex scripts in Arial, kerning and standard and contextual
+    /// ligatures, 8 pt after paragraphs and 1.16 lines (measured with docx/local/defaults-none; an empty
+    /// w:docDefaults leaves Times New Roman 10 pt and single spacing, docx/local/defaults-empty).
+    /// </summary>
+    static readonly XElement TemplateRun = new(Wml.W + "rPr",
+        new XElement(Wml.W + "rFonts", new XAttribute(Wml.W + "ascii", "Aptos"), new XAttribute(Wml.W + "hAnsi", "Aptos"),
+            new XAttribute(Wml.W + "eastAsia", "Aptos"), new XAttribute(Wml.W + "cs", "Arial")),
+        new XElement(Wml.W + "kern", new XAttribute(Wml.W + "val", "2")),
+        new XElement(Wml.W + "sz", new XAttribute(Wml.W + "val", "24")),
+        new XElement(Wml.W + "szCs", new XAttribute(Wml.W + "val", "24")),
+        new XElement(Wml.W14 + "ligatures", new XAttribute(Wml.W14 + "val", "standardContextual")));
+
+    static readonly XElement TemplateParagraph = new(Wml.W + "pPr",
+        new XElement(Wml.W + "spacing", new XAttribute(Wml.W + "after", "160"), new XAttribute(Wml.W + "line", "278"), new XAttribute(Wml.W + "lineRule", "auto")));
+
     public StyleSheet(XDocument? document)
     {
         var root = document?.Root;
         if (root == null)
+        {
+            DefaultRun.Apply(TemplateRun);
+            DefaultParagraph.Apply(TemplateParagraph);
             return;
+        }
         var defaults = root.Child("docDefaults");
         DefaultRun.Apply(defaults.Child("rPrDefault").Child("rPr"));
         DefaultParagraph.Apply(defaults.Child("pPrDefault").Child("pPr"));
