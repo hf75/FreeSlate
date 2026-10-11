@@ -282,6 +282,7 @@ public static class CorpusGenerator
         using (var zip = ZipFile.Open(path, ZipArchiveMode.Update))
         {
             AnonymizeAuthors(zip, names);
+            AnonymizeReviewers(zip);
             foreach (var entry in zip.Entries.Where(e => e.FullName.StartsWith("ppt/embeddings/", StringComparison.Ordinal)
                                                          || e.FullName.StartsWith("word/embeddings/", StringComparison.Ordinal)))
             {
@@ -328,6 +329,38 @@ public static class CorpusGenerator
         using var output = zip.CreateEntry("docProps/core.xml").Open();
         core.Save(output, SaveOptions.DisableFormatting);
         return true;
+    }
+
+    /// <summary>
+    /// Replaces the people Word and PowerPoint record in documents (the authors of tracked changes and comments, their
+    /// initials and the accounts in people.xml and commentAuthors.xml) by the generator's name.
+    /// </summary>
+    static void AnonymizeReviewers(ZipArchive zip)
+    {
+        foreach (var entry in zip.Entries.Where(e => e.FullName.EndsWith(".xml", StringComparison.Ordinal)
+                     && (e.FullName.StartsWith("word/", StringComparison.Ordinal) || e.FullName.StartsWith("ppt/", StringComparison.Ordinal))).ToList())
+        {
+            XDocument document;
+            using (var stream = entry.Open())
+                document = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
+            var changed = false;
+            foreach (var attribute in document.Descendants().Attributes().Where(a => a.Name.LocalName is "author" or "initials" or "userId" or "providerId"
+                         || a.Name.LocalName == "name" && a.Parent?.Name.LocalName == "cmAuthor"))
+            {
+                var value = attribute.Name.LocalName switch { "initials" => "FG", "providerId" => "None", _ => Anonymous };
+                if (attribute.Value != value)
+                {
+                    attribute.Value = value;
+                    changed = true;
+                }
+            }
+            if (!changed)
+                continue;
+            var name = entry.FullName;
+            entry.Delete();
+            using var output = zip.CreateEntry(name).Open();
+            document.Save(output, SaveOptions.DisableFormatting);
+        }
     }
 
     /// <summary>

@@ -257,15 +257,36 @@ public sealed partial class ModelReader(DocumentContext context)
 
     void ReadBlocks(XElement container, List<Block> blocks)
     {
+        // A paragraph whose mark was deleted as a tracked change runs into the next one, which keeps its own
+        // formatting and number (catalog: review.revisions; measured with docx/generated/revisions); before a table or
+        // at the end it stays.
+        ParagraphBlock? pending = null;
         foreach (var e in container.Elements())
         {
             if (e.Name.Namespace != Wml.W)
                 continue;
+            if (pending != null && e.Name.LocalName != "p")
+            {
+                blocks.Add(pending);
+                pending = null;
+            }
             switch (e.Name.LocalName)
             {
                 case "p":
-                    blocks.Add(Paragraph(e));
+                {
+                    var markDeleted = e.Child("pPr")?.Child("rPr")?.Child("del") != null;
+                    var paragraph = Paragraph(e, number: !markDeleted);
+                    if (pending != null)
+                    {
+                        paragraph = paragraph with { Content = [.. pending.Content, .. paragraph.Content] };
+                        pending = null;
+                    }
+                    if (markDeleted)
+                        pending = paragraph;
+                    else
+                        blocks.Add(paragraph);
                     break;
+                }
                 case "tbl":
                     blocks.Add(Table(e));
                     break;
@@ -278,9 +299,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
             }
         }
+        if (pending != null)
+            blocks.Add(pending);
     }
 
-    ParagraphBlock Paragraph(XElement p)
+    /// <param name="number">Whether a numbered paragraph takes its number (not where it runs into the next one).</param>
+    ParagraphBlock Paragraph(XElement p, bool number = true)
     {
         var pPr = p.Child("pPr");
         var direct = new ParagraphFormat();
@@ -294,14 +318,14 @@ public sealed partial class ModelReader(DocumentContext context)
         // with docx/generated/lists: a level indented 360 twips puts a List Paragraph, whose style says 720, at
         // 360); the number is drawn in the paragraph mark's formatting with the level's run properties over it.
         ListLabel? label = null;
-        if (counter.Next(format.NumberingId, format.NumberingLevel ?? 0) is { } number)
+        if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0) : null) is { } next)
         {
-            format = context.Styles.Paragraph(direct.Style, direct, number.Level.ParagraphProperties, tableParagraph);
+            format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph);
             var levelRun = new RunFormat();
-            levelRun.Apply(number.Level.RunProperties);
+            levelRun.Apply(next.Level.RunProperties);
             var numberFormat = mark.Clone();
             numberFormat.Overlay(levelRun);
-            label = new ListLabel(number.Text, numberFormat, number.Level.Suffix, number.Level.Justification, number.Level);
+            label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level);
         }
         var content = new List<Inline>();
         var field = new FieldState();

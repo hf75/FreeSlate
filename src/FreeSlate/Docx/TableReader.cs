@@ -140,13 +140,19 @@ public sealed partial class ModelReader
         to.HideMark = from.HideMark;
     }
 
-    /// <summary>The rows of a table, also inside content controls and custom XML.</summary>
+    /// <summary>
+    /// The rows of a table, also inside content controls and custom XML; rows deleted as a tracked change are gone, as
+    /// Word prints the document without markup (catalog: review.revisions; measured with docx/generated/revisions).
+    /// </summary>
     static IEnumerable<XElement> Rows(XElement tbl)
     {
         foreach (var e in tbl.Elements())
         {
             if (e.Name == Wml.W + "tr")
-                yield return e;
+            {
+                if (e.Child("trPr")?.Child("del") == null)
+                    yield return e;
+            }
             else if (e.Name == Wml.W + "sdt" && e.Child("sdtContent") is { } content)
                 foreach (var row in Rows(content)) yield return row;
             else if (e.Name == Wml.W + "customXml")

@@ -47,6 +47,7 @@ public static partial class DocumentGenerator
         ("charts-more3", MoreCharts3),
         ("smartart", MoreSmartArt),
         ("shapes-effects", ShapesAndTextEffects),
+        ("revisions", Revisions),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>
