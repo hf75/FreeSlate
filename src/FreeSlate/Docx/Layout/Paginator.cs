@@ -453,8 +453,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
         // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
         // measured with docx/local/hf-tall, hf-short).
-        page.BodyTop = properties.Top + (gutterAtTop ? properties.Gutter : 0);
-        page.BodyBottom = properties.PageHeight - properties.Bottom;
+        // Two pages per sheet (w:printTwoOnOne) swap the top and bottom margins of odd pages (measured with
+        // docx/local/print-twoonone: their text starts at the bottom margin's distance; book fold keeps them).
+        var swapped = number % 2 == 1 && context.Settings.Child("printTwoOnOne").OnOff() == true;
+        page.BodyTop = (swapped ? properties.Bottom : properties.Top) + (gutterAtTop ? properties.Gutter : 0);
+        page.BodyBottom = properties.PageHeight - (swapped ? properties.Top : properties.Bottom);
         if (page.Header != null && !properties.TopFixed)
             page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
         if (page.Footer != null && !properties.BottomFixed)
