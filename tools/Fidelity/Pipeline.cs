@@ -29,6 +29,12 @@ public static class Pipeline
 
         foreach (var deck in decks)
         {
+            if (Repo.IsDocument(deck))
+            {
+                // catalog: engine.fidelity (docx). Word documents have references, not yet a renderer.
+                Console.WriteLine($"  skipped   {deck}: no DOCX renderer yet");
+                continue;
+            }
             var reference = References.Load(deck);
             var (width, height) = reference is { } r ? (r.Width, r.Height) : (1280, 720);
             var dir = OutputDir(deck);
@@ -79,14 +85,20 @@ public static class Pipeline
                 Console.WriteLine($"  no reference for {deck}; run `reference` on Windows first");
                 continue;
             }
-            var slides = new ConcurrentBag<SlideResult>();
-            Parallel.For(1, reference.Slides + 1, i =>
+            if (Repo.IsDocument(deck) && !File.Exists(Path.Combine(OutputDir(deck), References.ImageName(deck, 1))))
             {
-                var ours = Path.Combine(OutputDir(deck), $"slide-{i:000}.png");
+                Console.WriteLine($"  no rendering of {deck}");
+                continue;
+            }
+            var slides = new ConcurrentBag<SlideResult>();
+            Parallel.For(1, reference.Count + 1, i =>
+            {
+                var name = References.ImageName(deck, i);
+                var ours = Path.Combine(OutputDir(deck), name);
                 if (!File.Exists(ours))
                     return;
                 var score = ImageCompare.Compare(
-                    Path.Combine(References.Dir(deck), $"slide-{i:000}.png"), ours, Path.Combine(OutputDir(deck), $"diff-{i:000}.png"));
+                    Path.Combine(References.Dir(deck), name), ours, Path.Combine(OutputDir(deck), $"diff-{i:000}.png"));
                 slides.Add(new SlideResult(i, score));
             });
             results.Add(new DeckResult(deck, slides.OrderBy(s => s.Number).ToList()));

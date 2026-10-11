@@ -1,8 +1,9 @@
 # Measuring fidelity
 
 FreeSlate's reference is PowerPoint itself. Every rendering rule in the engine was measured against PowerPoint, and
-the test suite compares FreeSlate's rendering of every test slide with PowerPoint's. This page describes the tool,
-the corpus and the way new behavior is measured.
+the test suite compares FreeSlate's rendering of every test slide with PowerPoint's. Word documents get the same
+treatment with Word as the reference, page by page. This page describes the tool, the corpus and the way new behavior
+is measured.
 
 ## The score
 
@@ -31,7 +32,8 @@ dotnet run --project tools/Fidelity -c Release --no-build -- run generated
 | `run [decks]` | converts the decks, takes screenshots and compares them with the references | Chrome or Edge |
 | `render [decks]`, `compare [decks]` | the two halves of `run` | Chrome or Edge |
 | `generate` | builds the test decks of `tests/corpus/pptx/generated/` through PowerPoint | Windows, PowerPoint |
-| `reference [decks] [--force]` | renders PowerPoint's references (`Slide.Export`) | Windows, PowerPoint |
+| `generate docx` | builds the test documents of `tests/corpus/docx/generated/` through Word | Windows, Word |
+| `reference [decks] [--force]` | renders PowerPoint's references (`Slide.Export`), Word's for documents (see below) | Windows, PowerPoint, Word |
 | `fetch` | downloads the test decks of other projects | network |
 | `animate-reference`, `animate` | records PowerPoint's video of animated slides and compares the player's frames with it | Windows, PowerPoint, ffmpeg |
 | `transitions-reference` | the same for slide transitions | Windows, PowerPoint, ffmpeg |
@@ -46,6 +48,16 @@ PowerPoint formats chart numbers and dates in the system's regional format; the 
 too. The committed references were made on a German system, so chart labels match where the comparison runs with
 German regional settings.
 
+## Word documents
+
+Word documents are named `docx/<path>` (`docx/generated/text-basic`, `docx/local/probe`), so `reference docx` renders
+all of them. Word has no export of a page as an image; the reference is what Word prints: Word exports the document to
+PDF (`ExportAsFixedFormat`, the document without markup, optimized for print), and Windows' own PDF renderer
+(`Windows.Data.Pdf`, through `tools/Fidelity/Word/rasterize-pdf.ps1`) rasterizes every page at 96 dpi into
+`page-001.png`, … The PDF stays in `artifacts/fidelity/docx/…/reference.pdf` for measuring (it embeds font subsets
+and is not committed). Pages of a document may differ in size; each is compared at its own size. The rendering side
+of documents is still to come, so `run` skips them for now.
+
 ## The corpus
 
 - `tests/corpus/pptx/generated/` holds 57 decks that `tools/Fidelity/PowerPoint/*Deck.cs` builds through
@@ -58,7 +70,11 @@ German regional settings.
   (pinned commits; the license of each source is recorded with it) into `spec/downloads/testdecks/`. They contain
   files from many producers, including damaged and unusual ones. `reference external` renders their references,
   `run external` scores them. Neither the decks nor their references are committed.
-- `tests/corpus/pptx/local/` is for probe decks and private files; it stays out of git, and so do their references.
+- `tests/corpus/docx/generated/` holds the test documents `tools/Fidelity/Word/DocumentGenerator.cs` builds through
+  Word's object model, anonymized like the decks; their references (`tests/fidelity/reference/docx/generated/`) are
+  committed.
+- `tests/corpus/pptx/local/` and `tests/corpus/docx/local/` are for probe files and private files; they stay out of
+  git, and so do their references.
 
 ## Measuring new behavior
 

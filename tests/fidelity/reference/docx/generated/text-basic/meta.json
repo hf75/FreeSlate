@@ -1,0 +1,8 @@
+{
+  "source": "tests/corpus/docx/generated/text-basic.docx",
+  "sha256": "d8fa88c6d0127252188a121c28f46182c62e84249ebb286cf5fe97aa992cc6c5",
+  "width": 794,
+  "height": 1123,
+  "word": "16.0.20430",
+  "pages": 3
+}

@@ -38,14 +38,16 @@ public static class Report
         {
             html.Append($"<h2 id=\"{WebUtility.HtmlEncode(r.Deck)}\">{WebUtility.HtmlEncode(r.Deck)}: {Pct(r.Score)}</h2>");
             html.Append($"<p><a href=\"{Rel(Path.Combine(Pipeline.OutputDir(r.Deck), "index.html"))}\">our HTML</a></p>");
+            var document = Repo.IsDocument(r.Deck);
             foreach (var s in r.Slides)
             {
                 var n = s.Number.ToString("000", CultureInfo.InvariantCulture);
-                var reference = Rel(Path.Combine(References.Dir(r.Deck), $"slide-{n}.png"));
-                var ours = Rel(Path.Combine(Pipeline.OutputDir(r.Deck), $"slide-{n}.png"));
+                var image = References.ImageName(r.Deck, s.Number);
+                var reference = Rel(Path.Combine(References.Dir(r.Deck), image));
+                var ours = Rel(Path.Combine(Pipeline.OutputDir(r.Deck), image));
                 var diff = Rel(Path.Combine(Pipeline.OutputDir(r.Deck), $"diff-{n}.png"));
-                html.Append($"<h3>Slide {s.Number}: {Pct(s.Score.Score)} <span class=\"cap\">SSIM {s.Score.Ssim:0.000}</span></h3><div class=\"slide\">");
-                html.Append($"<div><a href=\"{reference}\"><img src=\"{reference}\"></a><div class=\"cap\">PowerPoint</div></div>");
+                html.Append($"<h3>{(document ? "Page" : "Slide")} {s.Number}: {Pct(s.Score.Score)} <span class=\"cap\">SSIM {s.Score.Ssim:0.000}</span></h3><div class=\"slide\">");
+                html.Append($"<div><a href=\"{reference}\"><img src=\"{reference}\"></a><div class=\"cap\">{(document ? "Word" : "PowerPoint")}</div></div>");
                 html.Append($"<div><a href=\"{ours}\"><img src=\"{ours}\"></a><div class=\"cap\">ours</div></div>");
                 html.Append($"<div><a href=\"{diff}\"><img src=\"{diff}\"></a><div class=\"cap\">difference</div></div></div>");
             }

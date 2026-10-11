@@ -2,6 +2,7 @@ using System.Globalization;
 using Fidelity;
 using Fidelity.Compare;
 using Fidelity.PowerPoint;
+using Fidelity.Word;
 
 // PowerPoint shows chart numbers in the system's regional format, which the references were made with; the tool
 // itself reads and writes invariantly.
@@ -17,8 +18,25 @@ var decks = Repo.Select(rest);
 switch (command)
 {
     case "generate" when OperatingSystem.IsWindows():
-        CorpusGenerator.Run(Path.Combine(Repo.Corpus, "generated"), rest);
+    {
+        // Word documents are named "docx/generated/<name>"; "docx" stands for all of them.
+        var wordNames = rest.Where(n => n.TrimEnd('/') is "docx" or "docx/generated" || n.StartsWith(Repo.DocumentPrefix, StringComparison.Ordinal)).ToList();
+        if (wordNames.Count > 0)
+        {
+            const string Generated = Repo.DocumentPrefix + "generated/";
+            if (wordNames.FirstOrDefault(n => n.TrimEnd('/') is not ("docx" or "docx/generated") && !n.StartsWith(Generated, StringComparison.Ordinal)) is { } other)
+            {
+                Console.Error.WriteLine($"Only generated documents can be generated: {other}");
+                return 1;
+            }
+            DocumentGenerator.Run(Path.Combine(Repo.DocumentCorpus, "generated"),
+                wordNames.Where(n => n.StartsWith(Generated, StringComparison.Ordinal)).Select(n => n[Generated.Length..]).ToList());
+        }
+        var deckNames = rest.Except(wordNames).ToList();
+        if (deckNames.Count > 0 || wordNames.Count == 0)
+            CorpusGenerator.Run(Path.Combine(Repo.Corpus, "generated"), deckNames);
         break;
+    }
     case "reference" when OperatingSystem.IsWindows():
         References.Render(decks, force);
         break;
@@ -91,13 +109,15 @@ switch (command)
         break;
     default:
         Console.WriteLine("""
-            Fidelity: compares our HTML rendering with PowerPoint, slide by slide.
+            Fidelity: compares our HTML rendering with PowerPoint, slide by slide, and with Word, page by page.
 
               run [deck…]          render and compare (default); a folder stands for its decks ("generated")
               render [deck…]       convert with the engine and take screenshots with a headless browser
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
-              generate [deck…]     create the generated test decks with PowerPoint (Windows)
-              reference [deck…]    render reference images with PowerPoint (Windows); --force re-renders
+              generate [deck…]     create the generated test decks with PowerPoint, the generated documents
+                                   ("docx/generated/<name>", "docx" for all) with Word (Windows)
+              reference [deck…]    render reference images with PowerPoint, of Word documents ("docx/…") with Word
+                                   (Windows); --force re-renders
               animate [deck…]      compare the player's animation frames with PowerPoint's videos
               animate-reference [deck…]  sample PowerPoint's videos of animated slides (Windows, ffmpeg); --force
               transitions [deck…]  compare the player's slide transitions with PowerPoint's videos

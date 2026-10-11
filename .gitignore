@@ -10,9 +10,11 @@ spec/ecma-376/
 # Fidelity runs: our renderings, screenshots, report
 artifacts/
 
-# Local scratch decks and their references (not part of the corpus)
+# Local scratch decks and documents and their references (not part of the corpus)
 tests/corpus/pptx/local/
 tests/fidelity/reference/local/
+tests/corpus/docx/local/
+tests/fidelity/reference/docx/local/
 
 # References of other projects' test decks (the decks live in spec/downloads/testdecks)
 tests/fidelity/reference/external/

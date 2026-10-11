@@ -5,10 +5,13 @@ public static class Repo
 {
     public static string Root { get; } = FindRoot();
 
-    /// <summary>Test documents; generated decks live in a subfolder "generated".</summary>
+    /// <summary>Test decks; generated decks live in a subfolder "generated".</summary>
     public static string Corpus => Path.Combine(Root, "tests", "corpus", "pptx");
 
-    /// <summary>Reference renderings by PowerPoint, committed so that the comparison also runs without Office.</summary>
+    /// <summary>Test documents of Word, named "docx/…" (<see cref="DocumentPrefix"/>); generated ones in "generated".</summary>
+    public static string DocumentCorpus => Path.Combine(Root, "tests", "corpus", "docx");
+
+    /// <summary>Reference renderings by PowerPoint and Word, committed so that the comparison also runs without Office.</summary>
     public static string References => Path.Combine(Root, "tests", "fidelity", "reference");
 
     /// <summary>Our renderings, screenshots and the report (not committed).</summary>
@@ -23,7 +26,18 @@ public static class Repo
     /// <summary>PowerPoint's Open XML formats: presentation, macro-enabled presentation, template and show.</summary>
     public static readonly string[] Extensions = [".pptx", ".pptm", ".potx", ".potm", ".ppsx", ".ppsm"];
 
+    /// <summary>Word's Open XML formats: document, macro-enabled document and their templates.</summary>
+    public static readonly string[] DocumentExtensions = [".docx", ".docm", ".dotx", ".dotm"];
+
     const string ExternalPrefix = "external/";
+
+    /// <summary>Prefix of the names of Word documents in <see cref="DocumentCorpus"/>, e.g. "docx/generated/paragraphs".</summary>
+    public const string DocumentPrefix = "docx/";
+
+    /// <summary>Whether a deck name stands for a Word document (pages) rather than a presentation (slides).</summary>
+    public static bool IsDocument(string deck) =>
+        deck.StartsWith(DocumentPrefix, StringComparison.Ordinal) ||
+        DocumentExtensions.Contains(Path.GetExtension(DeckFile(deck)), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>All decks of the corpus as paths relative to <see cref="Corpus"/> without extension, e.g. "generated/fills".</summary>
     public static List<string> Decks() =>
@@ -31,6 +45,17 @@ public static class Repo
             ? Directory.GetFiles(Corpus, "*.pptx", SearchOption.AllDirectories)
                 .Where(f => !Path.GetFileName(f).StartsWith("~$", StringComparison.Ordinal))
                 .Select(f => Path.ChangeExtension(Path.GetRelativePath(Corpus, f), null).Replace('\\', '/'))
+                .Order(StringComparer.Ordinal)
+                .ToList()
+            : [];
+
+    /// <summary>All Word documents of the corpus, named "docx/…" without extension, e.g. "docx/generated/paragraphs".</summary>
+    public static List<string> Documents() =>
+        Directory.Exists(DocumentCorpus)
+            ? Directory.GetFiles(DocumentCorpus, "*", SearchOption.AllDirectories)
+                .Where(f => DocumentExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)
+                            && !Path.GetFileName(f).StartsWith("~$", StringComparison.Ordinal))
+                .Select(f => DocumentPrefix + Path.ChangeExtension(Path.GetRelativePath(DocumentCorpus, f), null).Replace('\\', '/'))
                 .Order(StringComparer.Ordinal)
                 .ToList()
             : [];
@@ -46,14 +71,14 @@ public static class Repo
             : [];
 
     /// <summary>
-    /// The decks the command line names: a deck, or a folder standing for every deck in it ("generated", "external/poi");
-    /// without names the corpus (the downloaded decks only when named).
+    /// The decks the command line names: a deck, or a folder standing for every deck in it ("generated", "external/poi",
+    /// "docx"); without names the presentations of the corpus (Word documents and downloaded decks only when named).
     /// </summary>
     public static List<string> Select(IReadOnlyList<string> names)
     {
         if (names.Count == 0)
             return Decks();
-        var all = Decks().Concat(ExternalDecks()).ToList();
+        var all = Decks().Concat(Documents()).Concat(ExternalDecks()).ToList();
         var result = new List<string>();
         foreach (var name in names)
         {
@@ -67,15 +92,23 @@ public static class Repo
 
     public static string DeckFile(string deck)
     {
+        if (deck.StartsWith(DocumentPrefix, StringComparison.Ordinal))
+        {
+            var document = Path.Combine(DocumentCorpus, deck[DocumentPrefix.Length..]);
+            return DocumentExtensions.Select(e => document + e).FirstOrDefault(File.Exists) ?? document + ".docx";
+        }
         if (!deck.StartsWith(ExternalPrefix, StringComparison.Ordinal))
             return Path.Combine(Corpus, deck + ".pptx");
         var stem = Path.Combine(External, deck[ExternalPrefix.Length..]);
-        return Extensions.Select(e => stem + e).FirstOrDefault(File.Exists) ?? stem + ".pptx";
+        return Extensions.Concat(DocumentExtensions).Select(e => stem + e).FirstOrDefault(File.Exists) ?? stem + ".pptx";
     }
 
-    /// <summary>The password of a protected deck: the contents of its .password file next to it, or null.</summary>
-    public static string? DeckPassword(string deck) =>
-        File.Exists(Path.Combine(Corpus, deck + ".password")) ? File.ReadAllText(Path.Combine(Corpus, deck + ".password")).Trim() : null;
+    /// <summary>The password of a protected deck or document: the contents of its .password file next to it, or null.</summary>
+    public static string? DeckPassword(string deck)
+    {
+        var file = Path.ChangeExtension(DeckFile(deck), ".password");
+        return File.Exists(file) ? File.ReadAllText(file).Trim() : null;
+    }
 
     static string FindRoot()
     {

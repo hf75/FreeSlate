@@ -266,11 +266,11 @@ public static class CorpusGenerator
     static readonly string ProfileName = Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
     /// <summary>
-    /// PowerPoint writes the Office user name as author of the deck and of the workbooks it embeds for charts, and OLE
-    /// packages record paths in the user's profile folder. The decks are published, so both are replaced, and a deck
-    /// that still names the user anywhere stops the generator.
+    /// PowerPoint and Word write the Office user name as author of the file and of the workbooks they embed for charts,
+    /// and OLE packages record paths in the user's profile folder. The files are published, so both are replaced, and a
+    /// file that still names the user anywhere stops the generator.
     /// </summary>
-    static void Anonymize(string path)
+    internal static void Anonymize(string path)
     {
         // An encrypted deck (a compound file) is anonymized by PowerPoint itself (RemovePersonalInformation).
         using (var file = File.OpenRead(path))
@@ -282,7 +282,8 @@ public static class CorpusGenerator
         using (var zip = ZipFile.Open(path, ZipArchiveMode.Update))
         {
             AnonymizeAuthors(zip, names);
-            foreach (var entry in zip.Entries.Where(e => e.FullName.StartsWith("ppt/embeddings/", StringComparison.Ordinal)))
+            foreach (var entry in zip.Entries.Where(e => e.FullName.StartsWith("ppt/embeddings/", StringComparison.Ordinal)
+                                                         || e.FullName.StartsWith("word/embeddings/", StringComparison.Ordinal)))
             {
                 using var stream = entry.Open();
                 var data = new byte[stream.Length];
