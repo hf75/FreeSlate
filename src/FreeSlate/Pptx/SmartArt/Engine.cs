@@ -807,10 +807,15 @@ public static class Engine
                         text.Values["primFontSz"] = size;
                     }
                     Constraints.EvaluateList(node, pins);
-                    foreach (var child in node.Children)
+                    // Twice, as for FitsAcross: values depending on bounds the children's own lists apply settle (measured:
+                    // process3's descriptions below their titles' h <= 0.4 w, the composites keeping the row's width).
+                    for (var pass = 0; pass < 2; pass++)
                     {
-                        Constraints.EvaluateOwn(child, pins);
-                        Refresh(child, pins);
+                        foreach (var child in node.Children)
+                        {
+                            Constraints.EvaluateOwn(child, pins);
+                            Refresh(child, pins);
+                        }
                     }
                     extents = children.Select(Extent).ToList();
                 }
@@ -1161,14 +1166,10 @@ public static class Engine
         var places = new Dictionary<LayoutNode, (double X, double Y, double Angle)>();
         double radius = 0, minX = 0, minY = 0, bw = 0, bh = 0, factor = 1;
         double? spread = null;
-        // How far a cell's outline is from its center toward a direction (turned with it along the path).
-        double Exit(LayoutNode cell, double ux, double uy, double angle)
+        // How far a cell's outline is from its center toward a direction: the shape as laid out, not as turned along the
+        // path (measured: arrow5's seven arrows, as far apart as their boxes upright need).
+        double Exit(LayoutNode cell, double ux, double uy)
         {
-            if (alongPath && cell != center)
-            {
-                var (sin, cos) = (Math.Sin(-angle * Math.PI / 180), Math.Cos(-angle * Math.PI / 180));
-                (ux, uy) = (ux * cos - uy * sin, ux * sin + uy * cos);
-            }
             var (a, b) = (extents[cell].W / 2, extents[cell].H / 2);
             if ((string?)cell.Shape?.Attribute("type") == "ellipse")
                 return a * b / Math.Max(Math.Sqrt(b * ux * b * ux + a * uy * a * uy), 1e-12);
@@ -1180,7 +1181,9 @@ public static class Engine
             extents = cells.ToDictionary(c => c, Extent);
             // The circle as small as keeps each two neighbors' outlines sibSp apart along the line between their
             // centers (measured: cycle7's boxes, half as high as wide, 0.65 of their width apart; cycle5's with its
-            // spacers; cycle2's circles), and the ring sp away from the middle one likewise.
+            // spacers; cycle2's circles), each next but one at least touching (arrow5's and arrow1's arrows, up to 0.9 of
+            // their width into each other, no further than that lets four to eight; three not at all), and the ring sp
+            // away from the middle one likewise.
             radius = 0;
             for (var i = 0; n > 1 && Math.Abs(step) > 1e-9 && i < (full ? n : n - 1); i++)
             {
@@ -1190,15 +1193,25 @@ public static class Engine
                 if (chord < 1e-9)
                     continue;
                 var (ux, uy) = ((q.X - p.X) / chord, (q.Y - p.Y) / chord);
-                var need = Exit(ring[i], ux, uy, start + i * step) + Exit(ring[j], -ux, -uy, start + j * step) + Value(node, "sibSp");
+                var need = Exit(ring[i], ux, uy) + Exit(ring[j], -ux, -uy) + Value(node, "sibSp");
                 radius = Math.Max(radius, need / chord);
+            }
+            for (var i = 0; n > 2 && Math.Abs(step) > 1e-9 && i < (full ? n : n - 2); i++)
+            {
+                var j = (i + 2) % n;
+                var (p, q) = (On(start + i * step), On(start + j * step));
+                var chord = Math.Sqrt((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y));
+                if (chord < 1e-9)
+                    continue;
+                var (ux, uy) = ((q.X - p.X) / chord, (q.Y - p.Y) / chord);
+                radius = Math.Max(radius, (Exit(ring[i], ux, uy) + Exit(ring[j], -ux, -uy)) / chord);
             }
             if (center != null)
             {
                 for (var i = 0; i < n; i++)
                 {
                     var (ux, uy) = On(start + i * step);
-                    radius = Math.Max(radius, Exit(center, ux, uy, 0) + Exit(ring[i], -ux, -uy, start + i * step) + Value(node, "sp"));
+                    radius = Math.Max(radius, Exit(center, ux, uy) + Exit(ring[i], -ux, -uy) + Value(node, "sp"));
                 }
             }
             if (spread is { } wider)

@@ -277,11 +277,11 @@ public static class Constraints
                 }
                 if (op == "equ" || target.Values.ContainsKey(type))
                     continue;
-                // Nor where another constraint gives one, an ancestor's or the node's own bound (measured:
-                // HorizontalActionList's titles, w from their composite rather than 0 from the root, h and h <= 0.3 w,
-                // 0.3 w high).
+                // Nor where another constraint gives one, an ancestor's or the node's own bound, in the node's own list
+                // one before it (measured: HorizontalActionList's titles, w from their composite rather than 0 from the
+                // root, h <= 0.3 w then h, 0.3 w high; arrow5's ring of eight, sibSp then sibSp <= 0.1 h, spaced 0).
                 if ((target.FromAncestors.Contains(type)
-                        || target.Constraints.Any(c => Own(c) && (string?)c.Attribute("type") == type
+                        || Before(owner, target, constraint).Any(c => Own(c) && (string?)c.Attribute("type") == type
                             && (c.Attribute("val") != null || (string?)c.Attribute("refType") is { Length: > 0 } and not "none"))))
                     continue;
                 value = 0;
@@ -315,7 +315,7 @@ public static class Constraints
                     else
                         target.Values[type] = v;
                     break;
-                case "lte" when BoundOnly(target, type) && !(pins != null && pins.TryGet(target, type, out _)):
+                case "lte" when BoundOnly(target, type) && !BareBefore(owner, target, constraint, type) && !(pins != null && pins.TryGet(target, type, out _)):
                     // A value only its bounds give follows them (measured: HorizontalActionList's titles, h <= 0.3 w, as
                     // their width changes), unless fitting fixed it (CaptionedPictures' descriptions, shrunk below their
                     // titles' size).
@@ -387,6 +387,19 @@ public static class Constraints
         }
         return false;
     }
+
+    /// <summary>
+    /// The constraints of a node's own list that come before the given one when the list is the node's own (all of them
+    /// otherwise): a constraint without a value only yields to those (see Apply).
+    /// </summary>
+    static IEnumerable<XElement> Before(LayoutNode owner, LayoutNode target, XElement constraint) =>
+        owner == target && target.Constraints.IndexOf(constraint) is >= 0 and var index ? target.Constraints.Take(index) : target.Constraints;
+
+    /// <summary>Whether a node's own list gives it a value of a type by a constraint without value before the given bound (that 0 holds).</summary>
+    static bool BareBefore(LayoutNode owner, LayoutNode target, XElement bound, string type) =>
+        owner == target && target.Constraints.IndexOf(bound) is > 0 and var index
+        && target.Constraints.Take(index).Any(c => Own(c) && !Bound(c) && (string?)c.Attribute("type") == type
+            && c.Attribute("val") == null && (string?)c.Attribute("refType") is null or "" or "none");
 
     /// <summary>Whether only bounds give a node's value of a type: no ancestor and no own constraint sets it.</summary>
     static bool BoundOnly(LayoutNode node, string type) =>
