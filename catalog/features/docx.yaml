@@ -1,0 +1,1948 @@
+# Word (DOCX) feature catalog, level 2.
+#
+# Curated by hand. `dotnet run --project tools/SpecTools -- features` checks every element reference against the
+# format catalog (level 1), measures coverage and writes docx.md and docx.json next to this file.
+#
+# Per feature: see pptx.yaml. Status describes the Word pipeline; features shared with PowerPoint (DrawingML, charts,
+# SmartArt, math, VML) name the pptx feature whose implementation they reuse.
+
+document: docx
+title: Word (DOCX)
+description: >-
+  Rendering target: one HTML document per Word document with fixed-size pages, laid out and paginated by our own
+  engine the way Word lays the document out for printing. Paragraph text is measured and broken into lines by our
+  own text engine and emitted as positioned glyph runs; drawings, charts and SmartArt go through the DrawingML
+  renderer shared with PowerPoint. The reference is Word's own PDF export of the document.
+
+universe:
+  roots: [w:document, w:styles, w:numbering, w:settings, w:fonts, w:footnotes, w:endnotes, w:comments, w:hdr, w:ftr,
+          w:webSettings, w:glossaryDocument, w:recipients, w:txbxContent,
+          pic:pic, lc:lockedCanvas,
+          a:theme, a:themeOverride,
+          c:chartSpace, c:userShapes, c:chart, cx:chartSpace, cx:chart, cs:chartStyle, cs:colorStyle,
+          dgm:dataModel, dgm:layoutDef, dgm:styleDef, dgm:colorsDef, dgm:relIds, dsp:drawing,
+          m:oMathPara, m:oMath, b:Sources,
+          ap:Properties, op:Properties, cp:coreProperties, ct:Types, pr:Relationships, ds:datastoreItem]
+  namespaces: [w14, w15, w16cei, w16cex, w16cid, w16cur, w16se, woe, wp, wp14, wp15, wpc, wpg, wps,
+               a14, a15, a16, a1611, a3danim, aanim, aclsh, adec, ahyp, aif, am3d, ask, asl, asvg, msink, oac,
+               pic14, thm15,
+               c14, c15, c16, c16ac, c16r2, c16r3, cdr14, cs, cx, dgm14, dgm1611, dgm1612, dsp,
+               v, o, w10]
+  exclude: [p, p14, p15, x, xvml, xdr, pvml]
+
+areas:
+
+  - id: package
+    title: Package and compatibility
+    description: ZIP container, relationships, markup compatibility and metadata.
+    features:
+      - id: package.opc
+        title: Package, content types and relationships
+        elements: [ct:Types, ct:Default, ct:Override, pr:Relationships, pr:Relationship]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: >-
+          As pptx `package.opc` (done): parts are found through relationships, never by path. Word's main part is the
+          officeDocument relationship of the package; styles, numbering, settings, fonts, notes, comments, headers and
+          footers hang off it.
+
+      - id: package.mce
+        title: Markup compatibility and extension lists
+        description: mc:AlternateContent, mc:Ignorable and the extLst/ext mechanism every newer feature uses.
+        elements: [a:extLst, a:ext, c:extLst, c:ext, cx:extLst, cx:ext, cs:extLst, dgm:extLst, dsp:extLst, a14:extLst,
+                   a3danim:extLst, aanim:extLst, am3d:extLst, ask:extLst, asl:extLst, oac:extLst,
+                   pic14:extLst, thm15:extLst, cdr14:extLst, w14:extLst, wp:extLst, wpc:extLst, wpg:extLst,
+                   wps:extLst, w16cei:extLst, w16cex:extLst, w16cur:ext]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: >-
+          As pptx `package.mce` (done): take the first mc:Choice whose Requires prefixes we implement, else
+          mc:Fallback. Word writes its 2010 drawing objects (wps, wpg, wpc) in mc:Choice with a VML w:pict in
+          mc:Fallback, so implementing the Choice side makes the VML path the exception.
+
+      - id: package.compatibility
+        title: Compatibility leftovers
+        description: Properties Office keeps for older versions or for converted VML content.
+        elements: [a14:hiddenFill, a14:hiddenLine, a14:hiddenEffects, a14:hiddenScene3d, a14:hiddenSp3d,
+                   a14:compatExt, a14:shadowObscured, a14:useLocalDpi, a14:cameraTool]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered, as pptx `package.compatibility`.
+
+      - id: package.encryption
+        title: Encrypted and write-protected files
+        priority: P2
+        difficulty: 2
+        status: todo
+        strategy: >-
+          The decryption of pptx `package.encryption` (done, [MS-OFFCRYPTO] agile and standard encryption) applies
+          unchanged: a password-protected document is a compound file with an EncryptedPackage stream. Editing
+          restrictions (w:documentProtection, w:writeProtection) only matter to an editor.
+
+      - id: package.properties
+        title: Document properties
+        namespaces: [ap, op, cp, vt]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Metadata only; title, author and language go into the HTML head. DOCPROPERTY fields read them.
+
+      - id: package.customXml
+        title: Custom XML parts and schema library
+        elements: [sl:schemaLibrary, sl:schema]
+        namespaces: [ds]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Data only; content controls bound to a custom XML part read their values from it (sdt.dataBinding).
+
+      - id: package.ids
+        title: Object ids, document ids and revision save ids
+        elements: [a16:creationId, a16:predDERef, a16:cxnDERefs, a16:colId, a16:rowId, w14:docId, w15:docId,
+                   w:rsids, w:rsidRoot, w:rsid]
+        namespaces: [oac]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered; ids for co-authoring and merging.
+
+  - id: document
+    title: Document structure
+    features:
+      - id: document.body
+        title: Document and body
+        elements: [w:document, w:body]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: >-
+          The body's block content (paragraphs, tables, content controls, custom XML, section properties) flows
+          through the layout engine into pages; the last w:sectPr of the body describes the last section.
+
+      - id: document.background
+        title: Page background
+        elements: [w:background, w:displayBackgroundShape, v:background, a15:backgroundPr]
+        priority: P2
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Color, gradient, texture or picture behind every page (w:background with its VML fill). Whether Word's PDF
+          export includes it must be measured before it is drawn.
+
+      - id: document.altChunk
+        title: Imported content (altChunk)
+        description: A part in another format (HTML, RTF, plain text, another DOCX) that Word converts when it opens the document.
+        elements: [w:altChunk, w:altChunkPr, w:matchSrc]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: >-
+          DOCX chunks are merged as WordprocessingML; plain text becomes paragraphs. HTML and RTF chunks need an
+          import of their own; until then their text is shown without formatting.
+
+      - id: document.subDoc
+        title: Subdocuments (master documents)
+        elements: [w:subDoc]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: Collapsed subdocuments show as their link; expanded ones are already part of the body.
+
+      - id: document.glossary
+        title: Building blocks (glossary document)
+        elements: [w:glossaryDocument, w:docParts, w:docPart, w:docPartBody, w:docPartPr, w:behaviors, w:behavior,
+                   w:category, w:description, w:gallery, w:guid, w:types, w:type, w:name]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered; the glossary holds AutoText and building blocks, and placeholder texts of content controls.
+
+  - id: settings
+    title: Document settings
+    features:
+      - id: settings.compatibility
+        title: Compatibility mode and options
+        description: >-
+          w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 2013 and later) and the
+          layout options older documents carry; each switches a layout rule of the engine.
+        elements: [w:compat, w:compatSetting, w:alignTablesRowByRow, w:allowSpaceOfSameStyleInTable,
+                   w:autoSpaceLikeWord95, w:autofitToFirstFixedWidthCell, w:cachedColBalance, w:convMailMergeEsc,
+                   w:displayHangulFixedWidth, w:doNotAutofitConstrainedTables, w:doNotBreakConstrainedForcedTable,
+                   w:doNotBreakWrappedTables, w:doNotSnapToGridInCell, w:doNotSuppressIndentation,
+                   w:doNotSuppressParagraphBorders, w:doNotUseEastAsianBreakRules, w:doNotUseHTMLParagraphAutoSpacing,
+                   w:doNotUseIndentAsNumberingTabStop, w:doNotVertAlignCellWithSp, w:doNotVertAlignInTxbx,
+                   w:doNotWrapTextWithPunct, w:footnoteLayoutLikeWW8, w:forgetLastTabAlignment, w:growAutofit,
+                   w:hdrShapeDefaults, w:layoutRawTableWidth, w:layoutTableRowsApart, w:lineWrapLikeWord6,
+                   w:mwSmallCaps, w:noColumnBalance, w:noExtraLineSpacing, w:noLeading, w:noSpaceRaiseLower,
+                   w:noTabHangInd, w:printBodyTextBeforeHeader, w:printColBlack, w:relyOnVML,
+                   w:selectFldWithFirstOrLastChar, w:shapeDefaults, w:shapeLayoutLikeWW8, w:showBreaksInFrames,
+                   w:spacingInWholePoints, w:splitPgBreakAndParaMark, w:subFontBySize, w:suppressBottomSpacing,
+                   w:suppressSpBfAfterPgBrk, w:suppressSpacingAtTopOfPage, w:suppressTopSpacing,
+                   w:suppressTopSpacingWP, w:swapBordersFacingPages, w:truncateFontHeightsLikeWP6,
+                   w:underlineTabInNumList, w:useAltKinsokuLineBreakRules, w:useAnsiKerningPairs, w:useFELayout,
+                   w:useNormalStyleForList, w:usePrinterMetrics, w:useSingleBorderforContiguousCells,
+                   w:useWord2002TableStyleRules, w:useWord97LineBreakRules, w:wpJustification, w:wpSpaceWidth,
+                   w:wrapTrailSpaces, w:adjustLineHeightInTable, w:applyBreakingRules,
+                   w:balanceSingleByteDoubleByteWidth, w:doNotExpandShiftReturn, w:doNotLeaveBackslashAlone,
+                   w:spaceForUL, w:ulTrailSpace]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          One switch per option in the layout engine, each measured in Word with a generated document that differs
+          only in that option. Mode 15 comes first: it is what current Word writes.
+
+      - id: settings.view
+        title: View settings
+        elements: [w:settings, w:view, w:zoom, w:doNotDisplayPageBoundaries, w:displayHorizontalDrawingGridEvery,
+                   w:displayVerticalDrawingGridEvery, w:drawingGridHorizontalOrigin, w:drawingGridHorizontalSpacing,
+                   w:drawingGridVerticalOrigin, w:drawingGridVerticalSpacing, w:doNotUseMarginsForDrawingGridOrigin,
+                   w:readModeInkLockDown, w:showEnvelope, w:clickAndTypeStyle, w:stylePaneFormatFilter,
+                   w:stylePaneSortMethod]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Editor state; the printed layout does not depend on it.
+
+      - id: settings.protection
+        title: Protection and privacy
+        elements: [w:documentProtection, w:writeProtection, w:removePersonalInformation, w:removeDateAndTime]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Only matters to an editor.
+
+      - id: settings.editor
+        title: Editor and save options
+        elements: [w:attachedTemplate, w:attachedSchema, w:linkStyles, w:styleLockTheme, w:styleLockQFSet,
+                   w:autoFormatOverride, w:documentType, w:summaryLength, w:captions, w:caption, w:autoCaptions,
+                   w:autoCaption, w:forceUpgrade, w:smartTagType, w:doNotEmbedSmartTags, w:saveXmlDataOnly,
+                   w:saveThroughXslt, w:useXSLTWhenSaving, w:saveInvalidXml, w:ignoreMixedContent,
+                   w:alwaysMergeEmptyNamespace, w:doNotValidateAgainstSchema, w:doNotDemarcateInvalidXml,
+                   w:savePreviewPicture, w:doNotAutoCompressPictures, w:doNotIncludeSubdocsInStats,
+                   w:printPostScriptOverText, w:printFractionalCharacterWidth, w14:defaultImageDpi,
+                   w14:discardImageEditingData, w14:conflictMode, w15:chartTrackingRefBased, w15:webExtensionLinked,
+                   w15:webExtensionCreated, asl:scriptLink]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered.
+
+      - id: settings.web
+        title: Web page settings and frames
+        elements: [w:webSettings, w:frameset, w:frame, w:framesetSplitbar, w:frameLayout, w:title, w:sourceFileName,
+                   w:marW, w:marH, w:scrollbar, w:noResizeAllowed, w:linkedToFile, w:longDesc, w:noBorder,
+                   w:flatBorders, w:optimizeForBrowser, w:allowPNG, w:doNotRelyOnCSS, w:doNotSaveAsSingleFile,
+                   w:doNotOrganizeInFolder, w:doNotUseLongFileNames, w:pixelsPerInch, w:targetScreenSz,
+                   w:saveSmartTagsAsXml, w:encoding]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Options for saving as a web page. Frames pages (w:frameset) show their frames' documents side by side only
+          in Web Layout; the printed layout shows the frameset document itself.
+
+      - id: settings.mailMerge
+        title: Mail merge
+        elements: [w:mailMerge, w:mainDocumentType, w:linkToQuery, w:dataType, w:connectString, w:query, w:dataSource,
+                   w:headerSource, w:doNotSuppressBlankLines, w:destination, w:addressFieldName, w:mailSubject,
+                   w:mailAsAttachment, w:viewMergedData, w:activeRecord, w:checkErrors, w:odso, w:udl, w:table, w:src,
+                   w:colDelim, w:fHdr, w:fieldMapData, w:column, w:lid, w:dynamicAddress, w:mappedName,
+                   w:recipients, w:recipientData, w:active, w:uniqueTag]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: The data source is external; merge fields show their cached results.
+
+  - id: style
+    title: Styles
+    features:
+      - id: style.definitions
+        title: Paragraph, character, table and numbering styles
+        elements: [w:styles, w:style, w:name, w:aliases, w:basedOn, w:next, w:link, w:autoRedefine, w:hidden,
+                   w:uiPriority, w:semiHidden, w:unhideWhenUsed, w:qFormat, w:locked, w:personal, w:personalCompose,
+                   w:personalReply, w:rsid, w:pStyle, w:rStyle, w:tblStyle]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Resolve properties in the order of ISO/IEC 29500 17.7.2: document defaults, table style, numbering,
+          paragraph style, run style, direct formatting, each style through its basedOn chain. Toggle properties
+          (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint, outline, shadow) flip along the style
+          chain instead of overriding.
+
+      - id: style.defaults
+        title: Document defaults
+        elements: [w:docDefaults, w:rPrDefault, w:pPrDefault]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: The base of every property chain; Word's own defaults apply where the part leaves a property out.
+
+      - id: style.latent
+        title: Latent styles
+        elements: [w:latentStyles, w:lsdException]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered; settings of built-in styles a document has not used yet.
+
+  - id: font
+    title: Fonts
+    features:
+      - id: font.table
+        title: Font table and substitution
+        elements: [w:fonts, w:font, w:altName, w:charset, w:family, w:panose1, w:pitch, w:sig, w:notTrueType]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Fonts a document names but the machine lacks are replaced the way Word does it, using the font table's
+          alternate name, PANOSE, family, pitch and character set; shared with pptx `engine.fonts`.
+
+      - id: font.embedded
+        title: Embedded fonts
+        elements: [w:embedRegular, w:embedBold, w:embedItalic, w:embedBoldItalic, w:embedTrueTypeFonts,
+                   w:embedSystemFonts, w:saveSubsetFonts]
+        priority: P2
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Embedded fonts are obfuscated TrueType parts (ISO/IEC 29500 17.8.1: the font key GUID XORed over the first
+          32 bytes); decode them and use them for layout and output like installed fonts.
+
+      - id: font.theme
+        title: Theme fonts
+        description: rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's major and minor fonts.
+        elements: [w:themeFontLang]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Resolve theme font references against a:fontScheme (theme.fonts); w:themeFontLang picks the script-specific
+          entries of the theme for East Asian and complex-script text.
+
+  - id: run
+    title: Runs and character formatting
+    features:
+      - id: run.basic
+        title: Runs, fonts, size and color
+        elements: [w:r, w:rPr, w:t, w:rStyle, w:b, w:i, w:sz, w:color, w:rFonts, w:lang]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Each run picks one of its four fonts (ascii, hAnsi, eastAsia, cs) per character by Unicode range and the
+          w:hint attribute, then is measured and broken into lines by our text engine (engine.lineLayout).
+
+      - id: run.decoration
+        title: Underline, strike, caps, highlight, borders and shading
+        elements: [w:u, w:strike, w:dstrike, w:caps, w:smallCaps, w:highlight, w:shd, w:bdr, w:vertAlign, w:emboss,
+                   w:imprint, w:outline, w:shadow]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Drawn with the glyph runs as SVG: 18 underline styles with their own color, single and double strike,
+          highlight and shading behind the line box, run borders merged across adjacent runs with the same border.
+
+      - id: run.spacing
+        title: Character spacing, scale, kerning and position
+        elements: [w:spacing, w:w, w:kern, w:position, w:fitText]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Applied in measurement; kerning from the font's kern/GPOS data above the w:kern threshold size.
+
+      - id: run.hidden
+        title: Hidden text
+        elements: [w:vanish, w:specVanish, w:webHidden]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Hidden runs take no space in the printed layout unless Word is measured to print them.
+
+      - id: run.complexScript
+        title: Right-to-left and complex scripts
+        elements: [w:rtl, w:cs, w:bCs, w:iCs, w:szCs, w:bdo, w:dir]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Complex-script runs use their own font, size, bold and italic; reordering and shaping as in pptx
+          `text.rtl` (done), with w:bdo and w:dir as explicit embeddings.
+
+      - id: run.content
+        title: Breaks, symbols and special characters
+        elements: [w:br, w:cr, w:tab, w:sym, w:noBreakHyphen, w:softHyphen, w:lastRenderedPageBreak, w:dayLong,
+                   w:dayShort, w:monthLong, w:monthShort, w:yearLong, w:yearShort, w16se:symEx]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: >-
+          Page, column and text-wrapping breaks (with clear) go to the layout engine; w:sym characters are drawn from
+          their symbol font (private use area F000-F0FF). w:lastRenderedPageBreak is where Word broke the page when
+          it last saved: not rendered, but a free check of our pagination.
+
+      - id: run.ruby
+        title: Ruby (phonetic guides)
+        elements: [w:ruby, w:rubyPr, w:rubyAlign, w:hps, w:hpsRaise, w:hpsBaseText, w:lid, w:dirty, w:rt, w:rubyBase]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Ruby text set above the base text in its own size, aligned by w:rubyAlign; raises the line height.
+
+      - id: run.eastAsian
+        title: East Asian layout and emphasis marks
+        elements: [w:eastAsianLayout, w:em]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Combined characters, horizontal-in-vertical text, two lines in one and emphasis marks.
+
+      - id: run.textEffects
+        title: Text effects (Word 2010)
+        description: Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
+        elements: [w14:glow, w14:shadow, w14:reflection, w14:textOutline, w14:textFill, w14:scene3d, w14:props3d,
+                   w14:alpha, w14:bevel, w14:bevelB, w14:bevelT, w14:camera, w14:contourClr, w14:extrusionClr,
+                   w14:fillToRect, w14:gradFill, w14:gs, w14:gsLst, w14:hueMod, w14:lightRig, w14:lin, w14:lum,
+                   w14:lumMod, w14:lumOff, w14:miter, w14:noFill, w14:path, w14:prstDash, w14:rot, w14:round,
+                   w14:sat, w14:satMod, w14:satOff, w14:schemeClr, w14:shade, w14:solidFill, w14:srgbClr, w14:tint]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer
+          (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).
+
+      - id: run.openType
+        title: OpenType features
+        elements: [w14:ligatures, w14:numForm, w14:numSpacing, w14:stylisticSets, w14:styleSet, w14:cntxtAlts]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: >-
+          OpenType features of the shaper (HarfBuzz, as in pptx `text.runs`): liga, clig, hlig and dlig by the ligature
+          setting, lnum or onum, pnum or tnum, ss01 to ss20 and calt.
+
+      - id: run.animated
+        title: Animated text
+        elements: [w:effect]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Screen-only effects of old Word versions (blinking, marching ants); not printed.
+
+  - id: paragraph
+    title: Paragraphs
+    features:
+      - id: paragraph.basic
+        title: Paragraphs, alignment and indentation
+        elements: [w:p, w:pPr, w:pStyle, w:jc, w:ind, w:mirrorIndents]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left,
+          center, right, justified, distributed and the Arabic kashida variants.
+
+      - id: paragraph.spacing
+        title: Line and paragraph spacing
+        elements: [w:spacing, w:contextualSpacing]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Line spacing auto (multiples of the font's single line height), exact and at least; spacing before and
+          after, auto spacing of HTML paragraphs, contextual spacing between paragraphs of the same style. How Word
+          derives single line height from the font tables is measured, not assumed.
+
+      - id: paragraph.pagination
+        title: Keep with next, keep lines together, widow control, page break before
+        elements: [w:keepNext, w:keepLines, w:widowControl, w:pageBreakBefore]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: Constraints for the page breaker (engine.pagination).
+
+      - id: paragraph.borders
+        title: Paragraph borders and shading
+        elements: [w:pBdr, w:top, w:bottom, w:left, w:right, w:between, w:bar, w:shd]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Consecutive paragraphs with identical borders share one box with w:between lines; borders sit outside the
+          text by their w:space. Shading fills the box, patterns included.
+
+      - id: paragraph.tabs
+        title: Tab stops
+        elements: [w:tabs, w:tab, w:ptab, w:defaultTabStop, w:decimalSymbol]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Left, center, right, decimal and bar tabs with leaders, cleared style tabs, default tab interval;
+          absolute position tabs (w:ptab) relative to the margins or indents.
+
+      - id: paragraph.frames
+        title: Text frames and drop caps
+        elements: [w:framePr, w:suppressOverlap]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Paragraphs with w:framePr are positioned like floating objects and text wraps around them; drop caps are
+          frames of one large letter spanning w:lines lines.
+
+      - id: paragraph.eastAsian
+        title: East Asian line breaking and character grid
+        elements: [w:kinsoku, w:wordWrap, w:overflowPunct, w:topLinePunct, w:autoSpaceDE, w:autoSpaceDN,
+                   w:textAlignment, w:snapToGrid, w:adjustRightInd, w:characterSpacingControl, w:noLineBreaksAfter,
+                   w:noLineBreaksBefore, w:strictFirstAndLastChars, w:noPunctuationKerning]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Kinsoku (characters that may not start or end a line, custom lists in settings), hanging punctuation,
+          automatic spacing between Asian and Latin text and digits, punctuation compression, and snapping to the
+          section's document grid (section.docGrid).
+
+      - id: paragraph.bidi
+        title: Right-to-left paragraphs and text direction
+        elements: [w:bidi, w:textDirection]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: Right-to-left paragraphs mirror indents and alignment; vertical text direction in frames and cells.
+
+      - id: paragraph.hyphenation
+        title: Hyphenation
+        elements: [w:autoHyphenation, w:consecutiveHyphenLimit, w:hyphenationZone, w:doNotHyphenateCaps,
+                   w:suppressAutoHyphens]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Automatic hyphenation per language with our own pattern-based hyphenator; which word breaks Word chooses
+          with its proofing dictionaries is measured on generated documents. Soft and non-breaking hyphens are run
+          content (run.content).
+
+      - id: paragraph.outline
+        title: Outline levels and collapsed headings
+        elements: [w:outlineLvl, w15:collapsed]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Feeds TOC fields and the navigation pane; collapsed headings are expanded in the printed layout.
+
+      - id: paragraph.htmlDivs
+        title: HTML divisions
+        description: Paragraphs of documents that came from HTML refer to nested divisions with margins and borders.
+        elements: [w:divId, w:divs, w:div, w:divsChild, w:divBdr, w:bodyDiv, w:blockQuote, w:marLeft, w:marRight,
+                   w:marTop, w:marBottom]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Division margins add to the paragraph indents and spacing; division borders are drawn around their paragraphs.
+
+  - id: numbering
+    title: Lists and numbering
+    features:
+      - id: numbering.definitions
+        title: Numbering definitions and number formats
+        elements: [w:numbering, w:abstractNum, w:abstractNumId, w:num, w:lvl, w:lvlOverride, w:startOverride, w:start,
+                   w:lvlText, w:lvlJc, w:numFmt, w:suff, w:lvlRestart, w:isLgl, w:multiLevelType, w:nsid, w:tmpl,
+                   w:numStyleLink, w:styleLink, w:numIdMacAtCleanup, w:legacy]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Level text with %1..%9 placeholders, about 60 number formats (decimal, roman, letters, ordinal and cardinal
+          text, East Asian, Hebrew, Arabic, Thai, Hindi ...), legal numbering, suffix tab, space or nothing, number
+          alignment, the level's run and paragraph properties.
+
+      - id: numbering.counting
+        title: List counters
+        elements: [w:numPr, w:ilvl, w:numId]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Counters run per abstract numbering through the whole document (headers, footers and notes keep their own
+          state), restart by w:lvlRestart, w:startOverride and numbering instances; measured against Word because the
+          specification leaves gaps.
+
+      - id: numbering.pictureBullets
+        title: Picture bullets
+        elements: [w:numPicBullet, w:lvlPicBulletId]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: The bullet is the picture of w:numPicBullet (VML or DrawingML), sized to the paragraph's font.
+
+  - id: section
+    title: Sections and pages
+    features:
+      - id: section.page
+        title: Page size, margins and section breaks
+        elements: [w:sectPr, w:type, w:pgSz, w:pgMar, w:vAlign, w:rtlGutter, w:mirrorMargins, w:gutterAtTop,
+                   w:formProt]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Every section starts on a new page, an even or odd page (inserting a blank page) or continues on the same
+          page; orientation, margins with gutter, mirrored margins and vertical alignment of the page content.
+
+      - id: section.columns
+        title: Columns
+        elements: [w:cols, w:col]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: Equal or individual column widths with separator lines; a continuous section break balances the columns above it.
+
+      - id: section.pageBorders
+        title: Page borders
+        elements: [w:pgBorders, w:top, w:bottom, w:left, w:right, w:alignBordersAndEdges, w:bordersDoNotSurroundHeader,
+                   w:bordersDoNotSurroundFooter]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Line borders and the 165 art borders of the format catalog, measured from the page edge or the text,
+          on all pages, the first page or all but the first.
+
+      - id: section.lineNumbers
+        title: Line numbers
+        elements: [w:lnNumType, w:suppressLineNumbers]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Numbers in the left margin per line, restarting per page, section or never, every n-th line.
+
+      - id: section.pageNumbers
+        title: Page numbering
+        elements: [w:pgNumType, w:pgNum]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Number format and restart per section, chapter numbers from heading styles; PAGE fields read them.
+
+      - id: section.docGrid
+        title: Document grid
+        elements: [w:docGrid]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Line pitch (lines snap to the grid) and character pitch, the default of East Asian templates; changes the
+          line height of every paragraph that snaps to the grid.
+
+      - id: section.printing
+        title: Printer and book fold settings
+        elements: [w:paperSrc, w:printerSettings, w:bookFoldPrinting, w:bookFoldPrintingSheets, w:bookFoldRevPrinting,
+                   w:printTwoOnOne]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: Printer trays are ignored; book fold and two pages per sheet change the page geometry and are measured.
+
+  - id: headerFooter
+    title: Headers and footers
+    features:
+      - id: headerFooter.parts
+        title: Headers and footers
+        elements: [w:hdr, w:ftr, w:headerReference, w:footerReference, w:titlePg, w:evenAndOddHeaders]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          First, even and default headers per section, inherited from the previous section when missing; laid out by
+          the same engine at w:header/w:footer distance. A header taller than the top margin pushes the body down.
+
+  - id: note
+    title: Footnotes and endnotes
+    features:
+      - id: note.footnotes
+        title: Footnotes
+        elements: [w:footnotes, w:footnote, w:footnoteReference, w:footnoteRef, w:footnotePr, w:separator,
+                   w:continuationSeparator, w:pos, w:numStart, w:numRestart, w:numFmt, w15:footnoteColumns]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Footnotes go to the bottom of the page of their reference (or below the text), continue on the next page
+          with the continuation separator when they do not fit, and take space from the body (engine.pagination).
+
+      - id: note.endnotes
+        title: Endnotes
+        elements: [w:endnotes, w:endnote, w:endnoteReference, w:endnoteRef, w:endnotePr, w:noEndnote]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Collected at the end of the section or the document.
+
+  - id: table
+    title: Tables
+    features:
+      - id: table.structure
+        title: Rows, cells, merged cells and nested tables
+        elements: [w:tbl, w:tblPr, w:tblGrid, w:gridCol, w:tr, w:trPr, w:tc, w:tcPr, w:tblPrEx, w:gridSpan, w:vMerge,
+                   w:hMerge, w:gridBefore, w:gridAfter, w:wBefore, w:wAfter, w:hidden, w:bidiVisual]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Grid columns, horizontal spans, vertical merges, rows that skip grid columns, right-to-left tables.
+
+      - id: table.width
+        title: Table and column widths (autofit)
+        elements: [w:tblW, w:tcW, w:tblLayout, w:tblInd, w:jc, w:tblCellSpacing, w:tblCellMar, w:tcMar, w:top, w:bottom,
+                   w:left, w:right, w:start, w:end, w:noWrap, w:tcFitText]
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: >-
+          Fixed layout uses the grid; autofit layout computes column widths from the content's minimum and maximum
+          widths like Word, which the specification does not describe: measured with generated tables
+          (engine.tableLayout).
+
+      - id: table.rows
+        title: Row height, splitting and header rows
+        elements: [w:trHeight, w:cantSplit, w:tblHeader]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: Exact and minimum row heights; rows split across pages unless w:cantSplit; header rows repeat on every page.
+
+      - id: table.borders
+        title: Table and cell borders and shading
+        elements: [w:tblBorders, w:tcBorders, w:insideH, w:insideV, w:tl2br, w:tr2bl, w:top, w:bottom, w:left, w:right,
+                   w:start, w:end, w:shd]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Conflicting borders of adjacent cells are resolved by the rules of ISO/IEC 29500 17.4.66 (weight, style,
+          color); with cell spacing every cell keeps its own border. Diagonal borders, shading patterns.
+
+      - id: table.styles
+        title: Table styles and conditional formatting
+        elements: [w:tblStyle, w:tblStylePr, w:tblStyleRowBandSize, w:tblStyleColBandSize, w:tblLook, w:cnfStyle,
+                   w:defaultTableStyle]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Whole table, banded rows and columns, first and last row and column and the four corner cells, applied in
+          Word's order and switched by w:tblLook.
+
+      - id: table.floating
+        title: Floating tables
+        elements: [w:tblpPr, w:tblOverlap]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: Positioned like a frame; text wraps around it (engine.floats).
+
+      - id: table.cells
+        title: Cell alignment, text direction and header cells
+        elements: [w:vAlign, w:textDirection, w:hideMark, w:headers, w:header]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Vertical alignment, rotated text in cells, cells whose end mark takes no height.
+
+      - id: table.accessibility
+        title: Table title and description
+        elements: [w:tblCaption, w:tblDescription]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Alt text of the table in the HTML output.
+
+  - id: field
+    title: Fields, hyperlinks and bookmarks
+    features:
+      - id: field.structure
+        title: Simple and complex fields
+        elements: [w:fldSimple, w:fldChar, w:instrText, w:delInstrText, w:fldData]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Show the cached result between the separate and end field characters, nested fields included; which fields
+          Word recomputes when it prints (PAGE, NUMPAGES ...) is measured (field.evaluation).
+
+      - id: field.evaluation
+        title: Field evaluation
+        description: >-
+          The 72 field codes of the format catalog (field-codes.md): page and section numbers, references, sequences,
+          dates, document properties, formulas, IF, TOC and index entries.
+        elements: [w:docVars, w:docVar, w:updateFields, w:listSeparator]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Page-dependent fields (PAGE, NUMPAGES, SECTIONPAGES, PAGEREF, STYLEREF in headers) are computed after
+          pagination; others keep their cached result unless Word is measured to update them.
+
+      - id: field.hyperlinks
+        title: Hyperlinks
+        elements: [w:hyperlink, a:hlinkClick, a:hlinkHover, a:hlinkMouseOver, a:snd, ahyp:hlinkClr]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: HTML links on the text and on drawings (as pptx `interactivity.hyperlinks`, done); bookmarks become anchors.
+
+      - id: field.bookmarks
+        title: Bookmarks
+        elements: [w:bookmarkStart, w:bookmarkEnd]
+        priority: P1
+        difficulty: 1
+        status: todo
+        strategy: HTML anchors; REF and PAGEREF fields and hyperlinks refer to them.
+
+      - id: field.forms
+        title: Legacy form fields
+        elements: [w:ffData, w:name, w:enabled, w:calcOnExit, w:entryMacro, w:exitMacro, w:helpText, w:statusText,
+                   w:checkBox, w:size, w:sizeAuto, w:default, w:checked, w:ddList, w:result, w:listEntry, w:textInput,
+                   w:type, w:maxLength, w:format, w:label, w:doNotShadeFormData, w:formsDesign, w:printFormsData,
+                   w:saveFormsData]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Text fields show their result, check boxes a box in their size (checked or not), drop-downs the selected entry.
+
+      - id: field.citations
+        title: Citations and bibliography
+        namespaces: [b]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: CITATION and BIBLIOGRAPHY fields show their cached results; the sources part is data.
+
+  - id: sdt
+    title: Content controls and custom markup
+    features:
+      - id: sdt.structure
+        title: Content controls
+        elements: [w:sdt, w:sdtPr, w:sdtContent, w:sdtEndPr, w:alias, w:tag, w:id, w:lock, w:placeholder,
+                   w:showingPlcHdr, w:temporary, w:tabIndex, w:docPart, w:alwaysShowPlaceholderText, w15:appearance,
+                   w15:color]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Block, row, cell and inline content controls render their content; frames and tags are screen-only.
+
+      - id: sdt.types
+        title: Content control types
+        elements: [w:text, w:richText, w:comboBox, w:dropDownList, w:listItem, w:date, w:dateFormat, w:calendar,
+                   w:storeMappedDataAs, w:picture, w:equation, w:group, w:citation, w:bibliography, w:docPartObj,
+                   w:docPartList, w:docPartGallery, w:docPartCategory, w:docPartUnique, w14:checkbox, w14:checked,
+                   w14:checkedState, w14:uncheckedState, w14:entityPicker, w15:repeatingSection,
+                   w15:repeatingSectionItem, w15:doNotAllowInsertDeleteSection, w15:sectionTitle]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: The content is already in the document; check boxes show the symbol of their state.
+
+      - id: sdt.dataBinding
+        title: Data binding
+        elements: [w:dataBinding, w15:dataBinding]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Bound content controls take their text from the custom XML part (XPath); whether Word refreshes the
+          document's text from the part when it opens is measured.
+
+      - id: sdt.customXml
+        title: Custom XML markup and smart tags
+        elements: [w:customXml, w:customXmlPr, w:attr, w:smartTag, w:smartTagPr, w:showXMLTags]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Transparent containers; their content renders as if they were not there.
+
+  - id: review
+    title: Comments, revisions and proofing
+    features:
+      - id: review.comments
+        title: Comments
+        elements: [w:comments, w:comment, w:commentRangeStart, w:commentRangeEnd, w:commentReference,
+                   w:annotationRef, w15:commentsEx, w15:commentEx, w15:people, w15:person, w15:presenceInfo]
+        namespaces: [w16cid, w16cex, w16cei]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Shown next to the pages (not on them) with their ranges highlighted; whether and how Word's PDF export
+          includes comments is measured.
+
+      - id: review.revisions
+        title: Tracked changes
+        elements: [w:ins, w:del, w:moveFrom, w:moveTo, w:moveFromRangeStart, w:moveFromRangeEnd, w:moveToRangeStart,
+                   w:moveToRangeEnd, w:delText, w:rPrChange, w:pPrChange, w:sectPrChange, w:tblPrChange,
+                   w:tblPrExChange, w:trPrChange, w:tcPrChange, w:tblGridChange, w:cellIns, w:cellDel, w:cellMerge,
+                   w:numberingChange, w:customXml*Range*, w14:conflictIns, w14:conflictDel, w14:customXmlConflict*,
+                   w:trackRevisions, w:revisionView, w:doNotTrackMoves, w:doNotTrackFormatting]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Render the document with all changes accepted (final view); a markup view with colored insertions,
+          struck deletions and change bars follows Word's simple and all markup views.
+
+      - id: review.permissions
+        title: Editing permissions
+        elements: [w:permStart, w:permEnd]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered.
+
+      - id: review.proofing
+        title: Proofing state
+        elements: [w:proofErr, w:noProof, w:proofState, w:hideSpellingErrors, w:hideGrammaticalErrors,
+                   w:activeWritingStyle]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Not rendered; spelling marks are screen-only.
+
+  - id: drawing
+    title: Drawing objects in text
+    description: How DrawingML objects sit in the text flow; what they draw is the shared DrawingML renderer.
+    features:
+      - id: drawing.inline
+        title: Inline objects
+        elements: [w:drawing, wp:inline, wp:extent, wp:effectExtent, wp:docPr, wp:cNvGraphicFramePr]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: An inline object is one box on the line, standing on the baseline, its effect extent added around it.
+
+      - id: drawing.anchor
+        title: Floating objects and their position
+        elements: [wp:anchor, wp:simplePos, wp:positionH, wp:positionV, wp:posOffset, wp:align, wp14:pctPosHOffset,
+                   wp14:pctPosVOffset, wp14:sizeRelH, wp14:sizeRelV, wp14:pctWidth, wp14:pctHeight]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          Positioned relative to page, margin, column, paragraph, line or character, by offset or alignment, sized
+          relative to the page or margins; behind or in front of text, stacked by relativeHeight, kept inside table
+          cells with layoutInCell.
+
+      - id: drawing.wrap
+        title: Text wrapping around objects
+        elements: [wp:wrapNone, wp:wrapSquare, wp:wrapTight, wp:wrapThrough, wp:wrapTopAndBottom, wp:wrapPolygon,
+                   wp:start, wp:lineTo]
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: Square, tight and through wrapping along the wrap polygon, top and bottom, with wrap distances (engine.floats).
+
+      - id: drawing.shapes
+        title: Word shapes
+        elements: [wps:wsp, wps:cNvPr, wps:cNvSpPr, wps:cNvCnPr, wps:spPr, wps:style, wps:bodyPr, wp:wsp, wp:cNvPr,
+                   wp:cNvSpPr, wp:cNvCnPr, wp:spPr, wp:style, wp:bodyPr]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Geometry, fill, line and effects through the shared DrawingML renderer (shape, fill, line and effect areas).
+
+      - id: drawing.textBoxes
+        title: Text boxes
+        elements: [wps:txbx, wps:linkedTxbx, wp:txbx, wp:linkedTxbx, wp:txbxContent, w:txbxContent,
+                   w:textboxTightWrap]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: >-
+          The content is WordprocessingML laid out by our engine inside the shape's text rectangle (bodyPr insets,
+          anchoring, rotation, autofit); linked text boxes continue the text from one box to the next.
+
+      - id: drawing.groups
+        title: Groups
+        elements: [wpg:wgp, wpg:cNvGrpSpPr, wpg:grpSpPr, wpg:grpSp, wpg:cNvPr, wpg:cNvFrPr, wpg:graphicFrame, wpg:xfrm,
+                   wpg:extLst, wp:wgp, wp:grpSp, wp:grpSpPr, wp:cNvGrpSpPr, wp:cNvFrPr, wp:graphicFrame, wp:xfrm]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Child transforms as pptx `shape.group` (done); children may be pictures, shapes, text boxes and graphic frames.
+
+      - id: drawing.canvas
+        title: Drawing canvas
+        elements: [wpc:wpc, wpc:bg, wpc:whole, wpc:graphicFrame, wp:wpc, wp:bg, wp:whole, lc:lockedCanvas]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: A canvas is a group with its own background and outline.
+
+      - id: drawing.ink
+        title: Ink
+        elements: [w14:contentPart, w14:nvContentPartPr, w14:cNvPr, w14:cNvContentPartPr, w14:xfrm, w:contentPart,
+                   wp:contentPart, wp:nvContentPartPr, wp:cNvContentPartPr]
+        priority: P3
+        difficulty: 4
+        status: todo
+        strategy: Ink content parts drawn as in pptx `picture.ink` (done).
+
+      - id: drawing.onlineVideo
+        title: Online video
+        elements: [wp15:webVideoPr, woe:oembed]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: The poster picture with a link to the video; the printed layout shows the poster only.
+
+  - id: theme
+    title: Themes and styles
+    features:
+      - id: theme.colors
+        title: Theme color scheme
+        elements: [a:theme, a:themeElements, a:clrScheme, a:dk1, a:lt1, a:dk2, a:lt2, a:accent?, a:hlink, a:folHlink,
+                   w:clrSchemeMapping]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.colors` (done).
+
+      - id: theme.fonts
+        title: Theme fonts
+        elements: [a:fontScheme, a:majorFont, a:minorFont, a:font]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.fonts` (done).
+
+      - id: theme.formatScheme
+        title: Theme formats (style matrix)
+        elements: [a:fmtScheme, a:fillStyleLst, a:lnStyleLst, a:effectStyleLst, a:effectStyle, a:bgFillStyleLst]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.formatScheme` (done).
+
+      - id: theme.styleRefs
+        title: Shape style references
+        elements: [a:style, a:lnRef, a:fillRef, a:effectRef, a:fontRef, pic14:style]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.styleRefs` (done).
+
+      - id: theme.override
+        title: Theme overrides
+        elements: [a:themeOverride]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.override` (done).
+
+      - id: theme.editorData
+        title: Object defaults, extra and custom colors
+        elements: [a:objectDefaults, a:spDef, a:lnDef, a:txDef, a:extraClrSchemeLst, a:extraClrScheme, a:custClrLst,
+                   a:custClr, a:clrMap, thm15:themeFamily]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `theme.editorData` (done).
+
+  - id: color
+    title: Colors
+    features:
+      - id: color.models
+        title: Color models
+        elements: [a:srgbClr, a:schemeClr, a:sysClr, a:prstClr, a:hslClr, a:scrgbClr]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `color.models` (done).
+
+      - id: color.transforms
+        title: Color transforms
+        elements: [a:alpha, a:alphaMod, a:alphaOff, a:lum, a:lumMod, a:lumOff, a:tint, a:shade, a:sat, a:satMod,
+                   a:satOff, a:hue, a:hueMod, a:hueOff, a:red, a:redMod, a:redOff, a:green, a:greenMod, a:greenOff,
+                   a:blue, a:blueMod, a:blueOff, a:gray, a:inv, a:comp, a:gamma, a:invGamma]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `color.transforms` (done).
+
+  - id: shape
+    title: Shapes and geometry
+    features:
+      - id: shape.basic
+        title: Shapes
+        elements: [a:sp, a:nvSpPr, a:cNvSpPr, a:spPr]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.basic` (done).
+
+      - id: shape.accessibility
+        title: Names, alt text, hidden and decorative shapes
+        elements: [a:cNvPr, adec:decorative]
+        priority: P1
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.accessibility` (done).
+
+      - id: shape.transform
+        title: Position, size, rotation and flip
+        elements: [a:xfrm, a:off, a:ext, a:chOff, a:chExt]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.transform` (done).
+
+      - id: shape.group
+        title: Groups
+        elements: [a:grpSp, a:nvGrpSpPr, a:cNvGrpSpPr, a:grpSpPr, a15:nonVisualGroupProps, a14:isCanvas,
+                   lc:lockedCanvas]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.group` (done).
+
+      - id: shape.presetGeometry
+        title: Preset geometries
+        description: 187 preset shapes (rect, roundRect, arrows, callouts, flowchart symbols, stars …).
+        elements: [a:prstGeom, a:avLst, a:gd]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.presetGeometry` (done).
+
+      - id: shape.customGeometry
+        title: Custom geometry (freeforms)
+        elements: [a:custGeom, a:gdLst, a:ahLst, a:ahXY, a:ahPolar, a:cxnLst, a:cxn, a:pos, a:rect, a:pathLst, a:path,
+                   a:moveTo, a:lnTo, a:arcTo, a:quadBezTo, a:cubicBezTo, a:close, a:pt]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.customGeometry` (done).
+
+      - id: shape.connectors
+        title: Connectors
+        elements: [a:cxnSp, a:nvCxnSpPr, a:cNvCxnSpPr, a:stCxn, a:endCxn]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.connectors` (done).
+
+      - id: shape.graphicFrame
+        title: Graphic frames
+        elements: [a:graphicFrame, a:nvGraphicFramePr, a:cNvGraphicFramePr, a:graphic, a:graphicData]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.graphicFrame` (done).
+
+      - id: shape.locks
+        title: Locks
+        elements: [a:spLocks, a:grpSpLocks, a:picLocks, a:cxnSpLocks, a:graphicFrameLocks, a14:cpLocks, a:cpLocks]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.locks` (done).
+
+      - id: shape.sketched
+        title: Sketched outlines
+        namespaces: [ask]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.sketched` (done).
+
+      - id: shape.classification
+        title: Sensitivity label markings
+        elements: [aclsh:classification]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `shape.classification` (done).
+
+  - id: fill
+    title: Fills
+    features:
+      - id: fill.solid
+        title: No fill and solid fill
+        elements: [a:noFill, a:solidFill]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `fill.solid` (done).
+
+      - id: fill.gradient
+        title: Gradient fills
+        elements: [a:gradFill, a:gsLst, a:gs, a:lin, a:path, a:tileRect, a:fillToRect]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `fill.gradient` (done).
+
+      - id: fill.pattern
+        title: Pattern fills
+        elements: [a:pattFill, a:fgClr, a:bgClr]
+        priority: P2
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `fill.pattern` (done).
+
+      - id: fill.picture
+        title: Picture and texture fills
+        elements: [a:blipFill, a:blip, a:srcRect, a:stretch, a:fillRect, a:tile, pic:blipFill]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `fill.picture` (done).
+
+      - id: fill.group
+        title: Group fill
+        elements: [a:grpFill]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `fill.group` (done).
+
+  - id: line
+    title: Lines and outlines
+    features:
+      - id: line.basic
+        title: Outline width and color
+        elements: [a:ln]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.basic` (done).
+
+      - id: line.dash
+        title: Dash styles
+        elements: [a:prstDash, a:custDash, a:ds]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.dash` (done).
+
+      - id: line.joinCap
+        title: Joins and caps
+        elements: [a:round, a:bevel, a:miter]
+        priority: P1
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.joinCap` (done).
+
+      - id: line.ends
+        title: Arrowheads
+        elements: [a:headEnd, a:tailEnd]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.ends` (done).
+
+      - id: line.compound
+        title: Compound lines
+        description: a:ln/@cmpd (double, thick-thin, thin-thick, triple).
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.compound` (done).
+
+      - id: line.fill
+        title: Gradient and pattern outlines
+        description: gradFill and pattFill inside a:ln.
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `line.fill` (done).
+
+  - id: effect
+    title: Effects
+    features:
+      - id: effect.list
+        title: Effect lists
+        elements: [a:effectLst]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.list` (done).
+
+      - id: effect.outerShadow
+        title: Outer shadow
+        elements: [a:outerShdw]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.outerShadow` (done).
+
+      - id: effect.innerShadow
+        title: Inner shadow
+        elements: [a:innerShdw]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.innerShadow` (done).
+
+      - id: effect.presetShadow
+        title: Preset shadows
+        elements: [a:prstShdw]
+        priority: P3
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.presetShadow` (done).
+
+      - id: effect.glow
+        title: Glow
+        elements: [a:glow]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.glow` (done).
+
+      - id: effect.softEdge
+        title: Soft edges
+        elements: [a:softEdge]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.softEdge` (done).
+
+      - id: effect.reflection
+        title: Reflection
+        elements: [a:reflection]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.reflection` (done).
+
+      - id: effect.blur
+        title: Blur and fill overlay
+        elements: [a:blur, a:fillOverlay]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.blur` (done).
+
+      - id: effect.dag
+        title: Effect containers (effect DAG)
+        elements: [a:effectDag, a:cont, a:effect, a:alphaOutset, a:blend, a:relOff, a:fill]
+        priority: P3
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.dag` (done).
+
+      - id: effect.scene3d
+        title: 3D scene (camera and light)
+        elements: [a:scene3d, a:camera, a:lightRig, a:rot, a:backdrop, a:anchor, a:norm, a:up]
+        priority: P2
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.scene3d` (done).
+
+      - id: effect.shape3d
+        title: 3D shape (bevel, extrusion, material)
+        elements: [a:sp3d, a:bevelT, a:bevelB, a:bevel, a:extrusionClr, a:contourClr]
+        priority: P2
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `effect.shape3d` (done).
+
+  - id: picture
+    title: Pictures and media
+    features:
+      - id: picture.basic
+        title: Pictures
+        elements: [a:pic, a:nvPicPr, a:cNvPicPr, pic:pic, pic:nvPicPr, pic:cNvPr, pic:cNvPicPr, pic:spPr,
+                   aanim:animPr]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.basic` (done).
+
+      - id: picture.formats
+        title: Raster image formats
+        description: The content type behind a:blip/@r:embed.
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.formats` (done).
+
+      - id: picture.metafiles
+        title: EMF and WMF pictures
+        priority: P1
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.metafiles` (done).
+
+      - id: picture.svg
+        title: SVG pictures
+        elements: [asvg:svgBlip]
+        priority: P0
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.svg` (done).
+
+      - id: picture.effects
+        title: Picture color effects
+        elements: [a:alphaBiLevel, a:alphaCeiling, a:alphaFloor, a:alphaInv, a:alphaMod, a:alphaModFix, a:alphaRepl,
+                   a:biLevel, a:blur, a:clrChange, a:clrFrom, a:clrTo, a:clrRepl, a:duotone, a:grayscl, a:hsl, a:lum,
+                   a:tint]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.effects` (done).
+
+      - id: picture.artistic
+        title: Artistic effects and picture corrections
+        elements: [a14:imgProps, a14:imgLayer, a14:imgEffect, a14:artistic*, a14:brightnessContrast,
+                   a14:colorTemperature, a14:saturation, a14:sharpenSoften, a14:backgroundRemoval, a14:backgroundMark,
+                   a14:foregroundMark]
+        priority: P1
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.artistic` (done).
+
+      - id: picture.ink
+        title: Ink
+        elements: [a14:contentPart, a14:nvContentPartPr, a14:cNvContentPartPr, a14:cNvPr, a14:xfrm, cdr14:contentPart,
+                   cdr14:nvContentPartPr, cdr14:cNvContentPartPr, cdr14:cNvPr, cdr14:nvPr, cdr14:xfrm]
+        namespaces: [msink]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.ink` (done).
+
+      - id: picture.model3d
+        title: 3D models
+        namespaces: [am3d, a3danim]
+        priority: P2
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.model3d` (done).
+
+      - id: picture.sources
+        title: Picture sources and formulas
+        elements: [a1611:picAttrSrcUrl, aif:imageFormula]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `picture.sources` (done).
+
+  - id: text
+    title: DrawingML text (charts, SmartArt, WordArt)
+    features:
+      - id: text.body
+        title: Text body and text box
+        elements: [a:txBody, a:bodyPr, a:txSp, a:useSpRect, dsp:txXfrm]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.body` (done).
+
+      - id: text.autofit
+        title: Autofit
+        elements: [a:noAutofit, a:normAutofit, a:spAutoFit]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.autofit` (done).
+
+      - id: text.paragraph
+        title: Paragraphs
+        elements: [a:p, a:pPr, a:endParaRPr]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.paragraph` (done).
+
+      - id: text.spacing
+        title: Line and paragraph spacing
+        elements: [a:lnSpc, a:spcBef, a:spcAft, a:spcPct, a:spcPts]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.spacing` (done).
+
+      - id: text.tabs
+        title: Tab stops
+        elements: [a:tabLst, a:tab]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.tabs` (done).
+
+      - id: text.bullets
+        title: Bullets and numbering
+        elements: [a:buAutoNum, a:buBlip, a:buChar, a:buClr, a:buClrTx, a:buFont, a:buFontTx, a:buNone, a:buSzPct,
+                   a:buSzPts, a:buSzTx]
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.bullets` (done).
+
+      - id: text.styles
+        title: List styles and the text style cascade
+        elements: [a:lstStyle, a:defPPr, a:lvl?pPr, a:defRPr]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.styles` (done).
+
+      - id: text.runs
+        title: Runs and character formatting
+        elements: [a:r, a:rPr, a:t, a:br, a:highlight]
+        priority: P0
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.runs` (done).
+
+      - id: text.fonts
+        title: Fonts per script
+        elements: [a:latin, a:ea, a:cs, a:sym]
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.fonts` (done).
+
+      - id: text.fillOutline
+        title: Text fill and outline
+        description: gradFill, blipFill, pattFill and a:ln inside run properties.
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.fillOutline` (done).
+
+      - id: text.underline
+        title: Underlines
+        elements: [a:uLn, a:uLnTx, a:uFill, a:uFillTx]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.underline` (done).
+
+      - id: text.effects
+        title: Text effects
+        description: effectLst on runs (shadow, glow, reflection, soft edges).
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.effects` (done).
+
+      - id: text.fields
+        title: Fields
+        elements: [a:fld]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.fields` (done).
+
+      - id: text.columns
+        title: Text columns
+        description: a:bodyPr/@numCol and @spcCol.
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.columns` (done).
+
+      - id: text.vertical
+        title: Vertical and rotated text
+        description: a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and @rot.
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.vertical` (done).
+
+      - id: text.warp
+        title: WordArt transforms
+        elements: [a:prstTxWarp]
+        priority: P2
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.warp` (done).
+
+      - id: text.threeD
+        title: 3D text
+        elements: [a:flatTx]
+        priority: P3
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.threeD` (done).
+
+      - id: text.rtl
+        title: Right-to-left and complex scripts
+        elements: [a:rtl]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `text.rtl` (done).
+
+  - id: chart
+    title: Charts
+    features:
+      - id: chart.part
+        title: Chart part and settings
+        elements: [c:chartSpace, c:chart, c:date1904, c:lang, c:roundedCorners, c:style, c:clrMapOvr, c:protection,
+                   c:chartObject, c:data, c:formatting, c:selection, c:userInterface, c:externalData, c:autoUpdate,
+                   c:printSettings, c:headerFooter, c:oddHeader, c:oddFooter, c:evenHeader, c:evenFooter,
+                   c:firstHeader, c:firstFooter, c:pageMargins, c:pageSetup, c:legacyDrawingHF, c:plotVisOnly,
+                   c:dispBlanksAs, c:showDLblsOverMax, c:autoTitleDeleted, c:fmtId, c16r3:dataDisplayOptions16,
+                   c16r3:dispNaAsBlank]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.part` (done).
+
+      - id: chart.data
+        title: Series and data caches
+        elements: [c:ser, c:idx, c:order, c:tx, c:cat, c:val, c:xVal, c:yVal, c:bubbleSize, c:numRef, c:numCache,
+                   c:numLit, c:strRef, c:strCache, c:strLit, c:multiLvlStrRef, c:multiLvlStrCache, c:lvl, c:pt,
+                   c:ptCount, c:v, c:f, c:formatCode, c:name, c16:numCache, c16:strCache, c16:multiLvlStrCache,
+                   c16ac:multiLvlStrLit, c16r2:formatcode2, c15:filtered*, c15:fullRef, c15:formulaRef, c15:levelRef,
+                   c15:sqref, c15:xForSave, c15:ser, c15:tx, c15:cat, c15:f, c15:autoCat,
+                   c15:categoryFilterException*, c16:categoryFilterException*, c16:uniqueId, c16:uniqueID,
+                   c16:ptentry, c16:ptidx, c16:datapointuniqueidmap]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.data` (done).
+
+      - id: chart.barColumn
+        title: Bar and column charts
+        elements: [c:barChart, c:bar3DChart, c:barDir, c:grouping, c:gapWidth, c:overlap, c:shape, c:varyColors,
+                   c:invertIfNegative, c15:invertIfNegative, c16:invertIfNegative, c14:invertSolidFillFmt]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.barColumn` (done).
+
+      - id: chart.line
+        title: Line charts
+        elements: [c:lineChart, c:line3DChart, c:marker, c:symbol, c:size, c:smooth, c:dropLines, c:hiLowLines,
+                   c:upDownBars, c:upBars, c:downBars, c15:marker, c16:marker]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.line` (done).
+
+      - id: chart.pie
+        title: Pie and doughnut charts
+        elements: [c:pieChart, c:pie3DChart, c:doughnutChart, c:ofPieChart, c:ofPieType, c:firstSliceAng, c:holeSize,
+                   c:explosion, c:splitType, c:splitPos, c:custSplit, c:secondPiePt, c:secondPieSize, c:serLines,
+                   c15:explosion, c16:explosion]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.pie` (done).
+
+      - id: chart.area
+        title: Area charts
+        elements: [c:areaChart, c:area3DChart]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.area` (done).
+
+      - id: chart.scatterBubble
+        title: Scatter and bubble charts
+        elements: [c:scatterChart, c:scatterStyle, c:bubbleChart, c:bubble3D, c:bubbleScale, c:showNegBubbles,
+                   c:sizeRepresents, c15:bubble3D, c16:bubble3D]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.scatterBubble` (done).
+
+      - id: chart.radar
+        title: Radar charts
+        elements: [c:radarChart, c:radarStyle]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.radar` (done).
+
+      - id: chart.stock
+        title: Stock charts
+        elements: [c:stockChart]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.stock` (done).
+
+      - id: chart.surface
+        title: Surface charts
+        elements: [c:surfaceChart, c:surface3DChart, c:wireframe, c:bandFmts, c:bandFmt]
+        priority: P3
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.surface` (done).
+
+      - id: chart.axes
+        title: Axes, gridlines and number formats
+        elements: [c:catAx, c:valAx, c:dateAx, c:serAx, c:axId, c:axPos, c:scaling, c:orientation, c:max, c:min,
+                   c:logBase, c:delete, c:majorGridlines, c:minorGridlines, c:majorTickMark, c:minorTickMark,
+                   c:tickLblPos, c:crossAx, c:crosses, c:crossesAt, c:crossBetween, c:majorUnit, c:minorUnit,
+                   c:dispUnits, c:builtInUnit, c:custUnit, c:dispUnitsLbl, c:auto, c:lblAlgn, c:lblOffset,
+                   c:noMultiLvlLbl, c:tickLblSkip, c:tickMarkSkip, c:baseTimeUnit, c:majorTimeUnit, c:minorTimeUnit,
+                   c:numFmt, c15:numFmt]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.axes` (done).
+
+      - id: chart.labels
+        title: Data labels
+        elements: [c:dLbls, c:dLbl, c:dLblPos, c:showLegendKey, c:showVal, c:showCatName, c:showSerName,
+                   c:showPercent, c:showBubbleSize, c:separator, c:showLeaderLines, c:leaderLines, c15:dLbl,
+                   c15:layout, c15:dlblFieldTable, c15:dlblFieldTableCache, c15:dlblFTEntry, c15:dlblRangeCache,
+                   c15:datalabelsRange, c15:showDataLabelsRange, c15:showLeaderLines, c15:leaderLines, c15:txfldGUID,
+                   c15:spPr, c16:dLbl]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.labels` (done).
+
+      - id: chart.titleLegend
+        title: Titles, legend and layout
+        elements: [c:title, c:rich, c:overlay, c:layout, c:manualLayout, c:layoutTarget, c:xMode, c:yMode, c:wMode,
+                   c:hMode, c:x, c:y, c:w, c:h, c:legend, c:legendPos, c:legendEntry, c:plotArea]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.titleLegend` (done).
+
+      - id: chart.dataTable
+        title: Data tables
+        elements: [c:dTable, c:showHorzBorder, c:showVertBorder, c:showOutline, c:showKeys]
+        priority: P3
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.dataTable` (done).
+
+      - id: chart.formatting
+        title: Chart formatting, chart styles and colors
+        elements: [c:spPr, c:txPr, c:dPt, c:pictureOptions, c:applyToFront, c:applyToSides, c:applyToEnd,
+                   c:pictureFormat, c:pictureStackUnit, c14:spPr, c14:style, c16:spPr]
+        namespaces: [cs]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.formatting` (done).
+
+      - id: chart.threeD
+        title: 3D charts
+        elements: [c:view3D, c:rotX, c:rotY, c:depthPercent, c:rAngAx, c:perspective, c:hPercent, c:floor, c:sideWall,
+                   c:backWall, c:thickness, c:gapDepth]
+        priority: P2
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.threeD` (done).
+
+      - id: chart.analysis
+        title: Trendlines and error bars
+        elements: [c:trendline, c:trendlineType, c:period, c:forward, c:backward, c:intercept, c:dispRSqr, c:dispEq,
+                   c:trendlineLbl, c:errBars, c:errDir, c:errBarType, c:errValType, c:noEndCap, c:plus, c:minus]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.analysis` (done).
+
+      - id: chart.userShapes
+        title: Shapes drawn on charts
+        elements: [c:userShapes]
+        namespaces: [cdr]
+        priority: P3
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.userShapes` (done).
+
+      - id: chart.pivot
+        title: Pivot chart settings
+        elements: [c:pivotSource, c:pivotFmts, c:pivotFmt, c15:pivotSource, c16:pivotOptions16,
+                   c16:showExpandCollapseFieldButtons, c14:dropZone*, c14:pivotOptions]
+        priority: P3
+        difficulty: 1
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.pivot` (done).
+
+      - id: chart.ex
+        title: Office 2016 charts (chartex)
+        description: Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and region map.
+        namespaces: [cx]
+        priority: P2
+        difficulty: 4
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `chart.ex` (done).
+
+  - id: smartart
+    title: SmartArt
+    features:
+      - id: smartart.drawing
+        title: Saved SmartArt drawing
+        elements: [dgm:relIds]
+        namespaces: [dsp]
+        priority: P1
+        difficulty: 2
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `smartart.drawing` (done).
+
+      - id: smartart.data
+        title: SmartArt data model
+        elements: [dgm:dataModel, dgm:ptLst, dgm:pt, dgm:prSet, dgm:presLayoutVars, dgm:orgChart, dgm:chMax,
+                   dgm:chPref, dgm:bulletEnabled, dgm:dir, dgm:hierBranch, dgm:animOne, dgm:animLvl,
+                   dgm:resizeHandles, dgm:cxnLst, dgm:cxn, dgm:t, dgm:spPr, dgm:whole, dgm:bg]
+        namespaces: [dgm14, dgm1611, dgm1612]
+        priority: P2
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `smartart.data` (done).
+
+      - id: smartart.layout
+        title: SmartArt layout engine
+        elements: [dgm:layoutDef, dgm:layoutNode, dgm:alg, dgm:param, dgm:shape, dgm:adjLst, dgm:adj, dgm:presOf,
+                   dgm:constrLst, dgm:constr, dgm:ruleLst, dgm:rule, dgm:varLst, dgm:forEach, dgm:choose, dgm:if,
+                   dgm:else, dgm:sampData, dgm:styleData, dgm:clrData, dgm:catLst, dgm:cat, dgm:title, dgm:desc]
+        priority: P3
+        difficulty: 5
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `smartart.layout` (done).
+
+      - id: smartart.styles
+        title: SmartArt styles and color definitions
+        elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d, dgm:txPr, dgm:style, dgm:colorsDef,
+                   dgm:fillClrLst, dgm:linClrLst, dgm:effectClrLst, dgm:txLinClrLst, dgm:txFillClrLst,
+                   dgm:txEffectClrLst]
+        priority: P3
+        difficulty: 3
+        status: todo
+        strategy: Shared DrawingML renderer, as pptx `smartart.styles` (done).
+
+  - id: math
+    title: Equations (Office Math)
+    features:
+      - id: math.equations
+        title: Equations
+        description: Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
+        elements: [w:oMath, a14:m]
+        namespaces: [m]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          The OMML layout of pptx `text.math` (done) with Word's paragraph context: display equations take their
+          own lines and justification, inline equations sit on the text baseline, long display equations break at
+          operators.
+
+      - id: math.settings
+        title: Document math settings
+        elements: [m:mathPr, m:mathFont, m:brkBin, m:brkBinSub, m:smallFrac, m:dispDef, m:lMargin, m:rMargin, m:defJc,
+                   m:preSp, m:postSp, m:interSp, m:intraSp, m:wrapIndent, m:wrapRight, m:intLim, m:naryLim]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Defaults for all equations of the document (math font, break rules, margins, limits placement).
+
+  - id: vml
+    title: Legacy VML content
+    features:
+      - id: vml.shapes
+        title: VML shapes, text boxes and WordArt
+        elements: [w:pict, w10:wrap, w10:anchorlock, w10:bordertop, w10:borderleft, w10:borderbottom, w10:borderright]
+        namespaces: [v, o]
+        priority: P1
+        difficulty: 4
+        status: todo
+        strategy: >-
+          The VML renderer of pptx `legacy.vml` (done), positioned in the text flow by the style attribute
+          (mso-position-*) and w10:wrap; VML text boxes hold WordprocessingML like wps text boxes.
+
+      - id: vml.ole
+        title: Embedded objects and controls
+        elements: [w:object, w:objectEmbed, w:objectLink, w:control, w:movie, o:OLEObject, a15:objectPr,
+                   a15:signatureLine]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: >-
+          OLE objects, ActiveX controls and signature lines show their preview picture (often EMF or WMF, see
+          picture.metafiles), as pptx `picture.ole` (done).
+
+      - id: vml.watermarks
+        title: Watermarks
+        description: Text or picture watermarks are VML shapes in the header, centered on the page behind the text.
+        elements: [v:shape, v:textpath, v:imagedata]
+        priority: P1
+        difficulty: 3
+        status: todo
+        strategy: Text watermarks are VML WordArt (v:textpath) scaled to their box; picture watermarks are washed-out pictures.
+
+  - id: engine
+    title: Layout engine (cross-cutting)
+    description: Features without elements of their own that decide the fidelity of everything else.
+    features:
+      - id: engine.output
+        title: HTML output
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          One self-contained HTML file: fixed-size page boxes with absolutely positioned glyph runs, SVG for
+          drawings, embedded fonts and pictures; print CSS keeps one page per sheet.
+
+      - id: engine.pagination
+        title: Pagination
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: >-
+          Page breaking with widow and orphan control, keep with next, keep lines together, page and column breaks,
+          table rows that split or repeat, footnotes that share the page with their references, section breaks of
+          all types and continuous sections with balanced columns.
+
+      - id: engine.lineLayout
+        title: Line layout
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: >-
+          The text engine of pptx `engine.textLayout` (done) extended by Word's rules: line height from the font's
+          metrics and line spacing, tabs, justification, East Asian grid and kinsoku, hyphenation, inline objects,
+          lines shortened by floating objects.
+
+      - id: engine.floats
+        title: Floating objects and text wrapping
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: >-
+          Anchored objects, frames and floating tables are placed first, then lines are broken into the space
+          around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
+
+      - id: engine.tableLayout
+        title: Table layout
+        priority: P0
+        difficulty: 5
+        status: todo
+        strategy: Word's autofit algorithm, measured against generated tables, and rows that span pages.
+
+      - id: engine.fonts
+        title: Font resolution and fallback
+        priority: P0
+        difficulty: 4
+        status: todo
+        strategy: As pptx `engine.fonts` (done) with Word's font substitution (font.table).
+
+      - id: engine.fidelity
+        title: Fidelity measurement
+        priority: P0
+        difficulty: 3
+        status: todo
+        strategy: >-
+          Word (COM) exports every reference document to PDF; its pages are rasterized and compared with our pages
+          like the PowerPoint references, on documents Word generates by COM and on external test documents.

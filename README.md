@@ -8,7 +8,9 @@ does not depend on Office.
 The goal is fidelity, not approximation: every rule the engine follows was measured against PowerPoint. The test
 suite renders each slide with PowerPoint and with FreeSlate and compares the two images.
 
-FreeSlate is meant to grow into the foundation of an open document editor; DOCX support is planned next.
+FreeSlate is meant to grow into the foundation of an open document editor; DOCX support comes next. The
+[Word feature catalog](catalog/features/docx.md) already assigns all 2,093 elements a DOCX file can contain to 194
+features.
 
 ## Status
 

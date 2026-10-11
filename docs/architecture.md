@@ -109,7 +109,8 @@ Two catalogs drive and document the work:
 
 - The format catalog (`catalog/format/`) lists every element, attribute and type of PPTX and DOCX, generated from
   the schemas of ECMA-376 and the Microsoft Open Specifications by `tools/SpecTools`.
-- The feature catalog (`catalog/features/pptx.yaml`) groups those elements into 146 features with priority,
-  difficulty, rendering strategy, status and the PowerPoint behavior measured for each. `tools/SpecTools features`
-  checks that every element is assigned and writes [pptx.md](../catalog/features/pptx.md). Source comments refer to
+- The feature catalogs (`catalog/features/pptx.yaml`, `catalog/features/docx.yaml`) group those elements into
+  features (146 for PowerPoint, 194 for Word) with priority, difficulty, rendering strategy, status and the Office
+  behavior measured for each. `tools/SpecTools features` checks that every element is assigned and writes
+  [pptx.md](../catalog/features/pptx.md) and [docx.md](../catalog/features/docx.md). Source comments refer to
   features by their id (`catalog: chart.formatting`).
