@@ -57,6 +57,9 @@ public sealed class PageBox
     /// <summary>Floating drawings anchored on the page (catalog: drawing.anchor).</summary>
     public List<PlacedDrawing> Drawings { get; } = [];
 
+    /// <summary>The areas floating tables keep free of text on the page (catalog: table.floating).</summary>
+    public List<Paginator.Exclusion> FloatingTables { get; } = [];
+
     /// <summary>The page's border (catalog: section.pageBorders), or null.</summary>
     public PageBorderBox? Border { get; set; }
 
@@ -194,6 +197,69 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
     }
 
+    /// <summary>
+    /// A floating table (w:tblpPr, catalog: table.floating), measured with docx/local/float-tables: it takes no room in
+    /// the text; its outer left edge stands w:tblpX from its column (horzAnchor text), the margin or the page, or it
+    /// aligns left, right, centered, inside or outside (w:tblpXSpec); its top stands w:tblpY below the top of the
+    /// paragraph after it (vertAnchor text), the top margin or the page, or aligns (w:tblpYSpec); text wraps around it
+    /// on both sides, kept w:leftFromText, w:rightFromText, w:topFromText and w:bottomFromText away.
+    /// </summary>
+    void PlaceFloatingTable(List<Block> blocks, int index, XElement position, TableBox box, double left, double width)
+    {
+        double Twips(string name) => position.Twips(name) ?? 0;
+        var height = box.Rows.Sum(r => r.Height) + (box.Rows.Count > 0 ? box.Rows[^1].BottomBorderWidth : 0);
+        var tableWidth = box.Width;
+        var (frameLeft, frameWidth) = position.Attr("horzAnchor") switch
+        {
+            "page" => (0.0, page!.Width),
+            "margin" => (page!.TextLeft, page.TextWidth),
+            _ => (left, width),
+        };
+        // The top of the paragraph after the table, where its space before ends.
+        var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
+        var textTop = y + (columnEmpty ? 0 : Math.Max(pendingAfter, next != null ? SpaceBefore(next) : 0));
+        var (frameTop, frameHeight) = position.Attr("vertAnchor") switch
+        {
+            "page" => (0.0, page!.Height),
+            "margin" => (page!.BodyTop, page.BodyBottom - page.BodyTop),
+            _ => (textTop, 0.0),
+        };
+        var odd = page!.DisplayNumber % 2 == 1;
+        var x = position.Attr("tblpXSpec") switch
+        {
+            "left" => frameLeft,
+            "right" => frameLeft + frameWidth - tableWidth,
+            "center" => frameLeft + (frameWidth - tableWidth) / 2,
+            "inside" => odd ? frameLeft : frameLeft + frameWidth - tableWidth,
+            "outside" => odd ? frameLeft + frameWidth - tableWidth : frameLeft,
+            _ => frameLeft + Twips("tblpX"),
+        };
+        var top = position.Attr("tblpYSpec") switch
+        {
+            "top" or "inside" => frameTop,
+            "bottom" or "outside" => frameTop + frameHeight - height,
+            "center" => frameTop + (frameHeight - height) / 2,
+            "inline" => textTop,
+            _ => frameTop + Twips("tblpY"),
+        };
+        // The rows at the table's place (their own offset is the table's indent, which the position replaces).
+        var rowTop = top;
+        foreach (var row in box.Rows)
+        {
+            var anchors = new List<CellAnchor>();
+            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            rowTop += row.Height;
+        }
+        if (box.Rows.Count > 0)
+        {
+            foreach (var fill in box.Rows[^1].BottomBorders)
+                page.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
+            page.Strokes.AddRange(box.Rows[^1].BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
+        }
+        page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
+            x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides"));
+    }
+
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
 
@@ -275,7 +341,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     List<Exclusion> PageExclusions()
     {
-        var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
+        var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables).ToList();
         var list = seeded.TryGetValue(page.Number, out var before)
             ? before.Where(e => !placed.Any(p => ReferenceEquals(p.Source, e.Source) && e.Source != null)).ToList()
             : [];
@@ -711,6 +777,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var table = (TableBlock)blocks[index];
         var (left, width) = Column(column);
         var box = tables.Layout(table.Table, width);
+        if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0)
+        {
+            PlaceFloatingTable(blocks, index, floating, box, left, width);
+            return;
+        }
         if (!columnEmpty)
             y += pendingAfter;
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
