@@ -38,6 +38,9 @@ public sealed class PdfText
     public List<PdfRect> Rects { get; } = [];
     public List<PdfSegment> Segments { get; } = [];
 
+    /// <summary>Drawn XObjects (pictures and forms): the unit square under the current transformation, on the page.</summary>
+    public List<PdfRect> Objects { get; } = [];
+
     static PdfText() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
     public PdfText(string path)
@@ -372,6 +375,13 @@ public sealed class PdfText
                     segments.Clear();
                     break;
                 case "n": path.Clear(); segments.Clear(); break;
+                case "Do":
+                {
+                    var (x0, y0) = ToPage(0, 0, Matrix.Identity);
+                    var (x1, y1) = ToPage(1, 1, Matrix.Identity);
+                    Objects.Add(new PdfRect(page, Math.Min(x0, x1), Math.Min(y0, y1), Math.Abs(x1 - x0), Math.Abs(y1 - y0), true, operands.Count > 0 ? Convert.ToString(operands[0], CultureInfo.InvariantCulture) ?? "" : ""));
+                    break;
+                }
             }
             operands.Clear();
         }

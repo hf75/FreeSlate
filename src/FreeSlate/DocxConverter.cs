@@ -26,6 +26,12 @@ public static class DocxConverter
         .page text{white-space:pre;font-variant-ligatures:none}
         .page text.sel{fill-opacity:0}
         .glyphs{position:absolute;left:0;top:0}
+        .page .sp{position:absolute;left:0;top:0;transform-origin:0 0}
+        .page .grp{position:absolute;left:0;top:0}
+        .page .sp>svg{position:absolute;left:0;top:0;overflow:visible}
+        .page .sp text{white-space:pre;font-variant-ligatures:none}
+        .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;overflow:hidden;padding:5px 6px;font:11px/13px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;pointer-events:none}
+        .fs-nopic svg{vertical-align:top;margin-right:5px}
         @media print{body{background:none}.page{margin:0;break-after:page}}
         """;
 
@@ -43,7 +49,8 @@ public static class DocxConverter
         var styles = new RunStyles(context);
         var layout = new ParagraphLayout(context, styles);
         var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection());
-        var renderer = new PageRenderer(context);
+        var drawings = new Drawings(context);
+        var renderer = new PageRenderer(context, drawings);
         var body = new StringBuilder();
         // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
         var papers = new List<(double Width, double Height)>();
@@ -66,7 +73,7 @@ public static class DocxConverter
         html.Append("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n");
         html.Append($"<title>{WebUtility.HtmlEncode(title)}</title>\n<meta name=\"generator\" content=\"FreeSlate\">\n");
         // Fonts the browser cannot find by name (Office cloud fonts such as Aptos) are embedded.
-        html.Append("<style>\n").Append(PptxConverter.FontFaces(context.UsedFonts, context.FontLocator)).Append(Css).Append('\n').Append(paperCss)
+        html.Append("<style>\n").Append(PptxConverter.FontFaces(context.UsedFonts.Concat(drawings.UsedFonts).Distinct(StringComparer.OrdinalIgnoreCase), context.FontLocator)).Append(Css).Append('\n').Append(paperCss)
             .Append("</style>\n</head>\n<body>\n");
         html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"document\">\n").Append(body).Append("</main>\n</body>\n</html>\n");

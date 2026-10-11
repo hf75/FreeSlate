@@ -129,6 +129,8 @@ switch (command)
                 Console.WriteLine($"  rect p{r.Page} x={r.X:0.000} y={r.Y:0.000} w={r.Width:0.000} h={r.Height:0.000} {(r.Filled ? "fill" : "stroke")} {r.Color}");
             foreach (var l in layout.Segments)
                 Console.WriteLine($"  line p{l.Page} {l.X0:0.000},{l.Y0:0.000} → {l.X1:0.000},{l.Y1:0.000} width {l.Width:0.###} {l.Color}");
+            foreach (var o in layout.Objects)
+                Console.WriteLine($"  object p{o.Page} x={o.X:0.000} y={o.Y:0.000} w={o.Width:0.000} h={o.Height:0.000} {o.Color}");
         }
         break;
     case "jxr":

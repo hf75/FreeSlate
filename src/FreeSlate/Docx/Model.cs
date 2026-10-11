@@ -141,11 +141,15 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The list counters of the story being read: the body and every header, footer and note count on their own.</summary>
     ListCounter counter = new(context.Numbering);
 
+    /// <summary>The part being read, whose relationships the drawings' pictures resolve against.</summary>
+    string currentPart = context.MainPart;
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
         var blocks = new List<Block>();
         counter = new ListCounter(context.Numbering);
+        currentPart = context.MainPart;
         if (body != null)
             ReadBlocks(body, blocks);
         return blocks;
@@ -166,11 +170,12 @@ public sealed partial class ModelReader(DocumentContext context)
         if (stories.TryGetValue(part, out var blocks))
             return blocks;
         blocks = [];
-        var bodyCounter = counter;
+        var (bodyCounter, bodyPart) = (counter, currentPart);
         counter = new ListCounter(context.Numbering);
+        currentPart = part;
         if (context.Load(part).Root is { } root)
             ReadBlocks(root, blocks);
-        counter = bodyCounter;
+        (counter, currentPart) = (bodyCounter, bodyPart);
         return stories[part] = blocks;
     }
 
@@ -342,6 +347,18 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "softHyphen":
                     if (!field.Hidden)
                         field.Target(content).Add(new TextInline("­", format));
+                    break;
+                case "drawing":
+                    if (!field.Hidden)
+                    {
+                        foreach (var d in e.Elements())
+                        {
+                            if (d.Name == Drawings.Wp + "inline")
+                                field.Target(content).Add(new DrawingInline(d, currentPart, format));
+                            else if (d.Name == Drawings.Wp + "anchor")
+                                field.Target(content).Add(new AnchorInline(d, currentPart, format));
+                        }
+                    }
                     break;
                 case "sym":
                     if (!field.Hidden && e.Attr("char") is { } code && int.TryParse(code, System.Globalization.NumberStyles.HexNumber, null, out var value))

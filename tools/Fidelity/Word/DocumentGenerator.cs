@@ -33,6 +33,7 @@ public static partial class DocumentGenerator
         ("headers-footers", HeadersFooters),
         ("tables", Tables),
         ("breaks", Breaks),
+        ("drawings", Drawings),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

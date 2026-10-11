@@ -147,7 +147,8 @@ public sealed class PresentationContext : IDisposable
     }
 
     /// <summary>Glyph outlines of the rendered text.</summary>
-    public Html.GlyphCache Glyphs { get; } = new();
+    /// <summary>The glyph outlines the output uses; a Word document's drawings share the document's.</summary>
+    public Html.GlyphCache Glyphs { get; init; } = new();
 
     public XDocument Load(string part)
     {

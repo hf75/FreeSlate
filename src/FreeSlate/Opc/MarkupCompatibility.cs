@@ -18,6 +18,12 @@ public static class MarkupCompatibility
         "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
         "http://schemas.openxmlformats.org/drawingml/2006/picture",
         "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        // Word drawings (catalog: drawing.shapes, drawing.groups, drawing.canvas): shapes, groups and canvases of
+        // Word 2010, whose VML fallback the engine does not need.
+        "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+        "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
+        "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+        "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
     ];
 
     /// <summary>

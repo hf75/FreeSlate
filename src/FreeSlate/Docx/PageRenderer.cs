@@ -9,7 +9,7 @@ namespace FreeSlate.Docx;
 /// Draws laid-out pages as SVG (catalog: engine.output): glyphs as outlines in font units placed with &lt;use&gt;,
 /// a transparent text layer on top for selection and search, decorations as rectangles.
 /// </summary>
-public sealed class PageRenderer(DocumentContext context)
+public sealed class PageRenderer(DocumentContext context, Drawings? drawings = null)
 {
     const double PxPerPt = 96.0 / 72.0;
 
@@ -30,6 +30,13 @@ public sealed class PageRenderer(DocumentContext context)
         var height = page.Height * PxPerPt;
         var svg = new StringBuilder();
         svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+        // Drawings behind the text first, the text, then inline drawings and the drawings in front of the text.
+        var front = new List<PlacedDrawing>();
+        if (drawings != null)
+        {
+            foreach (var drawing in page.Drawings.Where(d => d.Behind).OrderBy(d => d.Order))
+                svg.Append(drawings.Render(drawing));
+        }
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
         var selection = new StringBuilder();
         // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
@@ -63,6 +70,14 @@ public sealed class PageRenderer(DocumentContext context)
                         svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise));
                     continue;
                 }
+                // An inline drawing's box stands on the baseline; its extent lies inside the effect extents.
+                if (piece.Drawing is { } inline)
+                {
+                    var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
+                    var (w, h) = Drawings.Extent(inline.Drawing);
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h));
+                    continue;
+                }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
                 if (browser)
                     svg.Append(BrowserText(piece, x, baseline - piece.Style.Raise));
@@ -77,7 +92,13 @@ public sealed class PageRenderer(DocumentContext context)
                 svg.Append("</g>");
         }
         svg.Append(selection);
-        svg.Append("</svg></section>\n");
+        svg.Append("</svg>");
+        if (drawings != null)
+        {
+            foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
+                svg.Append(drawings.Render(drawing));
+        }
+        svg.Append("</section>\n");
         return svg.ToString();
     }
 

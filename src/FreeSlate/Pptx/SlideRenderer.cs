@@ -102,6 +102,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static XElement? Tree(XDocument document) => document.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree");
 
+    /// <summary>
+    /// One shape, picture, group or graphic frame in PresentationML names, drawn at its own transform (EMU from the
+    /// page's top left): the drawings of Word documents (catalog: drawing.inline, drawing.anchor).
+    /// </summary>
+    public string RenderElement(XElement element, string part)
+    {
+        var html = new StringBuilder();
+        RenderTree(new XElement(Ns.P + "spTree", element), part, html, Placement.Root, isSlide: true);
+        return html.ToString();
+    }
+
     void RenderTree(XElement? tree, string part, StringBuilder html, Placement placement, bool isSlide)
     {
         foreach (var element in tree?.Elements() ?? [])

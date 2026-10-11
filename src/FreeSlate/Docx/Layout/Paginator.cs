@@ -1,3 +1,5 @@
+using System.Xml.Linq;
+
 namespace FreeSlate.Docx.Layout;
 
 /// <summary>
@@ -46,6 +48,9 @@ public sealed class PageBox
     public List<FillRect> Shading { get; } = [];
     public List<FillRect> Borders { get; } = [];
     public List<Stroke> Strokes { get; } = [];
+
+    /// <summary>Floating drawings anchored on the page (catalog: drawing.anchor).</summary>
+    public List<PlacedDrawing> Drawings { get; } = [];
 
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
@@ -155,9 +160,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex));
                 if (p.Header != null)
-                    p.Lines.AddRange(Story(p.Header, p, fields, header: true).Lines);
+                    Story(p.Header, p, fields, header: true).AddTo(p);
                 if (p.Footer != null)
-                    p.Lines.AddRange(Story(p.Footer, p, fields, header: false).Lines);
+                    Story(p.Footer, p, fields, header: false).AddTo(p);
             }
         }
         return pages;
@@ -248,32 +253,85 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// header from w:header below the page's top edge, a footer ending w:footer above its bottom edge; where its
     /// content begins and ends.
     /// </summary>
-    (List<PlacedLine> Lines, double Top, double Bottom) Story(string part, PageBox on, PageFields? fields, bool header)
+    StoryBox Story(string part, PageBox on, PageFields? fields, bool header)
     {
         var s = on.Section;
-        var lines = new List<PlacedLine>();
+        var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
         var y = 0.0;
         double after = 0;
-        ParagraphBlock? before = null;
-        foreach (var paragraph in reader!.Story(part).OfType<ParagraphBlock>())
+        var first = true;
+        foreach (var block in reader!.Story(part))
         {
-            var gap = before == null ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
-            y += gap;
-            foreach (var line in layout.Layout(paragraph, width, fields))
+            if (block is ParagraphBlock paragraph)
             {
-                lines.Add(new PlacedLine(line, left, y));
-                y += line.Height;
+                y += first ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
+                foreach (var line in layout.Layout(paragraph, width, fields))
+                {
+                    box.Lines.Add(new PlacedLine(line, left, y));
+                    y += line.Height;
+                }
+                after = paragraph.Format.After ?? 0;
             }
-            after = paragraph.Format.After ?? 0;
-            before = paragraph;
+            else if (block is TableBlock table)
+            {
+                y += first ? 0 : after;
+                var laid = tables.Layout(table.Table, width, fields);
+                var tableTop = y;
+                foreach (var row in laid.Rows)
+                {
+                    TableLayout.Draw(row, row.Height, left, y, box.Lines, box.Shading, box.Borders, box.Strokes);
+                    y += row.Height;
+                }
+                if (laid.Rows.Count > 0)
+                {
+                    var last = laid.Rows[^1];
+                    box.Borders.AddRange(last.BottomBorders.Select(f => f with { X = left + f.X, Y = y + f.Y }));
+                    box.Strokes.AddRange(last.BottomStrokes.Select(st => st.Offset(left, y)));
+                    y += last.BottomBorderWidth;
+                }
+                TableLayout.Frame(laid, left, tableTop, y, box.Borders);
+                after = 0;
+            }
+            first = false;
         }
         y += after;
         var top = header ? s.Header : s.PageHeight - s.Footer - y;
-        for (var i = 0; i < lines.Count; i++)
-            lines[i] = lines[i] with { Top = lines[i].Top + top };
-        return (lines, top, top + y);
+        box.Move(top);
+        box.Top = top;
+        box.Bottom = top + y;
+        return box;
+    }
+
+    /// <summary>A header or footer laid out: its lines, table fills and strokes, and where its content begins and ends.</summary>
+    sealed class StoryBox
+    {
+        public List<PlacedLine> Lines { get; } = [];
+        public List<FillRect> Shading { get; } = [];
+        public List<FillRect> Borders { get; } = [];
+        public List<Stroke> Strokes { get; } = [];
+        public double Top, Bottom;
+
+        public void Move(double dy)
+        {
+            for (var i = 0; i < Lines.Count; i++)
+                Lines[i] = Lines[i] with { Top = Lines[i].Top + dy };
+            for (var i = 0; i < Shading.Count; i++)
+                Shading[i] = Shading[i] with { Y = Shading[i].Y + dy };
+            for (var i = 0; i < Borders.Count; i++)
+                Borders[i] = Borders[i] with { Y = Borders[i].Y + dy };
+            for (var i = 0; i < Strokes.Count; i++)
+                Strokes[i] = Strokes[i].Offset(0, dy);
+        }
+
+        public void AddTo(PageBox page)
+        {
+            page.Lines.AddRange(Lines);
+            page.Shading.AddRange(Shading);
+            page.Borders.AddRange(Borders);
+            page.Strokes.AddRange(Strokes);
+        }
     }
 
     (double Left, double Width) Column(int index)
@@ -372,6 +430,74 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         paragraphNumber++;
     }
 
+    /// <summary>
+    /// Where a floating drawing stands (catalog: drawing.anchor): its offset from, or its alignment in, the frame its
+    /// wp:positionH and wp:positionV name (page, margin, column, the margins on either side, the paragraph, the
+    /// line), or a percentage of it (wp14:pctPosHOffset); wp:simplePos gives the page position directly.
+    /// </summary>
+    static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double columnLeft, double columnWidth)
+    {
+        var element = anchor.Anchor;
+        var (w, h) = Docx.Drawings.Extent(element);
+        var s = page.Section;
+        double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        double x, y;
+        if ((string?)element.Attribute("simplePos") is "1" or "true" && element.Element(Docx.Drawings.Wp + "simplePos") is { } simple)
+        {
+            x = Emu((string?)simple.Attribute("x"));
+            y = Emu((string?)simple.Attribute("y"));
+        }
+        else
+        {
+            var odd = page.DisplayNumber % 2 == 1;
+            var positionH = element.Element(Docx.Drawings.Wp + "positionH");
+            var (x0, xw) = ((string?)positionH?.Attribute("relativeFrom")) switch
+            {
+                "page" => (0.0, s.PageWidth),
+                "column" or "character" => (columnLeft, columnWidth),
+                "leftMargin" => (0.0, page.TextLeft),
+                "rightMargin" => (page.TextLeft + page.TextWidth, s.PageWidth - page.TextLeft - page.TextWidth),
+                "insideMargin" => odd ? (0.0, page.TextLeft) : (page.TextLeft + page.TextWidth, s.PageWidth - page.TextLeft - page.TextWidth),
+                "outsideMargin" => odd ? (page.TextLeft + page.TextWidth, s.PageWidth - page.TextLeft - page.TextWidth) : (0.0, page.TextLeft),
+                _ => (page.TextLeft, page.TextWidth),
+            };
+            x = Position(positionH, x0, xw, w, odd, horizontal: true);
+            var positionV = element.Element(Docx.Drawings.Wp + "positionV");
+            var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
+            {
+                "page" => (0.0, s.PageHeight),
+                "paragraph" or "line" => (paragraphTop, 0.0),
+                "topMargin" => (0.0, s.Top),
+                "bottomMargin" => (s.PageHeight - s.Bottom, s.Bottom),
+                "insideMargin" => odd ? (0.0, s.Top) : (s.PageHeight - s.Bottom, s.Bottom),
+                "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
+                _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
+            };
+            y = Position(positionV, y0, yh, h, odd, horizontal: false);
+        }
+        return new PlacedDrawing(element, anchor.Part, x, y, w, h)
+        {
+            Behind = (string?)element.Attribute("behindDoc") is "1" or "true",
+            Order = long.TryParse((string?)element.Attribute("relativeHeight"), out var order) ? order : 0,
+        };
+
+        double Position(XElement? position, double origin, double size, double extent, bool odd, bool horizontal)
+        {
+            if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
+                return origin + Emu(offset);
+            if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
+                return origin + size * Emu(percent) * 12700 / 100000;
+            return position?.Element(Docx.Drawings.Wp + "align")?.Value switch
+            {
+                "right" or "bottom" => origin + size - extent,
+                "center" => origin + (size - extent) / 2,
+                "inside" => odd == horizontal ? origin : origin + size - extent,
+                "outside" => odd == horizontal ? origin + size - extent : origin,
+                _ => origin,
+            };
+        }
+    }
+
     void PlaceRow(RowBox row, double left)
     {
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
@@ -439,6 +565,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
         var hereAtTop = columnEmpty;
+        (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
         for (var k = 0; k < lines.Count; k++)
         {
             var line = lines[k];
@@ -466,6 +593,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 here = 0;
                 hereAtTop = true;
             }
+            anchorAt ??= (page!, y, left, width);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left, y));
@@ -487,6 +615,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 here = 0;
                 hereAtTop = true;
             }
+        }
+        // Floating drawings anchored in the paragraph, placed relative to its page, column, paragraph or line.
+        foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+        {
+            var (anchorPage, paragraphTop, columnLeft, columnWidth) = anchorAt ?? (page!, y, left, width);
+            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, paragraphTop, columnLeft, columnWidth));
         }
         pendingAfter = SpaceAfter(paragraph, next);
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).

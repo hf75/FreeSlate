@@ -38,6 +38,19 @@ public sealed class SlideContext
         Colors = new ColorContext(Theme, map);
     }
 
+    /// <summary>
+    /// A context for the drawings of another kind of document (a Word document's part): its theme and color map, no
+    /// layout or master (catalog: drawing.inline, shapes drawn by the slide renderer).
+    /// </summary>
+    public SlideContext(PresentationContext presentation, string part, Theme theme, IReadOnlyDictionary<string, string> colorMap)
+    {
+        Presentation = presentation;
+        SlidePart = part;
+        Slide = presentation.Load(part);
+        Theme = theme;
+        Colors = new ColorContext(theme, colorMap);
+    }
+
     public PresentationContext Presentation { get; }
     public int Number { get; }
     public string SlidePart { get; }

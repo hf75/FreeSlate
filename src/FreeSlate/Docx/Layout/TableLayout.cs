@@ -700,6 +700,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     continue;
                 var m = Margins(row, cell, format);
                 var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : CellWidths(cell.Blocks, fields);
+                // A cell that may not wrap (w:noWrap) needs its whole width.
+                if (cell.Format.NoWrap)
+                    cmin = cmax;
                 // Word measures content at most 22 inches wide, its longest line (measured with docx/local/tbl-features:
                 // a column beside one with a very long paragraph gets 52.8 pt, 51.2 pt without the limit).
                 cmax = Math.Min(cmax, 1584);
@@ -796,6 +799,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// </remarks>
     CellContent Content(CellModel cell, double width, PageFields? fields)
     {
+        // An empty cell whose end mark is hidden (w:hideMark) takes no height.
+        if (cell.Format.HideMark && cell.Blocks.All(b => b is ParagraphBlock { Content.Count: 0 }))
+            return new CellContent([], [], [], 0);
         if (!Rotated(cell))
             return Content(cell.Blocks, width, fields);
         var content = Content(cell.Blocks, Unwrapped, fields);

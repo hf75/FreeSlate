@@ -25,6 +25,9 @@ public sealed class Piece
     /// <summary>The tab's leader (dot, hyphen, underscore, heavy, middleDot) or null.</summary>
     public string? Leader { get; init; }
 
+    /// <summary>An inline drawing the piece stands for (one object replacement character), or null.</summary>
+    public DrawingInline? Drawing { get; init; }
+
     public double Width => Advances.Sum() + SpaceExtra * JustifiedSpaces;
 }
 
@@ -98,6 +101,9 @@ public sealed record PageFields(int Page, string PageFormat, int Pages, int Sect
 /// </summary>
 public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
+    /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
+    readonly Dictionary<int, DrawingInline> objects = [];
+
     /// <summary>Lays out a paragraph in a column <paramref name="width"/> points wide.</summary>
     /// <param name="fields">The page fields' values; without them, fields show the result Word saved.</param>
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null)
@@ -105,6 +111,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles);
+        foreach (var (index, drawing) in objects)
+            advances[index] = drawing.Box.Width;
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
         var labelShift = 0.0;
         var labelEnd = paragraph.Label?.Suffix == "space" ? labelLength + 1 : labelLength;
@@ -323,6 +331,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     {
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
+        objects.Clear();
 
         void AddText(string value, RunFormat format)
         {
@@ -356,6 +365,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 case FieldInline field:
                     foreach (var cached in field.Cached)
                         Add(cached);
+                    break;
+                case DrawingInline drawing:
+                    objects[text.Length] = drawing;
+                    text.Append('\uFFFC');
+                    list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
                 case TabInline:
                     text.Append('\t');
@@ -485,7 +499,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var pieceStart = start;
         for (var i = start; i <= end; i++)
         {
-            var boundary = i == end || text[i] is '\t' or '\n' or '\f' or '\v' || i > pieceStart && !ReferenceEquals(charStyles[i], charStyles[pieceStart]);
+            var boundary = i == end || text[i] is '\t' or '\n' or '\f' or '\v' || i > pieceStart && !ReferenceEquals(charStyles[i], charStyles[pieceStart])
+                || i > pieceStart && (text[i] == '\uFFFC' || text[i - 1] == '\uFFFC');
             if (!boundary)
                 continue;
             if (i > pieceStart && text[pieceStart] is not ('\t' or '\n' or '\f' or '\v'))
@@ -497,6 +512,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     X = x,
                     Advances = advances[pieceStart..i],
                     IsLabel = pieceStart < labelEnd,
+                    Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
                 };
                 line.Pieces.Add(piece);
                 x += piece.Width;
@@ -525,8 +541,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // further); an empty line takes its break's or the paragraph mark's.
         double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
         var any = false;
+        var drawings = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
+            // An inline drawing stands on the baseline: its box is all ascent; the line spacing's extra comes from
+            // the fonts (measured with docx/generated/drawings: a 90 pt picture beside 12 pt Aptos at 1.16 lines makes
+            // the line 90 + 3.38 + 2.32 pt high, a picture alone 160.5 + 2.32 pt).
+            if (piece.Drawing is { } drawing)
+            {
+                above = Math.Max(above, drawing.Box.Height);
+                raised = Math.Max(raised, drawing.Box.Height);
+                drawings = true;
+                continue;
+            }
             var (a, b) = piece.Style.Metrics;
             above = Math.Max(above, a);
             raised = Math.Max(raised, a + piece.Style.Raise);
@@ -539,7 +566,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             largest = Math.Max(largest, a + b);
             lowered = Math.Max(lowered, b - piece.Style.Raise);
         }
-        if (any && below == 0 && largest == 0)
+        if (drawings && !any)
+        {
+            // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra.
+            var (a, b) = mark.Metrics;
+            largest = a + b;
+            any = true;
+        }
+        else if (any && below == 0 && largest == 0)
         {
             // Only a number on the line: the paragraph mark gives the rest.
             var (a, b) = mark.Metrics;

@@ -124,6 +124,12 @@ public static class WordLines
                 foreach (var piece in placed.Line.Pieces)
                 {
                     var x = placed.Left + piece.X;
+                    // A drawing takes room in the line: Word's lines are split where it stands.
+                    if (piece.Drawing != null)
+                    {
+                        Close();
+                        continue;
+                    }
                     if (piece.IsTab)
                     {
                         var leader = TabLeader.Positions(piece, x);
