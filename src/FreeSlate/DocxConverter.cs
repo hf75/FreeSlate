@@ -27,6 +27,8 @@ public static class DocxConverter
         .page text.sel{fill-opacity:0}
         .glyphs{position:absolute;left:0;top:0}
         .page .sp{position:absolute;left:0;top:0;transform-origin:0 0}
+        .page a.bm{position:absolute;width:0;height:0}
+        .page a text{cursor:pointer}
         .page .grp{position:absolute;left:0;top:0}
         .page .sp>svg{position:absolute;left:0;top:0;overflow:visible}
         .page .sp text{white-space:pre;font-variant-ligatures:none}
@@ -48,7 +50,11 @@ public static class DocxConverter
         var blocks = reader.Body();
         var styles = new RunStyles(context);
         var layout = new ParagraphLayout(context, styles);
-        var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection());
+        // Notes are read after the body: their numbers come from the order of their references.
+        var footnotes = reader.Notes(endnotes: false);
+        var endnoteParts = reader.Notes(endnotes: true);
+        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key)).Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => n.Value).ToList();
+        var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var drawings = new Drawings(context);
         var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout));
         var body = new StringBuilder();

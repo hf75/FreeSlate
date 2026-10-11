@@ -52,6 +52,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
                 svg.Append(Drawing(drawing, page));
         }
+        foreach (var (name, x, y) in page.Bookmarks)
+            svg.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(name)}\" style=\"left:{Px(x)}px;top:{Px(y)}px\"></a>");
         svg.Append("</section>\n");
         return svg.ToString();
     }
@@ -80,6 +82,9 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var body = drawing.Body;
         double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
         var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
+        // The insets count from the geometry's text rectangle (rounded corners, ellipses).
+        var (gl, gt, gr, gb) = Drawings.TextRect(drawing.Drawing, drawing.Width, drawing.Height);
+        (l, t, r, b) = (l + gl, t + gt, r + gr, b + gb);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0);
         var (lines, fills, strokes, height) = blocks.Blocks(text, Math.Max(1, drawing.Width - l - r), fields);
         var free = drawing.Height - t - b - height;
@@ -117,6 +122,13 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                         svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise));
                     continue;
                 }
+                // A note separator: a line 0.6 pt thick through the middle of its line, 144 pt long (measured with
+                // docx/generated/notes).
+                if (piece.Separator)
+                {
+                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(placed.Top + placed.Line.Height / 2 - 0.3)}\" width=\"{Px(piece.Width)}\" height=\"{Px(0.6)}\" fill=\"#000\"/>");
+                    continue;
+                }
                 // An inline drawing's box stands on the baseline; its extent lies inside the effect extents.
                 if (piece.Drawing is { } inline)
                 {
@@ -126,6 +138,9 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     continue;
                 }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
+                // Hyperlinks wrap their text (catalog: field.hyperlinks); bookmarks are anchors in the page.
+                if (piece.Link != null)
+                    svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
                 if (browser)
                     svg.Append(BrowserText(piece, x, baseline - piece.Style.Raise));
                 else
@@ -134,6 +149,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     selection.Append(SelectionText(piece, x, baseline - piece.Style.Raise));
                 }
                 svg.Append(Decorations(piece, x, baseline - piece.Style.Raise));
+                if (piece.Link != null)
+                    svg.Append("</a>");
             }
             if (placed.Angle != 0)
                 svg.Append("</g>");

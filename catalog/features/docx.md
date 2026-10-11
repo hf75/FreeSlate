@@ -21,16 +21,16 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
 | [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 3 | 1 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 2 |
-| [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 0 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 4 |
+| [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 2 | 1 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
-| [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 0 |
-| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 0 | 0 |
-| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 1 |
+| [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 2 | 0 |
+| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 4 |
+| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 3 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 0 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 0 |
-| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 0 | 0 |
+| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 4 | 2 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 0 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 0 |
@@ -42,9 +42,9 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 0 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 0 |
-| [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 0 |
+| [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 2 | 0 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **9** | **6** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **19** | **19** |
 
 <a id="package"></a>
 
@@ -626,8 +626,8 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [Paragraphs, alignment and indentation](#paragraph.basic) | P0 | ●●●○○ | partial | 6 | 14 |
 | [Line and paragraph spacing](#paragraph.spacing) | P0 | ●●●●○ | done | 2 | 2 |
 | [Keep with next, keep lines together, widow control, page break before](#paragraph.pagination) | P0 | ●●●●○ | done | 4 | 2 |
-| [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | todo | 8 | 35 |
-| [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | todo | 5 | 3 |
+| [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | done | 8 | 35 |
+| [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | done | 5 | 3 |
 | [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | todo | 2 | 1 |
 | [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | todo | 14 | 8 |
 | [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | todo | 2 | 2 |
@@ -687,9 +687,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Paragraph borders and shading
 
-`paragraph.borders` · P1 · difficulty 3 · todo
+`paragraph.borders` · P1 · difficulty 3 · done
 
 **Rendering:** Consecutive paragraphs with identical borders share one box with w:between lines; borders sit outside the text by their w:space. Shading fills the box, patterns included.
+
+**Office behaviour:** Paragraphs with the same borders, shading and indents form one box: the top line above the first, the bottom line below the last, the between line between them with its space above and below it; each line and its space take room in the paragraph, the space before and after lie outside the box. The shading reaches 1.4 pt left and 1.55 pt right of the text (vertically just its lines), the side lines stand their space outside it (measured with docx/local/pbdr, all lines within 0.15 pt).
 
 **Elements (8):** [`w:bar`](../format/namespaces/w.md#wbar), [`w:between`](../format/namespaces/w.md#wbetween), [`w:bottom`](../format/namespaces/w.md#wbottom), [`w:left`](../format/namespaces/w.md#wleft), [`w:pBdr`](../format/namespaces/w.md#wpbdr), [`w:right`](../format/namespaces/w.md#wright), [`w:shd`](../format/namespaces/w.md#wshd), [`w:top`](../format/namespaces/w.md#wtop)
 
@@ -701,9 +703,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Tab stops
 
-`paragraph.tabs` · P0 · difficulty 3 · todo
+`paragraph.tabs` · P0 · difficulty 3 · done
 
 **Rendering:** Left, center, right, decimal and bar tabs with leaders, cleared style tabs, default tab interval; absolute position tabs (w:ptab) relative to the margins or indents.
+
+**Office behaviour:** Leaders repeat their character at its advance rounded to Word's 600 dpi device (dots of Aptos 12 pt every 3.48 pt), on a grid from the page's left edge, every one that fits between the tab's start and end. Bar tabs draw a line through the line and the space after the paragraph. Decimal stops align on the settings' decimal symbol (with a German comma, 12.5 ends at the stop). A left stop past the right margin moves the tab to the next line, where it fills the line; centered, right and decimal stops past it align at the margin (docx/generated/tabs, docx/local/tab-rules, tab-break).
 
 **Elements (5):** [`w:decimalSymbol`](../format/namespaces/w.md#wdecimalsymbol), [`w:defaultTabStop`](../format/namespaces/w.md#wdefaulttabstop), [`w:ptab`](../format/namespaces/w.md#wptab), [`w:tab`](../format/namespaces/w.md#wtab), [`w:tabs`](../format/namespaces/w.md#wtabs)
 
@@ -803,17 +807,19 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Numbering definitions and number formats](#numbering.definitions) | P0 | ●●●●○ | todo | 21 | 20 |
-| [List counters](#numbering.counting) | P0 | ●●●●○ | todo | 3 | 3 |
+| [Numbering definitions and number formats](#numbering.definitions) | P0 | ●●●●○ | done | 21 | 20 |
+| [List counters](#numbering.counting) | P0 | ●●●●○ | done | 3 | 3 |
 | [Picture bullets](#numbering.pictureBullets) | P2 | ●●●○○ | todo | 2 | 0 |
 
 <a id="numbering.definitions"></a>
 
 ### Numbering definitions and number formats
 
-`numbering.definitions` · P0 · difficulty 4 · todo
+`numbering.definitions` · P0 · difficulty 4 · done
 
 **Rendering:** Level text with %1..%9 placeholders, about 60 number formats (decimal, roman, letters, ordinal and cardinal text, East Asian, Hebrew, Arabic, Thai, Hindi ...), legal numbering, suffix tab, space or nothing, number alignment, the level's run and paragraph properties.
+
+**Office behaviour:** Level texts with %1 to %9, about 60 number formats (decimal, roman, letters repeated after z, ordinals and number words, full-width, enclosed, Chinese, Japanese and Korean counting, Hebrew, Arabic, Thai, Hindi, Russian), legal numbering, suffix tab, space or nothing, numbers aligned left, centered or right at the first line's indent (docx/local/num-rules). The level's indents and tabs override the paragraph style's (a level indented 360 twips puts a List Paragraph, whose style says 720, at 360; docx/generated/lists). The number is drawn in the paragraph mark's formatting with the level's run properties over it; only its ascent counts in the line height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high). Picture bullets are numbering.pictureBullets.
 
 **Elements (21):** [`w:abstractNum`](../format/namespaces/w.md#wabstractnum), [`w:abstractNumId`](../format/namespaces/w.md#wabstractnumid), [`w:isLgl`](../format/namespaces/w.md#wislgl), [`w:legacy`](../format/namespaces/w.md#wlegacy), [`w:lvl`](../format/namespaces/w.md#wlvl), [`w:lvlJc`](../format/namespaces/w.md#wlvljc), [`w:lvlOverride`](../format/namespaces/w.md#wlvloverride), [`w:lvlRestart`](../format/namespaces/w.md#wlvlrestart), [`w:lvlText`](../format/namespaces/w.md#wlvltext), [`w:multiLevelType`](../format/namespaces/w.md#wmultileveltype), [`w:nsid`](../format/namespaces/w.md#wnsid), [`w:num`](../format/namespaces/w.md#wnum), [`w:numFmt`](../format/namespaces/w.md#wnumfmt), [`w:numIdMacAtCleanup`](../format/namespaces/w.md#wnumidmacatcleanup), [`w:numStyleLink`](../format/namespaces/w.md#wnumstylelink), [`w:numbering`](../format/namespaces/w.md#wnumbering), [`w:start`](../format/namespaces/w.md#wstart), [`w:startOverride`](../format/namespaces/w.md#wstartoverride), [`w:styleLink`](../format/namespaces/w.md#wstylelink), [`w:suff`](../format/namespaces/w.md#wsuff), [`w:tmpl`](../format/namespaces/w.md#wtmpl)
 
@@ -825,9 +831,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### List counters
 
-`numbering.counting` · P0 · difficulty 4 · todo
+`numbering.counting` · P0 · difficulty 4 · done
 
 **Rendering:** Counters run per abstract numbering through the whole document (headers, footers and notes keep their own state), restart by w:lvlRestart, w:startOverride and numbering instances; measured against Word because the specification leaves gaps.
+
+**Office behaviour:** Instances of one abstract definition count together; an instance with a start override restarts the shared counter where it is first used, and the other instances go on from there (5, 6, then 7); a deeper level used before a higher one shows the higher one's start and counts from it (7.1.1. then 7.2.); w:lvlRestart 0 never restarts; paragraphs numbered through their style continue the same counters (docx/local/num-rules).
 
 **Elements (3):** [`w:ilvl`](../format/namespaces/w.md#wilvl), [`w:numId`](../format/namespaces/w.md#wnumid), [`w:numPr`](../format/namespaces/w.md#wnumpr)
 
@@ -993,16 +1001,18 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Footnotes](#note.footnotes) | P1 | ●●●●○ | todo | 12 | 8 |
-| [Endnotes](#note.endnotes) | P1 | ●●●○○ | todo | 6 | 3 |
+| [Footnotes](#note.footnotes) | P1 | ●●●●○ | partial | 12 | 8 |
+| [Endnotes](#note.endnotes) | P1 | ●●●○○ | partial | 6 | 3 |
 
 <a id="note.footnotes"></a>
 
 ### Footnotes
 
-`note.footnotes` · P1 · difficulty 4 · todo
+`note.footnotes` · P1 · difficulty 4 · partial
 
 **Rendering:** Footnotes go to the bottom of the page of their reference (or below the text), continue on the next page with the continuation separator when they do not fit, and take space from the body (engine.pagination).
+
+**Office behaviour:** Footnotes are numbered by the order of their references (w:footnotePr numFmt and numStart), their marks drawn in the reference style; a line with references needs room for their notes, else it goes to the next page with them; the notes stand at the bottom of the page, ending at the bottom margin, under the separator (0.6 pt thick, 144 pt long, through the middle of its line; measured with docx/generated/notes, all lines within 0.2 pt). Still open: footnotes continued on the next page, restarts per page or section, notes beneath the text, columns.
 
 **Elements (12):** [`w15:footnoteColumns`](../format/namespaces/w15.md#w15footnotecolumns), [`w:continuationSeparator`](../format/namespaces/w.md#wcontinuationseparator), [`w:footnote`](../format/namespaces/w.md#wfootnote), [`w:footnotePr`](../format/namespaces/w.md#wfootnotepr), [`w:footnoteRef`](../format/namespaces/w.md#wfootnoteref), [`w:footnoteReference`](../format/namespaces/w.md#wfootnotereference), [`w:footnotes`](../format/namespaces/w.md#wfootnotes), [`w:numFmt`](../format/namespaces/w.md#wnumfmt), [`w:numRestart`](../format/namespaces/w.md#wnumrestart), [`w:numStart`](../format/namespaces/w.md#wnumstart), [`w:pos`](../format/namespaces/w.md#wpos), [`w:separator`](../format/namespaces/w.md#wseparator)
 
@@ -1014,9 +1024,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Endnotes
 
-`note.endnotes` · P1 · difficulty 3 · todo
+`note.endnotes` · P1 · difficulty 3 · partial
 
 **Rendering:** Collected at the end of the section or the document.
+
+**Office behaviour:** Endnotes follow the document's last paragraph under their separator, in the order of their references, numbered in lower roman by default (docx/generated/notes). Still open: endnotes at the end of each section.
 
 **Elements (6):** [`w:endnote`](../format/namespaces/w.md#wendnote), [`w:endnotePr`](../format/namespaces/w.md#wendnotepr), [`w:endnoteRef`](../format/namespaces/w.md#wendnoteref), [`w:endnoteReference`](../format/namespaces/w.md#wendnotereference), [`w:endnotes`](../format/namespaces/w.md#wendnotes), [`w:noEndnote`](../format/namespaces/w.md#wnoendnote)
 
@@ -1030,22 +1042,24 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Rows, cells, merged cells and nested tables](#table.structure) | P0 | ●●●○○ | todo | 18 | 20 |
-| [Table and column widths (autofit)](#table.width) | P0 | ●●●●● | todo | 16 | 52 |
-| [Row height, splitting and header rows](#table.rows) | P0 | ●●●●○ | todo | 3 | 2 |
-| [Table and cell borders and shading](#table.borders) | P0 | ●●●●○ | todo | 13 | 51 |
-| [Table styles and conditional formatting](#table.styles) | P0 | ●●●●○ | todo | 7 | 10 |
+| [Rows, cells, merged cells and nested tables](#table.structure) | P0 | ●●●○○ | partial | 18 | 20 |
+| [Table and column widths (autofit)](#table.width) | P0 | ●●●●● | done | 16 | 52 |
+| [Row height, splitting and header rows](#table.rows) | P0 | ●●●●○ | done | 3 | 2 |
+| [Table and cell borders and shading](#table.borders) | P0 | ●●●●○ | done | 13 | 51 |
+| [Table styles and conditional formatting](#table.styles) | P0 | ●●●●○ | done | 7 | 10 |
 | [Floating tables](#table.floating) | P1 | ●●●●○ | todo | 2 | 2 |
-| [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | todo | 5 | 6 |
+| [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | partial | 5 | 6 |
 | [Table title and description](#table.accessibility) | P3 | ●○○○○ | todo | 2 | 0 |
 
 <a id="table.structure"></a>
 
 ### Rows, cells, merged cells and nested tables
 
-`table.structure` · P0 · difficulty 3 · todo
+`table.structure` · P0 · difficulty 3 · partial
 
 **Rendering:** Grid columns, horizontal spans, vertical merges, rows that skip grid columns, right-to-left tables.
+
+**Office behaviour:** Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the first column at the right, the table at the right margin); tables that follow each other directly are joined with one line between (docx/local/tbl-geom, tbl-features). Still open: w:hMerge of old documents.
 
 **Elements (18):** [`w:bidiVisual`](../format/namespaces/w.md#wbidivisual), [`w:gridAfter`](../format/namespaces/w.md#wgridafter), [`w:gridBefore`](../format/namespaces/w.md#wgridbefore), [`w:gridCol`](../format/namespaces/w.md#wgridcol), [`w:gridSpan`](../format/namespaces/w.md#wgridspan), [`w:hMerge`](../format/namespaces/w.md#whmerge), [`w:hidden`](../format/namespaces/w.md#whidden), [`w:tbl`](../format/namespaces/w.md#wtbl), [`w:tblGrid`](../format/namespaces/w.md#wtblgrid), [`w:tblPr`](../format/namespaces/w.md#wtblpr), [`w:tblPrEx`](../format/namespaces/w.md#wtblprex), [`w:tc`](../format/namespaces/w.md#wtc), [`w:tcPr`](../format/namespaces/w.md#wtcpr), [`w:tr`](../format/namespaces/w.md#wtr), [`w:trPr`](../format/namespaces/w.md#wtrpr), [`w:vMerge`](../format/namespaces/w.md#wvmerge), [`w:wAfter`](../format/namespaces/w.md#wwafter), [`w:wBefore`](../format/namespaces/w.md#wwbefore)
 
@@ -1057,9 +1071,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Table and column widths (autofit)
 
-`table.width` · P0 · difficulty 5 · todo
+`table.width` · P0 · difficulty 5 · done
 
 **Rendering:** Fixed layout uses the grid; autofit layout computes column widths from the content's minimum and maximum widths like Word, which the specification does not describe: measured with generated tables (engine.tableLayout).
+
+**Office behaviour:** Fixed tables use the grid; autofit tables are recomputed as Word does (measured with docx/local/tbl-autofit in Courier New, ten cases within 0.15 pt): each column's minimum (its widest unbreakable content) and maximum (its content unwrapped, at most 22 inches) with the cells' margins; a preferred cell width fixes its column; where the maxima fit the columns take them (stretched in proportion to them for a wider table width), where the minima fit each gets its minimum and a share of the rest in proportion to max - min, else the contents' minima shrink in proportion; widths before and after rows do not widen columns. Word 2013 tables start their grid at the indent and move it right by half the left border; older compatibility modes put the first cell's text at the indent.
 
 **Elements (16):** [`w:bottom`](../format/namespaces/w.md#wbottom), [`w:end`](../format/namespaces/w.md#wend), [`w:jc`](../format/namespaces/w.md#wjc), [`w:left`](../format/namespaces/w.md#wleft), [`w:noWrap`](../format/namespaces/w.md#wnowrap), [`w:right`](../format/namespaces/w.md#wright), [`w:start`](../format/namespaces/w.md#wstart), [`w:tblCellMar`](../format/namespaces/w.md#wtblcellmar), [`w:tblCellSpacing`](../format/namespaces/w.md#wtblcellspacing), [`w:tblInd`](../format/namespaces/w.md#wtblind), [`w:tblLayout`](../format/namespaces/w.md#wtbllayout), [`w:tblW`](../format/namespaces/w.md#wtblw), [`w:tcFitText`](../format/namespaces/w.md#wtcfittext), [`w:tcMar`](../format/namespaces/w.md#wtcmar), [`w:tcW`](../format/namespaces/w.md#wtcw), [`w:top`](../format/namespaces/w.md#wtop)
 
@@ -1071,9 +1087,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Row height, splitting and header rows
 
-`table.rows` · P0 · difficulty 4 · todo
+`table.rows` · P0 · difficulty 4 · done
 
 **Rendering:** Exact and minimum row heights; rows split across pages unless w:cantSplit; header rows repeat on every page.
+
+**Office behaviour:** A row is its top line and its content; at-least heights count without the line, exact ones with it. Rows that do not fit split at a line of each cell unless w:cantSplit; header rows repeat after every break; where the table breaks the line below the page's last row closes it (docx/local/tbl-autofit, tbl-features).
 
 **Elements (3):** [`w:cantSplit`](../format/namespaces/w.md#wcantsplit), [`w:tblHeader`](../format/namespaces/w.md#wtblheader), [`w:trHeight`](../format/namespaces/w.md#wtrheight)
 
@@ -1085,9 +1103,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Table and cell borders and shading
 
-`table.borders` · P0 · difficulty 4 · todo
+`table.borders` · P0 · difficulty 4 · done
 
 **Rendering:** Conflicting borders of adjacent cells are resolved by the rules of ISO/IEC 29500 17.4.66 (weight, style, color); with cell spacing every cell keeps its own border. Diagonal borders, shading patterns.
+
+**Office behaviour:** Every vertical line is centered on its grid line (moved right by half the table's left border); text starts the larger of the margin and half the line after it, below the whole top line and the top margin (a 3 pt inside line of a table with 0.5 pt outside lines is centered 0.25 pt right of its grid line; docx/local/tbl- geom). Conflicts follow MS-OI29500 17.4.66: a cell's own border wins over the table's, then weight (eighths of a point times the style number, dotted and dashed 1), style, darker color. Double lines take three times their width, triple five, thin-thick lines the width and 0.75 pt for the thin line and the small gap; dotted and dashed lines are dashed strokes; diagonal lines; with cell spacing every cell has its own frame, the cells twice the spacing apart. Shading patterns are mixed to a flat color.
 
 **Elements (13):** [`w:bottom`](../format/namespaces/w.md#wbottom), [`w:end`](../format/namespaces/w.md#wend), [`w:insideH`](../format/namespaces/w.md#winsideh), [`w:insideV`](../format/namespaces/w.md#winsidev), [`w:left`](../format/namespaces/w.md#wleft), [`w:right`](../format/namespaces/w.md#wright), [`w:shd`](../format/namespaces/w.md#wshd), [`w:start`](../format/namespaces/w.md#wstart), [`w:tblBorders`](../format/namespaces/w.md#wtblborders), [`w:tcBorders`](../format/namespaces/w.md#wtcborders), [`w:tl2br`](../format/namespaces/w.md#wtl2br), [`w:top`](../format/namespaces/w.md#wtop), [`w:tr2bl`](../format/namespaces/w.md#wtr2bl)
 
@@ -1099,9 +1119,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Table styles and conditional formatting
 
-`table.styles` · P0 · difficulty 4 · todo
+`table.styles` · P0 · difficulty 4 · done
 
 **Rendering:** Whole table, banded rows and columns, first and last row and column and the four corner cells, applied in Word's order and switched by w:tblLook.
+
+**Office behaviour:** The table style along its basedOn chain under the table's own properties; conditional formats in Word's order (whole table, column bands, row bands, first and last row, first and last column, corner cells), switched by w:tblLook, bands skipping the first and last row and column; a conditional format's borders apply at its region's edges, its inside lines inside the region; the style's paragraph and run properties sit above the document defaults and under the paragraph style (docx/generated/tables).
 
 **Elements (7):** [`w:cnfStyle`](../format/namespaces/w.md#wcnfstyle), [`w:defaultTableStyle`](../format/namespaces/w.md#wdefaulttablestyle), [`w:tblLook`](../format/namespaces/w.md#wtbllook), [`w:tblStyle`](../format/namespaces/w.md#wtblstyle), [`w:tblStyleColBandSize`](../format/namespaces/w.md#wtblstylecolbandsize), [`w:tblStylePr`](../format/namespaces/w.md#wtblstylepr), [`w:tblStyleRowBandSize`](../format/namespaces/w.md#wtblstylerowbandsize)
 
@@ -1127,9 +1149,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Cell alignment, text direction and header cells
 
-`table.cells` · P1 · difficulty 3 · todo
+`table.cells` · P1 · difficulty 3 · partial
 
 **Rendering:** Vertical alignment, rotated text in cells, cells whose end mark takes no height.
+
+**Office behaviour:** Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Still open: w:tcFitText.
 
 **Elements (5):** [`w:header`](../format/namespaces/w.md#wheader), [`w:headers`](../format/namespaces/w.md#wheaders), [`w:hideMark`](../format/namespaces/w.md#whidemark), [`w:textDirection`](../format/namespaces/w.md#wtextdirection), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -1157,8 +1181,8 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 |---|---|---|---|---:|---:|
 | [Simple and complex fields](#field.structure) | P0 | ●●●○○ | done | 5 | 1 |
 | [Field evaluation](#field.evaluation) | P1 | ●●●●○ | partial | 4 | 3 |
-| [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | todo | 6 | 4 |
-| [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | todo | 2 | 2 |
+| [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | done | 6 | 4 |
+| [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | done | 2 | 2 |
 | [Legacy form fields](#field.forms) | P2 | ●●●○○ | todo | 25 | 15 |
 | [Citations and bibliography](#field.citations) | P3 | ●●○○○ | todo | 75 | 7 |
 
@@ -1200,9 +1224,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Hyperlinks
 
-`field.hyperlinks` · P0 · difficulty 2 · todo
+`field.hyperlinks` · P0 · difficulty 2 · done
 
 **Rendering:** HTML links on the text and on drawings (as pptx `interactivity.hyperlinks`, done); bookmarks become anchors.
+
+**Office behaviour:** w:hyperlink (external targets through the relationship, bookmarks through w:anchor) and HYPERLINK fields (with \l) make the text a link in the HTML.
 
 **Elements (6):** [`a:hlinkClick`](../format/namespaces/a.md#ahlinkclick), [`a:hlinkHover`](../format/namespaces/a.md#ahlinkhover), [`a:hlinkMouseOver`](../format/namespaces/a.md#ahlinkmouseover), [`a:snd`](../format/namespaces/a.md#asnd), [`ahyp:hlinkClr`](../format/namespaces/ahyp.md#ahyphlinkclr), [`w:hyperlink`](../format/namespaces/w.md#whyperlink)
 
@@ -1214,9 +1240,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Bookmarks
 
-`field.bookmarks` · P1 · difficulty 1 · todo
+`field.bookmarks` · P1 · difficulty 1 · done
 
 **Rendering:** HTML anchors; REF and PAGEREF fields and hyperlinks refer to them.
+
+**Office behaviour:** Bookmarks become HTML anchors where their paragraph begins on its page.
 
 **Elements (2):** [`w:bookmarkEnd`](../format/namespaces/w.md#wbookmarkend), [`w:bookmarkStart`](../format/namespaces/w.md#wbookmarkstart)
 
@@ -1394,13 +1422,13 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Inline objects](#drawing.inline) | P0 | ●●●○○ | todo | 6 | 4 |
-| [Floating objects and their position](#drawing.anchor) | P0 | ●●●●○ | todo | 12 | 3 |
+| [Inline objects](#drawing.inline) | P0 | ●●●○○ | done | 6 | 4 |
+| [Floating objects and their position](#drawing.anchor) | P0 | ●●●●○ | partial | 12 | 3 |
 | [Text wrapping around objects](#drawing.wrap) | P0 | ●●●●● | todo | 8 | 2 |
-| [Word shapes](#drawing.shapes) | P0 | ●●●○○ | todo | 14 | 0 |
-| [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | todo | 7 | 2 |
-| [Groups](#drawing.groups) | P1 | ●●●○○ | todo | 16 | 0 |
-| [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | todo | 8 | 0 |
+| [Word shapes](#drawing.shapes) | P0 | ●●●○○ | done | 14 | 0 |
+| [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | partial | 7 | 2 |
+| [Groups](#drawing.groups) | P1 | ●●●○○ | partial | 16 | 0 |
+| [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | partial | 8 | 0 |
 | [Ink](#drawing.ink) | P3 | ●●●●○ | todo | 9 | 1 |
 | [Online video](#drawing.onlineVideo) | P3 | ●●○○○ | todo | 2 | 0 |
 
@@ -1408,9 +1436,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Inline objects
 
-`drawing.inline` · P0 · difficulty 3 · todo
+`drawing.inline` · P0 · difficulty 3 · done
 
 **Rendering:** An inline object is one box on the line, standing on the baseline, its effect extent added around it.
+
+**Office behaviour:** Pictures, shapes, groups, canvases, charts and SmartArt are converted to PresentationML and drawn by the slide renderer with the document's theme and color mapping. An inline drawing's box (its extent with the effect extents) stands on the baseline as all ascent; the extra of multiple line spacing comes from the fonts (a 90 pt picture beside 12 pt Aptos at 1.16 lines makes the line 90 + 3.38 + 2.32 pt high, a picture alone 160.5 + 2.32 pt; docx/generated/drawings).
 
 **Elements (6):** [`w:drawing`](../format/namespaces/w.md#wdrawing), [`wp:cNvGraphicFramePr`](../format/namespaces/wp.md#wpcnvgraphicframepr), [`wp:docPr`](../format/namespaces/wp.md#wpdocpr), [`wp:effectExtent`](../format/namespaces/wp.md#wpeffectextent), [`wp:extent`](../format/namespaces/wp.md#wpextent), [`wp:inline`](../format/namespaces/wp.md#wpinline)
 
@@ -1422,9 +1452,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Floating objects and their position
 
-`drawing.anchor` · P0 · difficulty 4 · todo
+`drawing.anchor` · P0 · difficulty 4 · partial
 
 **Rendering:** Positioned relative to page, margin, column, paragraph, line or character, by offset or alignment, sized relative to the page or margins; behind or in front of text, stacked by relativeHeight, kept inside table cells with layoutInCell.
+
+**Office behaviour:** Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name (page, margin, column, the margins on either side, paragraph, line), at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight (docx/generated/drawings). Still open: the text flowing around them (drawing.wrap).
 
 **Elements (12):** [`wp14:pctHeight`](../format/namespaces/wp14.md#wp14pctheight), [`wp14:pctPosHOffset`](../format/namespaces/wp14.md#wp14pctposhoffset), [`wp14:pctPosVOffset`](../format/namespaces/wp14.md#wp14pctposvoffset), [`wp14:pctWidth`](../format/namespaces/wp14.md#wp14pctwidth), [`wp14:sizeRelH`](../format/namespaces/wp14.md#wp14sizerelh), [`wp14:sizeRelV`](../format/namespaces/wp14.md#wp14sizerelv), [`wp:align`](../format/namespaces/wp.md#wpalign), [`wp:anchor`](../format/namespaces/wp.md#wpanchor), [`wp:posOffset`](../format/namespaces/wp.md#wpposoffset), [`wp:positionH`](../format/namespaces/wp.md#wppositionh), [`wp:positionV`](../format/namespaces/wp.md#wppositionv), [`wp:simplePos`](../format/namespaces/wp.md#wpsimplepos)
 
@@ -1450,9 +1482,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Word shapes
 
-`drawing.shapes` · P0 · difficulty 3 · todo
+`drawing.shapes` · P0 · difficulty 3 · done
 
 **Rendering:** Geometry, fill, line and effects through the shared DrawingML renderer (shape, fill, line and effect areas).
+
+**Office behaviour:** Word 2010 shapes (wps:wsp) with their style references are drawn as PowerPoint draws DrawingML shapes; the Word drawing namespaces are chosen over their VML fallbacks.
 
 **Elements (14):** [`wp:bodyPr`](../format/namespaces/wp.md#wpbodypr), [`wp:cNvCnPr`](../format/namespaces/wp.md#wpcnvcnpr), [`wp:cNvPr`](../format/namespaces/wp.md#wpcnvpr), [`wp:cNvSpPr`](../format/namespaces/wp.md#wpcnvsppr), [`wp:spPr`](../format/namespaces/wp.md#wpsppr), [`wp:style`](../format/namespaces/wp.md#wpstyle), [`wp:wsp`](../format/namespaces/wp.md#wpwsp), [`wps:bodyPr`](../format/namespaces/wps.md#wpsbodypr), [`wps:cNvCnPr`](../format/namespaces/wps.md#wpscnvcnpr), [`wps:cNvPr`](../format/namespaces/wps.md#wpscnvpr), [`wps:cNvSpPr`](../format/namespaces/wps.md#wpscnvsppr), [`wps:spPr`](../format/namespaces/wps.md#wpssppr), [`wps:style`](../format/namespaces/wps.md#wpsstyle), [`wps:wsp`](../format/namespaces/wps.md#wpswsp)
 
@@ -1462,9 +1496,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Text boxes
 
-`drawing.textBoxes` · P0 · difficulty 4 · todo
+`drawing.textBoxes` · P0 · difficulty 4 · partial
 
 **Rendering:** The content is WordprocessingML laid out by our engine inside the shape's text rectangle (bodyPr insets, anchoring, rotation, autofit); linked text boxes continue the text from one box to the next.
+
+**Office behaviour:** A shape's text box content is laid out like body text in the shape's rectangle less the insets of wps:bodyPr, at its top, middle or bottom (docx/generated/textboxes). Still open: vertical text, linked text boxes, autofit; Word measures the insets from inside the outline (text 0.3 pt further in with a 0.75 pt outline).
 
 **Elements (7):** [`w:textboxTightWrap`](../format/namespaces/w.md#wtextboxtightwrap), [`w:txbxContent`](../format/namespaces/w.md#wtxbxcontent), [`wp:linkedTxbx`](../format/namespaces/wp.md#wplinkedtxbx), [`wp:txbx`](../format/namespaces/wp.md#wptxbx), [`wp:txbxContent`](../format/namespaces/wp.md#wptxbxcontent), [`wps:linkedTxbx`](../format/namespaces/wps.md#wpslinkedtxbx), [`wps:txbx`](../format/namespaces/wps.md#wpstxbx)
 
@@ -1476,9 +1512,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Groups
 
-`drawing.groups` · P1 · difficulty 3 · todo
+`drawing.groups` · P1 · difficulty 3 · partial
 
 **Rendering:** Child transforms as pptx `shape.group` (done); children may be pictures, shapes, text boxes and graphic frames.
+
+**Office behaviour:** Groups of shapes and pictures are drawn as PowerPoint groups. Text boxes inside groups are still open.
 
 **Elements (16):** [`wp:cNvFrPr`](../format/namespaces/wp.md#wpcnvfrpr), [`wp:cNvGrpSpPr`](../format/namespaces/wp.md#wpcnvgrpsppr), [`wp:graphicFrame`](../format/namespaces/wp.md#wpgraphicframe), [`wp:grpSp`](../format/namespaces/wp.md#wpgrpsp), [`wp:grpSpPr`](../format/namespaces/wp.md#wpgrpsppr), [`wp:wgp`](../format/namespaces/wp.md#wpwgp), [`wp:xfrm`](../format/namespaces/wp.md#wpxfrm), [`wpg:cNvFrPr`](../format/namespaces/wpg.md#wpgcnvfrpr), [`wpg:cNvGrpSpPr`](../format/namespaces/wpg.md#wpgcnvgrpsppr), [`wpg:cNvPr`](../format/namespaces/wpg.md#wpgcnvpr), [`wpg:extLst`](../format/namespaces/wpg.md#wpgextlst), [`wpg:graphicFrame`](../format/namespaces/wpg.md#wpggraphicframe), [`wpg:grpSp`](../format/namespaces/wpg.md#wpggrpsp), [`wpg:grpSpPr`](../format/namespaces/wpg.md#wpggrpsppr), [`wpg:wgp`](../format/namespaces/wpg.md#wpgwgp), [`wpg:xfrm`](../format/namespaces/wpg.md#wpgxfrm)
 
@@ -1488,9 +1526,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Drawing canvas
 
-`drawing.canvas` · P2 · difficulty 3 · todo
+`drawing.canvas` · P2 · difficulty 3 · partial
 
 **Rendering:** A canvas is a group with its own background and outline.
+
+**Office behaviour:** Canvases are drawn as groups with their background and outline; untested against Word.
 
 **Elements (8):** [`lc:lockedCanvas`](../format/namespaces/lc.md#lclockedcanvas), [`wp:bg`](../format/namespaces/wp.md#wpbg), [`wp:whole`](../format/namespaces/wp.md#wpwhole), [`wp:wpc`](../format/namespaces/wp.md#wpwpc), [`wpc:bg`](../format/namespaces/wpc.md#wpcbg), [`wpc:graphicFrame`](../format/namespaces/wpc.md#wpcgraphicframe), [`wpc:whole`](../format/namespaces/wpc.md#wpcwhole), [`wpc:wpc`](../format/namespaces/wpc.md#wpcwpc)
 
@@ -2937,17 +2977,19 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [VML shapes, text boxes and WordArt](#vml.shapes) | P1 | ●●●●○ | todo | 62 | 57 |
-| [Embedded objects and controls](#vml.ole) | P1 | ●●●○○ | todo | 8 | 7 |
-| [Watermarks](#vml.watermarks) | P1 | ●●●○○ | todo | 3 | 3 |
+| [VML shapes, text boxes and WordArt](#vml.shapes) | P1 | ●●●●○ | partial | 62 | 57 |
+| [Embedded objects and controls](#vml.ole) | P1 | ●●●○○ | partial | 8 | 7 |
+| [Watermarks](#vml.watermarks) | P1 | ●●●○○ | done | 3 | 3 |
 
 <a id="vml.shapes"></a>
 
 ### VML shapes, text boxes and WordArt
 
-`vml.shapes` · P1 · difficulty 4 · todo
+`vml.shapes` · P1 · difficulty 4 · partial
 
 **Rendering:** The VML renderer of pptx `legacy.vml` (done), positioned in the text flow by the style attribute (mso-position-*) and w10:wrap; VML text boxes hold WordprocessingML like wps text boxes.
+
+**Office behaviour:** VML shapes (w:pict) are converted to Word drawings: rectangles, rounded rectangles, ovals, lines, preset shapes by o:spt, paths as custom geometries, fills (solid, gradient, picture), strokes (color, weight, dash, arrows), pictures (v:imagedata with crop), text boxes (v:textbox with its insets), placed by the style attribute (position, margins, mso-position-*, rotation, flip, z-index) and w10:wrap (docx/local/vml-shapes). A rounded rectangle's text stands inside its corners, as the DrawingML text rectangle says. Still open: groups (v:group), shadows, more fill types.
 
 **Elements (62):** [`o:FieldCodes`](../format/namespaces/o.md#ofieldcodes), [`o:LinkType`](../format/namespaces/o.md#olinktype), [`o:LockedField`](../format/namespaces/o.md#olockedfield), [`o:OLEObject`](../format/namespaces/o.md#ooleobject), [`o:bottom`](../format/namespaces/o.md#obottom), [`o:callout`](../format/namespaces/o.md#ocallout), [`o:clippath`](../format/namespaces/o.md#oclippath), [`o:colormenu`](../format/namespaces/o.md#ocolormenu), [`o:colormru`](../format/namespaces/o.md#ocolormru), [`o:column`](../format/namespaces/o.md#ocolumn), [`o:complex`](../format/namespaces/o.md#ocomplex), [`o:diagram`](../format/namespaces/o.md#odiagram), [`o:entry`](../format/namespaces/o.md#oentry), [`o:equationxml`](../format/namespaces/o.md#oequationxml), [`o:extrusion`](../format/namespaces/o.md#oextrusion), [`o:fill`](../format/namespaces/o.md#ofill), [`o:idmap`](../format/namespaces/o.md#oidmap), [`o:ink`](../format/namespaces/o.md#oink), [`o:left`](../format/namespaces/o.md#oleft), [`o:lock`](../format/namespaces/o.md#olock), [`o:proxy`](../format/namespaces/o.md#oproxy), [`o:r`](../format/namespaces/o.md#or), [`o:regrouptable`](../format/namespaces/o.md#oregrouptable), [`o:rel`](../format/namespaces/o.md#orel), [`o:relationtable`](../format/namespaces/o.md#orelationtable), [`o:right`](../format/namespaces/o.md#oright), [`o:rules`](../format/namespaces/o.md#orules), [`o:shapedefaults`](../format/namespaces/o.md#oshapedefaults), [`o:shapelayout`](../format/namespaces/o.md#oshapelayout), [`o:signatureline`](../format/namespaces/o.md#osignatureline), [`o:skew`](../format/namespaces/o.md#oskew), [`o:top`](../format/namespaces/o.md#otop), [`v:arc`](../format/namespaces/v.md#varc), [`v:background`](../format/namespaces/v.md#vbackground), [`v:curve`](../format/namespaces/v.md#vcurve), [`v:f`](../format/namespaces/v.md#vf), [`v:fill`](../format/namespaces/v.md#vfill), [`v:formulas`](../format/namespaces/v.md#vformulas), [`v:group`](../format/namespaces/v.md#vgroup), [`v:h`](../format/namespaces/v.md#vh), [`v:handles`](../format/namespaces/v.md#vhandles), [`v:image`](../format/namespaces/v.md#vimage), [`v:imagedata`](../format/namespaces/v.md#vimagedata), [`v:line`](../format/namespaces/v.md#vline), [`v:oval`](../format/namespaces/v.md#voval), [`v:path`](../format/namespaces/v.md#vpath), [`v:polyline`](../format/namespaces/v.md#vpolyline), [`v:rect`](../format/namespaces/v.md#vrect), [`v:roundrect`](../format/namespaces/v.md#vroundrect), [`v:shadow`](../format/namespaces/v.md#vshadow), [`v:shape`](../format/namespaces/v.md#vshape), [`v:shapetype`](../format/namespaces/v.md#vshapetype), [`v:stroke`](../format/namespaces/v.md#vstroke), [`v:textbox`](../format/namespaces/v.md#vtextbox), [`v:textpath`](../format/namespaces/v.md#vtextpath), [`w10:anchorlock`](../format/namespaces/w10.md#w10anchorlock), [`w10:borderbottom`](../format/namespaces/w10.md#w10borderbottom), [`w10:borderleft`](../format/namespaces/w10.md#w10borderleft), [`w10:borderright`](../format/namespaces/w10.md#w10borderright), [`w10:bordertop`](../format/namespaces/w10.md#w10bordertop), [`w10:wrap`](../format/namespaces/w10.md#w10wrap), [`w:pict`](../format/namespaces/w.md#wpict)
 
@@ -2959,9 +3001,11 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 
 ### Embedded objects and controls
 
-`vml.ole` · P1 · difficulty 3 · todo
+`vml.ole` · P1 · difficulty 3 · partial
 
 **Rendering:** OLE objects, ActiveX controls and signature lines show their preview picture (often EMF or WMF, see picture.metafiles), as pptx `picture.ole` (done).
+
+**Office behaviour:** Embedded objects (w:object) show the picture of their VML shape like any VML picture. Still open: ActiveX controls, signature lines.
 
 **Elements (8):** [`a15:objectPr`](../format/namespaces/a15.md#a15objectpr), [`a15:signatureLine`](../format/namespaces/a15.md#a15signatureline), [`o:OLEObject`](../format/namespaces/o.md#ooleobject), [`w:control`](../format/namespaces/w.md#wcontrol), [`w:movie`](../format/namespaces/w.md#wmovie), [`w:object`](../format/namespaces/w.md#wobject), [`w:objectEmbed`](../format/namespaces/w.md#wobjectembed), [`w:objectLink`](../format/namespaces/w.md#wobjectlink)
 
@@ -2973,11 +3017,13 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 
 ### Watermarks
 
-`vml.watermarks` · P1 · difficulty 3 · todo
+`vml.watermarks` · P1 · difficulty 3 · done
 
 Text or picture watermarks are VML shapes in the header, centered on the page behind the text.
 
 **Rendering:** Text watermarks are VML WordArt (v:textpath) scaled to their box; picture watermarks are washed-out pictures.
+
+**Office behaviour:** WordArt (v:textpath) is drawn as text stretched over the shape like a textPlain warp, filled with the shape's fill; VML fits the font's em box to the shape, so the shape shrinks to the capitals' share of it about its turned center (docx/local/vml-watermark, the watermark of a header placed relative to the margins). Picture watermarks are VML pictures.
 
 **Elements (3):** [`v:imagedata`](../format/namespaces/v.md#vimagedata), [`v:shape`](../format/namespaces/v.md#vshape), [`v:textpath`](../format/namespaces/v.md#vtextpath)
 

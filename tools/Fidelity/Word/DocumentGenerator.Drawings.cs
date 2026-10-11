@@ -70,6 +70,23 @@ public static partial class DocumentGenerator
         bottom.TextFrame.VerticalAnchor = AnchorBottom;
     }
 
+    /// <summary>Footnotes in the text over several pages, a long one, and an endnote at the end.</summary>
+    static void Notes(Writer w)
+    {
+        var missing = System.Reflection.Missing.Value;
+        w.Paragraph("Footnotes and endnotes", StyleHeading1);
+        for (var i = 0; i < 7; i++)
+        {
+            var paragraph = w.Paragraph(Prose.Decisions);
+            int start = paragraph.Range.Start;
+            var at = w.Document.Range(start + 29, start + 29);
+            w.Document.Footnotes.Add(at, missing, i == 2 ? "A long footnote. " + Prose.Constraints : $"Footnote number {i + 1}.");
+            w.Paragraph(Prose.Constraints);
+        }
+        var last = w.Paragraph("An endnote follows here.");
+        w.Document.Endnotes.Add(End(last), missing, "The text of the endnote.");
+    }
+
     /// <summary>A collapsed range at the end of a paragraph, before its mark.</summary>
     static dynamic End(dynamic paragraph)
     {

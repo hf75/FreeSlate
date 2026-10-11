@@ -6,7 +6,23 @@ namespace FreeSlate.Docx;
 public abstract record Inline(RunFormat Format);
 
 /// <summary>Text of one run (catalog: run.basic).</summary>
-public sealed record TextInline(string Text, RunFormat Format) : Inline(Format);
+public sealed record TextInline(string Text, RunFormat Format) : Inline(Format)
+{
+    /// <summary>The hyperlink the text belongs to (catalog: field.hyperlinks): a URL or "#" and a bookmark, or null.</summary>
+    public string? Link { get; init; }
+}
+
+/// <summary>
+/// A footnote or endnote reference (w:footnoteReference, w:endnoteReference, catalog: note.footnotes, note.endnotes):
+/// the note's number as its mark, or nothing where a custom mark follows.
+/// </summary>
+public sealed record NoteReferenceInline(string Id, bool Endnote, string Mark, RunFormat Format) : Inline(Format);
+
+/// <summary>The line of a note separator (w:separator, w:continuationSeparator) in the separator notes.</summary>
+public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inline(Format);
+
+/// <summary>Where a bookmark starts (w:bookmarkStart, catalog: field.bookmarks): an anchor in the HTML.</summary>
+public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format);
 
 /// <summary>A tab character (w:tab in a run, catalog: paragraph.tabs).</summary>
 public sealed record TabInline(RunFormat Format) : Inline(Format);
@@ -144,6 +160,9 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The part being read, whose relationships the drawings' pictures resolve against.</summary>
     string currentPart = context.MainPart;
 
+    /// <summary>The hyperlink (w:hyperlink) whose runs are being read, or null.</summary>
+    string? link;
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
@@ -163,6 +182,53 @@ public sealed partial class ModelReader(DocumentContext context)
         context.Package.Relationship(context.MainPart, id) is { External: false } rel && context.Package.Exists(rel.Target) ? rel.Target : null;
 
     readonly Dictionary<string, List<Block>> stories = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The numbers of footnotes and endnotes in the order their references stand in the document.</summary>
+    readonly Dictionary<string, int> footnoteNumbers = new(StringComparer.Ordinal), endnoteNumbers = new(StringComparer.Ordinal);
+
+    /// <summary>An endnote's number (the order of its reference), or 0 where nothing refers to it.</summary>
+    public int EndnoteNumber(string id) => endnoteNumbers.GetValueOrDefault(id);
+
+    /// <summary>The number of the note being read, which its w:footnoteRef or w:endnoteRef shows.</summary>
+    string? noteMark;
+
+    /// <summary>
+    /// The footnotes or endnotes of the document (catalog: note.footnotes, note.endnotes) by id, read after the
+    /// body: their numbers come from the order of their references; separators are read under their types.
+    /// </summary>
+    public Dictionary<string, List<Block>> Notes(bool endnotes)
+    {
+        var notes = new Dictionary<string, List<Block>>(StringComparer.Ordinal);
+        var part = context.Package.FirstRelationship(context.MainPart, endnotes ? "endnotes" : "footnotes")?.Target;
+        if (part == null || !context.Package.Exists(part) || context.Load(part).Root is not { } root)
+            return notes;
+        var (savedCounter, savedPart) = (counter, currentPart);
+        counter = new ListCounter(context.Numbering);
+        currentPart = part;
+        foreach (var note in root.Elements(Wml.W + (endnotes ? "endnote" : "footnote")))
+        {
+            var id = note.Attr("id") ?? "";
+            var type = note.Attr("type") ?? "normal";
+            var numbers = endnotes ? endnoteNumbers : footnoteNumbers;
+            noteMark = type == "normal" && numbers.TryGetValue(id, out var number) ? NoteText(number, endnotes) : "";
+            var blocks = new List<Block>();
+            ReadBlocks(note, blocks);
+            notes[type == "normal" ? id : type] = blocks;
+        }
+        noteMark = null;
+        (counter, currentPart) = (savedCounter, savedPart);
+        return notes;
+    }
+
+    /// <summary>A note's number in its format (w:footnotePr/w:numFmt: decimal for footnotes, lower roman for endnotes).</summary>
+    string NoteText(int number, bool endnote)
+    {
+        var properties = context.Document.Root.Child("body").Child("sectPr").Child(endnote ? "endnotePr" : "footnotePr")
+                         ?? context.Settings.Child(endnote ? "endnotePr" : "footnotePr");
+        var format = properties.Child("numFmt").Val() ?? (endnote ? "lowerRoman" : "decimal");
+        var start = (int)(properties.Child("numStart").Number("val") ?? 1);
+        return NumberText.Format(number + start - 1, format);
+    }
 
     /// <summary>The blocks of a header or footer part (catalog: headerFooter.parts), read once.</summary>
     public List<Block> Story(string part)
@@ -272,6 +338,67 @@ public sealed partial class ModelReader(DocumentContext context)
         /// <summary>Inside a field's instruction, also that of an outer field (a nested field is part of it).</summary>
         public bool Hidden => Frames.Any(f => !f.InResult);
 
+        /// <summary>The target of a HYPERLINK field whose result is being read: its URL and \l bookmark (catalog: field.hyperlinks).</summary>
+        public string? Link
+        {
+            get
+            {
+                foreach (var frame in Frames)
+                {
+                    if (frame.InResult && Hyperlink(frame.Instruction.ToString()) is { } target)
+                        return target;
+                }
+                return null;
+            }
+        }
+
+        static string? Hyperlink(string instruction)
+        {
+            var parts = Arguments(instruction);
+            if (parts.Count == 0 || !parts[0].Equals("HYPERLINK", StringComparison.OrdinalIgnoreCase))
+                return null;
+            string? url = null, bookmark = null;
+            for (var i = 1; i < parts.Count; i++)
+            {
+                if (parts[i] == "\\l" && i + 1 < parts.Count)
+                    bookmark = parts[++i];
+                else if (parts[i].StartsWith('\\'))
+                    i += parts[i] is "\\o" or "\\t" ? 1 : 0;
+                else
+                    url ??= parts[i];
+            }
+            return url == null && bookmark == null ? null : (url ?? "") + (bookmark != null ? "#" + bookmark : "");
+        }
+
+        /// <summary>A field instruction's words; quoted arguments are one word without their quotes.</summary>
+        static List<string> Arguments(string instruction)
+        {
+            var words = new List<string>();
+            var i = 0;
+            while (i < instruction.Length)
+            {
+                while (i < instruction.Length && char.IsWhiteSpace(instruction[i]))
+                    i++;
+                if (i >= instruction.Length)
+                    break;
+                if (instruction[i] == '"')
+                {
+                    var end = instruction.IndexOf('"', i + 1);
+                    if (end < 0) end = instruction.Length;
+                    words.Add(instruction[(i + 1)..end]);
+                    i = end + 1;
+                }
+                else
+                {
+                    var start = i;
+                    while (i < instruction.Length && !char.IsWhiteSpace(instruction[i]))
+                        i++;
+                    words.Add(instruction[start..i]);
+                }
+            }
+            return words;
+        }
+
         /// <summary>Where result content goes: the saved result of the innermost page field, else the paragraph.</summary>
         public List<Inline> Target(List<Inline> content) => Frames.FirstOrDefault(f => f.Cached != null)?.Cached ?? content;
     }
@@ -287,7 +414,22 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "r":
                     Run(e, paragraphStyle, content, field);
                     break;
-                case "hyperlink" or "smartTag" or "customXml" or "ins" or "moveTo" or "bdo" or "dir":
+                case "hyperlink":
+                {
+                    // An external target through the relationship, a bookmark in the document through w:anchor.
+                    var target = e.Attr(Wml.R + "id") is { } rid && context.Package.Relationship(currentPart, rid) is { External: true } rel ? rel.Target : null;
+                    if (e.Attr("anchor") is { } bookmark)
+                        target = (target ?? "") + "#" + bookmark;
+                    var saved = link;
+                    link = target ?? link;
+                    ReadInlines(e, paragraphStyle, content, field);
+                    link = saved;
+                    break;
+                }
+                case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
+                    field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    break;
+                case "smartTag" or "customXml" or "ins" or "moveTo" or "bdo" or "dir":
                     ReadInlines(e, paragraphStyle, content, field);
                     break;
                 case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
@@ -342,7 +484,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 case "t":
                     if (!field.Hidden)
-                        field.Target(content).Add(new TextInline(e.Value, format));
+                        field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
                     break;
                 case "tab":
                     if (!field.Hidden)
@@ -376,6 +518,33 @@ public sealed partial class ModelReader(DocumentContext context)
                                 field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text });
                         }
                     }
+                    break;
+                case "pict" or "object" when !field.Hidden:
+                    // Legacy VML drawings, converted to Word drawings (catalog: vml.shapes, vml.ole, vml.watermarks).
+                    foreach (var d in Vml.ToDrawings(e))
+                    {
+                        var text = TextBox(d);
+                        if (d.Name == Drawings.Wp + "inline")
+                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text });
+                        else
+                            field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text });
+                    }
+                    break;
+                case "footnoteReference" or "endnoteReference" when !field.Hidden && e.Attr("id") is { } noteId:
+                {
+                    var endnote = e.Name.LocalName == "endnoteReference";
+                    var numbers = endnote ? endnoteNumbers : footnoteNumbers;
+                    if (!numbers.TryGetValue(noteId, out var number))
+                        numbers[noteId] = number = numbers.Count + 1;
+                    var custom = e.Attr("customMarkFollows") is "1" or "true" or "on";
+                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : NoteText(number, endnote), format));
+                    break;
+                }
+                case "footnoteRef" or "endnoteRef" when !field.Hidden && noteMark != null:
+                    field.Target(content).Add(new TextInline(noteMark, format));
+                    break;
+                case "separator" or "continuationSeparator" when !field.Hidden:
+                    field.Target(content).Add(new SeparatorInline(e.Name.LocalName == "continuationSeparator", format));
                     break;
                 case "sym":
                     if (!field.Hidden && e.Attr("char") is { } code && int.TryParse(code, System.Globalization.NumberStyles.HexNumber, null, out var value))

@@ -16,7 +16,7 @@ public static class WordLines
         {
             // Word writes trailing spaces as glyphs; the line ends at its last visible glyph. Lines of columns side by
             // side are told apart by the gap between them.
-            var word = new PdfText(References.DocumentPdf(document)).Lines()
+            var word = MergeRaised(new PdfText(References.DocumentPdf(document)).Lines())
                 .SelectMany(SplitAtGaps)
                 .Select(l => (Page: l[0].Page, Y: l[0].Y, X0: l[0].X, X1: l.Where(g => g.Text.Trim().Length > 0).Select(g => g.X + g.Advance).DefaultIfEmpty(l[0].X).Last(),
                     Text: Normalize(string.Concat(l.Select(g => g.Text)))))
@@ -73,6 +73,28 @@ public static class WordLines
         }
     }
 
+    /// <summary>
+    /// Raised and lowered glyphs (superscript note marks) are lines of their own in the PDF: a short line a few points
+    /// above or below another one on its page, within its extent, goes back into it, by x.
+    /// </summary>
+    static List<List<PdfGlyph>> MergeRaised(List<List<PdfGlyph>> lines)
+    {
+        var result = lines.Select(l => l.ToList()).ToList();
+        foreach (var small in result.Where(l => l.Count <= 3).ToList())
+        {
+            var host = result.Where(l => l != small && l.Count > small.Count && l[0].Page == small[0].Page
+                    && Math.Abs(l[0].Y - small[0].Y) is > 0.5 and < 6
+                    && small[0].X >= l[0].X - 6 && small[0].X <= l[^1].X + l[^1].Advance + 1)
+                .OrderBy(l => Math.Abs(l[0].Y - small[0].Y)).FirstOrDefault();
+            if (host == null)
+                continue;
+            host.AddRange(small);
+            host.Sort((a, b) => a.X.CompareTo(b.X));
+            result.Remove(small);
+        }
+        return result;
+    }
+
     /// <summary>A line of glyphs split where more than 24 pt lie between one glyph's end and the next glyph.</summary>
     static IEnumerable<List<PdfGlyph>> SplitAtGaps(List<PdfGlyph> line)
     {
@@ -104,7 +126,11 @@ public static class WordLines
         var reader = new ModelReader(context);
         var styles = new RunStyles(context);
         var layout = new ParagraphLayout(context, styles);
-        var pages = new Paginator(context, layout, reader).Paginate(reader.Body(), reader.LastSection());
+        var body = reader.Body();
+        var footnotes = reader.Notes(endnotes: false);
+        var endnoteParts = reader.Notes(endnotes: true);
+        var endnotes = endnoteParts.Where(n => reader.EndnoteNumber(n.Key) > 0).OrderBy(n => reader.EndnoteNumber(n.Key)).Select(n => n.Value).ToList();
+        var pages = new Paginator(context, layout, reader).Paginate(body, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var result = new List<(int, double, double, double, string)>();
         foreach (var page in pages)
         {

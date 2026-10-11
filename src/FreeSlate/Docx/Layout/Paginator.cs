@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using FreeSlate.Drawing;
 
 namespace FreeSlate.Docx.Layout;
 
@@ -51,6 +52,9 @@ public sealed class PageBox
 
     /// <summary>Floating drawings anchored on the page (catalog: drawing.anchor).</summary>
     public List<PlacedDrawing> Drawings { get; } = [];
+
+    /// <summary>Bookmarks that start on the page: their names and where their paragraph begins (catalog: field.bookmarks).</summary>
+    public List<(string Name, double X, double Y)> Bookmarks { get; } = [];
 
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
@@ -107,8 +111,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     double pendingAfter;      // space after the previous paragraph
     ParagraphBlock? previous;
 
-    public List<PageBox> Paginate(List<Block> blocks, SectionProperties lastSection)
+    /// <param name="footnotes">The document's footnotes by id, with "separator" and "continuationSeparator".</param>
+    /// <param name="endnotes">The document's endnotes by id in the order of their references, with the separators.</param>
+    public List<PageBox> Paginate(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
+        List<List<Block>>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
+        this.footnotes = footnotes;
         // Each section's properties are given at its end.
         var sections = new List<(List<Block> Blocks, SectionProperties Properties)>();
         var current = new List<Block>();
@@ -143,6 +151,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 else
                     Place(sectionBlocks, i);
             }
+            // Endnotes follow the document's last paragraph, after their separator (catalog: note.endnotes).
+            if (s == sections.Count - 1 && endnotes is { Count: > 0 })
+            {
+                var trailing = new List<Block>();
+                trailing.AddRange(endnoteSeparator ?? []);
+                foreach (var note in endnotes)
+                    trailing.AddRange(note);
+                for (var i = 0; i < trailing.Count; i++)
+                {
+                    if (trailing[i] is TableBlock)
+                        PlaceTable(trailing, i);
+                    else
+                        Place(trailing, i);
+                }
+            }
             // A continuous section break balances the columns above it.
             if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1)
                 Balance();
@@ -150,6 +173,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (pages.Count == 0)
             NewPage(lastSection, firstOfSection: true);
+        PlaceNotes();
         foreach (var p in pages)
             AlignVertically(p);
         if (reader != null)
@@ -204,6 +228,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     void NewPage(SectionProperties properties, bool firstOfSection = false, bool blank = false)
     {
         CloseColumns();
+        PlaceNotes();
         var number = firstOfSection && properties.PageNumberStart is { } restart ? restart
             : pages.Count == 0 ? 1 : pages[^1].DisplayNumber + 1;
         // The first page of a section with a title page has the first header; with different odd and even pages
@@ -259,6 +284,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
+        var anchors = new List<(AnchorInline Anchor, double Top)>();
         var y = 0.0;
         double after = 0;
         var first = true;
@@ -267,6 +293,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (block is ParagraphBlock paragraph)
             {
                 y += first ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
+                foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+                    anchors.Add((anchor, y));
                 foreach (var line in layout.Layout(paragraph, width, fields))
                 {
                     box.Lines.Add(new PlacedLine(line, left, y));
@@ -301,6 +329,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         box.Move(top);
         box.Top = top;
         box.Bottom = top + y;
+        // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
+        foreach (var (anchor, paragraphTop) in anchors)
+            box.Drawings.Add(Anchored(anchor, on, top + paragraphTop, left, width));
         return box;
     }
 
@@ -311,6 +342,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         public List<FillRect> Shading { get; } = [];
         public List<FillRect> Borders { get; } = [];
         public List<Stroke> Strokes { get; } = [];
+        public List<PlacedDrawing> Drawings { get; } = [];
         public double Top, Bottom;
 
         public void Move(double dy)
@@ -331,6 +363,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.Shading.AddRange(Shading);
             page.Borders.AddRange(Borders);
             page.Strokes.AddRange(Strokes);
+            page.Drawings.AddRange(Drawings);
         }
     }
 
@@ -348,7 +381,61 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return (left + index * (width + s.ColumnSpace), width);
     }
 
-    double Bottom => page!.BodyBottom;
+    /// <summary>Where the body text ends: above the footnotes the page holds.</summary>
+    double Bottom => page!.BodyBottom - notesHeight;
+
+    Dictionary<string, List<Block>>? footnotes;
+
+    /// <summary>The footnotes referenced on the current page and the height they take (with the separator).</summary>
+    readonly List<string> pageNotes = [];
+    double notesHeight;
+
+    /// <summary>
+    /// The height footnotes need below the text (catalog: note.footnotes): their content in the text width, and the
+    /// separator above the first footnote of a page.
+    /// </summary>
+    double NotesHeight(List<string>? ids)
+    {
+        if (ids == null || footnotes == null || page == null)
+            return 0;
+        var height = 0.0;
+        foreach (var id in ids)
+        {
+            if (footnotes.TryGetValue(id, out var blocks))
+                height += tables.Blocks(blocks, page.TextWidth, null).Height;
+        }
+        if (height > 0 && pageNotes.Count == 0 && footnotes.TryGetValue("separator", out var separator))
+            height += tables.Blocks(separator, page.TextWidth, null).Height;
+        return height;
+    }
+
+    /// <summary>The current page's footnotes at its bottom, above the bottom margin, under their separator.</summary>
+    void PlaceNotes()
+    {
+        if (page == null || pageNotes.Count == 0 || footnotes == null)
+        {
+            pageNotes.Clear();
+            notesHeight = 0;
+            return;
+        }
+        var top = page.BodyBottom - notesHeight;
+        var blocks = new List<Block>();
+        if (footnotes.TryGetValue("separator", out var separator))
+            blocks.AddRange(separator);
+        foreach (var id in pageNotes)
+        {
+            if (footnotes.TryGetValue(id, out var note))
+                blocks.AddRange(note);
+        }
+        var (lines, fills, strokes, _) = tables.Blocks(blocks, page.TextWidth, null);
+        foreach (var line in lines)
+            page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = top + line.Top });
+        foreach (var fill in fills)
+            page.Borders.Add(fill with { X = page.TextLeft + fill.X, Y = top + fill.Y });
+        page.Strokes.AddRange(strokes.Select(s => s.Offset(page.TextLeft, top)));
+        pageNotes.Clear();
+        notesHeight = 0;
+    }
 
     void NextColumn(bool natural)
     {
@@ -499,6 +586,68 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
     }
 
+    /// <summary>A paragraph's borders and shading (w:pBdr, w:shd).</summary>
+    sealed class Frame
+    {
+        public BorderLine? Top, Left, Bottom, Right, Between;
+        public RgbColor? Fill;
+        XElement? borders, shading;
+        double indentLeft, indentRight;
+
+        public static Frame? Read(ParagraphFormat format)
+        {
+            var fill = Shading.Color(format.Shading);
+            if (format.Borders == null && fill == null)
+                return null;
+            var b = format.Borders;
+            var frame = new Frame
+            {
+                Top = BorderLine.Read(b.Child("top")),
+                Left = BorderLine.Read(b.Child("left") ?? b.Child("start")),
+                Bottom = BorderLine.Read(b.Child("bottom")),
+                Right = BorderLine.Read(b.Child("right") ?? b.Child("end")),
+                Between = BorderLine.Read(b.Child("between")),
+                Fill = fill,
+                borders = b,
+                shading = format.Shading,
+                indentLeft = format.Left ?? 0,
+                indentRight = format.Right ?? 0,
+            };
+            return frame.Top is { Visible: true } || frame.Left is { Visible: true } || frame.Bottom is { Visible: true }
+                || frame.Right is { Visible: true } || frame.Between is { Visible: true } || fill != null ? frame : null;
+        }
+
+        /// <summary>Whether another paragraph's frame continues this one: the same borders, shading and indents.</summary>
+        public bool Same(Frame? other) =>
+            other != null && XNode.DeepEquals(borders, other.borders) && XNode.DeepEquals(shading, other.shading)
+            && Math.Abs(indentLeft - other.indentLeft) < 0.01 && Math.Abs(indentRight - other.indentRight) < 0.01;
+
+        /// <summary>
+        /// The box from <paramref name="boxTop"/> to <paramref name="boxBottom"/>: shading, then the sides, the top or
+        /// between line and the bottom line. The shading reaches 1.4 pt left and 1.55 pt right of the text, the side
+        /// lines stand their space outside it (measured with docx/local/pbdr).
+        /// </summary>
+        public void Draw(PageBox page, double columnLeft, double columnWidth, ParagraphFormat format, double boxTop, double boxBottom, bool top, bool bottom, double? between)
+        {
+            var innerLeft = columnLeft + indentLeft - 1.4 - (Left is { Visible: true } il ? il.Space : 0);
+            var innerRight = columnLeft + columnWidth - indentRight + 1.55 + (Right is { Visible: true } ir ? ir.Space : 0);
+            var left = innerLeft - (Left is { Visible: true } l ? l.Total : 0);
+            var right = innerRight + (Right is { Visible: true } r ? r.Total : 0);
+            if (Fill is { } fill)
+                page.Shading.Add(new FillRect(innerLeft, boxTop, innerRight - innerLeft, boxBottom - boxTop, fill));
+            if (Left is { Visible: true } leftLine)
+                page.Borders.Add(new FillRect(left, boxTop, leftLine.Total, boxBottom - boxTop, leftLine.Color));
+            if (Right is { Visible: true } rightLine)
+                page.Borders.Add(new FillRect(right - rightLine.Total, boxTop, rightLine.Total, boxBottom - boxTop, rightLine.Color));
+            if (top && Top is { Visible: true } topLine)
+                page.Borders.Add(new FillRect(left, boxTop, right - left, topLine.Total, topLine.Color));
+            if (between is { } betweenY && Between is { Visible: true } betweenLine)
+                page.Borders.Add(new FillRect(left, betweenY, right - left, betweenLine.Total, betweenLine.Color));
+            if (bottom && Bottom is { Visible: true } bottomLine)
+                page.Borders.Add(new FillRect(left, boxBottom - bottomLine.Total, right - left, bottomLine.Total, bottomLine.Color));
+        }
+    }
+
     void PlaceRow(RowBox row, double left)
     {
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
@@ -561,16 +710,41 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
 
+        // Paragraph borders and shading (catalog: paragraph.borders): paragraphs with the same borders form one box,
+        // the top line above the first, the bottom line below the last, the between line between them; a line and
+        // its space take room in the paragraph.
+        var frame = Frame.Read(format);
+        var continues = frame != null && previous != null && frame.Same(Frame.Read(previous.Format)) && !columnEmpty;
+        var nextContinues = frame != null && next != null && frame.Same(Frame.Read(next.Format));
+        var boxTop = y;
         y += gap;
+        var betweenAt = y;
+        if (frame != null)
+        {
+            if (!continues)
+            {
+                boxTop = y;
+                y += frame.Top is { Visible: true } t ? t.Space + t.Total : 0;
+            }
+            else if (frame.Between is { Visible: true } between)
+            {
+                // The between line has its space above and below it (measured with docx/local/pbdr).
+                betweenAt = y + between.Space;
+                y += 2 * between.Space + between.Total;
+            }
+        }
         var widow = format.WidowControl ?? true;
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
         var hereAtTop = columnEmpty;
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
+        var boxPage = page!;
         for (var k = 0; k < lines.Count; k++)
         {
             var line = lines[k];
-            if (y + line.FitHeight > Bottom + 0.01 && !columnEmpty)
+            // A line with footnote references needs room for their notes too.
+            var notesNeeded = NotesHeight(line.Notes);
+            if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -585,6 +759,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     {
                         page!.Lines.RemoveRange(page.Lines.Count - back, back);
                         flow.RemoveAll(f => f.Index >= page.Lines.Count);
+                        // The notes of the lines that move go with them.
+                        for (var m = k - back; m < k; m++)
+                        {
+                            foreach (var id in lines[m].Notes ?? [])
+                                pageNotes.Remove(id);
+                        }
+                        notesHeight = 0;
+                        if (pageNotes.Count > 0)
+                        {
+                            var kept = pageNotes.ToList();
+                            pageNotes.Clear();
+                            notesHeight = NotesHeight(kept);
+                            pageNotes.AddRange(kept);
+                        }
                         k -= back;
                         line = lines[k];
                     }
@@ -601,6 +789,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             here++;
             y += line.Height;
             columnEmpty = false;
+            if (line.Notes is { Count: > 0 } lineNotes && footnotes != null)
+            {
+                notesHeight += NotesHeight(lineNotes);
+                pageNotes.AddRange(lineNotes);
+            }
             if (line.EndBreak is "page")
             {
                 NewPage(section);
@@ -616,6 +809,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 here = 0;
                 hereAtTop = true;
             }
+        }
+        if (frame != null)
+        {
+            if (!nextContinues)
+                y += frame.Bottom is { Visible: true } b ? b.Space + b.Total : 0;
+            if (boxPage != page)
+                boxTop = page!.BodyTop;
+            frame.Draw(page!, left, width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
+                between: continues && boxPage == page ? betweenAt : null);
+        }
+        foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
+        {
+            var (bookmarkPage, bookmarkTop, bookmarkLeft, _) = anchorAt ?? (page!, y, left, width);
+            bookmarkPage.Bookmarks.Add((bookmark.Name, bookmarkLeft, bookmarkTop));
         }
         // Floating drawings anchored in the paragraph, placed relative to its page, column, paragraph or line.
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())

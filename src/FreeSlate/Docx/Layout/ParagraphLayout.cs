@@ -28,6 +28,12 @@ public sealed class Piece
     /// <summary>An inline drawing the piece stands for (one object replacement character), or null.</summary>
     public DrawingInline? Drawing { get; init; }
 
+    /// <summary>The hyperlink of the piece's text, or null.</summary>
+    public string? Link { get; init; }
+
+    /// <summary>A note separator's line (w:separator), drawn over the piece's width at the middle of the line.</summary>
+    public bool Separator { get; init; }
+
     public double Width => Advances.Sum() + SpaceExtra * JustifiedSpaces;
 }
 
@@ -58,6 +64,9 @@ public sealed class Line
 
     /// <summary>The height the line needs on the page.</summary>
     public double FitHeight => Height - Overhang;
+
+    /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
+    public List<string>? Notes { get; set; }
 
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
     public List<double>? Bars { get; set; }
@@ -104,6 +113,32 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
 
+    /// <summary>The footnote references of the paragraph being laid out: where each stands and its note.</summary>
+    readonly List<(int Index, string Id)> notes = [];
+
+    /// <summary>Note separators of the paragraph being laid out (true for the continuation separator), by their place.</summary>
+    readonly Dictionary<int, bool> separators = [];
+
+    /// <summary>
+    /// The width of a note separator: 144 pt (2 in), the continuation separator the column's width (catalog:
+    /// note.footnotes).
+    /// </summary>
+    double separatorWidth = 144;
+
+    /// <summary>The hyperlinks of the paragraph being laid out: where each linked text starts, its target and length.</summary>
+    readonly Dictionary<int, (string Target, int Length)> links = [];
+
+    /// <summary>The hyperlink of the character at <paramref name="index"/>, or null.</summary>
+    string? LinkAt(int index)
+    {
+        foreach (var (start, (target, length)) in links)
+        {
+            if (index >= start && index < start + length)
+                return target;
+        }
+        return null;
+    }
+
     /// <summary>Lays out a paragraph in a column <paramref name="width"/> points wide.</summary>
     /// <param name="fields">The page fields' values; without them, fields show the result Word saved.</param>
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null)
@@ -113,6 +148,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var advances = Advances(text, charStyles);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
+        foreach (var (index, continuation) in separators)
+            advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
         var labelShift = 0.0;
         var labelEnd = paragraph.Label?.Suffix == "space" ? labelLength + 1 : labelLength;
@@ -332,9 +369,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
         objects.Clear();
+        links.Clear();
+        notes.Clear();
+        separators.Clear();
 
-        void AddText(string value, RunFormat format)
+        void AddText(string value, RunFormat format, string? link = null)
         {
+            if (link != null)
+                links[text.Length] = (link, value.Length);
             if (format.Vanish == true)
                 return;   // hidden text is not printed (Word's PDF export leaves it out)
             // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
@@ -357,7 +399,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             switch (inline)
             {
                 case TextInline t:
-                    AddText(t.Text, format);
+                    AddText(t.Text, format, t.Link);
                     break;
                 case FieldInline field when fields?.Value(field) is { } value:
                     AddText(value, format);
@@ -368,6 +410,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case DrawingInline drawing:
                     objects[text.Length] = drawing;
+                    text.Append('\uFFFC');
+                    list.Add(styles.Style(format, WordSlot.Ascii));
+                    break;
+                case NoteReferenceInline note:
+                    if (!note.Endnote)
+                        notes.Add((text.Length, note.Id));
+                    AddText(note.Mark, format);
+                    break;
+                case SeparatorInline separator:
+                    separators[text.Length] = separator.Continuation;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
@@ -495,12 +547,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit)
     {
         var line = new Line { First = start == 0 };
+        foreach (var (index, id) in notes)
+        {
+            if (index >= start && (index < end || index == end && end == text.Length))
+                (line.Notes ??= []).Add(id);
+        }
         var x = startX;
         var pieceStart = start;
         for (var i = start; i <= end; i++)
         {
             var boundary = i == end || text[i] is '\t' or '\n' or '\f' or '\v' || i > pieceStart && !ReferenceEquals(charStyles[i], charStyles[pieceStart])
-                || i > pieceStart && (text[i] == '\uFFFC' || text[i - 1] == '\uFFFC');
+                || i > pieceStart && (text[i] == '\uFFFC' || text[i - 1] == '\uFFFC')
+                || i > pieceStart && i < end && links.Count > 0 && LinkAt(i) != LinkAt(pieceStart);
             if (!boundary)
                 continue;
             if (i > pieceStart && text[pieceStart] is not ('\t' or '\n' or '\f' or '\v'))
@@ -513,6 +571,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Advances = advances[pieceStart..i],
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
+                    Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
+                    Link = links.Count > 0 ? LinkAt(pieceStart) : null,
                 };
                 line.Pieces.Add(piece);
                 x += piece.Width;

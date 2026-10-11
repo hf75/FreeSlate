@@ -54,6 +54,9 @@ public sealed class Drawings(DocumentContext context)
 
     const double EmuPerPoint = 12700;
 
+    /// <summary>Marks on converted VML WordArt: the em box's share above the capitals and below the baseline.</summary>
+    static readonly XName WordArtTop = XNamespace.Get("urn:freeslate:wordart") + "top", WordArtBottom = XNamespace.Get("urn:freeslate:wordart") + "bottom";
+
     PresentationContext? presentation;
     readonly Dictionary<string, SlideRenderer> renderers = new(StringComparer.OrdinalIgnoreCase);
     readonly SvgPaint paint = new();
@@ -67,6 +70,24 @@ public sealed class Drawings(DocumentContext context)
     /// <summary>The text box content element of a drawing's shape (wps:txbx/w:txbxContent), or null.</summary>
     public static XElement? TextBoxContent(XElement drawing) =>
         drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "txbx")?.Element(Wml.W + "txbxContent");
+
+    /// <summary>
+    /// The text rectangle of a drawing's shape geometry (a:prstGeom with its adjustments) as distances from the
+    /// shape's sides in points: the corners of rounded rectangles, the sides of ellipses (catalog: drawing.textBoxes).
+    /// </summary>
+    public static (double Left, double Top, double Right, double Bottom) TextRect(XElement drawing, double width, double height)
+    {
+        var geometry = drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "spPr")?.Element(Ns.A + "prstGeom");
+        if ((string?)geometry?.Attribute("prst") is not { } preset || Drawing.Geometry.PresetGeometries.Get(preset) is not { } definition)
+            return default;
+        var adjustments = geometry.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
+            .Select(g => new Drawing.Geometry.Guide((string?)g.Attribute("name") ?? "", (string?)g.Attribute("fmla") ?? "")).ToList();
+        var evaluated = Drawing.Geometry.GeometryEvaluator.Evaluate(definition, width * EmuPerPoint, height * EmuPerPoint, adjustments);
+        // The evaluator works in pixels at 96 dpi.
+        const double PointsPerPixel = 0.75;
+        return (evaluated.TextLeft * PointsPerPixel, evaluated.TextTop * PointsPerPixel,
+            width - evaluated.TextRight * PointsPerPixel, height - evaluated.TextBottom * PointsPerPixel);
+    }
 
     /// <summary>A drawing's extent with its effect extents, in points.</summary>
     public static (double Width, double Height) Box(XElement drawing)
@@ -106,6 +127,19 @@ public sealed class Drawings(DocumentContext context)
         if (element == null)
             return "";
         Place(element, placed.X, placed.Y, w, h);
+        // VML WordArt: the box shrinks to the capitals' share of the em box, about the same turned center.
+        if (double.TryParse((string?)element.Attribute(WordArtTop), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var shareTop)
+            && double.TryParse((string?)element.Attribute(WordArtBottom), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var shareBottom))
+        {
+            var rotation = ((double?)element.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm")?.Attribute("rot") ?? 0) / 60000 * Math.PI / 180;
+            var (top, bottom) = (h * shareTop, h * shareBottom);
+            var shift = (top - bottom) / 2;
+            var (cx, cy) = (placed.X + w / 2 - Math.Sin(rotation) * shift, placed.Y + h / 2 + Math.Cos(rotation) * shift);
+            var height = h - top - bottom;
+            Place(element, cx - w / 2, cy - height / 2, w, height);
+            element.Attribute(WordArtTop)?.Remove();
+            element.Attribute(WordArtBottom)?.Remove();
+        }
         if (docPr?.Attribute("hidden")?.Value is "1" or "true")
             return "";
         return Renderer(placed.Part).RenderElement(element, placed.Part);
@@ -200,6 +234,8 @@ public sealed class Drawings(DocumentContext context)
                 new XElement(Ns.P + "spPr", e.Element(Wps + "spPr")?.Attributes(), Copy(e.Element(Wps + "spPr"))));
             if (e.Element(Wps + "style") is { } style)
                 shape.Add(new XElement(Ns.P + "style", Copy(style)));
+            if (e.Element(Wps + "txbxWordArt") is { } art)
+                WordArt(shape, art, docPr, graphicData);
             return shape;
         }
         if (e.Name == Wpg + "wgp" || e.Name == Wpg + "grpSp")
@@ -250,6 +286,43 @@ public sealed class Drawings(DocumentContext context)
                 new XElement(Ns.A + "graphic", new XElement(graphicData)));
         }
         return null;
+    }
+
+    /// <summary>
+    /// VML WordArt (v:textpath, catalog: vml.watermarks): its text stretched over the shape as PowerPoint draws a
+    /// textPlain warp, filled as the shape was; the shape itself is not drawn.
+    /// </summary>
+    static void WordArt(XElement shape, XElement art, XElement? docPr, XElement graphicData)
+    {
+        var spPr = shape.Element(Ns.P + "spPr")!;
+        var fill = spPr.Elements().FirstOrDefault(c => c.Name.LocalName is "solidFill" or "gradFill" or "noFill") is { } f ? new XElement(f) : new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", "000000")));
+        foreach (var paint in spPr.Elements().Where(c => c.Name.LocalName is "solidFill" or "gradFill" or "blipFill" or "noFill" or "ln").ToList())
+            paint.Remove();
+        spPr.Add(new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill")));
+        var family = "Calibri";
+        foreach (var part in ((string?)art.Attribute("style") ?? "").Split(';'))
+        {
+            var colon = part.IndexOf(':');
+            if (colon > 0 && part[..colon].Trim().Equals("font-family", StringComparison.OrdinalIgnoreCase))
+                family = part[(colon + 1)..].Trim().Trim('"', '\'', ' ').Replace("&quot;", "");
+        }
+        // VML fits the text's em box (ascent and descent) to the shape, PowerPoint's warp its ink: the box shrinks to
+        // the capitals' share of the em box (measured with docx/local/vml-watermark).
+        var font = FreeSlate.Text.FontResolver.Default.ResolveTypeface(family, false, false).Data;
+        var (ascent, descent, _) = font.Hhea;
+        var em = ascent + descent;
+        // The warp ignores insets (as PowerPoint's), so the shape itself shrinks to the capitals once it is placed.
+        if (em > 0)
+        {
+            shape.SetAttributeValue(WordArtTop, ((ascent - font.CapHeight) / em).ToString(System.Globalization.CultureInfo.InvariantCulture));
+            shape.SetAttributeValue(WordArtBottom, (descent / em).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        shape.Add(new XElement(Ns.P + "txBody",
+            new XElement(Ns.A + "bodyPr", new XAttribute("wrap", "none"), new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0), new XAttribute("bIns", 0),
+                new XAttribute("anchor", "ctr"), new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", "textPlain"), new XElement(Ns.A + "avLst"))),
+            new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr")),
+                new XElement(Ns.A + "r", new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600), fill, new XElement(Ns.A + "latin", new XAttribute("typeface", family))),
+                    new XElement(Ns.A + "t", art.Value)))));
     }
 
     static XElement CNvPr(XElement? own, XElement? docPr)
