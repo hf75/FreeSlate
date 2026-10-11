@@ -100,45 +100,130 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
     /// </summary>
     string Drawing(PlacedDrawing drawing, PageBox page)
     {
+        var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
+        if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
+            drawing = Fitted(drawing, content, bodyPr, shape, page);
         var html = drawings!.Render(drawing);
         if (blocks == null)
             return html;
-        if (drawing.Text is { Count: > 0 } text)
-            html += TextBox(text, drawing.Body, drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp"),
-                drawing.X, drawing.Y, drawing.Width, drawing.Height, 0, page);
+        if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
+            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, 0, page);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
-        foreach (var (shape, childText) in drawing.ChildText ?? [])
+        foreach (var (child, childText) in drawing.ChildText ?? [])
         {
-            if (Drawings.ChildRect(drawing.Drawing, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height) is { } rect && childText.Count > 0)
-                html += TextBox(childText, shape.Element(Drawings.Wps + "bodyPr"), shape, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
+            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is { } rect && childText.Count > 0)
+                html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
         }
         return html;
     }
 
     /// <summary>
-    /// A shape's text box content laid out like body text in the shape's rectangle less the insets of wps:bodyPr (from
-    /// the geometry's text rectangle), at the top, middle or bottom, turned with the shape.
+    /// The insets of a text box from its shape's edges: wps:bodyPr's (from the geometry's text rectangle: rounded
+    /// corners, ellipses) and half its outline, Word measuring them from the outline's inner edge (measured with
+    /// docx/local/textboxes: a 6 pt outline moves the text 3 pt in).
     /// </summary>
-    string TextBox(List<Block> text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page)
+    static (double L, double T, double R, double B) Insets(XElement? body, XElement? shape, double w, double h)
     {
         double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
         var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
-        // The insets count from the geometry's text rectangle (rounded corners, ellipses).
         var (gl, gt, gr, gb) = shape != null ? Drawings.ShapeTextRect(shape, w, h) : default;
-        (l, t, r, b) = (l + gl, t + gt, r + gr, b + gb);
+        var outline = shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln") is { } ln && ln.Element(Ns.A + "noFill") == null
+            && double.TryParse((string?)ln.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var lw) ? lw / 12700 / 2 : 0;
+        return (l + gl + outline, t + gt + outline, r + gr + outline, b + gb + outline);
+    }
+
+    /// <summary>Whether a text box's text runs vertically (wps:bodyPr/@vert): its lines turned a quarter.</summary>
+    static bool Vertical(XElement? body) => (string?)body?.Attribute("vert") is "vert" or "vert270" or "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl";
+
+    /// <summary>
+    /// A text box's shape sized to its text (measured with docx/local/textboxes): a shape that resizes to fit
+    /// (a:spAutoFit) as high as its text and insets, a box that does not wrap (wrap none) at least as wide as its
+    /// longest line.
+    /// </summary>
+    PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page)
+    {
+        var autofit = body.Element(Ns.A + "spAutoFit") != null;
+        var unwrapped = (string?)body.Attribute("wrap") == "none";
+        if (!autofit && !unwrapped || Vertical(body))
+            return drawing;
+        var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
-        var (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, w - l - r), fields);
-        var free = h - t - b - height;
-        var top = y + t + ((string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 });
-        var left = x + l;
+        var (lines, _, _, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields);
+        if (unwrapped)
+        {
+            var longest = lines.Select(p => p.Line.Pieces.Count > 0 ? p.Left + p.Line.Pieces[^1].X + p.Line.Pieces[^1].Width : 0).DefaultIfEmpty(0).Max();
+            drawing = drawing with { Width = Math.Max(drawing.Width, longest + l + r) };
+        }
+        if (autofit)
+            drawing = drawing with { Height = height + t + b };
+        return drawing;
+    }
+
+    /// <summary>The lines of linked text boxes that did not fit the boxes before, by the story's id and the next box's place.</summary>
+    readonly Dictionary<(string Id, int Seq), List<PlacedLine>> continued = [];
+
+    /// <summary>
+    /// A shape's text box content laid out like body text in the shape's rectangle less its insets, at the top,
+    /// middle or bottom, turned with the shape (catalog: drawing.textBoxes, measured with docx/local/textboxes).
+    /// Vertical text turns its lines a quarter: vert runs them down, the first at the right; vert270 runs them up,
+    /// the first at the left; mongolianVert runs them down, the first at the left; the insets stay with the shape's
+    /// sides. Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show what does not fit the boxes before
+    /// them, line by line.
+    /// </summary>
+    string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page)
+    {
+        var (l, t, r, b) = Insets(body, shape, w, h);
+        var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
+        var (areaWidth, areaHeight) = vert != null ? (h - t - b, w - l - r) : (w - l - r, h - t - b);
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
+        List<PlacedLine> lines;
+        List<FillRect> fills = [];
+        List<Stroke> strokes = [];
+        double height;
+        var linked = shape?.Element(Drawings.Wps + "linkedTxbx");
+        var story = (string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") ?? (string?)linked?.Attribute("id");
+        var seq = linked != null && int.TryParse((string?)linked.Attribute("seq"), out var place) ? place : 0;
+        if (text is { Count: > 0 })
+            (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, (string?)body?.Attribute("wrap") == "none" && vert == null ? 1e5 : areaWidth), fields);
+        else if (story != null && continued.Remove((story, seq), out var rest))
+            (lines, height) = (rest, rest.Max(p => p.Top + p.Line.Height));
+        else
+            return "";
+        // Lines of a linked story beyond the box continue in the next one.
+        if (story != null && lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01))
+        {
+            var kept = lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01).ToList();
+            var over = lines.Except(kept).ToList();
+            var shift = over.Min(p => p.Top);
+            continued[(story, seq + 1)] = over.Select(p => p with { Top = p.Top - shift }).ToList();
+            (lines, height) = (kept, kept.Count > 0 ? kept.Max(p => p.Top + p.Line.Height) : 0);
+            fills = fills.Where(f => f.Y < shift).ToList();
+            strokes = strokes.Where(s => s.Y1 < shift).ToList();
+        }
+        var free = areaHeight - height;
+        var offset = (string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 };
         var width = page.Width * PxPerPt;
         var heightPx = page.Height * PxPerPt;
         var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
         if (rotation != 0)
             svg.Append($"<g transform=\"rotate({Units.Css(rotation)} {Px(x + w / 2)} {Px(y + h / 2)})\">");
-        Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
         var selection = new StringBuilder();
-        Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, []);
+        if (vert == null)
+        {
+            var (left, top) = (x + l, y + t + offset);
+            Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
+            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, []);
+        }
+        else
+        {
+            // Each line turned about its own top left corner, set where its turn puts it.
+            Lines(lines.Select(p => vert switch
+            {
+                "vert270" => p with { Left = x + l + offset + p.Top, Top = y + h - b - p.Left, Angle = -90 },
+                "mongolianVert" => p with { Left = x + l + offset + p.Top + p.Line.Height, Top = y + t + p.Left, Angle = 90 },
+                _ => p with { Left = x + w - r - offset - p.Top, Top = y + t + p.Left, Angle = 90 },
+            }), svg, selection, []);
+        }
         svg.Append(selection);
         if (rotation != 0)
             svg.Append("</g>");
