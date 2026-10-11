@@ -221,6 +221,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
 
+    /// <summary>
+    /// Marks of notes that differ from the ones read, by kind (endnote or not) and id: footnotes numbered anew on every
+    /// page, which take their numbers from the pages they land on (catalog: note.footnotes).
+    /// </summary>
+    public Dictionary<(bool Endnote, string Id), string>? NoteMarks { get; set; }
+
     /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, CheckBoxInline> boxes = [];
 
@@ -869,9 +875,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     list.Add(styles.Style(ruby.Base.FirstOrDefault()?.Format ?? format, WordSlot.EastAsia));
                     break;
                 case NoteReferenceInline note:
-                    if (!note.Endnote)
+                    if (!note.Endnote && !note.Own)
                         notes.Add((text.Length, note.Id));
-                    AddText(note.Mark, format);
+                    AddText(note.Mark.Length > 0 && NoteMarks?.GetValueOrDefault((note.Endnote, note.Id)) is { } mark ? mark : note.Mark, format);
                     break;
                 case SeparatorInline separator:
                     separators[text.Length] = separator.Continuation;

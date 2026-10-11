@@ -16,7 +16,11 @@ public sealed record TextInline(string Text, RunFormat Format) : Inline(Format)
 /// A footnote or endnote reference (w:footnoteReference, w:endnoteReference, catalog: note.footnotes, note.endnotes):
 /// the note's number as its mark, or nothing where a custom mark follows.
 /// </summary>
-public sealed record NoteReferenceInline(string Id, bool Endnote, string Mark, RunFormat Format) : Inline(Format);
+public sealed record NoteReferenceInline(string Id, bool Endnote, string Mark, RunFormat Format) : Inline(Format)
+{
+    /// <summary>The note's own mark at its start (w:footnoteRef, w:endnoteRef), which refers to nothing.</summary>
+    public bool Own { get; init; }
+}
 
 /// <summary>The line of a note separator (w:separator, w:continuationSeparator) in the separator notes.</summary>
 public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inline(Format);
@@ -192,6 +196,11 @@ public sealed partial class ModelReader(DocumentContext context)
     DataBinding? binding;
     DataBinding Binding => binding ??= new DataBinding(context);
 
+    /// <summary>The section (its w:sectPr and its index) of every element of the body, and of the one being read.</summary>
+    readonly Dictionary<XElement, (XElement? Properties, int Index)> sectionOf = [];
+    (XElement? Properties, int Index) currentSection;
+    XElement? bodyElement;
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
@@ -199,7 +208,27 @@ public sealed partial class ModelReader(DocumentContext context)
         counter = new ListCounter(context.Numbering);
         currentPart = context.MainPart;
         if (body != null)
+        {
+            // Each section's properties stand at its end.
+            bodyElement = body;
+            var pending = new List<XElement>();
+            var index = 0;
+            foreach (var e in body.Elements())
+            {
+                pending.Add(e);
+                if (e.Name == Wml.W + "p" && e.Child("pPr").Child("sectPr") is { } properties)
+                {
+                    foreach (var p in pending)
+                        sectionOf[p] = (properties, index);
+                    pending.Clear();
+                    index++;
+                }
+            }
+            foreach (var p in pending)
+                sectionOf[p] = (body.Child("sectPr"), index);
+            currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
             ReadBlocks(body, blocks);
+        }
         return blocks;
     }
 
@@ -215,11 +244,21 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The numbers of footnotes and endnotes in the order their references stand in the document.</summary>
     readonly Dictionary<string, int> footnoteNumbers = new(StringComparer.Ordinal), endnoteNumbers = new(StringComparer.Ordinal);
 
+    /// <summary>The marks of the notes (by kind and id) and the sections of the endnotes' references.</summary>
+    readonly Dictionary<(bool Endnote, string Id), string> noteMarks = [];
+    readonly Dictionary<string, int> endnoteSections = new(StringComparer.Ordinal);
+
+    /// <summary>The count of each kind of note and the section of its last reference, for restarts.</summary>
+    readonly int[] noteCounts = new int[2], noteSectionsSeen = [-1, -1];
+
     /// <summary>An endnote's number (the order of its reference), or 0 where nothing refers to it.</summary>
     public int EndnoteNumber(string id) => endnoteNumbers.GetValueOrDefault(id);
 
-    /// <summary>The number of the note being read, which its w:footnoteRef or w:endnoteRef shows.</summary>
-    string? noteMark;
+    /// <summary>The index of the section that refers to an endnote.</summary>
+    public int EndnoteSection(string id) => endnoteSections.GetValueOrDefault(id);
+
+    /// <summary>The number of the note being read, which its w:footnoteRef or w:endnoteRef shows, and its id.</summary>
+    string? noteMark, noteId;
 
     /// <summary>
     /// The footnotes or endnotes of the document (catalog: note.footnotes, note.endnotes) by id, read after the
@@ -238,8 +277,8 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             var id = note.Attr("id") ?? "";
             var type = note.Attr("type") ?? "normal";
-            var numbers = endnotes ? endnoteNumbers : footnoteNumbers;
-            noteMark = type == "normal" && numbers.TryGetValue(id, out var number) ? NoteText(number, endnotes) : "";
+            noteMark = type == "normal" && noteMarks.TryGetValue((endnotes, id), out var mark) ? mark : "";
+            noteId = id;
             var blocks = new List<Block>();
             ReadBlocks(note, blocks);
             notes[type == "normal" ? id : type] = blocks;
@@ -249,14 +288,23 @@ public sealed partial class ModelReader(DocumentContext context)
         return notes;
     }
 
-    /// <summary>A note's number in its format (w:footnotePr/w:numFmt: decimal for footnotes, lower roman for endnotes).</summary>
-    string NoteText(int number, bool endnote)
+    /// <summary>
+    /// The mark of the next note of a kind (catalog: note.footnotes, note.endnotes), as Word numbers them (measured with
+    /// docx/local/fnpages-c): in the format, from the start and with the restarts of the section of its reference
+    /// (w:footnotePr, w:endnotePr), else of the document's settings; decimal footnotes and lower roman endnotes by
+    /// default, counting on through the sections.
+    /// </summary>
+    string NextNoteMark(bool endnote)
     {
-        var properties = context.Document.Root.Child("body").Child("sectPr").Child(endnote ? "endnotePr" : "footnotePr")
-                         ?? context.Settings.Child(endnote ? "endnotePr" : "footnotePr");
-        var format = properties.Child("numFmt").Val() ?? (endnote ? "lowerRoman" : "decimal");
-        var start = (int)(properties.Child("numStart").Number("val") ?? 1);
-        return NumberText.Format(number + start - 1, format);
+        var name = endnote ? "endnotePr" : "footnotePr";
+        var (own, settings) = (currentSection.Properties.Child(name), context.Settings.Child(name));
+        string? Value(string property) => own.Child(property).Val() ?? settings.Child(property).Val();
+        var kind = endnote ? 1 : 0;
+        if (Value("numRestart") == "eachSect" && noteSectionsSeen[kind] != currentSection.Index)
+            noteCounts[kind] = 0;
+        noteSectionsSeen[kind] = currentSection.Index;
+        var start = int.TryParse(Value("numStart"), out var first) ? first : 1;
+        return NumberText.Format(++noteCounts[kind] + start - 1, Value("numFmt") ?? (endnote ? "lowerRoman" : "decimal"));
     }
 
     /// <summary>The blocks of a header or footer part (catalog: headerFooter.parts), read once.</summary>
@@ -282,6 +330,8 @@ public sealed partial class ModelReader(DocumentContext context)
         ParagraphBlock? pending = null;
         foreach (var e in container.Elements())
         {
+            if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
+                currentSection = section;
             if (e.Name.Namespace != Wml.W)
                 continue;
             if (pending != null && e.Name.LocalName != "p")
@@ -907,14 +957,19 @@ public sealed partial class ModelReader(DocumentContext context)
                 {
                     var endnote = e.Name.LocalName == "endnoteReference";
                     var numbers = endnote ? endnoteNumbers : footnoteNumbers;
-                    if (!numbers.TryGetValue(noteId, out var number))
-                        numbers[noteId] = number = numbers.Count + 1;
+                    if (!numbers.ContainsKey(noteId))
+                    {
+                        numbers[noteId] = numbers.Count + 1;
+                        noteMarks[(endnote, noteId)] = NextNoteMark(endnote);
+                        if (endnote)
+                            endnoteSections[noteId] = currentSection.Index;
+                    }
                     var custom = e.Attr("customMarkFollows") is "1" or "true" or "on";
-                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : NoteText(number, endnote), format));
+                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : noteMarks[(endnote, noteId)], format));
                     break;
                 }
                 case "footnoteRef" or "endnoteRef" when !field.Hidden && noteMark != null:
-                    field.Target(content).Add(new TextInline(noteMark, format));
+                    field.Target(content).Add(new NoteReferenceInline(noteId ?? "", e.Name.LocalName == "endnoteRef", noteMark, format) { Own = true });
                     break;
                 case "separator" or "continuationSeparator" when !field.Hidden:
                     field.Target(content).Add(new SeparatorInline(e.Name.LocalName == "continuationSeparator", format));

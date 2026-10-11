@@ -19,6 +19,12 @@ public sealed class PageBox
 {
     public int Number { get; init; }
     public required SectionProperties Section { get; init; }
+
+    /// <summary>The footnotes that begin on the page, in the order of their references.</summary>
+    public List<string> Footnotes { get; } = [];
+
+    /// <summary>The height of the footnotes of a page of several columns, which their text must leave free.</summary>
+    public double NoteBand { get; set; }
     public List<PlacedLine> Lines { get; } = [];
 
     /// <summary>The page's number as PAGE fields show it (w:pgNumType restarts it; catalog: section.pageNumbers).</summary>
@@ -131,7 +137,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     ParagraphBlock? previous;
 
     /// <param name="footnotes">The document's footnotes by id, with "separator" and "continuationSeparator".</param>
-    /// <param name="endnotes">The document's endnotes by id in the order of their references, with the separators.</param>
+    /// <param name="endnotes">The document's endnotes in the order of their references, with the sections that refer to them.</param>
     /// <remarks>
     /// Floating objects with text wrapping (catalog: engine.floats) stand on the page of their anchor and push aside
     /// every line of that page, also of paragraphs above the anchor (measured with docx/generated/wrapping): the
@@ -139,21 +145,52 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// their objects (at most four runs).
     /// </remarks>
     public List<PageBox> Paginate(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
-        List<List<Block>>? endnotes = null, List<Block>? endnoteSeparator = null)
+        List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
-        var known = new Dictionary<int, List<Exclusion>>();
-        List<PageBox> result = [];
-        for (var run = 0; run < 4; run++)
+        List<PageBox> Run()
         {
-            var paginator = new Paginator(context, layout, reader) { seeded = known };
-            result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
-            var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList());
-            if (found.Values.All(e => e.Count == 0) || Same(known, found))
-                break;
-            known = found;
+            var known = new Dictionary<int, List<Exclusion>>();
+            var bands = new Dictionary<int, double>();
+            List<PageBox> result = [];
+            for (var run = 0; run < 4; run++)
+            {
+                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands };
+                result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList());
+                // Footnotes of later columns of a page take room from its earlier columns too: the page is laid out
+                // again with the room they took.
+                var foundBands = result.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
+                var bandsKept = foundBands.Count == bands.Count && foundBands.All(b => bands.TryGetValue(b.Key, out var old) && Math.Abs(old - b.Value) < 0.01);
+                if ((found.Values.All(e => e.Count == 0) || Same(known, found)) && bandsKept)
+                    break;
+                known = found;
+                bands = foundBands;
+            }
+            return result;
         }
-        NumberLines(result);
-        return result;
+        var pages = Run();
+        // Footnotes numbered anew on every page (w:numRestart eachPage) take their numbers from the pages they land on;
+        // the pages are laid out again with them until they stay (measured with docx/local/fnpages-b).
+        for (var pass = 0; pass < 3 && footnotes is { Count: > 0 }; pass++)
+        {
+            var marks = new Dictionary<(bool Endnote, string Id), string>();
+            foreach (var page in pages)
+            {
+                var (own, settings) = (page.Section.Element.Child("footnotePr"), context.Settings.Child("footnotePr"));
+                if ((own.Child("numRestart").Val() ?? settings.Child("numRestart").Val()) != "eachPage")
+                    continue;
+                var format = own.Child("numFmt").Val() ?? settings.Child("numFmt").Val() ?? "decimal";
+                var k = 0;
+                foreach (var id in page.Footnotes)
+                    marks[(false, id)] = NumberText.Format(++k, format);
+            }
+            if (marks.Count == 0 || layout.NoteMarks is { } before && before.Count == marks.Count && before.All(m => marks.GetValueOrDefault(m.Key) == m.Value))
+                break;
+            layout.NoteMarks = marks;
+            pages = Run();
+        }
+        NumberLines(pages);
+        return pages;
 
         static bool Same(Dictionary<int, List<Exclusion>> a, Dictionary<int, List<Exclusion>> b) =>
             a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var other) && other.Count == kv.Value.Count
@@ -355,6 +392,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
 
+    /// <summary>The height the footnotes of each page with columns took in the run before.</summary>
+    Dictionary<int, double> seededBands = [];
+
     /// <summary>
     /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
     /// distances around it; square wrapping keeps the box, top and bottom the whole width, tight and through wrapping
@@ -511,7 +551,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
-        List<List<Block>>? endnotes = null, List<Block>? endnoteSeparator = null)
+        List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
         this.footnotes = footnotes;
         // Each section's properties are given at its end.
@@ -541,7 +581,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var (sectionBlocks, properties) = sections[s];
             sectionIndex = s;
             StartSection(properties, s == 0);
-            for (var i = 0; i < sectionBlocks.Count; i++)
+            // Endnotes follow the document's last paragraph, after their separator, or each section's where the
+            // settings put them at the end of sections (w:endnotePr/w:pos sectEnd), unless the section has none
+            // (w:noEndnote; catalog: note.endnotes): after the text of the paragraph that ends the section, an empty
+            // one taking no line before them (measured with docx/local/fnpages-c and -e).
+            var atSectionEnds = context.Settings.Child("endnotePr").Child("pos").Val() == "sectEnd" && properties.Element.Child("noEndnote").OnOff() != true;
+            var due = endnotes?.Where(n => n.Section >= endnotesFrom && (s == sections.Count - 1 || atSectionEnds && n.Section <= s)).ToList();
+            var emptyEnd = due is { Count: > 0 } && sectionBlocks.Count > 0 && sectionBlocks[^1] is ParagraphBlock { EndsSection: not null } end
+                && end.Content.All(c => c is BookmarkInline or PermissionInline);
+            for (var i = 0; i < sectionBlocks.Count - (emptyEnd ? 1 : 0); i++)
             {
                 if (sectionBlocks[i] is TableBlock)
                     PlaceTable(sectionBlocks, i);
@@ -550,13 +598,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 else
                     Place(sectionBlocks, i);
             }
-            // Endnotes follow the document's last paragraph, after their separator (catalog: note.endnotes).
-            if (s == sections.Count - 1 && endnotes is { Count: > 0 })
+            if (due is { Count: > 0 })
             {
+                endnotesFrom = s + 1;
                 var trailing = new List<Block>();
                 trailing.AddRange(endnoteSeparator ?? []);
-                foreach (var note in endnotes)
-                    trailing.AddRange(note);
+                foreach (var note in due)
+                    trailing.AddRange(note.Blocks);
                 for (var i = 0; i < trailing.Count; i++)
                 {
                     if (trailing[i] is TableBlock)
@@ -565,6 +613,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         Place(trailing, i);
                 }
             }
+            if (emptyEnd)
+                Place(sectionBlocks, sectionBlocks.Count - 1);
             // A continuous section break balances the columns above it.
             if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1)
                 Balance();
@@ -590,6 +640,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         return pages;
     }
+
+    /// <summary>The first section whose endnotes are still to come.</summary>
+    int endnotesFrom;
 
     void StartSection(SectionProperties properties, bool first)
     {
@@ -679,6 +732,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         flow.Clear();
         if (!blank)
             ContinueNotes();
+        if (properties.Columns > 1 && seededBands.TryGetValue(page.Number, out var band))
+            notesHeight = Math.Max(notesHeight, band);
     }
 
     /// <summary>
@@ -860,10 +915,59 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     readonly Dictionary<(string, double), NoteBox> noteBoxes = [];
 
-    /// <summary>A footnote laid out in the current page's text width.</summary>
+    /// <summary>
+    /// The columns footnotes stand in (measured with docx/local/fnpages-h): a page of several columns has its notes in
+    /// columns too, under one separator at the left.
+    /// </summary>
+    List<(double Left, double Width)> NoteColumns()
+    {
+        var s = page!.Section;
+        if (s.Columns <= 1)
+            return [(page.TextLeft, page.TextWidth)];
+        var columns = new List<(double Left, double Width)>();
+        var left = page.TextLeft;
+        for (var k = 0; k < s.Columns; k++)
+        {
+            var (width, space) = s.ColumnWidths is { Count: > 0 } widths ? widths[Math.Min(k, widths.Count - 1)]
+                : ((page.TextWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns, s.ColumnSpace);
+            columns.Add((left, width));
+            left += width + space;
+        }
+        return columns;
+    }
+
+    /// <summary>
+    /// The columns the notes of a page fall into, whole, in order: each column takes notes until those so far reach its
+    /// share of their height (seven notes of two lines in two columns: four and three).
+    /// </summary>
+    List<List<string>> NoteSpread(IEnumerable<string> ids, int columns)
+    {
+        var list = ids.ToList();
+        var total = list.Sum(id => Note(id).Height);
+        var spread = Enumerable.Range(0, columns).Select(_ => new List<string>()).ToList();
+        var (c, sum) = (0, 0.0);
+        foreach (var id in list)
+        {
+            spread[c].Add(id);
+            sum += Note(id).Height;
+            if (c < columns - 1 && sum >= total * (c + 1) / columns - 0.01)
+                c++;
+        }
+        return spread;
+    }
+
+    /// <summary>The height the notes of a page of columns take: their tallest column and the separator.</summary>
+    double Band(IEnumerable<string> ids)
+    {
+        var columns = NoteColumns().Count;
+        var spread = NoteSpread(ids, columns);
+        return spread.Any(c => c.Count > 0) ? SeparatorHeight + spread.Max(c => c.Sum(id => Note(id).Height)) : 0;
+    }
+
+    /// <summary>A footnote laid out in the current page's text width (or its first column's).</summary>
     NoteBox Note(string id)
     {
-        var width = page!.TextWidth;
+        var width = NoteColumns()[0].Width;
         if (noteBoxes.TryGetValue((id, width), out var box))
             return box;
         var (lines, fills, strokes, height) = footnotes != null && footnotes.TryGetValue(id, out var blocks)
@@ -882,6 +986,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (ids == null || footnotes == null || page == null)
             return 0;
+        if (page.Section.Columns > 1)
+        {
+            var fresh = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
+            return fresh.Count == 0 ? 0 : Math.Max(0, Band(pageNotes.Concat(fresh)) - notesHeight);
+        }
         var height = ids.Where(footnotes.ContainsKey).Sum(id => Note(id).Height);
         if (height > 0 && pageNotes.Count == 0 && carriedHere == null)
             height += SeparatorHeight;
@@ -918,7 +1027,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     bool SplitNotes(List<string> ids, double room)
     {
-        if (footnotes == null)
+        if (footnotes == null || page!.Section.Columns > 1)
             return false;
         ids = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
         if (ids.Count == 0)
@@ -947,22 +1056,43 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             (splitNote, carriedHere, bodyEnd) = (null, null, null);
             return;
         }
-        var at = page.BodyBottom - notesHeight;
+        // A section that puts its footnotes beneath the text (its own w:footnotePr/w:pos; the settings' alone leave
+        // them at the page's bottom) has them follow its last line (measured with docx/local/fnpages-f and -g).
+        var at = page.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText" ? Math.Min(y, page.BodyBottom - notesHeight) : page.BodyBottom - notesHeight;
+        var x = page.TextLeft;
         void Put(NoteBox box)
         {
             foreach (var line in box.Lines)
-                page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = at + line.Top });
+                page.Lines.Add(line with { Left = x + line.Left, Top = at + line.Top });
             foreach (var fill in box.Fills)
-                page.Borders.Add(fill with { X = page.TextLeft + fill.X, Y = at + fill.Y });
-            page.Strokes.AddRange(box.Strokes.Select(s => s.Offset(page.TextLeft, at)));
+                page.Borders.Add(fill with { X = x + fill.X, Y = at + fill.Y });
+            page.Strokes.AddRange(box.Strokes.Select(s => s.Offset(x, at)));
             at += box.Height;
         }
         if (footnotes.ContainsKey("separator"))
             Put(Note("separator"));
         if (carriedHere != null)
             Put(carriedHere);
-        foreach (var id in pageNotes)
-            Put(splitNote is { } split && split.Id == id ? split.Shown : Note(id));
+        page.Footnotes.AddRange(pageNotes);
+        var columns = NoteColumns();
+        if (columns.Count > 1)
+        {
+            // Notes in columns, each column's from the top of the band.
+            page.NoteBand = Band(pageNotes);
+            var bandTop = at;
+            var spread = NoteSpread(pageNotes, columns.Count);
+            for (var c = 0; c < columns.Count; c++)
+            {
+                (x, at) = (columns[c].Left, bandTop);
+                foreach (var id in spread[c])
+                    Put(Note(id));
+            }
+        }
+        else
+        {
+            foreach (var id in pageNotes)
+                Put(splitNote is { } split && split.Id == id ? split.Shown : Note(id));
+        }
         pageNotes.Clear();
         notesHeight = 0;
         (splitNote, carriedHere, bodyEnd) = (null, null, null);

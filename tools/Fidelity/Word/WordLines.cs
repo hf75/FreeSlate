@@ -129,7 +129,7 @@ public static class WordLines
         var body = reader.Body();
         var footnotes = reader.Notes(endnotes: false);
         var endnoteParts = reader.Notes(endnotes: true);
-        var endnotes = endnoteParts.Where(n => reader.EndnoteNumber(n.Key) > 0).OrderBy(n => reader.EndnoteNumber(n.Key)).Select(n => n.Value).ToList();
+        var endnotes = endnoteParts.Where(n => reader.EndnoteNumber(n.Key) > 0).OrderBy(n => reader.EndnoteNumber(n.Key)).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
         var pages = new Paginator(context, layout, reader).Paginate(body, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var result = new List<(int, double, double, double, string)>();
         foreach (var page in pages)

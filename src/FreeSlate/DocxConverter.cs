@@ -60,7 +60,8 @@ public static class DocxConverter
         // Notes are read after the body: their numbers come from the order of their references.
         var footnotes = reader.Notes(endnotes: false);
         var endnoteParts = reader.Notes(endnotes: true);
-        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key)).Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => n.Value).ToList();
+        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
+            .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
         var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
         var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout));
