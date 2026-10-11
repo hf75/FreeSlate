@@ -1579,10 +1579,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // continues on the next.
             var notesNeeded = NotesHeight(line.Notes);
             var split = false;
+            // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
+            // docx/local/hyph-d).
+            var fitHeight = line.Hyphenated && k + 1 < lines.Count ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
             if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + line.FitHeight <= Bottom + 0.01
                 && SplitNotes(line.Notes!, Bottom - y - line.FitHeight))
                 split = true;
-            else if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
+            else if (y + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).

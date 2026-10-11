@@ -74,6 +74,9 @@ public sealed class Line
 {
     public List<Piece> Pieces { get; } = [];
 
+    /// <summary>Whether the line ends with the hyphen of a word broken at its end (automatic or soft hyphenation).</summary>
+    public bool Hyphenated { get; set; }
+
     /// <summary>The line's height in points, its baseline from its top and the natural parts above and below the baseline.</summary>
     public double Height { get; set; }
     public double Baseline { get; set; }
@@ -238,6 +241,40 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, CheckBoxInline> boxes = [];
+
+    /// <summary>Where the line being built ends with an automatic hyphen, or -1.</summary>
+    int autoHyphenAt = -1;
+
+    /// <summary>
+    /// The places a hyphen may stand before in the paragraph's text (catalog: paragraph.hyphenation), or null where it
+    /// is not hyphenated: with automatic hyphenation (w:autoHyphenation) and not suppressed (w:suppressAutoHyphens), the
+    /// words of languages with patterns, all capitals left out where w:doNotHyphenateCaps says so.
+    /// </summary>
+    bool[]? Hyphenation(string text, List<RunStyle> charStyles, ParagraphFormat format)
+    {
+        if (context.Settings.Child("autoHyphenation").OnOff() != true || format.SuppressAutoHyphens == true)
+            return null;
+        var caps = context.Settings.Child("doNotHyphenateCaps").OnOff() != true;
+        bool[]? result = null;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (!char.IsLetter(text[i]))
+                continue;
+            var end = i;
+            while (end < text.Length && (char.IsLetter(text[end]) || char.GetUnicodeCategory(text[end]) == UnicodeCategory.NonSpacingMark))
+                end++;
+            var language = charStyles[i].Language ?? context.Culture.Name;
+            var word = text[i..end];
+            var numeric = end < text.Length && char.IsDigit(text[end]) || i > 0 && char.IsDigit(text[i - 1]);
+            if (!numeric && (caps || word.Any(char.IsLower)) && FreeSlate.Text.Hyphenator.For(language) is { } hyphenator)
+            {
+                foreach (var point in hyphenator.Points(word))
+                    (result ??= new bool[text.Length + 1])[i + point] = true;
+            }
+            i = end;
+        }
+        return result;
+    }
 
     /// <summary>The room run borders take before the first character of their boxes, by its place in the text.</summary>
     readonly Dictionary<int, double> leads = [];
@@ -496,6 +533,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             labelShift = label.Justification == "center" ? labelWidth / 2 : labelWidth;
         }
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
+        var hyphens = Hyphenation(text, charStyles, format);
+        var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;
+        var hyphenLimit = (int)(context.Settings.Child("consecutiveHyphenLimit").Number("val") ?? 0);
+        var hyphenatedLines = 0;
+        // The last hyphenation place of the word [from, to) where its part before it and a hyphen fit the line.
+        int? Hyphenate(int from, int to, double startX, double lineLimit)
+        {
+            int? best = null;
+            var px = startX;
+            for (var k = from; k < to; k++)
+            {
+                if (k > from && hyphens![k] && px + HyphenWidth(charStyles[k - 1]) <= lineLimit + 0.005)
+                    best = k;
+                px += advances[k];
+            }
+            return best;
+        }
         var mark = styles.Style(paragraph.MarkFormat, WordSlot.Ascii);
 
         var left = format.Left ?? 0;
@@ -615,7 +669,37 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     continue;
                 }
                 if (!fits && end > lineStart && HasContent(text, lineStart, end))
+                {
+                    // Automatic hyphenation (measured with docx/local/hyph-a to -d and hyph-fit): the word that does not
+                    // fit breaks at its last place where its part and a hyphen fit; justified lines may squeeze their
+                    // spaces by 23 % for it (between 21.9 %, which Word takes, and 25.2 %, which it does not); other
+                    // lines break so only where they would end further than the hyphenation zone from their end: 0.25
+                    // in from Word 2013 on, whatever w:hyphenationZone says (zones of 0, 0.25 and 1 in break alike),
+                    // w:hyphenationZone before.
+                    if (hyphens != null && (hyphenLimit <= 0 || hyphenatedLines < hyphenLimit))
+                    {
+                        var lineEnd = x;
+                        for (var k = end; k > lineStart && text[k - 1] == ' '; k--)
+                            lineEnd -= advances[k - 1];
+                        var justified = Justified(format) && context.CompatibilityMode >= 15;
+                        var threshold = context.CompatibilityMode >= 15 ? 18 : zone;
+                        if ((justified || limit - lineEnd > threshold + 0.005) && Hyphenate(i, contentEnd, x, limit + (justified ? 0.23 * spaces : 0)) is { } at)
+                        {
+                            end = at;
+                            lastFit = at;
+                            autoHyphenAt = at;
+                        }
+                    }
                     break;   // the word goes to the next line
+                }
+                if (!fits && hyphens != null && Hyphenate(i, contentEnd, x, limit) is { } inWord)
+                {
+                    // A word longer than the line breaks at its last hyphenation place that fits.
+                    end = inWord;
+                    lastFit = inWord;
+                    autoHyphenAt = inWord;
+                    break;
+                }
                 if (!fits)
                 {
                     // A word longer than the line: as many characters as fit, at least one.
@@ -647,6 +731,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 lastFit = end;
 
             var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
+            hyphenatedLines = autoHyphenAt == end ? hyphenatedLines + 1 : 0;
+            autoHyphenAt = -1;
             line.EndBreak = endBreak;
             line.Skip = skip;
             if (anchored.Where(a => a.Index >= lineStart && (a.Index < end || end >= text.Length)).Select(a => a.Anchor).ToList() is { Count: > 0 } inLine)
@@ -1177,14 +1263,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             if (i > pieceStart && text[pieceStart] is not ('\t' or '\n' or '\f' or '\v'))
             {
-                // A soft hyphen where the line breaks shows as a hyphen (measured with docx/local/run-content).
+                // A soft hyphen where the line breaks shows as a hyphen (measured with docx/local/run-content), and so
+                // does a word broken by automatic hyphenation.
                 var hyphen = i == end && end < text.Length && text[end - 1] == '\u00AD';
+                var automatic = i == end && end == autoHyphenAt;
                 var pieceAdvances = advances[pieceStart..i];
                 if (hyphen)
                     pieceAdvances[^1] = HyphenWidth(charStyles[end - 1]);
+                if (automatic)
+                    pieceAdvances = [.. pieceAdvances, HyphenWidth(charStyles[end - 1])];
+                if (hyphen || automatic)
+                    line.Hyphenated = true;
                 var piece = new Piece
                 {
-                    Text = hyphen ? text[pieceStart..(i - 1)] + "-" : text[pieceStart..i],
+                    Text = hyphen ? text[pieceStart..(i - 1)] + "-" : automatic ? text[pieceStart..i] + "-" : text[pieceStart..i],
                     Style = charStyles[pieceStart],
                     X = x,
                     Start = pieceStart,

@@ -15,3 +15,25 @@ renderer then takes its definition from here.
 `cmykToRgb.bin` holds the colors PowerPoint shows for CMYK pictures without a color profile of their own: 9⁴ CMYK
 patches (levels 0, 32, … 255; RGB triplets, cyan varying slowest and black fastest) measured from PowerPoint's
 rendering of a patch chart by `dotnet run --project tools/Fidelity -- harvest-cmyk`.
+
+`hyph-de.gz`, `hyph-en-us.gz` and `hyph-en-gb.gz` hold the hyphenation patterns and exceptions of the hyph-utf8
+package (<https://github.com/hyphenation/tex-hyphen>), converted to one line of patterns and one of exceptions and
+compressed; the patterns themselves are unchanged:
+
+- `hyph-de.gz`: German Hyphenation Patterns (Reformed Orthography, 2006), `hyph-de-1996.tex` 2024-02-28.
+  Copyright (c) 2013-2024 Stephan Hennig, Werner Lemberg, Günter Milde, Sander van Geloven, Georg Pfeiffer,
+  Gisbert W. Selke, Tobias Wendorf, Keno Wehr (Deutschsprachige Trennmustermannschaft). MIT License: Permission is
+  hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
+  (the "Software"), to deal in the Software without restriction, including without limitation the rights to use,
+  copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+  whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this
+  permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED
+  "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+- `hyph-en-us.gz`: Hyphenation patterns for American English, `hyph-en-us.tex` (ushyphmax). Copyright (C) 1990,
+  2004, 2005 Gerard D.C. Kuiken. Copying and distribution of this file, with or without modification, are permitted
+  in any medium without royalty provided the copyright notice and this notice are preserved.
+- `hyph-en-gb.gz`: Hyphenation patterns for British English, `hyph-en-gb.tex`. Copyright (C) 1992, 1996, 2005, 2016
+  Dominik Wujastyk, Graham Toal. MIT License (the text above).
