@@ -3,11 +3,14 @@ using System.Xml.Linq;
 namespace FreeSlate.Pptx;
 
 /// <summary>
-/// PowerPoint's 74 built-in table styles (catalog: table.styles), for tables that name one in a:tableStyleId without
-/// their presentation defining it (files from other producers; PowerPoint writes the styles it uses).
+/// PowerPoint's 74 built-in table styles (catalog: table.styles), the only ones it draws: the definitions a file
+/// carries in ppt/tableStyles.xml are not used for drawing, not even under a built-in style's id.
 /// </summary>
 static class BuiltInTableStyles
 {
+    /// <summary>No Style, Table Grid: drawn for tables without a built-in style.</summary>
+    public const string TableGrid = "{5940675A-B579-460E-94D1-54222C63F5DA}";
+
     static readonly Lazy<Dictionary<string, XElement>> Styles = new(() =>
     {
         using var stream = typeof(BuiltInTableStyles).Assembly.GetManifestResourceStream("builtinTableStyles.xml")

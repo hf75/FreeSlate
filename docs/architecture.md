@@ -35,8 +35,8 @@ Fonts the browser cannot find by name (fonts embedded in the presentation, Offic
   `Placeholders`.
 - `TextRenderer` lays out and draws text: the sources of text properties in priority order, autofit, bullets,
   columns, vertical text, WordArt (`TextWarp`), 3D text, effects on text.
-- `TableRenderer` lays out tables: rows grow to fit their text; built-in table styles come from
-  `Resources/builtinTableStyles.xml` when a file names one without defining it.
+- `TableRenderer` lays out tables: rows grow to fit their text; table styles come from
+  `Resources/builtinTableStyles.xml`, since PowerPoint draws only its built-in styles.
 - `SlideShow` writes the transitions and the timing tree of each slide as JSON for the player; `Comments`, `Ink`,
   `Links`, `LegacyDrawing` (VML) and `Model3D` handle their objects.
 

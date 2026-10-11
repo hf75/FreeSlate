@@ -181,22 +181,13 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     }
 
     /// <summary>
-    /// The table style: inline a:tableStyle, else a:tableStyleId looked up in ppt/tableStyles.xml, else among
-    /// PowerPoint's built-in styles (named by files from other producers without defining them). A table without a
-    /// style id is drawn in No Style, Table Grid (measured: the same black grid, not the presentation's default style).
+    /// The table style: PowerPoint draws tables only in its built-in styles, looked up by a:tableStyleId (measured: a
+    /// definition in ppt/tableStyles.xml never shows, nor does an inline a:tableStyle; a built-in id draws the built-in
+    /// style whatever the file defines under it, and any other id draws No Style, Table Grid, as does a table without
+    /// one, not the presentation's default style).
     /// </summary>
-    XElement? Style(XElement? tblPr)
-    {
-        if (tblPr?.Element(Ns.A + "tableStyle") is { } inline)
-            return inline;
-        var id = tblPr?.Element(Ns.A + "tableStyleId")?.Value ?? "{5940675A-B579-460E-94D1-54222C63F5DA}";
-        var package = slide.Presentation.Package;
-        var part = package.FirstRelationship(slide.Presentation.PresentationPart, "tableStyles")?.Target;
-        var own = part != null && package.Exists(part)
-            ? slide.Presentation.Load(part).Root?.Elements(Ns.A + "tblStyle").FirstOrDefault(s => string.Equals(s.Str("styleId"), id.Trim(), StringComparison.OrdinalIgnoreCase))
-            : null;
-        return own ?? BuiltInTableStyles.Find(id);
-    }
+    static XElement? Style(XElement? tblPr) =>
+        BuiltInTableStyles.Find(tblPr?.Element(Ns.A + "tableStyleId")?.Value ?? "") ?? BuiltInTableStyles.Find(BuiltInTableStyles.TableGrid);
 
     /// <summary>The names of the style parts that apply to a cell, lowest priority first.</summary>
     static List<string> Parts(Cell cell, int rowCount, int columnCount, XElement? tblPr)

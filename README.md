@@ -36,7 +36,8 @@ which is why their average is lower.
   warps and 3D text, equations (OMML).
 - **Pictures and media**: PNG, JPEG, GIF, BMP, WebP, SVG, TIFF, JPEG XR, EMF, EMF+ and WMF (with an own metafile
   player), cropping, recoloring and picture effects, audio, video and online video, 3D models (glTF), ink.
-- **Tables**: built-in and custom table styles, merged cells, borders and diagonals.
+- **Tables**: the built-in table styles (custom ones drawn as PowerPoint draws them), merged cells, borders and
+  diagonals.
 - **Charts**: bar, column, line, area, pie and doughnut, scatter and bubble, radar, stock and surface charts, their
   3D variants, Office 2016 charts (waterfall, treemap, sunburst, histogram, box and whisker, funnel, maps), data
   labels, trendlines, error bars, data tables, and the Office 2007 chart styles PowerPoint applies to everything a
