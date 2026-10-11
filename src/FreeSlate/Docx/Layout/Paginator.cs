@@ -53,6 +53,9 @@ public sealed class PageBox
     /// <summary>Floating drawings anchored on the page (catalog: drawing.anchor).</summary>
     public List<PlacedDrawing> Drawings { get; } = [];
 
+    /// <summary>The page's border (catalog: section.pageBorders), or null.</summary>
+    public PageBorderBox? Border { get; set; }
+
     /// <summary>Bookmarks that start on the page: their names and where their paragraph begins (catalog: field.bookmarks).</summary>
     public List<(string Name, double X, double Y)> Bookmarks { get; } = [];
 
@@ -437,6 +440,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
         if (page.Footer != null && !properties.BottomFixed)
             page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
+        page.Border = PageBorders.Layout(page, context.Settings);
         pages.Add(page);
         column = 0;
         y = page.BodyTop;

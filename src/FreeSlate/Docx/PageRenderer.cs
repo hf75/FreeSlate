@@ -48,9 +48,13 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
         foreach (var (x, top, bottom) in page.ColumnLines)
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
-        // Table shading, then table borders, below the text.
+        // A page border behind the text, table shading and borders below the text, a page border in front of it.
+        if (page.Border is { Front: false } back)
+            Fills(back.Fills, back.Strokes, svg);
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
         Lines(page.Lines, svg, selection, front);
+        if (page.Border is { Front: true } border)
+            Fills(border.Fills, border.Strokes, svg);
         svg.Append(selection);
         svg.Append("</svg>");
         if (drawings != null)

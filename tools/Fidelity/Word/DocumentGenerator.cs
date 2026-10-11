@@ -50,6 +50,7 @@ public static partial class DocumentGenerator
         ("revisions", Revisions),
         ("content-controls", ContentControls),
         ("form-fields", FormFields),
+        ("page-borders", PageBorders),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

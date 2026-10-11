@@ -6,6 +6,9 @@ namespace FreeSlate.Docx;
 /// <summary>A border line (w:top, w:insideV …, catalog: table.borders): its style, width in points, color and space.</summary>
 public sealed record BorderLine(string Style, double Width, RgbColor Color, double Space)
 {
+    /// <summary>Whether the border casts a shadow (w:shadow; page borders draw it).</summary>
+    public bool Shadow { get; init; }
+
     /// <summary>nil and none draw nothing; nil also suppresses the neighbour's border in a conflict.</summary>
     public bool Visible => Style is not ("nil" or "none") && Width > 0;
 
@@ -20,7 +23,7 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         if (style is "nil" or "none")
             width = 0;
         var color = e.Attr("color") is { Length: 6 } hex ? RgbColor.FromHex(hex) : RgbColor.Black;
-        return new BorderLine(style, width, color, e.Number("space") ?? 0);
+        return new BorderLine(style, width, color, e.Number("space") ?? 0) { Shadow = e.Attr("shadow") is "1" or "true" or "on" };
     }
 
     /// <summary>The total width the border takes: double and triple lines are wider than one stroke.</summary>

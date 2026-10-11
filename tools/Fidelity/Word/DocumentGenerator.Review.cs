@@ -124,3 +124,54 @@ public static partial class DocumentGenerator
         list.DropDown.Value = 2;
     }
 }
+
+public static partial class DocumentGenerator
+{
+    /// <summary>
+    /// Page borders: a single line around the text, a double line measured from the page's edge, a thick colored box on
+    /// the first page only, dotted and shadowed lines.
+    /// </summary>
+    static void PageBorders(Writer w)
+    {
+        // WdBorderType (top, left, bottom, right), WdLineStyle, WdBorderDistanceFrom
+        int[] sides = [-1, -2, -3, -4];
+        const int Single = 1, Dot = 2, Double = 7, Thick = 6, FromText = 0, FromPageEdge = 1;
+        void Borders(dynamic section, int style, int width, int color, bool fromEdge, double distance, bool shadow = false)
+        {
+            var borders = section.Borders;
+            borders.DistanceFrom = fromEdge ? FromPageEdge : FromText;
+            foreach (var side in sides)
+            {
+                var border = borders.Item(side);
+                border.LineStyle = style;
+                border.LineWidth = width;
+                border.Color = color;
+            }
+            borders.DistanceFromTop = (int)distance;
+            borders.DistanceFromLeft = (int)distance;
+            borders.DistanceFromBottom = (int)distance;
+            borders.DistanceFromRight = (int)distance;
+            if (shadow)
+                borders.Shadow = true;
+        }
+        w.Paragraph("A single line around the text", StyleHeading1);
+        w.Paragraph(Prose.Decisions);
+        Borders(w.Document.Sections.Item(1), Single, 4, 0, false, 4);   // wdLineWidth050pt = 4
+        var second = w.Section();
+        w.Paragraph("A double line from the page's edge", StyleHeading1);
+        w.Paragraph(Prose.Rules);
+        Borders(second, Double, 6, Rgb(0, 112, 192), true, 24);         // wdLineWidth075pt = 6
+        var third = w.Section();
+        w.Paragraph("A dotted line with a shadow", StyleHeading1);
+        w.Paragraph(Prose.Measuring);
+        Borders(third, Dot, 12, Rgb(192, 0, 0), false, 10, shadow: true);   // wdLineWidth150pt = 12
+        var fourth = w.Section();
+        w.Paragraph("A thick box on the first page only", StyleHeading1);
+        w.Paragraph(Prose.Constraints);
+        Borders(fourth, Single, 24, Rgb(112, 48, 160), false, 20);       // wdLineWidth300pt = 24
+        fourth.Borders.EnableFirstPageInSection = true;
+        fourth.Borders.EnableOtherPagesInSection = false;
+        for (var i = 0; i < 12; i++)
+            w.Paragraph(Prose.Decisions + " " + Prose.Rules);
+    }
+}
