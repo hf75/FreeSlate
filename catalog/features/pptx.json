@@ -1398,8 +1398,8 @@
       "priority": "P0",
       "difficulty": 4,
       "status": "done",
-      "strategy": "Match a slide placeholder to the layout placeholder by idx, else by type; a layout placeholder to the master placeholder by type. Position, geometry, fill, line, body properties and list styles are inherited along that chain, property by property.",
-      "office": "Verified with generated/presentation and text-basic; hasCustomPrompt, isPhoto and userDrawn are editing state.",
+      "strategy": "Match a slide placeholder to the layout placeholder by idx alone (0 when missing), a layout placeholder to the master placeholder by type. Position, geometry, fill, line, body properties and list styles are inherited along that chain, property by property; the master's text style follows the type of the layout placeholder matched.",
+      "office": "Measured with the object model on a Title and Content layout (placeholders of 24 type and idx combinations without positions of their own): slide placeholders match layout placeholders by idx alone, 0 when it is missing, whatever their types. p:ph without idx and with type body, dt, ftr, sldNum, pic or subTitle takes the title's place and title style; type title with idx 1 takes the content placeholder's place, size and bullets. A placeholder whose idx the layout lacks inherits from no placeholder at all, not even the master's of its type: it has no position, and only the master's text style of its own type applies (dt and sldNum at 18 pt, black and left-aligned instead of the master placeholders' 12 pt gray). The idx 4294967295 (-1) stands for none: such placeholders match by type (sldNum, ftr and dt take their layout placeholders' places at 12 pt gray, body the object placeholder's). Verified with generated/presentation and text-basic; hasCustomPrompt, isPhoto and userDrawn are editing state.",
       "elements": [
         "p:nvPr",
         "p:ph"
@@ -4191,7 +4191,7 @@
       "difficulty": 2,
       "status": "done",
       "strategy": "stroke-dasharray in multiples of the line width.",
-      "office": "Preset dashes and custom patterns (a:custDash, a:ds: dash and space in thousandths of a percent of the line width) repeat in units of the line's width in whole pixels (measured: a 4 pt line, 5.33 px, repeats a 3:1 pattern every 20 px; a 1.5 pt line every 8 px). Round and square caps lie within PowerPoint's dashes (the dashes shrink by the cap, the spaces take what they lose), except at the line's ends, where square caps reach past them; patterns with dashes shorter than the line is wide are drawn with butt caps, as PowerPoint draws them as thin bars. Measured with generated/lines-dash (five custom patterns at 1.5, 4 and 8 pt on lines, rectangles and ellipses with flat, round and square caps): 68.7 %, the rest the phase at a closed shape's corners, which PowerPoint shifts for some patterns.",
+      "office": "Preset dashes and custom patterns (a:custDash, a:ds: dash and space in thousandths of a percent of the line width) repeat in units of the line's width in whole pixels (measured: a 4 pt line, 5.33 px, repeats a 3:1 pattern every 20 px; a 1.5 pt line every 8 px). On a closed figure the pattern starts where the closing segment starts, the figure's last point, and runs through the closing segment first: a rectangle starts at its bottom left corner and runs up, a triangle at its bottom right corner, an ellipse at its left (measured with probe decks of one long dash on 24 presets and on freeforms); open figures start at their first point. Round caps lie within the dashes, and a round dash is at least one width long (a 0.5:2 pattern repeats every 3 widths); on closed figures the dashes cover [0, d) of the pattern, on open lines they lie half a width earlier, where the line's cap begins. Square caps do not cap the dashes, which end flat at their full length: only an open line's start gets the cap, and its end when it lies within a dash. Measured with generated/lines-dash (five custom patterns at 1.5, 4 and 8 pt on lines, rectangles and ellipses with flat, round and square caps): 89.7 %, the rest a pixel at the ends of the dashes and the drift of PowerPoint's curves along ellipses.",
       "elements": [
         "a:custDash",
         "a:ds",
@@ -6055,7 +6055,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "The text box is the geometry's text rectangle minus the insets (default 91440 EMU left/right, 45720 top/bottom); anchoring top, middle or bottom, anchorCtr, wrap or no wrap, rotation and overflow.",
-      "office": "anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body). Compatible line spacing (compatLnSpc) leaves PowerPoint's lines where they are (measured: 150 % spacing unchanged); forceAA only asks for anti-aliasing. Verified with generated/text-body (97.7 %), text-more and objects-more.",
+      "office": "anchorCtr centers the smallest box around the text, the paragraphs keep their alignment within it; vertOverflow ellipsis and clip drop the lines that do not fit whole (ellipsis ends the last line kept with …, whole words removed) and the rest is anchored as usual; horzOverflow clip cuts at the text rectangle, not at the insets; spcFirstLastPara keeps the space before the first and after the last paragraph; compatLnSpc shows no difference (measured with generated/text-body). Compatible line spacing (compatLnSpc) leaves PowerPoint's lines where they are (measured: 150 % spacing unchanged); forceAA only asks for anti-aliasing. A text area narrower or lower than its insets collapses to its middle, x + (w + lIns - rIns) / 2 (measured with the object model: a box 5 pt wide with insets of 10 and 2 pt sets every line at 6.5 pt whatever its alignment; a box 1 pt high 0.5 pt below its top). A placeholder 0 wide does not wrap (one line in footer, body and title placeholders), while text boxes, shapes and placeholders 1 pt wide wrap every character (LibreOffice's 0-width-text-wrap). Verified with generated/text-body (97.7 %), text-more and objects-more.",
       "elements": [
         "a:bodyPr",
         "a:txBody",
@@ -6160,7 +6160,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "Alignment (left, center, right, justified, distributed), margins, first-line or hanging indent, levels 0–8.",
-      "office": "fontAlgn t, ctr and b line up the tops, middles or bottoms of runs of different sizes (base and auto: the baselines; measured with generated/text-body). Verified with generated/text-body, text-rtl and text-eastasian.",
+      "office": "fontAlgn t, ctr and b line up the tops, middles or bottoms of runs of different sizes (base and auto: the baselines; measured with generated/text-body). A word longer than the line breaks between characters, and its trailing spaces hang at the end of its last piece as after any word (measured: \"縦書き 2024年 AB\" in mongolianVert columns one character long takes no column for its spaces, generated/text-more slide 3). Verified with generated/text-body, text-rtl and text-eastasian.",
       "elements": [
         "a:endParaRPr",
         "a:p",
@@ -6276,7 +6276,7 @@
       "difficulty": 2,
       "status": "done",
       "strategy": "Left, center, right and decimal tabs, default tab size from defTabSz.",
-      "office": "Tab stops (a:tabLst, inherited through the list styles like the other paragraph properties) are measured from the text area's left edge, the origin of marL: left stops put the text there, center stops center it, right stops end it there and decimal stops put its decimal point there (text without one ends at the stop); text never moves left of where it already is; past the last custom stop the default stops continue at multiples of defTabSz; a hanging first line (negative indent) stops at the margin first. Measured with generated/text-tabs (default spacings, every stop kind, margins and indents, bullets, centered and right-aligned paragraphs): 90.1 %. PowerPoint moves a tab whose following word does not fit after its stop to the next line, leaving an empty line; not reproduced.",
+      "office": "Tab stops (a:tabLst, inherited through the list styles like the other paragraph properties) are measured from the text area's left edge, the origin of marL: left stops put the text there, center stops center it, right stops end it there and decimal stops put its decimal point there (text without one ends at the stop); text never moves left of where it already is; past the last custom stop the default stops continue at multiples of defTabSz; a hanging first line (negative indent) stops at the margin first. Measured with generated/text-tabs (default spacings, every stop kind, margins and indents, bullets, centered and right-aligned paragraphs). A tab binds to the word after it: a word that does not fit after the tab's stop takes the tab to the next line, and a tab that starts a line keeps what fits of the word after its stop, possibly nothing (measured with the object model's lines in a 385 pt line of 20 pt Arial: \"Text⇥after\" with a stop at 380 pt gives \"Text\", a line with only the tab and \"after …\"; with a stop at 350 pt \"Text\", \"⇥afte\", \"r …\"; a stop past the line's end leaves the tab alone on its line; a second tab moves to the next line with its word and stops at the first stop there).",
       "elements": [
         "a:tab",
         "a:tabLst"
@@ -6887,8 +6887,8 @@
       "priority": "P2",
       "difficulty": 3,
       "status": "done",
-      "strategy": "Our layout engine fills the columns in order.",
-      "office": "Verified with generated/text-body.",
+      "strategy": "The text is laid out at the column width and its lines are shared out over the columns.",
+      "office": "A column takes the lines that fit the text area's height, but at least an even share of all lines, and the last column the rest (measured with the object model, nine boxes of 4 to 12 lines in 2 and 3 columns: 7 lines in 2 columns 5 lines high are 5 and 2, 3 lines high 4 and 3; 12 lines in 3 columns 5 lines high 5, 5 and 2, 3 lines high 4, 4 and 4; 33 lines in three columns overflowing 11, 11 and 11). So an auto-sized box keeps all its text in the first column (LibreOffice's auto-height-multi-col-shape). Verified with generated/text-body.",
       "elements": [],
       "spec": [],
       "officeNotes": []

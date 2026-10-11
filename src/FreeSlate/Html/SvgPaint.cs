@@ -64,7 +64,11 @@ public sealed class SvgPaint
         return id;
     }
 
-    public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default)
+    /// <summary>
+    /// The paint attributes of an outline; <paramref name="closed"/> tells whether the stroked path consists of closed
+    /// figures only, where round-capped dashes start where the pattern does (see <see cref="Dashes"/>).
+    /// </summary>
+    public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default, bool closed = false)
     {
         if (outline is not { Visible: true })
             return " stroke=\"none\"";
@@ -79,11 +83,10 @@ public sealed class SvgPaint
             _ => " stroke=\"#000\"",
         });
         sb.Append($" stroke-width=\"{Units.Css(width)}\"");
-        var dash = outline.Dash == "custom" ? outline.CustomDash?.ToArray() : Dash(outline.Dash);
-        // Square caps lie within PowerPoint's dashes, except at the line's ends; dashes shorter than the line is wide
-        // cannot hold them and are drawn with butt caps (measured with generated/lines-dash).
-        var butt = outline.Cap == "sq" && dash is { Length: > 0 } && dash.Where((_, i) => i % 2 == 0).Any(d => d < 1);
-        sb.Append(outline.Cap switch { "rnd" => " stroke-linecap=\"round\"", "sq" when !butt => " stroke-linecap=\"square\"", _ => "" });
+        var dash = Dashes.Pattern(outline);
+        // PowerPoint ends dashes flat under square caps; only an open line's ends get them (Dashes.SquareEnds).
+        var squareDashes = outline.Cap == "sq" && dash is { Length: > 0 };
+        sb.Append(outline.Cap switch { "rnd" => " stroke-linecap=\"round\"", "sq" when !squareDashes => " stroke-linecap=\"square\"", _ => "" });
         sb.Append(outline.Join switch
         {
             "round" => " stroke-linejoin=\"round\"",
@@ -92,19 +95,22 @@ public sealed class SvgPaint
         });
         if (dash is { Length: > 0 })
         {
-            // PowerPoint's dash lengths include round and square caps; SVG adds the caps to every dash, so the dashes
-            // shrink by the cap and the spaces take what they lose (the pattern keeps its period). The pattern's unit
-            // is the line's width in whole pixels (measured: a 4 pt line repeats a 3:1 pattern every 20 px, not 21.3).
-            var capped = outline.Cap is "rnd" || outline.Cap == "sq" && !butt;
-            var unit = Math.Max(1, Math.Round(width));
+            // Round caps lie within PowerPoint's dashes and a round dash is at least as long as the line is wide:
+            // SVG adds the caps to every dash, so the dashes shrink by the cap and the spaces take what they lose. On
+            // closed figures the dashes start where the pattern does; an open line's pattern starts half a width
+            // before the line, where its cap begins (measured with generated/lines-dash: a 0.5:2 pattern on a round
+            // 4 pt line repeats every 3 widths; dots on an ellipse lie on [0, 1) widths, on a line on [-½, ½)).
+            var round = outline.Cap == "rnd";
+            var unit = Dashes.Unit(width);
             var lengths = new double[dash.Length + dash.Length % 2];
             for (var i = 0; i < dash.Length; i += 2)
             {
                 var (d, space) = (dash[i], i + 1 < dash.Length ? dash[i + 1] : 0);
-                var drawn = capped ? Math.Max(0, d - 1) : d;
-                (lengths[i], lengths[i + 1]) = (drawn, space + d - drawn);
+                (lengths[i], lengths[i + 1]) = round ? (Math.Max(0, d - 1), space + 1) : (d, space);
             }
             sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css(d * unit)))}\"");
+            if (round && closed)
+                sb.Append($" stroke-dashoffset=\"{Units.Css(-unit / 2)}\"");
         }
         return sb.ToString();
     }
@@ -113,22 +119,6 @@ public sealed class SvgPaint
         color.A < 0.999
             ? $" {attribute}=\"{color.ToHex()}\" {attribute}-opacity=\"{Units.Css4(color.A)}\""
             : $" {attribute}=\"{color.ToHex()}\"";
-
-    /// <summary>Preset dash patterns in multiples of the line width (ST_PresetLineDashVal).</summary>
-    static double[]? Dash(string preset) => preset switch
-    {
-        "dot" => [1, 3],
-        "dash" => [4, 3],
-        "lgDash" => [8, 3],
-        "dashDot" => [4, 3, 1, 3],
-        "lgDashDot" => [8, 3, 1, 3],
-        "lgDashDotDot" => [8, 3, 1, 3, 1, 3],
-        "sysDash" => [3, 1],
-        "sysDot" => [1, 1],
-        "sysDashDot" => [3, 1, 1, 1],
-        "sysDashDotDot" => [3, 1, 1, 1, 1, 1],
-        _ => null,
-    };
 
     /// <summary>Rough share of foreground pixels until patterns are drawn as real SVG patterns.</summary>
     static double PatternDensity(string preset) => preset switch

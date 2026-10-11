@@ -137,9 +137,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var top = geometry.TextTop / PxPerPt + Inset("tIns", 45720);
         var width = (geometry.TextRight - geometry.TextLeft) / PxPerPt - Inset("lIns", 91440) - Inset("rIns", 91440);
         var height = (geometry.TextBottom - geometry.TextTop) / PxPerPt - Inset("tIns", 45720) - Inset("bIns", 45720);
+        // A text area narrower or lower than its insets collapses to its middle (measured with the object model: a
+        // box 5 pt wide with insets of 10 and 2 pt sets its lines at 6.5 pt, a box 1 pt high 0.5 pt below its top).
+        if (width < 0)
+            (left, width) = (left + width / 2, 0);
+        if (height < 0)
+            (top, height) = (top + height / 2, 0);
+        // A placeholder without width does not wrap its text (measured: one line in footer, body and title
+        // placeholders 0 wide; text boxes and shapes 0 wide, and placeholders 1 pt wide, wrap every character).
+        var wraps = Body("wrap") != "none" && !(boxWidth == 0 && Placeholders.Ph(chain.Shapes[0].Element) != null);
         // Vertical text (catalog: text.vertical); the insets stay with the shape's sides.
         if (Body("vert") is "vert" or "vert270" or "eaVert" or "mongolianVert")
-            return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, Body("wrap") != "none", fontScale, spacingReduction, Body("anchor") ?? "t");
+            return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, wraps, fontScale, spacingReduction, Body("anchor") ?? "t");
         if (Body("vert") is "wordArtVert" or "wordArtVertRtl")
             return RenderStacked(Layout(txBody, sources, 1e6, false, fontScale, spacingReduction), Body("vert") == "wordArtVertRtl", left, top, width, height, Body("anchor") ?? "t");
         // Columns (catalog: text.columns): the text is laid out at the column width and its lines are shared out
@@ -151,12 +160,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // single path (arches, circle) is not wrapped (measured: a long line runs once around the circle).
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
         var warpDefinition = warp?.Str("prst") is { } preset ? TextWarp.Definition(preset) : null;
-        var wrap = Body("wrap") != "none" && !(warpDefinition != null && TextWarp.FollowsOnePath(warpDefinition));
+        var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsOnePath(warpDefinition));
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
         var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
         if (columns > 1)
-            layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true");
+            layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true", height);
         else if (Body("anchorCtr") is "1" or "true")
             TextLayout.CenterBlock(layout, width);
         // Text that does not fit the height loses its last lines with vertOverflow ellipsis (an ellipsis ends the
@@ -343,22 +352,30 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             yield return (string)e.Current;
     }
 
-    /// <summary>The lines of a layout distributed over columns, each column starting at the top.</summary>
-    static LaidOutText Columns(LaidOutText layout, int columns, double columnWidth, double gap, bool rightToLeft)
+    /// <summary>
+    /// The lines of a layout distributed over columns, each column starting at the top: a column takes the lines
+    /// that fit the text area's height, but at least an even share, and the last column the rest (measured with
+    /// the object model: 7 lines in 2 columns 5 lines high are 5 and 2, 3 lines high 4 and 3; 12 lines in 3 columns
+    /// 5 lines high 5, 5 and 2, 3 lines high 4, 4 and 4).
+    /// </summary>
+    static LaidOutText Columns(LaidOutText layout, int columns, double columnWidth, double gap, bool rightToLeft, double areaHeight)
     {
         var lines = layout.Lines;
         if (lines.Count == 0)
             return layout;
-        var perColumn = (int)Math.Ceiling(lines.Count / (double)columns);
+        var share = (int)Math.Ceiling(lines.Count / (double)columns);
         var result = new LaidOutText();
         double height = 0;
-        for (var c = 0; c < columns; c++)
+        var start = 0;
+        for (var c = 0; c < columns && start < lines.Count; c++)
         {
-            var start = c * perColumn;
-            if (start >= lines.Count)
-                break;
-            var end = Math.Min(lines.Count, start + perColumn);
             var columnTop = lines[start].Baseline - lines[start].Ascent;
+            var end = start + 1;
+            if (c == columns - 1)
+                end = lines.Count;
+            else
+                while (end < lines.Count && (end - start < share || lines[end].Baseline + lines[end].Descent - columnTop <= areaHeight + 0.01))
+                    end++;
             var dx = (rightToLeft ? columns - 1 - c : c) * (columnWidth + gap);
             for (var i = start; i < end; i++)
             {
@@ -372,6 +389,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 result.Lines.Add(moved);
             }
             height = Math.Max(height, lines[end - 1].Baseline + lines[end - 1].Descent - columnTop);
+            start = end;
         }
         result.Height = height;
         return result;

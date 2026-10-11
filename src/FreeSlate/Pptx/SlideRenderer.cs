@@ -129,14 +129,21 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
     }
 
-    /// <summary>The shape and, for slide placeholders, the layout and master placeholders it inherits from.</summary>
+    /// <summary>
+    /// The shape and, for slide placeholders, the layout and master placeholders it inherits from. A slide
+    /// placeholder the layout has no placeholder for inherits from no placeholder at all, not even the master's
+    /// of its type (measured: dt and sldNum with an idx the layout lacks take neither position nor the master
+    /// placeholders' 12 pt, color and alignment, only the master's text style of their type).
+    /// </summary>
     List<PartElement> Chain(XElement shape, string part, bool isSlide)
     {
         var chain = new List<PartElement> { new(shape, part) };
         if (!isSlide || Placeholders.Ph(shape) is not { } ph)
             return chain;
-        if (Placeholders.InLayout(slide.Layout, ph) is { } layoutShape)
+        if (slide.Layout != null)
         {
+            if (Placeholders.InLayout(slide.Layout, ph) is not { } layoutShape)
+                return chain;
             chain.Add(new PartElement(layoutShape, slide.LayoutPart!));
             ph = Placeholders.Ph(layoutShape)!;
         }
@@ -256,7 +263,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (background is not NoFill && path.Fill != "none")
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
-            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin) : " stroke=\"none\"";
+            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path)) : " stroke=\"none\"";
+            // A dashed outline starts its pattern where PowerPoint does (catalog: line.dash).
+            var dashed = stroke != " stroke=\"none\"" && Dashes.IsDashed(outline);
+            var strokeData = dashed ? Dashes.StartAtClosingSegment(path).Data : path.Data;
             var strokeTarget = strokesLast ? strokes : paths;
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
@@ -264,19 +274,22 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
                 if (stroke != " stroke=\"none\"")
-                    strokeTarget.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
+                    strokeTarget.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else if (strokesLast)
             {
                 if (pathFill is not NoFill)
                     paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
                 if (stroke != " stroke=\"none\"")
-                    strokes.Append($"<path d=\"{path.Data}\" fill=\"none\"{stroke}{crisp}/>");
+                    strokes.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else
             {
-                paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
+                paths.Append($"<path d=\"{strokeData}\"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
             }
+            if (dashed && outline!.Cap == "sq")
+                strokeTarget.Append(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
+                    paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp));
             if (compound)
                 strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
         }
@@ -285,7 +298,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
             var crisp = axisAligned ? " shape-rendering=\"crispEdges\"" : "";
-            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}H{Units.Css(-half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin)}{crisp}/>");
+            // Starting at the bottom left corner, where PowerPoint starts a dash pattern on a rectangle (Dashes).
+            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(ph + half)}V{Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin, closed: true)}{crisp}/>");
         }
 
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
@@ -462,7 +476,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         body.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
         if (shape.Name.LocalName == "sp")
         {
-            var placeholder = Placeholders.Ph(shape);
+            // The master's text style follows the layout placeholder a slide placeholder matched, else its own type
+            // (measured: type dt with the title's idx is set in the title style; see Chain).
+            var placeholder = isSlide && chain.Count > 1 && chain[1].Part == slide.LayoutPart
+                ? Placeholders.Ph(chain[1].Element) : Placeholders.Ph(shape);
             // Upright text (bodyPr upright) does not turn with its shape: it is laid out about the shape's center,
             // with width and height swapped when the shape stands on its side (45° to 135°, 225° to 315°; measured).
             var upright = chain.Select(s => s.Element.Element(Ns.P + "txBody")?.Element(Ns.A + "bodyPr")?.Attribute("upright")?.Value)
@@ -549,7 +566,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 if (path.Fill != "none" && fill is not NoFill)
                     fillOnly.Append($"<path d=\"{path.Data}\"{paint.Fill(Shade(fill, path.Fill), pw, ph, defs, rotation, origin)} stroke=\"none\"/>");
                 if (path.Stroke && outline is { Visible: true })
-                    lineOnly.Append($"<path d=\"{path.Data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin)}/>");
+                    lineOnly.Append($"<path d=\"{(Dashes.IsDashed(outline) ? Dashes.StartAtClosingSegment(path).Data : path.Data)}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path))}/>");
             }
             lineOnly.Append(ends);
             var graph = new EffectDag(slide.Colors, pw, ph, defs,

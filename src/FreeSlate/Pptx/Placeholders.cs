@@ -35,19 +35,25 @@ public static class Placeholders
     static IEnumerable<XElement> Candidates(XDocument? document) =>
         document?.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree")?.Descendants().Where(e => Ph(e) != null) ?? [];
 
-    /// <summary>Finds the layout placeholder for a slide placeholder: by idx, else by type.</summary>
+    /// <summary>
+    /// Finds the layout placeholder for a slide placeholder: PowerPoint goes by idx alone, 0 when it is missing,
+    /// whatever the types (measured with the object model on a Title and Content layout: p:ph without idx, with
+    /// type body, dt, ftr, sldNum, pic or subTitle, takes the title's place and title style; type title with idx 1
+    /// takes the content placeholder's place, size and bullets; an idx the layout lacks matches nothing). The idx
+    /// 4294967295 (-1) stands for none: such placeholders match by type, body that of an object placeholder.
+    /// </summary>
     public static XElement? InLayout(XDocument? layout, XElement ph)
     {
-        var type = Type(ph);
         var candidates = Candidates(layout).ToList();
-        if (ph.Int("idx") is { } idx)
-        {
-            var byIdx = candidates.Where(c => Ph(c)!.Int("idx") == idx).ToList();
-            if (byIdx.Count > 0)
-                return byIdx.FirstOrDefault(c => Type(Ph(c)!) == type) ?? byIdx[0];
-        }
-        return candidates.FirstOrDefault(c => SameType(Type(Ph(c)!), type));
+        if (Index(ph) is not { } idx)
+            return candidates.FirstOrDefault(c => Type(Ph(c)!) == Type(ph)) ?? candidates.FirstOrDefault(c => SameType(Type(Ph(c)!), Type(ph)));
+        var byIdx = candidates.Where(c => Index(Ph(c)!) == idx).ToList();
+        return byIdx.FirstOrDefault(c => SameType(Type(Ph(c)!), Type(ph))) ?? byIdx.FirstOrDefault();
     }
+
+    /// <summary>A placeholder's idx: 0 when it is missing, null for 4294967295, which stands for none.</summary>
+    static long? Index(XElement ph) => ph.Attribute("idx")?.Value is not { } value ? 0
+        : long.TryParse(value, out var idx) && idx != 4294967295 ? idx : null;
 
     /// <summary>Finds the master placeholder for a layout (or slide) placeholder by type.</summary>
     public static XElement? InMaster(XDocument? master, XElement ph)
@@ -57,5 +63,5 @@ public static class Placeholders
     }
 
     static bool SameType(string a, string b) =>
-        a == b || (a is "title" or "ctrTitle" && b is "title" or "ctrTitle");
+        a == b || (a is "title" or "ctrTitle" && b is "title" or "ctrTitle") || (a is "body" or "obj" && b is "body" or "obj");
 }

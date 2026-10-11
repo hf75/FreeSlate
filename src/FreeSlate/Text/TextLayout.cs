@@ -309,6 +309,36 @@ public static class TextLayout
             x = lineStart = lastContentEnd = marginLeft;
         }
 
+        // A word longer than the room left, broken between characters. Its trailing spaces hang at the end of its last
+        // piece, as they do after any word (measured: "き 2024" in mongolianVert columns one character long takes no
+        // column for the space). A line holds at least one character, unless a tab stands before them (tab: its index).
+        void BreakBetweenCharacters(Segment segment, int? tab)
+        {
+            var start = segment.Start;
+            var wordEnd = segment.End;
+            while (wordEnd > start && all[wordEnd - 1] == ' ') wordEnd--;
+            while (start < segment.End)
+            {
+                var end = start;
+                while (end < wordEnd && x + Measure(all, styles, start, end + 1) <= limit + 0.01) end++;
+                if (end == start && tab == null) end = start + 1;
+                if (end >= wordEnd) end = segment.End;
+                if (end > start)
+                {
+                    current.Add((start, end, x));
+                    lastContentEnd = x + Measure(all, styles, start, Math.Min(end, wordEnd));
+                    x += Measure(all, styles, start, end);
+                }
+                else
+                    current.Add((tab!.Value, tab.Value, x));   // a line of only the tab keeps the tab's style
+                tab = null;
+                if (end < segment.End) Finish(false);
+                start = end;
+            }
+        }
+
+        // The tabs since the line's last word: a tab binds to the word after it.
+        var tabs = new List<Segment>();
         foreach (var segment in segments)
         {
             endsWithBreak = false;
@@ -317,10 +347,12 @@ public static class TextLayout
                 current.Add((segment.Start, segment.Start, x));   // keeps the break's style for empty lines
                 Finish(false);
                 endsWithBreak = true;
+                tabs.Clear();
                 continue;
             }
             if (segment.IsTab)
             {
+                tabs.Add(segment);
                 x = TabStop(paragraph, all, styles, segment.End, x);
                 continue;
             }
@@ -329,6 +361,26 @@ public static class TextLayout
             // Hanging punctuation stays on the line even past its end (measured: 、 and 。 hang, the character before
             // them is not pushed to the next line).
             var hanging = paragraph.HangingPunctuation && paragraph.Kinsoku ? HangingWidth(all, styles, segment) : 0;
+            // A word that does not fit after a tab takes the tab to the next line, and a tab that starts a line keeps
+            // what fits of the word after its stop, possibly nothing (measured with stops near the end of a 385 pt
+            // line: "Text⇥after" puts the tab on a line of its own and "after" on the next, a stop 35 pt earlier
+            // keeps "afte" after it; a stop past the line's end leaves the tab alone).
+            if (wrap && tabs.Count > 0 && x + content - hanging > limit + 0.01)
+            {
+                if (current.Count > 0)
+                {
+                    Finish(false);
+                    foreach (var tab in tabs)
+                        x = TabStop(paragraph, all, styles, tab.End, x);
+                }
+                if (x + content - hanging > limit + 0.01)
+                {
+                    BreakBetweenCharacters(segment, tabs[^1].Start);
+                    tabs.Clear();
+                    continue;
+                }
+            }
+            tabs.Clear();
             // latinLnBrk: a Latin word that does not fit is broken to fill the line (measured).
             var breakWord = paragraph.LatinBreak && current.Count > 0 && x + content > limit + 0.01 && IsLatinWord(all, segment);
             if (wrap && current.Count > 0 && x + content - hanging > limit + 0.01 && !breakWord)
@@ -336,19 +388,7 @@ public static class TextLayout
 
             if (wrap && x + content - hanging > limit + 0.01 && (current.Count == 0 || breakWord) && segment.End - segment.Start > 1)
             {
-                // A word longer than the line: break it between characters.
-                var start = segment.Start;
-                while (start < segment.End)
-                {
-                    var end = start + 1;
-                    while (end < segment.End && x + Measure(all, styles, start, end + 1) <= limit + 0.01) end++;
-                    var w = Measure(all, styles, start, end);
-                    current.Add((start, end, x));
-                    x += w;
-                    lastContentEnd = x;
-                    if (end < segment.End) Finish(false);
-                    start = end;
-                }
+                BreakBetweenCharacters(segment, null);
                 continue;
             }
 
