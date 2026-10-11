@@ -14,12 +14,42 @@ public sealed record Stroke(double X1, double Y1, double X2, double Y2, double W
 /// <summary>A vertical border stripe through a row: its left edge, width, color and dash pattern.</summary>
 public sealed record Stripe(double X, double Width, RgbColor Color, string? Dash = null);
 
+/// <summary>
+/// A floating drawing anchored in a cell (catalog: drawing.anchor) with the frames it is placed in: the top of its
+/// paragraph and of its line, the cell's text area (positions relative to the column, the margin or the character), the
+/// cell inside its lines (relative to the page and the page's margins across) and the cell's content (relative to the
+/// page and the margins down); null frames are the page's, for drawings outside tables.
+/// </summary>
+/// <remarks>
+/// Measured with docx/local/cell-anchor: Word places these frames in the cell whether layoutInCell is set or not.
+/// </remarks>
+public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double LineTop)
+{
+    public (double Left, double Width)? Text { get; init; }
+    public (double Left, double Width)? Cell { get; init; }
+    public (double Top, double Height)? Content { get; init; }
+
+    /// <summary>Where the drawing is anchored in its line, for positions relative to the character.</summary>
+    public double? CharacterX { get; init; }
+
+    public CellAnchor Offset(double dx, double dy) => this with
+    {
+        ParagraphTop = ParagraphTop + dy,
+        LineTop = LineTop + dy,
+        CharacterX = CharacterX + dx,
+        Text = Text is { } t ? (t.Left + dx, t.Width) : null,
+        Cell = Cell is { } c ? (c.Left + dx, c.Width) : null,
+        Content = Content is { } v ? (v.Top + dy, v.Height) : null,
+    };
+}
+
 /// <summary>The content of one cell in a row: lines, nested tables' fills and strokes, relative to the row's top.</summary>
 public sealed class CellPart
 {
     public List<PlacedLine> Lines { get; } = [];
     public List<FillRect> Fills { get; } = [];
     public List<Stroke> Strokes { get; } = [];
+    public List<CellAnchor> Anchors { get; } = [];
 
     /// <summary>Where the cell's content starts below the row's top (its top line and margin, without alignment).</summary>
     public double ContentTop { get; init; }
@@ -106,6 +136,13 @@ public sealed class RowBox
                     headPart.Strokes.Add(stroke);
                 else
                     tailPart.Strokes.Add(stroke.Offset(0, -offset));
+            }
+            foreach (var anchor in cell.Anchors)
+            {
+                if (rest == null || anchor.LineTop < rest.Top)
+                    headPart.Anchors.Add(anchor);
+                else
+                    tailPart.Anchors.Add(anchor.Offset(0, -offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
             }
             if (tailPart.Lines.Count > 0)
                 tailHeight = Math.Max(tailHeight, tailPart.Lines.Max(l => l.Top + l.Line.Height) + cell.BottomMargin);
@@ -385,6 +422,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     part.Fills.Add(fill with { X = textFrom + fill.X, Y = top + lowered + fill.Y });
                 foreach (var stroke in content.Strokes)
                     part.Strokes.Add(stroke.Offset(textFrom, top + lowered));
+                if (!Rotated(cell))
+                {
+                    // Drawings in the cell: across from its text area or from the inner edge of its left line, down from
+                    // its content's top (measured with docx/local/cell-anchor).
+                    var inner = vertical[r, c0] is { Visible: true } edge ? edge.Total / 2 : 0;
+                    foreach (var anchor in content.Anchors)
+                    {
+                        var moved = anchor.Offset(textFrom, top + lowered);
+                        part.Anchors.Add(moved with
+                        {
+                            Text = moved.Text ?? (textFrom, content.Width),
+                            Cell = moved.Cell ?? (cellFrom + inner, cellWidth - inner),
+                            Content = moved.Content ?? (top, Math.Max(0, total - top - margins.Bottom)),
+                        });
+                    }
+                }
                 rowBox.Cells.Add(part);
             }
             // Lines at the row's top, from the outer edge of the vertical line at their start to that at their end.
@@ -506,6 +559,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     part.Fills.Add(nested with { X = origin0 + content.Left + nested.X, Y = part.ContentTop + nested.Y });
                 foreach (var stroke in content.Strokes)
                     part.Strokes.Add(stroke.Offset(origin0 + content.Left, part.ContentTop));
+                foreach (var anchor in content.Anchors)
+                {
+                    var moved = anchor.Offset(origin0 + content.Left, part.ContentTop);
+                    part.Anchors.Add(moved with
+                    {
+                        Text = moved.Text ?? (origin0 + content.Left, content.Width),
+                        Cell = moved.Cell ?? (origin0 + left + Width(borders.Left), right - left - Width(borders.Left) - Width(borders.Right)),
+                        Content = moved.Content ?? (part.ContentTop, Math.Max(0, height - part.ContentTop + top0 - margins.Bottom - Width(borders.Bottom))),
+                    });
+                }
                 rowBox.Cells.Add(part);
             }
             box.Rows.Add(rowBox);
@@ -800,7 +863,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <summary>A cell's content laid out: lines, fills and strokes relative to its text's top left, its height, its place.</summary>
-    sealed record CellContent(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height, double Left = 0, double Width = 0, double Thickness = 0);
+    sealed record CellContent(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height, double Left = 0, double Width = 0, double Thickness = 0)
+    {
+        /// <summary>The floating drawings of the content, relative to its top left.</summary>
+        public List<CellAnchor> Anchors { get; init; } = [];
+    }
 
     /// <summary>A cell's blocks laid out in its text width: lines with tops from the content's top, and the height.</summary>
     /// <remarks>
@@ -845,6 +912,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var lines = new List<PlacedLine>();
         var fills = new List<FillRect>();
         var strokes = new List<Stroke>();
+        var anchors = new List<CellAnchor>();
         var y = 0.0;
         var after = 0.0;
         var first = true;
@@ -855,11 +923,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 case ParagraphBlock paragraph:
                 {
                     var before = paragraph.Format.Before ?? 0;
+                    // Drawings count from the paragraph's top above its own space before, as in the body.
+                    var paragraphTop = y + (first ? 0 : after);
                     y += first ? before : Math.Max(after, before);
+                    var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                     foreach (var line in paragraphs.Layout(paragraph, width, fields))
                     {
+                        foreach (var anchor in line.Anchors ?? [])
+                            lineTops[anchor] = (y, line.AnchorX?.GetValueOrDefault(anchor) ?? 0);
                         lines.Add(new PlacedLine(line, 0, y));
                         y += line.Height;
+                    }
+                    foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+                    {
+                        var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
+                        anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
                     }
                     after = paragraph.Format.After ?? 0;
                     first = false;
@@ -872,7 +950,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var tableTop = y;
                     foreach (var row in box.Rows)
                     {
-                        Draw(row, row.Height, 0, y, lines, fills, fills, strokes);
+                        Draw(row, row.Height, 0, y, lines, fills, fills, strokes, anchors);
                         y += row.Height;
                     }
                     if (box.Rows.Count > 0)
@@ -889,14 +967,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
             }
         }
-        return new CellContent(lines, fills, strokes, y + after);
+        return new CellContent(lines, fills, strokes, y + after) { Anchors = anchors };
     }
 
     /// <summary>
     /// Draws a row (or the part of it on a page) <paramref name="height"/> points high at (left, top): shading, the
     /// lines at its top and through it, the diagonals and its cells' content.
     /// </summary>
-    public static void Draw(RowBox row, double height, double left, double top, List<PlacedLine> lines, List<FillRect> shading, List<FillRect> borders, List<Stroke> strokes)
+    public static void Draw(RowBox row, double height, double left, double top, List<PlacedLine> lines, List<FillRect> shading, List<FillRect> borders, List<Stroke> strokes,
+        List<CellAnchor>? anchors = null)
     {
         foreach (var (x, width, color) in row.Shading)
             shading.Add(new FillRect(left + x, top, width, height, color));
@@ -924,6 +1003,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             foreach (var fill in cell.Fills)
                 borders.Add(fill with { X = left + fill.X, Y = top + fill.Y });
             strokes.AddRange(cell.Strokes.Select(s => s.Offset(left, top)));
+            anchors?.AddRange(cell.Anchors.Select(a => a.Offset(left, top)));
         }
     }
 

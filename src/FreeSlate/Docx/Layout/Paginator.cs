@@ -145,9 +145,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>
     /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
-    /// distances around it; square, tight and through wrapping keep the box, top and bottom the whole width.
+    /// distances around it; square wrapping keeps the box, top and bottom the whole width, tight and through wrapping
+    /// the wrap polygon's width beside each line's text with the distances left and right of it.
     /// </summary>
-    public sealed record Exclusion(double Left, double Top, double Right, double Bottom, bool TopAndBottom, string Side);
+    public sealed record Exclusion(double Left, double Top, double Right, double Bottom, bool TopAndBottom, string Side)
+    {
+        /// <summary>The wrap polygon on the page (tight and through wrapping), or null for the box.</summary>
+        public (double X, double Y)[]? Polygon { get; init; }
+
+        public double DistanceLeft { get; init; }
+        public double DistanceRight { get; init; }
+    }
 
     static Exclusion? ExclusionOf(PlacedDrawing drawing)
     {
@@ -156,11 +164,51 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (wrap == null || wrap.Name.LocalName == "wrapNone")
             return null;
         double Emu(XElement e, string name) => double.TryParse((string?)e.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        double Fraction(XElement e, string name) => Emu(e, name) * 12700 / 21600;
         var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
         var (el, et, er, eb) = effect != null ? (Emu(effect, "l"), Emu(effect, "t"), Emu(effect, "r"), Emu(effect, "b")) : (0, 0, 0, 0);
         var (dl, dt, dr, db) = (Emu(element, "distL"), Emu(element, "distT"), Emu(element, "distR"), Emu(element, "distB"));
+        var side = (string?)wrap.Attribute("wrapText") ?? "bothSides";
+        // Tight and through wrapping follow the wrap polygon, in 21600ths of the drawing's extent (measured with
+        // docx/generated/wrap-types: text beside an oval and a triangle starts the right distance from the polygon).
+        if (wrap.Name.LocalName is "wrapTight" or "wrapThrough"
+            && wrap.Element(Docx.Drawings.Wp + "wrapPolygon") is { } polygon
+            && polygon.Elements().Where(p => p.Name.LocalName is "start" or "lineTo").Select(p => (X: Fraction(p, "x"), Y: Fraction(p, "y"))).ToList() is { Count: >= 3 } points)
+        {
+            var onPage = points.Select(p => (drawing.X + p.X * drawing.Width, drawing.Y + p.Y * drawing.Height)).ToArray();
+            return new Exclusion(onPage.Min(p => p.Item1) - dl, onPage.Min(p => p.Item2), onPage.Max(p => p.Item1) + dr, onPage.Max(p => p.Item2), false, side)
+            {
+                Polygon = onPage,
+                DistanceLeft = dl,
+                DistanceRight = dr,
+            };
+        }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            wrap.Name.LocalName == "wrapTopAndBottom", (string?)wrap.Attribute("wrapText") ?? "bothSides");
+            wrap.Name.LocalName == "wrapTopAndBottom", side);
+    }
+
+    /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
+    static (double Min, double Max)? Span((double X, double Y)[] polygon, double top, double bottom)
+    {
+        double? min = null, max = null;
+        void Take(double x)
+        {
+            min = min is { } m ? Math.Min(m, x) : x;
+            max = max is { } n ? Math.Max(n, x) : x;
+        }
+        for (var i = 0; i < polygon.Length; i++)
+        {
+            var (a, b) = (polygon[i], polygon[(i + 1) % polygon.Length]);
+            if (a.Y >= top && a.Y <= bottom)
+                Take(a.X);
+            // Where the edge crosses the band's top and bottom.
+            foreach (var y in (double[])[top, bottom])
+            {
+                if ((a.Y - y) * (b.Y - y) < 0)
+                    Take(a.X + (b.X - a.X) * (y - a.Y) / (b.Y - a.Y));
+            }
+        }
+        return min is { } lo && max is { } hi ? (lo, hi) : null;
     }
 
     /// <summary>The floating objects of the current page this run knows: the run before's and those placed so far.</summary>
@@ -179,22 +227,30 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// The room a line has beside the floating objects: the column less every object its box overlaps, keeping the
     /// sides the object's wrapText allows; where none is left, how far down the line must go.
     /// </summary>
-    static LineRoom Room(List<Exclusion> exclusions, double paragraphTop, double offset, double height, double columnLeft, double columnWidth)
+    static LineRoom Room(List<Exclusion> exclusions, double paragraphTop, LineSlot slot, double columnLeft, double columnWidth)
     {
-        var top = paragraphTop + offset;
+        var top = paragraphTop + slot.Offset;
+        var height = slot.Height;
         var segments = new List<(double Start, double End)> { (0, columnWidth) };
         var skipTo = 0.0;
         foreach (var e in exclusions)
         {
             if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01)
                 continue;
+            var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
+            // A wrap polygon keeps free what of it lies beside the line's text.
+            if (e.Polygon != null)
+            {
+                if (Span(e.Polygon, top + slot.TextTop, top + slot.TextBottom) is not { } span)
+                    continue;
+                (l, r) = (span.Min - e.DistanceLeft - columnLeft, span.Max + e.DistanceRight - columnLeft);
+            }
             if (e.TopAndBottom)
             {
                 segments.Clear();
                 skipTo = Math.Max(skipTo, e.Bottom - paragraphTop);
                 continue;
             }
-            var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
             var next = new List<(double Start, double End)>();
             foreach (var (start, end) in segments)
             {
@@ -400,7 +456,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
-        var anchors = new List<(AnchorInline Anchor, double ParagraphTop, double LineTop)>();
+        var anchors = new List<CellAnchor>();
         var y = 0.0;
         double after = 0;
         var first = true;
@@ -411,16 +467,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
                 var paragraphTop = y + (first ? 0 : after);
                 y += first ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
-                var lineTops = new Dictionary<AnchorInline, double>(ReferenceEqualityComparer.Instance);
+                var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                 foreach (var line in layout.Layout(paragraph, width, fields))
                 {
                     foreach (var anchor in line.Anchors ?? [])
-                        lineTops[anchor] = y;
+                        lineTops[anchor] = (y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
                     box.Lines.Add(new PlacedLine(line, left, y));
                     y += line.Height;
                 }
                 foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
-                    anchors.Add((anchor, paragraphTop, lineTops.GetValueOrDefault(anchor, paragraphTop)));
+                {
+                    var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, left));
+                    anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
+                }
                 after = paragraph.Format.After ?? 0;
             }
             else if (block is TableBlock table)
@@ -430,7 +489,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var tableTop = y;
                 foreach (var row in laid.Rows)
                 {
-                    TableLayout.Draw(row, row.Height, left, y, box.Lines, box.Shading, box.Borders, box.Strokes);
+                    TableLayout.Draw(row, row.Height, left, y, box.Lines, box.Shading, box.Borders, box.Strokes, anchors);
                     y += row.Height;
                 }
                 if (laid.Rows.Count > 0)
@@ -451,8 +510,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         box.Top = top;
         box.Bottom = top + y;
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
-        foreach (var (anchor, paragraphTop, lineTop) in anchors)
-            box.Drawings.Add(Anchored(anchor, on, top + paragraphTop, top + lineTop, left, width));
+        foreach (var anchor in anchors.Select(a => a.Offset(0, top)))
+            box.Drawings.Add(Anchored(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX));
         return box;
     }
 
@@ -648,7 +707,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// the larger of the two separates them, what the space before has more); the line's top is that of the line
     /// holding the anchor (measured with docx/local/anchor-rules, all within 0.05 pt).
     /// </remarks>
-    static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth)
+    static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
+        CellAnchor? cell = null, double? character = null)
     {
         var element = anchor.Anchor;
         var (w, h) = Docx.Drawings.Extent(element);
@@ -664,8 +724,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             var odd = page.DisplayNumber % 2 == 1;
             var positionH = element.Element(Docx.Drawings.Wp + "positionH");
-            var (x0, xw) = ((string?)positionH?.Attribute("relativeFrom")) switch
+            var fromH = (string?)positionH?.Attribute("relativeFrom");
+            var (x0, xw) = fromH switch
             {
+                "character" when character is { } at => (at, 0.0),
+                // In a table cell: its text area, or the cell inside its lines for the page and the page margins.
+                "page" or "leftMargin" or "rightMargin" or "insideMargin" or "outsideMargin" when cell?.Cell is { } inCell => inCell,
+                _ when cell?.Text is { } text => text,
                 "page" => (0.0, s.PageWidth),
                 "column" or "character" => (columnLeft, columnWidth),
                 "leftMargin" => (0.0, page.TextLeft),
@@ -678,6 +743,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var positionV = element.Element(Docx.Drawings.Wp + "positionV");
             var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
             {
+                not ("paragraph" or "line") when cell?.Content is { } content => content,
                 "page" => (0.0, s.PageHeight),
                 "paragraph" => (paragraphTop, 0.0),
                 "line" => (lineTop, 0.0),
@@ -777,7 +843,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     void PlaceRow(RowBox row, double left)
     {
-        TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
+        var anchors = new List<CellAnchor>();
+        TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+        foreach (var anchor in anchors)
+            page.Drawings.Add(Anchored(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
         y += row.Height;
         columnEmpty = false;
     }
@@ -880,7 +949,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (exclusions.Any(e => e.Top < Math.Max(bottom, linesTop + 1) && e.Bottom > linesTop))
             {
                 var (columnLeft, columnWidth) = (left, width);
-                lines = layout.Layout(paragraph, width, room: (offset, height) => Room(exclusions, linesTop, offset, height, columnLeft, columnWidth));
+                lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
             }
         }
         var firstLineTop = (Page: page!, Top: y);
@@ -889,7 +958,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var here = 0;
         var hereAtTop = columnEmpty;
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
-        var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top)>(ReferenceEqualityComparer.Instance);
+        var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top, double X)>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
         for (var k = 0; k < lines.Count; k++)
         {
@@ -940,7 +1009,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - line.Skip - firstLineTop.Top) < 0.01
                 ? paragraphTop.Top : y, left, width);
             foreach (var anchor in line.Anchors ?? [])
-                lineTops[anchor] = (page!, y);
+                lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left, y));
@@ -986,8 +1055,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
         {
             var (anchorPage, anchorTop, columnLeft, columnWidth) = anchorAt ?? (page!, y, left, width);
-            var lineTop = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage ? at.Top : anchorTop;
-            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, lineTop, columnLeft, columnWidth));
+            var inLine = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage;
+            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
+                character: inLine ? at.X : columnLeft));
         }
         pendingAfter = SpaceAfter(paragraph, next);
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).

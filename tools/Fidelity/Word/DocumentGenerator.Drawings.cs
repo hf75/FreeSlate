@@ -114,6 +114,52 @@ public static partial class DocumentGenerator
         w.Paragraph(Prose.Measuring);
     }
 
+    /// <summary>
+    /// Tight and through wrapping along Word's wrap polygon, text on one side of a shape (left, right, the larger one)
+    /// and wrap distances.
+    /// </summary>
+    static void WrapTypes(Writer w)
+    {
+        // WdWrapType, WdWrapSideType, MsoAutoShapeType
+        const int WrapTight = 1, WrapThrough = 2;
+        const int BothSides = 0, Left = 1, Right = 2, Largest = 3;
+        const int ShapeTriangle = 7;
+        dynamic Shape(int type, float left, float top, float width, float height, dynamic anchor, int wrap, int side)
+        {
+            var shape = w.Document.Shapes.AddShape(type, left, top, width, height, anchor.Range);
+            Place(shape, left, top, wrap);
+            shape.WrapFormat.Side = side;
+            return shape;
+        }
+        w.Paragraph("Tight, through and one-sided wrapping", StyleHeading1);
+        var oval = w.Paragraph(Prose.Decisions + " " + Prose.Constraints);
+        Shape(ShapeOval, 220, 120, 170, 120, oval, WrapTight, BothSides);
+        w.Paragraph(Prose.Measuring);
+        var triangle = w.Paragraph(Prose.Rules + " " + Prose.Decisions);
+        Shape(ShapeTriangle, 72, 330, 160, 140, triangle, WrapTight, Right);
+        var through = w.Paragraph(Prose.Constraints + " " + Prose.Measuring);
+        Shape(ShapeOval, 340, 520, 150, 110, through, WrapThrough, BothSides);
+        var left = w.Paragraph(Prose.Decisions + " " + Prose.Rules);
+        Shape(ShapeRectangle, 330, 680, 140, 70, left, 0, Left);
+
+        w.Section();
+        var right = w.Paragraph(Prose.Decisions + " " + Prose.Constraints);
+        Shape(ShapeRectangle, 150, 100, 140, 80, right, 0, Right);
+        var largest = w.Paragraph(Prose.Measuring + " " + Prose.Rules);
+        Shape(ShapeRectangle, 330, 270, 120, 80, largest, 0, Largest);
+        var distances = w.Paragraph(Prose.Constraints + " " + Prose.Decisions);
+        var spaced = Shape(ShapeRectangle, 230, 450, 130, 80, distances, 0, BothSides);
+        spaced.WrapFormat.DistanceLeft = 24f;
+        spaced.WrapFormat.DistanceRight = 30f;
+        spaced.WrapFormat.DistanceTop = 12f;
+        spaced.WrapFormat.DistanceBottom = 18f;
+        var pictured = w.Paragraph(Prose.Rules + " " + Prose.Measuring);
+        var images = TestImages.Write(Path.Combine(Path.GetTempPath(), "fidelity-images"));
+        var picture = w.Document.Shapes.AddPicture(images.Jpeg, false, true, 72, 620, 120, 90, pictured.Range);
+        Place(picture, 72, 620, WrapTight);
+        w.Paragraph(Prose.Decisions);
+    }
+
     /// <summary>A collapsed range at the end of a paragraph, before its mark.</summary>
     static dynamic End(dynamic paragraph)
     {

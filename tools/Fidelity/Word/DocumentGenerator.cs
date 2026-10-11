@@ -37,6 +37,7 @@ public static partial class DocumentGenerator
         ("textboxes", TextBoxes),
         ("notes", Notes),
         ("wrapping", Wrapping),
+        ("wrap-types", WrapTypes),
         ("graphics", Graphics),
         ("charts", ChartsAndDiagrams),
     ];

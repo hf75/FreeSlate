@@ -10,6 +10,9 @@ public sealed class Piece
     public required RunStyle Style { get; init; }
     public double X { get; set; }
 
+    /// <summary>Where the piece's text begins in its paragraph's text; -1 for tabs and spacers.</summary>
+    public int Start { get; init; } = -1;
+
     /// <summary>The advance of every UTF-16 unit in points (a cluster's advance on its first unit, spacing and scale included).</summary>
     public required double[] Advances { get; init; }
 
@@ -81,6 +84,9 @@ public sealed class Line
     /// <summary>The floating drawings anchored in the line, which wp:positionV relativeFrom="line" places from its top.</summary>
     public List<AnchorInline>? Anchors { get; set; }
 
+    /// <summary>Where in the line (from the column's left edge) each of its drawings is anchored, for relativeFrom="character".</summary>
+    public Dictionary<AnchorInline, double>? AnchorX { get; set; }
+
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
     public List<double>? Bars { get; set; }
 
@@ -99,6 +105,12 @@ public sealed class Line
 /// none and how far down (from the paragraph's first line) the line must move to find room.
 /// </summary>
 public sealed record LineRoom(List<(double Start, double End)> Segments, double SkipTo = 0);
+
+/// <summary>
+/// Where a line would stand, for the room floating objects leave it: its top below the paragraph's first line top, its
+/// estimated height and the top and bottom of its text (ascent above, descent below the baseline) from its top.
+/// </summary>
+public readonly record struct LineSlot(double Offset, double Height, double TextTop, double TextBottom);
 
 /// <summary>
 /// The values of the page fields where a paragraph stands (catalog: field.evaluation, section.pageNumbers): the page's
@@ -129,6 +141,31 @@ public sealed record PageFields(int Page, string PageFormat, int Pages, int Sect
 /// </summary>
 public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
+    /// <summary>The position of the character at a place in the paragraph's text within its line.</summary>
+    static double CharacterX(Line line, int index)
+    {
+        var end = line.Pieces.Count > 0 ? line.Pieces[0].X : 0;
+        foreach (var piece in line.Pieces)
+        {
+            if (piece.Start >= 0 && index < piece.Start)
+                return piece.X;
+            if (piece.Start >= 0 && index < piece.Start + piece.Text.Length)
+            {
+                var x = piece.X;
+                var spaces = 0;
+                for (var k = 0; k < index - piece.Start; k++)
+                {
+                    x += piece.Advances[k];
+                    if (piece.Text[k] == ' ' && spaces++ < piece.JustifiedSpaces)
+                        x += piece.SpaceExtra;
+                }
+                return x;
+            }
+            end = piece.X + piece.Width;
+        }
+        return end;
+    }
+
     /// <summary>Segments beside floating objects narrower than this take no text.</summary>
     const double MinimumSegment = 18;
 
@@ -170,7 +207,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// The room of a line at an offset below the paragraph's first line top for an estimated height, where floating
     /// objects stand beside the paragraph; null for the whole column.
     /// </param>
-    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<double, double, LineRoom>? room = null)
+    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null)
     {
         var format = paragraph.Format;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
@@ -204,6 +241,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var first = true;
         var offset = 0.0;            // the line's top below the paragraph's first line top
         var estimate = (mark.Metrics.Above + mark.Metrics.Below) * (format.LineRule is null or "auto" ? (format.Line ?? 240) / 240 : 1);
+        var textBand = (Top: 0.0, Bottom: mark.Metrics.Above + mark.Metrics.Below);
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
@@ -215,7 +253,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 for (var attempt = 0; attempt < 20; attempt++)
                 {
-                    var r = room(offset + skip, estimate);
+                    var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom));
                     segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= MinimumSegment).ToList();
                     if (segments.Count > 0 || r.SkipTo <= offset + skip + 0.01)
                         break;
@@ -344,6 +382,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 Space([line], format);
                 offset += skip + line.Height;
                 estimate = line.Height;
+                textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
                 (line.Start, line.Limit) = (startX, segments.Count > 1 ? segments[^1].End : limit);
             }
             lines.Add(line);
@@ -365,6 +404,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (line.Jumped)
                 continue;
             Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
+        }
+        // Where the drawings are anchored in their lines, once the lines are aligned: at the start of the character
+        // before the anchor (measured with docx/local/anchor-char: after a space, a letter or a tab).
+        foreach (var line in lines)
+        {
+            foreach (var anchor in line.Anchors ?? [])
+            {
+                var index = anchored.First(a => ReferenceEquals(a.Anchor, anchor)).Index;
+                (line.AnchorX ??= new(ReferenceEqualityComparer.Instance))[anchor] = CharacterX(line, index - 1);
+            }
         }
         Space(lines, format);
         if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
@@ -650,6 +699,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Text = text[pieceStart..i],
                     Style = charStyles[pieceStart],
                     X = x,
+                    Start = pieceStart,
                     Advances = advances[pieceStart..i],
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
@@ -678,6 +728,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Text = "\t",
                     Style = charStyles[i],
                     X = x,
+                    Start = i,
                     Advances = [Math.Max(0, to - x)],
                     IsTab = true,
                     Leader = stop?.Leader is { } leader && leader != "none" ? leader : null,
