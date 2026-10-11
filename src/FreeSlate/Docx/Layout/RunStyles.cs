@@ -157,6 +157,8 @@ public sealed class RunStyles(DocumentContext context)
             Effects = TextEffects.EffectList(format),
             Outline = TextEffects.Outline(format),
             TextFill = TextEffects.Fill(format),
+            RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
+            Override = format.Override,
             Language = slot switch
             {
                 WordSlot.EastAsia => format.LanguageEastAsia ?? format.Language,

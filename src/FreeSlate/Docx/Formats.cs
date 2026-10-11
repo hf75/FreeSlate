@@ -22,6 +22,12 @@ public sealed class RunFormat
 
     public bool? DoubleStrike, SpecVanish, WebHidden, RightToLeft, UseComplexScript, NoProof;
 
+    /// <summary>
+    /// The direction of a w:bdo (an override: the run reads in this direction whatever its characters) and of a w:dir
+    /// (an embedding) around the run: "rtl", "ltr" or null (catalog: run.complexScript).
+    /// </summary>
+    public string? Override, Embedding;
+
     /// <summary>w:color: hex RGB or "auto", with its theme color and tint or shade.</summary>
     public string? Color, ThemeColor, ThemeTint, ThemeShade;
 

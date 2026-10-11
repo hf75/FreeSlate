@@ -179,6 +179,9 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The hyperlink (w:hyperlink) whose runs are being read, or null.</summary>
     string? link;
 
+    /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
+    string? bidiOverride, bidiEmbedding;
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
@@ -498,9 +501,21 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
                     field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)));
                     break;
-                case "smartTag" or "customXml" or "ins" or "moveTo" or "bdo" or "dir":
+                case "smartTag" or "customXml" or "ins" or "moveTo":
                     ReadInlines(e, paragraphStyle, content, field);
                     break;
+                case "bdo" or "dir":
+                {
+                    // Explicit overrides and embeddings (catalog: run.complexScript) reach the runs inside them.
+                    var saved = (bidiOverride, bidiEmbedding);
+                    if (e.Name.LocalName == "bdo")
+                        bidiOverride = e.Val() ?? bidiOverride;
+                    else
+                        bidiEmbedding = e.Val() ?? bidiEmbedding;
+                    ReadInlines(e, paragraphStyle, content, field);
+                    (bidiOverride, bidiEmbedding) = saved;
+                    break;
+                }
                 case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
                     var cached = new List<Inline>();
                     ReadInlines(e, paragraphStyle, cached, new FieldState());
@@ -549,6 +564,7 @@ public sealed partial class ModelReader(DocumentContext context)
         var direct = new RunFormat();
         direct.Apply(r.Child("rPr"));
         var format = context.Styles.Run(paragraphStyle, direct.Style, direct, tableRun);
+        (format.Override, format.Embedding) = (bidiOverride, bidiEmbedding);
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)

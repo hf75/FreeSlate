@@ -47,6 +47,12 @@ public sealed class Piece
     /// <summary>A note separator's line (w:separator), drawn over the piece's width at the middle of the line.</summary>
     public bool Separator { get; init; }
 
+    /// <summary>The piece's bidirectional embedding level (catalog: run.complexScript): odd levels read right to left.</summary>
+    public byte Level { get; init; }
+
+    /// <summary>Whether the piece reads right to left: the browser draws it whole from its right end.</summary>
+    public bool RightToLeft => Level % 2 == 1;
+
     public double Width => Advances.Sum() + SpaceExtra * JustifiedSpaces;
 }
 
@@ -249,6 +255,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The starts and ends of editable ranges of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, bool Start)> permissions = [];
 
+    /// <summary>The bidirectional levels of the paragraph being laid out per UTF-16 unit, or null for left-to-right text.</summary>
+    byte[]? levels;
+
     /// <summary>The footnote references of the paragraph being laid out: where each stands and its note.</summary>
     readonly List<(int Index, string Id)> notes = [];
 
@@ -286,6 +295,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
@@ -490,6 +500,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
         }
+        // Right-to-left paragraphs and runs: the lines, laid out from the start edge, read in visual order.
+        if (levels != null || format.Bidi == true)
+        {
+            foreach (var line in lines)
+                Visual(line, width, format.Bidi == true);
+        }
         // Where the editable ranges begin and end in their lines: at the character after their start, after the
         // character before their end.
         if (permissions.Count > 0)
@@ -595,6 +611,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     {
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
+        levels = null;
         objects.Clear();
         boxes.Clear();
         equations.Clear();
@@ -864,7 +881,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var boundary = i == end || text[i] is '\t' or '\n' or '\f' or '\v' || i > pieceStart && !ReferenceEquals(charStyles[i], charStyles[pieceStart])
                 || jumps != null && jumps.ContainsKey(i) && i > start
                 || i > pieceStart && (text[i] == '\uFFFC' || text[i - 1] == '\uFFFC')
-                || i > pieceStart && i < end && links.Count > 0 && LinkAt(i) != LinkAt(pieceStart);
+                || i > pieceStart && i < end && links.Count > 0 && LinkAt(i) != LinkAt(pieceStart)
+                || i > pieceStart && i < end && levels != null && levels[i] != levels[pieceStart];
             if (!boundary)
                 continue;
             if (i > pieceStart && text[pieceStart] is not ('\t' or '\n' or '\f' or '\v'))
@@ -883,6 +901,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     DisplayX = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var display) ? display.DisplayX : null,
                     Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
                     Link = links.Count > 0 ? LinkAt(pieceStart) : null,
+                    Level = levels?[pieceStart] ?? 0,
                 };
                 line.Pieces.Add(piece);
                 x += piece.Width;
@@ -1045,6 +1064,59 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         format.Justification is "both" or "distribute" or "lowKashida" or "mediumKashida" or "highKashida" or "thaiDistribute";
 
     /// <summary>Alignment (catalog: paragraph.basic): left, centered, right, justified (not the last line) and distributed.</summary>
+    /// <summary>
+    /// The bidirectional levels of a paragraph's text (UAX #9 through <see cref="Bidi.Levels"/>), or null where all of
+    /// it reads left to right: the paragraph's direction (w:bidi) is the base, neutrals of right-to-left runs (w:rtl,
+    /// w:dir) read right to left, and runs inside a w:bdo take its direction whatever their characters.
+    /// </summary>
+    static byte[]? BidiLevels(string text, List<RunStyle> styles, bool rightToLeft)
+    {
+        if (!rightToLeft && !styles.Any(s => s.RightToLeft || s.Override == "rtl") && !Bidi.HasRightToLeft(text))
+            return null;
+        var levels = Bidi.Levels(text, rightToLeft, i => i < styles.Count && styles[i].RightToLeft ? true : null);
+        var baseLevel = rightToLeft ? 1 : 0;
+        for (var i = 0; i < text.Length && i < styles.Count; i++)
+        {
+            if (styles[i].Override is "rtl")
+                levels[i] = 1;
+            else if (styles[i].Override is "ltr")
+                levels[i] = (byte)(baseLevel == 1 ? 2 : 0);
+        }
+        return levels;
+    }
+
+    /// <summary>
+    /// A line in visual order: between its tabs its pieces are reordered by their levels (UAX #9 L2); a right-to-left
+    /// paragraph's line, laid out from the start edge, is mirrored across <paramref name="width"/>, so that its start
+    /// indent, its tab stops and its alignment count from the right and its trailing spaces hang past the left margin.
+    /// </summary>
+    static void Visual(Line line, double width, bool rightToLeft)
+    {
+        var pieces = line.Pieces;
+        for (var i = 0; i < pieces.Count;)
+        {
+            if (pieces[i].IsTab)
+            {
+                if (rightToLeft)
+                    pieces[i].X = width - pieces[i].X - pieces[i].Width;
+                i++;
+                continue;
+            }
+            var j = i;
+            while (j < pieces.Count && !pieces[j].IsTab)
+                j++;
+            var segment = pieces.GetRange(i, j - i);
+            var (start, end) = (segment[0].X, segment[^1].X + segment[^1].Width);
+            var x = rightToLeft ? width - end : start;
+            foreach (var k in Bidi.Reorder(segment.Select(p => p.Level).ToList()))
+            {
+                segment[k].X = x;
+                x += segment[k].Width;
+            }
+            i = j;
+        }
+    }
+
     static void Align(Line line, ParagraphFormat format, double limit, double startX)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
@@ -1057,10 +1129,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             trailing += last.Advances[k];
         var end = last.X + last.Width - trailing;
         var free = limit - end;
+        // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
+        // start align at the start, right and end at the end (measured with docx/local/bidi).
         var jc = format.Justification ?? "left";
-        var bidi = format.Bidi == true;
-        if (bidi && jc is "left" or "start") jc = "right";
-        else if (bidi && jc is "right" or "end") jc = "left";
         // Tabs fix what comes after them; alignment moves only the text after the last tab.
         var lastTab = line.Pieces.FindLastIndex(p => p.IsTab);
         var movable = line.Pieces.Skip(lastTab + 1).ToList();

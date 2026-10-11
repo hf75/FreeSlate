@@ -345,11 +345,19 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         // the position of its start and, for every cluster, how far it stands from where the browser's own advances
         // put it; the browser's advances differ from these by up to 0.01 pt a glyph, so the other words keep the
         // position of every character.
-        var words = Math.Abs(style.Scale - 1) < 1e-6 ? ContextualWords(style, text) : [];
+        // Right-to-left text goes to the browser whole, from its right end, so that it is shaped and reads in order
+        // (as in PowerPoint); justification widens its spaces.
+        var words = piece.RightToLeft ? [] : Math.Abs(style.Scale - 1) < 1e-6 ? ContextualWords(style, text) : [];
         var family = style.Font.Data.Family;
         context.UsedFonts.Add(family);
         var sb = new StringBuilder("<text");
-        if (words.Count == 0)
+        if (piece.RightToLeft)
+        {
+            sb.Append($" x=\"{Px(x + piece.Width)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\"");
+            if (piece.SpaceExtra > 0)
+                sb.Append($" word-spacing=\"{Px(piece.SpaceExtra)}\"");
+        }
+        else if (words.Count == 0)
             sb.Append($" x=\"{X(0, text.Length)}\"");
         sb.Append($" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"{TextPaint(piece, x, baseline)}");
         if (style.Bold) sb.Append(" font-weight=\"700\"");

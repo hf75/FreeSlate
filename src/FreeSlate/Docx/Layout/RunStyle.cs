@@ -37,6 +37,12 @@ public sealed record RunStyle(
     public bool SmallCaps { get; init; }
     public string? Language { get; init; }
 
+    /// <summary>A right-to-left run (w:rtl, or inside a w:dir embedding): its neutral characters read right to left.</summary>
+    public bool RightToLeft { get; init; }
+
+    /// <summary>The direction a w:bdo around the run forces on it ("rtl", "ltr"), or null.</summary>
+    public string? Override { get; init; }
+
     /// <summary>Text effects as DrawingML (catalog: run.textEffects): glow, shadow and reflection, the outline and the fill.</summary>
     public XElement? Effects { get; init; }
     public XElement? Outline { get; init; }
