@@ -20,7 +20,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 3 | 2 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 2 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 4 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 2 | 1 |
@@ -30,21 +30,21 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 3 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 0 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 0 |
-| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 3 | 4 |
-| [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 0 |
-| [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 0 |
-| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 0 |
-| [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 0 | 0 |
-| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 0 | 0 |
-| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 0 |
-| [Pictures and media](#picture) | 9 | 2 | 4 | 2 | 1 | 2.2 | 0 | 0 |
-| [DrawingML text (charts, SmartArt, WordArt)](#text) | 18 | 8 | 4 | 5 | 1 | 3.3 | 0 | 0 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 0 |
-| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
+| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 1 | 6 |
+| [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 6 |
+| [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 2 |
+| [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 11 |
+| [Fills](#fill) | 5 | 1 | 2 | 2 | 0 | 1.8 | 0 | 5 |
+| [Lines and outlines](#line) | 6 | 1 | 3 | 2 | 0 | 2.3 | 0 | 6 |
+| [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 11 |
+| [Pictures and media](#picture) | 9 | 2 | 4 | 2 | 1 | 2.2 | 0 | 9 |
+| [DrawingML text (charts, SmartArt, WordArt)](#text) | 18 | 8 | 4 | 5 | 1 | 3.3 | 0 | 18 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 2 | 18 |
+| [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 1 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **20** | **24** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **21** | **116** |
 
 <a id="package"></a>
 
@@ -453,7 +453,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | todo | 14 | 3 |
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | todo | 10 | 6 |
 | [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | todo | 2 | 1 |
-| [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | todo | 38 | 0 |
+| [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | partial | 38 | 0 |
 | [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
 | [Animated text](#run.animated) | P3 | ●○○○○ | todo | 1 | 1 |
 
@@ -581,11 +581,13 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Text effects (Word 2010)
 
-`run.textEffects` · P1 · difficulty 3 · todo
+`run.textEffects` · P1 · difficulty 3 · partial
 
 Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 **Rendering:** Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).
+
+**Office behaviour:** w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). Still open: 3D text (w14:props3d, w14:scene3d), w14:lightRig.
 
 **Elements (38):** [`w14:alpha`](../format/namespaces/w14.md#w14alpha), [`w14:bevel`](../format/namespaces/w14.md#w14bevel), [`w14:bevelB`](../format/namespaces/w14.md#w14bevelb), [`w14:bevelT`](../format/namespaces/w14.md#w14bevelt), [`w14:camera`](../format/namespaces/w14.md#w14camera), [`w14:contourClr`](../format/namespaces/w14.md#w14contourclr), [`w14:extrusionClr`](../format/namespaces/w14.md#w14extrusionclr), [`w14:fillToRect`](../format/namespaces/w14.md#w14filltorect), [`w14:glow`](../format/namespaces/w14.md#w14glow), [`w14:gradFill`](../format/namespaces/w14.md#w14gradfill), [`w14:gs`](../format/namespaces/w14.md#w14gs), [`w14:gsLst`](../format/namespaces/w14.md#w14gslst), [`w14:hueMod`](../format/namespaces/w14.md#w14huemod), [`w14:lightRig`](../format/namespaces/w14.md#w14lightrig), [`w14:lin`](../format/namespaces/w14.md#w14lin), [`w14:lum`](../format/namespaces/w14.md#w14lum), [`w14:lumMod`](../format/namespaces/w14.md#w14lummod), [`w14:lumOff`](../format/namespaces/w14.md#w14lumoff), [`w14:miter`](../format/namespaces/w14.md#w14miter), [`w14:noFill`](../format/namespaces/w14.md#w14nofill), [`w14:path`](../format/namespaces/w14.md#w14path), [`w14:props3d`](../format/namespaces/w14.md#w14props3d), [`w14:prstDash`](../format/namespaces/w14.md#w14prstdash), [`w14:reflection`](../format/namespaces/w14.md#w14reflection), [`w14:rot`](../format/namespaces/w14.md#w14rot), [`w14:round`](../format/namespaces/w14.md#w14round), [`w14:sat`](../format/namespaces/w14.md#w14sat), [`w14:satMod`](../format/namespaces/w14.md#w14satmod), [`w14:satOff`](../format/namespaces/w14.md#w14satoff), [`w14:scene3d`](../format/namespaces/w14.md#w14scene3d), [`w14:schemeClr`](../format/namespaces/w14.md#w14schemeclr), [`w14:shade`](../format/namespaces/w14.md#w14shade), [`w14:shadow`](../format/namespaces/w14.md#w14shadow), [`w14:solidFill`](../format/namespaces/w14.md#w14solidfill), [`w14:srgbClr`](../format/namespaces/w14.md#w14srgbclr), [`w14:textFill`](../format/namespaces/w14.md#w14textfill), [`w14:textOutline`](../format/namespaces/w14.md#w14textoutline), [`w14:tint`](../format/namespaces/w14.md#w14tint)
 
@@ -1429,8 +1431,8 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 | [Text wrapping around objects](#drawing.wrap) | P0 | ●●●●● | done | 8 | 2 |
 | [Word shapes](#drawing.shapes) | P0 | ●●●○○ | done | 14 | 0 |
 | [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | partial | 7 | 2 |
-| [Groups](#drawing.groups) | P1 | ●●●○○ | partial | 16 | 0 |
-| [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | partial | 8 | 0 |
+| [Groups](#drawing.groups) | P1 | ●●●○○ | done | 16 | 0 |
+| [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | done | 8 | 0 |
 | [Ink](#drawing.ink) | P3 | ●●●●○ | todo | 9 | 1 |
 | [Online video](#drawing.onlineVideo) | P3 | ●●○○○ | todo | 2 | 0 |
 
@@ -1516,11 +1518,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Groups
 
-`drawing.groups` · P1 · difficulty 3 · partial
+`drawing.groups` · P1 · difficulty 3 · done
 
 **Rendering:** Child transforms as pptx `shape.group` (done); children may be pictures, shapes, text boxes and graphic frames.
 
-**Office behaviour:** Groups of shapes and pictures are drawn as PowerPoint groups. Text boxes inside groups are still open.
+**Office behaviour:** Groups (wpg:wgp) map their children's space (a:chOff, a:chExt) onto their box, nested groups (wpg:grpSp) again; the text boxes of grouped shapes are laid out in their shapes' places and turn with them (docx/local/groups: a stretched group, a nested group with a turned star and a text box, 100 %).
 
 **Elements (16):** [`wp:cNvFrPr`](../format/namespaces/wp.md#wpcnvfrpr), [`wp:cNvGrpSpPr`](../format/namespaces/wp.md#wpcnvgrpsppr), [`wp:graphicFrame`](../format/namespaces/wp.md#wpgraphicframe), [`wp:grpSp`](../format/namespaces/wp.md#wpgrpsp), [`wp:grpSpPr`](../format/namespaces/wp.md#wpgrpsppr), [`wp:wgp`](../format/namespaces/wp.md#wpwgp), [`wp:xfrm`](../format/namespaces/wp.md#wpxfrm), [`wpg:cNvFrPr`](../format/namespaces/wpg.md#wpgcnvfrpr), [`wpg:cNvGrpSpPr`](../format/namespaces/wpg.md#wpgcnvgrpsppr), [`wpg:cNvPr`](../format/namespaces/wpg.md#wpgcnvpr), [`wpg:extLst`](../format/namespaces/wpg.md#wpgextlst), [`wpg:graphicFrame`](../format/namespaces/wpg.md#wpggraphicframe), [`wpg:grpSp`](../format/namespaces/wpg.md#wpggrpsp), [`wpg:grpSpPr`](../format/namespaces/wpg.md#wpggrpsppr), [`wpg:wgp`](../format/namespaces/wpg.md#wpgwgp), [`wpg:xfrm`](../format/namespaces/wpg.md#wpgxfrm)
 
@@ -1530,11 +1532,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Drawing canvas
 
-`drawing.canvas` · P2 · difficulty 3 · partial
+`drawing.canvas` · P2 · difficulty 3 · done
 
 **Rendering:** A canvas is a group with its own background and outline.
 
-**Office behaviour:** Canvases are drawn as groups with their background and outline; untested against Word.
+**Office behaviour:** Canvases (wpc:wpc) are drawn as a group in their own coordinates over their background and outline (wpc:bg, wpc:whole); their shapes' text boxes and connectors as in groups (docx/local/groups, 100 %).
 
 **Elements (8):** [`lc:lockedCanvas`](../format/namespaces/lc.md#lclockedcanvas), [`wp:bg`](../format/namespaces/wp.md#wpbg), [`wp:whole`](../format/namespaces/wp.md#wpwhole), [`wp:wpc`](../format/namespaces/wp.md#wpwpc), [`wpc:bg`](../format/namespaces/wpc.md#wpcbg), [`wpc:graphicFrame`](../format/namespaces/wpc.md#wpcgraphicframe), [`wpc:whole`](../format/namespaces/wpc.md#wpcwhole), [`wpc:wpc`](../format/namespaces/wpc.md#wpcwpc)
 
@@ -1572,20 +1574,22 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Theme color scheme](#theme.colors) | P0 | ●○○○○ | todo | 16 | 13 |
-| [Theme fonts](#theme.fonts) | P0 | ●●○○○ | todo | 4 | 0 |
-| [Theme formats (style matrix)](#theme.formatScheme) | P0 | ●●○○○ | todo | 6 | 0 |
-| [Shape style references](#theme.styleRefs) | P0 | ●●○○○ | todo | 6 | 3 |
-| [Theme overrides](#theme.override) | P2 | ●○○○○ | todo | 1 | 0 |
-| [Object defaults, extra and custom colors](#theme.editorData) | P3 | ●○○○○ | todo | 10 | 0 |
+| [Theme color scheme](#theme.colors) | P0 | ●○○○○ | done | 16 | 13 |
+| [Theme fonts](#theme.fonts) | P0 | ●●○○○ | done | 4 | 0 |
+| [Theme formats (style matrix)](#theme.formatScheme) | P0 | ●●○○○ | done | 6 | 0 |
+| [Shape style references](#theme.styleRefs) | P0 | ●●○○○ | done | 6 | 3 |
+| [Theme overrides](#theme.override) | P2 | ●○○○○ | done | 1 | 0 |
+| [Object defaults, extra and custom colors](#theme.editorData) | P3 | ●○○○○ | done | 10 | 0 |
 
 <a id="theme.colors"></a>
 
 ### Theme color scheme
 
-`theme.colors` · P0 · difficulty 1 · todo
+`theme.colors` · P0 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.colors` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.colors (done). Scheme colors through the theme and w:clrSchemeMapping; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (16):** [`a:accent1`](../format/namespaces/a.md#aaccent1), [`a:accent2`](../format/namespaces/a.md#aaccent2), [`a:accent3`](../format/namespaces/a.md#aaccent3), [`a:accent4`](../format/namespaces/a.md#aaccent4), [`a:accent5`](../format/namespaces/a.md#aaccent5), [`a:accent6`](../format/namespaces/a.md#aaccent6), [`a:clrScheme`](../format/namespaces/a.md#aclrscheme), [`a:dk1`](../format/namespaces/a.md#adk1), [`a:dk2`](../format/namespaces/a.md#adk2), [`a:folHlink`](../format/namespaces/a.md#afolhlink), [`a:hlink`](../format/namespaces/a.md#ahlink), [`a:lt1`](../format/namespaces/a.md#alt1), [`a:lt2`](../format/namespaces/a.md#alt2), [`a:theme`](../format/namespaces/a.md#atheme), [`a:themeElements`](../format/namespaces/a.md#athemeelements), [`w:clrSchemeMapping`](../format/namespaces/w.md#wclrschememapping)
 
@@ -1597,9 +1601,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Theme fonts
 
-`theme.fonts` · P0 · difficulty 2 · todo
+`theme.fonts` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.fonts` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.fonts (done). The major and minor fonts of charts and SmartArt; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (4):** [`a:font`](../format/namespaces/a.md#afont), [`a:fontScheme`](../format/namespaces/a.md#afontscheme), [`a:majorFont`](../format/namespaces/a.md#amajorfont), [`a:minorFont`](../format/namespaces/a.md#aminorfont)
 
@@ -1609,9 +1615,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Theme formats (style matrix)
 
-`theme.formatScheme` · P0 · difficulty 2 · todo
+`theme.formatScheme` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.formatScheme` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.formatScheme (done). The fill, line and effect styles of Word's default shapes; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (6):** [`a:bgFillStyleLst`](../format/namespaces/a.md#abgfillstylelst), [`a:effectStyle`](../format/namespaces/a.md#aeffectstyle), [`a:effectStyleLst`](../format/namespaces/a.md#aeffectstylelst), [`a:fillStyleLst`](../format/namespaces/a.md#afillstylelst), [`a:fmtScheme`](../format/namespaces/a.md#afmtscheme), [`a:lnStyleLst`](../format/namespaces/a.md#alnstylelst)
 
@@ -1621,9 +1629,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Shape style references
 
-`theme.styleRefs` · P0 · difficulty 2 · todo
+`theme.styleRefs` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.styleRefs` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.styleRefs (done). wps:style with lnRef, fillRef, effectRef and fontRef; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (6):** [`a:effectRef`](../format/namespaces/a.md#aeffectref), [`a:fillRef`](../format/namespaces/a.md#afillref), [`a:fontRef`](../format/namespaces/a.md#afontref), [`a:lnRef`](../format/namespaces/a.md#alnref), [`a:style`](../format/namespaces/a.md#astyle), [`pic14:style`](../format/namespaces/pic14.md#pic14style)
 
@@ -1635,9 +1645,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Theme overrides
 
-`theme.override` · P2 · difficulty 1 · todo
+`theme.override` · P2 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.override` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.override (done). Theme overrides of chart parts (a:themeOverride).
 
 **Elements (1):** [`a:themeOverride`](../format/namespaces/a.md#athemeoverride)
 
@@ -1647,9 +1659,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Object defaults, extra and custom colors
 
-`theme.editorData` · P3 · difficulty 1 · todo
+`theme.editorData` · P3 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `theme.editorData` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.editorData (done). Nothing to draw: object defaults and extra color schemes only serve editing.
 
 **Elements (10):** [`a:clrMap`](../format/namespaces/a.md#aclrmap), [`a:custClr`](../format/namespaces/a.md#acustclr), [`a:custClrLst`](../format/namespaces/a.md#acustclrlst), [`a:extraClrScheme`](../format/namespaces/a.md#aextraclrscheme), [`a:extraClrSchemeLst`](../format/namespaces/a.md#aextraclrschemelst), [`a:lnDef`](../format/namespaces/a.md#alndef), [`a:objectDefaults`](../format/namespaces/a.md#aobjectdefaults), [`a:spDef`](../format/namespaces/a.md#aspdef), [`a:txDef`](../format/namespaces/a.md#atxdef), [`thm15:themeFamily`](../format/namespaces/thm15.md#thm15themefamily)
 
@@ -1661,16 +1675,18 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Color models](#color.models) | P0 | ●○○○○ | todo | 6 | 3 |
-| [Color transforms](#color.transforms) | P0 | ●●●○○ | todo | 28 | 25 |
+| [Color models](#color.models) | P0 | ●○○○○ | done | 6 | 3 |
+| [Color transforms](#color.transforms) | P0 | ●●●○○ | done | 28 | 25 |
 
 <a id="color.models"></a>
 
 ### Color models
 
-`color.models` · P0 · difficulty 1 · todo
+`color.models` · P0 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `color.models` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.models (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (6):** [`a:hslClr`](../format/namespaces/a.md#ahslclr), [`a:prstClr`](../format/namespaces/a.md#aprstclr), [`a:schemeClr`](../format/namespaces/a.md#aschemeclr), [`a:scrgbClr`](../format/namespaces/a.md#ascrgbclr), [`a:srgbClr`](../format/namespaces/a.md#asrgbclr), [`a:sysClr`](../format/namespaces/a.md#asysclr)
 
@@ -1682,9 +1698,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Color transforms
 
-`color.transforms` · P0 · difficulty 3 · todo
+`color.transforms` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `color.transforms` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.transforms (done). Theme colors with lumMod, lumOff, tint, shade and alpha; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (28):** [`a:alpha`](../format/namespaces/a.md#aalpha), [`a:alphaMod`](../format/namespaces/a.md#aalphamod), [`a:alphaOff`](../format/namespaces/a.md#aalphaoff), [`a:blue`](../format/namespaces/a.md#ablue), [`a:blueMod`](../format/namespaces/a.md#abluemod), [`a:blueOff`](../format/namespaces/a.md#ablueoff), [`a:comp`](../format/namespaces/a.md#acomp), [`a:gamma`](../format/namespaces/a.md#agamma), [`a:gray`](../format/namespaces/a.md#agray), [`a:green`](../format/namespaces/a.md#agreen), [`a:greenMod`](../format/namespaces/a.md#agreenmod), [`a:greenOff`](../format/namespaces/a.md#agreenoff), [`a:hue`](../format/namespaces/a.md#ahue), [`a:hueMod`](../format/namespaces/a.md#ahuemod), [`a:hueOff`](../format/namespaces/a.md#ahueoff), [`a:inv`](../format/namespaces/a.md#ainv), [`a:invGamma`](../format/namespaces/a.md#ainvgamma), [`a:lum`](../format/namespaces/a.md#alum), [`a:lumMod`](../format/namespaces/a.md#alummod), [`a:lumOff`](../format/namespaces/a.md#alumoff), [`a:red`](../format/namespaces/a.md#ared), [`a:redMod`](../format/namespaces/a.md#aredmod), [`a:redOff`](../format/namespaces/a.md#aredoff), [`a:sat`](../format/namespaces/a.md#asat), [`a:satMod`](../format/namespaces/a.md#asatmod), [`a:satOff`](../format/namespaces/a.md#asatoff), [`a:shade`](../format/namespaces/a.md#ashade), [`a:tint`](../format/namespaces/a.md#atint)
 
@@ -1698,25 +1716,27 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Shapes](#shape.basic) | P0 | ●●○○○ | todo | 4 | 1 |
-| [Names, alt text, hidden and decorative shapes](#shape.accessibility) | P1 | ●○○○○ | todo | 2 | 0 |
-| [Position, size, rotation and flip](#shape.transform) | P0 | ●●○○○ | todo | 5 | 7 |
-| [Groups](#shape.group) | P0 | ●●○○○ | todo | 7 | 2 |
-| [Preset geometries](#shape.presetGeometry) | P0 | ●●●○○ | todo | 3 | 1 |
-| [Custom geometry (freeforms)](#shape.customGeometry) | P0 | ●●●○○ | todo | 18 | 6 |
-| [Connectors](#shape.connectors) | P1 | ●●○○○ | todo | 5 | 3 |
-| [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | todo | 5 | 2 |
-| [Locks](#shape.locks) | P3 | ●○○○○ | todo | 7 | 5 |
-| [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | todo | 8 | 0 |
-| [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | todo | 1 | 0 |
+| [Shapes](#shape.basic) | P0 | ●●○○○ | done | 4 | 1 |
+| [Names, alt text, hidden and decorative shapes](#shape.accessibility) | P1 | ●○○○○ | done | 2 | 0 |
+| [Position, size, rotation and flip](#shape.transform) | P0 | ●●○○○ | done | 5 | 7 |
+| [Groups](#shape.group) | P0 | ●●○○○ | done | 7 | 2 |
+| [Preset geometries](#shape.presetGeometry) | P0 | ●●●○○ | done | 3 | 1 |
+| [Custom geometry (freeforms)](#shape.customGeometry) | P0 | ●●●○○ | done | 18 | 6 |
+| [Connectors](#shape.connectors) | P1 | ●●○○○ | done | 5 | 3 |
+| [Graphic frames](#shape.graphicFrame) | P0 | ●○○○○ | done | 5 | 2 |
+| [Locks](#shape.locks) | P3 | ●○○○○ | done | 7 | 5 |
+| [Sketched outlines](#shape.sketched) | P2 | ●●●●○ | done | 8 | 0 |
+| [Sensitivity label markings](#shape.classification) | P3 | ●○○○○ | done | 1 | 0 |
 
 <a id="shape.basic"></a>
 
 ### Shapes
 
-`shape.basic` · P0 · difficulty 2 · todo
+`shape.basic` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.basic` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.basic (done). Verified against Word with docx/generated/shapes- effects (99.1 %).
 
 **Elements (4):** [`a:cNvSpPr`](../format/namespaces/a.md#acnvsppr), [`a:nvSpPr`](../format/namespaces/a.md#anvsppr), [`a:sp`](../format/namespaces/a.md#asp), [`a:spPr`](../format/namespaces/a.md#asppr)
 
@@ -1728,9 +1748,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Names, alt text, hidden and decorative shapes
 
-`shape.accessibility` · P1 · difficulty 1 · todo
+`shape.accessibility` · P1 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.accessibility` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.accessibility (done). Hidden drawings (wp:docPr hidden) are not drawn; names, descriptions and decorative flags draw nothing.
 
 **Elements (2):** [`a:cNvPr`](../format/namespaces/a.md#acnvpr), [`adec:decorative`](../format/namespaces/adec.md#adecdecorative)
 
@@ -1740,9 +1762,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Position, size, rotation and flip
 
-`shape.transform` · P0 · difficulty 2 · todo
+`shape.transform` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.transform` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.transform (done). Rotation and flips of shapes and pictures; Verified against Word with docx/generated/pictures (99.6 %); groups map their children (docx/local/groups, 100 %).
 
 **Elements (5):** [`a:chExt`](../format/namespaces/a.md#achext), [`a:chOff`](../format/namespaces/a.md#achoff), [`a:ext`](../format/namespaces/a.md#aext), [`a:off`](../format/namespaces/a.md#aoff), [`a:xfrm`](../format/namespaces/a.md#axfrm)
 
@@ -1754,9 +1778,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Groups
 
-`shape.group` · P0 · difficulty 2 · todo
+`shape.group` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.group` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.group (done). wpg:wgp and nested wpg:grpSp with their children's space (docx/local/groups, 100 %).
 
 **Elements (7):** [`a14:isCanvas`](../format/namespaces/a14.md#a14iscanvas), [`a15:nonVisualGroupProps`](../format/namespaces/a15.md#a15nonvisualgroupprops), [`a:cNvGrpSpPr`](../format/namespaces/a.md#acnvgrpsppr), [`a:grpSp`](../format/namespaces/a.md#agrpsp), [`a:grpSpPr`](../format/namespaces/a.md#agrpsppr), [`a:nvGrpSpPr`](../format/namespaces/a.md#anvgrpsppr), [`lc:lockedCanvas`](../format/namespaces/lc.md#lclockedcanvas)
 
@@ -1768,11 +1794,13 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Preset geometries
 
-`shape.presetGeometry` · P0 · difficulty 3 · todo
+`shape.presetGeometry` · P0 · difficulty 3 · done
 
 187 preset shapes (rect, roundRect, arrows, callouts, flowchart symbols, stars …).
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.presetGeometry` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.presetGeometry (done). 40 presets of all families; Verified against Word with docx/generated/shapes-effects (99.1 %).
 
 **Elements (3):** [`a:avLst`](../format/namespaces/a.md#aavlst), [`a:gd`](../format/namespaces/a.md#agd), [`a:prstGeom`](../format/namespaces/a.md#aprstgeom)
 
@@ -1784,9 +1812,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Custom geometry (freeforms)
 
-`shape.customGeometry` · P0 · difficulty 3 · todo
+`shape.customGeometry` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.customGeometry` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.customGeometry (done). A freeform of lines and curves; Verified against Word with docx/generated/shapes-effects (99.1 %).
 
 **Elements (18):** [`a:ahLst`](../format/namespaces/a.md#aahlst), [`a:ahPolar`](../format/namespaces/a.md#aahpolar), [`a:ahXY`](../format/namespaces/a.md#aahxy), [`a:arcTo`](../format/namespaces/a.md#aarcto), [`a:close`](../format/namespaces/a.md#aclose), [`a:cubicBezTo`](../format/namespaces/a.md#acubicbezto), [`a:custGeom`](../format/namespaces/a.md#acustgeom), [`a:cxn`](../format/namespaces/a.md#acxn), [`a:cxnLst`](../format/namespaces/a.md#acxnlst), [`a:gdLst`](../format/namespaces/a.md#agdlst), [`a:lnTo`](../format/namespaces/a.md#alnto), [`a:moveTo`](../format/namespaces/a.md#amoveto), [`a:path`](../format/namespaces/a.md#apath), [`a:pathLst`](../format/namespaces/a.md#apathlst), [`a:pos`](../format/namespaces/a.md#apos), [`a:pt`](../format/namespaces/a.md#apt), [`a:quadBezTo`](../format/namespaces/a.md#aquadbezto), [`a:rect`](../format/namespaces/a.md#arect)
 
@@ -1798,9 +1828,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Connectors
 
-`shape.connectors` · P1 · difficulty 2 · todo
+`shape.connectors` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.connectors` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.connectors (done). An elbow connector with an arrow (docx/generated/graphics) and one in a canvas (docx/local/groups).
 
 **Elements (5):** [`a:cNvCxnSpPr`](../format/namespaces/a.md#acnvcxnsppr), [`a:cxnSp`](../format/namespaces/a.md#acxnsp), [`a:endCxn`](../format/namespaces/a.md#aendcxn), [`a:nvCxnSpPr`](../format/namespaces/a.md#anvcxnsppr), [`a:stCxn`](../format/namespaces/a.md#astcxn)
 
@@ -1812,9 +1844,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Graphic frames
 
-`shape.graphicFrame` · P0 · difficulty 1 · todo
+`shape.graphicFrame` · P0 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.graphicFrame` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.graphicFrame (done). Charts and SmartArt in their frames; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %); Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (5):** [`a:cNvGraphicFramePr`](../format/namespaces/a.md#acnvgraphicframepr), [`a:graphic`](../format/namespaces/a.md#agraphic), [`a:graphicData`](../format/namespaces/a.md#agraphicdata), [`a:graphicFrame`](../format/namespaces/a.md#agraphicframe), [`a:nvGraphicFramePr`](../format/namespaces/a.md#anvgraphicframepr)
 
@@ -1826,9 +1860,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Locks
 
-`shape.locks` · P3 · difficulty 1 · todo
+`shape.locks` · P3 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.locks` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.locks (done). Nothing to draw: locks only restrict editing.
 
 **Elements (7):** [`a14:cpLocks`](../format/namespaces/a14.md#a14cplocks), [`a:cpLocks`](../format/namespaces/a.md#acplocks), [`a:cxnSpLocks`](../format/namespaces/a.md#acxnsplocks), [`a:graphicFrameLocks`](../format/namespaces/a.md#agraphicframelocks), [`a:grpSpLocks`](../format/namespaces/a.md#agrpsplocks), [`a:picLocks`](../format/namespaces/a.md#apiclocks), [`a:spLocks`](../format/namespaces/a.md#asplocks)
 
@@ -1840,9 +1876,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Sketched outlines
 
-`shape.sketched` · P2 · difficulty 4 · todo
+`shape.sketched` · P2 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.sketched` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.sketched (done). Sketched outlines (ask:lineSketchStyleProps) of shapes.
 
 **Elements (8):** [`ask:extLst`](../format/namespaces/ask.md#askextlst), [`ask:lineSketchCurved`](../format/namespaces/ask.md#asklinesketchcurved), [`ask:lineSketchFreehand`](../format/namespaces/ask.md#asklinesketchfreehand), [`ask:lineSketchNone`](../format/namespaces/ask.md#asklinesketchnone), [`ask:lineSketchScribble`](../format/namespaces/ask.md#asklinesketchscribble), [`ask:lineSketchStyleProps`](../format/namespaces/ask.md#asklinesketchstyleprops), [`ask:seed`](../format/namespaces/ask.md#askseed), [`ask:type`](../format/namespaces/ask.md#asktype)
 
@@ -1852,9 +1890,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Sensitivity label markings
 
-`shape.classification` · P3 · difficulty 1 · todo
+`shape.classification` · P3 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `shape.classification` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.classification (done). Sensitivity label markings as PowerPoint shows them.
 
 **Elements (1):** [`aclsh:classification`](../format/namespaces/aclsh.md#aclshclassification)
 
@@ -1866,19 +1906,21 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [No fill and solid fill](#fill.solid) | P0 | ●○○○○ | todo | 2 | 0 |
-| [Gradient fills](#fill.gradient) | P1 | ●●●○○ | todo | 7 | 4 |
-| [Pattern fills](#fill.pattern) | P2 | ●●○○○ | todo | 3 | 0 |
-| [Picture and texture fills](#fill.picture) | P1 | ●●○○○ | todo | 7 | 3 |
-| [Group fill](#fill.group) | P2 | ●○○○○ | todo | 1 | 1 |
+| [No fill and solid fill](#fill.solid) | P0 | ●○○○○ | done | 2 | 0 |
+| [Gradient fills](#fill.gradient) | P1 | ●●●○○ | done | 7 | 4 |
+| [Pattern fills](#fill.pattern) | P2 | ●●○○○ | done | 3 | 0 |
+| [Picture and texture fills](#fill.picture) | P1 | ●●○○○ | done | 7 | 3 |
+| [Group fill](#fill.group) | P2 | ●○○○○ | done | 1 | 1 |
 
 <a id="fill.solid"></a>
 
 ### No fill and solid fill
 
-`fill.solid` · P0 · difficulty 1 · todo
+`fill.solid` · P0 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `fill.solid` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.solid (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (2):** [`a:noFill`](../format/namespaces/a.md#anofill), [`a:solidFill`](../format/namespaces/a.md#asolidfill)
 
@@ -1888,9 +1930,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Gradient fills
 
-`fill.gradient` · P1 · difficulty 3 · todo
+`fill.gradient` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `fill.gradient` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.gradient (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (7):** [`a:fillToRect`](../format/namespaces/a.md#afilltorect), [`a:gradFill`](../format/namespaces/a.md#agradfill), [`a:gs`](../format/namespaces/a.md#ags), [`a:gsLst`](../format/namespaces/a.md#agslst), [`a:lin`](../format/namespaces/a.md#alin), [`a:path`](../format/namespaces/a.md#apath), [`a:tileRect`](../format/namespaces/a.md#atilerect)
 
@@ -1902,9 +1946,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Pattern fills
 
-`fill.pattern` · P2 · difficulty 2 · todo
+`fill.pattern` · P2 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `fill.pattern` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.pattern (done). The preset pattern tiles, aligned to the page; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (3):** [`a:bgClr`](../format/namespaces/a.md#abgclr), [`a:fgClr`](../format/namespaces/a.md#afgclr), [`a:pattFill`](../format/namespaces/a.md#apattfill)
 
@@ -1914,9 +1960,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Picture and texture fills
 
-`fill.picture` · P1 · difficulty 2 · todo
+`fill.picture` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `fill.picture` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.picture (done). Picture and texture fills, stretched and tiled; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (7):** [`a:blip`](../format/namespaces/a.md#ablip), [`a:blipFill`](../format/namespaces/a.md#ablipfill), [`a:fillRect`](../format/namespaces/a.md#afillrect), [`a:srcRect`](../format/namespaces/a.md#asrcrect), [`a:stretch`](../format/namespaces/a.md#astretch), [`a:tile`](../format/namespaces/a.md#atile), [`pic:blipFill`](../format/namespaces/pic.md#picblipfill)
 
@@ -1928,9 +1976,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Group fill
 
-`fill.group` · P2 · difficulty 1 · todo
+`fill.group` · P2 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `fill.group` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.group (done). a:grpFill takes the fill of the group.
 
 **Elements (1):** [`a:grpFill`](../format/namespaces/a.md#agrpfill)
 
@@ -1944,20 +1994,22 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Outline width and color](#line.basic) | P0 | ●●○○○ | todo | 1 | 1 |
-| [Dash styles](#line.dash) | P1 | ●●○○○ | todo | 3 | 1 |
-| [Joins and caps](#line.joinCap) | P1 | ●○○○○ | todo | 3 | 2 |
-| [Arrowheads](#line.ends) | P1 | ●●●○○ | todo | 2 | 0 |
-| [Compound lines](#line.compound) | P2 | ●●●○○ | todo | 0 | 0 |
-| [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | todo | 0 | 0 |
+| [Outline width and color](#line.basic) | P0 | ●●○○○ | done | 1 | 1 |
+| [Dash styles](#line.dash) | P1 | ●●○○○ | done | 3 | 1 |
+| [Joins and caps](#line.joinCap) | P1 | ●○○○○ | done | 3 | 2 |
+| [Arrowheads](#line.ends) | P1 | ●●●○○ | done | 2 | 0 |
+| [Compound lines](#line.compound) | P2 | ●●●○○ | done | 0 | 0 |
+| [Gradient and pattern outlines](#line.fill) | P2 | ●●●○○ | done | 0 | 0 |
 
 <a id="line.basic"></a>
 
 ### Outline width and color
 
-`line.basic` · P0 · difficulty 2 · todo
+`line.basic` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.basic` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.basic (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (1):** [`a:ln`](../format/namespaces/a.md#aln)
 
@@ -1969,9 +2021,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Dash styles
 
-`line.dash` · P1 · difficulty 2 · todo
+`line.dash` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.dash` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.dash (done). Dashed and dotted lines; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (3):** [`a:custDash`](../format/namespaces/a.md#acustdash), [`a:ds`](../format/namespaces/a.md#ads), [`a:prstDash`](../format/namespaces/a.md#aprstdash)
 
@@ -1983,9 +2037,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Joins and caps
 
-`line.joinCap` · P1 · difficulty 1 · todo
+`line.joinCap` · P1 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.joinCap` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.joinCap (done). Joins and caps of outlines and of text outlines (w14:textOutline).
 
 **Elements (3):** [`a:bevel`](../format/namespaces/a.md#abevel), [`a:miter`](../format/namespaces/a.md#amiter), [`a:round`](../format/namespaces/a.md#around)
 
@@ -1997,9 +2053,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Arrowheads
 
-`line.ends` · P1 · difficulty 3 · todo
+`line.ends` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.ends` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.ends (done). Arrow heads of lines and connectors; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (2):** [`a:headEnd`](../format/namespaces/a.md#aheadend), [`a:tailEnd`](../format/namespaces/a.md#atailend)
 
@@ -2009,21 +2067,25 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Compound lines
 
-`line.compound` · P2 · difficulty 3 · todo
+`line.compound` · P2 · difficulty 3 · done
 
 a:ln/@cmpd (double, thick-thin, thin-thick, triple).
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.compound` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.compound (done). A thick-thin compound outline; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
+
 <a id="line.fill"></a>
 
 ### Gradient and pattern outlines
 
-`line.fill` · P2 · difficulty 3 · todo
+`line.fill` · P2 · difficulty 3 · done
 
 gradFill and pattFill inside a:ln.
 
 **Rendering:** Shared DrawingML renderer, as pptx `line.fill` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.fill (done). Solid, gradient and pattern outlines.
 
 <a id="effect"></a>
 
@@ -2031,25 +2093,27 @@ gradFill and pattFill inside a:ln.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Effect lists](#effect.list) | P1 | ●●○○○ | todo | 1 | 0 |
-| [Outer shadow](#effect.outerShadow) | P1 | ●●●○○ | todo | 1 | 1 |
-| [Inner shadow](#effect.innerShadow) | P2 | ●●●○○ | todo | 1 | 1 |
-| [Preset shadows](#effect.presetShadow) | P3 | ●●●○○ | todo | 1 | 0 |
-| [Glow](#effect.glow) | P2 | ●●●○○ | todo | 1 | 0 |
-| [Soft edges](#effect.softEdge) | P2 | ●●●○○ | todo | 1 | 1 |
-| [Reflection](#effect.reflection) | P2 | ●●●●○ | todo | 1 | 1 |
-| [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | todo | 2 | 1 |
-| [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | todo | 7 | 4 |
-| [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | todo | 8 | 6 |
-| [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | todo | 6 | 5 |
+| [Effect lists](#effect.list) | P1 | ●●○○○ | done | 1 | 0 |
+| [Outer shadow](#effect.outerShadow) | P1 | ●●●○○ | done | 1 | 1 |
+| [Inner shadow](#effect.innerShadow) | P2 | ●●●○○ | done | 1 | 1 |
+| [Preset shadows](#effect.presetShadow) | P3 | ●●●○○ | done | 1 | 0 |
+| [Glow](#effect.glow) | P2 | ●●●○○ | done | 1 | 0 |
+| [Soft edges](#effect.softEdge) | P2 | ●●●○○ | done | 1 | 1 |
+| [Reflection](#effect.reflection) | P2 | ●●●●○ | done | 1 | 1 |
+| [Blur and fill overlay](#effect.blur) | P3 | ●●○○○ | done | 2 | 1 |
+| [Effect containers (effect DAG)](#effect.dag) | P3 | ●●●●○ | done | 7 | 4 |
+| [3D scene (camera and light)](#effect.scene3d) | P2 | ●●●●● | done | 8 | 6 |
+| [3D shape (bevel, extrusion, material)](#effect.shape3d) | P2 | ●●●●● | done | 6 | 5 |
 
 <a id="effect.list"></a>
 
 ### Effect lists
 
-`effect.list` · P1 · difficulty 2 · todo
+`effect.list` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.list` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.list (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); the effects of text runs too (run.textEffects).
 
 **Elements (1):** [`a:effectLst`](../format/namespaces/a.md#aeffectlst)
 
@@ -2059,9 +2123,11 @@ gradFill and pattFill inside a:ln.
 
 ### Outer shadow
 
-`effect.outerShadow` · P1 · difficulty 3 · todo
+`effect.outerShadow` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.outerShadow` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.outerShadow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (1):** [`a:outerShdw`](../format/namespaces/a.md#aoutershdw)
 
@@ -2073,9 +2139,11 @@ gradFill and pattFill inside a:ln.
 
 ### Inner shadow
 
-`effect.innerShadow` · P2 · difficulty 3 · todo
+`effect.innerShadow` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.innerShadow` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.innerShadow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (1):** [`a:innerShdw`](../format/namespaces/a.md#ainnershdw)
 
@@ -2087,9 +2155,11 @@ gradFill and pattFill inside a:ln.
 
 ### Preset shadows
 
-`effect.presetShadow` · P3 · difficulty 3 · todo
+`effect.presetShadow` · P3 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.presetShadow` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.presetShadow (done). The classic hard-edged shadows as unblurred outer shadows.
 
 **Elements (1):** [`a:prstShdw`](../format/namespaces/a.md#aprstshdw)
 
@@ -2099,9 +2169,11 @@ gradFill and pattFill inside a:ln.
 
 ### Glow
 
-`effect.glow` · P2 · difficulty 3 · todo
+`effect.glow` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.glow` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.glow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/shapes-effects (99.1 %) for glowing text.
 
 **Elements (1):** [`a:glow`](../format/namespaces/a.md#aglow)
 
@@ -2111,9 +2183,11 @@ gradFill and pattFill inside a:ln.
 
 ### Soft edges
 
-`effect.softEdge` · P2 · difficulty 3 · todo
+`effect.softEdge` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.softEdge` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.softEdge (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (1):** [`a:softEdge`](../format/namespaces/a.md#asoftedge)
 
@@ -2125,9 +2199,11 @@ gradFill and pattFill inside a:ln.
 
 ### Reflection
 
-`effect.reflection` · P2 · difficulty 4 · todo
+`effect.reflection` · P2 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.reflection` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.reflection (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); drawn with a soft mask, which Windows' PDF renderer of the fidelity tool ignores (the browser and other renderers show the fade).
 
 **Elements (1):** [`a:reflection`](../format/namespaces/a.md#areflection)
 
@@ -2139,9 +2215,11 @@ gradFill and pattFill inside a:ln.
 
 ### Blur and fill overlay
 
-`effect.blur` · P3 · difficulty 2 · todo
+`effect.blur` · P3 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.blur` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.blur (done). Blurred shapes and pictures.
 
 **Elements (2):** [`a:blur`](../format/namespaces/a.md#ablur), [`a:fillOverlay`](../format/namespaces/a.md#afilloverlay)
 
@@ -2153,9 +2231,11 @@ gradFill and pattFill inside a:ln.
 
 ### Effect containers (effect DAG)
 
-`effect.dag` · P3 · difficulty 4 · todo
+`effect.dag` · P3 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.dag` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.dag (done). Effect containers of effect DAGs.
 
 **Elements (7):** [`a:alphaOutset`](../format/namespaces/a.md#aalphaoutset), [`a:blend`](../format/namespaces/a.md#ablend), [`a:cont`](../format/namespaces/a.md#acont), [`a:effect`](../format/namespaces/a.md#aeffect), [`a:effectDag`](../format/namespaces/a.md#aeffectdag), [`a:fill`](../format/namespaces/a.md#afill), [`a:relOff`](../format/namespaces/a.md#areloff)
 
@@ -2167,9 +2247,11 @@ gradFill and pattFill inside a:ln.
 
 ### 3D scene (camera and light)
 
-`effect.scene3d` · P2 · difficulty 5 · todo
+`effect.scene3d` · P2 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.scene3d` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.scene3d (done). Cameras and lights of 3D scenes; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (8):** [`a:anchor`](../format/namespaces/a.md#aanchor), [`a:backdrop`](../format/namespaces/a.md#abackdrop), [`a:camera`](../format/namespaces/a.md#acamera), [`a:lightRig`](../format/namespaces/a.md#alightrig), [`a:norm`](../format/namespaces/a.md#anorm), [`a:rot`](../format/namespaces/a.md#arot), [`a:scene3d`](../format/namespaces/a.md#ascene3d), [`a:up`](../format/namespaces/a.md#aup)
 
@@ -2181,9 +2263,11 @@ gradFill and pattFill inside a:ln.
 
 ### 3D shape (bevel, extrusion, material)
 
-`effect.shape3d` · P2 · difficulty 5 · todo
+`effect.shape3d` · P2 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `effect.shape3d` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.shape3d (done). Bevels and extrusions; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
 **Elements (6):** [`a:bevel`](../format/namespaces/a.md#abevel), [`a:bevelB`](../format/namespaces/a.md#abevelb), [`a:bevelT`](../format/namespaces/a.md#abevelt), [`a:contourClr`](../format/namespaces/a.md#acontourclr), [`a:extrusionClr`](../format/namespaces/a.md#aextrusionclr), [`a:sp3d`](../format/namespaces/a.md#asp3d)
 
@@ -2197,23 +2281,25 @@ gradFill and pattFill inside a:ln.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Pictures](#picture.basic) | P0 | ●●○○○ | todo | 9 | 1 |
-| [Raster image formats](#picture.formats) | P1 | ●●●○○ | todo | 0 | 0 |
-| [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | todo | 0 | 0 |
-| [SVG pictures](#picture.svg) | P0 | ●○○○○ | todo | 1 | 0 |
-| [Picture color effects](#picture.effects) | P1 | ●●●○○ | todo | 18 | 11 |
-| [Artistic effects and picture corrections](#picture.artistic) | P1 | ●○○○○ | todo | 32 | 0 |
-| [Ink](#picture.ink) | P2 | ●●●○○ | todo | 15 | 0 |
-| [3D models](#picture.model3d) | P2 | ●○○○○ | todo | 35 | 0 |
-| [Picture sources and formulas](#picture.sources) | P3 | ●○○○○ | todo | 2 | 0 |
+| [Pictures](#picture.basic) | P0 | ●●○○○ | done | 9 | 1 |
+| [Raster image formats](#picture.formats) | P1 | ●●●○○ | done | 0 | 0 |
+| [EMF and WMF pictures](#picture.metafiles) | P1 | ●●●●● | done | 0 | 0 |
+| [SVG pictures](#picture.svg) | P0 | ●○○○○ | done | 1 | 0 |
+| [Picture color effects](#picture.effects) | P1 | ●●●○○ | done | 18 | 11 |
+| [Artistic effects and picture corrections](#picture.artistic) | P1 | ●○○○○ | done | 32 | 0 |
+| [Ink](#picture.ink) | P2 | ●●●○○ | done | 15 | 0 |
+| [3D models](#picture.model3d) | P2 | ●○○○○ | done | 35 | 0 |
+| [Picture sources and formulas](#picture.sources) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="picture.basic"></a>
 
 ### Pictures
 
-`picture.basic` · P0 · difficulty 2 · todo
+`picture.basic` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.basic` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.basic (done). Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (9):** [`a:cNvPicPr`](../format/namespaces/a.md#acnvpicpr), [`a:nvPicPr`](../format/namespaces/a.md#anvpicpr), [`a:pic`](../format/namespaces/a.md#apic), [`aanim:animPr`](../format/namespaces/aanim.md#aanimanimpr), [`pic:cNvPicPr`](../format/namespaces/pic.md#piccnvpicpr), [`pic:cNvPr`](../format/namespaces/pic.md#piccnvpr), [`pic:nvPicPr`](../format/namespaces/pic.md#picnvpicpr), [`pic:pic`](../format/namespaces/pic.md#picpic), [`pic:spPr`](../format/namespaces/pic.md#picsppr)
 
@@ -2225,27 +2311,33 @@ gradFill and pattFill inside a:ln.
 
 ### Raster image formats
 
-`picture.formats` · P1 · difficulty 3 · todo
+`picture.formats` · P1 · difficulty 3 · done
 
 The content type behind a:blip/@r:embed.
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.formats` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.formats (done). PNG with transparency, JPEG, GIF, BMP and TIFF; Verified against Word with docx/generated/pictures (99.6 %).
+
 <a id="picture.metafiles"></a>
 
 ### EMF and WMF pictures
 
-`picture.metafiles` · P1 · difficulty 5 · todo
+`picture.metafiles` · P1 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.metafiles` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.metafiles (done). An EMF+ dual metafile; Verified against Word with docx/generated/pictures (99.6 %).
 
 <a id="picture.svg"></a>
 
 ### SVG pictures
 
-`picture.svg` · P0 · difficulty 1 · todo
+`picture.svg` · P0 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.svg` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.svg (done). SVG pictures (asvg:svgBlip) drawn from the SVG; Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (1):** [`asvg:svgBlip`](../format/namespaces/asvg.md#asvgsvgblip)
 
@@ -2255,9 +2347,11 @@ The content type behind a:blip/@r:embed.
 
 ### Picture color effects
 
-`picture.effects` · P1 · difficulty 3 · todo
+`picture.effects` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.effects` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.effects (done). Grayscale, washout, brightness and contrast, cropping; Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (18):** [`a:alphaBiLevel`](../format/namespaces/a.md#aalphabilevel), [`a:alphaCeiling`](../format/namespaces/a.md#aalphaceiling), [`a:alphaFloor`](../format/namespaces/a.md#aalphafloor), [`a:alphaInv`](../format/namespaces/a.md#aalphainv), [`a:alphaMod`](../format/namespaces/a.md#aalphamod), [`a:alphaModFix`](../format/namespaces/a.md#aalphamodfix), [`a:alphaRepl`](../format/namespaces/a.md#aalpharepl), [`a:biLevel`](../format/namespaces/a.md#abilevel), [`a:blur`](../format/namespaces/a.md#ablur), [`a:clrChange`](../format/namespaces/a.md#aclrchange), [`a:clrFrom`](../format/namespaces/a.md#aclrfrom), [`a:clrRepl`](../format/namespaces/a.md#aclrrepl), [`a:clrTo`](../format/namespaces/a.md#aclrto), [`a:duotone`](../format/namespaces/a.md#aduotone), [`a:grayscl`](../format/namespaces/a.md#agrayscl), [`a:hsl`](../format/namespaces/a.md#ahsl), [`a:lum`](../format/namespaces/a.md#alum), [`a:tint`](../format/namespaces/a.md#atint)
 
@@ -2269,9 +2363,11 @@ The content type behind a:blip/@r:embed.
 
 ### Artistic effects and picture corrections
 
-`picture.artistic` · P1 · difficulty 1 · todo
+`picture.artistic` · P1 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.artistic` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.artistic (done). Artistic effects (pencil sketch, blur); Verified against Word with docx/generated/pictures (99.6 %).
 
 **Elements (32):** [`a14:artisticBlur`](../format/namespaces/a14.md#a14artisticblur), [`a14:artisticCement`](../format/namespaces/a14.md#a14artisticcement), [`a14:artisticChalkSketch`](../format/namespaces/a14.md#a14artisticchalksketch), [`a14:artisticCrisscrossEtching`](../format/namespaces/a14.md#a14artisticcrisscrossetching), [`a14:artisticCutout`](../format/namespaces/a14.md#a14artisticcutout), [`a14:artisticFilmGrain`](../format/namespaces/a14.md#a14artisticfilmgrain), [`a14:artisticGlass`](../format/namespaces/a14.md#a14artisticglass), [`a14:artisticGlowDiffused`](../format/namespaces/a14.md#a14artisticglowdiffused), [`a14:artisticGlowEdges`](../format/namespaces/a14.md#a14artisticglowedges), [`a14:artisticLightScreen`](../format/namespaces/a14.md#a14artisticlightscreen), [`a14:artisticLineDrawing`](../format/namespaces/a14.md#a14artisticlinedrawing), [`a14:artisticMarker`](../format/namespaces/a14.md#a14artisticmarker), [`a14:artisticMosiaicBubbles`](../format/namespaces/a14.md#a14artisticmosiaicbubbles), [`a14:artisticPaintBrush`](../format/namespaces/a14.md#a14artisticpaintbrush), [`a14:artisticPaintStrokes`](../format/namespaces/a14.md#a14artisticpaintstrokes), [`a14:artisticPastelsSmooth`](../format/namespaces/a14.md#a14artisticpastelssmooth), [`a14:artisticPencilGrayscale`](../format/namespaces/a14.md#a14artisticpencilgrayscale), [`a14:artisticPencilSketch`](../format/namespaces/a14.md#a14artisticpencilsketch), [`a14:artisticPhotocopy`](../format/namespaces/a14.md#a14artisticphotocopy), [`a14:artisticPlasticWrap`](../format/namespaces/a14.md#a14artisticplasticwrap), [`a14:artisticTexturizer`](../format/namespaces/a14.md#a14artistictexturizer), [`a14:artisticWatercolorSponge`](../format/namespaces/a14.md#a14artisticwatercolorsponge), [`a14:backgroundMark`](../format/namespaces/a14.md#a14backgroundmark), [`a14:backgroundRemoval`](../format/namespaces/a14.md#a14backgroundremoval), [`a14:brightnessContrast`](../format/namespaces/a14.md#a14brightnesscontrast), [`a14:colorTemperature`](../format/namespaces/a14.md#a14colortemperature), [`a14:foregroundMark`](../format/namespaces/a14.md#a14foregroundmark), [`a14:imgEffect`](../format/namespaces/a14.md#a14imgeffect), [`a14:imgLayer`](../format/namespaces/a14.md#a14imglayer), [`a14:imgProps`](../format/namespaces/a14.md#a14imgprops), [`a14:saturation`](../format/namespaces/a14.md#a14saturation), [`a14:sharpenSoften`](../format/namespaces/a14.md#a14sharpensoften)
 
@@ -2281,9 +2377,11 @@ The content type behind a:blip/@r:embed.
 
 ### Ink
 
-`picture.ink` · P2 · difficulty 3 · todo
+`picture.ink` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.ink` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.ink (done). Ink drawings of pictures (a14:contentPart).
 
 **Elements (15):** [`a14:cNvContentPartPr`](../format/namespaces/a14.md#a14cnvcontentpartpr), [`a14:cNvPr`](../format/namespaces/a14.md#a14cnvpr), [`a14:contentPart`](../format/namespaces/a14.md#a14contentpart), [`a14:nvContentPartPr`](../format/namespaces/a14.md#a14nvcontentpartpr), [`a14:xfrm`](../format/namespaces/a14.md#a14xfrm), [`cdr14:cNvContentPartPr`](../format/namespaces/cdr14.md#cdr14cnvcontentpartpr), [`cdr14:cNvPr`](../format/namespaces/cdr14.md#cdr14cnvpr), [`cdr14:contentPart`](../format/namespaces/cdr14.md#cdr14contentpart), [`cdr14:nvContentPartPr`](../format/namespaces/cdr14.md#cdr14nvcontentpartpr), [`cdr14:nvPr`](../format/namespaces/cdr14.md#cdr14nvpr), [`cdr14:xfrm`](../format/namespaces/cdr14.md#cdr14xfrm), [`msink:context`](../format/namespaces/msink.md#msinkcontext), [`msink:destinationLink`](../format/namespaces/msink.md#msinkdestinationlink), [`msink:property`](../format/namespaces/msink.md#msinkproperty), [`msink:sourceLink`](../format/namespaces/msink.md#msinksourcelink)
 
@@ -2293,9 +2391,11 @@ The content type behind a:blip/@r:embed.
 
 ### 3D models
 
-`picture.model3d` · P2 · difficulty 1 · todo
+`picture.model3d` · P2 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.model3d` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.model3d (done). 3D models with their poster picture.
 
 **Elements (35):** [`a3danim:animPr`](../format/namespaces/a3danim.md#a3danimanimpr), [`a3danim:embedAnim`](../format/namespaces/a3danim.md#a3danimembedanim), [`a3danim:extLst`](../format/namespaces/a3danim.md#a3danimextlst), [`a3danim:posterFrame`](../format/namespaces/a3danim.md#a3danimposterframe), [`am3d:ambientLight`](../format/namespaces/am3d.md#am3dambientlight), [`am3d:attrSrcUrl`](../format/namespaces/am3d.md#am3dattrsrcurl), [`am3d:blip`](../format/namespaces/am3d.md#am3dblip), [`am3d:camera`](../format/namespaces/am3d.md#am3dcamera), [`am3d:clr`](../format/namespaces/am3d.md#am3dclr), [`am3d:dirLight`](../format/namespaces/am3d.md#am3ddirlight), [`am3d:extLst`](../format/namespaces/am3d.md#am3dextlst), [`am3d:illuminance`](../format/namespaces/am3d.md#am3dilluminance), [`am3d:intensity`](../format/namespaces/am3d.md#am3dintensity), [`am3d:lookAt`](../format/namespaces/am3d.md#am3dlookat), [`am3d:meterPerModelUnit`](../format/namespaces/am3d.md#am3dmeterpermodelunit), [`am3d:model3d`](../format/namespaces/am3d.md#am3dmodel3d), [`am3d:objViewport`](../format/namespaces/am3d.md#am3dobjviewport), [`am3d:orthographic`](../format/namespaces/am3d.md#am3dorthographic), [`am3d:perspective`](../format/namespaces/am3d.md#am3dperspective), [`am3d:pos`](../format/namespaces/am3d.md#am3dpos), [`am3d:postTrans`](../format/namespaces/am3d.md#am3dposttrans), [`am3d:preTrans`](../format/namespaces/am3d.md#am3dpretrans), [`am3d:ptLight`](../format/namespaces/am3d.md#am3dptlight), [`am3d:raster`](../format/namespaces/am3d.md#am3draster), [`am3d:rot`](../format/namespaces/am3d.md#am3drot), [`am3d:scale`](../format/namespaces/am3d.md#am3dscale), [`am3d:spPr`](../format/namespaces/am3d.md#am3dsppr), [`am3d:spotLight`](../format/namespaces/am3d.md#am3dspotlight), [`am3d:sx`](../format/namespaces/am3d.md#am3dsx), [`am3d:sy`](../format/namespaces/am3d.md#am3dsy), [`am3d:sz`](../format/namespaces/am3d.md#am3dsz), [`am3d:trans`](../format/namespaces/am3d.md#am3dtrans), [`am3d:unkLight`](../format/namespaces/am3d.md#am3dunklight), [`am3d:up`](../format/namespaces/am3d.md#am3dup), [`am3d:winViewport`](../format/namespaces/am3d.md#am3dwinviewport)
 
@@ -2305,9 +2405,11 @@ The content type behind a:blip/@r:embed.
 
 ### Picture sources and formulas
 
-`picture.sources` · P3 · difficulty 1 · todo
+`picture.sources` · P3 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `picture.sources` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.sources (done). Nothing to draw: the source and formula of a picture only describe it.
 
 **Elements (2):** [`a1611:picAttrSrcUrl`](../format/namespaces/a1611.md#a1611picattrsrcurl), [`aif:imageFormula`](../format/namespaces/aif.md#aifimageformula)
 
@@ -2319,32 +2421,34 @@ The content type behind a:blip/@r:embed.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Text body and text box](#text.body) | P0 | ●●●○○ | todo | 5 | 1 |
-| [Autofit](#text.autofit) | P0 | ●●●●○ | todo | 3 | 3 |
-| [Paragraphs](#text.paragraph) | P0 | ●●●○○ | todo | 3 | 3 |
-| [Line and paragraph spacing](#text.spacing) | P0 | ●●●○○ | todo | 5 | 4 |
-| [Tab stops](#text.tabs) | P1 | ●●○○○ | todo | 2 | 0 |
-| [Bullets and numbering](#text.bullets) | P0 | ●●●○○ | todo | 11 | 3 |
-| [List styles and the text style cascade](#text.styles) | P0 | ●●●●○ | todo | 12 | 11 |
-| [Runs and character formatting](#text.runs) | P0 | ●●○○○ | todo | 5 | 2 |
-| [Fonts per script](#text.fonts) | P0 | ●●●●○ | todo | 4 | 4 |
-| [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | todo | 0 | 0 |
-| [Underlines](#text.underline) | P1 | ●●○○○ | todo | 4 | 2 |
-| [Text effects](#text.effects) | P2 | ●●●●○ | todo | 0 | 0 |
-| [Fields](#text.fields) | P1 | ●●○○○ | todo | 1 | 1 |
-| [Text columns](#text.columns) | P2 | ●●●○○ | todo | 0 | 0 |
-| [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | todo | 0 | 0 |
-| [WordArt transforms](#text.warp) | P2 | ●●●●● | todo | 1 | 0 |
-| [3D text](#text.threeD) | P3 | ●●●●● | todo | 1 | 1 |
-| [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | todo | 1 | 0 |
+| [Text body and text box](#text.body) | P0 | ●●●○○ | done | 5 | 1 |
+| [Autofit](#text.autofit) | P0 | ●●●●○ | done | 3 | 3 |
+| [Paragraphs](#text.paragraph) | P0 | ●●●○○ | done | 3 | 3 |
+| [Line and paragraph spacing](#text.spacing) | P0 | ●●●○○ | done | 5 | 4 |
+| [Tab stops](#text.tabs) | P1 | ●●○○○ | done | 2 | 0 |
+| [Bullets and numbering](#text.bullets) | P0 | ●●●○○ | done | 11 | 3 |
+| [List styles and the text style cascade](#text.styles) | P0 | ●●●●○ | done | 12 | 11 |
+| [Runs and character formatting](#text.runs) | P0 | ●●○○○ | done | 5 | 2 |
+| [Fonts per script](#text.fonts) | P0 | ●●●●○ | done | 4 | 4 |
+| [Text fill and outline](#text.fillOutline) | P1 | ●●●○○ | done | 0 | 0 |
+| [Underlines](#text.underline) | P1 | ●●○○○ | done | 4 | 2 |
+| [Text effects](#text.effects) | P2 | ●●●●○ | done | 0 | 0 |
+| [Fields](#text.fields) | P1 | ●●○○○ | done | 1 | 1 |
+| [Text columns](#text.columns) | P2 | ●●●○○ | done | 0 | 0 |
+| [Vertical and rotated text](#text.vertical) | P2 | ●●●○○ | done | 0 | 0 |
+| [WordArt transforms](#text.warp) | P2 | ●●●●● | done | 1 | 0 |
+| [3D text](#text.threeD) | P3 | ●●●●● | done | 1 | 1 |
+| [Right-to-left and complex scripts](#text.rtl) | P2 | ●●●●○ | done | 1 | 0 |
 
 <a id="text.body"></a>
 
 ### Text body and text box
 
-`text.body` · P0 · difficulty 3 · todo
+`text.body` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.body` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.body (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (5):** [`a:bodyPr`](../format/namespaces/a.md#abodypr), [`a:txBody`](../format/namespaces/a.md#atxbody), [`a:txSp`](../format/namespaces/a.md#atxsp), [`a:useSpRect`](../format/namespaces/a.md#ausesprect), [`dsp:txXfrm`](../format/namespaces/dsp.md#dsptxxfrm)
 
@@ -2356,9 +2460,11 @@ The content type behind a:blip/@r:embed.
 
 ### Autofit
 
-`text.autofit` · P0 · difficulty 4 · todo
+`text.autofit` · P0 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.autofit` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.autofit (done). SmartArt text shrunk to fit its boxes; Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (3):** [`a:noAutofit`](../format/namespaces/a.md#anoautofit), [`a:normAutofit`](../format/namespaces/a.md#anormautofit), [`a:spAutoFit`](../format/namespaces/a.md#aspautofit)
 
@@ -2370,9 +2476,11 @@ The content type behind a:blip/@r:embed.
 
 ### Paragraphs
 
-`text.paragraph` · P0 · difficulty 3 · todo
+`text.paragraph` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.paragraph` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.paragraph (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (3):** [`a:endParaRPr`](../format/namespaces/a.md#aendpararpr), [`a:p`](../format/namespaces/a.md#ap), [`a:pPr`](../format/namespaces/a.md#appr)
 
@@ -2384,9 +2492,11 @@ The content type behind a:blip/@r:embed.
 
 ### Line and paragraph spacing
 
-`text.spacing` · P0 · difficulty 3 · todo
+`text.spacing` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.spacing` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.spacing (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (5):** [`a:lnSpc`](../format/namespaces/a.md#alnspc), [`a:spcAft`](../format/namespaces/a.md#aspcaft), [`a:spcBef`](../format/namespaces/a.md#aspcbef), [`a:spcPct`](../format/namespaces/a.md#aspcpct), [`a:spcPts`](../format/namespaces/a.md#aspcpts)
 
@@ -2398,9 +2508,11 @@ The content type behind a:blip/@r:embed.
 
 ### Tab stops
 
-`text.tabs` · P1 · difficulty 2 · todo
+`text.tabs` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.tabs` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.tabs (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (2):** [`a:tab`](../format/namespaces/a.md#atab), [`a:tabLst`](../format/namespaces/a.md#atablst)
 
@@ -2410,9 +2522,11 @@ The content type behind a:blip/@r:embed.
 
 ### Bullets and numbering
 
-`text.bullets` · P0 · difficulty 3 · todo
+`text.bullets` · P0 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.bullets` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.bullets (done). SmartArt bullets (vList2 with its sub-points); Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (11):** [`a:buAutoNum`](../format/namespaces/a.md#abuautonum), [`a:buBlip`](../format/namespaces/a.md#abublip), [`a:buChar`](../format/namespaces/a.md#abuchar), [`a:buClr`](../format/namespaces/a.md#abuclr), [`a:buClrTx`](../format/namespaces/a.md#abuclrtx), [`a:buFont`](../format/namespaces/a.md#abufont), [`a:buFontTx`](../format/namespaces/a.md#abufonttx), [`a:buNone`](../format/namespaces/a.md#abunone), [`a:buSzPct`](../format/namespaces/a.md#abuszpct), [`a:buSzPts`](../format/namespaces/a.md#abuszpts), [`a:buSzTx`](../format/namespaces/a.md#abusztx)
 
@@ -2424,9 +2538,11 @@ The content type behind a:blip/@r:embed.
 
 ### List styles and the text style cascade
 
-`text.styles` · P0 · difficulty 4 · todo
+`text.styles` · P0 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.styles` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.styles (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (12):** [`a:defPPr`](../format/namespaces/a.md#adefppr), [`a:defRPr`](../format/namespaces/a.md#adefrpr), [`a:lstStyle`](../format/namespaces/a.md#alststyle), [`a:lvl1pPr`](../format/namespaces/a.md#alvl1ppr), [`a:lvl2pPr`](../format/namespaces/a.md#alvl2ppr), [`a:lvl3pPr`](../format/namespaces/a.md#alvl3ppr), [`a:lvl4pPr`](../format/namespaces/a.md#alvl4ppr), [`a:lvl5pPr`](../format/namespaces/a.md#alvl5ppr), [`a:lvl6pPr`](../format/namespaces/a.md#alvl6ppr), [`a:lvl7pPr`](../format/namespaces/a.md#alvl7ppr), [`a:lvl8pPr`](../format/namespaces/a.md#alvl8ppr), [`a:lvl9pPr`](../format/namespaces/a.md#alvl9ppr)
 
@@ -2438,9 +2554,11 @@ The content type behind a:blip/@r:embed.
 
 ### Runs and character formatting
 
-`text.runs` · P0 · difficulty 2 · todo
+`text.runs` · P0 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.runs` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.runs (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (5):** [`a:br`](../format/namespaces/a.md#abr), [`a:highlight`](../format/namespaces/a.md#ahighlight), [`a:r`](../format/namespaces/a.md#ar), [`a:rPr`](../format/namespaces/a.md#arpr), [`a:t`](../format/namespaces/a.md#at)
 
@@ -2452,9 +2570,11 @@ The content type behind a:blip/@r:embed.
 
 ### Fonts per script
 
-`text.fonts` · P0 · difficulty 4 · todo
+`text.fonts` · P0 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.fonts` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fonts (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (4):** [`a:cs`](../format/namespaces/a.md#acs), [`a:ea`](../format/namespaces/a.md#aea), [`a:latin`](../format/namespaces/a.md#alatin), [`a:sym`](../format/namespaces/a.md#asym)
 
@@ -2466,19 +2586,23 @@ The content type behind a:blip/@r:embed.
 
 ### Text fill and outline
 
-`text.fillOutline` · P1 · difficulty 3 · todo
+`text.fillOutline` · P1 · difficulty 3 · done
 
 gradFill, blipFill, pattFill and a:ln inside run properties.
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.fillOutline` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fillOutline (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart; Word's own runs take theirs from w14:textFill and w14:textOutline (run.textEffects).
+
 <a id="text.underline"></a>
 
 ### Underlines
 
-`text.underline` · P1 · difficulty 2 · todo
+`text.underline` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.underline` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.underline (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (4):** [`a:uFill`](../format/namespaces/a.md#aufill), [`a:uFillTx`](../format/namespaces/a.md#aufilltx), [`a:uLn`](../format/namespaces/a.md#auln), [`a:uLnTx`](../format/namespaces/a.md#aulntx)
 
@@ -2490,19 +2614,23 @@ gradFill, blipFill, pattFill and a:ln inside run properties.
 
 ### Text effects
 
-`text.effects` · P2 · difficulty 4 · todo
+`text.effects` · P2 · difficulty 4 · done
 
 effectLst on runs (shadow, glow, reflection, soft edges).
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.effects` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.effects (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart; Word's own runs take their glow, shadow and reflection from w14 (run.textEffects).
+
 <a id="text.fields"></a>
 
 ### Fields
 
-`text.fields` · P1 · difficulty 2 · todo
+`text.fields` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.fields` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fields (done). Fields of chart data labels with current values.
 
 **Elements (1):** [`a:fld`](../format/namespaces/a.md#afld)
 
@@ -2514,29 +2642,35 @@ effectLst on runs (shadow, glow, reflection, soft edges).
 
 ### Text columns
 
-`text.columns` · P2 · difficulty 3 · todo
+`text.columns` · P2 · difficulty 3 · done
 
 a:bodyPr/@numCol and @spcCol.
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.columns` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.columns (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
+
 <a id="text.vertical"></a>
 
 ### Vertical and rotated text
 
-`text.vertical` · P2 · difficulty 3 · todo
+`text.vertical` · P2 · difficulty 3 · done
 
 a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and @rot.
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.vertical` (done).
 
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.vertical (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
+
 <a id="text.warp"></a>
 
 ### WordArt transforms
 
-`text.warp` · P2 · difficulty 5 · todo
+`text.warp` · P2 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.warp` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.warp (done). WordArt warps of shapes (wps:bodyPr prstTxWarp) and of VML text paths (vml.watermarks).
 
 **Elements (1):** [`a:prstTxWarp`](../format/namespaces/a.md#aprsttxwarp)
 
@@ -2546,9 +2680,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### 3D text
 
-`text.threeD` · P3 · difficulty 5 · todo
+`text.threeD` · P3 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.threeD` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.threeD (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (1):** [`a:flatTx`](../format/namespaces/a.md#aflattx)
 
@@ -2560,9 +2696,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Right-to-left and complex scripts
 
-`text.rtl` · P2 · difficulty 4 · todo
+`text.rtl` · P2 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `text.rtl` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.rtl (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.
 
 **Elements (1):** [`a:rtl`](../format/namespaces/a.md#artl)
 
@@ -2574,34 +2712,36 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Chart part and settings](#chart.part) | P1 | ●●○○○ | todo | 33 | 20 |
-| [Series and data caches](#chart.data) | P1 | ●●○○○ | todo | 58 | 22 |
-| [Bar and column charts](#chart.barColumn) | P1 | ●●●○○ | todo | 12 | 9 |
-| [Line charts](#chart.line) | P1 | ●●●○○ | todo | 13 | 4 |
-| [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | todo | 16 | 11 |
-| [Area charts](#chart.area) | P1 | ●●●○○ | todo | 2 | 1 |
-| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | todo | 9 | 3 |
-| [Radar charts](#chart.radar) | P2 | ●●●○○ | todo | 2 | 2 |
-| [Stock charts](#chart.stock) | P2 | ●●●○○ | todo | 1 | 0 |
-| [Surface charts](#chart.surface) | P3 | ●●●●○ | todo | 5 | 3 |
-| [Axes, gridlines and number formats](#chart.axes) | P1 | ●●●●○ | todo | 38 | 19 |
-| [Data labels](#chart.labels) | P1 | ●●●●○ | todo | 25 | 9 |
-| [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | todo | 18 | 15 |
-| [Data tables](#chart.dataTable) | P3 | ●●●○○ | todo | 5 | 0 |
-| [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | todo | 56 | 5 |
-| [3D charts](#chart.threeD) | P2 | ●●●●● | todo | 12 | 10 |
-| [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | todo | 16 | 15 |
-| [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | todo | 30 | 15 |
-| [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | todo | 12 | 3 |
-| [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | todo | 118 | 0 |
+| [Chart part and settings](#chart.part) | P1 | ●●○○○ | done | 33 | 20 |
+| [Series and data caches](#chart.data) | P1 | ●●○○○ | done | 58 | 22 |
+| [Bar and column charts](#chart.barColumn) | P1 | ●●●○○ | done | 12 | 9 |
+| [Line charts](#chart.line) | P1 | ●●●○○ | done | 13 | 4 |
+| [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | done | 16 | 11 |
+| [Area charts](#chart.area) | P1 | ●●●○○ | done | 2 | 1 |
+| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | partial | 9 | 3 |
+| [Radar charts](#chart.radar) | P2 | ●●●○○ | done | 2 | 2 |
+| [Stock charts](#chart.stock) | P2 | ●●●○○ | done | 1 | 0 |
+| [Surface charts](#chart.surface) | P3 | ●●●●○ | done | 5 | 3 |
+| [Axes, gridlines and number formats](#chart.axes) | P1 | ●●●●○ | done | 38 | 19 |
+| [Data labels](#chart.labels) | P1 | ●●●●○ | done | 25 | 9 |
+| [Titles, legend and layout](#chart.titleLegend) | P1 | ●●●○○ | done | 18 | 15 |
+| [Data tables](#chart.dataTable) | P3 | ●●●○○ | done | 5 | 0 |
+| [Chart formatting, chart styles and colors](#chart.formatting) | P1 | ●●●○○ | done | 56 | 5 |
+| [3D charts](#chart.threeD) | P2 | ●●●●● | done | 12 | 10 |
+| [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
+| [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | done | 30 | 15 |
+| [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | done | 12 | 3 |
+| [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | partial | 118 | 0 |
 
 <a id="chart.part"></a>
 
 ### Chart part and settings
 
-`chart.part` · P1 · difficulty 2 · todo
+`chart.part` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.part` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.part (done). Chart parts with their embedded workbooks and the regional format of the system (DocxConverter culture); Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (33):** [`c16r3:dataDisplayOptions16`](../format/namespaces/c16r3.md#c16r3datadisplayoptions16), [`c16r3:dispNaAsBlank`](../format/namespaces/c16r3.md#c16r3dispnaasblank), [`c:autoTitleDeleted`](../format/namespaces/c.md#cautotitledeleted), [`c:autoUpdate`](../format/namespaces/c.md#cautoupdate), [`c:chart`](../format/namespaces/c.md#cchart), [`c:chartObject`](../format/namespaces/c.md#cchartobject), [`c:chartSpace`](../format/namespaces/c.md#cchartspace), [`c:clrMapOvr`](../format/namespaces/c.md#cclrmapovr), [`c:data`](../format/namespaces/c.md#cdata), [`c:date1904`](../format/namespaces/c.md#cdate1904), [`c:dispBlanksAs`](../format/namespaces/c.md#cdispblanksas), [`c:evenFooter`](../format/namespaces/c.md#cevenfooter), [`c:evenHeader`](../format/namespaces/c.md#cevenheader), [`c:externalData`](../format/namespaces/c.md#cexternaldata), [`c:firstFooter`](../format/namespaces/c.md#cfirstfooter), [`c:firstHeader`](../format/namespaces/c.md#cfirstheader), [`c:fmtId`](../format/namespaces/c.md#cfmtid), [`c:formatting`](../format/namespaces/c.md#cformatting), [`c:headerFooter`](../format/namespaces/c.md#cheaderfooter), [`c:lang`](../format/namespaces/c.md#clang), [`c:legacyDrawingHF`](../format/namespaces/c.md#clegacydrawinghf), [`c:oddFooter`](../format/namespaces/c.md#coddfooter), [`c:oddHeader`](../format/namespaces/c.md#coddheader), [`c:pageMargins`](../format/namespaces/c.md#cpagemargins), [`c:pageSetup`](../format/namespaces/c.md#cpagesetup), [`c:plotVisOnly`](../format/namespaces/c.md#cplotvisonly), [`c:printSettings`](../format/namespaces/c.md#cprintsettings), [`c:protection`](../format/namespaces/c.md#cprotection), [`c:roundedCorners`](../format/namespaces/c.md#croundedcorners), [`c:selection`](../format/namespaces/c.md#cselection), [`c:showDLblsOverMax`](../format/namespaces/c.md#cshowdlblsovermax), [`c:style`](../format/namespaces/c.md#cstyle), [`c:userInterface`](../format/namespaces/c.md#cuserinterface)
 
@@ -2613,9 +2753,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Series and data caches
 
-`chart.data` · P1 · difficulty 2 · todo
+`chart.data` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.data` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.data (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (58):** [`c15:autoCat`](../format/namespaces/c15.md#c15autocat), [`c15:cat`](../format/namespaces/c15.md#c15cat), [`c15:categoryFilterException`](../format/namespaces/c15.md#c15categoryfilterexception), [`c15:categoryFilterExceptions`](../format/namespaces/c15.md#c15categoryfilterexceptions), [`c15:f`](../format/namespaces/c15.md#c15f), [`c15:filteredAreaSeries`](../format/namespaces/c15.md#c15filteredareaseries), [`c15:filteredBarSeries`](../format/namespaces/c15.md#c15filteredbarseries), [`c15:filteredBubbleSeries`](../format/namespaces/c15.md#c15filteredbubbleseries), [`c15:filteredCategoryTitle`](../format/namespaces/c15.md#c15filteredcategorytitle), [`c15:filteredLineSeries`](../format/namespaces/c15.md#c15filteredlineseries), [`c15:filteredPieSeries`](../format/namespaces/c15.md#c15filteredpieseries), [`c15:filteredRadarSeries`](../format/namespaces/c15.md#c15filteredradarseries), [`c15:filteredScatterSeries`](../format/namespaces/c15.md#c15filteredscatterseries), [`c15:filteredSeriesTitle`](../format/namespaces/c15.md#c15filteredseriestitle), [`c15:filteredSurfaceSeries`](../format/namespaces/c15.md#c15filteredsurfaceseries), [`c15:formulaRef`](../format/namespaces/c15.md#c15formularef), [`c15:fullRef`](../format/namespaces/c15.md#c15fullref), [`c15:levelRef`](../format/namespaces/c15.md#c15levelref), [`c15:ser`](../format/namespaces/c15.md#c15ser), [`c15:sqref`](../format/namespaces/c15.md#c15sqref), [`c15:tx`](../format/namespaces/c15.md#c15tx), [`c15:xForSave`](../format/namespaces/c15.md#c15xforsave), [`c16:categoryFilterException`](../format/namespaces/c16.md#c16categoryfilterexception), [`c16:categoryFilterExceptions`](../format/namespaces/c16.md#c16categoryfilterexceptions), [`c16:datapointuniqueidmap`](../format/namespaces/c16.md#c16datapointuniqueidmap), [`c16:multiLvlStrCache`](../format/namespaces/c16.md#c16multilvlstrcache), [`c16:numCache`](../format/namespaces/c16.md#c16numcache), [`c16:ptentry`](../format/namespaces/c16.md#c16ptentry), [`c16:ptidx`](../format/namespaces/c16.md#c16ptidx), [`c16:strCache`](../format/namespaces/c16.md#c16strcache), [`c16:uniqueID`](../format/namespaces/c16.md#c16uniqueid), [`c16:uniqueId`](../format/namespaces/c16.md#c16uniqueid), [`c16ac:multiLvlStrLit`](../format/namespaces/c16ac.md#c16acmultilvlstrlit), [`c16r2:formatcode2`](../format/namespaces/c16r2.md#c16r2formatcode2), [`c:bubbleSize`](../format/namespaces/c.md#cbubblesize), [`c:cat`](../format/namespaces/c.md#ccat), [`c:f`](../format/namespaces/c.md#cf), [`c:formatCode`](../format/namespaces/c.md#cformatcode), [`c:idx`](../format/namespaces/c.md#cidx), [`c:lvl`](../format/namespaces/c.md#clvl), [`c:multiLvlStrCache`](../format/namespaces/c.md#cmultilvlstrcache), [`c:multiLvlStrRef`](../format/namespaces/c.md#cmultilvlstrref), [`c:name`](../format/namespaces/c.md#cname), [`c:numCache`](../format/namespaces/c.md#cnumcache), [`c:numLit`](../format/namespaces/c.md#cnumlit), [`c:numRef`](../format/namespaces/c.md#cnumref), [`c:order`](../format/namespaces/c.md#corder), [`c:pt`](../format/namespaces/c.md#cpt), [`c:ptCount`](../format/namespaces/c.md#cptcount), [`c:ser`](../format/namespaces/c.md#cser), [`c:strCache`](../format/namespaces/c.md#cstrcache), [`c:strLit`](../format/namespaces/c.md#cstrlit), [`c:strRef`](../format/namespaces/c.md#cstrref), [`c:tx`](../format/namespaces/c.md#ctx), [`c:v`](../format/namespaces/c.md#cv), [`c:val`](../format/namespaces/c.md#cval), [`c:xVal`](../format/namespaces/c.md#cxval), [`c:yVal`](../format/namespaces/c.md#cyval)
 
@@ -2627,9 +2769,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Bar and column charts
 
-`chart.barColumn` · P1 · difficulty 3 · todo
+`chart.barColumn` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.barColumn` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.barColumn (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (12):** [`c14:invertSolidFillFmt`](../format/namespaces/c14.md#c14invertsolidfillfmt), [`c15:invertIfNegative`](../format/namespaces/c15.md#c15invertifnegative), [`c16:invertIfNegative`](../format/namespaces/c16.md#c16invertifnegative), [`c:bar3DChart`](../format/namespaces/c.md#cbar3dchart), [`c:barChart`](../format/namespaces/c.md#cbarchart), [`c:barDir`](../format/namespaces/c.md#cbardir), [`c:gapWidth`](../format/namespaces/c.md#cgapwidth), [`c:grouping`](../format/namespaces/c.md#cgrouping), [`c:invertIfNegative`](../format/namespaces/c.md#cinvertifnegative), [`c:overlap`](../format/namespaces/c.md#coverlap), [`c:shape`](../format/namespaces/c.md#cshape), [`c:varyColors`](../format/namespaces/c.md#cvarycolors)
 
@@ -2641,9 +2785,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Line charts
 
-`chart.line` · P1 · difficulty 3 · todo
+`chart.line` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.line` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.line (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (13):** [`c15:marker`](../format/namespaces/c15.md#c15marker), [`c16:marker`](../format/namespaces/c16.md#c16marker), [`c:downBars`](../format/namespaces/c.md#cdownbars), [`c:dropLines`](../format/namespaces/c.md#cdroplines), [`c:hiLowLines`](../format/namespaces/c.md#chilowlines), [`c:line3DChart`](../format/namespaces/c.md#cline3dchart), [`c:lineChart`](../format/namespaces/c.md#clinechart), [`c:marker`](../format/namespaces/c.md#cmarker), [`c:size`](../format/namespaces/c.md#csize), [`c:smooth`](../format/namespaces/c.md#csmooth), [`c:symbol`](../format/namespaces/c.md#csymbol), [`c:upBars`](../format/namespaces/c.md#cupbars), [`c:upDownBars`](../format/namespaces/c.md#cupdownbars)
 
@@ -2655,9 +2801,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Pie and doughnut charts
 
-`chart.pie` · P1 · difficulty 3 · todo
+`chart.pie` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.pie` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.pie (done). Pie, doughnut and 3-D pie; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (16):** [`c15:explosion`](../format/namespaces/c15.md#c15explosion), [`c16:explosion`](../format/namespaces/c16.md#c16explosion), [`c:custSplit`](../format/namespaces/c.md#ccustsplit), [`c:doughnutChart`](../format/namespaces/c.md#cdoughnutchart), [`c:explosion`](../format/namespaces/c.md#cexplosion), [`c:firstSliceAng`](../format/namespaces/c.md#cfirstsliceang), [`c:holeSize`](../format/namespaces/c.md#cholesize), [`c:ofPieChart`](../format/namespaces/c.md#cofpiechart), [`c:ofPieType`](../format/namespaces/c.md#cofpietype), [`c:pie3DChart`](../format/namespaces/c.md#cpie3dchart), [`c:pieChart`](../format/namespaces/c.md#cpiechart), [`c:secondPiePt`](../format/namespaces/c.md#csecondpiept), [`c:secondPieSize`](../format/namespaces/c.md#csecondpiesize), [`c:serLines`](../format/namespaces/c.md#cserlines), [`c:splitPos`](../format/namespaces/c.md#csplitpos), [`c:splitType`](../format/namespaces/c.md#csplittype)
 
@@ -2669,9 +2817,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Area charts
 
-`chart.area` · P1 · difficulty 3 · todo
+`chart.area` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.area` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.area (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (2):** [`c:area3DChart`](../format/namespaces/c.md#carea3dchart), [`c:areaChart`](../format/namespaces/c.md#careachart)
 
@@ -2683,9 +2833,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Scatter and bubble charts
 
-`chart.scatterBubble` · P1 · difficulty 3 · todo
+`chart.scatterBubble` · P1 · difficulty 3 · partial
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.scatterBubble` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %). Still open: Word's default bubble chart takes its x axis to 3.5 where we stop at 3 (the bubbles' share of the axis).
 
 **Elements (9):** [`c15:bubble3D`](../format/namespaces/c15.md#c15bubble3d), [`c16:bubble3D`](../format/namespaces/c16.md#c16bubble3d), [`c:bubble3D`](../format/namespaces/c.md#cbubble3d), [`c:bubbleChart`](../format/namespaces/c.md#cbubblechart), [`c:bubbleScale`](../format/namespaces/c.md#cbubblescale), [`c:scatterChart`](../format/namespaces/c.md#cscatterchart), [`c:scatterStyle`](../format/namespaces/c.md#cscatterstyle), [`c:showNegBubbles`](../format/namespaces/c.md#cshownegbubbles), [`c:sizeRepresents`](../format/namespaces/c.md#csizerepresents)
 
@@ -2697,9 +2849,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Radar charts
 
-`chart.radar` · P2 · difficulty 3 · todo
+`chart.radar` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.radar` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.radar (done). A radar divides its radius into intervals at least 1.2 font sizes long (measured in Word and PowerPoint); Verified against Word with docx/generated/charts, charts- more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (2):** [`c:radarChart`](../format/namespaces/c.md#cradarchart), [`c:radarStyle`](../format/namespaces/c.md#cradarstyle)
 
@@ -2711,9 +2865,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Stock charts
 
-`chart.stock` · P2 · difficulty 3 · todo
+`chart.stock` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.stock` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.stock (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (1):** [`c:stockChart`](../format/namespaces/c.md#cstockchart)
 
@@ -2723,9 +2879,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Surface charts
 
-`chart.surface` · P3 · difficulty 4 · todo
+`chart.surface` · P3 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.surface` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.surface (done). A 3D surface's bands follow its value axis's steps (measured in Word); Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts- more3 (88 to 98 %).
 
 **Elements (5):** [`c:bandFmt`](../format/namespaces/c.md#cbandfmt), [`c:bandFmts`](../format/namespaces/c.md#cbandfmts), [`c:surface3DChart`](../format/namespaces/c.md#csurface3dchart), [`c:surfaceChart`](../format/namespaces/c.md#csurfacechart), [`c:wireframe`](../format/namespaces/c.md#cwireframe)
 
@@ -2737,9 +2895,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Axes, gridlines and number formats
 
-`chart.axes` · P1 · difficulty 4 · todo
+`chart.axes` · P1 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.axes` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.axes (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (38):** [`c15:numFmt`](../format/namespaces/c15.md#c15numfmt), [`c:auto`](../format/namespaces/c.md#cauto), [`c:axId`](../format/namespaces/c.md#caxid), [`c:axPos`](../format/namespaces/c.md#caxpos), [`c:baseTimeUnit`](../format/namespaces/c.md#cbasetimeunit), [`c:builtInUnit`](../format/namespaces/c.md#cbuiltinunit), [`c:catAx`](../format/namespaces/c.md#ccatax), [`c:crossAx`](../format/namespaces/c.md#ccrossax), [`c:crossBetween`](../format/namespaces/c.md#ccrossbetween), [`c:crosses`](../format/namespaces/c.md#ccrosses), [`c:crossesAt`](../format/namespaces/c.md#ccrossesat), [`c:custUnit`](../format/namespaces/c.md#ccustunit), [`c:dateAx`](../format/namespaces/c.md#cdateax), [`c:delete`](../format/namespaces/c.md#cdelete), [`c:dispUnits`](../format/namespaces/c.md#cdispunits), [`c:dispUnitsLbl`](../format/namespaces/c.md#cdispunitslbl), [`c:lblAlgn`](../format/namespaces/c.md#clblalgn), [`c:lblOffset`](../format/namespaces/c.md#clbloffset), [`c:logBase`](../format/namespaces/c.md#clogbase), [`c:majorGridlines`](../format/namespaces/c.md#cmajorgridlines), [`c:majorTickMark`](../format/namespaces/c.md#cmajortickmark), [`c:majorTimeUnit`](../format/namespaces/c.md#cmajortimeunit), [`c:majorUnit`](../format/namespaces/c.md#cmajorunit), [`c:max`](../format/namespaces/c.md#cmax), [`c:min`](../format/namespaces/c.md#cmin), [`c:minorGridlines`](../format/namespaces/c.md#cminorgridlines), [`c:minorTickMark`](../format/namespaces/c.md#cminortickmark), [`c:minorTimeUnit`](../format/namespaces/c.md#cminortimeunit), [`c:minorUnit`](../format/namespaces/c.md#cminorunit), [`c:noMultiLvlLbl`](../format/namespaces/c.md#cnomultilvllbl), [`c:numFmt`](../format/namespaces/c.md#cnumfmt), [`c:orientation`](../format/namespaces/c.md#corientation), [`c:scaling`](../format/namespaces/c.md#cscaling), [`c:serAx`](../format/namespaces/c.md#cserax), [`c:tickLblPos`](../format/namespaces/c.md#cticklblpos), [`c:tickLblSkip`](../format/namespaces/c.md#cticklblskip), [`c:tickMarkSkip`](../format/namespaces/c.md#ctickmarkskip), [`c:valAx`](../format/namespaces/c.md#cvalax)
 
@@ -2751,9 +2911,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Data labels
 
-`chart.labels` · P1 · difficulty 4 · todo
+`chart.labels` · P1 · difficulty 4 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.labels` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.labels (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (25):** [`c15:dLbl`](../format/namespaces/c15.md#c15dlbl), [`c15:datalabelsRange`](../format/namespaces/c15.md#c15datalabelsrange), [`c15:dlblFTEntry`](../format/namespaces/c15.md#c15dlblftentry), [`c15:dlblFieldTable`](../format/namespaces/c15.md#c15dlblfieldtable), [`c15:dlblFieldTableCache`](../format/namespaces/c15.md#c15dlblfieldtablecache), [`c15:dlblRangeCache`](../format/namespaces/c15.md#c15dlblrangecache), [`c15:layout`](../format/namespaces/c15.md#c15layout), [`c15:leaderLines`](../format/namespaces/c15.md#c15leaderlines), [`c15:showDataLabelsRange`](../format/namespaces/c15.md#c15showdatalabelsrange), [`c15:showLeaderLines`](../format/namespaces/c15.md#c15showleaderlines), [`c15:spPr`](../format/namespaces/c15.md#c15sppr), [`c15:txfldGUID`](../format/namespaces/c15.md#c15txfldguid), [`c16:dLbl`](../format/namespaces/c16.md#c16dlbl), [`c:dLbl`](../format/namespaces/c.md#cdlbl), [`c:dLblPos`](../format/namespaces/c.md#cdlblpos), [`c:dLbls`](../format/namespaces/c.md#cdlbls), [`c:leaderLines`](../format/namespaces/c.md#cleaderlines), [`c:separator`](../format/namespaces/c.md#cseparator), [`c:showBubbleSize`](../format/namespaces/c.md#cshowbubblesize), [`c:showCatName`](../format/namespaces/c.md#cshowcatname), [`c:showLeaderLines`](../format/namespaces/c.md#cshowleaderlines), [`c:showLegendKey`](../format/namespaces/c.md#cshowlegendkey), [`c:showPercent`](../format/namespaces/c.md#cshowpercent), [`c:showSerName`](../format/namespaces/c.md#cshowsername), [`c:showVal`](../format/namespaces/c.md#cshowval)
 
@@ -2765,9 +2927,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Titles, legend and layout
 
-`chart.titleLegend` · P1 · difficulty 3 · todo
+`chart.titleLegend` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.titleLegend` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.titleLegend (done). Automatic titles in the system's language; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (18):** [`c:h`](../format/namespaces/c.md#ch), [`c:hMode`](../format/namespaces/c.md#chmode), [`c:layout`](../format/namespaces/c.md#clayout), [`c:layoutTarget`](../format/namespaces/c.md#clayouttarget), [`c:legend`](../format/namespaces/c.md#clegend), [`c:legendEntry`](../format/namespaces/c.md#clegendentry), [`c:legendPos`](../format/namespaces/c.md#clegendpos), [`c:manualLayout`](../format/namespaces/c.md#cmanuallayout), [`c:overlay`](../format/namespaces/c.md#coverlay), [`c:plotArea`](../format/namespaces/c.md#cplotarea), [`c:rich`](../format/namespaces/c.md#crich), [`c:title`](../format/namespaces/c.md#ctitle), [`c:w`](../format/namespaces/c.md#cw), [`c:wMode`](../format/namespaces/c.md#cwmode), [`c:x`](../format/namespaces/c.md#cx), [`c:xMode`](../format/namespaces/c.md#cxmode), [`c:y`](../format/namespaces/c.md#cy), [`c:yMode`](../format/namespaces/c.md#cymode)
 
@@ -2779,9 +2943,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Data tables
 
-`chart.dataTable` · P3 · difficulty 3 · todo
+`chart.dataTable` · P3 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.dataTable` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.dataTable (done). Data tables below the plot area.
 
 **Elements (5):** [`c:dTable`](../format/namespaces/c.md#cdtable), [`c:showHorzBorder`](../format/namespaces/c.md#cshowhorzborder), [`c:showKeys`](../format/namespaces/c.md#cshowkeys), [`c:showOutline`](../format/namespaces/c.md#cshowoutline), [`c:showVertBorder`](../format/namespaces/c.md#cshowvertborder)
 
@@ -2791,9 +2957,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Chart formatting, chart styles and colors
 
-`chart.formatting` · P1 · difficulty 3 · todo
+`chart.formatting` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.formatting` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.formatting (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (56):** [`c14:spPr`](../format/namespaces/c14.md#c14sppr), [`c14:style`](../format/namespaces/c14.md#c14style), [`c16:spPr`](../format/namespaces/c16.md#c16sppr), [`c:applyToEnd`](../format/namespaces/c.md#capplytoend), [`c:applyToFront`](../format/namespaces/c.md#capplytofront), [`c:applyToSides`](../format/namespaces/c.md#capplytosides), [`c:dPt`](../format/namespaces/c.md#cdpt), [`c:pictureFormat`](../format/namespaces/c.md#cpictureformat), [`c:pictureOptions`](../format/namespaces/c.md#cpictureoptions), [`c:pictureStackUnit`](../format/namespaces/c.md#cpicturestackunit), [`c:spPr`](../format/namespaces/c.md#csppr), [`c:txPr`](../format/namespaces/c.md#ctxpr), [`cs:axisTitle`](../format/namespaces/cs.md#csaxistitle), [`cs:bodyPr`](../format/namespaces/cs.md#csbodypr), [`cs:categoryAxis`](../format/namespaces/cs.md#cscategoryaxis), [`cs:chartArea`](../format/namespaces/cs.md#cschartarea), [`cs:chartStyle`](../format/namespaces/cs.md#cschartstyle), [`cs:colorStyle`](../format/namespaces/cs.md#cscolorstyle), [`cs:dataLabel`](../format/namespaces/cs.md#csdatalabel), [`cs:dataLabelCallout`](../format/namespaces/cs.md#csdatalabelcallout), [`cs:dataPoint`](../format/namespaces/cs.md#csdatapoint), [`cs:dataPoint3D`](../format/namespaces/cs.md#csdatapoint3d), [`cs:dataPointLine`](../format/namespaces/cs.md#csdatapointline), [`cs:dataPointMarker`](../format/namespaces/cs.md#csdatapointmarker), [`cs:dataPointMarkerLayout`](../format/namespaces/cs.md#csdatapointmarkerlayout), [`cs:dataPointWireframe`](../format/namespaces/cs.md#csdatapointwireframe), [`cs:dataTable`](../format/namespaces/cs.md#csdatatable), [`cs:defRPr`](../format/namespaces/cs.md#csdefrpr), [`cs:downBar`](../format/namespaces/cs.md#csdownbar), [`cs:dropLine`](../format/namespaces/cs.md#csdropline), [`cs:effectRef`](../format/namespaces/cs.md#cseffectref), [`cs:errorBar`](../format/namespaces/cs.md#cserrorbar), [`cs:extLst`](../format/namespaces/cs.md#csextlst), [`cs:fillRef`](../format/namespaces/cs.md#csfillref), [`cs:floor`](../format/namespaces/cs.md#csfloor), [`cs:fontRef`](../format/namespaces/cs.md#csfontref), [`cs:gridlineMajor`](../format/namespaces/cs.md#csgridlinemajor), [`cs:gridlineMinor`](../format/namespaces/cs.md#csgridlineminor), [`cs:hiLoLine`](../format/namespaces/cs.md#cshiloline), [`cs:leaderLine`](../format/namespaces/cs.md#csleaderline), [`cs:legend`](../format/namespaces/cs.md#cslegend), [`cs:lineWidthScale`](../format/namespaces/cs.md#cslinewidthscale), [`cs:lnRef`](../format/namespaces/cs.md#cslnref), [`cs:plotArea`](../format/namespaces/cs.md#csplotarea), [`cs:plotArea3D`](../format/namespaces/cs.md#csplotarea3d), [`cs:seriesAxis`](../format/namespaces/cs.md#csseriesaxis), [`cs:seriesLine`](../format/namespaces/cs.md#csseriesline), [`cs:spPr`](../format/namespaces/cs.md#cssppr), [`cs:styleClr`](../format/namespaces/cs.md#csstyleclr), [`cs:title`](../format/namespaces/cs.md#cstitle), [`cs:trendline`](../format/namespaces/cs.md#cstrendline), [`cs:trendlineLabel`](../format/namespaces/cs.md#cstrendlinelabel), [`cs:upBar`](../format/namespaces/cs.md#csupbar), [`cs:valueAxis`](../format/namespaces/cs.md#csvalueaxis), [`cs:variation`](../format/namespaces/cs.md#csvariation), [`cs:wall`](../format/namespaces/cs.md#cswall)
 
@@ -2805,9 +2973,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### 3D charts
 
-`chart.threeD` · P2 · difficulty 5 · todo
+`chart.threeD` · P2 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.threeD` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.threeD (done). 3-D column, pie and surface charts; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).
 
 **Elements (12):** [`c:backWall`](../format/namespaces/c.md#cbackwall), [`c:depthPercent`](../format/namespaces/c.md#cdepthpercent), [`c:floor`](../format/namespaces/c.md#cfloor), [`c:gapDepth`](../format/namespaces/c.md#cgapdepth), [`c:hPercent`](../format/namespaces/c.md#chpercent), [`c:perspective`](../format/namespaces/c.md#cperspective), [`c:rAngAx`](../format/namespaces/c.md#crangax), [`c:rotX`](../format/namespaces/c.md#crotx), [`c:rotY`](../format/namespaces/c.md#croty), [`c:sideWall`](../format/namespaces/c.md#csidewall), [`c:thickness`](../format/namespaces/c.md#cthickness), [`c:view3D`](../format/namespaces/c.md#cview3d)
 
@@ -2819,9 +2989,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Trendlines and error bars
 
-`chart.analysis` · P2 · difficulty 3 · todo
+`chart.analysis` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.analysis` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.analysis (done). Trendlines, error bars, drop and high-low lines.
 
 **Elements (16):** [`c:backward`](../format/namespaces/c.md#cbackward), [`c:dispEq`](../format/namespaces/c.md#cdispeq), [`c:dispRSqr`](../format/namespaces/c.md#cdisprsqr), [`c:errBarType`](../format/namespaces/c.md#cerrbartype), [`c:errBars`](../format/namespaces/c.md#cerrbars), [`c:errDir`](../format/namespaces/c.md#cerrdir), [`c:errValType`](../format/namespaces/c.md#cerrvaltype), [`c:forward`](../format/namespaces/c.md#cforward), [`c:intercept`](../format/namespaces/c.md#cintercept), [`c:minus`](../format/namespaces/c.md#cminus), [`c:noEndCap`](../format/namespaces/c.md#cnoendcap), [`c:period`](../format/namespaces/c.md#cperiod), [`c:plus`](../format/namespaces/c.md#cplus), [`c:trendline`](../format/namespaces/c.md#ctrendline), [`c:trendlineLbl`](../format/namespaces/c.md#ctrendlinelbl), [`c:trendlineType`](../format/namespaces/c.md#ctrendlinetype)
 
@@ -2833,9 +3005,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Shapes drawn on charts
 
-`chart.userShapes` · P3 · difficulty 2 · todo
+`chart.userShapes` · P3 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.userShapes` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.userShapes (done). Shapes drawn over charts.
 
 **Elements (30):** [`c:userShapes`](../format/namespaces/c.md#cusershapes), [`cdr:absSizeAnchor`](../format/namespaces/cdr.md#cdrabssizeanchor), [`cdr:blipFill`](../format/namespaces/cdr.md#cdrblipfill), [`cdr:cNvCxnSpPr`](../format/namespaces/cdr.md#cdrcnvcxnsppr), [`cdr:cNvGraphicFramePr`](../format/namespaces/cdr.md#cdrcnvgraphicframepr), [`cdr:cNvGrpSpPr`](../format/namespaces/cdr.md#cdrcnvgrpsppr), [`cdr:cNvPicPr`](../format/namespaces/cdr.md#cdrcnvpicpr), [`cdr:cNvPr`](../format/namespaces/cdr.md#cdrcnvpr), [`cdr:cNvSpPr`](../format/namespaces/cdr.md#cdrcnvsppr), [`cdr:cxnSp`](../format/namespaces/cdr.md#cdrcxnsp), [`cdr:ext`](../format/namespaces/cdr.md#cdrext), [`cdr:from`](../format/namespaces/cdr.md#cdrfrom), [`cdr:graphicFrame`](../format/namespaces/cdr.md#cdrgraphicframe), [`cdr:grpSp`](../format/namespaces/cdr.md#cdrgrpsp), [`cdr:grpSpPr`](../format/namespaces/cdr.md#cdrgrpsppr), [`cdr:nvCxnSpPr`](../format/namespaces/cdr.md#cdrnvcxnsppr), [`cdr:nvGraphicFramePr`](../format/namespaces/cdr.md#cdrnvgraphicframepr), [`cdr:nvGrpSpPr`](../format/namespaces/cdr.md#cdrnvgrpsppr), [`cdr:nvPicPr`](../format/namespaces/cdr.md#cdrnvpicpr), [`cdr:nvSpPr`](../format/namespaces/cdr.md#cdrnvsppr), [`cdr:pic`](../format/namespaces/cdr.md#cdrpic), [`cdr:relSizeAnchor`](../format/namespaces/cdr.md#cdrrelsizeanchor), [`cdr:sp`](../format/namespaces/cdr.md#cdrsp), [`cdr:spPr`](../format/namespaces/cdr.md#cdrsppr), [`cdr:style`](../format/namespaces/cdr.md#cdrstyle), [`cdr:to`](../format/namespaces/cdr.md#cdrto), [`cdr:txBody`](../format/namespaces/cdr.md#cdrtxbody), [`cdr:x`](../format/namespaces/cdr.md#cdrx), [`cdr:xfrm`](../format/namespaces/cdr.md#cdrxfrm), [`cdr:y`](../format/namespaces/cdr.md#cdry)
 
@@ -2847,9 +3021,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Pivot chart settings
 
-`chart.pivot` · P3 · difficulty 1 · todo
+`chart.pivot` · P3 · difficulty 1 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.pivot` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.pivot (done). Pivot charts as their cached data shows them.
 
 **Elements (12):** [`c14:dropZoneCategories`](../format/namespaces/c14.md#c14dropzonecategories), [`c14:dropZoneData`](../format/namespaces/c14.md#c14dropzonedata), [`c14:dropZoneFilter`](../format/namespaces/c14.md#c14dropzonefilter), [`c14:dropZoneSeries`](../format/namespaces/c14.md#c14dropzoneseries), [`c14:dropZonesVisible`](../format/namespaces/c14.md#c14dropzonesvisible), [`c14:pivotOptions`](../format/namespaces/c14.md#c14pivotoptions), [`c15:pivotSource`](../format/namespaces/c15.md#c15pivotsource), [`c16:pivotOptions16`](../format/namespaces/c16.md#c16pivotoptions16), [`c16:showExpandCollapseFieldButtons`](../format/namespaces/c16.md#c16showexpandcollapsefieldbuttons), [`c:pivotFmt`](../format/namespaces/c.md#cpivotfmt), [`c:pivotFmts`](../format/namespaces/c.md#cpivotfmts), [`c:pivotSource`](../format/namespaces/c.md#cpivotsource)
 
@@ -2861,11 +3037,13 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Office 2016 charts (chartex)
 
-`chart.ex` · P2 · difficulty 4 · todo
+`chart.ex` · P2 · difficulty 4 · partial
 
 Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and region map.
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.ex` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.ex (done). Word's AddChart2 refuses Office 2016 charts, so they are untested in Word documents (where Word writes a fallback, it is taken).
 
 **Elements (118):** [`cx:address`](../format/namespaces/cx.md#cxaddress), [`cx:aggregation`](../format/namespaces/cx.md#cxaggregation), [`cx:artifact`](../format/namespaces/cx.md#cxartifact), [`cx:artifacts`](../format/namespaces/cx.md#cxartifacts), [`cx:axis`](../format/namespaces/cx.md#cxaxis), [`cx:axisId`](../format/namespaces/cx.md#cxaxisid), [`cx:binCount`](../format/namespaces/cx.md#cxbincount), [`cx:binSize`](../format/namespaces/cx.md#cxbinsize), [`cx:binary`](../format/namespaces/cx.md#cxbinary), [`cx:binding`](../format/namespaces/cx.md#cxbinding), [`cx:bindings`](../format/namespaces/cx.md#cxbindings), [`cx:binning`](../format/namespaces/cx.md#cxbinning), [`cx:catScaling`](../format/namespaces/cx.md#cxcatscaling), [`cx:chart`](../format/namespaces/cx.md#cxchart), [`cx:chartData`](../format/namespaces/cx.md#cxchartdata), [`cx:chartSpace`](../format/namespaces/cx.md#cxchartspace), [`cx:clear`](../format/namespaces/cx.md#cxclear), [`cx:clrMapOvr`](../format/namespaces/cx.md#cxclrmapovr), [`cx:copyright`](../format/namespaces/cx.md#cxcopyright), [`cx:copyrights`](../format/namespaces/cx.md#cxcopyrights), [`cx:dashboard`](../format/namespaces/cx.md#cxdashboard), [`cx:data`](../format/namespaces/cx.md#cxdata), [`cx:dataId`](../format/namespaces/cx.md#cxdataid), [`cx:dataLabel`](../format/namespaces/cx.md#cxdatalabel), [`cx:dataLabelHidden`](../format/namespaces/cx.md#cxdatalabelhidden), [`cx:dataLabels`](../format/namespaces/cx.md#cxdatalabels), [`cx:dataPt`](../format/namespaces/cx.md#cxdatapt), [`cx:entityType`](../format/namespaces/cx.md#cxentitytype), [`cx:evenFooter`](../format/namespaces/cx.md#cxevenfooter), [`cx:evenHeader`](../format/namespaces/cx.md#cxevenheader), [`cx:ext`](../format/namespaces/cx.md#cxext), [`cx:extLst`](../format/namespaces/cx.md#cxextlst), [`cx:externalData`](../format/namespaces/cx.md#cxexternaldata), [`cx:extremeValue`](../format/namespaces/cx.md#cxextremevalue), [`cx:f`](../format/namespaces/cx.md#cxf), [`cx:firstFooter`](../format/namespaces/cx.md#cxfirstfooter), [`cx:firstHeader`](../format/namespaces/cx.md#cxfirstheader), [`cx:fmtOvr`](../format/namespaces/cx.md#cxfmtovr), [`cx:fmtOvrs`](../format/namespaces/cx.md#cxfmtovrs), [`cx:geoCache`](../format/namespaces/cx.md#cxgeocache), [`cx:geoChildEntities`](../format/namespaces/cx.md#cxgeochildentities), [`cx:geoChildEntitiesQuery`](../format/namespaces/cx.md#cxgeochildentitiesquery), [`cx:geoChildEntitiesQueryResult`](../format/namespaces/cx.md#cxgeochildentitiesqueryresult), [`cx:geoChildEntitiesQueryResults`](../format/namespaces/cx.md#cxgeochildentitiesqueryresults), [`cx:geoChildTypes`](../format/namespaces/cx.md#cxgeochildtypes), [`cx:geoData`](../format/namespaces/cx.md#cxgeodata), [`cx:geoDataEntityQuery`](../format/namespaces/cx.md#cxgeodataentityquery), [`cx:geoDataEntityQueryResult`](../format/namespaces/cx.md#cxgeodataentityqueryresult), [`cx:geoDataEntityQueryResults`](../format/namespaces/cx.md#cxgeodataentityqueryresults), [`cx:geoDataPointQuery`](../format/namespaces/cx.md#cxgeodatapointquery), [`cx:geoDataPointToEntityQuery`](../format/namespaces/cx.md#cxgeodatapointtoentityquery), [`cx:geoDataPointToEntityQueryResult`](../format/namespaces/cx.md#cxgeodatapointtoentityqueryresult), [`cx:geoDataPointToEntityQueryResults`](../format/namespaces/cx.md#cxgeodatapointtoentityqueryresults), [`cx:geoEntity`](../format/namespaces/cx.md#cxgeoentity), [`cx:geoHierarchyEntity`](../format/namespaces/cx.md#cxgeohierarchyentity), [`cx:geoLocation`](../format/namespaces/cx.md#cxgeolocation), [`cx:geoLocationQuery`](../format/namespaces/cx.md#cxgeolocationquery), [`cx:geoLocationQueryResult`](../format/namespaces/cx.md#cxgeolocationqueryresult), [`cx:geoLocationQueryResults`](../format/namespaces/cx.md#cxgeolocationqueryresults), [`cx:geoLocations`](../format/namespaces/cx.md#cxgeolocations), [`cx:geoParentEntitiesQuery`](../format/namespaces/cx.md#cxgeoparententitiesquery), [`cx:geoParentEntitiesQueryResult`](../format/namespaces/cx.md#cxgeoparententitiesqueryresult), [`cx:geoParentEntitiesQueryResults`](../format/namespaces/cx.md#cxgeoparententitiesqueryresults), [`cx:geoParentEntity`](../format/namespaces/cx.md#cxgeoparententity), [`cx:geoPolygon`](../format/namespaces/cx.md#cxgeopolygon), [`cx:geoPolygons`](../format/namespaces/cx.md#cxgeopolygons), [`cx:geography`](../format/namespaces/cx.md#cxgeography), [`cx:headerFooter`](../format/namespaces/cx.md#cxheaderfooter), [`cx:idx`](../format/namespaces/cx.md#cxidx), [`cx:layoutPr`](../format/namespaces/cx.md#cxlayoutpr), [`cx:legend`](../format/namespaces/cx.md#cxlegend), [`cx:lvl`](../format/namespaces/cx.md#cxlvl), [`cx:majorGridlines`](../format/namespaces/cx.md#cxmajorgridlines), [`cx:majorTickMarks`](../format/namespaces/cx.md#cxmajortickmarks), [`cx:max`](../format/namespaces/cx.md#cxmax), [`cx:maxColor`](../format/namespaces/cx.md#cxmaxcolor), [`cx:mid`](../format/namespaces/cx.md#cxmid), [`cx:midColor`](../format/namespaces/cx.md#cxmidcolor), [`cx:min`](../format/namespaces/cx.md#cxmin), [`cx:minColor`](../format/namespaces/cx.md#cxmincolor), [`cx:minorGridlines`](../format/namespaces/cx.md#cxminorgridlines), [`cx:minorTickMarks`](../format/namespaces/cx.md#cxminortickmarks), [`cx:nf`](../format/namespaces/cx.md#cxnf), [`cx:numDim`](../format/namespaces/cx.md#cxnumdim), [`cx:numFmt`](../format/namespaces/cx.md#cxnumfmt), [`cx:number`](../format/namespaces/cx.md#cxnumber), [`cx:oddFooter`](../format/namespaces/cx.md#cxoddfooter), [`cx:oddHeader`](../format/namespaces/cx.md#cxoddheader), [`cx:offset`](../format/namespaces/cx.md#cxoffset), [`cx:pageMargins`](../format/namespaces/cx.md#cxpagemargins), [`cx:pageSetup`](../format/namespaces/cx.md#cxpagesetup), [`cx:parentLabelLayout`](../format/namespaces/cx.md#cxparentlabellayout), [`cx:percent`](../format/namespaces/cx.md#cxpercent), [`cx:plotArea`](../format/namespaces/cx.md#cxplotarea), [`cx:plotAreaRegion`](../format/namespaces/cx.md#cxplotarearegion), [`cx:plotSurface`](../format/namespaces/cx.md#cxplotsurface), [`cx:printSettings`](../format/namespaces/cx.md#cxprintsettings), [`cx:pt`](../format/namespaces/cx.md#cxpt), [`cx:regionLabelLayout`](../format/namespaces/cx.md#cxregionlabellayout), [`cx:rich`](../format/namespaces/cx.md#cxrich), [`cx:separator`](../format/namespaces/cx.md#cxseparator), [`cx:series`](../format/namespaces/cx.md#cxseries), [`cx:spPr`](../format/namespaces/cx.md#cxsppr), [`cx:statistics`](../format/namespaces/cx.md#cxstatistics), [`cx:strDim`](../format/namespaces/cx.md#cxstrdim), [`cx:subtotals`](../format/namespaces/cx.md#cxsubtotals), [`cx:tickLabels`](../format/namespaces/cx.md#cxticklabels), [`cx:title`](../format/namespaces/cx.md#cxtitle), [`cx:tx`](../format/namespaces/cx.md#cxtx), [`cx:txData`](../format/namespaces/cx.md#cxtxdata), [`cx:txPr`](../format/namespaces/cx.md#cxtxpr), [`cx:units`](../format/namespaces/cx.md#cxunits), [`cx:unitsLabel`](../format/namespaces/cx.md#cxunitslabel), [`cx:v`](../format/namespaces/cx.md#cxv), [`cx:valScaling`](../format/namespaces/cx.md#cxvalscaling), [`cx:valueColorPositions`](../format/namespaces/cx.md#cxvaluecolorpositions), [`cx:valueColors`](../format/namespaces/cx.md#cxvaluecolors), [`cx:visibility`](../format/namespaces/cx.md#cxvisibility)
 
@@ -2877,18 +3055,20 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | todo | 17 | 0 |
-| [SmartArt data model](#smartart.data) | P2 | ●●●○○ | todo | 27 | 5 |
-| [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | todo | 24 | 7 |
-| [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | todo | 13 | 9 |
+| [Saved SmartArt drawing](#smartart.drawing) | P1 | ●●○○○ | done | 17 | 0 |
+| [SmartArt data model](#smartart.data) | P2 | ●●●○○ | done | 27 | 5 |
+| [SmartArt layout engine](#smartart.layout) | P3 | ●●●●● | done | 24 | 7 |
+| [SmartArt styles and color definitions](#smartart.styles) | P3 | ●●●○○ | done | 13 | 9 |
 
 <a id="smartart.drawing"></a>
 
 ### Saved SmartArt drawing
 
-`smartart.drawing` · P1 · difficulty 2 · todo
+`smartart.drawing` · P1 · difficulty 2 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `smartart.drawing` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.drawing (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (17):** [`dgm:relIds`](../format/namespaces/dgm.md#dgmrelids), [`dsp:cNvGrpSpPr`](../format/namespaces/dsp.md#dspcnvgrpsppr), [`dsp:cNvPr`](../format/namespaces/dsp.md#dspcnvpr), [`dsp:cNvSpPr`](../format/namespaces/dsp.md#dspcnvsppr), [`dsp:dataModelExt`](../format/namespaces/dsp.md#dspdatamodelext), [`dsp:drawing`](../format/namespaces/dsp.md#dspdrawing), [`dsp:extLst`](../format/namespaces/dsp.md#dspextlst), [`dsp:grpSp`](../format/namespaces/dsp.md#dspgrpsp), [`dsp:grpSpPr`](../format/namespaces/dsp.md#dspgrpsppr), [`dsp:nvGrpSpPr`](../format/namespaces/dsp.md#dspnvgrpsppr), [`dsp:nvSpPr`](../format/namespaces/dsp.md#dspnvsppr), [`dsp:sp`](../format/namespaces/dsp.md#dspsp), [`dsp:spPr`](../format/namespaces/dsp.md#dspsppr), [`dsp:spTree`](../format/namespaces/dsp.md#dspsptree), [`dsp:style`](../format/namespaces/dsp.md#dspstyle), [`dsp:txBody`](../format/namespaces/dsp.md#dsptxbody), [`dsp:txXfrm`](../format/namespaces/dsp.md#dsptxxfrm)
 
@@ -2898,9 +3078,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt data model
 
-`smartart.data` · P2 · difficulty 3 · todo
+`smartart.data` · P2 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `smartart.data` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.data (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (27):** [`dgm14:cNvPr`](../format/namespaces/dgm14.md#dgm14cnvpr), [`dgm14:recolorImg`](../format/namespaces/dgm14.md#dgm14recolorimg), [`dgm1611:autoBuNodeInfo`](../format/namespaces/dgm1611.md#dgm1611autobunodeinfo), [`dgm1611:autoBuNodeInfoLst`](../format/namespaces/dgm1611.md#dgm1611autobunodeinfolst), [`dgm1611:buPr`](../format/namespaces/dgm1611.md#dgm1611bupr), [`dgm1612:lstStyle`](../format/namespaces/dgm1612.md#dgm1612lststyle), [`dgm1612:spPr`](../format/namespaces/dgm1612.md#dgm1612sppr), [`dgm:animLvl`](../format/namespaces/dgm.md#dgmanimlvl), [`dgm:animOne`](../format/namespaces/dgm.md#dgmanimone), [`dgm:bg`](../format/namespaces/dgm.md#dgmbg), [`dgm:bulletEnabled`](../format/namespaces/dgm.md#dgmbulletenabled), [`dgm:chMax`](../format/namespaces/dgm.md#dgmchmax), [`dgm:chPref`](../format/namespaces/dgm.md#dgmchpref), [`dgm:cxn`](../format/namespaces/dgm.md#dgmcxn), [`dgm:cxnLst`](../format/namespaces/dgm.md#dgmcxnlst), [`dgm:dataModel`](../format/namespaces/dgm.md#dgmdatamodel), [`dgm:dir`](../format/namespaces/dgm.md#dgmdir), [`dgm:hierBranch`](../format/namespaces/dgm.md#dgmhierbranch), [`dgm:orgChart`](../format/namespaces/dgm.md#dgmorgchart), [`dgm:prSet`](../format/namespaces/dgm.md#dgmprset), [`dgm:presLayoutVars`](../format/namespaces/dgm.md#dgmpreslayoutvars), [`dgm:pt`](../format/namespaces/dgm.md#dgmpt), [`dgm:ptLst`](../format/namespaces/dgm.md#dgmptlst), [`dgm:resizeHandles`](../format/namespaces/dgm.md#dgmresizehandles), [`dgm:spPr`](../format/namespaces/dgm.md#dgmsppr), [`dgm:t`](../format/namespaces/dgm.md#dgmt), [`dgm:whole`](../format/namespaces/dgm.md#dgmwhole)
 
@@ -2912,9 +3094,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt layout engine
 
-`smartart.layout` · P3 · difficulty 5 · todo
+`smartart.layout` · P3 · difficulty 5 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `smartart.layout` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.layout (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (24):** [`dgm:adj`](../format/namespaces/dgm.md#dgmadj), [`dgm:adjLst`](../format/namespaces/dgm.md#dgmadjlst), [`dgm:alg`](../format/namespaces/dgm.md#dgmalg), [`dgm:cat`](../format/namespaces/dgm.md#dgmcat), [`dgm:catLst`](../format/namespaces/dgm.md#dgmcatlst), [`dgm:choose`](../format/namespaces/dgm.md#dgmchoose), [`dgm:clrData`](../format/namespaces/dgm.md#dgmclrdata), [`dgm:constr`](../format/namespaces/dgm.md#dgmconstr), [`dgm:constrLst`](../format/namespaces/dgm.md#dgmconstrlst), [`dgm:desc`](../format/namespaces/dgm.md#dgmdesc), [`dgm:else`](../format/namespaces/dgm.md#dgmelse), [`dgm:forEach`](../format/namespaces/dgm.md#dgmforeach), [`dgm:if`](../format/namespaces/dgm.md#dgmif), [`dgm:layoutDef`](../format/namespaces/dgm.md#dgmlayoutdef), [`dgm:layoutNode`](../format/namespaces/dgm.md#dgmlayoutnode), [`dgm:param`](../format/namespaces/dgm.md#dgmparam), [`dgm:presOf`](../format/namespaces/dgm.md#dgmpresof), [`dgm:rule`](../format/namespaces/dgm.md#dgmrule), [`dgm:ruleLst`](../format/namespaces/dgm.md#dgmrulelst), [`dgm:sampData`](../format/namespaces/dgm.md#dgmsampdata), [`dgm:shape`](../format/namespaces/dgm.md#dgmshape), [`dgm:styleData`](../format/namespaces/dgm.md#dgmstyledata), [`dgm:title`](../format/namespaces/dgm.md#dgmtitle), [`dgm:varLst`](../format/namespaces/dgm.md#dgmvarlst)
 
@@ -2926,9 +3110,11 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 
 ### SmartArt styles and color definitions
 
-`smartart.styles` · P3 · difficulty 3 · todo
+`smartart.styles` · P3 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `smartart.styles` (done).
+
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.styles (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).
 
 **Elements (13):** [`dgm:colorsDef`](../format/namespaces/dgm.md#dgmcolorsdef), [`dgm:effectClrLst`](../format/namespaces/dgm.md#dgmeffectclrlst), [`dgm:fillClrLst`](../format/namespaces/dgm.md#dgmfillclrlst), [`dgm:linClrLst`](../format/namespaces/dgm.md#dgmlinclrlst), [`dgm:scene3d`](../format/namespaces/dgm.md#dgmscene3d), [`dgm:sp3d`](../format/namespaces/dgm.md#dgmsp3d), [`dgm:style`](../format/namespaces/dgm.md#dgmstyle), [`dgm:styleDef`](../format/namespaces/dgm.md#dgmstyledef), [`dgm:styleLbl`](../format/namespaces/dgm.md#dgmstylelbl), [`dgm:txEffectClrLst`](../format/namespaces/dgm.md#dgmtxeffectclrlst), [`dgm:txFillClrLst`](../format/namespaces/dgm.md#dgmtxfillclrlst), [`dgm:txLinClrLst`](../format/namespaces/dgm.md#dgmtxlinclrlst), [`dgm:txPr`](../format/namespaces/dgm.md#dgmtxpr)
 

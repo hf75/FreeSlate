@@ -4548,8 +4548,9 @@
       "description": "Glow, shadow, reflection, outline, gradient fill and 3D formats on text.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).",
+      "office": "w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). Still open: 3D text (w14:props3d, w14:scene3d), w14:lightRig.",
       "elements": [
         "w14:alpha",
         "w14:bevel",
@@ -12016,9 +12017,9 @@
       "title": "Groups",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "Child transforms as pptx `shape.group` (done); children may be pictures, shapes, text boxes and graphic frames.",
-      "office": "Groups of shapes and pictures are drawn as PowerPoint groups. Text boxes inside groups are still open.",
+      "office": "Groups (wpg:wgp) map their children's space (a:chOff, a:chExt) onto their box, nested groups (wpg:grpSp) again; the text boxes of grouped shapes are laid out in their shapes' places and turn with them (docx/local/groups: a stretched group, a nested group with a turned star and a text box, 100 %).",
       "elements": [
         "wp:cNvFrPr",
         "wp:cNvGrpSpPr",
@@ -12107,9 +12108,9 @@
       "title": "Drawing canvas",
       "priority": "P2",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "A canvas is a group with its own background and outline.",
-      "office": "Canvases are drawn as groups with their background and outline; untested against Word.",
+      "office": "Canvases (wpc:wpc) are drawn as a group in their own coordinates over their background and outline (wpc:bg, wpc:whole); their shapes' text boxes and connectors as in groups (docx/local/groups, 100 %).",
       "elements": [
         "lc:lockedCanvas",
         "wp:bg",
@@ -12258,8 +12259,9 @@
       "title": "Theme color scheme",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.colors` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.colors (done). Scheme colors through the theme and w:clrSchemeMapping; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:accent1",
         "a:accent2",
@@ -12437,8 +12439,9 @@
       "title": "Theme fonts",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.fonts` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.fonts (done). The major and minor fonts of charts and SmartArt; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "a:font",
         "a:fontScheme",
@@ -12485,8 +12488,9 @@
       "title": "Theme formats (style matrix)",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.formatScheme` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.formatScheme (done). The fill, line and effect styles of Word's default shapes; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:bgFillStyleLst",
         "a:effectStyle",
@@ -12541,8 +12545,9 @@
       "title": "Shape style references",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.styleRefs` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.styleRefs (done). wps:style with lnRef, fillRef, effectRef and fontRef; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:effectRef",
         "a:fillRef",
@@ -12610,8 +12615,9 @@
       "title": "Theme overrides",
       "priority": "P2",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.override` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.override (done). Theme overrides of chart parts (a:themeOverride).",
       "elements": [
         "a:themeOverride"
       ],
@@ -12631,8 +12637,9 @@
       "title": "Object defaults, extra and custom colors",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `theme.editorData` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx theme.editorData (done). Nothing to draw: object defaults and extra color schemes only serve editing.",
       "elements": [
         "a:clrMap",
         "a:custClr",
@@ -12715,8 +12722,9 @@
       "title": "Color models",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `color.models` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.models (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a:hslClr",
         "a:prstClr",
@@ -12784,8 +12792,9 @@
       "title": "Color transforms",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `color.transforms` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.transforms (done). Theme colors with lumMod, lumOff, tint, shade and alpha; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:alpha",
         "a:alphaMod",
@@ -13113,8 +13122,9 @@
       "title": "Shapes",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.basic` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.basic (done). Verified against Word with docx/generated/shapes- effects (99.1 %).",
       "elements": [
         "a:cNvSpPr",
         "a:nvSpPr",
@@ -13160,8 +13170,9 @@
       "title": "Names, alt text, hidden and decorative shapes",
       "priority": "P1",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.accessibility` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.accessibility (done). Hidden drawings (wp:docPr hidden) are not drawn; names, descriptions and decorative flags draw nothing.",
       "elements": [
         "a:cNvPr",
         "adec:decorative"
@@ -13188,8 +13199,9 @@
       "title": "Position, size, rotation and flip",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.transform` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.transform (done). Rotation and flips of shapes and pictures; Verified against Word with docx/generated/pictures (99.6 %); groups map their children (docx/local/groups, 100 %).",
       "elements": [
         "a:chExt",
         "a:chOff",
@@ -13284,8 +13296,9 @@
       "title": "Groups",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.group` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.group (done). wpg:wgp and nested wpg:grpSp with their children's space (docx/local/groups, 100 %).",
       "elements": [
         "a14:isCanvas",
         "a15:nonVisualGroupProps",
@@ -13357,8 +13370,9 @@
       "description": "187 preset shapes (rect, roundRect, arrows, callouts, flowchart symbols, stars …).",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.presetGeometry` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.presetGeometry (done). 40 presets of all families; Verified against Word with docx/generated/shapes-effects (99.1 %).",
       "elements": [
         "a:avLst",
         "a:gd",
@@ -13397,8 +13411,9 @@
       "title": "Custom geometry (freeforms)",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.customGeometry` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.customGeometry (done). A freeform of lines and curves; Verified against Word with docx/generated/shapes-effects (99.1 %).",
       "elements": [
         "a:ahLst",
         "a:ahPolar",
@@ -13568,8 +13583,9 @@
       "title": "Connectors",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.connectors` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.connectors (done). An elbow connector with an arrow (docx/generated/graphics) and one in a canvas (docx/local/groups).",
       "elements": [
         "a:cNvCxnSpPr",
         "a:cxnSp",
@@ -13630,8 +13646,9 @@
       "title": "Graphic frames",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.graphicFrame` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.graphicFrame (done). Charts and SmartArt in their frames; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %); Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "a:cNvGraphicFramePr",
         "a:graphic",
@@ -13688,8 +13705,9 @@
       "title": "Locks",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.locks` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.locks (done). Nothing to draw: locks only restrict editing.",
       "elements": [
         "a14:cpLocks",
         "a:cpLocks",
@@ -13772,8 +13790,9 @@
       "title": "Sketched outlines",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.sketched` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.sketched (done). Sketched outlines (ask:lineSketchStyleProps) of shapes.",
       "elements": [
         "ask:extLst",
         "ask:lineSketchCurved",
@@ -13812,8 +13831,9 @@
       "title": "Sensitivity label markings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `shape.classification` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx shape.classification (done). Sensitivity label markings as PowerPoint shows them.",
       "elements": [
         "aclsh:classification"
       ],
@@ -13833,8 +13853,9 @@
       "title": "No fill and solid fill",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `fill.solid` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.solid (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:noFill",
         "a:solidFill"
@@ -13861,8 +13882,9 @@
       "title": "Gradient fills",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `fill.gradient` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.gradient (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:fillToRect",
         "a:gradFill",
@@ -13947,8 +13969,9 @@
       "title": "Pattern fills",
       "priority": "P2",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `fill.pattern` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.pattern (done). The preset pattern tiles, aligned to the page; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:bgClr",
         "a:fgClr",
@@ -13982,8 +14005,9 @@
       "title": "Picture and texture fills",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `fill.picture` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.picture (done). Picture and texture fills, stretched and tiled; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:blip",
         "a:blipFill",
@@ -14058,8 +14082,9 @@
       "title": "Group fill",
       "priority": "P2",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `fill.group` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx fill.group (done). a:grpFill takes the fill of the group.",
       "elements": [
         "a:grpFill"
       ],
@@ -14084,8 +14109,9 @@
       "title": "Outline width and color",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.basic` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.basic (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:ln"
       ],
@@ -14110,8 +14136,9 @@
       "title": "Dash styles",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.dash` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.dash (done). Dashed and dotted lines; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:custDash",
         "a:ds",
@@ -14150,8 +14177,9 @@
       "title": "Joins and caps",
       "priority": "P1",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.joinCap` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.joinCap (done). Joins and caps of outlines and of text outlines (w14:textOutline).",
       "elements": [
         "a:bevel",
         "a:miter",
@@ -14200,8 +14228,9 @@
       "title": "Arrowheads",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.ends` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.ends (done). Arrow heads of lines and connectors; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:headEnd",
         "a:tailEnd"
@@ -14229,8 +14258,9 @@
       "description": "a:ln/@cmpd (double, thick-thin, thin-thick, triple).",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.compound` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.compound (done). A thick-thin compound outline; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -14242,8 +14272,9 @@
       "description": "gradFill and pattFill inside a:ln.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `line.fill` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx line.fill (done). Solid, gradient and pattern outlines.",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -14254,8 +14285,9 @@
       "title": "Effect lists",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.list` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.list (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); the effects of text runs too (run.textEffects).",
       "elements": [
         "a:effectLst"
       ],
@@ -14275,8 +14307,9 @@
       "title": "Outer shadow",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.outerShadow` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.outerShadow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a:outerShdw"
       ],
@@ -14301,8 +14334,9 @@
       "title": "Inner shadow",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.innerShadow` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.innerShadow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:innerShdw"
       ],
@@ -14327,8 +14361,9 @@
       "title": "Preset shadows",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.presetShadow` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.presetShadow (done). The classic hard-edged shadows as unblurred outer shadows.",
       "elements": [
         "a:prstShdw"
       ],
@@ -14348,8 +14383,9 @@
       "title": "Glow",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.glow` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.glow (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/shapes-effects (99.1 %) for glowing text.",
       "elements": [
         "a:glow"
       ],
@@ -14369,8 +14405,9 @@
       "title": "Soft edges",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.softEdge` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.softEdge (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a:softEdge"
       ],
@@ -14395,8 +14432,9 @@
       "title": "Reflection",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.reflection` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.reflection (done). Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); drawn with a soft mask, which Windows' PDF renderer of the fidelity tool ignores (the browser and other renderers show the fade).",
       "elements": [
         "a:reflection"
       ],
@@ -14421,8 +14459,9 @@
       "title": "Blur and fill overlay",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.blur` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.blur (done). Blurred shapes and pictures.",
       "elements": [
         "a:blur",
         "a:fillOverlay"
@@ -14454,8 +14493,9 @@
       "title": "Effect containers (effect DAG)",
       "priority": "P3",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.dag` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.dag (done). Effect containers of effect DAGs.",
       "elements": [
         "a:alphaOutset",
         "a:blend",
@@ -14546,8 +14586,9 @@
       "title": "3D scene (camera and light)",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.scene3d` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.scene3d (done). Cameras and lights of 3D scenes; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:anchor",
         "a:backdrop",
@@ -14641,8 +14682,9 @@
       "title": "3D shape (bevel, extrusion, material)",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `effect.shape3d` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx effect.shape3d (done). Bevels and extrusions; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
       "elements": [
         "a:bevel",
         "a:bevelB",
@@ -14724,8 +14766,9 @@
       "title": "Pictures",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.basic` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.basic (done). Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a:cNvPicPr",
         "a:nvPicPr",
@@ -14807,8 +14850,9 @@
       "description": "The content type behind a:blip/@r:embed.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.formats` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.formats (done). PNG with transparency, JPEG, GIF, BMP and TIFF; Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -14819,8 +14863,9 @@
       "title": "EMF and WMF pictures",
       "priority": "P1",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.metafiles` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.metafiles (done). An EMF+ dual metafile; Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -14831,8 +14876,9 @@
       "title": "SVG pictures",
       "priority": "P0",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.svg` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.svg (done). SVG pictures (asvg:svgBlip) drawn from the SVG; Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "asvg:svgBlip"
       ],
@@ -14852,8 +14898,9 @@
       "title": "Picture color effects",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.effects` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.effects (done). Grayscale, washout, brightness and contrast, cropping; Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a:alphaBiLevel",
         "a:alphaCeiling",
@@ -15055,8 +15102,9 @@
       "title": "Artistic effects and picture corrections",
       "priority": "P1",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.artistic` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.artistic (done). Artistic effects (pencil sketch, blur); Verified against Word with docx/generated/pictures (99.6 %).",
       "elements": [
         "a14:artisticBlur",
         "a14:artisticCement",
@@ -15293,8 +15341,9 @@
       "title": "Ink",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.ink` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.ink (done). Ink drawings of pictures (a14:contentPart).",
       "elements": [
         "a14:cNvContentPartPr",
         "a14:cNvPr",
@@ -15376,8 +15425,9 @@
       "title": "3D models",
       "priority": "P2",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.model3d` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.model3d (done). 3D models with their poster picture.",
       "elements": [
         "a3danim:animPr",
         "a3danim:embedAnim",
@@ -15545,8 +15595,9 @@
       "title": "Picture sources and formulas",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `picture.sources` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx picture.sources (done). Nothing to draw: the source and formula of a picture only describe it.",
       "elements": [
         "a1611:picAttrSrcUrl",
         "aif:imageFormula"
@@ -15573,8 +15624,9 @@
       "title": "Text body and text box",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.body` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.body (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:bodyPr",
         "a:txBody",
@@ -15621,8 +15673,9 @@
       "title": "Autofit",
       "priority": "P0",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.autofit` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.autofit (done). SmartArt text shrunk to fit its boxes; Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "a:noAutofit",
         "a:normAutofit",
@@ -15669,8 +15722,9 @@
       "title": "Paragraphs",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.paragraph` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.paragraph (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:endParaRPr",
         "a:p",
@@ -15717,8 +15771,9 @@
       "title": "Line and paragraph spacing",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.spacing` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.spacing (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:lnSpc",
         "a:spcAft",
@@ -15783,8 +15838,9 @@
       "title": "Tab stops",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.tabs` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.tabs (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:tab",
         "a:tabLst"
@@ -15811,8 +15867,9 @@
       "title": "Bullets and numbering",
       "priority": "P0",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.bullets` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.bullets (done). SmartArt bullets (vList2 with its sub-points); Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "a:buAutoNum",
         "a:buBlip",
@@ -15915,8 +15972,9 @@
       "title": "List styles and the text style cascade",
       "priority": "P0",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.styles` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.styles (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:defPPr",
         "a:defRPr",
@@ -16058,8 +16116,9 @@
       "title": "Runs and character formatting",
       "priority": "P0",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.runs` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.runs (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:br",
         "a:highlight",
@@ -16116,8 +16175,9 @@
       "title": "Fonts per script",
       "priority": "P0",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.fonts` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fonts (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:cs",
         "a:ea",
@@ -16176,8 +16236,9 @@
       "description": "gradFill, blipFill, pattFill and a:ln inside run properties.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.fillOutline` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fillOutline (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart; Word's own runs take theirs from w14:textFill and w14:textOutline (run.textEffects).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -16188,8 +16249,9 @@
       "title": "Underlines",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.underline` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.underline (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:uFill",
         "a:uFillTx",
@@ -16240,8 +16302,9 @@
       "description": "effectLst on runs (shadow, glow, reflection, soft edges).",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.effects` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.effects (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart; Word's own runs take their glow, shadow and reflection from w14 (run.textEffects).",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -16252,8 +16315,9 @@
       "title": "Fields",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.fields` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.fields (done). Fields of chart data labels with current values.",
       "elements": [
         "a:fld"
       ],
@@ -16279,8 +16343,9 @@
       "description": "a:bodyPr/@numCol and @spcCol.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.columns` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.columns (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -16292,8 +16357,9 @@
       "description": "a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and @rot.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.vertical` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.vertical (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [],
       "spec": [],
       "officeNotes": []
@@ -16304,8 +16370,9 @@
       "title": "WordArt transforms",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.warp` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.warp (done). WordArt warps of shapes (wps:bodyPr prstTxWarp) and of VML text paths (vml.watermarks).",
       "elements": [
         "a:prstTxWarp"
       ],
@@ -16325,8 +16392,9 @@
       "title": "3D text",
       "priority": "P3",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.threeD` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.threeD (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:flatTx"
       ],
@@ -16351,8 +16419,9 @@
       "title": "Right-to-left and complex scripts",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `text.rtl` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx text.rtl (done). In Word documents DrawingML text is that of charts and SmartArt (shape text is WordprocessingML); verified with the chart titles, axis and data labels and legends of docx/generated/charts* and the node text of docx/generated/smartart.",
       "elements": [
         "a:rtl"
       ],
@@ -16372,8 +16441,9 @@
       "title": "Chart part and settings",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.part` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.part (done). Chart parts with their embedded workbooks and the regional format of the system (DocxConverter culture); Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c16r3:dataDisplayOptions16",
         "c16r3:dispNaAsBlank",
@@ -16704,8 +16774,9 @@
       "title": "Series and data caches",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.data` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.data (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c15:autoCat",
         "c15:cat",
@@ -17237,8 +17308,9 @@
       "title": "Bar and column charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.barColumn` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.barColumn (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c14:invertSolidFillFmt",
         "c15:invertIfNegative",
@@ -17372,8 +17444,9 @@
       "title": "Line charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.line` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.line (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c15:marker",
         "c16:marker",
@@ -17494,8 +17567,9 @@
       "title": "Pie and doughnut charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.pie` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.pie (done). Pie, doughnut and 3-D pie; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c15:explosion",
         "c16:explosion",
@@ -17659,8 +17733,9 @@
       "title": "Area charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.area` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.area (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c:area3DChart",
         "c:areaChart"
@@ -17692,8 +17767,9 @@
       "title": "Scatter and bubble charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Shared DrawingML renderer, as pptx `chart.scatterBubble` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %). Still open: Word's default bubble chart takes its x axis to 3.5 where we stop at 3 (the bubbles' share of the axis).",
       "elements": [
         "c15:bubble3D",
         "c16:bubble3D",
@@ -17776,8 +17852,9 @@
       "title": "Radar charts",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.radar` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.radar (done). A radar divides its radius into intervals at least 1.2 font sizes long (measured in Word and PowerPoint); Verified against Word with docx/generated/charts, charts- more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c:radarChart",
         "c:radarStyle"
@@ -17813,8 +17890,9 @@
       "title": "Stock charts",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.stock` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.stock (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c:stockChart"
       ],
@@ -17834,8 +17912,9 @@
       "title": "Surface charts",
       "priority": "P3",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.surface` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.surface (done). A 3D surface's bands follow its value axis's steps (measured in Word); Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts- more3 (88 to 98 %).",
       "elements": [
         "c:bandFmt",
         "c:bandFmts",
@@ -17896,8 +17975,9 @@
       "title": "Axes, gridlines and number formats",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.axes` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.axes (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c15:numFmt",
         "c:auto",
@@ -18253,8 +18333,9 @@
       "title": "Data labels",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.labels` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.labels (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c15:dLbl",
         "c15:datalabelsRange",
@@ -18455,8 +18536,9 @@
       "title": "Titles, legend and layout",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.titleLegend` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.titleLegend (done). Automatic titles in the system's language; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c:h",
         "c:hMode",
@@ -18656,8 +18738,9 @@
       "title": "Data tables",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.dataTable` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.dataTable (done). Data tables below the plot area.",
       "elements": [
         "c:dTable",
         "c:showHorzBorder",
@@ -18705,8 +18788,9 @@
       "title": "Chart formatting, chart styles and colors",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.formatting` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.formatting (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c14:spPr",
         "c14:style",
@@ -18910,8 +18994,9 @@
       "title": "3D charts",
       "priority": "P2",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.threeD` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.threeD (done). 3-D column, pie and surface charts; Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %).",
       "elements": [
         "c:backWall",
         "c:depthPercent",
@@ -19049,8 +19134,9 @@
       "title": "Trendlines and error bars",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.analysis` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.analysis (done). Trendlines, error bars, drop and high-low lines.",
       "elements": [
         "c:backward",
         "c:dispEq",
@@ -19236,8 +19322,9 @@
       "title": "Shapes drawn on charts",
       "priority": "P3",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.userShapes` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.userShapes (done). Shapes drawn over charts.",
       "elements": [
         "c:userShapes",
         "cdr:absSizeAnchor",
@@ -19527,8 +19614,9 @@
       "title": "Pivot chart settings",
       "priority": "P3",
       "difficulty": 1,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.pivot` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.pivot (done). Pivot charts as their cached data shows them.",
       "elements": [
         "c14:dropZoneCategories",
         "c14:dropZoneData",
@@ -19615,8 +19703,9 @@
       "description": "Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and region map.",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Shared DrawingML renderer, as pptx `chart.ex` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.ex (done). Word's AddChart2 refuses Office 2016 charts, so they are untested in Word documents (where Word writes a fallback, it is taken).",
       "elements": [
         "cx:address",
         "cx:aggregation",
@@ -20329,8 +20418,9 @@
       "title": "Saved SmartArt drawing",
       "priority": "P1",
       "difficulty": 2,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `smartart.drawing` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.drawing (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "dgm:relIds",
         "dsp:cNvGrpSpPr",
@@ -20402,8 +20492,9 @@
       "title": "SmartArt data model",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `smartart.data` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.data (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "dgm14:cNvPr",
         "dgm14:recolorImg",
@@ -20626,8 +20717,9 @@
       "title": "SmartArt layout engine",
       "priority": "P3",
       "difficulty": 5,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `smartart.layout` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.layout (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "dgm:adj",
         "dgm:adjLst",
@@ -20885,8 +20977,9 @@
       "title": "SmartArt styles and color definitions",
       "priority": "P3",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `smartart.styles` (done).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx smartart.styles (done). Verified against Word with docx/generated/smartart (95.1 %, seven layout families with text).",
       "elements": [
         "dgm:colorsDef",
         "dgm:effectClrLst",
