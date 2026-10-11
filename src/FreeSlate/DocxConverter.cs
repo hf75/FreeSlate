@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using FreeSlate.Docx;
@@ -42,8 +43,13 @@ public static class DocxConverter
     /// Points of paper added right of and below every page when it is printed (the fidelity tool prints wider paper
     /// than the page, because browsers round paper sizes, and cuts the page out again); 0 prints on the page's size.
     /// </param>
+    /// <param name="culture">
+    /// The regional format of numbers and dates in charts and of their default texts, the system's
+    /// (<see cref="CultureInfo.CurrentCulture"/>) as in Word when null.
+    /// </param>
     /// <exception cref="PasswordException">The document needs a password, or the password is wrong.</exception>
-    public static string ToHtml(string docxPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0)
+    public static string ToHtml(string docxPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
+        CultureInfo? culture = null)
     {
         using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts);
         var reader = new ModelReader(context);
@@ -55,7 +61,7 @@ public static class DocxConverter
         var endnoteParts = reader.Notes(endnotes: true);
         var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key)).Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => n.Value).ToList();
         var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
-        var drawings = new Drawings(context);
+        var drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
         var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout));
         var body = new StringBuilder();
         // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
@@ -86,9 +92,10 @@ public static class DocxConverter
         return html.ToString();
     }
 
-    public static void ToFile(string docxPath, string htmlPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0)
+    public static void ToFile(string docxPath, string htmlPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
+        CultureInfo? culture = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra));
+        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra, culture));
     }
 }

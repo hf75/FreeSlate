@@ -89,9 +89,22 @@ public static class WordFonts
         var discretional = ligatures.Contains("iscretional", StringComparison.Ordinal) || ligatures == "all";
         features.Add(standard ? "liga" : "-liga");
         features.Add(standard ? "clig" : "-clig");
-        features.Add(contextual ? "calt" : "-calt");
+        features.Add(contextual || format.ContextualAlternates == true ? "calt" : "-calt");
         features.Add(historical ? "hlig" : "-hlig");
         features.Add(discretional ? "dlig" : "-dlig");
+        // Number forms and spacing replace the font's default digits; stylistic sets their glyphs.
+        switch (format.NumberForm)
+        {
+            case "lining": features.Add("lnum"); break;
+            case "oldStyle": features.Add("onum"); break;
+        }
+        switch (format.NumberSpacing)
+        {
+            case "proportional": features.Add("pnum"); break;
+            case "tabular": features.Add("tnum"); break;
+        }
+        foreach (var set in format.StylisticSets ?? [])
+            features.Add($"ss{set:00}");
         return features;
     }
 

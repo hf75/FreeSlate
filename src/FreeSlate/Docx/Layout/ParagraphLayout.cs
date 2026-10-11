@@ -78,6 +78,9 @@ public sealed class Line
     /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
     public List<string>? Notes { get; set; }
 
+    /// <summary>The floating drawings anchored in the line, which wp:positionV relativeFrom="line" places from its top.</summary>
+    public List<AnchorInline>? Anchors { get; set; }
+
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
     public List<double>? Bars { get; set; }
 
@@ -131,6 +134,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
+
+    /// <summary>The floating drawings of the paragraph being laid out, by their place in its text.</summary>
+    readonly List<(int Index, AnchorInline Anchor)> anchored = [];
 
     /// <summary>The footnote references of the paragraph being laid out: where each stands and its note.</summary>
     readonly List<(int Index, string Id)> notes = [];
@@ -330,6 +336,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
             line.EndBreak = endBreak;
             line.Skip = skip;
+            if (anchored.Where(a => a.Index >= lineStart && (a.Index < end || end >= text.Length)).Select(a => a.Anchor).ToList() is { Count: > 0 } inLine)
+                line.Anchors = inLine;
             if (room != null)
             {
                 // The line's height decides where the next one stands beside the objects.
@@ -438,6 +446,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
         objects.Clear();
+        anchored.Clear();
         links.Clear();
         notes.Clear();
         separators.Clear();
@@ -476,6 +485,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 case FieldInline field:
                     foreach (var cached in field.Cached)
                         Add(cached);
+                    break;
+                case AnchorInline anchor:
+                    anchored.Add((text.Length, anchor));
                     break;
                 case DrawingInline drawing:
                     objects[text.Length] = drawing;

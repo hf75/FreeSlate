@@ -43,7 +43,7 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
 /// the document's theme and color mapping, shared with PowerPoint (pptx features picture.*, shape.*, chart.*,
 /// smartart.*).
 /// </summary>
-public sealed class Drawings(DocumentContext context)
+public sealed class Drawings(DocumentContext context, System.Globalization.CultureInfo? culture = null)
 {
     public static readonly XNamespace Wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
     public static readonly XNamespace Wp14 = "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing";
@@ -62,7 +62,11 @@ public sealed class Drawings(DocumentContext context)
     readonly SvgPaint paint = new();
 
     /// <summary>The presentation context the slide renderer draws with: the same package, fonts and glyphs.</summary>
-    public PresentationContext Presentation => presentation ??= new PresentationContext(context.Package, context.FontLocator) { Glyphs = context.Glyphs };
+    public PresentationContext Presentation => presentation ??= new PresentationContext(context.Package, context.FontLocator)
+    {
+        Glyphs = context.Glyphs,
+        Culture = culture ?? System.Globalization.CultureInfo.CurrentCulture,
+    };
 
     /// <summary>The fonts the drawings' text uses.</summary>
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];

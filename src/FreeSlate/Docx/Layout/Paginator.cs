@@ -400,7 +400,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
-        var anchors = new List<(AnchorInline Anchor, double Top)>();
+        var anchors = new List<(AnchorInline Anchor, double ParagraphTop, double LineTop)>();
         var y = 0.0;
         double after = 0;
         var first = true;
@@ -408,14 +408,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             if (block is ParagraphBlock paragraph)
             {
+                // The paragraph begins below the space after the one before; its own space before lies inside it.
+                var paragraphTop = y + (first ? 0 : after);
                 y += first ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
-                foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
-                    anchors.Add((anchor, y));
+                var lineTops = new Dictionary<AnchorInline, double>(ReferenceEqualityComparer.Instance);
                 foreach (var line in layout.Layout(paragraph, width, fields))
                 {
+                    foreach (var anchor in line.Anchors ?? [])
+                        lineTops[anchor] = y;
                     box.Lines.Add(new PlacedLine(line, left, y));
                     y += line.Height;
                 }
+                foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+                    anchors.Add((anchor, paragraphTop, lineTops.GetValueOrDefault(anchor, paragraphTop)));
                 after = paragraph.Format.After ?? 0;
             }
             else if (block is TableBlock table)
@@ -446,8 +451,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         box.Top = top;
         box.Bottom = top + y;
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
-        foreach (var (anchor, paragraphTop) in anchors)
-            box.Drawings.Add(Anchored(anchor, on, top + paragraphTop, left, width));
+        foreach (var (anchor, paragraphTop, lineTop) in anchors)
+            box.Drawings.Add(Anchored(anchor, on, top + paragraphTop, top + lineTop, left, width));
         return box;
     }
 
@@ -638,7 +643,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// wp:positionH and wp:positionV name (page, margin, column, the margins on either side, the paragraph, the
     /// line), or a percentage of it (wp14:pctPosHOffset); wp:simplePos gives the page position directly.
     /// </summary>
-    static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double columnLeft, double columnWidth)
+    /// <remarks>
+    /// The paragraph's top lies above its own space before, below the space after the paragraph before it (where
+    /// the larger of the two separates them, what the space before has more); the line's top is that of the line
+    /// holding the anchor (measured with docx/local/anchor-rules, all within 0.05 pt).
+    /// </remarks>
+    static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth)
     {
         var element = anchor.Anchor;
         var (w, h) = Docx.Drawings.Extent(element);
@@ -669,7 +679,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
             {
                 "page" => (0.0, s.PageHeight),
-                "paragraph" or "line" => (paragraphTop, 0.0),
+                "paragraph" => (paragraphTop, 0.0),
+                "line" => (lineTop, 0.0),
                 "topMargin" => (0.0, s.Top),
                 "bottomMargin" => (s.PageHeight - s.Bottom, s.Bottom),
                 "insideMargin" => odd ? (0.0, s.Top) : (s.PageHeight - s.Bottom, s.Bottom),
@@ -833,7 +844,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var continues = frame != null && previous != null && frame.Same(Frame.Read(previous.Format)) && !columnEmpty;
         var nextContinues = frame != null && next != null && frame.Same(Frame.Read(next.Format));
         var boxTop = y;
+        // The paragraph's top for drawings placed relative to it: its own space before lies inside it.
+        var ownBefore = columnEmpty ? gap : Math.Max(0, gap - pendingAfter);
         y += gap;
+        var paragraphTop = (Page: page!, Top: y - ownBefore);
         var betweenAt = y;
         if (frame != null)
         {
@@ -853,7 +867,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the next page, where the object then stands (measured with docx/generated/wrapping: the rest of the page stays
         // empty).
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
-                ExclusionOf(Anchored(anchor, page!, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop))
+                ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -861,19 +875,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Lines beside floating objects of the page are laid out again in the room the objects leave.
         if (PageExclusions() is { Count: > 0 } exclusions)
         {
-            var paragraphTop = y;
-            var bottom = paragraphTop + lines.Sum(l => l.Height);
-            if (exclusions.Any(e => e.Top < Math.Max(bottom, paragraphTop + 1) && e.Bottom > paragraphTop))
+            var linesTop = y;
+            var bottom = linesTop + lines.Sum(l => l.Height);
+            if (exclusions.Any(e => e.Top < Math.Max(bottom, linesTop + 1) && e.Bottom > linesTop))
             {
                 var (columnLeft, columnWidth) = (left, width);
-                lines = layout.Layout(paragraph, width, room: (offset, height) => Room(exclusions, paragraphTop, offset, height, columnLeft, columnWidth));
+                lines = layout.Layout(paragraph, width, room: (offset, height) => Room(exclusions, linesTop, offset, height, columnLeft, columnWidth));
             }
         }
+        var firstLineTop = (Page: page!, Top: y);
         var widow = format.WidowControl ?? true;
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
         var hereAtTop = columnEmpty;
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
+        var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top)>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
         for (var k = 0; k < lines.Count; k++)
         {
@@ -919,7 +935,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 hereAtTop = true;
             }
             y += line.Skip;
-            anchorAt ??= (page!, y, left, width);
+            // Where the first line stands as planned the paragraph begins above it; moved to another column or page,
+            // it begins with the line.
+            anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - line.Skip - firstLineTop.Top) < 0.01
+                ? paragraphTop.Top : y, left, width);
+            foreach (var anchor in line.Anchors ?? [])
+                lineTops[anchor] = (page!, y);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left, y));
@@ -964,8 +985,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Floating drawings anchored in the paragraph, placed relative to its page, column, paragraph or line.
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
         {
-            var (anchorPage, paragraphTop, columnLeft, columnWidth) = anchorAt ?? (page!, y, left, width);
-            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, paragraphTop, columnLeft, columnWidth));
+            var (anchorPage, anchorTop, columnLeft, columnWidth) = anchorAt ?? (page!, y, left, width);
+            var lineTop = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage ? at.Top : anchorTop;
+            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, lineTop, columnLeft, columnWidth));
         }
         pendingAfter = SpaceAfter(paragraph, next);
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).

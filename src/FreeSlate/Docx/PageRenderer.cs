@@ -269,20 +269,139 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         if (string.IsNullOrWhiteSpace(piece.Text))
             return "";
         var style = piece.Style;
+        var text = piece.Text;
         var positions = Positions(piece);
-        var xs = string.Join(' ', Enumerable.Range(0, piece.Text.Length).Where(i => !char.IsLowSurrogate(piece.Text[i]))
+        var on = style.Features.Where(f => !f.StartsWith('-') && f != "kern").ToList();
+        string X(int from, int to) => string.Join(' ', Enumerable.Range(from, to - from).Where(i => !char.IsLowSurrogate(text[i]))
             .Select(i => Units.Css((x + positions[i]) * PxPerPt)));
+        // Words whose glyphs depend on their neighbors (ligatures, contextual alternates and swashes; catalog:
+        // run.openType) must reach the browser whole: it shapes every character that has a position of its own alone
+        // (measured: Chrome draws "office" without its ffi ligature when each character has its x). Such a word gets
+        // the position of its start and, for every cluster, how far it stands from where the browser's own advances
+        // put it; the browser's advances differ from these by up to 0.01 pt a glyph, so the other words keep the
+        // position of every character.
+        var words = Math.Abs(style.Scale - 1) < 1e-6 ? ContextualWords(style, text) : [];
         var family = style.Font.Data.Family;
         context.UsedFonts.Add(family);
-        var sb = new StringBuilder($"<text x=\"{xs}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"");
+        var sb = new StringBuilder("<text");
+        if (words.Count == 0)
+            sb.Append($" x=\"{X(0, text.Length)}\"");
+        sb.Append($" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"");
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
-        // Our positions already hold the kerning; the browser must not add its own.
-        sb.Append(" style=\"font-kerning:none\"");
+        // Our positions already hold the kerning; the browser must not add its own. The features the run turns on are
+        // the browser's to apply too.
+        sb.Append(" style=\"font-kerning:none");
+        if (on.Count > 0)
+            sb.Append(";font-feature-settings:").Append(string.Join(',', on.Select(f => $"'{f}' 1")));
+        sb.Append('"');
         if (Math.Abs(style.Scale - 1) > 1e-6)
             sb.Append($" transform=\"translate({Units.Css(x * PxPerPt)} 0) scale({Units.Css4(style.Scale)} 1) translate({Units.Css(-x * PxPerPt)} 0)\"");
-        sb.Append('>').Append(WebUtility.HtmlEncode(piece.Text)).Append("</text>");
+        sb.Append('>');
+        if (words.Count == 0)
+            sb.Append(WebUtility.HtmlEncode(text));
+        else
+        {
+            var at = 0;
+            foreach (var (from, to) in words)
+            {
+                if (from > at)
+                    sb.Append($"<tspan x=\"{X(at, from)}\">{WebUtility.HtmlEncode(text[at..from])}</tspan>");
+                sb.Append($"<tspan x=\"{Units.Css((x + positions[from]) * PxPerPt)}\" dx=\"{Shifts(style, text[from..to], positions.AsSpan(from, to - from + 1))}\">{WebUtility.HtmlEncode(text[from..to])}</tspan>");
+                at = to;
+            }
+            if (at < text.Length)
+                sb.Append($"<tspan x=\"{X(at, text.Length)}\">{WebUtility.HtmlEncode(text[at..])}</tspan>");
+        }
+        sb.Append("</text>");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The words of a piece (each with the spaces after it) holding a glyph that depends on its neighbors: a cluster of
+    /// several characters, or a glyph other than the character's own with the run's features.
+    /// </summary>
+    static List<(int From, int To)> ContextualWords(RunStyle style, string text)
+    {
+        var result = new List<(int, int)>();
+        if (!style.Features.Any(f => f is "liga" or "clig" or "calt" or "hlig" or "dlig" || f.StartsWith("ss", StringComparison.Ordinal)))
+            return result;
+        var data = style.Font.Data;
+        var glyphs = data.GlyphsWithFeatures(text, style.Features, language: style.Language);
+        var contextual = new bool[text.Length];
+        var byCluster = glyphs.Where(g => g.Cluster < text.Length).GroupBy(g => g.Cluster).OrderBy(g => g.Key).ToList();
+        for (var k = 0; k < byCluster.Count; k++)
+        {
+            var start = byCluster[k].Key;
+            var end = k + 1 < byCluster.Count ? byCluster[k + 1].Key : text.Length;
+            var own = (end - start == 1 || end - start == 2 && char.IsHighSurrogate(text[start])) && byCluster[k].Count() == 1;
+            if (own)
+            {
+                var alone = data.GlyphsWithFeatures(text[start..end], style.Features, language: style.Language);
+                own = alone.Length == 1 && alone[0].Id == byCluster[k].First().Id;
+            }
+            if (!own)
+            {
+                for (var i = start; i < end; i++)
+                    contextual[i] = true;
+            }
+        }
+        var from = 0;
+        for (var i = 1; i <= text.Length; i++)
+        {
+            if (i < text.Length && !(text[i] != ' ' && text[i - 1] == ' '))
+                continue;
+            if (contextual.AsSpan(from, i - from).Contains(true))
+                result.Add((from, i));
+            from = i;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The dx list of a word the browser shapes whole: per character (code point), how far the cluster it begins
+    /// stands from where the browser's own unkerned advances put it, 0 within clusters.
+    /// </summary>
+    /// <param name="positions">The positions of the word's characters and of its end.</param>
+    static string Shifts(RunStyle style, string text, ReadOnlySpan<double> positions)
+    {
+        var features = style.Features.Select(f => f == "kern" ? "-kern" : f).ToList();
+        var natural = new double[text.Length];
+        var starts = new SortedSet<int>();
+        foreach (var g in style.Font.Data.GlyphsWithFeatures(text, features, language: style.Language))
+        {
+            if (g.Cluster >= text.Length)
+                continue;
+            natural[g.Cluster] += g.Advance * style.Size;
+            starts.Add(g.Cluster);
+        }
+        // Shifts add up: each is what the cluster needs less what the ones before gave, rounded as written.
+        var shifts = new List<string>();
+        var browser = 0.0;   // where the browser's advances put the cluster, from the first
+        var given = 0.0;     // the shifts written so far, in pixels
+        var previous = -1;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsLowSurrogate(text[i]))
+                continue;
+            var shift = 0.0;
+            if (starts.Contains(i))
+            {
+                if (previous >= 0)
+                {
+                    browser += natural[previous];
+                    shift = Math.Round((positions[i] - positions[0] - browser) * PxPerPt - given, 2);
+                    given += shift;
+                }
+                previous = i;
+            }
+            shifts.Add(shift == 0 ? "0" : Units.Css(shift));
+        }
+        // Trailing zeros say nothing.
+        var count = shifts.Count;
+        while (count > 1 && shifts[count - 1] == "0")
+            count--;
+        return string.Join(' ', shifts.Take(count));
     }
 
     /// <summary>A tab's leader: its character repeated where <see cref="TabLeader"/> puts it, in the tab's font and color.</summary>

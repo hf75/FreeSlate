@@ -50,6 +50,15 @@ public sealed class RunFormat
     /// <summary>w14:ligatures (catalog: run.openType).</summary>
     public string? Ligatures;
 
+    /// <summary>w14:numForm (lining, oldStyle) and w14:numSpacing (proportional, tabular); default leaves the font's.</summary>
+    public string? NumberForm, NumberSpacing;
+
+    /// <summary>The stylistic sets of w14:stylisticSets (1 to 20).</summary>
+    public int[]? StylisticSets;
+
+    /// <summary>w14:cntxtAlts: contextual alternates.</summary>
+    public bool? ContextualAlternates;
+
     public string? Style;
 
     public RunFormat Clone() => (RunFormat)MemberwiseClone();
@@ -63,8 +72,20 @@ public sealed class RunFormat
         {
             if (e.Name.Namespace == Wml.W14)
             {
-                if (e.Name.LocalName == "ligatures")
-                    Ligatures = (string?)e.Attribute(Wml.W14 + "val");
+                var value = (string?)e.Attribute(Wml.W14 + "val");
+                switch (e.Name.LocalName)
+                {
+                    case "ligatures": Ligatures = value; break;
+                    case "numForm": NumberForm = value; break;
+                    case "numSpacing": NumberSpacing = value; break;
+                    case "cntxtAlts": ContextualAlternates = value is null or "1" or "true" or "on"; break;
+                    case "stylisticSets":
+                        StylisticSets = e.Elements(Wml.W14 + "styleSet")
+                            .Where(s => (string?)s.Attribute(Wml.W14 + "val") is null or "1" or "true" or "on")
+                            .Select(s => int.TryParse((string?)s.Attribute(Wml.W14 + "id"), out var id) ? id : 0)
+                            .Where(id => id is >= 1 and <= 20).ToArray();
+                        break;
+                }
                 continue;
             }
             if (e.Name.Namespace != Wml.W)
