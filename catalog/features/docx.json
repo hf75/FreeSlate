@@ -1102,8 +1102,9 @@
       "description": "A part in another format (HTML, RTF, plain text, another DOCX) that Word converts when it opens the document.",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "DOCX chunks are merged as WordprocessingML; plain text becomes paragraphs. HTML and RTF chunks need an import of their own; until then their text is shown without formatting.",
+      "office": "Chunks are converted as Word converts them when it opens the document: a WordprocessingML package's body in the document's formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing (both as in Word), HTML through an import of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12 pt with 14 pt auto spacing, none after the chunk's last block, list items with Symbol bullets or numbers in the document's font, inline formatting and style attributes (all as in Word, docx/local/altchunk). Still open: HTML tables (outset frame, inset cells, cell spacing) are about 3 pt lower than Word's; RTF chunks show their text only.",
       "elements": [
         "w:altChunk",
         "w:altChunkPr",
@@ -4417,8 +4418,9 @@
       "title": "Ruby (phonetic guides)",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Ruby text set above the base text in its own size, aligned by w:rubyAlign; raises the line height.",
+      "office": "Ruby sets its phonetic text w:hpsRaise above its base, centered, left or right over it or spread over it (distributeLetter: the gaps between its letters; distributeSpace: also half a gap at either end); a ruby wider than its base spans its own width with the base centered under it; rightVertical runs it down the base's right, centered on the base; the line makes room for it (docx/local/ruby: the lines' baselines within 0.1 pt).",
       "elements": [
         "w:dirty",
         "w:hps",
@@ -4538,8 +4540,9 @@
       "title": "East Asian layout and emphasis marks",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Combined characters, horizontal-in-vertical text, two lines in one and emphasis marks.",
+      "office": "Emphasis marks (w:em) over every character but spaces, measured at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in and 1.01 em above the baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot below (SimSun) 0.3 em in and 0.38 em below. Two lines in one (w:eastAsianLayout w:combine): the text's halves in half size above one another, between full-size brackets (docx/local/ruby). Still open: horizontal text in vertical text (w:vert), which needs vertical text first.",
       "elements": [
         "w:eastAsianLayout",
         "w:em"
@@ -5578,8 +5581,9 @@
       "title": "Text frames and drop caps",
       "priority": "P2",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Paragraphs with w:framePr are positioned like floating objects and text wraps around them; drop caps are frames of one large letter spanning w:lines lines.",
+      "office": "Consecutive paragraphs with the same w:framePr form a frame that takes no room in the text: w:w wide or as wide as its content, at w:x or aligned (w:xAlign) in its column, the margin or the page, w:y below the next paragraph's top, the margin or the page; the paragraphs' borders frame it; text wraps around it with its borders, w:hSpace and w:vSpace kept free (not beside it with notBeside, over it with none). A drop cap is a frame of its letter at the start of the next paragraph, whose lines go around it; a margin drop cap stands left of the column (docx/local/frames: every line as in Word).",
       "elements": [
         "w:framePr",
         "w:suppressOverlap"
@@ -5611,8 +5615,9 @@
       "title": "East Asian line breaking and character grid",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Kinsoku (characters that may not start or end a line, custom lists in settings), hanging punctuation, automatic spacing between Asian and Latin text and digits, punctuation compression, and snapping to the section's document grid (section.docGrid).",
+      "office": "The automatic space between East Asian text and Latin letters (w:autoSpaceDE) and digits (w:autoSpaceDN), on by default, is a quarter of the East Asian character's size at every boundary; w:textAlignment top, center and bottom align a line's characters by their fonts' win ascents and descents (docx/local/ec-none 92.5 %). Punctuation compression (w:characterSpacingControl) changed nothing in Word with MS Mincho (docx/local/ec-*). Kinsoku follows Word's default characters (engine.lineLayout). Still open: custom kinsoku lists (w:noLineBreaksAfter, w:noLineBreaksBefore), hanging and overflowing punctuation.",
       "elements": [
         "w:adjustRightInd",
         "w:autoSpaceDE",
@@ -5911,8 +5916,9 @@
       "description": "Paragraphs of documents that came from HTML refer to nested divisions with margins and borders.",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Division margins add to the paragraph indents and spacing; division borders are drawn around their paragraphs.",
+      "office": "Paragraphs of HTML divisions (w:divId) take the margins of their division and the divisions around it as indents; bordered divisions frame their paragraphs like paragraph borders at the division's indents, their top and bottom lines with their space before the first and after the last paragraph. HTML auto spacing (w:beforeAutospacing, w:afterAutospacing) is 14 pt, none before the document's first paragraph or after a table (docx/local/html-divs, a page Word converted from HTML: 97.5 %, every line as in Word).",
       "elements": [
         "w:blockQuote",
         "w:bodyDiv",
@@ -6363,8 +6369,9 @@
       "title": "Picture bullets",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "The bullet is the picture of w:numPicBullet (VML or DrawingML), sized to the paragraph's font.",
+      "office": "A level with w:lvlPicBulletId shows the picture of its w:numPicBullet (VML or DrawingML) where the number would stand, on the baseline, 0.996 × size − 1.97 pt high (from 8 to 48 pt: 6 to 45.85 pt) and as wide as its aspect ratio makes it; the tab after it goes on from its end (picture bullet probes Word made, 94 %).",
       "elements": [
         "w:lvlPicBulletId",
         "w:numPicBullet"
@@ -6910,8 +6917,9 @@
       "title": "Line numbers",
       "priority": "P2",
       "difficulty": 3,
-      "status": "todo",
+      "status": "done",
       "strategy": "Numbers in the left margin per line, restarting per page, section or never, every n-th line.",
+      "office": "Body lines of numbered sections count, empty ones too, except those of paragraphs with w:suppressLineNumbers, tables, notes, headers and footers; the first line has w:start + 1; the count starts again on every page (newPage, the default), in every section (newSection) or never (continuous); every w:countBy-th number shows, right-aligned w:distance (0.25 in by default) left of its column on the line's baseline, in the Line Number style rather than the paragraph's formatting (docx/local/line-numbers 97.8 %).",
       "elements": [
         "w:lnNumType",
         "w:suppressLineNumbers"
@@ -6977,8 +6985,9 @@
       "title": "Document grid",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Line pitch (lines snap to the grid) and character pitch, the default of East Asian templates; changes the line height of every paragraph that snaps to the grid.",
+      "office": "A line grid (w:docGrid type lines, linesAndChars, snapToChars) makes every line of auto spacing in paragraphs that snap to it as many whole pitches high as its natural height needs, times its spacing factor, the extra half above and half below; exact spacing and w:snapToGrid off keep their heights; headers and footers do not snap (docx/local/docgrid: 18 and 15 pt grids with Arial 10 to 30 pt, every line within 0.13 pt). A character grid adds w:charSpace / 4096 pt to every character (East Asian lines exact, Latin within 0.03 pt a character).",
       "elements": [
         "w:docGrid"
       ],
@@ -8979,8 +8988,9 @@
       "title": "Floating tables",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "Positioned like a frame; text wraps around it (engine.floats).",
+      "office": "Tables with w:tblpPr take no room in the text: their outer left edge stands w:tblpX from their column, the margin or the page (or aligns by w:tblpXSpec), their top w:tblpY below the next paragraph's top, the margin or the page (or aligns by w:tblpYSpec); text wraps around them on both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table exactly as in Word). Known deviation: a table centered on the margin stands about 5 pt further right in Word.",
       "elements": [
         "w:tblOverlap",
         "w:tblpPr"

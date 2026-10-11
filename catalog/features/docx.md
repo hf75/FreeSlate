@@ -16,17 +16,17 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 7 |
-| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 3 |
+| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 2 | 3 |
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 5 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 5 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 6 |
-| [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 2 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 5 | 6 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 2 | 8 |
+| [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 4 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
 | [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 2 | 0 |
-| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 5 |
+| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 6 |
 | [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 5 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 4 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 2 | 2 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 4 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **157** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **28** | **164** |
 
 <a id="package"></a>
 
@@ -174,7 +174,7 @@ Properties Office keeps for older versions or for converted VML content.
 |---|---|---|---|---:|---:|
 | [Document and body](#document.body) | P0 | ●○○○○ | done | 2 | 2 |
 | [Page background](#document.background) | P2 | ●●○○○ | partial | 4 | 2 |
-| [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | todo | 3 | 1 |
+| [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | partial | 3 | 1 |
 | [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | done | 1 | 1 |
 | [Building blocks (glossary document)](#document.glossary) | P3 | ●○○○○ | done | 14 | 9 |
 
@@ -214,11 +214,13 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Imported content (altChunk)
 
-`document.altChunk` · P2 · difficulty 4 · todo
+`document.altChunk` · P2 · difficulty 4 · partial
 
 A part in another format (HTML, RTF, plain text, another DOCX) that Word converts when it opens the document.
 
 **Rendering:** DOCX chunks are merged as WordprocessingML; plain text becomes paragraphs. HTML and RTF chunks need an import of their own; until then their text is shown without formatting.
+
+**Office behaviour:** Chunks are converted as Word converts them when it opens the document: a WordprocessingML package's body in the document's formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing (both as in Word), HTML through an import of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12 pt with 14 pt auto spacing, none after the chunk's last block, list items with Symbol bullets or numbers in the document's font, inline formatting and style attributes (all as in Word, docx/local/altchunk). Still open: HTML tables (outset frame, inset cells, cell spacing) are about 3 pt lower than Word's; RTF chunks show their text only.
 
 **Elements (3):** [`w:altChunk`](../format/namespaces/w.md#waltchunk), [`w:altChunkPr`](../format/namespaces/w.md#waltchunkpr), [`w:matchSrc`](../format/namespaces/w.md#wmatchsrc)
 
@@ -495,8 +497,8 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Hidden text](#run.hidden) | P1 | ●●○○○ | done | 3 | 2 |
 | [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | done | 7 | 7 |
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | done | 14 | 3 |
-| [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | todo | 10 | 6 |
-| [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | todo | 2 | 1 |
+| [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | done | 10 | 6 |
+| [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | partial | 2 | 1 |
 | [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | partial | 38 | 0 |
 | [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
 | [Animated text](#run.animated) | P3 | ●○○○○ | done | 1 | 1 |
@@ -601,9 +603,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Ruby (phonetic guides)
 
-`run.ruby` · P2 · difficulty 4 · todo
+`run.ruby` · P2 · difficulty 4 · done
 
 **Rendering:** Ruby text set above the base text in its own size, aligned by w:rubyAlign; raises the line height.
+
+**Office behaviour:** Ruby sets its phonetic text w:hpsRaise above its base, centered, left or right over it or spread over it (distributeLetter: the gaps between its letters; distributeSpace: also half a gap at either end); a ruby wider than its base spans its own width with the base centered under it; rightVertical runs it down the base's right, centered on the base; the line makes room for it (docx/local/ruby: the lines' baselines within 0.1 pt).
 
 **Elements (10):** [`w:dirty`](../format/namespaces/w.md#wdirty), [`w:hps`](../format/namespaces/w.md#whps), [`w:hpsBaseText`](../format/namespaces/w.md#whpsbasetext), [`w:hpsRaise`](../format/namespaces/w.md#whpsraise), [`w:lid`](../format/namespaces/w.md#wlid), [`w:rt`](../format/namespaces/w.md#wrt), [`w:ruby`](../format/namespaces/w.md#wruby), [`w:rubyAlign`](../format/namespaces/w.md#wrubyalign), [`w:rubyBase`](../format/namespaces/w.md#wrubybase), [`w:rubyPr`](../format/namespaces/w.md#wrubypr)
 
@@ -615,9 +619,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### East Asian layout and emphasis marks
 
-`run.eastAsian` · P2 · difficulty 4 · todo
+`run.eastAsian` · P2 · difficulty 4 · partial
 
 **Rendering:** Combined characters, horizontal-in-vertical text, two lines in one and emphasis marks.
+
+**Office behaviour:** Emphasis marks (w:em) over every character but spaces, measured at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in and 1.01 em above the baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot below (SimSun) 0.3 em in and 0.38 em below. Two lines in one (w:eastAsianLayout w:combine): the text's halves in half size above one another, between full-size brackets (docx/local/ruby). Still open: horizontal text in vertical text (w:vert), which needs vertical text first.
 
 **Elements (2):** [`w:eastAsianLayout`](../format/namespaces/w.md#weastasianlayout), [`w:em`](../format/namespaces/w.md#wem)
 
@@ -682,12 +688,12 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [Keep with next, keep lines together, widow control, page break before](#paragraph.pagination) | P0 | ●●●●○ | done | 4 | 2 |
 | [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | done | 8 | 35 |
 | [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | done | 5 | 3 |
-| [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | todo | 2 | 1 |
-| [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | todo | 14 | 8 |
+| [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | done | 2 | 1 |
+| [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | partial | 14 | 8 |
 | [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | done | 2 | 2 |
 | [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | todo | 5 | 2 |
 | [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | done | 2 | 1 |
-| [HTML divisions](#paragraph.htmlDivs) | P2 | ●●●○○ | todo | 11 | 5 |
+| [HTML divisions](#paragraph.htmlDivs) | P2 | ●●●○○ | done | 11 | 5 |
 
 <a id="paragraph.basic"></a>
 
@@ -773,9 +779,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Text frames and drop caps
 
-`paragraph.frames` · P2 · difficulty 4 · todo
+`paragraph.frames` · P2 · difficulty 4 · done
 
 **Rendering:** Paragraphs with w:framePr are positioned like floating objects and text wraps around them; drop caps are frames of one large letter spanning w:lines lines.
+
+**Office behaviour:** Consecutive paragraphs with the same w:framePr form a frame that takes no room in the text: w:w wide or as wide as its content, at w:x or aligned (w:xAlign) in its column, the margin or the page, w:y below the next paragraph's top, the margin or the page; the paragraphs' borders frame it; text wraps around it with its borders, w:hSpace and w:vSpace kept free (not beside it with notBeside, over it with none). A drop cap is a frame of its letter at the start of the next paragraph, whose lines go around it; a margin drop cap stands left of the column (docx/local/frames: every line as in Word).
 
 **Elements (2):** [`w:framePr`](../format/namespaces/w.md#wframepr), [`w:suppressOverlap`](../format/namespaces/w.md#wsuppressoverlap)
 
@@ -787,9 +795,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### East Asian line breaking and character grid
 
-`paragraph.eastAsian` · P1 · difficulty 4 · todo
+`paragraph.eastAsian` · P1 · difficulty 4 · partial
 
 **Rendering:** Kinsoku (characters that may not start or end a line, custom lists in settings), hanging punctuation, automatic spacing between Asian and Latin text and digits, punctuation compression, and snapping to the section's document grid (section.docGrid).
+
+**Office behaviour:** The automatic space between East Asian text and Latin letters (w:autoSpaceDE) and digits (w:autoSpaceDN), on by default, is a quarter of the East Asian character's size at every boundary; w:textAlignment top, center and bottom align a line's characters by their fonts' win ascents and descents (docx/local/ec-none 92.5 %). Punctuation compression (w:characterSpacingControl) changed nothing in Word with MS Mincho (docx/local/ec-*). Kinsoku follows Word's default characters (engine.lineLayout). Still open: custom kinsoku lists (w:noLineBreaksAfter, w:noLineBreaksBefore), hanging and overflowing punctuation.
 
 **Elements (14):** [`w:adjustRightInd`](../format/namespaces/w.md#wadjustrightind), [`w:autoSpaceDE`](../format/namespaces/w.md#wautospacede), [`w:autoSpaceDN`](../format/namespaces/w.md#wautospacedn), [`w:characterSpacingControl`](../format/namespaces/w.md#wcharacterspacingcontrol), [`w:kinsoku`](../format/namespaces/w.md#wkinsoku), [`w:noLineBreaksAfter`](../format/namespaces/w.md#wnolinebreaksafter), [`w:noLineBreaksBefore`](../format/namespaces/w.md#wnolinebreaksbefore), [`w:noPunctuationKerning`](../format/namespaces/w.md#wnopunctuationkerning), [`w:overflowPunct`](../format/namespaces/w.md#woverflowpunct), [`w:snapToGrid`](../format/namespaces/w.md#wsnaptogrid), [`w:strictFirstAndLastChars`](../format/namespaces/w.md#wstrictfirstandlastchars), [`w:textAlignment`](../format/namespaces/w.md#wtextalignment), [`w:topLinePunct`](../format/namespaces/w.md#wtoplinepunct), [`w:wordWrap`](../format/namespaces/w.md#wwordwrap)
 
@@ -847,11 +857,13 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### HTML divisions
 
-`paragraph.htmlDivs` · P2 · difficulty 3 · todo
+`paragraph.htmlDivs` · P2 · difficulty 3 · done
 
 Paragraphs of documents that came from HTML refer to nested divisions with margins and borders.
 
 **Rendering:** Division margins add to the paragraph indents and spacing; division borders are drawn around their paragraphs.
+
+**Office behaviour:** Paragraphs of HTML divisions (w:divId) take the margins of their division and the divisions around it as indents; bordered divisions frame their paragraphs like paragraph borders at the division's indents, their top and bottom lines with their space before the first and after the last paragraph. HTML auto spacing (w:beforeAutospacing, w:afterAutospacing) is 14 pt, none before the document's first paragraph or after a table (docx/local/html-divs, a page Word converted from HTML: 97.5 %, every line as in Word).
 
 **Elements (11):** [`w:blockQuote`](../format/namespaces/w.md#wblockquote), [`w:bodyDiv`](../format/namespaces/w.md#wbodydiv), [`w:div`](../format/namespaces/w.md#wdiv), [`w:divBdr`](../format/namespaces/w.md#wdivbdr), [`w:divId`](../format/namespaces/w.md#wdivid), [`w:divs`](../format/namespaces/w.md#wdivs), [`w:divsChild`](../format/namespaces/w.md#wdivschild), [`w:marBottom`](../format/namespaces/w.md#wmarbottom), [`w:marLeft`](../format/namespaces/w.md#wmarleft), [`w:marRight`](../format/namespaces/w.md#wmarright), [`w:marTop`](../format/namespaces/w.md#wmartop)
 
@@ -867,7 +879,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 |---|---|---|---|---:|---:|
 | [Numbering definitions and number formats](#numbering.definitions) | P0 | ●●●●○ | done | 21 | 20 |
 | [List counters](#numbering.counting) | P0 | ●●●●○ | done | 3 | 3 |
-| [Picture bullets](#numbering.pictureBullets) | P2 | ●●●○○ | todo | 2 | 0 |
+| [Picture bullets](#numbering.pictureBullets) | P2 | ●●●○○ | done | 2 | 0 |
 
 <a id="numbering.definitions"></a>
 
@@ -905,9 +917,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Picture bullets
 
-`numbering.pictureBullets` · P2 · difficulty 3 · todo
+`numbering.pictureBullets` · P2 · difficulty 3 · done
 
 **Rendering:** The bullet is the picture of w:numPicBullet (VML or DrawingML), sized to the paragraph's font.
+
+**Office behaviour:** A level with w:lvlPicBulletId shows the picture of its w:numPicBullet (VML or DrawingML) where the number would stand, on the baseline, 0.996 × size − 1.97 pt high (from 8 to 48 pt: 6 to 45.85 pt) and as wide as its aspect ratio makes it; the tab after it goes on from its end (picture bullet probes Word made, 94 %).
 
 **Elements (2):** [`w:lvlPicBulletId`](../format/namespaces/w.md#wlvlpicbulletid), [`w:numPicBullet`](../format/namespaces/w.md#wnumpicbullet)
 
@@ -922,9 +936,9 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | partial | 9 | 7 |
 | [Columns](#section.columns) | P1 | ●●●●○ | done | 2 | 2 |
 | [Page borders](#section.pageBorders) | P2 | ●●●○○ | partial | 8 | 29 |
-| [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | todo | 2 | 1 |
+| [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | done | 2 | 1 |
 | [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | partial | 2 | 1 |
-| [Document grid](#section.docGrid) | P1 | ●●●●○ | todo | 1 | 0 |
+| [Document grid](#section.docGrid) | P1 | ●●●●○ | done | 1 | 0 |
 | [Printer and book fold settings](#section.printing) | P3 | ●●○○○ | done | 6 | 5 |
 
 <a id="section.page"></a>
@@ -979,9 +993,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Line numbers
 
-`section.lineNumbers` · P2 · difficulty 3 · todo
+`section.lineNumbers` · P2 · difficulty 3 · done
 
 **Rendering:** Numbers in the left margin per line, restarting per page, section or never, every n-th line.
+
+**Office behaviour:** Body lines of numbered sections count, empty ones too, except those of paragraphs with w:suppressLineNumbers, tables, notes, headers and footers; the first line has w:start + 1; the count starts again on every page (newPage, the default), in every section (newSection) or never (continuous); every w:countBy-th number shows, right-aligned w:distance (0.25 in by default) left of its column on the line's baseline, in the Line Number style rather than the paragraph's formatting (docx/local/line-numbers 97.8 %).
 
 **Elements (2):** [`w:lnNumType`](../format/namespaces/w.md#wlnnumtype), [`w:suppressLineNumbers`](../format/namespaces/w.md#wsuppresslinenumbers)
 
@@ -1009,9 +1025,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Document grid
 
-`section.docGrid` · P1 · difficulty 4 · todo
+`section.docGrid` · P1 · difficulty 4 · done
 
 **Rendering:** Line pitch (lines snap to the grid) and character pitch, the default of East Asian templates; changes the line height of every paragraph that snaps to the grid.
+
+**Office behaviour:** A line grid (w:docGrid type lines, linesAndChars, snapToChars) makes every line of auto spacing in paragraphs that snap to it as many whole pitches high as its natural height needs, times its spacing factor, the extra half above and half below; exact spacing and w:snapToGrid off keep their heights; headers and footers do not snap (docx/local/docgrid: 18 and 15 pt grids with Arial 10 to 30 pt, every line within 0.13 pt). A character grid adds w:charSpace / 4096 pt to every character (East Asian lines exact, Latin within 0.03 pt a character).
 
 **Elements (1):** [`w:docGrid`](../format/namespaces/w.md#wdocgrid)
 
@@ -1109,7 +1127,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Row height, splitting and header rows](#table.rows) | P0 | ●●●●○ | done | 3 | 2 |
 | [Table and cell borders and shading](#table.borders) | P0 | ●●●●○ | done | 13 | 51 |
 | [Table styles and conditional formatting](#table.styles) | P0 | ●●●●○ | done | 7 | 10 |
-| [Floating tables](#table.floating) | P1 | ●●●●○ | todo | 2 | 2 |
+| [Floating tables](#table.floating) | P1 | ●●●●○ | done | 2 | 2 |
 | [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | partial | 5 | 6 |
 | [Table title and description](#table.accessibility) | P3 | ●○○○○ | done | 2 | 0 |
 
@@ -1197,9 +1215,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Floating tables
 
-`table.floating` · P1 · difficulty 4 · todo
+`table.floating` · P1 · difficulty 4 · done
 
 **Rendering:** Positioned like a frame; text wraps around it (engine.floats).
+
+**Office behaviour:** Tables with w:tblpPr take no room in the text: their outer left edge stands w:tblpX from their column, the margin or the page (or aligns by w:tblpXSpec), their top w:tblpY below the next paragraph's top, the margin or the page (or aligns by w:tblpYSpec); text wraps around them on both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table exactly as in Word). Known deviation: a table centered on the margin stands about 5 pt further right in Word.
 
 **Elements (2):** [`w:tblOverlap`](../format/namespaces/w.md#wtbloverlap), [`w:tblpPr`](../format/namespaces/w.md#wtblppr)
 
