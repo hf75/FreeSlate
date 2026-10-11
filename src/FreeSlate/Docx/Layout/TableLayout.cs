@@ -802,7 +802,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     spanning.Add((c0, c1, cmin, cmax, pref));
             }
         }
-        // A cell over several columns widens them equally where they are too narrow for it.
+        // Preferred widths fix their columns first; a cell over several columns then widens them equally where they
+        // are too narrow for it together (measured with docx/local/hmerge-g: a 200 pt cell over two 100 pt columns
+        // leaves them as they are).
+        for (var k = 0; k < columns; k++)
+        {
+            if (preferred[k] is { } p)
+                min[k] = max[k] = Math.Max(p, min[k]);
+        }
         foreach (var (from, to, cmin, cmax, pref) in spanning)
         {
             if (to <= from)
@@ -825,11 +832,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
         }
         for (var k = 0; k < columns; k++)
-        {
-            if (preferred[k] is { } p)
-                min[k] = max[k] = Math.Max(p, min[k]);
             max[k] = Math.Max(max[k], min[k]);
-        }
         return (min, max, margins, preferred);
     }
 

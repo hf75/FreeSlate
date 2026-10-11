@@ -98,6 +98,23 @@ public sealed partial class ModelReader
                 (tableParagraph, tableRun) = (savedParagraph, savedRun);
             }
         }
+        // Horizontally merged cells of old documents (w:hMerge): a cell that continues the merge widens the one before
+        // it, which keeps its content and takes the right border of the last (measured with docx/local/hmerge: the
+        // content of the continuing cells does not show).
+        foreach (var row in model.Rows)
+        {
+            for (var c = 1; c < row.Cells.Count; c++)
+            {
+                var (cell, before) = (row.Cells[c], row.Cells[c - 1]);
+                if (cell.Format.HorizontalMerge != "continue" || before.Format.HorizontalMerge is null)
+                    continue;
+                before.Format.GridSpan += cell.Format.GridSpan;
+                if (before.Format.Width is { Type: "dxa" } a && cell.Format.Width is { Type: "dxa" } b)
+                    before.Format.Width = a with { Value = a.Value + b.Value };
+                before.CellBorders.Right = cell.CellBorders.Right;
+                row.Cells.RemoveAt(c--);
+            }
+        }
         return new TableBlock(tbl, model);
     }
 
