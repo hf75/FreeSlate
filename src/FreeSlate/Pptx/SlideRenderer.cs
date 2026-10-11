@@ -133,7 +133,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// The shape and, for slide placeholders, the layout and master placeholders it inherits from. A slide
     /// placeholder the layout has no placeholder for inherits from no placeholder at all, not even the master's
     /// of its type (measured: dt and sldNum with an idx the layout lacks take neither position nor the master
-    /// placeholders' 12 pt, color and alignment, only the master's text style of their type).
+    /// placeholders' 12 pt, color and alignment, only the master's text style of their type), unless its idx is
+    /// 4294967295 (none): then it inherits from the master's placeholder of its type.
     /// </summary>
     List<PartElement> Chain(XElement shape, string part, bool isSlide)
     {
@@ -142,10 +143,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return chain;
         if (slide.Layout != null)
         {
-            if (Placeholders.InLayout(slide.Layout, ph) is not { } layoutShape)
+            if (Placeholders.InLayout(slide.Layout, ph) is { } layoutShape)
+            {
+                chain.Add(new PartElement(layoutShape, slide.LayoutPart!));
+                ph = Placeholders.Ph(layoutShape)!;
+            }
+            else if (!Placeholders.Unindexed(ph))
                 return chain;
-            chain.Add(new PartElement(layoutShape, slide.LayoutPart!));
-            ph = Placeholders.Ph(layoutShape)!;
         }
         if (Placeholders.InMaster(slide.Master, ph) is { } masterShape)
             chain.Add(new PartElement(masterShape, slide.MasterPart!));

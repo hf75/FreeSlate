@@ -146,9 +146,13 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         // The table's effects (a:tblPr/a:effectLst): the cells' fills and borders cast its shadow and glow, the text
         // does not; translucent fills let the shadow show through (measured: LibreOffice's table-shadow-blur).
         var body = fills.ToString() + borders;
-        if (SvgEffects.Filter(tblPr?.Element(Ns.A + "effectLst"), slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs,
-                parts: SvgEffects.Parts.Outer) is { } outer)
+        var effects = tblPr?.Element(Ns.A + "effectLst");
+        if (SvgEffects.Filter(effects, slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs, parts: SvgEffects.Parts.Outer) is { } outer)
             body = $"<g filter=\"url(#{outer})\">{body}</g>" + body;
+        // A scaled, skewed or flipped shadow is a transformed copy of the table behind it, as for shapes (measured:
+        // LibreOffice's tdf150020-shadow-alignment, a black shadow 130 % the table's size about its center).
+        if (SvgEffects.Shadow(effects, slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs) is { } copy)
+            body = $"<g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">{fills}{borders}</g></g>" + body;
         var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + body + texts;
         return (svg, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
     }

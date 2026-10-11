@@ -84,6 +84,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     abstract record Source;
     sealed record ListStyleSource(XElement ListStyle) : Source;
     sealed record FontRefSource(XElement FontRef) : Source;
+    /// <summary>A list style that gives only the text's fill (see <see cref="BuildSources"/>).</summary>
+    sealed record FillSource(XElement ListStyle) : Source;
 
     /// <summary>a:tcTxStyle of a table style part: b/i as on/off, a font or font reference and a color.</summary>
     sealed record TableTextSource(XElement Style) : Source;
@@ -1101,7 +1103,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         AddList(chain.Defaults);
 
         var txStyles = slide.Master?.Root?.Element(Ns.P + "txStyles");
-        AddList(txStyles?.Element(Ns.P + chain.StyleKind + "Style"));
+        // Text outside title and body placeholders takes the presentation's default text style and only its color
+        // from the master's other style (measured with the object model: a text box, a shape and dt, ftr and sldNum
+        // placeholders without a layout placeholder take size, italics, font, spacing, alignment, indent and line
+        // spacing from defaultTextStyle, the color from otherStyle, not its bold; table cells take otherStyle).
+        if (chain.StyleKind == "other")
+        {
+            if (txStyles?.Element(Ns.P + "otherStyle") is { } other)
+                sources.Add(new FillSource(other));
+        }
+        else
+            AddList(txStyles?.Element(Ns.P + chain.StyleKind + "Style"));
         AddList(slide.Presentation.DefaultTextStyle);
         return sources;
     }
@@ -1164,6 +1176,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     return new XElement(Ns.A + "solidFill", fontRef.FontRef.Elements());
                 if (names.Contains("latin") && fontRef.FontRef.Str("idx") is "minor" or "major")
                     return new XElement(Ns.A + "latin", new XAttribute("typeface", fontRef.FontRef.Str("idx") == "major" ? "+mj-lt" : "+mn-lt"));
+                continue;
+            }
+            if (source is FillSource fillSource)
+            {
+                if (names.Contains("solidFill") && Find(fillSource.ListStyle.Element(Ns.A + $"lvl{level + 1}pPr")?.Element(Ns.A + "defRPr")) is { } fill)
+                    return fill;
                 continue;
             }
             if (Find(Level(source, level)?.Element(Ns.A + "defRPr")) is { } inherited)

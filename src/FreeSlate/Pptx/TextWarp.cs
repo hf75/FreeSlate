@@ -98,10 +98,10 @@ public static class TextWarp
             var (mode, before, after, advance) = align?.Invoke(line) ?? ("l", minX - box.L, box.L + box.W - maxX, maxX - minX);
             var width = Math.Max(1e-6, advance);
             var lineStart = box.L + before;
-            // Old WordArt fills the path, scaled evenly; otherwise the glyphs keep their size and the alignment places
-            // them along the path.
-            var scale = fromWordArt ? path.Length / width : 1;
-            var start = fromWordArt ? 0 : mode switch
+            // Old WordArt fills the path, scaled evenly; otherwise the glyphs keep their size, shrunk only when the line
+            // is longer than the path, and the alignment places them along the path.
+            var scale = fromWordArt ? path.Length / width : Math.Min(1, path.Length / width);
+            var start = fromWordArt || scale < 1 ? 0 : mode switch
             {
                 "ctr" => (path.Length - width) / 2,
                 "r" => path.Length - width - after,
@@ -149,7 +149,9 @@ public static class TextWarp
         var reference = outward ? lines.Count - 1 : 0;
 
         var widths = Enumerable.Range(0, lines.Count).Select(i => Math.Max(1e-6, align?.Invoke(i).Width ?? 0)).ToList();
-        var scale = fromWordArt ? path.Length / widths.Max() : 1;
+        // Text longer than its path shrinks until it fits (LibreOffice's tdf116350-texteffects: an arch of 56° holds
+        // the whole line, small).
+        var scale = fromWordArt ? path.Length / widths.Max() : Math.Min(1, path.Length / widths.Max());
         for (var line = 0; line < lines.Count; line++)
         {
             var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == line).ToList();

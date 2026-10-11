@@ -55,6 +55,13 @@ public static class Placeholders
     static long? Index(XElement ph) => ph.Attribute("idx")?.Value is not { } value ? 0
         : long.TryParse(value, out var idx) && idx != 4294967295 ? idx : null;
 
+    /// <summary>
+    /// Whether a placeholder has the idx 4294967295, which stands for none: without a layout placeholder of its type
+    /// it inherits from the master's (measured: title and body on a blank layout take the master's places, while
+    /// a title without idx or with idx 20 takes no place there).
+    /// </summary>
+    public static bool Unindexed(XElement ph) => Index(ph) == null;
+
     /// <summary>Finds the master placeholder for a layout (or slide) placeholder by type.</summary>
     public static XElement? InMaster(XDocument? master, XElement ph)
     {

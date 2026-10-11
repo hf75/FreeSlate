@@ -190,8 +190,10 @@ areas:
           text style of its own type applies (dt and sldNum at 18 pt, black and left-aligned instead of the
           master placeholders' 12 pt gray). The idx 4294967295 (-1) stands for none: such placeholders match
           by type (sldNum, ftr and dt take their layout placeholders' places at 12 pt gray, body the object
-          placeholder's). Verified with generated/presentation and text-basic; hasCustomPrompt, isPhoto and
-          userDrawn are editing state.
+          placeholder's), and without a layout placeholder of their type the master's (on a blank layout,
+          title and body take the master's places, while a title without idx or with idx 20 takes none).
+          Verified with generated/presentation and text-basic; hasCustomPrompt, isPhoto and userDrawn are
+          editing state.
 
       - id: presentation.colorMap
         title: Color mapping
@@ -1412,8 +1414,10 @@ areas:
           length on their line's parallel, from the path's start (insets do not count), and then lowered: the
           line on the path has its baseline 0.79 em under the top of its line box below the path (eight
           fonts, 12 to 72 pt, within 0.01 em). Old WordArt scales all lines alike so that the longest fills
-          the path. Known deviation: old WordArt with several lines on part of an elliptic arc comes out
-          larger than in PowerPoint (LibreOffice's tdf125573).
+          the path; other text longer than its path shrinks until it fits (LibreOffice's
+          tdf116350-texteffects: an arch of 56 degrees holds the whole line, small). Known deviation: old
+          WordArt with several lines on part of an elliptic arc comes out larger than in PowerPoint
+          (LibreOffice's tdf125573).
 
       - id: text.threeD
         title: 3D text
@@ -1515,7 +1519,9 @@ areas:
           (tblPr rtl) mirrors its cells with their left and right borders, not the text in them
           (generated/tables). Verified with generated/tables (97.7 %); a:headers and a:header only name cells
           for accessibility. The table's effects (a:tblPr/a:effectLst) are cast by the cells' fills and borders,
-          not the text; translucent fills show the shadow through (LibreOffice's table-shadow-blur).
+          not the text; translucent fills show the shadow through (LibreOffice's table-shadow-blur); a scaled
+          shadow is scaled about its alignment point like a shape's (tdf150020-shadow-alignment: 130 % about
+          the center).
 
       - id: table.cells
         title: Cell formatting
