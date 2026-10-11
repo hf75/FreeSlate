@@ -59,6 +59,12 @@ public sealed class PageBox
     /// <summary>Bookmarks that start on the page: their names and where their paragraph begins (catalog: field.bookmarks).</summary>
     public List<(string Name, double X, double Y)> Bookmarks { get; } = [];
 
+    /// <summary>
+    /// Alternative texts of tables on the page (w:tblCaption, w:tblDescription, catalog: table.accessibility) with the
+    /// part of the table the page holds.
+    /// </summary>
+    public List<(string Text, double X, double Y, double Width, double Height)> Alternatives { get; } = [];
+
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
 }
@@ -662,11 +668,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         RowBox? last = null;
         var tableTop = y;
+        // The table's alternative text, for the part of it on each page.
+        var alternative = string.Join(": ", new[] { table.Table.Format.Caption, table.Table.Format.Description }.Where(t => !string.IsNullOrWhiteSpace(t)));
+        void Describe()
+        {
+            if (alternative.Length > 0 && y > tableTop)
+                page!.Alternatives.Add((alternative, left + box.Left, tableTop, box.Width, y - tableTop));
+        }
         // Where the table breaks, the line below the page's last row closes it, and a frame (cell spacing) ends.
         void Break()
         {
             if (last != null)
                 Below(last, left);
+            Describe();
             TableLayout.Frame(box, left, tableTop, y, page!.Borders);
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -707,6 +721,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             Below(last, left);
             y += last.BottomBorderWidth;
         }
+        Describe();
         TableLayout.Frame(box, left, tableTop, y, page!.Borders);
         pendingAfter = 0;
         page!.TrailingSpace = 0;

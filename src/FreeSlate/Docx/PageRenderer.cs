@@ -62,6 +62,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
                 svg.Append(Drawing(drawing, page));
         }
+        foreach (var (text, x, y, w, h) in page.Alternatives)
+            svg.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(text)}\" style=\"left:{Px(x)}px;top:{Px(y)}px;width:{Px(w)}px;height:{Px(h)}px\"></div>");
         foreach (var (name, x, y) in page.Bookmarks)
             svg.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(name)}\" style=\"left:{Px(x)}px;top:{Px(y)}px\"></a>");
         if (defs.Length > 0)

@@ -29,6 +29,7 @@ public static class DocxConverter
         .glyphs{position:absolute;left:0;top:0}
         .page .sp{position:absolute;left:0;top:0;transform-origin:0 0}
         .page a.bm{position:absolute;width:0;height:0}
+        .page .alt{position:absolute;pointer-events:none}
         .page a text{cursor:pointer}
         .page .grp{position:absolute;left:0;top:0}
         .page .sp>svg{position:absolute;left:0;top:0;overflow:visible}
