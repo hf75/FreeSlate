@@ -52,6 +52,14 @@ public sealed class DocumentContext : IDisposable
     public FontLocator FontLocator { get; }
     public FontResolver Fonts { get; }
 
+    /// <summary>
+    /// The compatibility mode Word lays the document out in (w:compatSetting compatibilityMode: 11 Word 2003, 12 Word
+    /// 2007, 14 Word 2010, 15 Word 2013 and later; catalog: settings.compatibility); a document without one opens as
+    /// Word 2007's.
+    /// </summary>
+    public int CompatibilityMode => Settings.Child("compat")?.Elements(Wml.W + "compatSetting")
+        .FirstOrDefault(e => e.Attr("name") == "compatibilityMode")?.Attr("val") is { } v && int.TryParse(v, out var mode) ? mode : 12;
+
     /// <summary>The regional format for dates the document shows (date blocks, fields), the system's by default.</summary>
     public System.Globalization.CultureInfo Culture { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
 

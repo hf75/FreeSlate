@@ -970,12 +970,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var piece = text[start..i];
                 var glyphs = style.Font.Data.GlyphsWithFeatures(piece, style.Features, language: style.Language);
                 var firstOfCluster = new HashSet<int>();
-                foreach (var g in glyphs)
+                for (var k = 0; k < glyphs.Length; k++)
                 {
+                    var g = glyphs[k];
                     if (g.Cluster < piece.Length)
                     {
                         advances[start + g.Cluster] += g.Advance * style.Size * style.Scale;
                         firstOfCluster.Add(g.Cluster);
+                        // Kern table pairs between ANSI characters (documents before Word 2010).
+                        if (style.LegacyKerning && k + 1 < glyphs.Length && piece[g.Cluster] <= 'ÿ'
+                            && glyphs[k + 1].Cluster < piece.Length && piece[glyphs[k + 1].Cluster] <= 'ÿ')
+                            advances[start + g.Cluster] += style.Font.Data.LegacyKerning(g.Id, glyphs[k + 1].Id) * style.Size * style.Scale;
                     }
                 }
                 foreach (var cluster in firstOfCluster)

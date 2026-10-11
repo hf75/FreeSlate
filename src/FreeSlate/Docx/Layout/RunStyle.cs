@@ -43,6 +43,12 @@ public sealed record RunStyle(
     /// <summary>The direction a w:bdo around the run forces on it ("rtl", "ltr"), or null.</summary>
     public string? Override { get; init; }
 
+    /// <summary>
+    /// Kerning from the font's kern table between ANSI characters instead of GPOS (documents before Word 2010,
+    /// w:useAnsiKerningPairs; catalog: settings.compatibility).
+    /// </summary>
+    public bool LegacyKerning { get; init; }
+
     /// <summary>The East Asian emphasis mark of every character (w:em: dot, comma, circle, underDot), or null.</summary>
     public string? Emphasis { get; init; }
 
@@ -100,10 +106,22 @@ public static class WordFonts
     /// reaches its w:kern threshold (no w:kern, no kerning; measured with docx/local/lm-*), ligatures and contextual
     /// alternates only where w14:ligatures asks for them.
     /// </summary>
-    public static List<string> Features(RunFormat format, double size)
+    /// <param name="legacy">
+    /// A document in a compatibility mode before Word 2010 (14): no OpenType features (ligatures, alternates, number
+    /// forms, stylistic sets), kerning only from the font's kern table (w:useAnsiKerningPairs; measured with Word-saved
+    /// compatibility copies: Aptos, which has none, sets wider and breaks lines later).
+    /// </param>
+    public static List<string> Features(RunFormat format, double size, bool legacy = false, bool kernTable = true)
     {
         var features = new List<string>();
-        features.Add(format.Kern is { } threshold && threshold > 0 && size >= threshold ? "kern" : "-kern");
+        // Kerning before Word 2010 comes from the kern table, which the layout applies itself.
+        var kern = format.Kern is { } threshold && threshold > 0 && size >= threshold && !legacy;
+        features.Add(kern ? "kern" : "-kern");
+        if (legacy)
+        {
+            features.AddRange(["-liga", "-clig", "-calt", "-hlig", "-dlig"]);
+            return features;
+        }
         var ligatures = format.Ligatures ?? "none";
         var standard = ligatures is "standard" or "standardContextual" or "standardHistorical" or "standardDiscretional"
             or "standardContextualHistorical" or "standardContextualDiscretional" or "standardHistoricalDiscretional" or "all";

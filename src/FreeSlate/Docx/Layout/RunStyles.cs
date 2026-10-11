@@ -140,7 +140,7 @@ public sealed class RunStyles(DocumentContext context)
             "subscript" => -size * 0.08,
             _ => 0,
         };
-        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size), bold, italic)
+        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
         {
             Underline = format.Underline is { } u && u != "none" ? u : null,
             UnderlineColor = format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
@@ -160,6 +160,7 @@ public sealed class RunStyles(DocumentContext context)
             RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
             Override = format.Override,
             Emphasis = format.Emphasis is { } em && em != "none" ? em : null,
+            LegacyKerning = context.CompatibilityMode < 14 && format.Kern is { } kern && kern > 0 && size >= kern,
             Language = slot switch
             {
                 WordSlot.EastAsia => format.LanguageEastAsia ?? format.Language,
