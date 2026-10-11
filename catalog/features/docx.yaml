@@ -479,12 +479,17 @@ areas:
         elements: [w:spacing, w:w, w:kern, w:position, w:fitText]
         priority: P1
         difficulty: 2
-        status: partial
+        status: done
         strategy: Applied in measurement; kerning from the font's kern/GPOS data above the w:kern threshold size.
         office: >-
           Character spacing is added after every cluster, horizontal scale stretches the advances, raised and lowered
           text adds what it reaches beyond the line outside the line spacing multiple (text 3 pt up and 3 pt down
-          makes a 1.15 line 6 pt higher, not 6.95 pt; docx/generated/character-formats). Still open: w:fitText.
+          makes a 1.15 line 6 pt higher, not 6.95 pt; docx/generated/character-formats). Fit text (w:fitText):
+          neighboring runs with one id fit together into the width; wider text is scaled horizontally to it, narrower
+          text spreads with equal gaps between its characters, the last ending at the width (docx/local/fittext,
+          fittext2). Known deviation: Word also narrows spread characters, to between (n - 1)/n of their width (very
+          wide fits) and all of it, and quantizes the scale to its 600 dpi font widths; characters here keep their
+          width, each standing within about a point of Word's.
 
       - id: run.hidden
         title: Hidden text
@@ -1141,12 +1146,13 @@ areas:
         elements: [w:vAlign, w:textDirection, w:hideMark, w:headers, w:header]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: Vertical alignment, rotated text in cells, cells whose end mark takes no height.
         office: >-
           Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left
           and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); w:noWrap keeps a cell
-          unwrapped in autofit; w:hideMark lets an empty cell take no height. Still open: w:tcFitText.
+          unwrapped in autofit; w:hideMark lets an empty cell take no height. Fit text of cells (w:tcFitText) changes
+          nothing in Word's printout: text too long for its cell wraps as in any other cell (docx/local/fittext).
 
       - id: table.accessibility
         title: Table title and description
