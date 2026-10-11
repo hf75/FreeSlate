@@ -654,7 +654,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var shared = new List<Source>();
         if (rich.Element(Ns.A + "lstStyle") is { } own) shared.Add(new ListStyleSource(own));
         shared.AddRange(ChartSources(layers));
-        var counters = new int[9];
+        var counters = new Numbering();
         var paragraphs = rich.Elements(Ns.A + "p").Select(p =>
         {
             var sources = ChartSources([p.Element(Ns.A + "pPr")?.Element(Ns.A + "defRPr")]);
@@ -717,7 +717,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,
         bool spaceFirstLast = false)
     {
-        var counters = new int[9];
+        var counters = new Numbering();
         var paragraphs = txBody.Elements(Ns.A + "p")
             .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
             .ToList();
@@ -1063,6 +1063,36 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 sb.Append(Line(lower, thin, fill));
                 sb.Append(Line(lower - 2 * thin, thin, fill));
             }
+            else if (style.UnderlineWidth is { } lineWidth && !heavy)
+            {
+                // A line of its own (a:uLn) outlines the underline: the plain underline is filled with uFill (or the
+                // text's color) and stroked with uLn, half inside and half outside its edges and at least a pixel
+                // (measured with Arial 40 pt and uLn of 0.25 to 6 pt: 0.25 pt adds a pixel row of line above and
+                // below a fill of three rows, 2 pt leaves one row of fill between three rows of line, 3 pt covers
+                // it; LibreOffice's text-underline slide).
+                string Paint(RgbColor? c) => c is { } v
+                    ? v.A < 0.999 ? $" fill=\"{v.ToHex()}\" fill-opacity=\"{Units.Css4(v.A)}\"" : $" fill=\"{v.ToHex()}\""
+                    : "";
+                var stroke = lineWidth * PxPerPt;
+                var bottom = top + unit;
+                if (style.UnderlineDash is { } dash && Dashes.Preset(dash) is { } lineDash)
+                {
+                    // Dashed: the outline as a path from the bottom left corner, where PowerPoint starts the pattern.
+                    var strokeColor = style.UnderlineLineColor is { } sc ? $" stroke=\"{sc.ToHex()}\"" : " stroke=\"currentColor\"";
+                    var dashUnit = Dashes.Unit(stroke);
+                    sb.Append($"<path d=\"M{Units.Css(left)} {Units.Css(bottom)}V{Units.Css(top)}H{Units.Css(left + width)}V{Units.Css(bottom)}Z\"{Paint(style.UnderlineFillColor)}{strokeColor}" +
+                              $" stroke-width=\"{Units.Css(Math.Max(1, stroke))}\" stroke-dasharray=\"{string.Join(' ', lineDash.Select(d => Units.Css(d * dashUnit)))}\"/>");
+                }
+                else
+                {
+                    var half = stroke / 2;
+                    var (outerTop, outerBottom) = (Math.Floor(top - half + 0.5), Math.Ceiling(bottom + half));
+                    var (innerTop, innerBottom) = (Math.Ceiling(top + half), Math.Floor(bottom - half + 0.5));
+                    sb.Append(Line(outerTop, outerBottom - outerTop, Paint(style.UnderlineLineColor)));
+                    if (innerBottom > innerTop)
+                        sb.Append(Line(innerTop, innerBottom - innerTop, Paint(style.UnderlineFillColor)));
+                }
+            }
             else
             {
                 // A heavy line reaches up from the plain one's bottom.
@@ -1190,7 +1220,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return null;
     }
 
-    ParagraphInput Paragraph(XElement p, List<Source> sources, double fontScale, double spacingReduction, int[] counters)
+    ParagraphInput Paragraph(XElement p, List<Source> sources, double fontScale, double spacingReduction, Numbering counters)
     {
         var pPr = p.Element(Ns.A + "pPr");
         var level = Math.Clamp(pPr.Int("lvl") ?? 0, 0, 8);
@@ -1318,9 +1348,32 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return DateTime.Now.ToString(format, culture);
     }
 
-    static Bullet? ResetBullet(int level, int[] counters)
+    /// <summary>
+    /// Automatic numbering per level: a numbered paragraph continues the numbering of the paragraphs before it at its
+    /// level while they count in the same scheme from the same start; another scheme or start begins anew (measured:
+    /// LibreOffice's n90255, pairs of paragraphs in five schemes count 3 4, II III, C D, iv v, f) g)).
+    /// </summary>
+    sealed class Numbering
     {
-        counters[level] = 0;
+        public const int Levels = 9;
+        readonly int[] values = new int[Levels];
+        readonly string?[] schemes = new string?[Levels];
+
+        public void Reset(int level) => (values[level], schemes[level]) = (0, null);
+
+        /// <summary>The number of the next paragraph at the level, numbered in the scheme from the start.</summary>
+        public int Next(int level, string type, int start)
+        {
+            var scheme = $"{type} {start}";
+            values[level] = values[level] == 0 || schemes[level] != scheme ? start : values[level] + 1;
+            schemes[level] = scheme;
+            return values[level];
+        }
+    }
+
+    static Bullet? ResetBullet(int level, Numbering counters)
+    {
+        counters.Reset(level);
         return null;
     }
 
@@ -1329,10 +1382,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         : spacing?.Element(Ns.A + "spcPct") is { } pct ? new ParagraphSpace(true, (pct.Long("val") ?? 0) / 100000.0)
         : ParagraphSpace.None;
 
-    Bullet? Bullet(XElement? pPr, List<Source> sources, int level, TextStyle textStyle, int[] counters)
+    Bullet? Bullet(XElement? pPr, List<Source> sources, int level, TextStyle textStyle, Numbering counters)
     {
-        for (var i = level + 1; i < counters.Length; i++)
-            counters[i] = 0;
+        for (var i = level + 1; i < Numbering.Levels; i++)
+            counters.Reset(i);
         var kind = ParagraphElement(pPr, sources, level, "buNone", "buChar", "buAutoNum", "buBlip");
         string text;
         switch (kind?.Name.LocalName)
@@ -1341,7 +1394,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                                && slide.Images(linkPart ?? slide.SlidePart)(embed) is { } picture:
             {
                 // A picture bullet (catalog: text.bullets).
-                counters[level] = 0;
+                counters.Reset(level);
                 var (w, h) = slide.ImageSizes(linkPart ?? slide.SlidePart)(embed, 0);
                 var pictureSize = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
                 var factor = pictureSize?.Name.LocalName == "buSzPct" ? (pictureSize.Long("val") ?? 100000) / 100000.0 : 1;
@@ -1349,14 +1402,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             }
             case "buChar":
                 text = kind.Str("char") ?? "•";
-                counters[level] = 0;
+                counters.Reset(level);
                 break;
             case "buAutoNum":
-                counters[level] = counters[level] == 0 ? kind.Int("startAt") ?? 1 : counters[level] + 1;
-                text = AutoNumbering.Format(kind.Str("type") ?? "arabicPeriod", counters[level]);
+                text = AutoNumbering.Format(kind.Str("type") ?? "arabicPeriod", counters.Next(level, kind.Str("type") ?? "arabicPeriod", kind.Int("startAt") ?? 1));
                 break;
             default:
-                counters[level] = 0;
+                counters.Reset(level);
                 return null;
         }
 
@@ -1518,6 +1570,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             R("lang"))
         {
             UnderlineColor = underlineColor,
+            UnderlineLineColor = underlineLine?.Name.LocalName == "uLn" && FillReader.FindFill(underlineLine) is { } outlineFill ? Colors.ResolveChild(outlineFill) : null,
+            UnderlineFillColor = underlineFill?.Name.LocalName == "uFill" && FillReader.FindFill(underlineFill) is { } insideFill ? Colors.ResolveChild(insideFill) : null,
             UnderlineWidth = underlineLine?.Name.LocalName == "uLn" && underlineLine.Long("w") is { } uw ? uw / Units.EmuPerPoint : null,
             UnderlineDash = underlineLine?.Name.LocalName == "uLn" ? underlineLine.Element(Ns.A + "prstDash")?.Str("val") : null,
             NormalizeHeight = R("normalizeH") is "1" or "true",

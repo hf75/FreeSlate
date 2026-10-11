@@ -249,6 +249,12 @@ public static class Constraints
                 var reference = references.FirstOrDefault(r => r.Point == target.Point) ?? references.FirstOrDefault();
                 referenceNode = reference;
                 value = reference != null && Referenced(reference, refType, owner) is { } referenced ? referenced * fact : null;
+                // A box sized from the font size of a node whose text has a size of its own keeps the size the
+                // constraints gave that node (measured: hList1's descriptions, 1.22 of their titles' 65 high below
+                // titles of 18 pt; LibreOffice's fill-color-list). Fitted sizes count (sa_all's hList1 and process3).
+                if (Box.Contains(type) && refType == "primFontSz" && reference != null
+                    && pins != null && pins.TryGet(reference, Fitting.ExplicitFont, out _) && pins.TryGet(reference, Fitting.BaseFont, out var unfitted))
+                    value = unfitted * fact;
                 // A font size nothing sets is the default one (measured: VerticalAccentList's titles, at least their
                 // descriptions' size, both shrunk to the titles' 28).
                 if (value == null && reference is { AlgorithmType: "tx" } && reference.Text.Count > 0 && refType == "primFontSz")

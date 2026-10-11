@@ -86,12 +86,13 @@ public static class TextWarp
             return result;
         }
 
-        // One line per path, the middle path for a single line of a three-path preset.
+        // One line per path, in order (measured with textButton: one line lies on the upper arc, two on the arc and
+        // the middle line, three on all three paths).
         for (var line = 0; line < lineCount; line++)
         {
             var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == line).ToList();
             if (members.Count == 0) continue;
-            var path = paths[lineCount == 1 ? paths.Count / 2 : Math.Min(line, paths.Count - 1)];
+            var path = paths[Math.Min(line, paths.Count - 1)];
             var (minX, _, maxX, _) = Bounds(members.SelectMany(i => glyphs[i].Contours));
             var baseline = glyphs[members[0]].Baseline;
             // The line by its advances (its ink without the outer side bearings when unknown).

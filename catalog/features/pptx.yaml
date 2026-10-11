@@ -1210,7 +1210,12 @@ areas:
           with startAt; picture bullets.
         office: >-
           A hanging indent reaching left of the text area moves the paragraph right (marL 0, indent -27 pt:
-          bullet at 0, text at 27 pt). Latin letters repeat after z (aa, bb); Arabic schemes count in hijā'ī
+          bullet at 0, text at 27 pt). With a first line indented further than the margin the bullet stays at
+          the margin and the text starts at the indent (object model: marL 0 and indent 27 pt start the text at
+          27 pt; marL 36 and indent 0 right after the bullet; LibreOffice's bullet-indent). Numbering continues
+          while the paragraphs before at the level count in the same scheme from the same start, and begins
+          anew with another scheme or start (LibreOffice's n90255: 3 4, II III, C D, iv v, f) g) for pairs of
+          paragraphs with five schemes). Latin letters repeat after z (aa, bb); Arabic schemes count in hijā'ī
           (arabic1) and abjad (arabic2) order followed by a hyphen-minus; Thai letters skip ฃ ฅ ฆ. Picture
           bullets are as high as the capitals and sit on the baseline. Verified with generated/lists (all 41
           numbering schemes, picture and character bullets).
@@ -1223,11 +1228,17 @@ areas:
         difficulty: 4
         status: done
         strategy: >-
-          Run → paragraph → the shape's lstStyle → layout placeholder → master placeholder → the master's title,
-          body or other style → the presentation's defaultTextStyle; the shape's fontRef adds color and font.
-          Which of otherStyle and defaultTextStyle wins for plain text boxes is to be verified against PowerPoint.
+          Run → paragraph → the shape's lstStyle → layout placeholder → master placeholder → the master's title
+          or body style → the presentation's defaultTextStyle; the shape's fontRef adds color and font. Text
+          outside title and body placeholders skips the master's other style except for its color.
         office: >-
-          Verified with generated/text-basic, text-body and presentation.
+          Measured with the object model, otherStyle level 1 at 10 pt bold red Courier New right-aligned with
+          150 % spacing and defaultTextStyle at 30 pt italic blue Georgia centered with 80 %: text boxes,
+          shapes and dt, ftr and sldNum placeholders without a layout placeholder take size, italics, font,
+          spacing, alignment, indent and line spacing from defaultTextStyle and only the color from
+          otherStyle (not its bold); table cells take otherStyle. LibreOffice's TextOnCircle (otherStyle 15.12
+          pt, defaultTextStyle 18 pt) rises from 43 to 93 %. Verified with generated/text-basic, text-body and
+          presentation.
 
       - id: text.runs
         title: Runs and character formatting
@@ -1327,9 +1338,12 @@ areas:
           long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2), heavy ones are twice as thick, reaching
           up from the plain line's bottom, with the same pattern; double ones are two lines of three quarters
           of the thickness, the second above the first; wavy ones are waves four thicknesses long. An
-          underline line of its own (a:uLn) gives the width, color (over a:uFill) and dash; a:uFill the color;
-          uLnTx and uFillTx follow the text. Small text drawn by the browser gets the style, color and width
-          as CSS. Measured with generated/text-underline (every style in the text color and in a color of its
+          underline line of its own (a:uLn) outlines the plain underline, which is filled with a:uFill (or
+          the text's color): the line lies half inside and half outside the edges, at least a pixel, with its
+          own dash (measured with Arial 40 pt and uLn of 0.25 to 6 pt: 0.25 pt adds a row of line above and
+          below a fill of three rows, 2 pt leaves one row of fill between three rows of line, from 3 pt the
+          line covers the fill); uLnTx and uFillTx follow the text. Small text drawn by the browser gets the
+          style, color and width as CSS. Measured with generated/text-underline (every style in the text color and in a color of its
           own, lines of their own, runs of different sizes): 76.1 -> 90.7 %, the rest one-pixel rounding of
           the line's position.
 
@@ -1405,7 +1419,8 @@ areas:
           The text's ink box fills the envelope between each pair of guide paths (glyph tops on the upper
           path, baselines on the lower one), over the whole text rectangle of the shape. Presets with one or
           three paths put every glyph rigid on the path at its middle, at the glyph's size and placed by the
-          line's alignment; text from old WordArt (fromWordArt) is scaled evenly to the path's length
+          line's alignment; the lines take the paths in order (textButton: one line on the upper arc, two on
+          the arc and the middle line, three on all three; textButtonPour shares its envelopes alike); text from old WordArt (fromWordArt) is scaled evenly to the path's length
           (measured with textArchUp in generated/text-body). Verified with generated/text-effects (WordArt
           transforms). Text on a single path (arches, circle; measured with probe decks of I strokes) is not
           wrapped. Every line follows a parallel of the path, a line pitch apart, on the side away from the
@@ -2154,7 +2169,12 @@ areas:
           node no instance
           of which exists take the value the list would give it, and every node evaluates its list again once
           its parent's algorithm gives it its box. Rules lower their targets toward val, or toward fact times
-          what the target's value refers to. Algorithms: composite (the room of all its children's boxes,
+          what the target's value refers to; a lin node's font size rule also applies while a child is larger
+          across the line than the node, strictly (LibreOffice's smartart-dir: hList1's columns at 31 pt in a
+          frame 182.5 pt high, 56 -> 99.8 %). Text whose runs all have sizes of their own keeps them and is not
+          fitted; its margins follow that size, while boxes sized from its font size keep the size the
+          constraints gave (LibreOffice's fill-color-list: titles of 18 pt, descriptions 1.22 x 65 high, 51 ->
+          100 %). Algorithms: composite (the room of all its children's boxes,
           invisible leaves included, a child taking its box keeping the bounds the composite sets between its
           width and height by giving up room across, centered, a lin child without a size taking its box; ar
           keeps its box while references see its constraint size; a composite root's drawing centered in the

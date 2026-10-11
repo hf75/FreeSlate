@@ -59,6 +59,20 @@ public static class TextBody
         return result;
     }
 
+    /// <summary>
+    /// The size a node's text gives itself (points): the largest of its runs' sizes when every run has one, else null.
+    /// Such text keeps its size, PowerPoint fits it no further (measured: LibreOffice's fill-color-list, titles of 18 pt
+    /// in hList1 boxes made for 65).
+    /// </summary>
+    public static double? ExplicitSize(LayoutNode node)
+    {
+        var runs = Paragraphs(node).SelectMany(p => p.Paragraph.Elements().Where(e => e.Name.LocalName is "r" or "fld")).ToList();
+        if (runs.Count == 0)
+            return null;
+        var sizes = runs.Select(r => (long?)r.Element(A + "rPr")?.Attribute("sz")).ToList();
+        return sizes.All(s => s is > 0) ? sizes.Max()!.Value / 100.0 : null;
+    }
+
     /// <summary>The margin of a side in points: the constraint's value, else 0.56 × the primary font size.</summary>
     public static double Margin(LayoutNode node, string side, double primary) =>
         node.Values.TryGetValue(side, out var value) && double.IsFinite(value) ? value : 0.56 * primary;
@@ -106,7 +120,9 @@ public static class TextBody
                     rPr = new XElement(A + "rPr");
                     copy.AddFirst(rPr);
                 }
-                rPr.SetAttributeValue("sz", ((long)Math.Round(size * 100)).ToString(CultureInfo.InvariantCulture));
+                // A run's own size stays (see ExplicitSize).
+                if (rPr.Attribute("sz") == null)
+                    rPr.SetAttributeValue("sz", ((long)Math.Round(size * 100)).ToString(CultureInfo.InvariantCulture));
                 rPr.SetAttributeValue("kern", "1200");
                 paragraph.Add(copy);
             }

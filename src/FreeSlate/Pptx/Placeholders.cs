@@ -47,8 +47,10 @@ public static class Placeholders
         var candidates = Candidates(layout).ToList();
         if (Index(ph) is not { } idx)
             return candidates.FirstOrDefault(c => Type(Ph(c)!) == Type(ph)) ?? candidates.FirstOrDefault(c => SameType(Type(Ph(c)!), Type(ph)));
+        // Among several of the same idx the one of the same type, else the first (LibreOffice's bullet-indent: p:ph
+        // without type and idx takes the first of a layout's title and body, both without idx: the title).
         var byIdx = candidates.Where(c => Index(Ph(c)!) == idx).ToList();
-        return byIdx.FirstOrDefault(c => SameType(Type(Ph(c)!), Type(ph))) ?? byIdx.FirstOrDefault();
+        return byIdx.FirstOrDefault(c => Type(Ph(c)!) == Type(ph)) ?? byIdx.FirstOrDefault();
     }
 
     /// <summary>A placeholder's idx: 0 when it is missing, null for 4294967295, which stands for none.</summary>

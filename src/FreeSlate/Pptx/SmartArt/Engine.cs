@@ -548,7 +548,7 @@ public static class Engine
         // SubStepProcess' rows, as high as their texts at the width the column has once the line is scaled).
         foreach (var child in children)
             Refresh(child, pins);
-        var extents = ApplyRules(node, children, horizontal, boxAlong, pins, ruled);
+        var extents = ApplyRules(node, children, horizontal, boxAlong, boxAcross, pins, ruled);
         // sp after the rules: it may follow a value they changed (TextCardSideLineWideImage's, 0.12 of the cards' height).
         var gap = Value(node, "sp");
         var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), gap);
@@ -753,16 +753,38 @@ public static class Engine
     /// 987/4096 of their width with 0.6 pt to spare, process3's at 279/1024 with 0.83 pt). The values are pinned for the
     /// children's layout (<paramref name="ruled"/>); the children's extents with them.
     /// </summary>
-    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, Pins pins, Dictionary<LayoutNode, double?> ruled)
+    static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, double across, Pins pins, Dictionary<LayoutNode, double?> ruled)
     {
         var type = horizontal ? "w" : "h";
         var extents = children.Select(Extent).ToList();
         double Left() => box - Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
         bool Fits() => Left() >= -1e-9;
+        // A font size rule also applies while a child is larger across the line than the node (measured: hList1's
+        // columns, title and description sized from the font, at 31 pt in a frame 182.5 pt high; LibreOffice's
+        // smartart-dir).
+        bool FitsAcross()
+        {
+            if (across <= 0)
+                return true;
+            // The children evaluated once more, so that values depending on bounds their own lists apply settle (a
+            // description placed below its title's height once the title's h <= 0.4 w has lowered it).
+            foreach (var child in children)
+            {
+                Constraints.EvaluateOwn(child, pins);
+                Refresh(child, pins);
+            }
+            // Strictly (measured: 31 pt, not 32 that would leave the columns 0.26 mm too high).
+            return children.Select(Extent).All(e => (horizontal ? e.H : e.W) <= across + 1e-6);
+        }
         foreach (var rule in node.Rules)
         {
-            if (Fits())
-                break;
+            var fontRule = (string?)rule.Attribute("type") == "primFontSz";
+            if (Fits() && (!fontRule || FitsAcross()))
+            {
+                if (FitsAcross())
+                    break;
+                continue;
+            }
             // A font size rule lowers its targets' size in whole points to the largest that lets the children fit, the
             // values that follow it evaluated again (measured: list1's titles at 44 pt, their rows as high as it makes
             // them); the size stays pinned for the text's own fitting.
@@ -794,13 +816,13 @@ public static class Engine
                 }
                 var (low, high) = (smallest, largest);
                 Size(low);
-                if (!Fits())
+                if (!Fits() || !FitsAcross())
                     continue;
                 while (low < high)
                 {
                     var middle = (low + high + 1) / 2;
                     Size(middle);
-                    if (Fits())
+                    if (Fits() && FitsAcross())
                         low = middle;
                     else
                         high = middle - 1;

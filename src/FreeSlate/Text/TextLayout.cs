@@ -29,6 +29,10 @@ public sealed record TextStyle(
     /// <summary>The underline's own width in points (a:uLn/@w); null takes the font's.</summary>
     public double? UnderlineWidth { get; init; }
 
+    /// <summary>The underline's outline color (a:uLn's fill) and fill color (a:uFill); null: the text's color.</summary>
+    public RgbColor? UnderlineLineColor { get; init; }
+    public RgbColor? UnderlineFillColor { get; init; }
+
     /// <summary>The underline's own dash (a:uLn/a:prstDash); null follows the underline style.</summary>
     public string? UnderlineDash { get; init; }
 
@@ -290,7 +294,7 @@ public static class TextLayout
         // at the edge (measured: marL 0 with indent -27 pt puts the bullet at 0 and the text at 27 pt).
         var marginLeft = EffectiveMargin(paragraph);
         var firstStart = marginLeft + paragraph.Indent;
-        var textStart = paragraph.Bullet != null ? Math.Max(marginLeft, firstStart + bulletWidth) : firstStart;
+        var textStart = paragraph.Bullet != null ? Math.Max(Math.Max(marginLeft, firstStart), BulletAt(paragraph) + bulletWidth) : firstStart;
 
         var current = new List<(int Start, int End, double X)>();
         var x = textStart;
@@ -446,7 +450,7 @@ public static class TextLayout
 
         var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align, Start = lineStart };
         if (first && paragraph.Bullet is { } bullet)
-            line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, EffectiveMargin(paragraph) + paragraph.Indent + offset, bulletWidth)
+            line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, BulletAt(paragraph) + offset, bulletWidth)
             {
                 Picture = bullet.Picture,
                 PictureHeight = bullet.Picture != null ? bullet.PictureHeight : 0,
@@ -538,7 +542,7 @@ public static class TextLayout
         var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = used, Align = paragraph.Align, Start = lineStart };
         if (first && paragraph.Bullet is { } bullet)
         {
-            var bulletAt = EffectiveMargin(paragraph) + paragraph.Indent;
+            var bulletAt = BulletAt(paragraph);
             var bulletX = paragraph.RightToLeft ? width - bulletAt - bulletWidth : bulletAt + (x - lineStart);
             // A bullet of a right-to-left paragraph reads right to left too ("1." shows as ".1", measured).
             var text = paragraph.RightToLeft ? Visual(bullet.Text) : bullet.Text;
@@ -670,6 +674,13 @@ public static class TextLayout
 
     /// <summary>The left margin, moved right so that the first line does not start left of the text area.</summary>
     static double EffectiveMargin(ParagraphInput paragraph) => Math.Max(paragraph.MarginLeft, -paragraph.Indent);
+
+    /// <summary>
+    /// Where a bullet stands: at the first line's start for a hanging indent, at the margin for a first line
+    /// indented further, whose text then starts at the indent (measured with the object model: marL 0 and indent
+    /// 27 pt start the text at 27 pt, marL 36 and indent 0 right after the bullet; LibreOffice's bullet-indent).
+    /// </summary>
+    static double BulletAt(ParagraphInput paragraph) => EffectiveMargin(paragraph) + Math.Min(0, paragraph.Indent);
 
     static int CountInnerSpaces(string all, List<(int Start, int End, double X)> pieces)
     {

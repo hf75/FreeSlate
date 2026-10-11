@@ -18,7 +18,7 @@ public static class Dashes
     public static bool IsDashed(Outline? outline) => outline is { Visible: true } && Pattern(outline) is { Length: > 0 };
 
     /// <summary>Preset dash patterns in multiples of the line width (ST_PresetLineDashVal).</summary>
-    static double[]? Preset(string preset) => preset switch
+    public static double[]? Preset(string preset) => preset switch
     {
         "dot" => [1, 3],
         "dash" => [4, 3],

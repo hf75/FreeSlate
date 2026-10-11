@@ -21,6 +21,19 @@ static class Fitting
     {
         var nodes = root.Descendants().Prepend(root).Where(n => n.Text.Count > 0 && n.AlgorithmType == "tx").ToList();
         var changed = false;
+        // Text of a size of its own is not fitted: the node takes that size, its margins follow it, and the boxes that
+        // refer to its font size keep the size the constraints gave (see TextBody.ExplicitSize).
+        foreach (var node in nodes.Where(n => !pins.TryGet(n, ExplicitFont, out _)))
+        {
+            if (TextBody.ExplicitSize(node) is { } size)
+            {
+                pins.Set(node, ExplicitFont, 1);
+                pins.Set(node, BaseFont, Font(node));
+                PinFont(node, size, pins);
+                changed = true;
+            }
+        }
+        nodes = nodes.Where(n => !pins.TryGet(n, ExplicitFont, out _)).ToList();
         foreach (var node in nodes)
         {
             var font = Font(node);
@@ -112,6 +125,13 @@ static class Fitting
                 node.Values[side] = factor * size;
         }
     }
+
+    /// <summary>
+    /// The pins of a node whose text has a size of its own (see <see cref="TextBody.ExplicitSize"/>): that it has, and
+    /// the font size the constraints gave it, which the boxes referring to its font size keep (see
+    /// <see cref="Constraints"/>).
+    /// </summary>
+    public const string ExplicitFont = "primFontSz.explicit", BaseFont = "primFontSz.base";
 
     static void PinFont(LayoutNode node, double size, Pins pins)
     {
