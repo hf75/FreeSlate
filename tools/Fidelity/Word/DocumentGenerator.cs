@@ -40,6 +40,7 @@ public static partial class DocumentGenerator
         ("wrap-types", WrapTypes),
         ("graphics", Graphics),
         ("charts", ChartsAndDiagrams),
+        ("equations", Equations),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

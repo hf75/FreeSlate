@@ -24,6 +24,13 @@ public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inli
 /// <summary>Where a bookmark starts (w:bookmarkStart, catalog: field.bookmarks): an anchor in the HTML.</summary>
 public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format);
 
+/// <summary>
+/// An equation (catalog: math): an m:oMath in the text, or a display equation of an m:oMathPara on lines of its own,
+/// justified by m:jc or the settings' m:defJc; its runs formatted by their w:rPr over the paragraph's style.
+/// </summary>
+public sealed record MathInline(XElement Element, bool Display, string? Justification, RunFormat Format, IReadOnlyDictionary<XElement, RunFormat> RunFormats)
+    : Inline(Format);
+
 /// <summary>A tab character (w:tab in a run, catalog: paragraph.tabs).</summary>
 public sealed record TabInline(RunFormat Format) : Inline(Format);
 
@@ -407,6 +414,11 @@ public sealed partial class ModelReader(DocumentContext context)
     {
         foreach (var e in container.Elements())
         {
+            if (e.Name.Namespace == Equations.MathLayout.M)
+            {
+                ReadMath(e, paragraphStyle, field.Target(content));
+                continue;
+            }
             if (e.Name.Namespace != Wml.W)
                 continue;
             switch (e.Name.LocalName)
@@ -445,6 +457,33 @@ public sealed partial class ModelReader(DocumentContext context)
                         ReadInlines(sdtContent, paragraphStyle, content, field);
                     break;
             }
+        }
+    }
+
+    /// <summary>Equations (catalog: math): an m:oMath in the text, the display equations of an m:oMathPara.</summary>
+    void ReadMath(XElement e, string? paragraphStyle, List<Inline> content)
+    {
+        var m = Equations.MathLayout.M;
+        var format = context.Styles.Run(paragraphStyle, null, null, tableRun);
+        Dictionary<XElement, RunFormat> Formats(XElement math)
+        {
+            var formats = new Dictionary<XElement, RunFormat>();
+            foreach (var rPr in math.Descendants(Wml.W + "rPr"))
+            {
+                var direct = new RunFormat();
+                direct.Apply(rPr);
+                formats[rPr] = context.Styles.Run(paragraphStyle, direct.Style, direct, tableRun);
+            }
+            return formats;
+        }
+        if (e.Name.LocalName == "oMath")
+            content.Add(new MathInline(e, false, null, format, Formats(e)));
+        else if (e.Name.LocalName == "oMathPara")
+        {
+            var jc = (string?)e.Element(m + "oMathParaPr")?.Element(m + "jc")?.Attribute(m + "val")
+                     ?? (string?)context.Settings?.Element(m + "mathPr")?.Element(m + "defJc")?.Attribute(m + "val") ?? "centerGroup";
+            foreach (var math in e.Elements(m + "oMath"))
+                content.Add(new MathInline(math, true, jc, format, Formats(math)));
         }
     }
 

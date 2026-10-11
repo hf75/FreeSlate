@@ -129,6 +129,15 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(placed.Top + placed.Line.Height / 2 - 0.3)}\" width=\"{Px(piece.Width)}\" height=\"{Px(0.6)}\" fill=\"#000\"/>");
                     continue;
                 }
+                // An equation: its glyphs and rules, its characters transparent on top for selection.
+                if (piece.Equation is { } equation)
+                {
+                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise, context.Glyphs, PxPerPt);
+                    svg.Append(drawn);
+                    if (mathText.Length > 0)
+                        selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
+                    continue;
+                }
                 // An inline drawing's box stands on the baseline; its extent lies inside the effect extents.
                 if (piece.Drawing is { } inline)
                 {

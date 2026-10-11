@@ -21034,8 +21034,9 @@
       "description": "Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).",
       "priority": "P1",
       "difficulty": 4,
-      "status": "todo",
+      "status": "done",
       "strategy": "The OMML layout of pptx `text.math` (done) with Word's paragraph context: display equations take their own lines and justification, inline equations sit on the text baseline, long display equations break at operators.",
+      "office": "Equations are laid out by the OMML engine of pptx text.math with the runs' w:rPr: an m:oMath stands in the line on its baseline with its ascent and descent; the display equations of an m:oMathPara take lines of their own, broken before the binary and relation operators of their top level where they are too wide (the next lines indented by m:wrapIndent) and placed by m:jc: centered as a group, centered, left or right (docx/generated/equations, equation by equation within 0.3 pt of Word's lines but the limit with its fraction). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in two rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space before an opening delimiter; both draw the hyphen-minus as the minus sign and ∇ and ∂ in italic. Glyphs are drawn as outlines under transparent selectable text.",
       "elements": [
         "a14:m",
         "m:acc",
@@ -22211,8 +22212,9 @@
       "title": "Document math settings",
       "priority": "P1",
       "difficulty": 3,
-      "status": "todo",
+      "status": "partial",
       "strategy": "Defaults for all equations of the document (math font, break rules, margins, limits placement).",
+      "office": "m:mathFont (a font with a MATH table, else Cambria Math), m:defJc, m:wrapIndent, m:wrapRight, m:intLim and m:naryLim apply to all equations of the document; m:brkBin before (the default) where display equations break. Still open: m:brkBin after and repeat, m:brkBinSub, m:smallFrac, and the display spacing and margins that apply without m:dispDef (m:lMargin, m:rMargin, m:preSp, m:postSp, m:interSp, m:intraSp).",
       "elements": [
         "m:brkBin",
         "m:brkBinSub",

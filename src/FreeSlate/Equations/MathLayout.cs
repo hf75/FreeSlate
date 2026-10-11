@@ -22,14 +22,24 @@ public sealed class MathLayout
     readonly FontData font;
     readonly MathTable table;
     readonly Func<XElement?, MathRunStyle> runStyle;
+    readonly XName runProperties;
 
-    /// <param name="runStyle">Size and color of a math run from its a:rPr (null: the paragraph's).</param>
-    public MathLayout(FontData font, MathTable table, Func<XElement?, MathRunStyle> runStyle)
+    /// <param name="runStyle">Size and color of a math run from its run properties (null: the paragraph's).</param>
+    /// <param name="runProperties">The run properties of math runs: a:rPr in presentations (the default), w:rPr in documents.</param>
+    public MathLayout(FontData font, MathTable table, Func<XElement?, MathRunStyle> runStyle, XName? runProperties = null)
     {
         this.font = font;
         this.table = table;
         this.runStyle = runStyle;
+        this.runProperties = runProperties ?? A + "rPr";
     }
+
+    /// <summary>Whether delimiters grow to the content's height (Word) rather than twice its reach from the axis (PowerPoint).</summary>
+    public bool DelimitersByHeight { get; init; }
+
+    /// <summary>Where integrals and the other n-ary operators put their limits when m:limLoc does not say (subSup, undOvr).</summary>
+    public string IntegralLimits { get; init; } = "subSup";
+    public string NaryLimits { get; init; } = "undOvr";
 
     enum Level { Display, Text, Script, ScriptScript }
 
@@ -73,6 +83,9 @@ public sealed class MathLayout
 
         /// <summary>An alignment point of an equation array row (an "&amp;" in its text), not drawn.</summary>
         public bool Marker { get; init; }
+
+        /// <summary>A function's name: at least a thin space follows it, also before an opening delimiter.</summary>
+        public bool FunctionName { get; init; }
     }
 
     /// <summary>
@@ -85,6 +98,11 @@ public sealed class MathLayout
     {
         var size = Size(oMath);
         var item = Sequence(oMath.Elements(), new Env(display ? Level.Display : Level.Text, false, !display), size);
+        return Finished(item, display, size);
+    }
+
+    MathItem Finished(MathItem item, bool display, double size)
+    {
         if (display)
         {
             item.Ascent = Math.Max(item.Ascent, font.Ascent * size);
@@ -94,13 +112,55 @@ public sealed class MathLayout
         return item;
     }
 
+    /// <summary>
+    /// A display equation broken into lines: the first no wider than <paramref name="width"/>, the others no wider
+    /// than that less <paramref name="indent"/>, before the binary and relation operators of its top level, which
+    /// keep their spacing at the start of a line (measured: Word breaks a long sum before a "+" and indents the next
+    /// line by m:wrapIndent). An equation that fits, or has nowhere to break, stays one line.
+    /// </summary>
+    public List<MathItem> EquationLines(XElement oMath, double width, double indent)
+    {
+        var whole = Equation(oMath, true);
+        if (whole.Width <= width + 0.01)
+            return [whole];
+        var size = Size(oMath);
+        var env = new Env(Level.Display, false, false);
+        var atoms = oMath.Elements().SelectMany(e => Atoms(e, env, size)).ToList();
+        // Segments from one operator to the next: the places a line may end.
+        var segments = new List<List<Atom>>();
+        foreach (var atom in atoms)
+        {
+            if (segments.Count == 0 || atom.Class is AtomClass.Bin or AtomClass.Rel && segments[^1].Count > 0)
+                segments.Add([]);
+            segments[^1].Add(atom);
+        }
+        if (segments.Count < 2)
+            return [whole];
+        var lines = new List<MathItem>();
+        var current = segments[0];
+        for (var k = 1; k < segments.Count; k++)
+        {
+            var limit = lines.Count == 0 ? width : width - indent;
+            var candidate = current.Concat(segments[k]).ToList();
+            if (Row([.. candidate], env, size, lines.Count > 0).Width <= limit + 0.01)
+                current = candidate;
+            else
+            {
+                lines.Add(Finished(Row(current, env, size, lines.Count > 0), true, size));
+                current = segments[k];
+            }
+        }
+        lines.Add(Finished(Row(current, env, size, lines.Count > 0), true, size));
+        return lines;
+    }
+
     // ------------------------------------------------------------------ sequences and spacing
 
     /// <summary>The size of the base text where a construct has no run of its own: its control properties, else the first run's.</summary>
     double Size(XElement element)
     {
-        var rPr = element.Descendants(M + "ctrlPr").Select(c => c.Element(A + "rPr")).FirstOrDefault(r => r != null)
-                  ?? element.Descendants(M + "r").Select(r => r.Element(A + "rPr")).FirstOrDefault(r => r != null);
+        var rPr = element.Descendants(M + "ctrlPr").Select(c => c.Element(runProperties)).FirstOrDefault(r => r != null)
+                  ?? element.Descendants(M + "r").Select(r => r.Element(runProperties)).FirstOrDefault(r => r != null);
         return runStyle(rPr).Size;
     }
 
@@ -208,13 +268,14 @@ public sealed class MathLayout
     /// and 5/18 em; most of them only at display and text level), binary operators that cannot be binary turned
     /// into ordinary atoms.
     /// </summary>
-    MathItem Row(List<Atom> atoms, Env env, double size)
+    /// <param name="continued">The row continues a broken line: an operator at its start stays binary.</param>
+    MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false)
     {
         for (var i = 0; i < atoms.Count; i++)
         {
             if (atoms[i].Class != AtomClass.Bin)
                 continue;
-            var before = i == 0 ? AtomClass.Open : atoms[i - 1].Right;
+            var before = i == 0 ? continued ? AtomClass.Ord : AtomClass.Open : atoms[i - 1].Right;
             var after = i + 1 < atoms.Count ? atoms[i + 1].Class : AtomClass.Close;
             if (before is AtomClass.Bin or AtomClass.Op or AtomClass.Rel or AtomClass.Open or AtomClass.Punct || after is AtomClass.Rel or AtomClass.Close or AtomClass.Punct)
                 atoms[i] = atoms[i] with { Class = AtomClass.Ord, Right = AtomClass.Ord };
@@ -226,7 +287,7 @@ public sealed class MathLayout
         {
             // Spaces typed in a run stand as they are, without the spacing of their neighbors' classes.
             if (i > 0 && !IsSpace(atoms[i - 1]) && !IsSpace(atoms[i]))
-                x += Spacing(atoms[i - 1].Right, atoms[i].Class, env) * em / 18;
+                x += Math.Max(Spacing(atoms[i - 1].Right, atoms[i].Class, env), atoms[i - 1].FunctionName ? 3 : 0) * em / 18;
             row.Add(atoms[i].Item, x, 0);
             x += atoms[i].Item.Width;
         }
@@ -264,7 +325,7 @@ public sealed class MathLayout
     /// <param name="markers">Whether "&amp;" marks an alignment point (in the rows of an equation array).</param>
     IEnumerable<Atom> Run(XElement run, Env env, bool markers = false)
     {
-        var style = runStyle(run.Element(A + "rPr"));
+        var style = runStyle(run.Element(runProperties));
         var size = style.Size * Scale(env);
         var properties = run.Element(M + "rPr");
         var sty = (string?)properties?.Element(M + "sty")?.Attribute(M + "val");
@@ -280,12 +341,14 @@ public sealed class MathLayout
                 atoms.Add(new Atom(new SpaceItem(), AtomClass.Ord) { Marker = true });
                 continue;
             }
-            var cp = normal ? rune.Value : Styled(rune.Value, sty, scr);
+            // The hyphen-minus of math text is the minus sign (measured: Word draws Cambria Math's minus glyph).
+            var value = !normal && rune.Value == '-' ? 0x2212 : rune.Value;
+            var cp = normal ? value : Styled(value, sty, scr);
             // A styled form the math font lacks falls back to the character itself.
-            if (cp != rune.Value && font.GlyphFor(cp) == 0)
-                cp = rune.Value;
-            var glyph = Glyph(cp, size, style.Color, rune.ToString(), ScriptLevel(env));
-            var cls = literal || normal ? AtomClass.Ord : ClassOf(rune.Value);
+            if (cp != value && font.GlyphFor(cp) == 0)
+                cp = value;
+            var glyph = Glyph(cp, size, style.Color, char.ConvertFromUtf32(value), ScriptLevel(env));
+            var cls = literal || normal ? AtomClass.Ord : ClassOf(value);
             atoms.Add(new Atom(glyph, cls));
         }
         return atoms;
@@ -371,6 +434,11 @@ public sealed class MathLayout
             return (bold, italic) switch { (true, true) => 0x1D736, (true, false) => 0x1D6C2, _ => 0x1D6FC } + cp - 0x03B1;
         if (cp is >= 0x0391 and <= 0x03A9)
             return (bold, italic) switch { (true, true) => 0x1D71C, (true, false) => 0x1D6A8, _ => 0x1D6E2 } + cp - 0x0391;
+        // The nabla after the capitals, the partial differential and the symbol variants ϵ ϑ ϰ ϕ ϱ ϖ after the small
+        // letters (measured: Word draws ∇ and ∂ as 𝛻 and 𝜕).
+        var after = cp switch { 0x2207 => -1, 0x2202 => 0, 0x03F5 => 1, 0x03D1 => 2, 0x03F0 => 3, 0x03D5 => 4, 0x03F1 => 5, 0x03D6 => 6, _ => (int?)null };
+        if (after is { } k)
+            return (bold, italic) switch { (true, true) => 0x1D74F, (true, false) => 0x1D6DB, _ => 0x1D715 } + (k < 0 ? -0x1A : k);
         if (cp is >= '0' and <= '9' && bold)
             return 0x1D7CE + cp - '0';
         return cp;
@@ -412,7 +480,7 @@ public sealed class MathLayout
     MathItem Fraction(XElement f, Env env, double baseSize)
     {
         var type = Property(f, "fPr", "type") ?? "bar";
-        var color = runStyle(f.Element(M + "fPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(f.Element(M + "fPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var size = baseSize * Scale(env);
         if (type == "lin")
         {
@@ -588,7 +656,7 @@ public sealed class MathLayout
     MathItem Radical(XElement rad, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(rad.Element(M + "radPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(rad.Element(M + "radPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var radicand = Sequence(Child(rad, "e"), env.Crampd, baseSize);
         var display = env.Level == Level.Display;
         var gap = U(display ? table.RadicalDisplayStyleVerticalGap : table.RadicalVerticalGap, size);
@@ -725,10 +793,10 @@ public sealed class MathLayout
     Atom Nary(XElement nary, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(nary.Element(M + "naryPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(nary.Element(M + "naryPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(nary, "naryPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x222B;
         var integral = chr is >= 0x222B and <= 0x2233 or >= 0x2A0B and <= 0x2A1C;
-        var limLoc = env.Inline ? "subSup" : Property(nary, "naryPr", "limLoc") ?? (integral ? "subSup" : "undOvr");
+        var limLoc = env.Inline ? "subSup" : Property(nary, "naryPr", "limLoc") ?? (integral ? IntegralLimits : NaryLimits);
         var display = env.Level == Level.Display;
         var glyph = font.GlyphFor(chr);
         var op = GlyphOf(glyph, size, color, char.ConvertFromUtf32(chr));
@@ -848,7 +916,7 @@ public sealed class MathLayout
     MathItem Delimited(XElement d, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(d.Element(M + "dPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(d.Element(M + "dPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var begin = DelimiterChar(d, "begChr", "(");
         var end = DelimiterChar(d, "endChr", ")");
         var separator = DelimiterChar(d, "sepChr", "|");
@@ -868,9 +936,10 @@ public sealed class MathLayout
         var ascent = parts.Count > 0 ? parts.Max(p => p.Item.Ascent) : 0;
         var descent = parts.Count > 0 ? parts.Max(p => p.Item.Descent) : 0;
         // The smallest size at least twice the content's reach from the axis less a shortfall of 630 units (0.31 em),
-        // like TeX's \delimitershortfall (measured: the sizes Office picks around display and text fractions, sums
-        // and matrices at 18 and 40 pt bound the shortfall to 613 to 645 units).
-        var target = 2 * Math.Max(ascent - axis, descent + axis) - U(630, size);
+        // like TeX's \delimitershortfall (measured: the sizes PowerPoint picks around display and text fractions, sums
+        // and matrices at 18 and 40 pt bound the shortfall to 613 to 645 units); Word takes the content's height
+        // instead of twice its reach (measured with docx/local/ppt-math, the same equations in Word).
+        var target = (DelimitersByHeight ? ascent + descent : 2 * Math.Max(ascent - axis, descent + axis)) - U(630, size);
         MathItem Fence(string? chr)
         {
             if (string.IsNullOrEmpty(chr))
@@ -1048,7 +1117,7 @@ public sealed class MathLayout
     MathItem Accent(XElement acc, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(acc.Element(M + "accPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(acc.Element(M + "accPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(acc, "accPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x0302;
         var nucleus = Sequence(Child(acc, "e"), env.Crampd, baseSize);
         // Over a single character the accent keeps its size, centered on the character's top accent attachment
@@ -1084,7 +1153,7 @@ public sealed class MathLayout
     MathItem Bar(XElement bar, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(bar.Element(M + "barPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(bar.Element(M + "barPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var top = Property(bar, "barPr", "pos") == "top";
         var nucleus = Sequence(Child(bar, "e"), top ? env.Crampd : env, baseSize);
         var result = new ListItem();
@@ -1110,7 +1179,7 @@ public sealed class MathLayout
     MathItem GroupCharacter(XElement group, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(group.Element(M + "groupChrPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(group.Element(M + "groupChrPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(group, "groupChrPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x23DF;
         var above = Property(group, "groupChrPr", "pos") == "top";
         // m:vertJc says which of the two stands on the baseline: the upper one (top, what Office reads when it is
@@ -1148,7 +1217,9 @@ public sealed class MathLayout
     IEnumerable<Atom> Function(XElement func, Env env, double size)
     {
         var name = Sequence(Child(func, "fName"), env, size);
-        var atoms = new List<Atom> { new(name, AtomClass.Op) };
+        // A thin space between the name and its argument, also an opening delimiter (measured: Word's "lim (1 + 1/n)"
+        // and "cos nπx/L" keep 3/18 em between them).
+        var atoms = new List<Atom> { new(name, AtomClass.Op) { FunctionName = true } };
         foreach (var element in Child(func, "e"))
             atoms.AddRange(Atoms(element, env, size));
         return atoms;
@@ -1157,7 +1228,7 @@ public sealed class MathLayout
     MathItem BorderBox(XElement box, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
-        var color = runStyle(box.Element(M + "borderBoxPr")?.Element(M + "ctrlPr")?.Element(A + "rPr")).Color;
+        var color = runStyle(box.Element(M + "borderBoxPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var nucleus = Sequence(Child(box, "e"), env, baseSize);
         // Lines of the rule thickness three times their thickness away from the content's ink (measured: Office's
         // boxes around a letter, a fraction and an equation).

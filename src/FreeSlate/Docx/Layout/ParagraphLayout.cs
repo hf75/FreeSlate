@@ -31,6 +31,12 @@ public sealed class Piece
     /// <summary>An inline drawing the piece stands for (one object replacement character), or null.</summary>
     public DrawingInline? Drawing { get; init; }
 
+    /// <summary>An equation the piece stands for (one object replacement character), or null.</summary>
+    public Equations.Equation? Equation { get; init; }
+
+    /// <summary>Where a display equation's line stands from the paragraph's left indent (m:jc, m:wrapIndent), or null.</summary>
+    public double? DisplayX { get; init; }
+
     /// <summary>The hyperlink of the piece's text, or null.</summary>
     public string? Link { get; init; }
 
@@ -172,6 +178,54 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
 
+    /// <summary>The equations of the paragraph being laid out, by their place in its text, display lines with their place.</summary>
+    readonly Dictionary<int, (Equations.Equation Equation, double? DisplayX)> equations = [];
+
+    /// <summary>The width display equations of the paragraph being laid out may take (between its indents).</summary>
+    double displayWidth = double.MaxValue;
+
+    /// <summary>Equations laid out once for every layout of their paragraph at a width: their lines.</summary>
+    readonly System.Runtime.CompilerServices.ConditionalWeakTable<MathInline, Tuple<double, List<Equations.Equation>>> laidEquations = new();
+
+    /// <summary>The document's math settings (m:mathPr).</summary>
+    System.Xml.Linq.XElement? MathSettings => context.Settings?.Element(Equations.MathLayout.M + "mathPr");
+
+    string? MathSetting(string name) => (string?)MathSettings?.Element(Equations.MathLayout.M + name)?.Attribute(Equations.MathLayout.M + "val");
+
+    /// <summary>
+    /// The lines of an equation (catalog: math.equations, math.settings): one inline, those of a display equation
+    /// broken to fit the width; in the document's math font (m:mathFont, else Cambria Math) with its limit placement
+    /// (m:intLim, m:naryLim); none without a math font.
+    /// </summary>
+    List<Equations.Equation> EquationLines(MathInline math, double width)
+    {
+        if (laidEquations.TryGetValue(math, out var known) && (known.Item1 == width || !math.Display))
+            return known.Item2;
+        var mathFont = MathSetting("mathFont") is { Length: > 0 } family && context.Fonts.Resolve(family, false, false) is var resolved
+            && resolved.Data.Family.Equals(family, StringComparison.OrdinalIgnoreCase) && Equations.MathTable.Of(resolved.Data) is { } own
+            ? (resolved.Data, own)
+            : Equations.Equation.MathFont(context.Fonts);
+        if (mathFont is not var (font, table))
+            return [];
+        var layout = new Equations.MathLayout(font, table,
+            rPr => styles.Style(rPr != null && math.RunFormats.TryGetValue(rPr, out var run) ? run : math.Format, WordSlot.Ascii) is var s
+                ? new Equations.MathRunStyle(s.Size, s.Color)
+                : default,
+            Wml.W + "rPr")
+        {
+            DelimitersByHeight = true,
+            IntegralLimits = MathSetting("intLim") ?? "subSup",
+            NaryLimits = MathSetting("naryLim") ?? "undOvr",
+        };
+        var items = math.Display ? layout.EquationLines(math.Element, width, WrapIndent) : [layout.Equation(math.Element, false)];
+        var lines = items.Select(item => new Equations.Equation(item)).ToList();
+        laidEquations.AddOrUpdate(math, Tuple.Create(width, lines));
+        return lines;
+    }
+
+    /// <summary>How far the continuation lines of a broken display equation are indented (m:wrapIndent, 1 inch by default).</summary>
+    double WrapIndent => double.TryParse(MathSetting("wrapIndent"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var twips) ? twips / 20 : 72;
+
     /// <summary>The floating drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, AnchorInline Anchor)> anchored = [];
 
@@ -210,10 +264,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null)
     {
         var format = paragraph.Format;
+        displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
+        foreach (var (index, (equation, _)) in equations)
+            advances[index] = equation.Width;
         foreach (var (index, continuation) in separators)
             advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
@@ -403,6 +460,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // Lines broken around floating objects align in their room; lines in several segments stay as they are.
             if (line.Jumped)
                 continue;
+            // A display equation's line stands where its justification puts it, from the left indent.
+            if (line.Pieces.FirstOrDefault(p => p.DisplayX != null) is { DisplayX: { } displayX } displayed)
+            {
+                displayed.X = left + displayX;
+                continue;
+            }
             Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
         }
         // Where the drawings are anchored in their lines, once the lines are aligned: at the start of the character
@@ -431,8 +494,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null)
     {
         var format = paragraph.Format;
+        displayWidth = double.MaxValue;
         var (text, charStyles, _) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles);
+        foreach (var (index, (equation, _)) in equations)
+            advances[index] = equation.Width;
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
         var left = format.Left ?? 0;
         var right = format.Right ?? 0;
@@ -495,7 +561,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
         objects.Clear();
+        equations.Clear();
         anchored.Clear();
+        var breakAfterDisplay = false;
         links.Clear();
         notes.Clear();
         separators.Clear();
@@ -523,8 +591,59 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         void Add(Inline inline)
         {
             var format = inline.Format;
+            // Display equations take lines of their own.
+            if (breakAfterDisplay && inline is not (BookmarkInline or AnchorInline or MathInline { Display: true }))
+            {
+                text.Append('\n');
+                list.Add(styles.Style(format, WordSlot.Ascii));
+                breakAfterDisplay = false;
+            }
             switch (inline)
             {
+                case MathInline math:
+                {
+                    var lines = EquationLines(math, displayWidth);
+                    if (!math.Display)
+                    {
+                        foreach (var equation in lines)
+                        {
+                            equations[text.Length] = (equation, null);
+                            text.Append('\uFFFC');
+                            list.Add(styles.Style(format, WordSlot.Ascii));
+                        }
+                        break;
+                    }
+                    // A display equation's lines, placed by its justification: centered as a group (the lines left
+                    // aligned in it, the continuations indented; measured: Word centers the widest line), each
+                    // centered, at the left or right; m:wrapRight puts the continuations at the right.
+                    var indent = WrapIndent;
+                    var group = lines.Count > 0 ? lines.Select((l, k) => l.Width + (k > 0 ? indent : 0)).Max() : 0;
+                    var right = MathSetting("wrapRight") is "1" or "on" or "true" || MathSettings?.Element(Equations.MathLayout.M + "wrapRight") is { } wrapRight && wrapRight.Attribute(Equations.MathLayout.M + "val") == null;
+                    var available = displayWidth == double.MaxValue ? group : displayWidth;
+                    for (var k = 0; k < lines.Count; k++)
+                    {
+                        if (text.Length > 0 && text[^1] != '\n')
+                        {
+                            text.Append('\n');
+                            list.Add(styles.Style(format, WordSlot.Ascii));
+                        }
+                        var width = lines[k].Width;
+                        double x = math.Justification switch
+                        {
+                            "left" => k > 0 ? indent : 0,
+                            "right" => available - width,
+                            "center" => (available - width) / 2,
+                            _ => (available - group) / 2 + (k > 0 ? indent : 0),
+                        };
+                        if (k > 0 && right)
+                            x = available - width;
+                        equations[text.Length] = (lines[k], Math.Max(0, x));
+                        text.Append('\uFFFC');
+                        list.Add(styles.Style(format, WordSlot.Ascii));
+                    }
+                    breakAfterDisplay = true;
+                    break;
+                }
                 case TextInline t:
                     AddText(t.Text, format, t.Link);
                     break;
@@ -703,6 +822,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Advances = advances[pieceStart..i],
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
+                    Equation = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var math) ? math.Equation : null,
+                    DisplayX = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var display) ? display.DisplayX : null,
                     Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
                     Link = links.Count > 0 ? LinkAt(pieceStart) : null,
                 };
@@ -747,6 +868,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var drawings = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
+            // An equation stands on the baseline with its ascent and descent; the line spacing's extra comes from the
+            // fonts, the paragraph mark's where no text is beside it (measured with docx/local/eq-shaded: a display
+            // equation's line is its ascent, its descent and the mark's extra high).
+            if (piece.Equation is { } equation)
+            {
+                above = Math.Max(above, equation.Ascent);
+                below = Math.Max(below, equation.Descent);
+                raised = Math.Max(raised, equation.Ascent);
+                lowered = Math.Max(lowered, equation.Descent);
+                drawings = true;
+                continue;
+            }
             // An inline drawing stands on the baseline: its box is all ascent; the line spacing's extra comes from
             // the fonts (measured with docx/generated/drawings: a 90 pt picture beside 12 pt Aptos at 1.16 lines makes
             // the line 90 + 3.38 + 2.32 pt high, a picture alone 160.5 + 2.32 pt).
