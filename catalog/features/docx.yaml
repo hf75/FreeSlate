@@ -427,7 +427,7 @@ areas:
         elements: [w:r, w:rPr, w:t, w:rStyle, w:b, w:i, w:sz, w:color, w:rFonts, w:lang]
         priority: P0
         difficulty: 2
-        status: partial
+        status: done
         strategy: >-
           Each run picks one of its four fonts (ascii, hAnsi, eastAsia, cs) per character by Unicode range and the
           w:hint attribute, then is measured and broken into lines by our text engine (engine.lineLayout).
@@ -436,7 +436,9 @@ areas:
           GPOS kerning only where w:kern is set and the size reaches its threshold, ligatures and contextual
           alternates only per w14:ligatures and w14:cntxtAlts (measured with docx/generated/text-fonts: positions
           within 0.1 pt per line without kerning). Theme fonts and theme colors resolve through the theme and the
-          settings' color scheme mapping. Still open: font fallback for missing glyphs per Word's rules.
+          settings' color scheme mapping. Characters the run's font lacks fall back per Unicode range as Word's do
+          (Segoe UI Symbol and Emoji, Cambria Math, Nirmala UI, Leelawadee, MS Mincho, …), the line growing with them,
+          whole clusters together (engine.fonts, docx/local/fallback).
 
       - id: run.decoration
         title: Underline, strike, caps, highlight, borders and shading
@@ -851,7 +853,7 @@ areas:
                    w:formProt]
         priority: P0
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Every section starts on a new page, an even or odd page (inserting a blank page) or continues on the same
           page; orientation, margins with gutter, mirrored margins and vertical alignment of the page content.
@@ -862,8 +864,8 @@ areas:
           margins any section whose first number has the parity of the page before gets a blank page before it
           (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES.
           Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the
-          space after its last (docx/generated/page-setup, page 4). Still open: w:formProt (nothing to draw) and page
-          sizes beyond what browsers print.
+          space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards
+          editing and shows nothing; pages keep their sizes in the HTML whatever a browser can print.
 
       - id: section.columns
         title: Columns
@@ -988,28 +990,40 @@ areas:
                    w:continuationSeparator, w:pos, w:numStart, w:numRestart, w:numFmt, w15:footnoteColumns]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Footnotes go to the bottom of the page of their reference (or below the text), continue on the next page
           with the continuation separator when they do not fit, and take space from the body (engine.pagination).
         office: >-
-          Footnotes are numbered by the order of their references (w:footnotePr numFmt and numStart), their marks
-          drawn in the reference style; a line with references needs room for their notes, else it goes to the next
-          page with them; the notes stand at the bottom of the page, ending at the bottom margin, under the separator
-          (0.6 pt thick, 144 pt long, through the middle of its line; measured with docx/generated/notes, all lines
-          within 0.2 pt). Still open: footnotes continued on the next page, restarts per page or section, notes
-          beneath the text, columns.
+          Footnotes are numbered by the order of their references in the format, from the start and with the restarts
+          of the section of the reference (w:footnotePr in w:sectPr, else the settings'; decimal by default, counting
+          on through the sections; eachSect starts each section anew, eachPage each page, numbered from a second
+          layout), their marks drawn in the reference style. A line with references needs room for their notes; where
+          the last note does not fit but shows a line, it stays and the note continues on the next page under the
+          separator, before that page's own notes, the page taking no more text (Word prints its continuation
+          separator as the separator; docx/local/fnpages-a, -d). The notes stand at the bottom of the page, ending at
+          the bottom margin, under the separator (0.6 pt thick, 144 pt long, through the middle of its line); a
+          section whose own w:footnotePr puts them beneath the text has them follow its last line (the settings' alone
+          do not; docx/local/fnpages-f, -g); pages of several columns spread whole notes into columns of their own
+          width, each column taking notes until it holds its share of their height, under one separator at the left,
+          every column of text ending above them (docx/local/fnpages-h). Notes of table cells need room with their
+          row. Measured with docx/generated/notes and docx/local/fnpages-a to -h: all lines within 0.2 pt but the note
+          marks, whose superscripts stand within half a point (run.decoration).
 
       - id: note.endnotes
         title: Endnotes
         elements: [w:endnotes, w:endnote, w:endnoteReference, w:endnoteRef, w:endnotePr, w:noEndnote]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: Collected at the end of the section or the document.
         office: >-
-          Endnotes follow the document's last paragraph under their separator, in the order of their references,
-          numbered in lower roman by default (docx/generated/notes). Still open: endnotes at the end of each section.
+          Endnotes follow the document's last paragraph under their separator, in the order of their references, or,
+          where the settings put them at the end of sections (w:endnotePr/w:pos sectEnd), follow the text of each
+          section's last paragraph, an empty section-break paragraph taking no line before them, unless the section
+          has w:noEndnote (then the next section takes them). Their marks follow the format and start of the section
+          of the reference, lower roman by default, counting on through the sections (docx/generated/notes,
+          docx/local/fnpages-c, -e).
 
   - id: table
     title: Tables
@@ -2886,14 +2900,17 @@ areas:
         title: Pagination
         priority: P0
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           Page breaking with widow and orphan control, keep with next, keep lines together, page and column breaks,
           table rows that split or repeat, footnotes that share the page with their references, section breaks of
           all types and continuous sections with balanced columns.
         office: >-
           Pages, columns, sections, headers and footers and the paragraph keep rules match Word's line positions
-          within 0.1 pt on the generated documents (word-lines). Still open: tables, footnotes, floating objects.
+          within 0.1 pt on the generated documents (word-lines); tables break between rows and split rows at lines,
+          repeat their header rows, keep rows that may not split and rows whose paragraphs keep with the next
+          (docx/local/tblpages: 229 lines, mean 0.06 pt); footnotes share the page with their references and continue
+          on the next (note.footnotes); floating objects stay on their anchor's page (engine.floats).
 
       - id: engine.lineLayout
         title: Line layout
@@ -2914,7 +2931,7 @@ areas:
         title: Floating objects and text wrapping
         priority: P0
         difficulty: 5
-        status: partial
+        status: done
         strategy: >-
           Anchored objects, frames and floating tables are placed first, then lines are broken into the space
           around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
@@ -2922,7 +2939,8 @@ areas:
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
           stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a
           segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping,
-          wrap-types). Still open: frames (paragraph.frames) and floating tables (table.floating).
+          wrap-types). Text frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in
+          the same exclusions.
 
       - id: engine.tableLayout
         title: Table layout
