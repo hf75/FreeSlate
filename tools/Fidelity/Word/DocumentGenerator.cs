@@ -8,7 +8,7 @@ namespace Fidelity.Word;
 /// (styles, theme fonts, section properties …). Each document isolates one group of features.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public static class DocumentGenerator
+public static partial class DocumentGenerator
 {
     // WdBuiltinStyle
     internal const int StyleNormal = -1, StyleHeading1 = -2, StyleHeading2 = -3, StyleHeading3 = -4, StyleTitle = -63;
@@ -28,6 +28,11 @@ public static class DocumentGenerator
         ("paragraph-spacing", ParagraphSpacing),
         ("character-formats", CharacterFormats),
         ("page-setup", PageSetup),
+        ("lists", Lists),
+        ("tabs", Tabs),
+        ("headers-footers", HeadersFooters),
+        ("tables", Tables),
+        ("breaks", Breaks),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>
