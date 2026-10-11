@@ -43,6 +43,9 @@ public sealed record RunStyle(
     /// <summary>The direction a w:bdo around the run forces on it ("rtl", "ltr"), or null.</summary>
     public string? Override { get; init; }
 
+    /// <summary>The East Asian emphasis mark of every character (w:em: dot, comma, circle, underDot), or null.</summary>
+    public string? Emphasis { get; init; }
+
     /// <summary>Text effects as DrawingML (catalog: run.textEffects): glow, shadow and reflection, the outline and the fill.</summary>
     public XElement? Effects { get; init; }
     public XElement? Outline { get; init; }

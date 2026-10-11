@@ -39,6 +39,12 @@ public sealed class Piece
     /// <summary>A legacy check box form field the piece stands for, or null.</summary>
     public CheckBoxInline? CheckBox { get; init; }
 
+    /// <summary>The ruby the piece stands for (catalog: run.ruby), or null.</summary>
+    public RubyInline? Ruby { get; init; }
+
+    /// <summary>Text set as two lines in one (w:eastAsianLayout w:combine, catalog: run.eastAsian), or null.</summary>
+    public TextInline? Combined { get; init; }
+
     /// <summary>How far the piece stands above the line's baseline by the paragraph's w:textAlignment, in points.</summary>
     public double Shift { get; set; }
 
@@ -215,6 +221,46 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, CheckBoxInline> boxes = [];
 
+    /// <summary>The rubies and the two-lines-in-one runs of the paragraph being laid out, by their place in its text.</summary>
+    readonly Dictionary<int, RubyInline> rubies = [];
+    readonly Dictionary<int, TextInline> combined = [];
+
+    /// <summary>The advance of every character of a text in one style, in points.</summary>
+    public static double[] Measure(string text, RunStyle style)
+    {
+        var advances = new double[text.Length];
+        foreach (var g in style.Font.Data.GlyphsWithFeatures(text, style.Features, language: style.Language))
+        {
+            if (g.Cluster < text.Length)
+                advances[g.Cluster] += g.Advance * style.Size * style.Scale;
+        }
+        return advances;
+    }
+
+    /// <summary>The widths of a ruby's base and phonetic text in their styles.</summary>
+    public (double Base, double Ruby) RubyWidths(RubyInline ruby) =>
+        (ruby.Base.Sum(t => Measure(t.Text, styles.Style(t.Format, WordSlot.EastAsia)).Sum()),
+         ruby.Ruby.Sum(t => Measure(t.Text, styles.Style(t.Format, WordSlot.EastAsia)).Sum()));
+
+    /// <summary>
+    /// Two lines in one (measured with docx/local/ruby): the text in half its size, its first half (rounded up) above
+    /// its second, as wide as the wider line, between brackets of the full size where w:combineBrackets asks for them.
+    /// </summary>
+    public (string First, string Second, RunStyle Half, double Width, string Open, string Close) Combination(TextInline run)
+    {
+        var style = styles.Style(run.Format, WordSlot.EastAsia);
+        var half = style with { Size = style.Size / 2 };
+        var split = (run.Text.Length + 1) / 2;
+        var (first, second) = (run.Text[..split], run.Text[split..]);
+        var (open, close) = run.Format.CombineBrackets switch
+        {
+            "round" => ("(", ")"), "square" => ("[", "]"), "angle" => ("<", ">"), "curly" => ("{", "}"), _ => ("", ""),
+        };
+        var width = Math.Max(Measure(first, half).Sum(), Measure(second, half).Sum())
+                    + Measure(open, style).Sum() + Measure(close, style).Sum();
+        return (first, second, half, width, open, close);
+    }
+
     /// <summary>
     /// A check box form field's metrics: a character of the run's font at the box's size, its advance the font's line
     /// height (measured with docx/local/form-boxes: Arial 8 to 36 pt and Aptos).
@@ -328,6 +374,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             advances[index] = equation.Width;
         foreach (var (index, box) in boxes)
             advances[index] = BoxMetrics(box) is var (a, b) ? a + b : 0;
+        foreach (var (index, ruby) in rubies)
+        {
+            var (baseWidth, rubyWidth) = RubyWidths(ruby);
+            // Vertical ruby stands right of its base, one character wide.
+            advances[index] = ruby.Align == "rightVertical"
+                ? baseWidth + (ruby.Ruby.Count > 0 ? styles.Style(ruby.Ruby[0].Format, WordSlot.EastAsia).Size : 0)
+                : Math.Max(baseWidth, rubyWidth);
+        }
+        foreach (var (index, run) in combined)
+            advances[index] = Combination(run).Width;
         foreach (var (index, continuation) in separators)
             advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
@@ -644,6 +700,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         levels = null;
         objects.Clear();
         boxes.Clear();
+        rubies.Clear();
+        combined.Clear();
         equations.Clear();
         anchored.Clear();
         permissions.Clear();
@@ -659,6 +717,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true)
                 return;   // hidden text is not printed (Word's PDF export leaves it out)
+            if (format.CombineLines == true && value.Length > 1)
+            {
+                combined[text.Length] = new TextInline(value, format);
+                text.Append('\uFFFC');
+                list.Add(styles.Style(format, WordSlot.EastAsia));
+                return;
+            }
             // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
             var small = format.SmallCaps == true && format.Caps != true;
             RunStyle? previous = null;
@@ -765,6 +830,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     boxes[text.Length] = box;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
+                    break;
+                case RubyInline ruby:
+                    rubies[text.Length] = ruby;
+                    text.Append('\uFFFC');
+                    list.Add(styles.Style(ruby.Base.FirstOrDefault()?.Format ?? format, WordSlot.EastAsia));
                     break;
                 case NoteReferenceInline note:
                     if (!note.Endnote)
@@ -1012,6 +1082,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,
                     Equation = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var math) ? math.Equation : null,
                     CheckBox = text[pieceStart] == '\uFFFC' && boxes.TryGetValue(pieceStart, out var box) ? box : null,
+                    Ruby = text[pieceStart] == '\uFFFC' && rubies.TryGetValue(pieceStart, out var ruby) ? ruby : null,
+                    Combined = text[pieceStart] == '\uFFFC' && combined.TryGetValue(pieceStart, out var pair) ? pair : null,
                     DisplayX = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var display) ? display.DisplayX : null,
                     Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
                     Link = links.Count > 0 ? LinkAt(pieceStart) : null,
@@ -1058,6 +1130,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var drawings = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
+            // Ruby stands above its base, w:hpsRaise up from the base's baseline: the line makes room for it.
+            if (piece.Ruby is { } rubyText && rubyText.Ruby.Count > 0)
+            {
+                var rubyStyle = styles.Style(rubyText.Ruby[0].Format, WordSlot.EastAsia);
+                above = Math.Max(above, piece.Style.Metrics.Above);
+                if (rubyText.Align == "rightVertical")
+                {
+                    // Its characters run down beside the base, centered on its middle.
+                    var height = rubyText.Ruby.Sum(t => t.Text.EnumerateRunes().Count()) * rubyStyle.Size;
+                    var middle = (piece.Style.Font.Data.WinAscent - piece.Style.Font.Data.WinDescent) / 2 * piece.Style.Size;
+                    raised = Math.Max(raised, middle + height / 2);
+                    lowered = Math.Max(lowered, height / 2 - middle);
+                }
+                else
+                    raised = Math.Max(raised, rubyText.Raise + rubyStyle.Metrics.Above);
+            }
             // A check box form field stands like a character of its size.
             if (piece.CheckBox is { } checkBox)
             {

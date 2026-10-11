@@ -159,6 +159,7 @@ public sealed class RunStyles(DocumentContext context)
             TextFill = TextEffects.Fill(format),
             RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
             Override = format.Override,
+            Emphasis = format.Emphasis is { } em && em != "none" ? em : null,
             Language = slot switch
             {
                 WordSlot.EastAsia => format.LanguageEastAsia ?? format.Language,

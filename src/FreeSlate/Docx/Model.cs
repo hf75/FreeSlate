@@ -30,6 +30,12 @@ public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Form
 /// </summary>
 public sealed record CheckBoxInline(bool Checked, double? Size, RunFormat Format) : Inline(Format);
 
+/// <summary>
+/// Ruby (w:ruby, catalog: run.ruby): base text with phonetic text set above it, aligned by w:rubyAlign and raised
+/// w:hpsRaise (here in points) above the base's baseline.
+/// </summary>
+public sealed record RubyInline(List<TextInline> Base, List<TextInline> Ruby, string Align, double Raise, RunFormat Format) : Inline(Format);
+
 /// <summary>The start or end of an editable range (w:permStart, w:permEnd, catalog: review.permissions).</summary>
 public sealed record PermissionInline(bool Start, RunFormat Format) : Inline(Format);
 
@@ -816,6 +822,27 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (!field.Hidden)
                         field.Target(content).Add(new BreakInline("textWrapping", null, format));
                     break;
+                case "ruby" when !field.Hidden:
+                {
+                    List<TextInline> Texts(XElement? part)
+                    {
+                        var texts = new List<TextInline>();
+                        foreach (var r in part?.Elements(Wml.W + "r") ?? [])
+                        {
+                            var own = new RunFormat();
+                            own.Apply(r.Child("rPr"));
+                            var runFormat = context.Styles.Run(paragraphStyle, own.Style, own, tableRun);
+                            var value = string.Concat(r.Elements(Wml.W + "t").Select(t => t.Value));
+                            if (value.Length > 0)
+                                texts.Add(new TextInline(value, runFormat));
+                        }
+                        return texts;
+                    }
+                    var properties = e.Child("rubyPr");
+                    field.Target(content).Add(new RubyInline(Texts(e.Child("rubyBase")), Texts(e.Child("rt")),
+                        properties.Child("rubyAlign").Val() ?? "center", (properties.Child("hpsRaise").Number("val") ?? 0) / 2, format));
+                    break;
+                }
                 case "dayShort" or "dayLong" or "monthShort" or "monthLong" or "yearShort" or "yearLong":
                     // Date blocks show today's date in the run's language, else the regional one: 11, Sonntag, 10,
                     // Oktober, 26, 2026 (measured with docx/local/run-content).

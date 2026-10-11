@@ -24,6 +24,10 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
+    /// <summary>The paragraph layout and run styles of the document (for ruby, two lines in one and emphasis marks).</summary>
+    ParagraphLayout? layout => blocks?.Paragraphs;
+    RunStyles? styles => layout?.Styles;
+
     /// <summary>Gradients and filters of the page's text effects, drawn at its end.</summary>
     readonly StringBuilder defs = new();
 
@@ -180,6 +184,32 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(placed.Top + placed.Line.Height / 2 - 0.3)}\" width=\"{Px(piece.Width)}\" height=\"{Px(0.6)}\" fill=\"#000\"/>");
                     continue;
                 }
+                // Ruby: the base text and above it the phonetic text (catalog: run.ruby).
+                if (piece.Ruby is { } ruby)
+                {
+                    svg.Append(Ruby(ruby, x, baseline - piece.Style.Raise, piece.Width));
+                    continue;
+                }
+                // Two lines in one: the halves of the text in half size above one another, between brackets.
+                if (piece.Combined is { } combinedRun && layout != null)
+                {
+                    var (firstLine, secondLine, half, _, open, close) = layout.Combination(combinedRun);
+                    var full = piece.Style;
+                    var at = x;
+                    if (open.Length > 0)
+                    {
+                        svg.Append(TextAt(open, full, at, baseline));
+                        at += ParagraphLayout.Measure(open, full).Sum();
+                    }
+                    var lineWidth = Math.Max(ParagraphLayout.Measure(firstLine, half).Sum(), ParagraphLayout.Measure(secondLine, half).Sum());
+                    // Measured: the first half 6.12 pt above the baseline, the second 1.8 pt below (12 pt text).
+                    svg.Append(TextAt(firstLine, half, at, baseline - 0.51 * full.Size));
+                    svg.Append(TextAt(secondLine, half, at, baseline + 0.15 * full.Size));
+                    at += lineWidth;
+                    if (close.Length > 0)
+                        svg.Append(TextAt(close, full, at, baseline));
+                    continue;
+                }
                 // A check box form field: a square 2.28 pt smaller than its cell, 1.08 pt in from its left and bottom,
                 // crossed when checked, in 0.48 pt lines (measured with docx/local/form-boxes).
                 if (piece.CheckBox is { } box)
@@ -222,6 +252,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     selection.Append(SelectionText(piece, x, baseline - piece.Style.Raise - piece.Shift));
                 }
                 svg.Append(Decorations(piece, x, baseline - piece.Style.Raise - piece.Shift));
+                if (piece.Style.Emphasis is { } emphasis)
+                    svg.Append(EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift));
                 if (piece.Link != null)
                     svg.Append("</a>");
             }
@@ -395,6 +427,113 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 sb.Append($"<tspan x=\"{X(at, text.Length)}\">{WebUtility.HtmlEncode(text[at..])}</tspan>");
         }
         sb.Append("</text>");
+        return sb.ToString();
+    }
+
+    /// <summary>A text in one style at a place, drawn by the browser.</summary>
+    string TextAt(string text, RunStyle style, double x, double baseline, double spacing = 0)
+    {
+        if (text.Length == 0)
+            return "";
+        var advances = ParagraphLayout.Measure(text, style);
+        if (spacing != 0)
+        {
+            for (var k = 0; k < advances.Length - 1; k++)
+            {
+                if (!char.IsLowSurrogate(text[k]))
+                    advances[k] += spacing;
+            }
+        }
+        return BrowserText(new Piece { Text = text, Style = style, X = x, Advances = advances }, x, baseline);
+    }
+
+    /// <summary>
+    /// A ruby (measured with docx/local/ruby): the phonetic text w:hpsRaise above the base's baseline; narrower than its
+    /// base it is centered over it, at its left or right, or spread over it (distributeLetter: the gaps between its
+    /// letters, distributeSpace: also half a gap at either end); wider, it spans the ruby's width and the base is
+    /// centered under it.
+    /// </summary>
+    string Ruby(RubyInline ruby, double x, double baseline, double width)
+    {
+        var sb = new StringBuilder();
+        var baseText = ruby.Base.Select(t => (Text: t.Text, Style: styles!.Style(t.Format, WordSlot.EastAsia))).ToList();
+        var rubyText = ruby.Ruby.Select(t => (Text: t.Text, Style: styles!.Style(t.Format, WordSlot.EastAsia))).ToList();
+        var baseWidth = baseText.Sum(t => ParagraphLayout.Measure(t.Text, t.Style).Sum());
+        var rubyWidth = rubyText.Sum(t => ParagraphLayout.Measure(t.Text, t.Style).Sum());
+        if (ruby.Align == "rightVertical")
+        {
+            // The base, and its ruby down along its right, a character a line from the base's top.
+            var bx = x;
+            foreach (var (text, style) in baseText)
+            {
+                sb.Append(TextAt(text, style, bx, baseline));
+                bx += ParagraphLayout.Measure(text, style).Sum();
+            }
+            // Centered on the base's middle (its win ascent and descent).
+            var count = rubyText.Sum(t => t.Text.EnumerateRunes().Count());
+            var baseStyle = baseText.Count > 0 ? baseText[0].Style : null;
+            var middle = baseStyle != null ? baseline - (baseStyle.Font.Data.WinAscent - baseStyle.Font.Data.WinDescent) / 2 * baseStyle.Size : baseline;
+            var top = middle - count * (rubyText.Count > 0 ? rubyText[0].Style.Size : 0) / 2;
+            foreach (var (text, style) in rubyText)
+            {
+                foreach (var rune in text.EnumerateRunes())
+                {
+                    top += style.Size;
+                    sb.Append(TextAt(rune.ToString(), style, bx, top - style.Size * 0.12));
+                }
+            }
+            return sb.ToString();
+        }
+        var at = x + (width - baseWidth) / 2;
+        foreach (var (text, style) in baseText)
+        {
+            sb.Append(TextAt(text, style, at, baseline));
+            at += ParagraphLayout.Measure(text, style).Sum();
+        }
+        var letters = rubyText.Sum(t => t.Text.EnumerateRunes().Count());
+        var free = width - rubyWidth;
+        var (start, gap) = free <= 0.01 || letters == 0 ? (x, 0.0) : ruby.Align switch
+        {
+            "left" => (x, 0.0),
+            "right" or "rightVertical" => (x + free, 0.0),
+            "distributeLetter" when letters > 1 => (x, free / (letters - 1)),
+            "distributeSpace" => (x + free / letters / 2, free / letters),
+            _ => (x + free / 2, 0.0),
+        };
+        at = start;
+        foreach (var (text, style) in rubyText)
+        {
+            sb.Append(TextAt(text, style, at, baseline - ruby.Raise, gap));
+            at += ParagraphLayout.Measure(text, style).Sum() + gap * text.EnumerateRunes().Count();
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// East Asian emphasis marks over (or under) every character but spaces (w:em, catalog: run.eastAsian), measured
+    /// with docx/local/ruby at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in from the
+    /// character's start and 1.01 em above its baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot
+    /// below (U+FF0E, SimSun) 0.3 em in and 0.38 em below.
+    /// </summary>
+    string EmphasisMarks(Piece piece, string emphasis, double x, double baseline)
+    {
+        var style = piece.Style;
+        var (mark, family, dx, dy) = emphasis switch
+        {
+            "comma" => ("\u3001", (string?)null, 0.33, -1.01),
+            "circle" => ("\u02DA", "Batang", 0.34, -0.29),
+            "underDot" => ("\uFF0E", "SimSun", 0.3, 0.38),
+            _ => ("\uFF0E", null, 0.33, -1.01),
+        };
+        var markStyle = family != null && context.Fonts.TryResolveTypeface(family, false, false) is { } font ? style with { Font = font } : style;
+        var sb = new StringBuilder();
+        var positions = Positions(piece);
+        for (var k = 0; k < piece.Text.Length; k++)
+        {
+            if (char.IsLowSurrogate(piece.Text[k]) || char.IsWhiteSpace(piece.Text[k]) || piece.Advances[k] <= 0)
+                continue;
+            sb.Append(TextAt(mark, markStyle, x + positions[k] + dx * style.Size, baseline + dy * style.Size));
+        }
         return sb.ToString();
     }
 

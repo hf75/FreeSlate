@@ -197,6 +197,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>The default left and right cell margin where neither table nor style gives one (0.075 in).</summary>
     const double DefaultMargin = 5.4;
 
+    /// <summary>The paragraph layout the cells' text is laid out with.</summary>
+    public ParagraphLayout Paragraphs => paragraphs;
+
     bool? modern;
 
     /// <summary>Whether the document lays tables out as Word 2013 does (compatibility mode 15 and later).</summary>
