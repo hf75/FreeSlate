@@ -38,7 +38,7 @@ public static class WordLines
                 var best = double.MaxValue;
                 for (var k = 0; k < ours.Count; k++)
                 {
-                    if (used.Contains(k) || ours[k].Text != w.Text)
+                    if (used.Contains(k) || Key(ours[k].Text) != Key(w.Text))
                         continue;
                     var distance = (ours[k].Page != w.Page ? 10000 : 0) + Math.Abs(ours[k].Y - w.Y) + Math.Abs(ours[k].X0 - w.X0);
                     if (distance < best)
@@ -91,6 +91,9 @@ public static class WordLines
     }
 
     static string Clip(string text) => text.Length > 70 ? text[..70] + "…" : text;
+
+    /// <summary>The text lines are matched by: without white space (Word writes tabs as spaces) and symbol font characters.</summary>
+    static string Key(string text) => string.Concat(text.Where(c => !char.IsWhiteSpace(c) && c is not (>= '\uE000' and <= '\uF8FF') and not '\u2022' and not '?'));
 
     static string Normalize(string text) => text.Replace(' ', ' ').TrimEnd();
 

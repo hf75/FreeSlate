@@ -54,6 +54,9 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
 {
     /// <summary>The section this paragraph ends (its w:pPr/w:sectPr), or null.</summary>
     public SectionProperties? EndsSection { get; init; }
+
+    /// <summary>The paragraph's list number or bullet (catalog: numbering.counting), or null.</summary>
+    public ListLabel? Label { get; init; }
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
@@ -135,10 +138,14 @@ public sealed class SectionProperties
 /// </summary>
 public sealed class ModelReader(DocumentContext context)
 {
+    /// <summary>The list counters of the story being read: the body and every header, footer and note count on their own.</summary>
+    ListCounter counter = new(context.Numbering);
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
         var blocks = new List<Block>();
+        counter = new ListCounter(context.Numbering);
         if (body != null)
             ReadBlocks(body, blocks);
         return blocks;
@@ -159,8 +166,11 @@ public sealed class ModelReader(DocumentContext context)
         if (stories.TryGetValue(part, out var blocks))
             return blocks;
         blocks = [];
+        var bodyCounter = counter;
+        counter = new ListCounter(context.Numbering);
         if (context.Load(part).Root is { } root)
             ReadBlocks(root, blocks);
+        counter = bodyCounter;
         return stories[part] = blocks;
     }
 
@@ -199,12 +209,26 @@ public sealed class ModelReader(DocumentContext context)
         var markDirect = new RunFormat();
         markDirect.Apply(pPr.Child("rPr"));
         var mark = context.Styles.Run(styleId, markDirect.Style, markDirect);
+        // A numbered paragraph takes the level's indentation and tabs over its style's, under its own (measured
+        // with docx/generated/lists: a level indented 360 twips puts a List Paragraph, whose style says 720, at
+        // 360); the number is drawn in the paragraph mark's formatting with the level's run properties over it.
+        ListLabel? label = null;
+        if (counter.Next(format.NumberingId, format.NumberingLevel ?? 0) is { } number)
+        {
+            format = context.Styles.Paragraph(direct.Style, direct, number.Level.ParagraphProperties);
+            var levelRun = new RunFormat();
+            levelRun.Apply(number.Level.RunProperties);
+            var numberFormat = mark.Clone();
+            numberFormat.Overlay(levelRun);
+            label = new ListLabel(number.Text, numberFormat, number.Level.Suffix, number.Level.Justification, number.Level);
+        }
         var content = new List<Inline>();
         var field = new FieldState();
         ReadInlines(p, styleId, content, field);
         return new ParagraphBlock(p, format, content, mark)
         {
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve) : null,
+            Label = label,
         };
     }
 

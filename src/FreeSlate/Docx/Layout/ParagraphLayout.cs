@@ -19,6 +19,9 @@ public sealed class Piece
 
     public bool IsTab { get; init; }
 
+    /// <summary>Part of the paragraph's list number (with a space after it).</summary>
+    public bool IsLabel { get; init; }
+
     /// <summary>The tab's leader (dot, hyphen, underscore, heavy, middleDot) or null.</summary>
     public string? Leader { get; init; }
 
@@ -39,6 +42,9 @@ public sealed class Line
     /// <summary>How far raised and lowered text (w:position, super- and subscript) reaches beyond Above and Below.</summary>
     public double RaisedAbove { get; set; }
     public double LoweredBelow { get; set; }
+
+    /// <summary>The largest single line height of the line's fonts, which multiple line spacing multiplies.</summary>
+    public double LargestNatural { get; set; }
 
     /// <summary>
     /// The part of the height below the text that may hang past the bottom of the page: the extra space of multiple
@@ -91,8 +97,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null)
     {
         var format = paragraph.Format;
-        var (text, charStyles) = Flatten(paragraph, fields);
+        var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles);
+        // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
+        var labelShift = 0.0;
+        var labelEnd = paragraph.Label?.Suffix == "space" ? labelLength + 1 : labelLength;
+        if (paragraph.Label is { Justification: "right" or "end" or "center" } label && labelLength > 0)
+        {
+            var labelWidth = advances.Take(labelLength).Sum();
+            labelShift = label.Justification == "center" ? labelWidth / 2 : labelWidth;
+        }
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
         var mark = styles.Style(paragraph.MarkFormat, WordSlot.Ascii);
 
@@ -110,7 +124,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var first = true;
         while (true)
         {
-            var startX = left + (first ? firstLine : 0);
+            var startX = left + (first ? firstLine - labelShift : 0);
             var limit = width - right;
             var x = startX;
             var spaces = 0.0;          // width of the spaces on the line so far
@@ -191,7 +205,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (lastFit < 0)
                 lastFit = end;
 
-            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark);
+            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd);
             line.EndBreak = endBreak;
             lines.Add(line);
             first = false;
@@ -200,14 +214,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 break;
         }
         if (lines.Count == 0)
-            lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine, format, left, firstLine, mark));
+            lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine - labelShift, format, left, firstLine, mark, labelEnd));
         // A paragraph that ends with a break has an empty last line.
         if (lines[^1].EndBreak is "line" && lineStart >= text.Length)
-            lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark));
+            lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0));
         lines[^1].Last = true;
 
         foreach (var line in lines)
-            Align(line, format, width - right, left + (line.First ? firstLine : 0));
+            Align(line, format, width - right, left + (line.First ? firstLine - labelShift : 0));
         Space(lines, format);
         return lines;
     }
@@ -223,7 +237,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>The paragraph's text with a style per character: tabs \t, line breaks \n, page breaks \f, column breaks \v.</summary>
-    (string Text, List<RunStyle> Styles) Flatten(ParagraphBlock paragraph, PageFields? fields)
+    /// <returns>The text, a style per character and how many characters the list number and its suffix take.</returns>
+    (string Text, List<RunStyle> Styles, int LabelLength) Flatten(ParagraphBlock paragraph, PageFields? fields)
     {
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
@@ -272,9 +287,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
         }
 
+        // The list number comes first, followed by a tab, a space or nothing (w:suff).
+        var labelLength = 0;
+        if (paragraph.Label is { } label)
+        {
+            AddText(label.Text, label.Format);
+            labelLength = text.Length;
+            if (label.Suffix == "tab")
+            {
+                text.Append('\t');
+                list.Add(styles.Style(label.Format, WordSlot.Ascii));
+            }
+            else if (label.Suffix == "space")
+                AddText(" ", label.Format);
+        }
         foreach (var inline in paragraph.Content)
             Add(inline);
-        return (text.ToString(), list);
+        return (text.ToString(), list, labelLength);
     }
 
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
@@ -360,8 +389,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return position - before;
     }
 
+    /// <param name="labelEnd">Where the list number (and a space after it) ends in the text.</param>
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
-        ParagraphFormat format, double left, double firstLine, RunStyle mark)
+        ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd)
     {
         var line = new Line { First = start == 0 };
         var x = startX;
@@ -379,6 +409,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Style = charStyles[pieceStart],
                     X = x,
                     Advances = advances[pieceStart..i],
+                    IsLabel = pieceStart < labelEnd,
                 };
                 line.Pieces.Add(piece);
                 x += piece.Width;
@@ -404,36 +435,54 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         // Vertical metrics: the largest parts above and below the baseline of the line's runs (raised runs reach
         // further); an empty line takes its break's or the paragraph mark's.
-        double above = 0, below = 0, raised = 0, lowered = 0;
+        double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
         var any = false;
         foreach (var piece in line.Pieces.Where(p => !p.IsTab))
         {
             var (a, b) = piece.Style.Metrics;
             above = Math.Max(above, a);
-            below = Math.Max(below, b);
             raised = Math.Max(raised, a + piece.Style.Raise);
-            lowered = Math.Max(lowered, b - piece.Style.Raise);
             any = true;
+            // A list number's ascent counts, its descent not (measured with docx/local/num-rules: a 16 pt number
+            // before 12 pt Arial makes the line 17.52 pt high, its ascent and the text's descent).
+            if (piece.IsLabel)
+                continue;
+            below = Math.Max(below, b);
+            largest = Math.Max(largest, a + b);
+            lowered = Math.Max(lowered, b - piece.Style.Raise);
+        }
+        if (any && below == 0 && largest == 0)
+        {
+            // Only a number on the line: the paragraph mark gives the rest.
+            var (a, b) = mark.Metrics;
+            below = b;
+            largest = a + b;
+            lowered = Math.Max(lowered, b);
         }
         if (!any)
         {
             var style = end > start && start < charStyles.Count ? charStyles[start] : mark;
             (above, below) = style.Metrics;
+            largest = above + below;
             (raised, lowered) = (above, below);
         }
         line.Above = above;
         line.Below = below;
+        line.LargestNatural = largest;
         line.RaisedAbove = Math.Max(0, raised - above);
         line.LoweredBelow = Math.Max(0, lowered - below);
         return line;
     }
 
     /// <summary>
-    /// Line heights and baselines by the paragraph's line spacing (measured with 14 fonts, docx/local/lm-*): auto is a
-    /// multiple of the natural height with the baseline where single spacing puts it (the extra goes below); exact is
-    /// the height given with the baseline at 80 % of it whatever the font; at least grows the line, the extra going
-    /// above the text. Raised and lowered text adds what it reaches beyond, outside the multiple (measured with
-    /// docx/generated/character-formats: text 3 pt up and 3 pt down makes a 1.15 line 6 pt higher, not 6.95 pt).
+    /// Line heights and baselines by the paragraph's line spacing (measured with 14 fonts, docx/local/lm-*): auto adds
+    /// to the natural height (the largest ascent and the largest descent of the line's fonts) the multiple's share of
+    /// the largest single font's line height, below the text, the baseline where single spacing puts it (measured
+    /// with docx/local/lm-mixed: Symbol and Aptos 12 pt at three lines make 44.84 pt, 15.45 + 2 × 14.70, not
+    /// 3 × 15.45); exact is the height given with the baseline at 80 % of it whatever the font; at least grows the
+    /// line, the extra going above the text. Raised and lowered text adds what it reaches beyond, outside the
+    /// multiple (measured with docx/generated/character-formats: text 3 pt up and 3 pt down makes a 1.15 line 6 pt
+    /// higher, not 6.95 pt).
     /// </summary>
     static void Space(List<Line> lines, ParagraphFormat format)
     {
@@ -453,7 +502,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     line.Baseline = line.Height - line.Below;
                     break;
                 default:
-                    line.Height = natural * value / 240;
+                    line.Height = natural + line.LargestNatural * (value / 240 - 1);
                     line.Baseline = line.Above;
                     line.Overhang = Math.Max(0, line.Height - natural);
                     break;

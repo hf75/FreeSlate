@@ -85,13 +85,20 @@ public sealed class StyleSheet
     public string? ParagraphStyleOf(string? id) => Find(id) is { Type: "paragraph" } ? id : DefaultParagraphStyle;
 
     /// <summary>The paragraph formatting of a paragraph with this style and direct formatting.</summary>
-    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct)
+    /// <param name="numbering">The paragraph properties of the paragraph's list level, between the style and the direct formatting.</param>
+    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null)
     {
         var result = DefaultParagraph.Clone();
         foreach (var style in Chain(ParagraphStyleOf(styleId)))
         {
             var level = new ParagraphFormat();
             level.Apply(style.ParagraphProperties);
+            result.Overlay(level);
+        }
+        if (numbering != null)
+        {
+            var level = new ParagraphFormat();
+            level.Apply(numbering);
             result.Overlay(level);
         }
         if (direct != null)

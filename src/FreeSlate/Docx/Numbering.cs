@@ -1,0 +1,230 @@
+using System.Text;
+using System.Xml.Linq;
+
+namespace FreeSlate.Docx;
+
+/// <summary>A level of a numbering definition (w:lvl, catalog: numbering.definitions).</summary>
+public sealed class NumberingLevel
+{
+    public int Start = 1;
+    public string Format = "decimal";
+
+    /// <summary>The level text with %1 … %9 for the numbers of the levels; null shows nothing.</summary>
+    public string? Text;
+
+    public string Justification = "left";
+
+    /// <summary>What follows the number: tab, space or nothing.</summary>
+    public string Suffix = "tab";
+
+    /// <summary>w:lvlRestart: the level (1-based) after which this one starts over, 0 for never, null for any higher level.</summary>
+    public int? Restart;
+
+    /// <summary>w:isLgl: all levels' numbers in decimal.</summary>
+    public bool Legal;
+
+    public string? ParagraphStyle;
+    public XElement? ParagraphProperties, RunProperties;
+    public string? PictureBullet;
+
+    public static NumberingLevel Read(XElement lvl)
+    {
+        var level = new NumberingLevel
+        {
+            Start = (int)(lvl.Child("start").Number("val") ?? 1),
+            Format = lvl.Child("numFmt").Val() ?? "decimal",
+            Text = lvl.Child("lvlText").Val(),
+            Justification = lvl.Child("lvlJc").Val() ?? "left",
+            Suffix = lvl.Child("suff").Val() ?? "tab",
+            Restart = lvl.Child("lvlRestart").Number("val") is { } restart ? (int)restart : null,
+            Legal = lvl.Child("isLgl").OnOff() == true,
+            ParagraphStyle = lvl.Child("pStyle").Val(),
+            ParagraphProperties = lvl.Child("pPr"),
+            RunProperties = lvl.Child("rPr"),
+            PictureBullet = lvl.Child("lvlPicBulletId").Val(),
+        };
+        // A level text without w:val shows nothing; an empty one too.
+        if (lvl.Child("lvlText") is { } text && text.Attr("val") == null)
+            level.Text = null;
+        // w:numFmt w:val="custom" names its format in w:format (Word 2010).
+        if (level.Format == "custom" && lvl.Child("numFmt").Attr("format") is { } custom)
+            level.Format = custom.StartsWith("0", StringComparison.Ordinal) ? "decimalZero" : "decimal";
+        return level;
+    }
+}
+
+/// <summary>A paragraph's number: its text, the formatting it is drawn with, what follows it and how it aligns.</summary>
+public sealed record ListLabel(string Text, RunFormat Format, string Suffix, string Justification, NumberingLevel Level);
+
+/// <summary>
+/// The numbering part (catalog: numbering.definitions): abstract numbering definitions with their nine levels,
+/// numbering instances that refer to them with level and start overrides, and numbering styles that link to them.
+/// </summary>
+public sealed class NumberingDefinitions
+{
+    readonly Dictionary<string, XElement> abstracts = new(StringComparer.Ordinal);
+    readonly Dictionary<string, XElement> instances = new(StringComparer.Ordinal);
+    readonly StyleSheet styles;
+
+    public NumberingDefinitions(XDocument? document, StyleSheet styles)
+    {
+        this.styles = styles;
+        var root = document?.Root;
+        if (root == null)
+            return;
+        foreach (var a in root.Elements(Wml.W + "abstractNum"))
+        {
+            if (a.Attr("abstractNumId") is { } id)
+                abstracts.TryAdd(id, a);
+        }
+        foreach (var n in root.Elements(Wml.W + "num"))
+        {
+            if (n.Attr("numId") is { } id)
+                instances.TryAdd(id, n);
+        }
+    }
+
+    /// <summary>A numbering instance: the abstract definition it uses (numbering style links followed), its levels and overrides.</summary>
+    public sealed class Instance
+    {
+        public required string Id { get; init; }
+        public required string AbstractId { get; init; }
+        public required NumberingLevel?[] Levels { get; init; }
+
+        /// <summary>w:lvlOverride/w:startOverride per level.</summary>
+        public required int?[] StartOverrides { get; init; }
+    }
+
+    readonly Dictionary<string, Instance?> resolved = new(StringComparer.Ordinal);
+
+    public Instance? Find(string? numId)
+    {
+        if (numId == null || numId == "0")
+            return null;
+        if (resolved.TryGetValue(numId, out var cached))
+            return cached;
+        Instance? instance = null;
+        if (instances.TryGetValue(numId, out var num) && num.Child("abstractNumId").Val() is { } abstractId
+            && Abstract(abstractId, 0) is var (id, element))
+        {
+            var levels = new NumberingLevel?[9];
+            foreach (var lvl in element.Elements(Wml.W + "lvl"))
+            {
+                if (lvl.Number("ilvl") is { } i and >= 0 and < 9)
+                    levels[(int)i] = NumberingLevel.Read(lvl);
+            }
+            var starts = new int?[9];
+            foreach (var o in num.Elements(Wml.W + "lvlOverride"))
+            {
+                if (o.Number("ilvl") is not { } i || i is < 0 or >= 9)
+                    continue;
+                if (o.Child("lvl") is { } replacement)
+                    levels[(int)i] = NumberingLevel.Read(replacement);
+                if (o.Child("startOverride").Number("val") is { } start)
+                    starts[(int)i] = (int)start;
+            }
+            instance = new Instance { Id = numId, AbstractId = id, Levels = levels, StartOverrides = starts };
+        }
+        return resolved[numId] = instance;
+    }
+
+    /// <summary>
+    /// The abstract definition with the levels: one with w:numStyleLink takes them from the numbering style's own
+    /// numbering instance.
+    /// </summary>
+    (string Id, XElement Element)? Abstract(string id, int depth)
+    {
+        if (depth > 8 || !abstracts.TryGetValue(id, out var element))
+            return null;
+        if (element.Child("numStyleLink").Val() is { } styleId
+            && styles.Find(styleId)?.ParagraphProperties.Child("numPr").Child("numId").Val() is { } linkedNum
+            && instances.TryGetValue(linkedNum, out var num) && num.Child("abstractNumId").Val() is { } linkedAbstract
+            && linkedAbstract != id)
+            return Abstract(linkedAbstract, depth + 1);
+        return (id, element);
+    }
+}
+
+/// <summary>
+/// List counters of one story (the body, a header, a footnote …; catalog: numbering.counting): numbering instances of
+/// the same abstract definition count together; an instance with a start override starts over where it is first
+/// used; a level starts over after a higher level (or the one w:lvlRestart names).
+/// </summary>
+public sealed class ListCounter(NumberingDefinitions definitions)
+{
+    sealed class Counters
+    {
+        public readonly int[] Values = new int[9];
+        public readonly bool[] Used = new bool[9];
+    }
+
+    readonly Dictionary<string, Counters> lists = new(StringComparer.Ordinal);
+    readonly HashSet<string> started = new(StringComparer.Ordinal);
+
+    /// <summary>The number of the next paragraph of a numbering instance at a level, or null where it has none.</summary>
+    public (string Text, NumberingLevel Level)? Next(string? numId, int ilvl)
+    {
+        if (definitions.Find(numId) is not { } instance)
+            return null;
+        ilvl = Math.Clamp(ilvl, 0, 8);
+        if (instance.Levels[ilvl] is not { } level)
+            return null;
+        if (!lists.TryGetValue(instance.AbstractId, out var counters))
+            lists[instance.AbstractId] = counters = new Counters();
+        if (started.Add(instance.Id))
+        {
+            for (var i = 0; i < 9; i++)
+            {
+                if (instance.StartOverrides[i] is { } start)
+                {
+                    counters.Values[i] = start - 1;
+                    counters.Used[i] = true;
+                }
+            }
+        }
+        if (!counters.Used[ilvl])
+            counters.Values[ilvl] = level.Start - 1;
+        counters.Values[ilvl]++;
+        counters.Used[ilvl] = true;
+        for (var d = ilvl + 1; d < 9; d++)
+        {
+            var restart = instance.Levels[d]?.Restart;
+            if (restart == null || restart > 0 && ilvl < restart)
+                counters.Used[d] = false;
+        }
+        return (Text(instance, counters, ilvl, level), level);
+    }
+
+    static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level)
+    {
+        if (level.Text == null || level.Format == "none" && !level.Text.Contains('%'))
+            return level.Text ?? "";
+        if (level.Format == "bullet")
+            return level.Text;
+        var sb = new StringBuilder();
+        var text = level.Text;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '%' && i + 1 < text.Length && text[i + 1] is >= '1' and <= '9')
+            {
+                var k = text[i + 1] - '1';
+                var referenced = instance.Levels[k];
+                // A higher level not used yet shows its start and counts from there (measured with
+                // docx/local/num-rules: level 3 after level 1 shows 7.1.1., the next level 2 then 7.2.).
+                if (!counters.Used[k] && k < ilvl)
+                {
+                    counters.Values[k] = referenced?.Start ?? 1;
+                    counters.Used[k] = true;
+                }
+                var value = counters.Used[k] ? counters.Values[k] : referenced?.Start ?? 1;
+                var format = level.Legal ? "decimal" : referenced?.Format ?? "decimal";
+                if (format != "none")
+                    sb.Append(NumberText.Format(value, format == "bullet" ? "decimal" : format));
+                i++;
+                continue;
+            }
+            sb.Append(text[i]);
+        }
+        return sb.ToString();
+    }
+}

@@ -27,6 +27,7 @@ public sealed class DocumentContext : IDisposable
         FontLocator = fonts ?? FontLocator.Default;
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
+        Numbering = new NumberingDefinitions(Related("numbering"), Styles);
     }
 
     public OpcPackage Package { get; }
@@ -35,6 +36,7 @@ public sealed class DocumentContext : IDisposable
     public StyleSheet Styles { get; }
     public XElement? Settings { get; }
     public Theme Theme { get; }
+    public NumberingDefinitions Numbering { get; }
     public FontLocator FontLocator { get; }
     public FontResolver Fonts { get; }
 
