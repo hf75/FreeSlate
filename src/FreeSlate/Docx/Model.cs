@@ -314,6 +314,27 @@ public sealed partial class ModelReader(DocumentContext context)
     /// The blocks of a drawing's text box (catalog: drawing.textBoxes), read like body content; a table's style does
     /// not reach into text boxes in its cells.
     /// </summary>
+    /// <summary>The text boxes of the shapes in a group or canvas, or null (catalog: drawing.groups, drawing.canvas).</summary>
+    List<(XElement Shape, List<Block> Text)>? ChildTextBoxes(XElement drawing)
+    {
+        var content = drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault();
+        if (content == null || content.Name.Namespace != Drawings.Wpg && content.Name.Namespace != Drawings.Wpc)
+            return null;
+        var result = new List<(XElement, List<Block>)>();
+        foreach (var shape in content.Descendants(Drawings.Wps + "wsp"))
+        {
+            if (shape.Element(Drawings.Wps + "txbx")?.Element(Wml.W + "txbxContent") is not { } box)
+                continue;
+            var (savedParagraph, savedRun) = (tableParagraph, tableRun);
+            (tableParagraph, tableRun) = (null, null);
+            var blocks = new List<Block>();
+            ReadBlocks(box, blocks);
+            (tableParagraph, tableRun) = (savedParagraph, savedRun);
+            result.Add((shape, blocks));
+        }
+        return result.Count > 0 ? result : null;
+    }
+
     List<Block>? TextBox(XElement drawing)
     {
         if (Drawings.TextBoxContent(drawing) is not { } content)
@@ -551,10 +572,11 @@ public sealed partial class ModelReader(DocumentContext context)
                         foreach (var d in e.Elements())
                         {
                             var text = TextBox(d);
+                            var children = ChildTextBoxes(d);
                             if (d.Name == Drawings.Wp + "inline")
-                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text });
+                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
                             else if (d.Name == Drawings.Wp + "anchor")
-                                field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text });
+                                field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
                         }
                     }
                     break;

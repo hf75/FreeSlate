@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Xml.Linq;
 using FreeSlate.Docx.Layout;
 
 namespace FreeSlate.Docx;
@@ -83,27 +84,48 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
     string Drawing(PlacedDrawing drawing, PageBox page)
     {
         var html = drawings!.Render(drawing);
-        if (drawing.Text is not { Count: > 0 } text || blocks == null)
+        if (blocks == null)
             return html;
-        var body = drawing.Body;
+        if (drawing.Text is { Count: > 0 } text)
+            html += TextBox(text, drawing.Body, drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp"),
+                drawing.X, drawing.Y, drawing.Width, drawing.Height, 0, page);
+        // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
+        foreach (var (shape, childText) in drawing.ChildText ?? [])
+        {
+            if (Drawings.ChildRect(drawing.Drawing, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height) is { } rect && childText.Count > 0)
+                html += TextBox(childText, shape.Element(Drawings.Wps + "bodyPr"), shape, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
+        }
+        return html;
+    }
+
+    /// <summary>
+    /// A shape's text box content laid out like body text in the shape's rectangle less the insets of wps:bodyPr (from
+    /// the geometry's text rectangle), at the top, middle or bottom, turned with the shape.
+    /// </summary>
+    string TextBox(List<Block> text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page)
+    {
         double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
         var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
         // The insets count from the geometry's text rectangle (rounded corners, ellipses).
-        var (gl, gt, gr, gb) = Drawings.TextRect(drawing.Drawing, drawing.Width, drawing.Height);
+        var (gl, gt, gr, gb) = shape != null ? Drawings.ShapeTextRect(shape, w, h) : default;
         (l, t, r, b) = (l + gl, t + gt, r + gr, b + gb);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0);
-        var (lines, fills, strokes, height) = blocks.Blocks(text, Math.Max(1, drawing.Width - l - r), fields);
-        var free = drawing.Height - t - b - height;
-        var top = drawing.Y + t + ((string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 });
-        var left = drawing.X + l;
+        var (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, w - l - r), fields);
+        var free = h - t - b - height;
+        var top = y + t + ((string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 });
+        var left = x + l;
         var width = page.Width * PxPerPt;
         var heightPx = page.Height * PxPerPt;
         var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
+        if (rotation != 0)
+            svg.Append($"<g transform=\"rotate({Units.Css(rotation)} {Px(x + w / 2)} {Px(y + h / 2)})\">");
         Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
         var selection = new StringBuilder();
         Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, []);
-        svg.Append(selection).Append("</svg>");
-        return html + svg;
+        svg.Append(selection);
+        if (rotation != 0)
+            svg.Append("</g>");
+        return svg.Append("</svg>").ToString();
     }
 
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front)
@@ -149,7 +171,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 {
                     var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
                     var (w, h) = Drawings.Extent(inline.Drawing);
-                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h) { Text = inline.Text });
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;
                 }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;

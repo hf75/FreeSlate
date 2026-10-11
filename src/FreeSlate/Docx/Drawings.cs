@@ -10,6 +10,9 @@ public sealed record DrawingInline(XElement Drawing, string Part, RunFormat Form
     /// <summary>The content of the shape's text box (wps:txbx/w:txbxContent), or null.</summary>
     public List<Block>? Text { get; init; }
 
+    /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
+    public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
+
     /// <summary>The box the drawing takes in the line: its extent with the effect extents around it, in points.</summary>
     public (double Width, double Height) Box => Drawings.Box(Drawing);
 }
@@ -19,6 +22,9 @@ public sealed record AnchorInline(XElement Anchor, string Part, RunFormat Format
 {
     /// <summary>The content of the shape's text box (wps:txbx/w:txbxContent), or null.</summary>
     public List<Block>? Text { get; init; }
+
+    /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
+    public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
 }
 
 /// <summary>A drawing placed on a page: its element, the part its relationships belong to and its extent's box.</summary>
@@ -32,6 +38,9 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
 
     /// <summary>The content of the shape's text box, laid out in its inner rectangle and drawn over the shape.</summary>
     public List<Block>? Text { get; init; }
+
+    /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
+    public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
 
     /// <summary>The text box's body properties (insets, vertical anchor) of the shape (wps:bodyPr).</summary>
     public XElement? Body => Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")?.Element(Drawings.Wps + "bodyPr");
@@ -87,9 +96,13 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// The text rectangle of a drawing's shape geometry (a:prstGeom with its adjustments) as distances from the
     /// shape's sides in points: the corners of rounded rectangles, the sides of ellipses (catalog: drawing.textBoxes).
     /// </summary>
-    public static (double Left, double Top, double Right, double Bottom) TextRect(XElement drawing, double width, double height)
+    public static (double Left, double Top, double Right, double Bottom) TextRect(XElement drawing, double width, double height) =>
+        drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp") is { } shape ? ShapeTextRect(shape, width, height) : default;
+
+    /// <summary>The text rectangle of a shape (wps:wsp) of the given size, as distances from its sides in points.</summary>
+    public static (double Left, double Top, double Right, double Bottom) ShapeTextRect(XElement shape, double width, double height)
     {
-        var geometry = drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "spPr")?.Element(Ns.A + "prstGeom");
+        var geometry = shape.Element(Wps + "spPr")?.Element(Ns.A + "prstGeom");
         if ((string?)geometry?.Attribute("prst") is not { } preset || Drawing.Geometry.PresetGeometries.Get(preset) is not { } definition)
             return default;
         var adjustments = geometry.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
@@ -99,6 +112,45 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         const double PointsPerPixel = 0.75;
         return (evaluated.TextLeft * PointsPerPixel, evaluated.TextTop * PointsPerPixel,
             width - evaluated.TextRight * PointsPerPixel, height - evaluated.TextBottom * PointsPerPixel);
+    }
+
+    /// <summary>
+    /// Where a shape of a group or canvas stands on the page when the drawing's extent lies at (x, y) with size w × h
+    /// points: groups map their children's space (a:chOff, a:chExt) onto their own box, nested groups again; a
+    /// canvas's children keep its coordinates. Null for a shape not in the drawing.
+    /// </summary>
+    public static (double X, double Y, double W, double H, double Rotation)? ChildRect(XElement drawing, XElement shape, double x, double y, double w, double h)
+    {
+        var content = drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault();
+        if (content == null || !shape.Ancestors().Contains(content))
+            return null;
+        double Emu(XElement? e, string name, double fallback) =>
+            double.TryParse((string?)e?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
+        // Page = (tx + sx · child x, ty + sy · child y), child coordinates in EMU.
+        double sx = 1 / EmuPerPoint, sy = 1 / EmuPerPoint, tx = x, ty = y;
+        if (content.Name == Wpg + "wgp")
+        {
+            var xfrm = content.Element(Wpg + "grpSpPr")?.Element(Ns.A + "xfrm");
+            var (ox, oy) = (Emu(xfrm?.Element(Ns.A + "chOff"), "x", 0), Emu(xfrm?.Element(Ns.A + "chOff"), "y", 0));
+            var (cw, ch) = (Emu(xfrm?.Element(Ns.A + "chExt"), "cx", w * EmuPerPoint), Emu(xfrm?.Element(Ns.A + "chExt"), "cy", h * EmuPerPoint));
+            (sx, sy) = (cw > 0 ? w / cw : sx, ch > 0 ? h / ch : sy);
+            (tx, ty) = (x - ox * sx, y - oy * sy);
+        }
+        foreach (var group in shape.Ancestors().TakeWhile(a => a != content).Reverse().Where(a => a.Name == Wpg + "grpSp"))
+        {
+            var xfrm = group.Element(Wpg + "grpSpPr")?.Element(Ns.A + "xfrm");
+            var (gx, gy) = (Emu(xfrm?.Element(Ns.A + "off"), "x", 0), Emu(xfrm?.Element(Ns.A + "off"), "y", 0));
+            var (gw, gh) = (Emu(xfrm?.Element(Ns.A + "ext"), "cx", 0), Emu(xfrm?.Element(Ns.A + "ext"), "cy", 0));
+            var (ox, oy) = (Emu(xfrm?.Element(Ns.A + "chOff"), "x", gx), Emu(xfrm?.Element(Ns.A + "chOff"), "y", gy));
+            var (cw, ch) = (Emu(xfrm?.Element(Ns.A + "chExt"), "cx", gw), Emu(xfrm?.Element(Ns.A + "chExt"), "cy", gh));
+            var (kx, ky) = (cw > 0 ? gw / cw : 1, ch > 0 ? gh / ch : 1);
+            (tx, ty) = (tx + (gx - ox * kx) * sx, ty + (gy - oy * ky) * sy);
+            (sx, sy) = (sx * kx, sy * ky);
+        }
+        var own = shape.Element(Wps + "spPr")?.Element(Ns.A + "xfrm");
+        var rotation = Emu(own, "rot", 0) / 60000;
+        return (tx + Emu(own?.Element(Ns.A + "off"), "x", 0) * sx, ty + Emu(own?.Element(Ns.A + "off"), "y", 0) * sy,
+            Emu(own?.Element(Ns.A + "ext"), "cx", 0) * sx, Emu(own?.Element(Ns.A + "ext"), "cy", 0) * sy, rotation);
     }
 
     /// <summary>A drawing's extent with its effect extents, in points.</summary>
@@ -274,9 +326,14 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             var whole = e.Element(Wpc + "whole");
             if (bg != null || whole != null)
             {
+                // The rectangle covers the canvas: the drawing's extent, in the canvas's own coordinates.
+                var extent = graphicData.Parent?.Parent?.Element(Wp + "extent");
                 group.Add(new XElement(Ns.P + "sp",
                     new XElement(Ns.P + "nvSpPr", new XElement(Ns.P + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")), new XElement(Ns.P + "cNvSpPr"), new XElement(Ns.P + "nvPr")),
-                    new XElement(Ns.P + "spPr", new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                    new XElement(Ns.P + "spPr",
+                        new XElement(Ns.A + "xfrm", new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)),
+                            new XElement(Ns.A + "ext", new XAttribute("cx", (string?)extent?.Attribute("cx") ?? "0"), new XAttribute("cy", (string?)extent?.Attribute("cy") ?? "0"))),
+                        new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
                         bg != null ? Copy(bg) : [new XElement(Ns.A + "noFill")], whole != null ? Copy(whole) : [])));
             }
             foreach (var child in e.Elements())
