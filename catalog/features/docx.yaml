@@ -78,26 +78,37 @@ areas:
                    a14:compatExt, a14:shadowObscured, a14:useLocalDpi, a14:cameraTool]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered, as pptx `package.compatibility`.
+        office: >-
+          As pptx: the hidden fills, lines, effects and 3D settings of a14 and the other compatibility extensions sit
+          in extension lists and draw nothing.
 
       - id: package.encryption
         title: Encrypted and write-protected files
         priority: P2
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           The decryption of pptx `package.encryption` (done, [MS-OFFCRYPTO] agile and standard encryption) applies
           unchanged: a password-protected document is a compound file with an EncryptedPackage stream. Editing
           restrictions (w:documentProtection, w:writeProtection) only matter to an editor.
+        office: >-
+          The decryption shared with pptx ([MS-OFFCRYPTO] agile and standard) opens password-protected documents: one
+          Word encrypted converts with its password, without one or with a wrong one the converter throws a
+          PasswordException saying which (Fidelity convert --password). Editing restrictions only matter to an editor.
 
       - id: package.properties
         title: Document properties
         namespaces: [ap, op, cp, vt]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Metadata only; title, author and language go into the HTML head. DOCPROPERTY fields read them.
+        office: >-
+          Title, author, description, keywords and dates of docProps/core.xml go into the HTML head (shared with
+          pptx), the language from dc:language or the document defaults' w:lang; the file name is the title where the
+          properties have none.
 
       - id: package.customXml
         title: Custom XML parts and schema library
@@ -105,8 +116,11 @@ areas:
         namespaces: [ds]
         priority: P2
         difficulty: 1
-        status: todo
+        status: done
         strategy: Data only; content controls bound to a custom XML part read their values from it (sdt.dataBinding).
+        office: >-
+          Custom XML parts are data: content controls bound to them show their nodes' values (sdt.dataBinding); the
+          schema library draws nothing.
 
       - id: package.ids
         title: Object ids, document ids and revision save ids
@@ -115,8 +129,10 @@ areas:
         namespaces: [oac]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered; ids for co-authoring and merging.
+        office: >-
+          Revision save ids, document ids and DrawingML creation and row ids draw nothing.
 
   - id: document
     title: Document structure
@@ -165,8 +181,12 @@ areas:
         elements: [w:subDoc]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: Collapsed subdocuments show as their link; expanded ones are already part of the body.
+        office: >-
+          A collapsed subdocument prints as a paragraph of the default style showing the subdocument's path,
+          underlined in the hyperlink color (the Hyperlink style where the document has one, else the theme's) and
+          linking to it; expanded subdocuments are part of the body (docx/local/subdoc 99.7 %).
 
       - id: document.glossary
         title: Building blocks (glossary document)
@@ -174,8 +194,11 @@ areas:
                    w:category, w:description, w:gallery, w:guid, w:types, w:type, w:name]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered; the glossary holds AutoText and building blocks, and placeholder texts of content controls.
+        office: >-
+          The glossary document (AutoText, building blocks, placeholder texts) is not printed; content controls
+          already hold the placeholder text they show.
 
   - id: settings
     title: Document settings
@@ -221,16 +244,20 @@ areas:
                    w:stylePaneSortMethod]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Editor state; the printed layout does not depend on it.
+        office: >-
+          View settings (zoom, drawing grid display, page boundaries) do not change the printed layout.
 
       - id: settings.protection
         title: Protection and privacy
         elements: [w:documentProtection, w:writeProtection, w:removePersonalInformation, w:removeDateAndTime]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Only matters to an editor.
+        office: >-
+          Document and write protection only matter to an editor; nothing is drawn.
 
       - id: settings.editor
         title: Editor and save options
@@ -245,8 +272,10 @@ areas:
                    w15:webExtensionCreated, asl:scriptLink]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered.
+        office: >-
+          Editor settings (attached template, captions, automatic formatting, scripts) draw nothing.
 
       - id: settings.web
         title: Web page settings and frames
@@ -257,10 +286,12 @@ areas:
                    w:saveSmartTagsAsXml, w:encoding]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           Options for saving as a web page. Frames pages (w:frameset) show their frames' documents side by side only
           in Web Layout; the printed layout shows the frameset document itself.
+        office: >-
+          Web page options matter only when saving as a web page; a frames page prints the frameset document itself.
 
       - id: settings.mailMerge
         title: Mail merge
@@ -271,8 +302,10 @@ areas:
                    w:recipients, w:recipientData, w:active, w:uniqueTag]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: The data source is external; merge fields show their cached results.
+        office: >-
+          The data source is external: merge fields show their cached results, as printed without merging.
 
   - id: style
     title: Styles
@@ -316,8 +349,10 @@ areas:
         elements: [w:latentStyles, w:lsdException]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Not rendered; settings of built-in styles a document has not used yet.
+        office: >-
+          Latent style exceptions describe built-in styles a document has not used; nothing is drawn.
 
   - id: font
     title: Fonts
@@ -347,10 +382,16 @@ areas:
                    w:embedSystemFonts, w:saveSubsetFonts]
         priority: P2
         difficulty: 2
-        status: todo
+        status: done
         strategy: >-
           Embedded fonts are obfuscated TrueType parts (ISO/IEC 29500 17.8.1: the font key GUID XORed over the first
           32 bytes); decode them and use them for layout and output like installed fonts.
+        office: >-
+          Fonts the font table embeds (w:embedRegular, Bold, Italic, BoldItalic) are decoded when first used:
+          obfuscated fonts have their first 32 bytes XORed with the w:fontKey GUID's bytes read from its end (a
+          Gabriola Word embedded decodes to the installed file); they stand behind the installed fonts as in Word and
+          are embedded into the HTML when the browser lacks them (a renamed embedded family renders as in Word,
+          docx/local/embedded-renamed 97.8 %).
 
       - id: font.theme
         title: Theme fonts
@@ -836,8 +877,12 @@ areas:
                    w:printTwoOnOne]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: Printer trays are ignored; book fold and two pages per sheet change the page geometry and are measured.
+        office: >-
+          Paper trays and printer settings are ignored. Book fold and two pages per sheet already halve the paper in
+          w:pgSz; with w:printTwoOnOne odd pages swap their top and bottom margins, book fold keeps them
+          (docx/local/print-twoonone and print-bookfold: every line as in Word).
 
   - id: headerFooter
     title: Headers and footers
@@ -1005,8 +1050,11 @@ areas:
         elements: [w:tblCaption, w:tblDescription]
         priority: P3
         difficulty: 1
-        status: todo
+        status: done
         strategy: Alt text of the table in the HTML output.
+        office: >-
+          A table's caption and description label an invisible element (role img, aria-label "caption: description")
+          over the part of the table each page holds.
 
   - id: field
     title: Fields, hyperlinks and bookmarks
@@ -1085,8 +1133,11 @@ areas:
         namespaces: [b]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: CITATION and BIBLIOGRAPHY fields show their cached results; the sources part is data.
+        office: >-
+          CITATION and BIBLIOGRAPHY fields (and their content controls) show their cached results; the sources part is
+          data.
 
   - id: sdt
     title: Content controls and custom markup
@@ -1125,10 +1176,16 @@ areas:
         elements: [w:dataBinding, w15:dataBinding]
         priority: P2
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           Bound content controls take their text from the custom XML part (XPath); whether Word refreshes the
           document's text from the part when it opens is measured.
+        office: >-
+          Word refreshes bound controls from their data when it opens a document, and so do we: the XPath of
+          w:dataBinding (with its prefix mappings) selects a node of the custom XML part with the store item id, or of
+          the core or extended properties; text controls show its value, date controls its date in their w:dateFormat
+          and w:lid, list controls the matching entry's display text; a missing node keeps the stored text
+          (docx/local/binding 98.8 %, every line as in Word).
 
       - id: sdt.customXml
         title: Custom XML markup and smart tags
@@ -1317,16 +1374,22 @@ areas:
                    wp:contentPart, wp:nvContentPartPr, wp:cNvContentPartPr]
         priority: P3
         difficulty: 4
-        status: todo
+        status: done
         strategy: Ink content parts drawn as in pptx `picture.ink` (done).
+        office: >-
+          Word writes ink (w14:contentPart, wpi) with a picture of it as fallback, which is drawn; ink without one is
+          drawn from its InkML part by the ink renderer shared with pptx picture.ink (docx/local/ink 99.9 %).
 
       - id: drawing.onlineVideo
         title: Online video
         elements: [wp15:webVideoPr, woe:oembed]
         priority: P3
         difficulty: 2
-        status: todo
+        status: done
         strategy: The poster picture with a link to the video; the printed layout shows the poster only.
+        office: >-
+          An online video prints as its poster picture (pictures link to their a:hlinkClick on wp:docPr, where Word
+          keeps a picture's hyperlink).
 
   - id: theme
     title: Themes and styles

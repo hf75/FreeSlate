@@ -15,22 +15,22 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 2 |
-| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 1 |
-| [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
-| [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 2 |
-| [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 2 |
+| [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 7 |
+| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 3 |
+| [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 5 |
+| [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
+| [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
 | [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 4 | 5 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 6 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 1 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 2 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
 | [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 2 | 0 |
-| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 4 |
-| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 4 |
-| [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 3 |
+| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 5 |
+| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 5 |
+| [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 4 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 2 | 2 |
-| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 1 | 6 |
+| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 1 | 8 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 6 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 2 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 11 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 4 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **137** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **25** | **157** |
 
 <a id="package"></a>
 
@@ -56,11 +56,11 @@ ZIP container, relationships, markup compatibility and metadata.
 |---|---|---|---|---:|---:|
 | [Package, content types and relationships](#package.opc) | P0 | ●○○○○ | done | 5 | 0 |
 | [Markup compatibility and extension lists](#package.mce) | P0 | ●●○○○ | done | 27 | 3 |
-| [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | todo | 9 | 0 |
-| [Encrypted and write-protected files](#package.encryption) | P2 | ●●○○○ | todo | 0 | 0 |
-| [Document properties](#package.properties) | P3 | ●○○○○ | todo | 73 | 16 |
-| [Custom XML parts and schema library](#package.customXml) | P2 | ●○○○○ | todo | 5 | 1 |
-| [Object ids, document ids and revision save ids](#package.ids) | P3 | ●○○○○ | todo | 21 | 1 |
+| [Compatibility leftovers](#package.compatibility) | P3 | ●○○○○ | done | 9 | 0 |
+| [Encrypted and write-protected files](#package.encryption) | P2 | ●●○○○ | done | 0 | 0 |
+| [Document properties](#package.properties) | P3 | ●○○○○ | done | 73 | 16 |
+| [Custom XML parts and schema library](#package.customXml) | P2 | ●○○○○ | done | 5 | 1 |
+| [Object ids, document ids and revision save ids](#package.ids) | P3 | ●○○○○ | done | 21 | 1 |
 
 <a id="package.opc"></a>
 
@@ -96,11 +96,13 @@ mc:AlternateContent, mc:Ignorable and the extLst/ext mechanism every newer featu
 
 ### Compatibility leftovers
 
-`package.compatibility` · P3 · difficulty 1 · todo
+`package.compatibility` · P3 · difficulty 1 · done
 
 Properties Office keeps for older versions or for converted VML content.
 
 **Rendering:** Not rendered, as pptx `package.compatibility`.
+
+**Office behaviour:** As pptx: the hidden fills, lines, effects and 3D settings of a14 and the other compatibility extensions sit in extension lists and draw nothing.
 
 **Elements (9):** [`a14:cameraTool`](../format/namespaces/a14.md#a14cameratool), [`a14:compatExt`](../format/namespaces/a14.md#a14compatext), [`a14:hiddenEffects`](../format/namespaces/a14.md#a14hiddeneffects), [`a14:hiddenFill`](../format/namespaces/a14.md#a14hiddenfill), [`a14:hiddenLine`](../format/namespaces/a14.md#a14hiddenline), [`a14:hiddenScene3d`](../format/namespaces/a14.md#a14hiddenscene3d), [`a14:hiddenSp3d`](../format/namespaces/a14.md#a14hiddensp3d), [`a14:shadowObscured`](../format/namespaces/a14.md#a14shadowobscured), [`a14:useLocalDpi`](../format/namespaces/a14.md#a14uselocaldpi)
 
@@ -110,17 +112,21 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Encrypted and write-protected files
 
-`package.encryption` · P2 · difficulty 2 · todo
+`package.encryption` · P2 · difficulty 2 · done
 
 **Rendering:** The decryption of pptx `package.encryption` (done, [MS-OFFCRYPTO] agile and standard encryption) applies unchanged: a password-protected document is a compound file with an EncryptedPackage stream. Editing restrictions (w:documentProtection, w:writeProtection) only matter to an editor.
+
+**Office behaviour:** The decryption shared with pptx ([MS-OFFCRYPTO] agile and standard) opens password-protected documents: one Word encrypted converts with its password, without one or with a wrong one the converter throws a PasswordException saying which (Fidelity convert --password). Editing restrictions only matter to an editor.
 
 <a id="package.properties"></a>
 
 ### Document properties
 
-`package.properties` · P3 · difficulty 1 · todo
+`package.properties` · P3 · difficulty 1 · done
 
 **Rendering:** Metadata only; title, author and language go into the HTML head. DOCPROPERTY fields read them.
+
+**Office behaviour:** Title, author, description, keywords and dates of docProps/core.xml go into the HTML head (shared with pptx), the language from dc:language or the document defaults' w:lang; the file name is the title where the properties have none.
 
 **Elements (73):** [`ap:AppVersion`](../format/namespaces/ap.md#apappversion), [`ap:Application`](../format/namespaces/ap.md#apapplication), [`ap:Characters`](../format/namespaces/ap.md#apcharacters), [`ap:CharactersWithSpaces`](../format/namespaces/ap.md#apcharacterswithspaces), [`ap:Company`](../format/namespaces/ap.md#apcompany), [`ap:DigSig`](../format/namespaces/ap.md#apdigsig), [`ap:DocSecurity`](../format/namespaces/ap.md#apdocsecurity), [`ap:HLinks`](../format/namespaces/ap.md#aphlinks), [`ap:HeadingPairs`](../format/namespaces/ap.md#apheadingpairs), [`ap:HiddenSlides`](../format/namespaces/ap.md#aphiddenslides), [`ap:HyperlinkBase`](../format/namespaces/ap.md#aphyperlinkbase), [`ap:HyperlinksChanged`](../format/namespaces/ap.md#aphyperlinkschanged), [`ap:Lines`](../format/namespaces/ap.md#aplines), [`ap:LinksUpToDate`](../format/namespaces/ap.md#aplinksuptodate), [`ap:MMClips`](../format/namespaces/ap.md#apmmclips), [`ap:Manager`](../format/namespaces/ap.md#apmanager), [`ap:Notes`](../format/namespaces/ap.md#apnotes), [`ap:Pages`](../format/namespaces/ap.md#appages), [`ap:Paragraphs`](../format/namespaces/ap.md#apparagraphs), [`ap:PresentationFormat`](../format/namespaces/ap.md#appresentationformat), [`ap:Properties`](../format/namespaces/ap.md#approperties), [`ap:ScaleCrop`](../format/namespaces/ap.md#apscalecrop), [`ap:SharedDoc`](../format/namespaces/ap.md#apshareddoc), [`ap:Slides`](../format/namespaces/ap.md#apslides), [`ap:Template`](../format/namespaces/ap.md#aptemplate), [`ap:TitlesOfParts`](../format/namespaces/ap.md#aptitlesofparts), [`ap:TotalTime`](../format/namespaces/ap.md#aptotaltime), [`ap:Words`](../format/namespaces/ap.md#apwords), [`cp:category`](../format/namespaces/cp.md#cpcategory), [`cp:contentStatus`](../format/namespaces/cp.md#cpcontentstatus), [`cp:coreProperties`](../format/namespaces/cp.md#cpcoreproperties), [`cp:keywords`](../format/namespaces/cp.md#cpkeywords), [`cp:lastModifiedBy`](../format/namespaces/cp.md#cplastmodifiedby), [`cp:lastPrinted`](../format/namespaces/cp.md#cplastprinted), [`cp:revision`](../format/namespaces/cp.md#cprevision), [`cp:value`](../format/namespaces/cp.md#cpvalue), [`cp:version`](../format/namespaces/cp.md#cpversion), [`op:Properties`](../format/namespaces/op.md#opproperties), [`op:property`](../format/namespaces/op.md#opproperty), [`vt:array`](../format/namespaces/vt.md#vtarray), [`vt:blob`](../format/namespaces/vt.md#vtblob), [`vt:bool`](../format/namespaces/vt.md#vtbool), [`vt:bstr`](../format/namespaces/vt.md#vtbstr), [`vt:clsid`](../format/namespaces/vt.md#vtclsid), [`vt:cy`](../format/namespaces/vt.md#vtcy), [`vt:date`](../format/namespaces/vt.md#vtdate), [`vt:decimal`](../format/namespaces/vt.md#vtdecimal), [`vt:empty`](../format/namespaces/vt.md#vtempty), [`vt:error`](../format/namespaces/vt.md#vterror), [`vt:filetime`](../format/namespaces/vt.md#vtfiletime), [`vt:i1`](../format/namespaces/vt.md#vti1), [`vt:i2`](../format/namespaces/vt.md#vti2), [`vt:i4`](../format/namespaces/vt.md#vti4), [`vt:i8`](../format/namespaces/vt.md#vti8), [`vt:int`](../format/namespaces/vt.md#vtint), [`vt:lpstr`](../format/namespaces/vt.md#vtlpstr), [`vt:lpwstr`](../format/namespaces/vt.md#vtlpwstr), [`vt:null`](../format/namespaces/vt.md#vtnull), [`vt:oblob`](../format/namespaces/vt.md#vtoblob), [`vt:ostorage`](../format/namespaces/vt.md#vtostorage), [`vt:ostream`](../format/namespaces/vt.md#vtostream), [`vt:r4`](../format/namespaces/vt.md#vtr4), [`vt:r8`](../format/namespaces/vt.md#vtr8), [`vt:storage`](../format/namespaces/vt.md#vtstorage), [`vt:stream`](../format/namespaces/vt.md#vtstream), [`vt:ui1`](../format/namespaces/vt.md#vtui1), [`vt:ui2`](../format/namespaces/vt.md#vtui2), [`vt:ui4`](../format/namespaces/vt.md#vtui4), [`vt:ui8`](../format/namespaces/vt.md#vtui8), [`vt:uint`](../format/namespaces/vt.md#vtuint), [`vt:variant`](../format/namespaces/vt.md#vtvariant), [`vt:vector`](../format/namespaces/vt.md#vtvector), [`vt:vstream`](../format/namespaces/vt.md#vtvstream)
 
@@ -132,9 +138,11 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Custom XML parts and schema library
 
-`package.customXml` · P2 · difficulty 1 · todo
+`package.customXml` · P2 · difficulty 1 · done
 
 **Rendering:** Data only; content controls bound to a custom XML part read their values from it (sdt.dataBinding).
+
+**Office behaviour:** Custom XML parts are data: content controls bound to them show their nodes' values (sdt.dataBinding); the schema library draws nothing.
 
 **Elements (5):** [`ds:datastoreItem`](../format/namespaces/ds.md#dsdatastoreitem), [`ds:schemaRef`](../format/namespaces/ds.md#dsschemaref), [`ds:schemaRefs`](../format/namespaces/ds.md#dsschemarefs), [`sl:schema`](../format/namespaces/sl.md#slschema), [`sl:schemaLibrary`](../format/namespaces/sl.md#slschemalibrary)
 
@@ -146,9 +154,11 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Object ids, document ids and revision save ids
 
-`package.ids` · P3 · difficulty 1 · todo
+`package.ids` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; ids for co-authoring and merging.
+
+**Office behaviour:** Revision save ids, document ids and DrawingML creation and row ids draw nothing.
 
 **Elements (21):** [`a16:colId`](../format/namespaces/a16.md#a16colid), [`a16:creationId`](../format/namespaces/a16.md#a16creationid), [`a16:cxnDERefs`](../format/namespaces/a16.md#a16cxnderefs), [`a16:predDERef`](../format/namespaces/a16.md#a16predderef), [`a16:rowId`](../format/namespaces/a16.md#a16rowid), [`oac:chgData`](../format/namespaces/oac.md#oacchgdata), [`oac:context`](../format/namespaces/oac.md#oaccontext), [`oac:cxnSpMkLst`](../format/namespaces/oac.md#oaccxnspmklst), [`oac:deMkLst`](../format/namespaces/oac.md#oacdemklst), [`oac:extLst`](../format/namespaces/oac.md#oacextlst), [`oac:graphicFrameMkLst`](../format/namespaces/oac.md#oacgraphicframemklst), [`oac:grpSpMkLst`](../format/namespaces/oac.md#oacgrpspmklst), [`oac:inkMkLst`](../format/namespaces/oac.md#oacinkmklst), [`oac:picMkLst`](../format/namespaces/oac.md#oacpicmklst), [`oac:spMkLst`](../format/namespaces/oac.md#oacspmklst), [`oac:txMkLst`](../format/namespaces/oac.md#oactxmklst), [`w14:docId`](../format/namespaces/w14.md#w14docid), [`w15:docId`](../format/namespaces/w15.md#w15docid), [`w:rsid`](../format/namespaces/w.md#wrsid), [`w:rsidRoot`](../format/namespaces/w.md#wrsidroot), [`w:rsids`](../format/namespaces/w.md#wrsids)
 
@@ -165,8 +175,8 @@ Properties Office keeps for older versions or for converted VML content.
 | [Document and body](#document.body) | P0 | ●○○○○ | done | 2 | 2 |
 | [Page background](#document.background) | P2 | ●●○○○ | partial | 4 | 2 |
 | [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | todo | 3 | 1 |
-| [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | todo | 1 | 1 |
-| [Building blocks (glossary document)](#document.glossary) | P3 | ●○○○○ | todo | 14 | 9 |
+| [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | done | 1 | 1 |
+| [Building blocks (glossary document)](#document.glossary) | P3 | ●○○○○ | done | 14 | 9 |
 
 <a id="document.body"></a>
 
@@ -220,9 +230,11 @@ A part in another format (HTML, RTF, plain text, another DOCX) that Word convert
 
 ### Subdocuments (master documents)
 
-`document.subDoc` · P3 · difficulty 2 · todo
+`document.subDoc` · P3 · difficulty 2 · done
 
 **Rendering:** Collapsed subdocuments show as their link; expanded ones are already part of the body.
+
+**Office behaviour:** A collapsed subdocument prints as a paragraph of the default style showing the subdocument's path, underlined in the hyperlink color (the Hyperlink style where the document has one, else the theme's) and linking to it; expanded subdocuments are part of the body (docx/local/subdoc 99.7 %).
 
 **Elements (1):** [`w:subDoc`](../format/namespaces/w.md#wsubdoc)
 
@@ -234,9 +246,11 @@ A part in another format (HTML, RTF, plain text, another DOCX) that Word convert
 
 ### Building blocks (glossary document)
 
-`document.glossary` · P3 · difficulty 1 · todo
+`document.glossary` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; the glossary holds AutoText and building blocks, and placeholder texts of content controls.
+
+**Office behaviour:** The glossary document (AutoText, building blocks, placeholder texts) is not printed; content controls already hold the placeholder text they show.
 
 **Elements (14):** [`w:behavior`](../format/namespaces/w.md#wbehavior), [`w:behaviors`](../format/namespaces/w.md#wbehaviors), [`w:category`](../format/namespaces/w.md#wcategory), [`w:description`](../format/namespaces/w.md#wdescription), [`w:docPart`](../format/namespaces/w.md#wdocpart), [`w:docPartBody`](../format/namespaces/w.md#wdocpartbody), [`w:docPartPr`](../format/namespaces/w.md#wdocpartpr), [`w:docParts`](../format/namespaces/w.md#wdocparts), [`w:gallery`](../format/namespaces/w.md#wgallery), [`w:glossaryDocument`](../format/namespaces/w.md#wglossarydocument), [`w:guid`](../format/namespaces/w.md#wguid), [`w:name`](../format/namespaces/w.md#wname), [`w:type`](../format/namespaces/w.md#wtype), [`w:types`](../format/namespaces/w.md#wtypes)
 
@@ -251,11 +265,11 @@ A part in another format (HTML, RTF, plain text, another DOCX) that Word convert
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Compatibility mode and options](#settings.compatibility) | P0 | ●●●●○ | todo | 70 | 7 |
-| [View settings](#settings.view) | P3 | ●○○○○ | todo | 16 | 9 |
-| [Protection and privacy](#settings.protection) | P3 | ●○○○○ | todo | 4 | 2 |
-| [Editor and save options](#settings.editor) | P3 | ●○○○○ | todo | 35 | 13 |
-| [Web page settings and frames](#settings.web) | P3 | ●●○○○ | todo | 25 | 12 |
-| [Mail merge](#settings.mailMerge) | P3 | ●●○○○ | todo | 31 | 24 |
+| [View settings](#settings.view) | P3 | ●○○○○ | done | 16 | 9 |
+| [Protection and privacy](#settings.protection) | P3 | ●○○○○ | done | 4 | 2 |
+| [Editor and save options](#settings.editor) | P3 | ●○○○○ | done | 35 | 13 |
+| [Web page settings and frames](#settings.web) | P3 | ●●○○○ | done | 25 | 12 |
+| [Mail merge](#settings.mailMerge) | P3 | ●●○○○ | done | 31 | 24 |
 
 <a id="settings.compatibility"></a>
 
@@ -277,9 +291,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### View settings
 
-`settings.view` · P3 · difficulty 1 · todo
+`settings.view` · P3 · difficulty 1 · done
 
 **Rendering:** Editor state; the printed layout does not depend on it.
+
+**Office behaviour:** View settings (zoom, drawing grid display, page boundaries) do not change the printed layout.
 
 **Elements (16):** [`w:clickAndTypeStyle`](../format/namespaces/w.md#wclickandtypestyle), [`w:displayHorizontalDrawingGridEvery`](../format/namespaces/w.md#wdisplayhorizontaldrawinggridevery), [`w:displayVerticalDrawingGridEvery`](../format/namespaces/w.md#wdisplayverticaldrawinggridevery), [`w:doNotDisplayPageBoundaries`](../format/namespaces/w.md#wdonotdisplaypageboundaries), [`w:doNotUseMarginsForDrawingGridOrigin`](../format/namespaces/w.md#wdonotusemarginsfordrawinggridorigin), [`w:drawingGridHorizontalOrigin`](../format/namespaces/w.md#wdrawinggridhorizontalorigin), [`w:drawingGridHorizontalSpacing`](../format/namespaces/w.md#wdrawinggridhorizontalspacing), [`w:drawingGridVerticalOrigin`](../format/namespaces/w.md#wdrawinggridverticalorigin), [`w:drawingGridVerticalSpacing`](../format/namespaces/w.md#wdrawinggridverticalspacing), [`w:readModeInkLockDown`](../format/namespaces/w.md#wreadmodeinklockdown), [`w:settings`](../format/namespaces/w.md#wsettings), [`w:showEnvelope`](../format/namespaces/w.md#wshowenvelope), [`w:stylePaneFormatFilter`](../format/namespaces/w.md#wstylepaneformatfilter), [`w:stylePaneSortMethod`](../format/namespaces/w.md#wstylepanesortmethod), [`w:view`](../format/namespaces/w.md#wview), [`w:zoom`](../format/namespaces/w.md#wzoom)
 
@@ -291,9 +307,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Protection and privacy
 
-`settings.protection` · P3 · difficulty 1 · todo
+`settings.protection` · P3 · difficulty 1 · done
 
 **Rendering:** Only matters to an editor.
+
+**Office behaviour:** Document and write protection only matter to an editor; nothing is drawn.
 
 **Elements (4):** [`w:documentProtection`](../format/namespaces/w.md#wdocumentprotection), [`w:removeDateAndTime`](../format/namespaces/w.md#wremovedateandtime), [`w:removePersonalInformation`](../format/namespaces/w.md#wremovepersonalinformation), [`w:writeProtection`](../format/namespaces/w.md#wwriteprotection)
 
@@ -305,9 +323,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Editor and save options
 
-`settings.editor` · P3 · difficulty 1 · todo
+`settings.editor` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered.
+
+**Office behaviour:** Editor settings (attached template, captions, automatic formatting, scripts) draw nothing.
 
 **Elements (35):** [`asl:scriptLink`](../format/namespaces/asl.md#aslscriptlink), [`w14:conflictMode`](../format/namespaces/w14.md#w14conflictmode), [`w14:defaultImageDpi`](../format/namespaces/w14.md#w14defaultimagedpi), [`w14:discardImageEditingData`](../format/namespaces/w14.md#w14discardimageeditingdata), [`w15:chartTrackingRefBased`](../format/namespaces/w15.md#w15charttrackingrefbased), [`w15:webExtensionCreated`](../format/namespaces/w15.md#w15webextensioncreated), [`w15:webExtensionLinked`](../format/namespaces/w15.md#w15webextensionlinked), [`w:alwaysMergeEmptyNamespace`](../format/namespaces/w.md#walwaysmergeemptynamespace), [`w:attachedSchema`](../format/namespaces/w.md#wattachedschema), [`w:attachedTemplate`](../format/namespaces/w.md#wattachedtemplate), [`w:autoCaption`](../format/namespaces/w.md#wautocaption), [`w:autoCaptions`](../format/namespaces/w.md#wautocaptions), [`w:autoFormatOverride`](../format/namespaces/w.md#wautoformatoverride), [`w:caption`](../format/namespaces/w.md#wcaption), [`w:captions`](../format/namespaces/w.md#wcaptions), [`w:doNotAutoCompressPictures`](../format/namespaces/w.md#wdonotautocompresspictures), [`w:doNotDemarcateInvalidXml`](../format/namespaces/w.md#wdonotdemarcateinvalidxml), [`w:doNotEmbedSmartTags`](../format/namespaces/w.md#wdonotembedsmarttags), [`w:doNotIncludeSubdocsInStats`](../format/namespaces/w.md#wdonotincludesubdocsinstats), [`w:doNotValidateAgainstSchema`](../format/namespaces/w.md#wdonotvalidateagainstschema), [`w:documentType`](../format/namespaces/w.md#wdocumenttype), [`w:forceUpgrade`](../format/namespaces/w.md#wforceupgrade), [`w:ignoreMixedContent`](../format/namespaces/w.md#wignoremixedcontent), [`w:linkStyles`](../format/namespaces/w.md#wlinkstyles), [`w:printFractionalCharacterWidth`](../format/namespaces/w.md#wprintfractionalcharacterwidth), [`w:printPostScriptOverText`](../format/namespaces/w.md#wprintpostscriptovertext), [`w:saveInvalidXml`](../format/namespaces/w.md#wsaveinvalidxml), [`w:savePreviewPicture`](../format/namespaces/w.md#wsavepreviewpicture), [`w:saveThroughXslt`](../format/namespaces/w.md#wsavethroughxslt), [`w:saveXmlDataOnly`](../format/namespaces/w.md#wsavexmldataonly), [`w:smartTagType`](../format/namespaces/w.md#wsmarttagtype), [`w:styleLockQFSet`](../format/namespaces/w.md#wstylelockqfset), [`w:styleLockTheme`](../format/namespaces/w.md#wstylelocktheme), [`w:summaryLength`](../format/namespaces/w.md#wsummarylength), [`w:useXSLTWhenSaving`](../format/namespaces/w.md#wusexsltwhensaving)
 
@@ -319,9 +339,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Web page settings and frames
 
-`settings.web` · P3 · difficulty 2 · todo
+`settings.web` · P3 · difficulty 2 · done
 
 **Rendering:** Options for saving as a web page. Frames pages (w:frameset) show their frames' documents side by side only in Web Layout; the printed layout shows the frameset document itself.
+
+**Office behaviour:** Web page options matter only when saving as a web page; a frames page prints the frameset document itself.
 
 **Elements (25):** [`w:allowPNG`](../format/namespaces/w.md#wallowpng), [`w:doNotOrganizeInFolder`](../format/namespaces/w.md#wdonotorganizeinfolder), [`w:doNotRelyOnCSS`](../format/namespaces/w.md#wdonotrelyoncss), [`w:doNotSaveAsSingleFile`](../format/namespaces/w.md#wdonotsaveassinglefile), [`w:doNotUseLongFileNames`](../format/namespaces/w.md#wdonotuselongfilenames), [`w:encoding`](../format/namespaces/w.md#wencoding), [`w:flatBorders`](../format/namespaces/w.md#wflatborders), [`w:frame`](../format/namespaces/w.md#wframe), [`w:frameLayout`](../format/namespaces/w.md#wframelayout), [`w:frameset`](../format/namespaces/w.md#wframeset), [`w:framesetSplitbar`](../format/namespaces/w.md#wframesetsplitbar), [`w:linkedToFile`](../format/namespaces/w.md#wlinkedtofile), [`w:longDesc`](../format/namespaces/w.md#wlongdesc), [`w:marH`](../format/namespaces/w.md#wmarh), [`w:marW`](../format/namespaces/w.md#wmarw), [`w:noBorder`](../format/namespaces/w.md#wnoborder), [`w:noResizeAllowed`](../format/namespaces/w.md#wnoresizeallowed), [`w:optimizeForBrowser`](../format/namespaces/w.md#woptimizeforbrowser), [`w:pixelsPerInch`](../format/namespaces/w.md#wpixelsperinch), [`w:saveSmartTagsAsXml`](../format/namespaces/w.md#wsavesmarttagsasxml), [`w:scrollbar`](../format/namespaces/w.md#wscrollbar), [`w:sourceFileName`](../format/namespaces/w.md#wsourcefilename), [`w:targetScreenSz`](../format/namespaces/w.md#wtargetscreensz), [`w:title`](../format/namespaces/w.md#wtitle), [`w:webSettings`](../format/namespaces/w.md#wwebsettings)
 
@@ -333,9 +355,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Mail merge
 
-`settings.mailMerge` · P3 · difficulty 2 · todo
+`settings.mailMerge` · P3 · difficulty 2 · done
 
 **Rendering:** The data source is external; merge fields show their cached results.
+
+**Office behaviour:** The data source is external: merge fields show their cached results, as printed without merging.
 
 **Elements (31):** [`w:active`](../format/namespaces/w.md#wactive), [`w:activeRecord`](../format/namespaces/w.md#wactiverecord), [`w:addressFieldName`](../format/namespaces/w.md#waddressfieldname), [`w:checkErrors`](../format/namespaces/w.md#wcheckerrors), [`w:colDelim`](../format/namespaces/w.md#wcoldelim), [`w:column`](../format/namespaces/w.md#wcolumn), [`w:connectString`](../format/namespaces/w.md#wconnectstring), [`w:dataSource`](../format/namespaces/w.md#wdatasource), [`w:dataType`](../format/namespaces/w.md#wdatatype), [`w:destination`](../format/namespaces/w.md#wdestination), [`w:doNotSuppressBlankLines`](../format/namespaces/w.md#wdonotsuppressblanklines), [`w:dynamicAddress`](../format/namespaces/w.md#wdynamicaddress), [`w:fHdr`](../format/namespaces/w.md#wfhdr), [`w:fieldMapData`](../format/namespaces/w.md#wfieldmapdata), [`w:headerSource`](../format/namespaces/w.md#wheadersource), [`w:lid`](../format/namespaces/w.md#wlid), [`w:linkToQuery`](../format/namespaces/w.md#wlinktoquery), [`w:mailAsAttachment`](../format/namespaces/w.md#wmailasattachment), [`w:mailMerge`](../format/namespaces/w.md#wmailmerge), [`w:mailSubject`](../format/namespaces/w.md#wmailsubject), [`w:mainDocumentType`](../format/namespaces/w.md#wmaindocumenttype), [`w:mappedName`](../format/namespaces/w.md#wmappedname), [`w:odso`](../format/namespaces/w.md#wodso), [`w:query`](../format/namespaces/w.md#wquery), [`w:recipientData`](../format/namespaces/w.md#wrecipientdata), [`w:recipients`](../format/namespaces/w.md#wrecipients), [`w:src`](../format/namespaces/w.md#wsrc), [`w:table`](../format/namespaces/w.md#wtable), [`w:udl`](../format/namespaces/w.md#wudl), [`w:uniqueTag`](../format/namespaces/w.md#wuniquetag), [`w:viewMergedData`](../format/namespaces/w.md#wviewmergeddata)
 
@@ -351,7 +375,7 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 |---|---|---|---|---:|---:|
 | [Paragraph, character, table and numbering styles](#style.definitions) | P0 | ●●●○○ | done | 21 | 20 |
 | [Document defaults](#style.defaults) | P0 | ●●○○○ | done | 3 | 0 |
-| [Latent styles](#style.latent) | P3 | ●○○○○ | todo | 2 | 2 |
+| [Latent styles](#style.latent) | P3 | ●○○○○ | done | 2 | 2 |
 
 <a id="style.definitions"></a>
 
@@ -387,9 +411,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Latent styles
 
-`style.latent` · P3 · difficulty 1 · todo
+`style.latent` · P3 · difficulty 1 · done
 
 **Rendering:** Not rendered; settings of built-in styles a document has not used yet.
+
+**Office behaviour:** Latent style exceptions describe built-in styles a document has not used; nothing is drawn.
 
 **Elements (2):** [`w:latentStyles`](../format/namespaces/w.md#wlatentstyles), [`w:lsdException`](../format/namespaces/w.md#wlsdexception)
 
@@ -404,7 +430,7 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Font table and substitution](#font.table) | P0 | ●●●○○ | done | 9 | 8 |
-| [Embedded fonts](#font.embedded) | P2 | ●●○○○ | todo | 7 | 5 |
+| [Embedded fonts](#font.embedded) | P2 | ●●○○○ | done | 7 | 5 |
 | [Theme fonts](#font.theme) | P0 | ●●○○○ | done | 1 | 1 |
 
 <a id="font.table"></a>
@@ -427,9 +453,11 @@ w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 20
 
 ### Embedded fonts
 
-`font.embedded` · P2 · difficulty 2 · todo
+`font.embedded` · P2 · difficulty 2 · done
 
 **Rendering:** Embedded fonts are obfuscated TrueType parts (ISO/IEC 29500 17.8.1: the font key GUID XORed over the first 32 bytes); decode them and use them for layout and output like installed fonts.
+
+**Office behaviour:** Fonts the font table embeds (w:embedRegular, Bold, Italic, BoldItalic) are decoded when first used: obfuscated fonts have their first 32 bytes XORed with the w:fontKey GUID's bytes read from its end (a Gabriola Word embedded decodes to the installed file); they stand behind the installed fonts as in Word and are embedded into the HTML when the browser lacks them (a renamed embedded family renders as in Word, docx/local/embedded-renamed 97.8 %).
 
 **Elements (7):** [`w:embedBold`](../format/namespaces/w.md#wembedbold), [`w:embedBoldItalic`](../format/namespaces/w.md#wembedbolditalic), [`w:embedItalic`](../format/namespaces/w.md#wembeditalic), [`w:embedRegular`](../format/namespaces/w.md#wembedregular), [`w:embedSystemFonts`](../format/namespaces/w.md#wembedsystemfonts), [`w:embedTrueTypeFonts`](../format/namespaces/w.md#wembedtruetypefonts), [`w:saveSubsetFonts`](../format/namespaces/w.md#wsavesubsetfonts)
 
@@ -897,7 +925,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | todo | 2 | 1 |
 | [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | partial | 2 | 1 |
 | [Document grid](#section.docGrid) | P1 | ●●●●○ | todo | 1 | 0 |
-| [Printer and book fold settings](#section.printing) | P3 | ●●○○○ | todo | 6 | 5 |
+| [Printer and book fold settings](#section.printing) | P3 | ●●○○○ | done | 6 | 5 |
 
 <a id="section.page"></a>
 
@@ -993,9 +1021,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Printer and book fold settings
 
-`section.printing` · P3 · difficulty 2 · todo
+`section.printing` · P3 · difficulty 2 · done
 
 **Rendering:** Printer trays are ignored; book fold and two pages per sheet change the page geometry and are measured.
+
+**Office behaviour:** Paper trays and printer settings are ignored. Book fold and two pages per sheet already halve the paper in w:pgSz; with w:printTwoOnOne odd pages swap their top and bottom margins, book fold keeps them (docx/local/print-twoonone and print-bookfold: every line as in Word).
 
 **Elements (6):** [`w:bookFoldPrinting`](../format/namespaces/w.md#wbookfoldprinting), [`w:bookFoldPrintingSheets`](../format/namespaces/w.md#wbookfoldprintingsheets), [`w:bookFoldRevPrinting`](../format/namespaces/w.md#wbookfoldrevprinting), [`w:paperSrc`](../format/namespaces/w.md#wpapersrc), [`w:printTwoOnOne`](../format/namespaces/w.md#wprinttwoonone), [`w:printerSettings`](../format/namespaces/w.md#wprintersettings)
 
@@ -1081,7 +1111,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Table styles and conditional formatting](#table.styles) | P0 | ●●●●○ | done | 7 | 10 |
 | [Floating tables](#table.floating) | P1 | ●●●●○ | todo | 2 | 2 |
 | [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | partial | 5 | 6 |
-| [Table title and description](#table.accessibility) | P3 | ●○○○○ | todo | 2 | 0 |
+| [Table title and description](#table.accessibility) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="table.structure"></a>
 
@@ -1197,9 +1227,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Table title and description
 
-`table.accessibility` · P3 · difficulty 1 · todo
+`table.accessibility` · P3 · difficulty 1 · done
 
 **Rendering:** Alt text of the table in the HTML output.
+
+**Office behaviour:** A table's caption and description label an invisible element (role img, aria-label "caption: description") over the part of the table each page holds.
 
 **Elements (2):** [`w:tblCaption`](../format/namespaces/w.md#wtblcaption), [`w:tblDescription`](../format/namespaces/w.md#wtbldescription)
 
@@ -1216,7 +1248,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | done | 6 | 4 |
 | [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | done | 2 | 2 |
 | [Legacy form fields](#field.forms) | P2 | ●●●○○ | done | 25 | 15 |
-| [Citations and bibliography](#field.citations) | P3 | ●●○○○ | todo | 75 | 7 |
+| [Citations and bibliography](#field.citations) | P3 | ●●○○○ | done | 75 | 7 |
 
 <a id="field.structure"></a>
 
@@ -1304,9 +1336,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Citations and bibliography
 
-`field.citations` · P3 · difficulty 2 · todo
+`field.citations` · P3 · difficulty 2 · done
 
 **Rendering:** CITATION and BIBLIOGRAPHY fields show their cached results; the sources part is data.
+
+**Office behaviour:** CITATION and BIBLIOGRAPHY fields (and their content controls) show their cached results; the sources part is data.
 
 **Elements (75):** [`b:AbbreviatedCaseNumber`](../format/namespaces/b.md#babbreviatedcasenumber), [`b:AlbumTitle`](../format/namespaces/b.md#balbumtitle), [`b:Artist`](../format/namespaces/b.md#bartist), [`b:Author`](../format/namespaces/b.md#bauthor), [`b:BookAuthor`](../format/namespaces/b.md#bbookauthor), [`b:BookTitle`](../format/namespaces/b.md#bbooktitle), [`b:BroadcastTitle`](../format/namespaces/b.md#bbroadcasttitle), [`b:Broadcaster`](../format/namespaces/b.md#bbroadcaster), [`b:CaseNumber`](../format/namespaces/b.md#bcasenumber), [`b:ChapterNumber`](../format/namespaces/b.md#bchapternumber), [`b:City`](../format/namespaces/b.md#bcity), [`b:Comments`](../format/namespaces/b.md#bcomments), [`b:Compiler`](../format/namespaces/b.md#bcompiler), [`b:Composer`](../format/namespaces/b.md#bcomposer), [`b:Conductor`](../format/namespaces/b.md#bconductor), [`b:ConferenceName`](../format/namespaces/b.md#bconferencename), [`b:Corporate`](../format/namespaces/b.md#bcorporate), [`b:Counsel`](../format/namespaces/b.md#bcounsel), [`b:CountryRegion`](../format/namespaces/b.md#bcountryregion), [`b:Court`](../format/namespaces/b.md#bcourt), [`b:Day`](../format/namespaces/b.md#bday), [`b:DayAccessed`](../format/namespaces/b.md#bdayaccessed), [`b:Department`](../format/namespaces/b.md#bdepartment), [`b:Director`](../format/namespaces/b.md#bdirector), [`b:Distributor`](../format/namespaces/b.md#bdistributor), [`b:Edition`](../format/namespaces/b.md#bedition), [`b:Editor`](../format/namespaces/b.md#beditor), [`b:First`](../format/namespaces/b.md#bfirst), [`b:Guid`](../format/namespaces/b.md#bguid), [`b:Institution`](../format/namespaces/b.md#binstitution), [`b:InternetSiteTitle`](../format/namespaces/b.md#binternetsitetitle), [`b:Interviewee`](../format/namespaces/b.md#binterviewee), [`b:Interviewer`](../format/namespaces/b.md#binterviewer), [`b:Inventor`](../format/namespaces/b.md#binventor), [`b:Issue`](../format/namespaces/b.md#bissue), [`b:JournalName`](../format/namespaces/b.md#bjournalname), [`b:LCID`](../format/namespaces/b.md#blcid), [`b:Last`](../format/namespaces/b.md#blast), [`b:Medium`](../format/namespaces/b.md#bmedium), [`b:Middle`](../format/namespaces/b.md#bmiddle), [`b:Month`](../format/namespaces/b.md#bmonth), [`b:MonthAccessed`](../format/namespaces/b.md#bmonthaccessed), [`b:NameList`](../format/namespaces/b.md#bnamelist), [`b:NumberVolumes`](../format/namespaces/b.md#bnumbervolumes), [`b:Pages`](../format/namespaces/b.md#bpages), [`b:PatentNumber`](../format/namespaces/b.md#bpatentnumber), [`b:Performer`](../format/namespaces/b.md#bperformer), [`b:PeriodicalTitle`](../format/namespaces/b.md#bperiodicaltitle), [`b:Person`](../format/namespaces/b.md#bperson), [`b:ProducerName`](../format/namespaces/b.md#bproducername), [`b:ProductionCompany`](../format/namespaces/b.md#bproductioncompany), [`b:PublicationTitle`](../format/namespaces/b.md#bpublicationtitle), [`b:Publisher`](../format/namespaces/b.md#bpublisher), [`b:RecordingNumber`](../format/namespaces/b.md#brecordingnumber), [`b:RefOrder`](../format/namespaces/b.md#breforder), [`b:Reporter`](../format/namespaces/b.md#breporter), [`b:ShortTitle`](../format/namespaces/b.md#bshorttitle), [`b:Source`](../format/namespaces/b.md#bsource), [`b:SourceType`](../format/namespaces/b.md#bsourcetype), [`b:Sources`](../format/namespaces/b.md#bsources), [`b:StandardNumber`](../format/namespaces/b.md#bstandardnumber), [`b:StateProvince`](../format/namespaces/b.md#bstateprovince), [`b:Station`](../format/namespaces/b.md#bstation), [`b:Tag`](../format/namespaces/b.md#btag), [`b:Theater`](../format/namespaces/b.md#btheater), [`b:ThesisType`](../format/namespaces/b.md#bthesistype), [`b:Title`](../format/namespaces/b.md#btitle), [`b:Translator`](../format/namespaces/b.md#btranslator), [`b:Type`](../format/namespaces/b.md#btype), [`b:URL`](../format/namespaces/b.md#burl), [`b:Version`](../format/namespaces/b.md#bversion), [`b:Volume`](../format/namespaces/b.md#bvolume), [`b:Writer`](../format/namespaces/b.md#bwriter), [`b:Year`](../format/namespaces/b.md#byear), [`b:YearAccessed`](../format/namespaces/b.md#byearaccessed)
 
@@ -1322,7 +1356,7 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 |---|---|---|---|---:|---:|
 | [Content controls](#sdt.structure) | P0 | ●●○○○ | done | 16 | 13 |
 | [Content control types](#sdt.types) | P1 | ●●○○○ | done | 28 | 1 |
-| [Data binding](#sdt.dataBinding) | P2 | ●●●○○ | todo | 2 | 1 |
+| [Data binding](#sdt.dataBinding) | P2 | ●●●○○ | done | 2 | 1 |
 | [Custom XML markup and smart tags](#sdt.customXml) | P2 | ●○○○○ | done | 6 | 8 |
 
 <a id="sdt.structure"></a>
@@ -1361,9 +1395,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Data binding
 
-`sdt.dataBinding` · P2 · difficulty 3 · todo
+`sdt.dataBinding` · P2 · difficulty 3 · done
 
 **Rendering:** Bound content controls take their text from the custom XML part (XPath); whether Word refreshes the document's text from the part when it opens is measured.
+
+**Office behaviour:** Word refreshes bound controls from their data when it opens a document, and so do we: the XPath of w:dataBinding (with its prefix mappings) selects a node of the custom XML part with the store item id, or of the core or extended properties; text controls show its value, date controls its date in their w:dateFormat and w:lid, list controls the matching entry's display text; a missing node keeps the stored text (docx/local/binding 98.8 %, every line as in Word).
 
 **Elements (2):** [`w15:dataBinding`](../format/namespaces/w15.md#w15databinding), [`w:dataBinding`](../format/namespaces/w.md#wdatabinding)
 
@@ -1477,8 +1513,8 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 | [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | partial | 7 | 2 |
 | [Groups](#drawing.groups) | P1 | ●●●○○ | done | 16 | 0 |
 | [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | done | 8 | 0 |
-| [Ink](#drawing.ink) | P3 | ●●●●○ | todo | 9 | 1 |
-| [Online video](#drawing.onlineVideo) | P3 | ●●○○○ | todo | 2 | 0 |
+| [Ink](#drawing.ink) | P3 | ●●●●○ | done | 9 | 1 |
+| [Online video](#drawing.onlineVideo) | P3 | ●●○○○ | done | 2 | 0 |
 
 <a id="drawing.inline"></a>
 
@@ -1590,9 +1626,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Ink
 
-`drawing.ink` · P3 · difficulty 4 · todo
+`drawing.ink` · P3 · difficulty 4 · done
 
 **Rendering:** Ink content parts drawn as in pptx `picture.ink` (done).
+
+**Office behaviour:** Word writes ink (w14:contentPart, wpi) with a picture of it as fallback, which is drawn; ink without one is drawn from its InkML part by the ink renderer shared with pptx picture.ink (docx/local/ink 99.9 %).
 
 **Elements (9):** [`w14:cNvContentPartPr`](../format/namespaces/w14.md#w14cnvcontentpartpr), [`w14:cNvPr`](../format/namespaces/w14.md#w14cnvpr), [`w14:contentPart`](../format/namespaces/w14.md#w14contentpart), [`w14:nvContentPartPr`](../format/namespaces/w14.md#w14nvcontentpartpr), [`w14:xfrm`](../format/namespaces/w14.md#w14xfrm), [`w:contentPart`](../format/namespaces/w.md#wcontentpart), [`wp:cNvContentPartPr`](../format/namespaces/wp.md#wpcnvcontentpartpr), [`wp:contentPart`](../format/namespaces/wp.md#wpcontentpart), [`wp:nvContentPartPr`](../format/namespaces/wp.md#wpnvcontentpartpr)
 
@@ -1604,9 +1642,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Online video
 
-`drawing.onlineVideo` · P3 · difficulty 2 · todo
+`drawing.onlineVideo` · P3 · difficulty 2 · done
 
 **Rendering:** The poster picture with a link to the video; the printed layout shows the poster only.
+
+**Office behaviour:** An online video prints as its poster picture (pictures link to their a:hlinkClick on wp:docPr, where Word keeps a picture's hyperlink).
 
 **Elements (2):** [`woe:oembed`](../format/namespaces/woe.md#woeoembed), [`wp15:webVideoPr`](../format/namespaces/wp15.md#wp15webvideopr)
 
