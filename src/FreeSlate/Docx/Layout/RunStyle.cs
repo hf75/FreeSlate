@@ -59,6 +59,14 @@ public static class WordFonts
     /// </summary>
     public static (double Above, double Below) LineMetrics(FontData font, double size)
     {
+        // East Asian fonts are 1.3 times their win ascent and descent high, the extra shared above and below (measured
+        // with docx/local/ea-lines: MS Gothic, MS Mincho, Yu Gothic, SimSun, Malgun Gothic and Microsoft YaHei within
+        // 0.07 pt, their hhea line gaps left out).
+        if (font.EastAsian)
+        {
+            var height = font.WinAscent + font.WinDescent;
+            return ((font.WinAscent + 0.15 * height) * size, (font.WinDescent + 0.15 * height) * size);
+        }
         var (hheaAscent, hheaDescent, hheaGap) = font.Hhea;
         var total = hheaAscent + hheaDescent + hheaGap;
         double ascent, gap;

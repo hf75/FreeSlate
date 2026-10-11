@@ -52,3 +52,43 @@ public static partial class DocumentGenerator
         document.Comments.Add(Find("A comment marks"), "A comment on the paragraph.");
     }
 }
+
+public static partial class DocumentGenerator
+{
+    /// <summary>
+    /// Content controls: rich text with its placeholder, plain text with content, check boxes (checked and not), a
+    /// drop-down list, a combo box, a date picker, a picture control and a repeating section.
+    /// </summary>
+    static void ContentControls(Writer w)
+    {
+        // WdContentControlType
+        const int RichText = 0, Text = 1, Picture = 2, ComboBox = 3, DropDown = 4, Date = 6, CheckBox = 8, Repeating = 9;
+        var document = w.Document;
+        w.Paragraph("Content controls", StyleHeading1);
+        dynamic Control(int type, string label)
+        {
+            var paragraph = w.Paragraph(label + " ");
+            var end = paragraph.Range;
+            end.MoveEnd(1, -1);
+            end.Collapse(0);
+            return document.ContentControls.Add(type, end);
+        }
+        Control(RichText, "Empty rich text:");
+        Control(Text, "Plain text:").Range.Text = "Typed into a plain text control";
+        Control(CheckBox, "Unchecked box:");
+        Control(CheckBox, "Checked box:").Checked = true;
+        var list = Control(DropDown, "Drop-down list:");
+        list.DropdownListEntries.Add("First choice", "1");
+        list.DropdownListEntries.Add("Second choice", "2");
+        list.DropdownListEntries.Item(list.DropdownListEntries.Count).Select();
+        var combo = Control(ComboBox, "Combo box:");
+        combo.DropdownListEntries.Add("Apple", "a");
+        var date = Control(Date, "Date:");
+        date.DateDisplayFormat = "dd.MM.yyyy";
+        date.Range.Text = "11.10.2026";
+        Control(Picture, "Picture:");
+        var paragraph = w.Paragraph("A repeating section follows.");
+        var section = w.Paragraph("Repeated item text.");
+        document.ContentControls.Add(Repeating, section.Range);
+    }
+}

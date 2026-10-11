@@ -426,6 +426,22 @@ public sealed class FontData : IDisposable
         }
     }
 
+    /// <summary>
+    /// Whether the font is made for East Asian text: its OS/2 code page range names a Japanese, Chinese or Korean code
+    /// page (JIS, GB 2312, Wansung, Big5, Johab).
+    /// </summary>
+    public bool EastAsian
+    {
+        get
+        {
+            var os2 = Table("OS/2");
+            if (os2 == null || os2.Length < 82 || BinaryPrimitives.ReadUInt16BigEndian(os2) < 1)
+                return false;
+            var range = BinaryPrimitives.ReadUInt32BigEndian(os2.AsSpan(78));
+            return (range & (0x1Fu << 17)) != 0;
+        }
+    }
+
     /// <summary>The OS/2 typographic metrics in em (ascender, descender positive below, line gap) and whether USE_TYPO_METRICS is set.</summary>
     public (double Ascender, double Descender, double LineGap, bool Use)? Typo
     {

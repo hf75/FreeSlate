@@ -48,6 +48,7 @@ public static partial class DocumentGenerator
         ("smartart", MoreSmartArt),
         ("shapes-effects", ShapesAndTextEffects),
         ("revisions", Revisions),
+        ("content-controls", ContentControls),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>
