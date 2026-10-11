@@ -892,7 +892,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var (a, b) = piece.Style.Metrics;
             above = Math.Max(above, a);
-            raised = Math.Max(raised, a + piece.Style.Raise);
+            // Text effects reach beyond the text; the line makes room for them outside its spacing.
+            var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
+            raised = Math.Max(raised, a + piece.Style.Raise + reachAbove);
             any = true;
             // A list number's ascent counts, its descent not (measured with docx/local/num-rules: a 16 pt number
             // before 12 pt Arial makes the line 17.52 pt high, its ascent and the text's descent).
@@ -900,7 +902,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             below = Math.Max(below, b);
             largest = Math.Max(largest, a + b);
-            lowered = Math.Max(lowered, b - piece.Style.Raise);
+            lowered = Math.Max(lowered, b - piece.Style.Raise + reachBelow);
         }
         if (drawings && !any)
         {

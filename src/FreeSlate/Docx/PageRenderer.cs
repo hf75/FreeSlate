@@ -23,12 +23,16 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
+    /// <summary>Gradients and filters of the page's text effects, drawn at its end.</summary>
+    readonly StringBuilder defs = new();
+
     /// <param name="paper">The named @page of the page's size, so that printing keeps every page at its size.</param>
     public string Render(PageBox page, string paper)
     {
         var width = page.Width * PxPerPt;
         var height = page.Height * PxPerPt;
         var svg = new StringBuilder();
+        defs.Clear();
         svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
         // Drawings behind the text first, the text, then inline drawings and the drawings in front of the text.
         var front = new List<PlacedDrawing>();
@@ -54,6 +58,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         }
         foreach (var (name, x, y) in page.Bookmarks)
             svg.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(name)}\" style=\"left:{Px(x)}px;top:{Px(y)}px\"></a>");
+        if (defs.Length > 0)
+            svg.Append("<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>").Append(defs).Append("</defs></svg>");
         svg.Append("</section>\n");
         return svg.ToString();
     }
@@ -151,7 +157,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 if (piece.Link != null)
                     svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
                 if (browser)
-                    svg.Append(BrowserText(piece, x, baseline - piece.Style.Raise));
+                    svg.Append(WithEffects(piece, BrowserText(piece, x, baseline - piece.Style.Raise), x, baseline - piece.Style.Raise));
                 else
                 {
                     svg.Append(Glyphs(piece, x, baseline - piece.Style.Raise));
@@ -295,7 +301,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var sb = new StringBuilder("<text");
         if (words.Count == 0)
             sb.Append($" x=\"{X(0, text.Length)}\"");
-        sb.Append($" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"");
+        sb.Append($" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"{TextPaint(piece, x, baseline)}");
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         // Our positions already hold the kerning; the browser must not add its own. The features the run turns on are
@@ -324,6 +330,49 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         }
         sb.Append("</text>");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The fill and outline of a piece's text (catalog: run.textEffects): w14:textFill (solid, gradient over the piece
+    /// from its ascent to its descent, or none) and w14:textOutline, else the run's color.
+    /// </summary>
+    string TextPaint(Piece piece, double x, double baseline)
+    {
+        var style = piece.Style;
+        if (style.TextFill == null && style.Outline == null || drawings == null)
+            return $" fill=\"{style.Color.ToHex()}\"";
+        var (above, below) = style.Metrics;
+        var (w, h) = (piece.Width * PxPerPt, (above + below) * PxPerPt);
+        var origin = (X: x * PxPerPt, Y: (baseline - above) * PxPerPt);
+        var fill = style.TextFill is { } own ? FreeSlate.Drawing.FillReader.Read(own, drawings.Colors) : new FreeSlate.Drawing.SolidFill(style.Color);
+        var paint = drawings.Paint.Fill(fill, w, h, defs, origin: origin, offset: origin);
+        if (style.Outline is { } line && FreeSlate.Drawing.OutlineReader.Merge([(line, drawings.Colors)]) is { Visible: true } outline)
+            paint += drawings.Paint.Stroke(outline, w, h, defs, origin);
+        return paint;
+    }
+
+    /// <summary>
+    /// A piece's text with its glow and shadow (the filter shared with PowerPoint, sized with the font) and its
+    /// reflection: a mirrored copy below the baseline (catalog: run.textEffects).
+    /// </summary>
+    string WithEffects(Piece piece, string markup, double x, double baseline)
+    {
+        var style = piece.Style;
+        if (style.Effects is not { } effects || drawings == null || markup.Length == 0)
+            return markup;
+        var scale = Html.SvgEffects.TextScale.Of(style.Size);
+        if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
+            markup = $"<g filter=\"url(#{filter})\">{markup}</g>";
+        // Text reflects about its baseline, the box reaching up to the font's ascent (as PowerPoint draws it).
+        if (effects.Element(Ns.A + "reflection") is { } reflection)
+        {
+            var distance = Units.ToPx(reflection.Long("dist") ?? 0) * scale.ReflectionDistance / 2;
+            var bottom = baseline * PxPerPt + distance;
+            var height = style.Size * PxPerPt * style.Font.Data.Ascent + distance;
+            markup = Html.SvgEffects.Reflection(effects, markup, (x * PxPerPt, bottom - height, piece.Width * PxPerPt, height), defs,
+                distanceScale: 0, blurScale: scale.ReflectionBlur);
+        }
+        return markup;
     }
 
     /// <summary>

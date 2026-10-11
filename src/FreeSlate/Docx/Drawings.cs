@@ -68,6 +68,14 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         Culture = culture ?? System.Globalization.CultureInfo.CurrentCulture,
     };
 
+    /// <summary>The paint of drawings and text effects: one counter for the ids of their gradients and patterns.</summary>
+    public SvgPaint Paint => paint;
+
+    /// <summary>The document's theme colors with its color mapping (w:clrSchemeMapping).</summary>
+    public Drawing.ColorContext Colors => colors ??= new Drawing.ColorContext(context.Theme, ColorMap());
+
+    Drawing.ColorContext? colors;
+
     /// <summary>The fonts the drawings' text uses.</summary>
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];
 

@@ -82,6 +82,9 @@ public sealed class RunStyles(DocumentContext context)
             Scale = (format.Scale ?? 100) / 100,
             Caps = format.Caps == true,
             SmallCaps = format.SmallCaps == true,
+            Effects = TextEffects.EffectList(format),
+            Outline = TextEffects.Outline(format),
+            TextFill = TextEffects.Fill(format),
             Language = slot switch
             {
                 WordSlot.EastAsia => format.LanguageEastAsia ?? format.Language,

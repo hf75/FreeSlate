@@ -59,6 +59,9 @@ public sealed class RunFormat
     /// <summary>w14:cntxtAlts: contextual alternates.</summary>
     public bool? ContextualAlternates;
 
+    /// <summary>Text effects (catalog: run.textEffects): the w14 elements of glow, shadow, reflection, outline, fill and 3D.</summary>
+    public XElement? Glow, TextShadow, Reflection, TextOutline, TextFill, Props3D, Scene3D;
+
     public string? Style;
 
     public RunFormat Clone() => (RunFormat)MemberwiseClone();
@@ -79,6 +82,13 @@ public sealed class RunFormat
                     case "numForm": NumberForm = value; break;
                     case "numSpacing": NumberSpacing = value; break;
                     case "cntxtAlts": ContextualAlternates = value is null or "1" or "true" or "on"; break;
+                    case "glow": Glow = e; break;
+                    case "shadow": TextShadow = e; break;
+                    case "reflection": Reflection = e; break;
+                    case "textOutline": TextOutline = e; break;
+                    case "textFill": TextFill = e; break;
+                    case "props3d": Props3D = e; break;
+                    case "scene3d": Scene3D = e; break;
                     case "stylisticSets":
                         StylisticSets = e.Elements(Wml.W14 + "styleSet")
                             .Where(s => (string?)s.Attribute(Wml.W14 + "val") is null or "1" or "true" or "on")

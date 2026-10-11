@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using FreeSlate.Drawing;
 using FreeSlate.Text;
 
@@ -35,6 +36,11 @@ public sealed record RunStyle(
     public bool Caps { get; init; }
     public bool SmallCaps { get; init; }
     public string? Language { get; init; }
+
+    /// <summary>Text effects as DrawingML (catalog: run.textEffects): glow, shadow and reflection, the outline and the fill.</summary>
+    public XElement? Effects { get; init; }
+    public XElement? Outline { get; init; }
+    public XElement? TextFill { get; init; }
 
     /// <summary>The line metrics Word takes from the font, in points (<see cref="WordFonts.LineMetrics"/>).</summary>
     public (double Above, double Below) Metrics => WordFonts.LineMetrics(Font.Data, Size);
