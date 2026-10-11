@@ -62,10 +62,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>The document's paint servers (gradients, patterns and pictures share their ids).</summary>
     public SvgPaint Paint { get; init; } = new();
 
-    /// <summary>The colors the text resolves against: the slide's, or <see cref="ColorOverride"/>.</summary>
+    /// <summary>
+    /// The colors and theme (theme fonts too) the text resolves against: the slide's, or <see cref="ColorOverride"/>
+    /// (measured: a chart's theme override brings its own fonts, Calibri in a Lucida Sans deck).
+    /// </summary>
     ColorContext Colors => ColorOverride ?? slide.Colors;
 
-    /// <summary>A chart's own color mapping while the chart is drawn.</summary>
+    /// <summary>A chart's own color mapping and theme while the chart is drawn.</summary>
     public ColorContext? ColorOverride { get; set; }
 
     /// <summary>The shape's box in pixels: scaled or skewed shadows of its text align on it, as the shape's own do.</summary>
@@ -559,7 +562,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     continue;
                 }
                 if (string.IsNullOrWhiteSpace(run.Text))
+                {
+                    if (BetweenWords(line, run))
+                        svg.Append(SpaceDecorations(run, left + run.X, run.Style.BaselineShift == 0 && run.Lift == 0
+                            ? baseline
+                            : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift)));
                     continue;
+                }
                 if (run.Style.Inline is Equations.Equation equation)
                 {
                     // An equation: its glyphs and rules, its characters transparent on top for selection.
@@ -653,8 +662,36 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             if (!string.IsNullOrWhiteSpace(run.Text))
                 svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+            else if (BetweenWords(line, run))
+                svg.Append(SpaceDecorations(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
         }
         return svg.ToString();
+    }
+
+    /// <summary>Whether a run of spaces stands before more of the line's text (not at its end).</summary>
+    static bool BetweenWords(LaidOutLine line, PlacedRun run)
+    {
+        var index = line.Runs.IndexOf(run);
+        for (var i = index + 1; i < line.Runs.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(line.Runs[i].Text) || line.Runs[i].Picture != null)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// The underline and strikethrough of spaces between words, which PowerPoint draws through (measured: "Math Problem
+    /// Solving" underlined in one piece); spaces ending a line stay bare.
+    /// </summary>
+    static string SpaceDecorations(PlacedRun run, double x, double y)
+    {
+        var style = run.Style;
+        if (style.Underline == null && style.Strike == null)
+            return "";
+        var decorations = Decorations(run, style, style.Font.Data, x, y);
+        var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
+        return decorations.Length > 0 ? $"<g{fill}>{decorations}</g>" : "";
     }
 
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,
@@ -1288,7 +1325,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }
 
         var font = ParagraphElement(pPr, sources, level, "buFontTx", "buFont");
-        var resolved = font?.Name.LocalName == "buFont" && slide.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
+        var resolved = font?.Name.LocalName == "buFont" && Colors.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
             ? fonts.ResolveTypeface(family, textStyle.Bold, textStyle.Italic)
             : textStyle.Font;
         // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them:
@@ -1300,8 +1337,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
             var theme = slot switch
             {
-                FontSlot.EastAsian => slide.Theme.ScriptFonts.GetValueOrDefault((false, Scripts.EastAsianScript(null, script))),
-                FontSlot.Complex when script != null => slide.Theme.ScriptFonts.GetValueOrDefault((false, script)),
+                FontSlot.EastAsian => Colors.Theme.ScriptFonts.GetValueOrDefault((false, Scripts.EastAsianScript(null, script))),
+                FontSlot.Complex when script != null => Colors.Theme.ScriptFonts.GetValueOrDefault((false, script)),
                 _ => null,
             };
             var numbering = kind?.Name.LocalName != "buAutoNum" ? null : slot switch
@@ -1363,22 +1400,22 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // them (catalog: text.fonts).
         var latin = RunElement(rPr, sources, level, "latin");
         var major = latin?.Str("typeface") is "+mj-lt";
-        var family = Typeface(latin) ?? slide.Theme.MinorLatin;
+        var family = Typeface(latin) ?? Colors.Theme.MinorLatin;
         if (slot == FontSlot.EastAsian)
         {
             var themeScript = Scripts.EastAsianScript(R("lang"), script);
             family = Typeface(RunElement(rPr, sources, level, "ea"))
-                     ?? slide.Theme.ScriptFonts.GetValueOrDefault((major, themeScript))
+                     ?? Colors.Theme.ScriptFonts.GetValueOrDefault((major, themeScript))
                      ?? Scripts.Fallbacks(slot, themeScript)[0];
             script = themeScript;
         }
         else if (slot == FontSlot.Complex)
         {
             family = Typeface(RunElement(rPr, sources, level, "cs"))
-                     ?? (script != null ? slide.Theme.ScriptFonts.GetValueOrDefault((major, script)) : null)
+                     ?? (script != null ? Colors.Theme.ScriptFonts.GetValueOrDefault((major, script)) : null)
                      ?? Scripts.Fallbacks(slot, script)[0];
         }
-        if (symbolFont != null && slide.Theme.ResolveTypeface(symbolFont) is { Length: > 0 } symbolFamily)
+        if (symbolFont != null && Colors.Theme.ResolveTypeface(symbolFont) is { Length: > 0 } symbolFamily)
             family = symbolFamily;
         else if (runOverride?.Family is { Length: > 0 } animated)
             family = animated;
@@ -1476,6 +1513,6 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     }
 
     string? Typeface(XElement? font) =>
-        font?.Str("typeface") is { Length: > 0 } t ? slide.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
+        font?.Str("typeface") is { Length: > 0 } t ? Colors.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
 
 }

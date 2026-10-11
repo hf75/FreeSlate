@@ -6,8 +6,9 @@ using FreeSlate.Opc;
 namespace FreeSlate.Pptx.Charts;
 
 /// <summary>
-/// The look of charts without a chart style part (catalog: chart.formatting): Office 2007 and 2010 drew them by one of 48
-/// built-in styles (c:style, c14:style; 2 where there is none), made of the theme's fill and line styles. Measured in
+/// The look of what a chart does not format itself (catalog: chart.formatting): one of Office 2007's 48 built-in styles
+/// (c:style, c14:style; 2 where there is none), made of the theme's fill, line and effect styles; PowerPoint draws by it
+/// also where the chart has style and color parts (cs), which only Office 2016 charts draw by. Measured in
 /// PowerPoint with charts of every style, series count and theme (also themes whose styles can be told apart): style N
 /// has the color variant (N − 1) % 8 (0 grays, 1 the accents in turn, 2–7 shades of accent 1–6) and the level
 /// (N − 1) / 8: 0 flat colors (fill style 1), 1 white edges, 2 fill style 3 and effect style 2, 3 fill style 3, effect
@@ -18,7 +19,7 @@ namespace FreeSlate.Pptx.Charts;
 /// </summary>
 public sealed partial class ChartRenderer
 {
-    /// <summary>The Office 2007 style of a chart without style part; null for charts with one.</summary>
+    /// <summary>The Office 2007 style of a chart; null for Office 2016 charts.</summary>
     LegacyStyle? legacy;
 
     sealed record LegacyStyle(int Number, bool Plain)
@@ -39,7 +40,7 @@ public sealed partial class ChartRenderer
     static readonly int[] LegacyGrays = [88000, 55000, 78000, 92000, 70000, 30000];
 
     /// <summary>
-    /// The style of a chart without style part: c:style (1–48, else 2), in full where Office 2010 marked it with
+    /// The style of a chart: c:style (1–48, else 2), in full where Office 2010 marked it with
     /// c14:style or Office 2007 saved the presentation (AppVersion 12), else plain.
     /// </summary>
     static LegacyStyle Legacy(XElement chartSpace, int? appVersion)
@@ -150,12 +151,18 @@ public sealed partial class ChartRenderer
         ThemeLine(legacy!.Plain ? Scheme("tx1") : Scheme("tx1", ("tint", 75000)));
 
     /// <summary>
-    /// The chart area in a legacy style: bg1, at level 4 with a border of line style 1 in tx1 tinted 75 %, at level 5 tx1.
+    /// The chart area in a legacy style: none up to level 3, bg1 with a border of line style 1 in tx1 tinted 75 % at level
+    /// 4, tx1 at level 5 (measured on a yellow slide).
     /// </summary>
     (Fill Fill, List<(XElement Line, ColorContext Colors)> Line) LegacyChartArea()
     {
         var style = legacy!;
-        var fill = new SolidFill(colors.Resolve(Scheme(style.Level == 5 ? "tx1" : "bg1")));
+        var fill = style.Level switch
+        {
+            4 => new SolidFill(colors.Resolve(Scheme("bg1"))),
+            5 => new SolidFill(colors.Resolve(Scheme("tx1"))),
+            _ => Fill.None,
+        };
         return (fill, style.Level == 4 ? [ThemeLine(Scheme("tx1", ("tint", 75000)))] : []);
     }
 
@@ -204,14 +211,15 @@ public sealed partial class ChartRenderer
         var run = new XElement(Ns.A + "defRPr", new XAttribute("sz", ((int)Math.Round(size * 100)).ToString(CultureInfo.InvariantCulture)));
         if (element == "title")
             run.SetAttributeValue("b", "1");
-        else if (legacy!.Level == 5)
+        if (legacy!.Level == 5)
             run.Add(new XElement(Ns.A + "solidFill", Scheme("bg1")));
         return run;
     }
 
     /// <summary>
-    /// A title's own text in an Office 2007 style: paragraphs without properties (a:pPr) show 18 pt regular whatever the
-    /// chart's text size, those with them (as Office writes them) the title's bold (measured).
+    /// A title's own text in an Office 2007 style: paragraphs without properties (a:pPr) show 18 pt regular in tx1 whatever
+    /// the chart's text size and level, those with them (as Office writes them) the title's bold, white at level 5
+    /// (measured).
     /// </summary>
     static XElement LegacyTitleText(XElement rich)
     {
@@ -219,7 +227,8 @@ public sealed partial class ChartRenderer
             return rich;
         rich = new XElement(rich);
         foreach (var p in rich.Elements(Ns.A + "p").Where(p => p.Element(Ns.A + "pPr") == null))
-            p.AddFirst(new XElement(Ns.A + "pPr", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1800"), new XAttribute("b", "0"))));
+            p.AddFirst(new XElement(Ns.A + "pPr", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1800"), new XAttribute("b", "0"),
+                new XElement(Ns.A + "solidFill", Scheme("tx1")))));
         return rich;
     }
 }

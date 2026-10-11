@@ -22,6 +22,9 @@ public static class NumberFormat
             var pattern = culture.DateTimeFormat.ShortDatePattern + (code.EndsWith("h:mm", StringComparison.Ordinal) ? " " + culture.DateTimeFormat.ShortTimePattern : "");
             return date.ToString(pattern, culture);
         }
+        // Built-in format 17 is localized too: German "MMM JJ" (measured: "Okt 12" for mmm\-yy on a German system).
+        if (code is "mmm\\-yy" or "mmm-yy" && culture.TwoLetterISOLanguageName == "de")
+            code = "mmm yy";
         var sections = Sections(string.IsNullOrWhiteSpace(code) ? "General" : code);
 
         // Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus.

@@ -96,7 +96,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// A legend entry. Series with a visible line get a wide line key; line-type series without a line (markers only,
     /// stock series) keep the square key's width and show just their marker there (measured).
     /// </summary>
-    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false);
+    sealed record LegendEntry(string Text, Fill Fill, Outline? Outline, bool LineKey, XElement? Marker, int MarkerIndex, bool MarkerOnly = false, bool Circle = false)
+    {
+        /// <summary>The text's lines where a legend of a given size wraps it; the key stands at the first.</summary>
+        public IReadOnlyList<string>? Lines { get; init; }
+    }
 
     sealed class LegendLayout
     {
@@ -141,6 +145,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         /// <summary>Every how many categories a date axis labels (its major unit), 0 where it labels as many as fit.</summary>
         public int? DateStep { get; set; }
+
+        /// <summary>A date axis's labels wrapped to fit their slots, all of them shown (see FitLabels).</summary>
+        public bool DatesWrapped { get; set; }
 
         /// <summary>The most lines a label has.</summary>
         public int LabelLines => Labels.Count == 0 ? 1 : Labels.Max(l => l.Count(ch => ch == '\n') + 1);
@@ -209,8 +216,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         culture = slide.Presentation.Culture;
         chartStyle = Related("chartStyle");
         colorStyle = Related("chartColorStyle");
-        // Charts without style part look like Office 2007's (catalog: chart.formatting).
-        legacy = chartStyle == null && ex == null ? Legacy(model.ChartSpace, slide.Presentation.AppVersion) : null;
+        // What a chart does not format itself looks like its Office 2007 style, also where the chart has style and color
+        // parts, which PowerPoint does not draw by (measured: the same look and colors with and without them; catalog:
+        // chart.formatting). Office 2016 charts draw by their style part.
+        legacy = ex == null ? Legacy(model.ChartSpace, slide.Presentation.AppVersion) : null;
         colors = Related("themeOverride") is { } themeOverride ? slide.Colors.WithTheme(slide.Theme.WithOverride(themeOverride)) : slide.Colors;
         // A chart can keep its own color mapping (measured: PowerPoint honors c:clrMapOvr against the slide's).
         if (model.ChartSpace.Element(Ns.C + "clrMapOvr") is { } mapping)
@@ -313,13 +322,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <summary>
-    /// The layers of a chart element's text: its own, the chart's txPr, the style part's, the defaults; in Office 2016
-    /// charts the style part's before the chart's (measured: a chart-wide size does not change their text).
+    /// The layers of a chart element's text: its own, the chart's txPr, the defaults (the Office 2007 style's); Office 2016
+    /// charts put their style part's before the chart's (measured: a chart-wide size does not change their text).
     /// </summary>
     List<XElement?> Layers(XElement? own, string styleElement, XElement defaults)
     {
         var chart = DefRPr(model.ChartSpace.Element(Ns.C + "txPr"));
-        return ex != null ? [own, StyleLayer(styleElement), chart, defaults] : [own, chart, StyleLayer(styleElement), defaults];
+        return ex != null ? [own, StyleLayer(styleElement), chart, defaults] : [own, chart, defaults];
     }
 
     /// <summary>Text style of a chart element: its own txPr, the chart's txPr, the style part, then 10 pt defaults.</summary>
@@ -489,9 +498,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var layers = Layers(DefRPr(txPr), "title", legacy != null
             ? LegacyText("title", 18)
             : new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")));
-        // Office 2007 titles are 1.2 times the chart's text size where it has one (measured: 16.8 pt with 14 pt).
-        if (legacy != null && DefRPr(model.ChartSpace.Element(Ns.C + "txPr")).Int("sz") is { } chartSize)
+        if (legacy != null && element == null && chartStyle != null)
+        {
+            // A title PowerPoint makes up from the series' name (no c:title) takes the style part's look (measured:
+            // generated/charts, 18.62 pt regular in tx1 at 65 %), unlike a c:title without formatting of its own.
+            layers.Insert(2, StyleLayer("title"));
+        }
+        else if (legacy != null && DefRPr(model.ChartSpace.Element(Ns.C + "txPr")).Int("sz") is { } chartSize)
+        {
+            // Office 2007 titles are 1.2 times the chart's text size where it has one (measured: 16.8 pt with 14 pt).
             layers.Insert(1, new XElement(Ns.A + "defRPr", new XAttribute("sz", ((int)Math.Round(chartSize * 1.2)).ToString(CultureInfo.InvariantCulture))));
+        }
         // Office 2016 charts give their title the chart's width less its margins (measured: 115 pt in a 130 pt chart).
         var maxWidth = ex != null ? width - 2 * ExMargin : width * 0.8;
         LaidOutText layout;
@@ -568,44 +585,51 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         bool Show(string name) => layers.FirstOrDefault(l => l.Element(Ns.C + name) != null) is { } owner && ChartModel.Flag(owner, name, false);
         var spec = (Value: Show("showVal"), Category: Show("showCatName"), Series: Show("showSerName"), Percent: Show("showPercent"),
             Bubble: group.IsBubble && Show("showBubbleSize"));
-        // The point label's own text: rich text whose fields hold their current text, or a cell's text.
+        XElement? Child(string name) => layers.Select(l => l.Element(Ns.C + name)).FirstOrDefault(e => e != null);
+        var numFmt = Child("numFmt");
+        var formatCode = numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode");
+        // Text from a range of cells (c15:datalabelsRange, shown by c15:showDataLabelsRange; the cache holds every
+        // point's text).
+        var rangeShown = layers.Select(l => l.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "showDataLabelsRange"))
+            .FirstOrDefault(e => e != null) is { } range && range.Attribute("val")?.Value is not ("0" or "false");
+        var rangeCache = series.Element.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "dlblRangeCache")?
+            .Elements(Ns.C + "pt").FirstOrDefault(pt => pt.Attribute("idx")?.Value == point.ToString(CultureInfo.InvariantCulture))?.Element(Ns.C + "v")?.Value;
+        var rangeText = rangeShown ? rangeCache : null;
+        // The point label's own text: rich text whose fields show the point's current values, or a cell's text.
         string? own = null;
         XElement? rich = null;
         if (pointLabel?.Element(Ns.C + "tx") is { } tx)
         {
             if ((rich = tx.Element(Ns.C + "rich")) != null)
+            {
+                rich = FieldsFilled(rich, group, series, point, formatCode, rangeCache);
                 own = string.Join("\n", rich.Elements(Ns.A + "p").Select(p => string.Concat(p.Elements().Select(e => e.Name.LocalName switch
                 {
                     "r" or "fld" => e.Element(Ns.A + "t")?.Value ?? "",
                     "br" => "\n",
                     _ => "",
                 }))));
+            }
             else if (tx.Element(Ns.C + "strRef")?.Element(Ns.C + "strCache") is { } cache)
                 own = string.Concat(cache.Elements(Ns.C + "pt").Select(pt => pt.Element(Ns.C + "v")?.Value));
         }
-        // Text from a range of cells (c15:datalabelsRange, shown by c15:showDataLabelsRange).
-        var rangeShown = layers.Select(l => l.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "showDataLabelsRange"))
-            .FirstOrDefault(e => e != null) is { } range && range.Attribute("val")?.Value is not ("0" or "false");
-        var rangeText = rangeShown
-            ? series.Element.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "dlblRangeCache")?
-                .Elements(Ns.C + "pt").FirstOrDefault(pt => pt.Attribute("idx")?.Value == point.ToString(CultureInfo.InvariantCulture))?.Element(Ns.C + "v")?.Value
-            : null;
         if (own == null && rangeText == null && !spec.Value && !spec.Category && !spec.Series && !spec.Percent && !spec.Bubble)
             return null;
 
-        XElement? Child(string name) => layers.Select(l => l.Element(Ns.C + name)).FirstOrDefault(e => e != null);
         var txPr = rich?.Descendants(Ns.A + "defRPr").Any() == true ? rich : Child("txPr");
         var body = txPr?.Element(Ns.A + "bodyPr");
         double Inset(string name, long fallback) => (body.Long(name) ?? fallback) / Units.EmuPerPoint;
-        var numFmt = Child("numFmt");
         // The default separator (measured with a German Office): a line break between a percentage and a name shown
         // without the value, else the list separator of the chart's language and a space ("One; 40").
         var separator = Child("separator")?.Value ?? (spec.Percent && !spec.Value ? "\n" : culture.TextInfo.ListSeparator + " ");
         var style = Style(txPr, "dataLabel");
         var insets = (Inset("lIns", 38100), Inset("tIns", 19050), Inset("rIns", 38100), Inset("bIns", 19050));
         var key = Show("showLegendKey") ? KeyFill(group, series, point) : null;
-        // Labels wrap at a fifth of the chart's width, box and key included (measured: 86 pt of text in a 460 pt chart).
-        var maxWidth = Math.Max(1, LabelMaxShare * width - insets.Item1 - insets.Item3 - (key != null ? LabelKeyText * LineHeight(style) : 0));
+        // Labels wrap at a fifth of the chart's width, box and key included (measured: 86 pt of text in a 460 pt chart), or
+        // at the width a label was given (c15:layout, in fractions of the chart; LibreOffice's tdf146487).
+        var share = pointLabel?.Element(Ns.C + "extLst")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "layout")?
+            .Element(Ns.C + "manualLayout") is { } sized && ChartModel.Number(sized, "w") is { } w and > 0 ? w : LabelMaxShare;
+        var maxWidth = Math.Max(1, share * width - insets.Item1 - insets.Item3 - (key != null ? LabelKeyText * LineHeight(style) : 0));
         ManualOffset? manual = null;
         if (pointLabel?.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } layout)
             manual = new ManualOffset(ChartModel.Number(layout, "x"), ChartModel.Number(layout, "y"),
@@ -625,8 +649,44 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (rich != null && rich.Descendants(Ns.A + "rPr").Any(r => r.HasAttributes || r.HasElements))
             richLayout = text.ChartRich(rich, Layers(DefRPr(Child("txPr")), "dataLabel", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"))), maxWidth, wrap: true);
         return new LabelSpec(spec.Value, spec.Category, spec.Series, spec.Percent, spec.Bubble, separator, Child("dLblPos").Str("val"),
-            numFmt?.Bool("sourceLinked") == true ? null : numFmt.Str("formatCode"), style, Child("spPr"), insets, maxWidth,
+            formatCode, style, Child("spPr"), insets, maxWidth,
             key, manual, leader, own, string.IsNullOrEmpty(rangeText) ? null : rangeText, plotOrder.GetValueOrDefault(series), point, richLayout);
+    }
+
+    /// <summary>
+    /// A data label's own rich text with its fields (a:fld of type VALUE, YVALUE, XVALUE, CATEGORYNAME, SERIESNAME,
+    /// PERCENTAGE, BUBBLESIZE, CELLRANGE) showing the point's current values like the label's parts: PowerPoint recomputes
+    /// them, the saved text may be a placeholder like "[PERCENTAGE]" (measured: LibreOffice's tdf125444, tdf146756).
+    /// </summary>
+    XElement FieldsFilled(XElement rich, ChartGroup group, ChartSeries series, int point, string? formatCode, string? rangeText)
+    {
+        var fields = rich.Descendants(Ns.A + "fld").ToList();
+        if (fields.Count == 0)
+            return rich;
+        var copy = new XElement(rich);
+        var value = point >= 0 ? series.Values.ElementAtOrDefault(point) : null;
+        var total = series.Values.Sum(v => Math.Abs(v ?? 0));
+        foreach (var field in copy.Descendants(Ns.A + "fld"))
+        {
+            string? current = field.Str("type") switch
+            {
+                "VALUE" or "YVALUE" => value is { } v ? NumberFormat.Format(v, formatCode ?? series.FormatCode, culture) : null,
+                "XVALUE" => group.IsScatter && series.XValues.ElementAtOrDefault(point) is { } x
+                    ? NumberFormat.Format(x, "General", culture)
+                    : series.Categories.ElementAtOrDefault(point),
+                "CATEGORYNAME" => series.Categories.ElementAtOrDefault(point) ?? (point + 1).ToString(culture),
+                "SERIESNAME" => series.Name,
+                "PERCENTAGE" => value is { } p
+                    ? NumberFormat.Format(total == 0 ? 0 : Math.Abs(p) / total, formatCode is { } f && f.Contains('%') ? f : "0%", culture)
+                    : null,
+                "BUBBLESIZE" => group.IsBubble ? NumberFormat.Format(BubbleSize(series, point), formatCode ?? "General", culture) : null,
+                "CELLRANGE" => rangeText,
+                _ => null,
+            };
+            if (current != null && field.Element(Ns.A + "t") is { } t)
+                t.Value = current;
+        }
+        return copy;
     }
 
     /// <summary>The fill of a data label's legend key: the point's fill, the line's color for series drawn as lines.</summary>
@@ -1195,7 +1255,33 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             box = new Box(x, y, w, h);
         }
         layout.Box = ManualPosition(element, box.W, box.H) ?? box;
+        if (position is not ("t" or "b") && element.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } sized
+            && (ChartModel.Number(sized, "w") != null || ChartModel.Number(sized, "h") != null))
+            FitLegend(layout, lineHeight, Key);
         return layout;
+    }
+
+    /// <summary>
+    /// The entries of a legend at the side given a size of its own (c:manualLayout w, h): the text wraps at the legend's
+    /// width less 4 pt and the key's room; as many entries show as slots of the tallest entry's height the legend's
+    /// height begins, k = min(n, ceil(height / tallest)), each in an equal slot of height / k, the tallest centered in
+    /// it and the others at the same top; entries are centered across (measured through COM with legends 90 to 280 pt
+    /// tall and 90 to 170 pt wide; LibreOffice's tdf122765 shows 7 of 9 entries).
+    /// </summary>
+    void FitLegend(LegendLayout layout, double lineHeight, Func<LegendEntry, double> key)
+    {
+        var entries = layout.Entries;
+        if (entries.Count == 0)
+            return;
+        var (w, h) = (layout.Box.W, layout.Box.H);
+        var wrapped = entries.Select(e => WrapWords(e.Text, layout.Style, Math.Max(1, w - 4 - 2 * key(e)))).ToList();
+        var tallest = wrapped.Max(lines => Math.Max(1, lines.Count)) * lineHeight;
+        var shown = Math.Clamp((int)Math.Ceiling(h / tallest - 1e-9), 1, entries.Count);
+        var slot = h / shown;
+        var entryWidth = Math.Min(w - 4, Enumerable.Range(0, shown).Max(i => 2 * key(entries[i]) + wrapped[i].DefaultIfEmpty("").Max(line => Width(line, layout.Style))));
+        layout.Placed.Clear();
+        for (var i = 0; i < shown; i++)
+            layout.Placed.Add((entries[i] with { Lines = wrapped[i] }, (w - entryWidth) / 2, i * slot + (slot - tallest) / 2 + lineHeight / 2));
     }
 
     string DrawLegend(LegendLayout legend)
@@ -1257,7 +1343,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     svg.Append(Rect(new Box(left + squareAt, center - key / 2, key, key), entry.Fill, outline, snap: hollow, nudge: hollow ? 0.5 : 0));
                 }
             }
-            svg.Append(text.Label(entry.Text, style, left + textAt, baseline));
+            if (entry.Lines is { Count: > 1 } lines)
+            {
+                for (var k = 0; k < lines.Count; k++)
+                    svg.Append(text.Label(lines[k], style, left + textAt, baseline + k * lineHeight));
+            }
+            else
+                svg.Append(text.Label(entry.Text, style, left + textAt, baseline));
         }
         return svg.ToString();
     }
@@ -1266,12 +1358,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <summary>
     /// The automatic color of series or point <paramref name="index"/> of <paramref name="count"/> (default: the chart's
-    /// series): the chart's color style, else the colors of the Office 2007 style of a chart without style part, else
-    /// the accents.
+    /// series): the colors of the chart's Office 2007 style; in Office 2016 charts their color style part's, else the
+    /// accents.
     /// </summary>
     RgbColor AutoColor(int index, int? count = null)
     {
-        if (legacy != null && colorStyle == null)
+        if (legacy != null)
             return LegacyColor(index, count ?? AllSeriesCount);
         var palette = colorStyle?.Elements().Where(e => e.Name.Namespace == Ns.A).ToList() ?? [];
         var variations = colorStyle?.Elements(Ns.Cs + "variation").ToList() ?? [];
@@ -1514,7 +1606,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 // width less the value labels' overhangs, and all labels stay inside the chart.
                 foreach (var layout in axes.Where(a => a.HasLabels))
                 {
-                    layout.Rotation = Rotation(layout, layout.Axis.Horizontal ? plot.W : plot.H);
+                    FitLabels(layout, layout.Axis.Horizontal ? plot.W : plot.H);
                     layout.Inside = LabelsInside(layout, axes);
                     if (!layout.Inside && !layout.Axis.IsValue && !layout.Axis.Horizontal && layout.Rotation == 0 && layout.Levels.Count == 0)
                         WrapVerticalLabels(layout, axes, width, plot.H);
@@ -1796,7 +1888,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         foreach (var layout in axes.Where(a => a.HasLabels))
         {
             var s = layout.Style.Size;
-            layout.Rotation = Rotation(layout, layout.Axis.Horizontal ? previous.W : previous.H);
+            FitLabels(layout, layout.Axis.Horizontal ? previous.W : previous.H);
             layout.Inside = LabelsInside(layout, axes);
             if (layout.Inside)
                 continue;
@@ -1886,6 +1978,49 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 plot = new Box(need, plot.Y, Math.Max(1, plot.Right - need), plot.H);
         }
         return plot;
+    }
+
+    /// <summary>
+    /// The labels' turn (see <see cref="Rotation"/>); category labels that do not fit their slots on a horizontal axis wrap
+    /// at the slot's width where every word fits it, and turn by 45° where a word alone does not (measured: two- to
+    /// six-word labels wrap, also in a chart 200 pt short; one word wider than its slot turns all labels; as in 3D).
+    /// </summary>
+    void FitLabels(AxisLayout layout, double length)
+    {
+        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Names.Count == 0)
+        {
+            layout.Rotation = Rotation(layout, length);
+            return;
+        }
+        var style = layout.Style;
+        layout.Labels = layout.Names;
+        layout.MaxLabelWidth = layout.Names.Max(l => l.Split('\n').Max(line => Width(line, style)));
+        layout.Rotation = Rotation(layout, length);
+        layout.DatesWrapped = false;
+        if (layout.DateStep == 0 && layout.Levels.Count == 0 && layout.MaxLabelWidth > length / Math.Max(1, layout.Categories))
+        {
+            // A date axis that labels as many dates as fit shows them all where their words fit their slots, wrapped
+            // (measured: "Okt 12" … "Jan 14" under 16 months, Nov 12 on two lines; LibreOffice's bnc889755).
+            var dateSlot = length / Math.Max(1, layout.Categories);
+            var dates = layout.Names.Select(name => name.Split('\n').SelectMany(line => WrapWords(line, style, dateSlot)).ToList()).ToList();
+            if (dates.All(lines => lines.All(line => Width(line, style) <= dateSlot)))
+            {
+                layout.Labels = dates.Select(lines => string.Join("\n", lines)).ToList();
+                layout.MaxLabelWidth = dates.Max(lines => lines.Max(line => Width(line, style)));
+                layout.DatesWrapped = true;
+            }
+            return;
+        }
+        if (layout.Rotation != -45 || layout.DateStep != null || layout.Levels.Count > 0
+            || layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot") is not (null or -60000000))
+            return;
+        var slot = length / Math.Max(1, layout.Categories);
+        var wrapped = layout.Names.Select(name => name.Split('\n').SelectMany(line => WrapWords(line, style, slot)).ToList()).ToList();
+        if (wrapped.Any(lines => lines.Any(line => Width(line, style) > slot)))
+            return;
+        layout.Labels = wrapped.Select(lines => string.Join("\n", lines)).ToList();
+        layout.MaxLabelWidth = wrapped.Max(lines => lines.Max(line => Width(line, style)));
+        layout.Rotation = 0;
     }
 
     /// <summary>
@@ -2318,7 +2453,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             // Date axes without a major unit label as many dates as fit, a label and a font size apart.
             var slot = Math.Abs(layout.End - layout.Start) / Math.Max(1, layout.Categories);
-            skip = step > 0 ? step : Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
+            skip = step > 0 ? step : layout.DatesWrapped ? 1 : Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
         }
         var gapScale = AxisLabelOffset(layout);
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
@@ -3681,11 +3816,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var maxExplosion = rings.SelectMany(s => s.Points.Values.Select(p => ChartModel.Number(p, "explosion") ?? 0)
             .Append(ChartModel.Number(s.Element, "explosion") ?? 0)).DefaultIfEmpty(0).Max() / 100;
         // With data labels that may go outside (outEnd, bestFit) PowerPoint keeps a margin around the pie for them;
-        // inside labels (inEnd, ctr) and doughnut labels leave it its full size (measured with local/pielabels).
-        var labelled = rings.SelectMany(r => Enumerable.Range(0, r.Values.Count).Select(i => DataLabel(group, r, i)))
+        // inside labels (inEnd, ctr) and doughnut labels leave it its full size (measured with local/pielabels). The
+        // series' labels decide, not single points' (measured: centered labels with some at bestFit, LibreOffice's
+        // tdf125444 and percentage-number-formats).
+        var labelled = rings.Select(r => DataLabel(group, r, -1))
             .FirstOrDefault(l => l != null && (doughnut || (l.Position ?? "bestFit") is "bestFit" or "outEnd"));
         var margin = labelled != null && PlotLayout() == null ? PieLabelMargin * labelled.Style.Size : 0;
-        var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + maxExplosion);
+        // A plot area placed by hand around the pie itself (layoutTarget inner) holds the pie with its series' explosion,
+        // single exploded slices reach beyond it (measured: LibreOffice's tdf146756_bestFit, one slice exploded by 17 %,
+        // and tdf146487, all by 8 %).
+        var seriesExplosion = rings.Select(s => ChartModel.Number(s.Element, "explosion") ?? 0).DefaultIfEmpty(0).Max() / 100;
+        var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + (PlotLayout() is { Inner: true } ? seriesExplosion : maxExplosion));
         var (cx, cy) = (plot.X + plot.W / 2, plot.Y + plot.H / 2);
         var hole = doughnut ? Math.Clamp(group.HoleSize, 10, 90) / 100 : 0;
         var ringWidth = (radius - radius * hole) / rings.Count;

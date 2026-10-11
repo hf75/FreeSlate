@@ -28,7 +28,7 @@ public sealed class PresentationContext : IDisposable
         var size = root.Element(Ns.P + "sldSz");
         SlideWidth = size.Long("cx") ?? 12192000;
         SlideHeight = size.Long("cy") ?? 6858000;
-        DefaultTextStyle = root.Element(Ns.P + "defaultTextStyle");
+        DefaultTextStyle = root.Element(Ns.P + "defaultTextStyle") ?? BuiltInTextStyle;
 
         foreach (var id in root.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId") ?? [])
         {
@@ -64,6 +64,13 @@ public sealed class PresentationContext : IDisposable
     public long SlideWidth { get; }
     public long SlideHeight { get; }
     public XElement? DefaultTextStyle { get; }
+
+    /// <summary>
+    /// PowerPoint's own default text style for presentations without one (p:defaultTextStyle, as other programs write
+    /// them): kerning from 12 pt at every level (measured: LibreOffice's Calibri text kerned without any kern attribute).
+    /// </summary>
+    static readonly XElement BuiltInTextStyle = new(Ns.P + "defaultTextStyle",
+        Enumerable.Range(1, 9).Select(level => new XElement(Ns.A + $"lvl{level}pPr", new XElement(Ns.A + "defRPr", new XAttribute("kern", "1200")))));
     public List<string> SlideParts { get; } = [];
 
     /// <summary>Whether a slide has a 3D model, for which the document gets the WebGL renderer (catalog: picture.model3d).</summary>

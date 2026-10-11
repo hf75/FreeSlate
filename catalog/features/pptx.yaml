@@ -1221,7 +1221,10 @@ areas:
           paragraph's own default run properties (a:pPr/a:defRPr) format its runs before the list styles do
           (POI's bug63290: a run without properties in the paragraph's red 40 pt). altLang,
           bmk, dirty, err, noProof, smtClean and smtId are editing state. Verified with generated/text-basic,
-          text-underline and text-more.
+          text-underline and text-more. Underlines and strikethroughs run on through the spaces between words,
+          not through spaces ending a line (POI's aascu deck: 'Math Problem Solving' in one piece). A
+          presentation without p:defaultTextStyle (as other programs write them) takes PowerPoint's own, which
+          kerns from 12 pt (LibreOffice decks with Calibri text: kerned without any kern attribute).
 
       - id: text.fonts
         title: Fonts per script
@@ -1614,7 +1617,11 @@ areas:
           (c:serLines) join the combined slice's edges to the second plot's top and bottom. Measured with
           generated/charts- details: 0.06 -> 0.97 on that slide. Verified with generated/charts, charts-
           details and local/pielabels. A fill of the series' own colors the points without one even where
-          the colors vary by point (LibreOffice's tdf150176 and tdf146756: the first slice in bg2).
+          the colors vary by point (LibreOffice's tdf150176 and tdf146756: the first slice in bg2). The room
+          for outside labels follows the series' label position, not single points' (centered labels with some
+          at bestFit keep the pie at full size: tdf125444, percentage-number-formats). A plot area placed by
+          hand around the pie (layoutTarget inner) holds the pie with its series' explosion; single exploded
+          slices reach beyond it (tdf146756_bestFit, tdf146487).
 
       - id: chart.area
         title: Area charts
@@ -1710,7 +1717,11 @@ areas:
           1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
           shows the locale's short date. Numbers and dates take the system's regional format, not the chart's
           language (c:lang; measured: an en-US chart shows 2,5 on a German system); the converter takes it as an
-          option, the current culture by default. Category labels that do not fit rotate by -45 degrees, with the end
+          option, the current culture by default. Category labels that do not fit their slots wrap at the slot's
+          width where every word fits it, else all rotate by -45 degrees (local/catwrap-horizontal: two- to
+          six-word labels wrap, also in a chart 200 pt short; one word wider than its slot turns all labels); date
+          axes that label as many dates as fit show all of them, wrapped, where their words fit (LibreOffice's
+          bnc889755), and built-in format 17 (mmm-yy) reads "Okt 12" on a German system. Rotated labels sit with the end
           of their middle line at the category; labels of an axis crossing inside the plot area stay at the
           axis. Display units (c:dispUnits: built-in or custom) divide the value labels, and their label
           (c:dispUnitsLbl) shows its own text or the unit's name in the chart's language (German Office:
@@ -1781,9 +1792,12 @@ areas:
           down to a label above or below it, else ending in a 5.6 pt level stroke at the label's first
           baseline. Legend keys (c:showLegendKey) are squares of the point's fill as in legends, the text
           1.108 line heights after the inset. Bubble sizes (c:showBubbleSize) label bubbles on the right, 5.5
-          pt off the edge. A point label's own text (c:tx: rich text with its fields' current text, or a cell)
-          replaces the parts, its runs keeping their own formatting (generated/charts-details slide 6:
-          99.6 %); text from cells (c15:datalabelsRange) leads them. Best fit labels inside slices narrower than
+          pt off the edge. A point label's own text (c:tx: rich text, or a cell) replaces the parts, its runs
+          keeping their own formatting (generated/charts-details slide 6: 99.6 %); its fields (a:fld VALUE,
+          CATEGORYNAME, SERIESNAME, PERCENTAGE, XVALUE, YVALUE, BUBBLESIZE, CELLRANGE) show the point's current
+          values whatever text they saved ('[PERCENTAGE]' in LibreOffice's tdf125444). A label's own width
+          (c15:layout w, a fraction of the chart) replaces the fifth it wraps at (tdf146487). Text from cells
+          (c15:datalabelsRange) leads the parts. Best fit labels inside slices narrower than
           a half move sideways off the middle ray until their lines keep the same distance from both of the
           slice's radii, then out as far as their corners stay within reach (wide labels of slices turned in
           5° steps move towards the horizontal by up to 34 px, matched within 2 px; local/piebestfit 92.4 %);
@@ -1808,7 +1822,10 @@ areas:
           factor) or far edges (edge). Verified with generated/charts, charts-details and charts-data.
           Line keys keep their size at every font size (legends of 7 to 24 pt): a 12 pt key box, the line
           19.1 pt long about 12.79 pt from the entry's edge, the text at 24.31 pt; square keys scale with the
-          line height. Keys draw markers at most half the font size and lines and marker edges at most 0.375
+          line height. A legend at the side given a size of its own (c:manualLayout w, h) wraps its entries at
+          its width less 4 pt and the key's room and shows k = min(n, ceil(height / tallest entry)) entries in
+          equal slots of height / k, the tallest centered in its slot, all centered across (measured through COM,
+          local/legend-manualsize; LibreOffice's tdf122765 shows 7 of 9). Keys draw markers at most half the font size and lines and marker edges at most 0.375
           times it wide (local/legacy-legend* decks). A dashed line key makes every key longer: the line from
           3.05 to 29.31 pt, the text at 31.5 pt (local/legacy-longkey).
 
@@ -1850,18 +1867,23 @@ areas:
           base at their own proportions (stack) or one per c:pictureStackUnit of the value axis (stackScale),
           else stretches them over the bar (generated/charts-data). Verified with generated/charts, charts-
           more and charts-data.
-          A chart without style part (Office 2007/2010 and other programs) shows one of the 48 Office 2007 styles
-          (c:style, 2 without; measured with all styles, 1 to 14 series and themes whose fill, line and effect
-          styles can be told apart): style N has the color variant (N − 1) % 8 (grays, the accents in turn, one
+          What a chart does not format itself shows one of the 48 Office 2007 styles (c:style, 2 without; measured
+          with all styles, 1 to 14 series and themes whose fill, line and effect styles can be told apart), also
+          where the chart has chart style and color parts: PowerPoint draws by them only for a title it makes up
+          from the series' name (no c:title: the style part's 18.62 pt regular gray, generated/charts), and for
+          Office 2016 charts (the same look and colors with and without them, local/legacy-keepstyle-column; a
+          plot area without spPr dark in style 47, LibreOffice's tdf136754). A chart's theme override brings its
+          own fonts (POI's aascu deck: Calibri charts in a Lucida Sans deck): style N has the color variant (N − 1) % 8 (grays, the accents in turn, one
           accent) and the level (N − 1) / 8. Series colors cycle through the six grays (tx1 tinted 88, 55, 78, 92,
           70, 30 %) or accents with c = n / 6 + 1 cycles (one-accent styles: one per series); cycle j is shaded
           (before the middle) or tinted (after it) by 1.4 / (c + 1) per step in linear light, so six series are
           already darker. Points take fill style 1 (levels 0, 1, 4) or 3 (2, 3, 5) in their color, edges line
           style 1 in white (level 1) or shaded 50 % (level 4), effects effect style 2 (level 2) or 3 (3, 5).
           Series lines are line style 1's width times 3, 5 or 7 (level 3), markers floor(2 w + 3) pt (w the
-          series line's own width or the style's) with an edge of line style 1 in the series color. Axis and grid lines are line style 1 in tx1 tinted 75 %; level
-          4 frames the chart area and tints the plot area 20 %, level 5 has a black chart area, a 95 % tx1 plot
-          area and white text. Text is 10 pt; titles are bold, 1.2 times the chart's text size (18 pt without
+          series line's own width or the style's) with an edge of line style 1 in the series color. Axis and
+          grid lines are line style 1 in tx1 tinted 75 %; the chart area is unfilled up to level 3 (measured on a
+          yellow slide), level 4 fills it white with a frame and tints the plot area 20 %, level 5 has a black
+          chart area, a 95 % tx1 plot area and white text (white titles where their paragraphs have a:pPr). Text is 10 pt; titles are bold, 1.2 times the chart's text size (18 pt without
           one), title paragraphs without a:pPr 18 pt regular whatever the size. The full look needs c14:style (Office
           2010) or AppVersion 12 (Office 2007); otherwise (Office 2013 and later, other programs) PowerPoint
           draws axis and grid lines black, level 4 plot areas in the full accent and dark gray edges black
