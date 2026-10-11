@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Xml.Linq;
 
 namespace Fidelity.PowerPoint;
@@ -259,7 +260,16 @@ public static class CorpusGenerator
         Anonymize(path);
     }
 
-    /// <summary>PowerPoint writes the Office user name as author; the decks are published, so it is replaced.</summary>
+    const string Anonymous = "Fidelity generator";
+
+    /// <summary>The name of the user's profile folder, which paths recorded in the decks contain.</summary>
+    static readonly string ProfileName = Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+
+    /// <summary>
+    /// PowerPoint writes the Office user name as author of the deck and of the workbooks it embeds for charts, and OLE
+    /// packages record paths in the user's profile folder. The decks are published, so both are replaced, and a deck
+    /// that still names the user anywhere stops the generator.
+    /// </summary>
     static void Anonymize(string path)
     {
         // An encrypted deck (a compound file) is anonymized by PowerPoint itself (RemovePersonalInformation).
@@ -268,19 +278,101 @@ public static class CorpusGenerator
             if (file.ReadByte() != 'P' || file.ReadByte() != 'K')
                 return;
         }
-        using var zip = ZipFile.Open(path, ZipArchiveMode.Update);
+        var names = new HashSet<string>([$@"\{ProfileName}\", $"/{ProfileName}/"], StringComparer.OrdinalIgnoreCase);
+        using (var zip = ZipFile.Open(path, ZipArchiveMode.Update))
+        {
+            AnonymizeAuthors(zip, names);
+            foreach (var entry in zip.Entries.Where(e => e.FullName.StartsWith("ppt/embeddings/", StringComparison.Ordinal)))
+            {
+                using var stream = entry.Open();
+                var data = new byte[stream.Length];
+                stream.ReadExactly(data);
+                if (IsZip(data))
+                {
+                    using var package = new MemoryStream();
+                    package.Write(data);
+                    bool changed;
+                    using (var embedded = new ZipArchive(package, ZipArchiveMode.Update, leaveOpen: true))
+                        changed = AnonymizeAuthors(embedded, names);
+                    if (!changed)
+                        continue;
+                    data = package.ToArray();
+                }
+                else if (!AnonymizeProfilePaths(data))
+                    continue;
+                stream.SetLength(0);
+                stream.Write(data);
+            }
+        }
+        if (Naming(File.ReadAllBytes(path), names) is { } part)
+            throw new InvalidOperationException($"{Path.GetFileName(path)}: {part} still names the user.");
+    }
+
+    /// <summary>Replaces author and last editor in the core properties of a package and collects the names they held.</summary>
+    static bool AnonymizeAuthors(ZipArchive zip, ISet<string> names)
+    {
         var entry = zip.GetEntry("docProps/core.xml");
         if (entry == null)
-            return;
+            return false;
         XDocument core;
         using (var stream = entry.Open())
             core = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
         foreach (var e in core.Root!.Elements().Where(e => e.Name.LocalName is "creator" or "lastModifiedBy"))
-            e.Value = "Fidelity generator";
+        {
+            if (e.Value.Trim() is { Length: > 0 } name && name != Anonymous)
+                names.Add(name);
+            e.Value = Anonymous;
+        }
         entry.Delete();
         using var output = zip.CreateEntry("docProps/core.xml").Open();
         core.Save(output, SaveOptions.DisableFormatting);
+        return true;
     }
+
+    /// <summary>
+    /// Replaces the user's profile folder in the paths an OLE package records (the source and the temporary file, in
+    /// ANSI and UTF-16) by x's of the same length, so that the sizes the compound file and the package record store
+    /// stay valid.
+    /// </summary>
+    static bool AnonymizeProfilePaths(byte[] data)
+    {
+        var changed = false;
+        foreach (var encoding in new[] { Encoding.Latin1, Encoding.Unicode })
+        {
+            var find = encoding.GetBytes($@"\Users\{ProfileName}\");
+            var replacement = encoding.GetBytes($@"\Users\{new string('x', ProfileName.Length)}\");
+            for (int start = 0, at; (at = data.AsSpan(start).IndexOf(find)) >= 0; start += at + find.Length)
+            {
+                replacement.CopyTo(data, start + at);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>The first part of a package (or of a package embedded in it) that contains one of the names, or null.</summary>
+    static string? Naming(byte[] data, IReadOnlyCollection<string> names, string? part = null)
+    {
+        if (IsZip(data))
+        {
+            using var zip = new ZipArchive(new MemoryStream(data));
+            foreach (var entry in zip.Entries)
+            {
+                using var stream = entry.Open();
+                var member = new MemoryStream();
+                stream.CopyTo(member);
+                if (Naming(member.ToArray(), names, part == null ? entry.FullName : $"{part} > {entry.FullName}") is { } found)
+                    return found;
+            }
+            return null;
+        }
+        // ANSI, UTF-8 and UTF-16 at either byte offset.
+        string[] texts = [Encoding.Latin1.GetString(data), Encoding.UTF8.GetString(data), Encoding.Unicode.GetString(data),
+            Encoding.Unicode.GetString(data.AsSpan(Math.Min(1, data.Length)))];
+        return texts.Any(text => names.Any(name => text.Contains(name, StringComparison.OrdinalIgnoreCase))) ? part ?? "the file" : null;
+    }
+
+    static bool IsZip(byte[] data) => data is [(byte)'P', (byte)'K', 3, 4, ..];
 
     internal static dynamic AddSlide(dynamic presentation, int layout) =>
         presentation.Slides.Add(presentation.Slides.Count + 1, layout);

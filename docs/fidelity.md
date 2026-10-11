@@ -50,8 +50,10 @@ German regional settings.
 
 - `tests/corpus/pptx/generated/` holds 57 decks that `tools/Fidelity/PowerPoint/*Deck.cs` builds through
   PowerPoint's object model: one deck per area (fills, lines, text, charts, transitions, …) with slides that
-  exercise its features. PowerPoint saved every file, so they are what PowerPoint writes. Their references
-  (`tests/fidelity/reference/generated/`) are committed, so the comparison runs without Office.
+  exercise its features. PowerPoint saved every file, so they are what PowerPoint writes. The generator removes
+  what PowerPoint records about the user (the author of the deck and of the workbooks embedded for charts, the
+  profile folder in the paths of OLE packages) and stops when a deck still names the user anywhere. Their
+  references (`tests/fidelity/reference/generated/`) are committed, so the comparison runs without Office.
 - `fetch` downloads about 700 test decks of LibreOffice, Apache POI, Apache Tika, the Open XML SDK and python-pptx
   (pinned commits; the license of each source is recorded with it) into `spec/downloads/testdecks/`. They contain
   files from many producers, including damaged and unusual ones. `reference external` renders their references,
