@@ -53,7 +53,7 @@ public sealed class RunStyles(DocumentContext context)
         var italic = (complex ? format.ItalicComplex : format.Italic) == true;
         var size = (complex ? format.SizeComplex ?? format.Size : format.Size) ?? 10;
         var family = Family(format, slot);
-        var font = context.Fonts.ResolveTypeface(family, bold, italic);
+        var font = context.FontTable.Resolve(context.Fonts, family, bold, italic);
         var color = Color(format);
         var vertical = format.VerticalAlign;
         // Super- and subscript (catalog: run.decoration): 58 % of the size, raised by 33 % or lowered by 8 % of it

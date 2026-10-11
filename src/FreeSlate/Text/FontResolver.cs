@@ -32,6 +32,14 @@ public sealed class FontResolver(FontLocator locator)
         Find(family, bold, italic) ?? Fallbacks.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null)
         ?? throw new InvalidOperationException("No usable font found (not even a fallback).");
 
+    /// <summary>A typeface by its family's name or a name the family is known by (<see cref="Named"/>), or null.</summary>
+    public ResolvedFont? TryResolveTypeface(string typeface, bool bold, bool italic) =>
+        Find(typeface, bold, italic) ?? Named(typeface, bold, italic);
+
+    /// <summary>The first of these families that is there, else the fallback.</summary>
+    public ResolvedFont ResolveFirst(IEnumerable<string> families, bool bold, bool italic) =>
+        families.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null) ?? Resolve(families.FirstOrDefault() ?? "", bold, italic);
+
     /// <summary>A typeface of a presentation's text: the family, else the one PowerPoint takes for the name (<see cref="Named"/>), else the fallback.</summary>
     public ResolvedFont ResolveTypeface(string typeface, bool bold, bool italic) =>
         Find(typeface, bold, italic) ?? Named(typeface, bold, italic) ?? Resolve(typeface, bold, italic);

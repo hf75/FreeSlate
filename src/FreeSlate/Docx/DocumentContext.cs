@@ -28,6 +28,7 @@ public sealed class DocumentContext : IDisposable
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
         Numbering = new NumberingDefinitions(Related("numbering"), Styles);
+        FontTable = new FontTable(Related("fontTable"));
         DecimalSymbol = Settings.Child("decimalSymbol").Val() is { Length: > 0 } symbol ? symbol[0] : '.';
     }
 
@@ -41,6 +42,9 @@ public sealed class DocumentContext : IDisposable
     public XElement? Settings { get; }
     public Theme Theme { get; }
     public NumberingDefinitions Numbering { get; }
+
+    /// <summary>The font table, which decides the fonts for families the machine lacks (catalog: font.table).</summary>
+    public FontTable FontTable { get; }
     public FontLocator FontLocator { get; }
     public FontResolver Fonts { get; }
 
