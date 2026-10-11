@@ -253,6 +253,60 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return lines;
     }
 
+    /// <summary>
+    /// The narrowest and the widest a paragraph can be laid out (catalog: table.width): its longest piece between
+    /// break opportunities and its longest line without wrapping, each with its indents.
+    /// </summary>
+    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null)
+    {
+        var format = paragraph.Format;
+        var (text, charStyles, _) = Flatten(paragraph, fields);
+        var advances = Advances(text, charStyles);
+        var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
+        var left = format.Left ?? 0;
+        var right = format.Right ?? 0;
+        var firstLine = format.FirstLine ?? 0;
+        double min = 0, max = 0, word = 0, trailing = 0;
+        var line = left + firstLine;
+        var interval = context.DefaultTabStop > 0 ? context.DefaultTabStop : 36;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (c is '\n' or '\f' or '\v')
+            {
+                max = Math.Max(max, line - trailing);
+                min = Math.Max(min, word);
+                (line, word, trailing) = (left, 0, 0);
+                continue;
+            }
+            if (c == '\t')
+            {
+                // The next custom stop, else the next default stop.
+                var stop = format.Tabs?.FirstOrDefault(t => t.Position > line + 0.005 && t.Align is not ("bar" or "clear"));
+                line = stop?.Position ?? (Math.Floor(line / interval + 1e-6) + 1) * interval;
+                min = Math.Max(min, word);
+                (word, trailing) = (0, 0);
+                continue;
+            }
+            line += advances[i];
+            if (c == ' ')
+                trailing += advances[i];
+            else
+            {
+                word += advances[i];
+                trailing = 0;
+            }
+            if (breaks[i])
+            {
+                min = Math.Max(min, word);
+                word = 0;
+            }
+        }
+        max = Math.Max(max, line - trailing);
+        min = Math.Max(min, word);
+        return (min + left + Math.Max(0, firstLine) + right, max + right);
+    }
+
     static bool HasContent(string text, int start, int end)
     {
         for (var i = start; i < end; i++)

@@ -1,7 +1,11 @@
 namespace FreeSlate.Docx.Layout;
 
-/// <summary>A line placed on a page: its left edge (the column's) and its top, in points from the page's top left.</summary>
-public sealed record PlacedLine(Line Line, double Left, double Top);
+/// <summary>
+/// A line placed on a page: its left edge (the column's) and its top, in points from the page's top left; a line of
+/// rotated text (table cells, catalog: table.cells) turns by <paramref name="Angle"/> degrees clockwise about a point
+/// given relative to its left edge and top.
+/// </summary>
+public sealed record PlacedLine(Line Line, double Left, double Top, double Angle = 0, double PivotX = 0, double PivotY = 0);
 
 /// <summary>A page of the laid-out document.</summary>
 public sealed class PageBox
@@ -38,9 +42,10 @@ public sealed class PageBox
     /// <summary>Lines between columns (w:cols/@sep): x, top and bottom in points.</summary>
     public List<(double X, double Top, double Bottom)> ColumnLines { get; } = [];
 
-    /// <summary>Table cell shading and table borders, drawn in this order below the text.</summary>
+    /// <summary>Table cell shading, table borders and dotted, dashed or diagonal lines, drawn in this order below the text.</summary>
     public List<FillRect> Shading { get; } = [];
     public List<FillRect> Borders { get; } = [];
+    public List<Stroke> Strokes { get; } = [];
 
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
@@ -314,15 +319,33 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             y += pendingAfter;
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         RowBox? last = null;
+        var tableTop = y;
+        // Where the table breaks, the line below the page's last row closes it, and a frame (cell spacing) ends.
+        void Break()
+        {
+            if (last != null)
+                Below(last, left);
+            TableLayout.Frame(box, left, tableTop, y, page!.Borders);
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+            tableTop = y;
+        }
         for (var r = 0; r < box.Rows.Count; r++)
         {
             var row = box.Rows[r];
-            if (y + row.Height > Bottom + 0.01 && !columnEmpty)
+            while (y + row.Height > Bottom + 0.01)
             {
-                if (last != null)
-                    PlaceFills(last.BottomBorders, page!.Borders, left, y);
-                NextColumn(natural: true);
-                (left, width) = Column(column);
+                // A row that does not fit splits at a line of each cell (unless it may not split, measured with
+                // docx/local/tbl-autofit), else moves on; a row taller than a page that cannot split overflows.
+                if (Bottom - y > row.TopWidth + 1 && row.Split(Bottom - y) is { } parts)
+                {
+                    PlaceRow(parts.Head, left);
+                    last = parts.Head;
+                    row = parts.Tail;
+                }
+                else if (columnEmpty)
+                    break;
+                Break();
                 if (!row.Header)
                 {
                     foreach (var header in headers)
@@ -339,9 +362,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // with docx/local/tbl-geom).
         if (last != null && !(index + 1 < blocks.Count && blocks[index + 1] is TableBlock))
         {
-            PlaceFills(last.BottomBorders, page!.Borders, left, y);
+            Below(last, left);
             y += last.BottomBorderWidth;
         }
+        TableLayout.Frame(box, left, tableTop, y, page!.Borders);
         pendingAfter = 0;
         page!.TrailingSpace = 0;
         previous = null;
@@ -350,18 +374,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     void PlaceRow(RowBox row, double left)
     {
-        foreach (var line in row.Lines)
-            page!.Lines.Add(new PlacedLine(line.Line, left + line.Left, y + line.Top));
-        PlaceFills(row.Shading, page!.Shading, left, y);
-        PlaceFills(row.Borders, page!.Borders, left, y);
+        TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
         y += row.Height;
         columnEmpty = false;
     }
 
-    static void PlaceFills(List<FillRect> fills, List<FillRect> into, double left, double top)
+    /// <summary>The lines below a row at the current position.</summary>
+    void Below(RowBox row, double left)
     {
-        foreach (var fill in fills)
-            into.Add(fill with { X = left + fill.X, Y = top + fill.Y });
+        foreach (var fill in row.BottomBorders)
+            page!.Borders.Add(fill with { X = left + fill.X, Y = y + fill.Y });
+        page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(left, y)));
     }
 
     void Place(List<Block> blocks, int index)
@@ -660,5 +683,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             for (var i = 0; i < fills.Count; i++)
                 fills[i] = fills[i] with { Y = fills[i].Y + shift };
         }
+        for (var i = 0; i < page.Strokes.Count; i++)
+            page.Strokes[i] = page.Strokes[i].Offset(0, shift);
     }
 }

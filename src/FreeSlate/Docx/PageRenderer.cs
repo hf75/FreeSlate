@@ -38,12 +38,19 @@ public sealed class PageRenderer(DocumentContext context)
         // Table shading, then table borders, below the text.
         foreach (var fill in page.Shading.Concat(page.Borders))
             svg.Append($"<rect x=\"{Px(fill.X)}\" y=\"{Px(fill.Y)}\" width=\"{Px(fill.Width)}\" height=\"{Px(fill.Height)}\" fill=\"{fill.Color.ToHex()}\"/>");
+        foreach (var s in page.Strokes)
+        {
+            var dash = s.Dash is { } pattern ? $" stroke-dasharray=\"{string.Join(' ', pattern.Split(' ').Select(v => Units.Css(double.Parse(v, CultureInfo.InvariantCulture) * PxPerPt)))}\"" : "";
+            svg.Append($"<line x1=\"{Px(s.X1)}\" y1=\"{Px(s.Y1)}\" x2=\"{Px(s.X2)}\" y2=\"{Px(s.Y2)}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"{dash}/>");
+        }
         foreach (var placed in page.Lines)
         {
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
                 svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
             var baseline = placed.Top + placed.Line.Baseline;
+            if (placed.Angle != 0)
+                svg.Append($"<g transform=\"rotate({Units.Css(placed.Angle)} {Px(placed.Left + placed.PivotX)} {Px(placed.Top + placed.PivotY)})\">");
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
@@ -66,6 +73,8 @@ public sealed class PageRenderer(DocumentContext context)
                 }
                 svg.Append(Decorations(piece, x, baseline - piece.Style.Raise));
             }
+            if (placed.Angle != 0)
+                svg.Append("</g>");
         }
         svg.Append(selection);
         svg.Append("</svg></section>\n");
