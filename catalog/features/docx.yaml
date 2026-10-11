@@ -1453,15 +1453,21 @@ areas:
                    w:textboxTightWrap]
         priority: P0
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           The content is WordprocessingML laid out by our engine inside the shape's text rectangle (bodyPr insets,
           anchoring, rotation, autofit); linked text boxes continue the text from one box to the next.
         office: >-
           A shape's text box content is laid out like body text in the shape's rectangle less the insets of
-          wps:bodyPr, at its top, middle or bottom (docx/generated/textboxes). Still open: vertical text, linked text
-          boxes, autofit; Word measures the insets from inside the outline (text 0.3 pt further in with a 0.75 pt
-          outline).
+          wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline
+          further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes). Vertical
+          text turns every line a quarter, the insets staying with the shape's sides: vert runs the lines down, the
+          first at the right; vert270 runs them up, the first at the left; mongolianVert runs them down, the first at
+          the left (eaVert and the WordArt kinds as vert). Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq)
+          show the lines of the story that do not fit the boxes before them. A shape that resizes to fit (a:spAutoFit)
+          is as high as its text and insets; a box that does not wrap (wrap none) keeps its lines whole and widens to
+          the longest (docx/local/textboxes: every case as in Word, 96 %). Known deviation: linked boxes of different
+          widths keep the first box's line breaks.
 
       - id: drawing.groups
         title: Groups
