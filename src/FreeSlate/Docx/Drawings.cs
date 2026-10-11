@@ -428,6 +428,9 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         }
         if (source != null)
             element.Add(source.Elements().Select(c => new XElement(c)));
+        // Word keeps a picture's hyperlink on wp:docPr (catalog: drawing.inline): the picture links there.
+        if (own != null && docPr?.Element(Ns.A + "hlinkClick") is { } link && element.Element(Ns.A + "hlinkClick") == null)
+            element.AddFirst(new XElement(link));
         return element;
     }
 
