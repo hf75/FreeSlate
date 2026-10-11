@@ -127,9 +127,10 @@ public sealed record LineRoom(List<(double Start, double End)> Segments, double 
 
 /// <summary>
 /// Where a line would stand, for the room floating objects leave it: its top below the paragraph's first line top, its
-/// estimated height and the top and bottom of its text (ascent above, descent below the baseline) from its top.
+/// estimated height and the top and bottom of its text (ascent above, descent below the baseline) from its top; after a
+/// text wrapping break with w:clear the side ("left", "right", "all") whose objects the line has to pass below.
 /// </summary>
-public readonly record struct LineSlot(double Offset, double Height, double TextTop, double TextBottom);
+public readonly record struct LineSlot(double Offset, double Height, double TextTop, double TextBottom, string? Clear = null);
 
 /// <summary>
 /// The values of the page fields where a paragraph stands (catalog: field.evaluation, section.pageNumbers): the page's
@@ -264,6 +265,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>Note separators of the paragraph being laid out (true for the continuation separator), by their place.</summary>
     readonly Dictionary<int, bool> separators = [];
 
+    /// <summary>The w:clear of the text wrapping breaks of the paragraph being laid out, by their place in its text.</summary>
+    readonly Dictionary<int, string> clears = [];
+
     /// <summary>
     /// The width of a note separator: 144 pt (2 in), the continuation separator the column's width (catalog:
     /// note.footnotes).
@@ -331,6 +335,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var offset = 0.0;            // the line's top below the paragraph's first line top
         var estimate = (mark.Metrics.Above + mark.Metrics.Below) * (format.LineRule is null or "auto" ? (format.Line ?? 240) / 240 : 1);
         var textBand = (Top: 0.0, Bottom: mark.Metrics.Above + mark.Metrics.Below);
+        string? clear = null;     // the w:clear of the break that ended the line before
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
@@ -342,7 +347,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 for (var attempt = 0; attempt < 20; attempt++)
                 {
-                    var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom));
+                    var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
                     segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= MinimumSegment).ToList();
                     if (segments.Count > 0 || r.SkipTo <= offset + skip + 0.01)
                         break;
@@ -479,6 +484,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             lines.Add(line);
             first = false;
+            clear = endBreak == "line" && clears.TryGetValue(end - 1, out var side) ? side : null;
             lineStart = end;
             if (lineStart >= text.Length)
                 break;
@@ -624,6 +630,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         links.Clear();
         notes.Clear();
         separators.Clear();
+        clears.Clear();
 
         void AddText(string value, RunFormat format, string? link = null)
         {
@@ -753,6 +760,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
                 case BreakInline b:
+                    if (b.Type is not ("page" or "column") && b.Clear is "left" or "right" or "all")
+                        clears[text.Length] = b.Clear;
                     text.Append(b.Type switch { "page" => '\f', "column" => '\v', _ => '\n' });
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;

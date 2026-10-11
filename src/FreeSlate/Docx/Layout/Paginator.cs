@@ -156,6 +156,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// <summary>The wrap polygon on the page (tight and through wrapping), or null for the box.</summary>
         public (double X, double Y)[]? Polygon { get; init; }
 
+        /// <summary>The drawing's element, which finds the same object again in the next run.</summary>
+        public XElement? Source { get; init; }
+
         public double DistanceLeft { get; init; }
         public double DistanceRight { get; init; }
     }
@@ -184,10 +187,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 Polygon = onPage,
                 DistanceLeft = dl,
                 DistanceRight = dr,
+                Source = element,
             };
         }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            wrap.Name.LocalName == "wrapTopAndBottom", side);
+            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element };
     }
 
     /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
@@ -214,13 +218,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return min is { } lo && max is { } hi ? (lo, hi) : null;
     }
 
-    /// <summary>The floating objects of the current page this run knows: the run before's and those placed so far.</summary>
+    /// <summary>
+    /// The floating objects of the current page this run knows: those placed so far where they stand now, the others
+    /// where the run before placed them.
+    /// </summary>
     List<Exclusion> PageExclusions()
     {
-        var list = seeded.TryGetValue(page!.Number, out var before) ? before.ToList() : [];
-        foreach (var drawing in page.Drawings)
+        var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
+        var list = seeded.TryGetValue(page.Number, out var before)
+            ? before.Where(e => !placed.Any(p => ReferenceEquals(p.Source, e.Source) && e.Source != null)).ToList()
+            : [];
+        foreach (var exclusion in placed)
         {
-            if (ExclusionOf(drawing) is { } exclusion && !list.Any(e => Math.Abs(e.Left - exclusion.Left) < 0.01 && Math.Abs(e.Top - exclusion.Top) < 0.01))
+            if (!list.Any(e => Math.Abs(e.Left - exclusion.Left) < 0.01 && Math.Abs(e.Top - exclusion.Top) < 0.01))
                 list.Add(exclusion);
         }
         return list;
@@ -248,7 +258,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     continue;
                 (l, r) = (span.Min - e.DistanceLeft - columnLeft, span.Max + e.DistanceRight - columnLeft);
             }
-            if (e.TopAndBottom)
+            // Objects kept free above and below, and after a break with w:clear those of the side it clears (an
+            // object on the left half of the column is on the left), take the whole line: it moves below them.
+            var center = (e.Left + e.Right) / 2 - columnLeft;
+            if (e.TopAndBottom || slot.Clear == "all" || slot.Clear == "left" && center < columnWidth / 2 || slot.Clear == "right" && center >= columnWidth / 2)
             {
                 segments.Clear();
                 skipTo = Math.Max(skipTo, e.Bottom - paragraphTop);
@@ -985,8 +998,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NextColumn(natural: true);
             (left, width) = Column(column);
         }
-        // Lines beside floating objects of the page are laid out again in the room the objects leave.
-        if (PageExclusions() is { Count: > 0 } exclusions)
+        // Lines beside floating objects of the page are laid out again in the room the objects leave; the paragraph's
+        // own objects, placed after its lines, count where they will stand (not where the run before put them).
+        var exclusions = PageExclusions();
+        foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+        {
+            if (ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { } own)
+            {
+                exclusions.RemoveAll(e => e.Source != null && ReferenceEquals(e.Source, own.Source));
+                exclusions.Add(own);
+            }
+        }
+        if (exclusions.Count > 0)
         {
             var linesTop = y;
             var bottom = linesTop + lines.Sum(l => l.Height);
