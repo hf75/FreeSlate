@@ -719,6 +719,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     {
         var format = table.Format;
         var target = format.Width is { Type: "dxa" or "pct" } w && w.Resolve(available) is { } tw && tw > 0 ? tw - allowance : (double?)null;
+        // Before Word 2013 (compatibility mode below 15) a percentage width measures between the first cell's text and
+        // the last cell's: the table is wider by those cells' margins (measured with docx/local/compat14-tables).
+        if (!Modern && target != null && format.Width is { Type: "pct" } && rows.Count > 0 && rows[0].Cells.Count > 0)
+        {
+            var (first, last) = (rows[0].Cells[0], rows[0].Cells[^1]);
+            target += Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
+        }
         var space = (target ?? available - allowance);
         var (min, max, margins, preferred) = Ranges(table, rows, columns, space, fields);
         var sumMin = min.Sum();
