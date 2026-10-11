@@ -60,7 +60,8 @@ public sealed class RunStyles(DocumentContext context)
                 or System.Globalization.UnicodeCategory.Control or System.Globalization.UnicodeCategory.NonSpacingMark
                 or System.Globalization.UnicodeCategory.EnclosingMark)
             return null;
-        foreach (var family in emoji ? ["Segoe UI Emoji", .. Fallbacks(c, style.Font.Data.Serif, style.Language)] : Fallbacks(c, style.Font.Data.Serif, style.Language))
+        var data = style.Font.Data;
+        foreach (var family in emoji ? ["Segoe UI Emoji", .. Fallbacks(c, data.Serif, data.EastAsian)] : Fallbacks(c, data.Serif, data.EastAsian))
         {
             if (context.Fonts.TryResolveTypeface(family, style.Bold, style.Italic) is { } font && font.Data.HasGlyph(c))
                 return fallbacks.GetOrAdd((style, family), _ => style with { Font = font });
@@ -75,9 +76,11 @@ public sealed class RunStyles(DocumentContext context)
     /// numbers Cambria Math (enclosed letters then MS Gothic, or MS Mincho for serif fonts); geometric shapes Arial;
     /// Thai, Lao and Khmer Leelawadee UI; Indic scripts and Sinhala Nirmala UI; Georgian Sylfaen; Ethiopic Ebrima;
     /// Cherokee Gadugi; Syriac Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun
-    /// Gothic (Batang for serif fonts); Chinese characters and kana MS Mincho, or the Chinese fonts for Chinese.
+    /// Gothic, Batang beside serif and East Asian fonts (Yu Mincho, DengXian, PMingLiU: docx/local/tf-*); Chinese
+    /// characters and kana MS Mincho, then PMingLiU beside serif fonts and Microsoft JhengHei beside others, whatever
+    /// the run's language (w:lang w:eastAsia="zh-CN" keeps MS Mincho: docx/local/tf-de).
     /// </summary>
-    static IEnumerable<string> Fallbacks(int c, bool serif, string? language)
+    static IEnumerable<string> Fallbacks(int c, bool serif, bool eastAsian)
     {
         if (c >= 0x1F000 && c <= 0x1FAFF || EmojiPresentation(c))
             return ["Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"];
@@ -98,14 +101,9 @@ public sealed class RunStyles(DocumentContext context)
             >= 0x0F00 and <= 0x0FFF => ["Microsoft Himalaya", "Noto Serif Tibetan"],
             >= 0x1000 and <= 0x109F => ["Myanmar Text", "Noto Sans Myanmar"],
             >= 0x1100 and <= 0x11FF or >= 0x3130 and <= 0x318F or >= 0xAC00 and <= 0xD7AF
-                => serif ? ["Batang", "Malgun Gothic", "Noto Serif CJK KR"] : ["Malgun Gothic", "Batang", "Noto Sans CJK KR"],
-            >= 0x2E80 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFF00 and <= 0xFFEF or >= 0x20000 and <= 0x2FFFF => language switch
-            {
-                "zh-CN" or "zh-SG" => ["Microsoft YaHei", "SimSun", "MS Mincho", "Noto Sans CJK SC"],
-                "zh-TW" or "zh-HK" or "zh-MO" => ["PMingLiU", "Microsoft JhengHei", "MS Mincho", "Noto Sans CJK TC"],
-                "ko-KR" => ["Malgun Gothic", "Batang", "MS Mincho", "Noto Sans CJK KR"],
-                _ => ["MS Mincho", "Yu Mincho", "SimSun", "Microsoft YaHei", "Noto Serif CJK JP"],
-            },
+                => serif || eastAsian ? ["Batang", "Malgun Gothic", "Noto Serif CJK KR"] : ["Malgun Gothic", "Batang", "Noto Sans CJK KR"],
+            >= 0x2E80 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFF00 and <= 0xFFEF or >= 0x20000 and <= 0x2FFFF
+                => ["MS Mincho", serif ? "PMingLiU" : "Microsoft JhengHei", "SimSun", "Microsoft YaHei", "Noto Serif CJK JP"],
             _ => ["Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "DejaVu Sans"],
         };
     }
@@ -168,7 +166,14 @@ public sealed class RunStyles(DocumentContext context)
         };
     }
 
-    /// <summary>The family of a slot: the theme font it names (major or minor, by script), else its own name.</summary>
+    /// <summary>
+    /// The family of a slot: the theme font it names (major or minor, by script), else its own name (catalog:
+    /// font.theme). Where the theme's East Asian or complex script font is empty, Word takes the theme's font for the
+    /// script of the language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, ko-KR: Hang, ar-SA: Arab …); without
+    /// one East Asian text keeps the run's Latin font and complex scripts take Times New Roman, both falling back by
+    /// glyph from there; the run's own languages do not matter (measured with docx/local/tf-de, tf-ja, tf-zh, tf-ko,
+    /// tf-he and tf-none).
+    /// </summary>
     string Family(RunFormat format, WordSlot slot)
     {
         var (name, theme) = slot switch
@@ -182,16 +187,66 @@ public sealed class RunStyles(DocumentContext context)
         {
             var major = theme.StartsWith("major", StringComparison.Ordinal);
             var t = context.Theme;
-            var themed = theme switch
-            {
-                _ when theme.EndsWith("EastAsia", StringComparison.Ordinal) => major ? t.MajorEastAsian : t.MinorEastAsian,
-                _ when theme.EndsWith("Bidi", StringComparison.Ordinal) => major ? t.MajorComplex : t.MinorComplex,
-                _ => major ? t.MajorLatin : t.MinorLatin,
-            };
+            var east = theme.EndsWith("EastAsia", StringComparison.Ordinal);
+            var bidi = theme.EndsWith("Bidi", StringComparison.Ordinal);
+            var themed = east ? major ? t.MajorEastAsian : t.MinorEastAsian
+                : bidi ? major ? t.MajorComplex : t.MinorComplex
+                : major ? t.MajorLatin : t.MinorLatin;
+            if (string.IsNullOrEmpty(themed) && (east || bidi)
+                && Script(context.Settings.Child("themeFontLang").Attr(east ? "eastAsia" : "bidi")) is { } script
+                && t.ScriptFonts.TryGetValue((major, script), out var scripted))
+                themed = scripted;
             if (!string.IsNullOrEmpty(themed))
                 return themed;
+            if (east)
+                return name ?? Family(format, WordSlot.Ascii);
+            if (bidi)
+                return name ?? "Times New Roman";
         }
         return name ?? format.Ascii ?? "Times New Roman";
+    }
+
+    /// <summary>The script code of a theme's a:font entries for a language tag (ISO 15924 as Office writes them).</summary>
+    static string? Script(string? language)
+    {
+        if (string.IsNullOrEmpty(language))
+            return null;
+        var tag = language.ToLowerInvariant();
+        var primary = tag.Split('-')[0];
+        return primary switch
+        {
+            "ja" => "Jpan",
+            "ko" => "Hang",
+            "zh" => tag is "zh-tw" or "zh-hk" or "zh-mo" || tag.Contains("hant") ? "Hant" : "Hans",
+            "ar" or "fa" or "ur" or "ps" or "sd" or "ug" => primary == "ug" ? "Uigh" : "Arab",
+            "he" or "yi" => "Hebr",
+            "th" => "Thai",
+            "hi" or "mr" or "ne" or "sa" or "kok" => "Deva",
+            "bn" or "as" => "Beng",
+            "gu" => "Gujr",
+            "pa" => "Guru",
+            "ta" => "Taml",
+            "te" => "Telu",
+            "kn" => "Knda",
+            "ml" => "Mlym",
+            "or" => "Orya",
+            "si" => "Sinh",
+            "km" => "Khmr",
+            "lo" => "Laoo",
+            "my" => "Mymr",
+            "am" or "ti" => "Ethi",
+            "ka" => "Geor",
+            "hy" => "Armn",
+            "dv" => "Thaa",
+            "syr" => "Syrc",
+            "bo" => "Tibt",
+            "mn" => "Mong",
+            "vi" => "Viet",
+            "chr" => "Cher",
+            "iu" => "Cans",
+            "ii" => "Yiii",
+            _ => null,
+        };
     }
 
     /// <summary>
