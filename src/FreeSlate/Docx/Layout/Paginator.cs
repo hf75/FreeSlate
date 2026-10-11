@@ -595,6 +595,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var start = first ? "nextPage" : properties.Start;
         section = properties;
+        layout.LinePitch = GridPitch(properties);
+        layout.CharacterExtra = properties.Element.Child("docGrid") is { } charGrid && charGrid.Attr("type") is "linesAndChars" or "snapToChars"
+            ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
         if (page == null || start != "continuous" && start != "nextColumn")
         {
             // Odd page numbers are right-hand pages: an odd or even page section leaves a blank page where the next
@@ -681,7 +684,27 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// header from w:header below the page's top edge, a footer ending w:footer above its bottom edge; where its
     /// content begins and ends.
     /// </summary>
+    /// <summary>The line pitch of a section's line grid (w:docGrid), or null where it has none.</summary>
+    static double? GridPitch(SectionProperties properties) =>
+        properties.Element.Child("docGrid") is { } grid && grid.Attr("type") is "lines" or "linesAndChars" or "snapToChars" && grid.Twips("linePitch") is { } pitch && pitch > 0
+            ? pitch : null;
+
     StoryBox Story(string part, PageBox on, PageFields? fields, bool header)
+    {
+        // Headers and footers do not snap to the body's grid.
+        var (pitch, extra) = (layout.LinePitch, layout.CharacterExtra);
+        (layout.LinePitch, layout.CharacterExtra) = (null, 0);
+        try
+        {
+            return StoryOf(part, on, fields, header);
+        }
+        finally
+        {
+            (layout.LinePitch, layout.CharacterExtra) = (pitch, extra);
+        }
+    }
+
+    StoryBox StoryOf(string part, PageBox on, PageFields? fields, bool header)
     {
         var s = on.Section;
         var box = new StoryBox();

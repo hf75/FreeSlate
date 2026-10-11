@@ -165,6 +165,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The run styles the layout measures with.</summary>
     public RunStyles Styles => styles;
 
+    /// <summary>
+    /// The line pitch of the section's document grid (w:docGrid type lines, linesAndChars or snapToChars), which lines
+    /// of paragraphs that snap to the grid take whole units of; null without a line grid (catalog: section.docGrid).
+    /// </summary>
+    public double? LinePitch { get; set; }
+
+    /// <summary>
+    /// What the section's character grid (w:docGrid type linesAndChars or snapToChars, w:charSpace in 4096ths of a point)
+    /// adds to every character, 0 without one (measured with docx/local/docgrid: about w:charSpace / 4096 for East
+    /// Asian and Latin characters alike).
+    /// </summary>
+    public double CharacterExtra { get; set; }
+
     /// <summary>The position of the character at a place in the paragraph's text within its line.</summary>
     static double CharacterX(Line line, int index)
     {
@@ -304,7 +317,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         levels = BidiLevels(text, charStyles, format.Bidi == true);
-        var advances = Advances(text, charStyles);
+        var advances = Advances(text, charStyles, CharacterExtra);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
@@ -480,7 +493,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (room != null)
             {
                 // The line's height decides where the next one stands beside the objects.
-                Space([line], format);
+                Space([line], format, Pitch(format));
                 offset += skip + line.Height;
                 estimate = line.Height;
                 textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
@@ -542,7 +555,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 (line.AnchorX ??= new(ReferenceEqualityComparer.Instance))[anchor] = CharacterX(line, index - 1);
             }
         }
-        Space(lines, format);
+        Space(lines, format, Pitch(format));
         if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
         {
             foreach (var line in lines)
@@ -560,7 +573,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
         var (text, charStyles, _) = Flatten(paragraph, fields);
-        var advances = Advances(text, charStyles);
+        var advances = Advances(text, charStyles, CharacterExtra);
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
@@ -844,7 +857,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
-    static double[] Advances(string text, List<RunStyle> charStyles)
+    static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0)
     {
         var advances = new double[text.Length];
         var start = 0;
@@ -868,7 +881,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     }
                 }
                 foreach (var cluster in firstOfCluster)
-                    advances[start + cluster] += style.Spacing;
+                    advances[start + cluster] += style.Spacing + extra;
             }
             start = i;
         }
@@ -1105,7 +1118,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// multiple (measured with docx/generated/character-formats: text 3 pt up and 3 pt down makes a 1.15 line 6 pt
     /// higher, not 6.95 pt).
     /// </summary>
-    static void Space(List<Line> lines, ParagraphFormat format)
+    /// <summary>The line pitch a paragraph's lines snap to: the section's, unless the paragraph does not snap (w:snapToGrid).</summary>
+    double? Pitch(ParagraphFormat format) => format.SnapToGrid == false ? null : LinePitch;
+
+    /// <param name="pitch">
+    /// The document grid's line pitch (measured with docx/local/docgrid: 18 and 15 pt grids, Arial 10 to 30 pt): a
+    /// line of auto spacing takes as many whole pitches as its natural height needs, times its spacing factor, the
+    /// extra half above and half below the text; exact spacing keeps its height.
+    /// </param>
+    static void Space(List<Line> lines, ParagraphFormat format, double? pitch = null)
     {
         var rule = format.LineRule ?? "auto";
         var value = format.Line ?? 240;
@@ -1122,6 +1143,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     line.Height = Math.Max(value / 20, natural);
                     line.Baseline = line.Height - line.Below;
                     break;
+                case "auto" when pitch is { } grid && grid > 0:
+                {
+                    var units = Math.Max(1, Math.Ceiling(natural / grid - 1e-6));
+                    line.Height = units * grid * value / 240;
+                    var extra = line.Height - natural;
+                    line.Baseline = line.Above + extra / 2;
+                    line.Overhang = Math.Max(0, extra / 2);
+                    break;
+                }
                 default:
                     line.Height = natural + line.LargestNatural * (value / 240 - 1);
                     line.Baseline = line.Above;
