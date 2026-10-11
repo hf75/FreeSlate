@@ -443,10 +443,17 @@ areas:
         elements: [w14:ligatures, w14:numForm, w14:numSpacing, w14:stylisticSets, w14:styleSet, w14:cntxtAlts]
         priority: P2
         difficulty: 3
-        status: todo
+        status: done
         strategy: >-
           OpenType features of the shaper (HarfBuzz, as in pptx `text.runs`): liga, clig, hlig and dlig by the ligature
           setting, lnum or onum, pnum or tnum, ss01 to ss20 and calt.
+        office: >-
+          The run's OpenType features go to the shaper and to the browser: liga and clig by w14:ligatures (standard),
+          calt by w14:ligatures (contextual) or w14:cntxtAlts, hlig and dlig, lnum or onum by w14:numForm, pnum or
+          tnum by w14:numSpacing, ss01 to ss20 by w14:stylisticSets (docx/local/opentype: all 63 lines within 0.1 pt,
+          every glyph Word's, Gabriola's contextual swashes included). The browser shapes every character that has a
+          position of its own alone, so words with ligatures or contextual glyphs reach it whole with dx shifts, the
+          other words keep the position of every character.
 
       - id: run.animated
         title: Animated text
@@ -1097,16 +1104,22 @@ areas:
                    wp14:pctPosVOffset, wp14:sizeRelH, wp14:sizeRelV, wp14:pctWidth, wp14:pctHeight]
         priority: P0
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Positioned relative to page, margin, column, paragraph, line or character, by offset or alignment, sized
           relative to the page or margins; behind or in front of text, stacked by relativeHeight, kept inside table
           cells with layoutInCell.
         office: >-
-          Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name
-          (page, margin, column, the margins on either side, paragraph, line), at a percentage of it, or at
-          wp:simplePos; behind or in front of the text by behindDoc and relativeHeight (docx/generated/drawings).
-          Still open: the text flowing around them (drawing.wrap).
+          Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name,
+          at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight
+          (docx/generated/drawings). The paragraph's top lies above its own space before (below the space after the
+          paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules, within 0.05
+          pt); relative to the character counts from the start of the character before the anchor (docx/local/anchor-
+          char, within 0.01 pt). In table cells the column and margin across are the cell's text area, the page and
+          its margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is
+          set or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH,
+          wp14:sizeRelV) apply to shapes as they are and to pictures only both together, scaled evenly to fit
+          (docx/local/size-rel-shape, size-rel).
 
       - id: drawing.wrap
         title: Text wrapping around objects
@@ -1114,8 +1127,14 @@ areas:
                    wp:start, wp:lineTo]
         priority: P0
         difficulty: 5
-        status: todo
+        status: done
         strategy: Square, tight and through wrapping along the wrap polygon, top and bottom, with wrap distances (engine.floats).
+        office: >-
+          Square wrapping keeps the box with the effect extents and the wrap distances free, top and bottom the whole
+          width; tight and through wrapping keep free what of the wrap polygon (21600ths of the extent) lies beside
+          each line's text, from its ascent to its descent, with the left and right distances; text goes to both
+          sides, the left or right one or the larger (wrapText). Objects push every line of their page, also above
+          their anchor (docx/generated/wrapping, docx/generated/wrap-types: all lines within 0.2 pt).
 
       - id: drawing.shapes
         title: Word shapes
@@ -2123,17 +2142,27 @@ areas:
         title: Floating objects and text wrapping
         priority: P0
         difficulty: 5
-        status: todo
+        status: partial
         strategy: >-
           Anchored objects, frames and floating tables are placed first, then lines are broken into the space
           around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
+        office: >-
+          Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
+          stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a
+          segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping,
+          wrap-types). Still open: frames (paragraph.frames) and floating tables (table.floating).
 
       - id: engine.tableLayout
         title: Table layout
         priority: P0
         difficulty: 5
-        status: todo
+        status: done
         strategy: Word's autofit algorithm, measured against generated tables, and rows that span pages.
+        office: >-
+          Word's autofit: each column's minimum and maximum width with margins (the maximum capped at 1584 pt);
+          preferred widths fixed; the maxima when they fit, else the minima and the rest in proportion to max - min,
+          else the content minima shrunk; fixed layout by the grid; rows that split across pages unless cantSplit,
+          repeated header rows, nested tables (docx/local/tbl-autofit 92/92 lines, docx/generated/tables 44/44).
 
       - id: engine.fonts
         title: Font resolution and fallback

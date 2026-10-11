@@ -126,7 +126,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         if (graphic == null || content == null)
             return "";
         var docPr = placed.Drawing.Element(Wp + "docPr");
-        var (w, h) = Extent(placed.Drawing);
+        var (w, h) = (placed.Width, placed.Height);
         var element = Convert(content, docPr, graphic);
         if (element == null)
             return "";

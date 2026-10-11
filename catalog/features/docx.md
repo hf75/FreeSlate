@@ -20,7 +20,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 0 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 0 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 0 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 3 | 1 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 3 | 2 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 4 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 2 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 2 | 1 |
@@ -30,7 +30,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 3 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 0 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 0 |
-| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 4 | 2 |
+| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 3 | 4 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 0 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 0 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 0 |
@@ -43,8 +43,8 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 0 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 0 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
-| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 2 | 0 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **19** | **19** |
+| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 1 |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **19** | **23** |
 
 <a id="package"></a>
 
@@ -454,7 +454,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | todo | 10 | 6 |
 | [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | todo | 2 | 1 |
 | [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | todo | 38 | 0 |
-| [OpenType features](#run.openType) | P2 | ●●●○○ | todo | 6 | 0 |
+| [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
 | [Animated text](#run.animated) | P3 | ●○○○○ | todo | 1 | 1 |
 
 <a id="run.basic"></a>
@@ -595,9 +595,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### OpenType features
 
-`run.openType` · P2 · difficulty 3 · todo
+`run.openType` · P2 · difficulty 3 · done
 
 **Rendering:** OpenType features of the shaper (HarfBuzz, as in pptx `text.runs`): liga, clig, hlig and dlig by the ligature setting, lnum or onum, pnum or tnum, ss01 to ss20 and calt.
+
+**Office behaviour:** The run's OpenType features go to the shaper and to the browser: liga and clig by w14:ligatures (standard), calt by w14:ligatures (contextual) or w14:cntxtAlts, hlig and dlig, lnum or onum by w14:numForm, pnum or tnum by w14:numSpacing, ss01 to ss20 by w14:stylisticSets (docx/local/opentype: all 63 lines within 0.1 pt, every glyph Word's, Gabriola's contextual swashes included). The browser shapes every character that has a position of its own alone, so words with ligatures or contextual glyphs reach it whole with dx shifts, the other words keep the position of every character.
 
 **Elements (6):** [`w14:cntxtAlts`](../format/namespaces/w14.md#w14cntxtalts), [`w14:ligatures`](../format/namespaces/w14.md#w14ligatures), [`w14:numForm`](../format/namespaces/w14.md#w14numform), [`w14:numSpacing`](../format/namespaces/w14.md#w14numspacing), [`w14:styleSet`](../format/namespaces/w14.md#w14styleset), [`w14:stylisticSets`](../format/namespaces/w14.md#w14stylisticsets)
 
@@ -1423,8 +1425,8 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Inline objects](#drawing.inline) | P0 | ●●●○○ | done | 6 | 4 |
-| [Floating objects and their position](#drawing.anchor) | P0 | ●●●●○ | partial | 12 | 3 |
-| [Text wrapping around objects](#drawing.wrap) | P0 | ●●●●● | todo | 8 | 2 |
+| [Floating objects and their position](#drawing.anchor) | P0 | ●●●●○ | done | 12 | 3 |
+| [Text wrapping around objects](#drawing.wrap) | P0 | ●●●●● | done | 8 | 2 |
 | [Word shapes](#drawing.shapes) | P0 | ●●●○○ | done | 14 | 0 |
 | [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | partial | 7 | 2 |
 | [Groups](#drawing.groups) | P1 | ●●●○○ | partial | 16 | 0 |
@@ -1452,11 +1454,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Floating objects and their position
 
-`drawing.anchor` · P0 · difficulty 4 · partial
+`drawing.anchor` · P0 · difficulty 4 · done
 
 **Rendering:** Positioned relative to page, margin, column, paragraph, line or character, by offset or alignment, sized relative to the page or margins; behind or in front of text, stacked by relativeHeight, kept inside table cells with layoutInCell.
 
-**Office behaviour:** Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name (page, margin, column, the margins on either side, paragraph, line), at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight (docx/generated/drawings). Still open: the text flowing around them (drawing.wrap).
+**Office behaviour:** Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name, at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight (docx/generated/drawings). The paragraph's top lies above its own space before (below the space after the paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules, within 0.05 pt); relative to the character counts from the start of the character before the anchor (docx/local/anchor- char, within 0.01 pt). In table cells the column and margin across are the cell's text area, the page and its margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is set or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV) apply to shapes as they are and to pictures only both together, scaled evenly to fit (docx/local/size-rel-shape, size-rel).
 
 **Elements (12):** [`wp14:pctHeight`](../format/namespaces/wp14.md#wp14pctheight), [`wp14:pctPosHOffset`](../format/namespaces/wp14.md#wp14pctposhoffset), [`wp14:pctPosVOffset`](../format/namespaces/wp14.md#wp14pctposvoffset), [`wp14:pctWidth`](../format/namespaces/wp14.md#wp14pctwidth), [`wp14:sizeRelH`](../format/namespaces/wp14.md#wp14sizerelh), [`wp14:sizeRelV`](../format/namespaces/wp14.md#wp14sizerelv), [`wp:align`](../format/namespaces/wp.md#wpalign), [`wp:anchor`](../format/namespaces/wp.md#wpanchor), [`wp:posOffset`](../format/namespaces/wp.md#wpposoffset), [`wp:positionH`](../format/namespaces/wp.md#wppositionh), [`wp:positionV`](../format/namespaces/wp.md#wppositionv), [`wp:simplePos`](../format/namespaces/wp.md#wpsimplepos)
 
@@ -1468,9 +1470,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Text wrapping around objects
 
-`drawing.wrap` · P0 · difficulty 5 · todo
+`drawing.wrap` · P0 · difficulty 5 · done
 
 **Rendering:** Square, tight and through wrapping along the wrap polygon, top and bottom, with wrap distances (engine.floats).
+
+**Office behaviour:** Square wrapping keeps the box with the effect extents and the wrap distances free, top and bottom the whole width; tight and through wrapping keep free what of the wrap polygon (21600ths of the extent) lies beside each line's text, from its ascent to its descent, with the left and right distances; text goes to both sides, the left or right one or the larger (wrapText). Objects push every line of their page, also above their anchor (docx/generated/wrapping, docx/generated/wrap-types: all lines within 0.2 pt).
 
 **Elements (8):** [`wp:lineTo`](../format/namespaces/wp.md#wplineto), [`wp:start`](../format/namespaces/wp.md#wpstart), [`wp:wrapNone`](../format/namespaces/wp.md#wpwrapnone), [`wp:wrapPolygon`](../format/namespaces/wp.md#wpwrappolygon), [`wp:wrapSquare`](../format/namespaces/wp.md#wpwrapsquare), [`wp:wrapThrough`](../format/namespaces/wp.md#wpwrapthrough), [`wp:wrapTight`](../format/namespaces/wp.md#wpwraptight), [`wp:wrapTopAndBottom`](../format/namespaces/wp.md#wpwraptopandbottom)
 
@@ -3042,8 +3046,8 @@ Features without elements of their own that decide the fidelity of everything el
 | [HTML output](#engine.output) | P0 | ●●●○○ | todo | 0 | 0 |
 | [Pagination](#engine.pagination) | P0 | ●●●●● | partial | 0 | 0 |
 | [Line layout](#engine.lineLayout) | P0 | ●●●●● | partial | 0 | 0 |
-| [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | todo | 0 | 0 |
-| [Table layout](#engine.tableLayout) | P0 | ●●●●● | todo | 0 | 0 |
+| [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | partial | 0 | 0 |
+| [Table layout](#engine.tableLayout) | P0 | ●●●●● | done | 0 | 0 |
 | [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | todo | 0 | 0 |
 | [Fidelity measurement](#engine.fidelity) | P0 | ●●●○○ | todo | 0 | 0 |
 
@@ -3079,17 +3083,21 @@ Features without elements of their own that decide the fidelity of everything el
 
 ### Floating objects and text wrapping
 
-`engine.floats` · P0 · difficulty 5 · todo
+`engine.floats` · P0 · difficulty 5 · partial
 
 **Rendering:** Anchored objects, frames and floating tables are placed first, then lines are broken into the space around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
+
+**Office behaviour:** Floating drawings are placed on their anchor's page and the page is laid out again around them until it is stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping, wrap-types). Still open: frames (paragraph.frames) and floating tables (table.floating).
 
 <a id="engine.tableLayout"></a>
 
 ### Table layout
 
-`engine.tableLayout` · P0 · difficulty 5 · todo
+`engine.tableLayout` · P0 · difficulty 5 · done
 
 **Rendering:** Word's autofit algorithm, measured against generated tables, and rows that span pages.
+
+**Office behaviour:** Word's autofit: each column's minimum and maximum width with margins (the maximum capped at 1584 pt); preferred widths fixed; the maxima when they fit, else the minima and the rest in proportion to max - min, else the content minima shrunk; fixed layout by the grid; rows that split across pages unless cantSplit, repeated header rows, nested tables (docx/local/tbl-autofit 92/92 lines, docx/generated/tables 44/44).
 
 <a id="engine.fonts"></a>
 

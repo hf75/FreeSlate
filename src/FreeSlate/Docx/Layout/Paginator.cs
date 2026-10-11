@@ -714,6 +714,45 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (w, h) = Docx.Drawings.Extent(element);
         var s = page.Section;
         double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        // Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV; 0 % keeps the extent): shapes take
+        // them as they are, pictures only both together, scaled evenly to fit them (measured with
+        // docx/local/size-rel-shape and docx/local/size-rel).
+        var oddPage = page.DisplayNumber % 2 == 1;
+        var rightMargin = s.PageWidth - page.TextLeft - page.TextWidth;
+        double? Relative(string name, string percent, bool horizontal)
+        {
+            if (element.Element(Docx.Drawings.Wp14 + name) is not { } relative
+                || !double.TryParse(relative.Element(Docx.Drawings.Wp14 + percent)?.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var share)
+                || share <= 0)
+                return null;
+            var frame = ((string?)relative.Attribute("relativeFrom"), horizontal) switch
+            {
+                ("page", true) => s.PageWidth,
+                ("page", false) => s.PageHeight,
+                ("leftMargin", _) => page.TextLeft,
+                ("rightMargin", _) => rightMargin,
+                ("topMargin", _) => s.Top,
+                ("bottomMargin", _) => s.Bottom,
+                ("insideMargin", true) => oddPage ? page.TextLeft : rightMargin,
+                ("outsideMargin", true) => oddPage ? rightMargin : page.TextLeft,
+                ("insideMargin", false) => oddPage ? s.Top : s.Bottom,
+                ("outsideMargin", false) => oddPage ? s.Bottom : s.Top,
+                (_, true) => page.TextWidth,
+                (_, false) => s.PageHeight - s.Top - s.Bottom,
+            };
+            return frame * share / 100000;
+        }
+        var (relativeWidth, relativeHeight) = (Relative("sizeRelH", "pctWidth", true), Relative("sizeRelV", "pctHeight", false));
+        if (element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Pic + "pic") != null)
+        {
+            if (relativeWidth is { } rw && relativeHeight is { } rh && w > 0 && h > 0)
+            {
+                var scale = Math.Min(rw / w, rh / h);
+                (w, h) = (w * scale, h * scale);
+            }
+        }
+        else
+            (w, h) = (relativeWidth ?? w, relativeHeight ?? h);
         double x, y;
         if ((string?)element.Attribute("simplePos") is "1" or "true" && element.Element(Docx.Drawings.Wp + "simplePos") is { } simple)
         {
