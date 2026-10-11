@@ -204,6 +204,17 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// <summary>The HTML of a drawing whose extent's top left lies at (x, y) points on the page.</summary>
     public string Render(PlacedDrawing placed)
     {
+        // Ink (w14:contentPart, catalog: drawing.ink) drawn by the ink renderer shared with PowerPoint into the box.
+        var inkPart = (placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements() ?? placed.Drawing.Elements())
+            .FirstOrDefault(e => e.Name.LocalName == "contentPart") ?? placed.Drawing.Elements().FirstOrDefault(e => e.Name.LocalName == "contentPart");
+        if (inkPart is { } ink && ink.Attribute(Ns.R + "id") is { } inkId)
+        {
+            var part = new XElement(Ns.P + "contentPart", new XAttribute(Ns.R + "id", inkId.Value),
+                new XElement(P14 + "xfrm",
+                    new XElement(Ns.A + "off", new XAttribute("x", (long)Math.Round(placed.X * EmuPerPoint)), new XAttribute("y", (long)Math.Round(placed.Y * EmuPerPoint))),
+                    new XElement(Ns.A + "ext", new XAttribute("cx", (long)Math.Round(placed.Width * EmuPerPoint)), new XAttribute("cy", (long)Math.Round(placed.Height * EmuPerPoint)))));
+            return Renderer(placed.Part).RenderElement(part, placed.Part);
+        }
         var graphic = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
         var content = graphic?.Elements().FirstOrDefault();
         if (graphic == null || content == null)
@@ -231,6 +242,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             return "";
         return Renderer(placed.Part).RenderElement(element, placed.Part);
     }
+
+    static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
 
     SlideRenderer Renderer(string part)
     {

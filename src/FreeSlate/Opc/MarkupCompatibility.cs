@@ -37,6 +37,14 @@ public static class MarkupCompatibility
         "http://schemas.microsoft.com/office/powerpoint/2015/09/main",
     ];
 
+    /// <summary>
+    /// Word's ink (wpi, catalog: drawing.ink), taken only where no fallback picture is given: Word's own picture of the
+    /// ink is what it prints.
+    /// </summary>
+    static bool IsWordInk(XElement choice) => (choice.Attribute("Requires")?.Value ?? "")
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .All(prefix => choice.GetNamespaceOfPrefix(prefix)?.NamespaceName is "http://schemas.microsoft.com/office/word/2010/wordprocessingInk");
+
     /// <summary>Attributes the engine adds to fallback content about the alternative it replaces.</summary>
     public static readonly XNamespace Annotation = "urn:freeslate:annotation";
 
@@ -55,7 +63,8 @@ public static class MarkupCompatibility
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsEquation)
                          ?? alternate.Element(Mc + "Fallback")
-                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsChartEx);
+                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsChartEx)
+                         ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsWordInk);
             if (chosen == null)
             {
                 alternate.Remove();
