@@ -1190,15 +1190,25 @@ areas:
         elements: [w:docVars, w:docVar, w:updateFields, w:listSeparator]
         priority: P1
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           Page-dependent fields (PAGE, NUMPAGES, SECTIONPAGES, PAGEREF, STYLEREF in headers) are computed after
           pagination; others keep their cached result unless Word is measured to update them.
         office: >-
-          PAGE, NUMPAGES and SECTIONPAGES are computed for every header and footer after pagination, with the number
-          format switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex)
-          and about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Other fields keep
-          their saved results. Still open: PAGEREF, STYLEREF, SEQ, dates and the rest of the field codes.
+          Measured with docx/local/fields, a document whose fields saved wrong results, printed by Word: Word computes
+          PAGE, NUMPAGES, SECTIONPAGES, PAGEREF (the bookmark's page in its section's format; \p above, below or on
+          page n), REF (the bookmark's text, its paragraph's number), STYLEREF (in a header or footer the first
+          paragraph of the style on its page, \l the last, else the last before it; in the body the nearest before the
+          field; a heading level or a built-in heading's name in Word's languages), SEQ (\c, , \h, \s), SECTION, IF
+          (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
+          language's short date and time) and SAVEDATE (when the document was saved); the page-dependent ones come
+          from a layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format
+          switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and
+          about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved
+          results of the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas,
+          FILENAME, FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Known
+          deviations: texts Word words in its user's language (\p, error messages) are English here; LISTNUM keeps its
+          saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks
