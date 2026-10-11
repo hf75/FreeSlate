@@ -1391,7 +1391,7 @@ areas:
 
       - id: text.vertical
         title: Vertical and rotated text
-        description: a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
+        description: a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and @rot.
         priority: P2
         difficulty: 3
         status: done
@@ -1404,7 +1404,9 @@ areas:
           them left to right. wordArtVert stacks upright characters in columns from the left (wordArtVertRtl
           from the right): characters and columns 1.41 x the size apart, the baseline 1.12 x the size into
           each cell, words that do not fit break between characters, trailing spaces take no room (measured).
-          upright keeps the text level in rotated shapes, laid out with width and height swapped between 45
+          rot turns the laid-out text, vertical text too, about the middle of the text rectangle (LibreOffice's
+          tdf149551: 12 degrees, 60 -> 70 %). upright keeps the text level in rotated shapes, laid out with width
+          and height swapped between 45
           and 135 (225 and 315) degrees. Table cells (tcPr vert) wrap at the row height (generated/text-
           vertical).
 

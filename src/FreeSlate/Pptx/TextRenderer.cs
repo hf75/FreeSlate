@@ -109,7 +109,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         runOverride = chain.Override;
         try
         {
-            return RenderText(chain, geometry, boxWidth, unflip);
+            var markup = RenderText(chain, geometry, boxWidth, unflip);
+            // a:bodyPr rot turns the laid-out text about the middle of the text rectangle (LibreOffice's tdf149551).
+            var rotation = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")?.Attribute("rot")?.Value)
+                .FirstOrDefault(v => v != null) is { } rot && long.TryParse(rot, out var angle) ? angle / 60000.0 : 0;
+            if (markup.Length > 0 && Math.Abs(rotation) > 1e-9)
+                markup = $"<g transform=\"rotate({Units.Css(rotation)} {Units.Css((geometry.TextLeft + geometry.TextRight) / 2)} {Units.Css((geometry.TextTop + geometry.TextBottom) / 2)})\">{markup}</g>";
+            return markup;
         }
         finally
         {

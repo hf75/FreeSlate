@@ -1518,11 +1518,11 @@ a:bodyPr/@numCol and @spcCol.
 
 `text.vertical` · P2 · difficulty 3 · done
 
-a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert) and @upright.
+a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and @rot.
 
 **Rendering:** Rotate the line layout, or lay out top to bottom for East Asian and WordArt vertical text.
 
-**Office behaviour:** vert and vert270 lay the text out along the shape's height and turn it by 90 or 270 degrees; the insets stay with the shape's sides and the anchor works across the turned lines (the text's top faces right for vert, left for vert270). eaVert keeps ideographs, kana and full-width forms upright (turned back about the middle of their em box) and stacks lines right to left; mongolianVert stacks them left to right. wordArtVert stacks upright characters in columns from the left (wordArtVertRtl from the right): characters and columns 1.41 x the size apart, the baseline 1.12 x the size into each cell, words that do not fit break between characters, trailing spaces take no room (measured). upright keeps the text level in rotated shapes, laid out with width and height swapped between 45 and 135 (225 and 315) degrees. Table cells (tcPr vert) wrap at the row height (generated/text- vertical).
+**Office behaviour:** vert and vert270 lay the text out along the shape's height and turn it by 90 or 270 degrees; the insets stay with the shape's sides and the anchor works across the turned lines (the text's top faces right for vert, left for vert270). eaVert keeps ideographs, kana and full-width forms upright (turned back about the middle of their em box) and stacks lines right to left; mongolianVert stacks them left to right. wordArtVert stacks upright characters in columns from the left (wordArtVertRtl from the right): characters and columns 1.41 x the size apart, the baseline 1.12 x the size into each cell, words that do not fit break between characters, trailing spaces take no room (measured). rot turns the laid-out text, vertical text too, about the middle of the text rectangle (LibreOffice's tdf149551: 12 degrees, 60 -> 70 %). upright keeps the text level in rotated shapes, laid out with width and height swapped between 45 and 135 (225 and 315) degrees. Table cells (tcPr vert) wrap at the row height (generated/text- vertical).
 
 <a id="text.warp"></a>
 
