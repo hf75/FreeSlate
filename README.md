@@ -18,7 +18,7 @@ features.
 |---|---|
 | Features | 146 of 146 features of the [PowerPoint feature catalog](catalog/features/pptx.md) implemented; all 1,653 elements a PPTX file can contain are assigned to a feature |
 | Fidelity, own test corpus | **98.3 %** over 414 slides in 57 decks built by PowerPoint (89 % of the slides score 95 % or better) |
-| Fidelity, other projects' test decks | **94.4 %** over 1,229 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
+| Fidelity, other projects' test decks | **94.5 %** over 1,229 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
 
 The score of a slide is the share of its content pixels that match PowerPoint's rendering within a small tolerance
 (see [Measuring fidelity](docs/fidelity.md)). Decks of other projects include deliberately broken and exotic files,

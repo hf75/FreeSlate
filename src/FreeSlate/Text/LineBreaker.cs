@@ -11,8 +11,11 @@ public static class LineBreaker
     const string NoBreakBefore = "、。，．・：；？！ー）」』】〕〉》〙〗｝］…‥ゝゞヽヾぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ,.;:!?)]}%";
     const string NoBreakAfter = "（「『【〔〈《〘〖｛［([{";
 
-    /// <summary>Punctuation that may hang past the end of a line (pPr hangingPunct).</summary>
-    public const string Hanging = "、。，．,.";
+    /// <summary>
+    /// Punctuation that may hang past the end of a line (pPr hangingPunct): East Asian only (measured: a Latin line
+    /// ending in "z." whose period would pass the end goes down with its word, LibreOffice's TextFittingComparisonWithMSO).
+    /// </summary>
+    public const string Hanging = "、。，．";
 
     /// <summary>breakAfter[i] is true if a line may end after text[i].</summary>
     /// <param name="kinsoku">

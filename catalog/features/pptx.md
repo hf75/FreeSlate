@@ -1592,7 +1592,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 **Rendering:** Kinsoku line breaking rules, East Asian line breaking and hanging punctuation, ea fonts, vertical text.
 
-**Office behaviour:** Measured with generated/text-eastasian: with the kinsoku rules (pPr eaLnBrk, on by default) a line does not start with closing punctuation or small kana and does not end with an opening bracket; hangingPunct (on in PowerPoint's default text styles) lets 、。，． hang past the end of the line instead of pushing the character before them down; eaLnBrk 0 turns the rules off, lines then break between any East Asian characters, punctuation included, and nothing hangs; latinLnBrk breaks Latin words anywhere to fill a line. PowerPoint ignores the presentation's own kinsoku characters (p:kinsoku). Korean breaks at spaces.
+**Office behaviour:** Measured with generated/text-eastasian: with the kinsoku rules (pPr eaLnBrk, on by default) a line does not start with closing punctuation or small kana and does not end with an opening bracket; hangingPunct (on in PowerPoint's default text styles) lets 、。，． hang past the end of the line instead of pushing the character before them down (Latin punctuation never hangs: a line whose closing period would pass the end moves down with its word, external/libreoffice/sd-data/ TextFittingComparisonWithMSO_1 and _2); eaLnBrk 0 turns the rules off, lines then break between any East Asian characters, punctuation included, and nothing hangs; latinLnBrk breaks Latin words anywhere to fill a line. PowerPoint ignores the presentation's own kinsoku characters (p:kinsoku). Korean breaks at spaces.
 
 **Elements (1):** [`p:kinsoku`](../format/namespaces/p.md#pkinsoku)
 
