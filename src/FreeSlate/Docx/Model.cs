@@ -182,6 +182,10 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
     string? bidiOverride, bidiEmbedding;
 
+    /// <summary>The values of data-bound content controls (catalog: sdt.dataBinding).</summary>
+    DataBinding? binding;
+    DataBinding Binding => binding ??= new DataBinding(context);
+
     public List<Block> Body()
     {
         var body = context.Document.Root.Child("body");
@@ -301,7 +305,18 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 case "sdt":
                     if (e.Child("sdtContent") is { } content)
+                    {
+                        var start = blocks.Count;
                         ReadBlocks(content, blocks);
+                        // A bound control shows its node's value in its first paragraph's formatting.
+                        if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound
+                            && blocks.Skip(start).OfType<ParagraphBlock>().FirstOrDefault() is { } first)
+                        {
+                            var format = first.Content.FirstOrDefault()?.Format ?? first.MarkFormat;
+                            first.Content.Clear();
+                            first.Content.Add(new TextInline(bound, format));
+                        }
+                    }
                     break;
                 case "customXml" or "smartTag" or "ins" or "moveTo":
                     ReadBlocks(e, blocks);
@@ -552,7 +567,18 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 case "sdt":
                     if (e.Child("sdtContent") is { } sdtContent)
-                        ReadInlines(sdtContent, paragraphStyle, content, field);
+                    {
+                        // A bound control shows its node's value in its first run's formatting.
+                        if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound)
+                        {
+                            var inner = new List<Inline>();
+                            ReadInlines(sdtContent, paragraphStyle, inner, new FieldState());
+                            var format = inner.FirstOrDefault(i => i is TextInline)?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun);
+                            field.Target(content).Add(new TextInline(bound, format));
+                        }
+                        else
+                            ReadInlines(sdtContent, paragraphStyle, content, field);
+                    }
                     break;
             }
         }
