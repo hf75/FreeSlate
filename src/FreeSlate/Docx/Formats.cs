@@ -294,6 +294,9 @@ public sealed class ParagraphFormat
     /// <summary>The HTML division the paragraph belongs to (w:divId, catalog: paragraph.htmlDivs).</summary>
     public string? DivId;
 
+    /// <summary>How characters of different sizes align vertically in a line (w:textAlignment): top, center, baseline, bottom, auto.</summary>
+    public string? TextAlignment;
+
     public int? OutlineLevel;
 
     /// <summary>The paragraph's own run properties for its mark (w:pPr/w:rPr).</summary>
@@ -349,6 +352,7 @@ public sealed class ParagraphFormat
                 case "snapToGrid": SnapToGrid = e.OnOff(); break;
                 case "suppressLineNumbers": SuppressLineNumbers = e.OnOff(); break;
                 case "divId": DivId = e.Val(); break;
+                case "textAlignment": TextAlignment = e.Val(); break;
                 case "wordWrap": WordWrap = e.OnOff(); break;
                 case "kinsoku": Kinsoku = e.OnOff(); break;
                 case "overflowPunct": OverflowPunctuation = e.OnOff(); break;

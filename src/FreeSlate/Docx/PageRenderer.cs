@@ -170,7 +170,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 if (piece.IsTab)
                 {
                     if (piece.Leader != null)
-                        svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise));
+                        svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise - piece.Shift));
                     continue;
                 }
                 // A note separator: a line 0.6 pt thick through the middle of its line, 144 pt long (measured with
@@ -196,10 +196,10 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 // An equation: its glyphs and rules, its characters transparent on top for selection.
                 if (piece.Equation is { } equation)
                 {
-                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise, context.Glyphs, PxPerPt);
+                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, PxPerPt);
                     svg.Append(drawn);
                     if (mathText.Length > 0)
-                        selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
+                        selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise - piece.Shift)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
                     continue;
                 }
                 // An inline drawing's box stands on the baseline; its extent lies inside the effect extents.
@@ -215,13 +215,13 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 if (piece.Link != null)
                     svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
                 if (browser)
-                    svg.Append(WithEffects(piece, BrowserText(piece, x, baseline - piece.Style.Raise), x, baseline - piece.Style.Raise));
+                    svg.Append(WithEffects(piece, BrowserText(piece, x, baseline - piece.Style.Raise - piece.Shift), x, baseline - piece.Style.Raise - piece.Shift));
                 else
                 {
-                    svg.Append(Glyphs(piece, x, baseline - piece.Style.Raise));
-                    selection.Append(SelectionText(piece, x, baseline - piece.Style.Raise));
+                    svg.Append(Glyphs(piece, x, baseline - piece.Style.Raise - piece.Shift));
+                    selection.Append(SelectionText(piece, x, baseline - piece.Style.Raise - piece.Shift));
                 }
-                svg.Append(Decorations(piece, x, baseline - piece.Style.Raise));
+                svg.Append(Decorations(piece, x, baseline - piece.Style.Raise - piece.Shift));
                 if (piece.Link != null)
                     svg.Append("</a>");
             }

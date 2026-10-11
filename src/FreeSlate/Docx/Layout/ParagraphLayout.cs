@@ -39,6 +39,9 @@ public sealed class Piece
     /// <summary>A legacy check box form field the piece stands for, or null.</summary>
     public CheckBoxInline? CheckBox { get; init; }
 
+    /// <summary>How far the piece stands above the line's baseline by the paragraph's w:textAlignment, in points.</summary>
+    public double Shift { get; set; }
+
     /// <summary>Where a display equation's line stands from the paragraph's left indent (m:jc, m:wrapIndent), or null.</summary>
     public double? DisplayX { get; init; }
 
@@ -318,6 +321,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles, CharacterExtra);
+        AutoSpace(text, charStyles, advances, format);
         foreach (var (index, drawing) in objects)
             advances[index] = drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
@@ -857,6 +861,30 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
+    /// <summary>
+    /// The automatic space between East Asian text and Latin letters (w:autoSpaceDE) and digits (w:autoSpaceDN), both
+    /// on unless the paragraph turns them off: a quarter of the East Asian character's size at every boundary, after
+    /// the character before it (measured with docx/local/ec-none: 3 pt beside 12 pt MS Mincho, within Word's 0.12 pt
+    /// device rounding).
+    /// </summary>
+    static void AutoSpace(string text, List<RunStyle> styles, double[] advances, ParagraphFormat format)
+    {
+        var (letters, digits) = (format.AutoSpaceDE != false, format.AutoSpaceDN != false);
+        if (!letters && !digits)
+            return;
+        static bool Asian(char c) => LineBreaker.IsIdeographic(c) && char.IsLetter(c);
+        static bool Western(char c, bool letters, bool digits) =>
+            letters && char.IsLetter(c) && !LineBreaker.IsIdeographic(c) && c < '\u2E80' || digits && char.IsAsciiDigit(c);
+        for (var i = 0; i + 1 < text.Length && i + 1 < styles.Count; i++)
+        {
+            var (a, b) = (text[i], text[i + 1]);
+            if (Asian(a) && Western(b, letters, digits))
+                advances[i] += styles[i].Size / 4;
+            else if (Western(a, letters, digits) && Asian(b))
+                advances[i] += styles[i + 1].Size / 4;
+        }
+    }
+
     static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0)
     {
         var advances = new double[text.Length];
@@ -1103,6 +1131,29 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         line.Above = above;
         line.Below = below;
         line.LargestNatural = largest;
+        // Characters of different sizes align their tops, centers or bottoms instead of their baselines
+        // (w:textAlignment, catalog: paragraph.eastAsian), by their fonts' win ascents and descents (measured with
+        // docx/local/ec-none: 12 and 24 pt MS Mincho beside 12 pt Arial).
+        if (format.TextAlignment is "top" or "center" or "bottom" && line.Pieces.Count(p => !p.IsTab) > 1)
+        {
+            static (double Ascent, double Descent) Win(Piece p) => (p.Style.Font.Data.WinAscent * p.Style.Size, p.Style.Font.Data.WinDescent * p.Style.Size);
+            var shown = line.Pieces.Where(p => !p.IsTab && p.Drawing == null && p.Equation == null && p.CheckBox == null).ToList();
+            if (shown.Count > 1)
+            {
+                var tallest = shown.MaxBy(p => Win(p).Ascent + Win(p).Descent)!;
+                var (ascent, descent) = Win(tallest);
+                foreach (var piece in shown)
+                {
+                    var (a, d) = Win(piece);
+                    piece.Shift = format.TextAlignment switch
+                    {
+                        "top" => ascent - a,
+                        "center" => (ascent - descent) / 2 - (a - d) / 2,
+                        _ => d - descent,
+                    };
+                }
+            }
+        }
         line.RaisedAbove = Math.Max(0, raised - above);
         line.LoweredBelow = Math.Max(0, lowered - below);
         return line;
