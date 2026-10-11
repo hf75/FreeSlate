@@ -1382,10 +1382,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (paragraph.Format.ContextualSpacing == true && previous != null && SameStyle(previous, paragraph))
             return 0;
-        // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph (measured with
-        // docx/local/html-divs).
+        // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph or after a table
+        // (measured with docx/local/html-divs and altchunk).
         if (paragraph.Format.BeforeAuto == true)
-            return pages.Count == 1 && page!.Lines.Count == 0 && previous == null ? 0 : 14;
+            return previous == null ? 0 : 14;
         return paragraph.Format.Before ?? 0;
     }
 

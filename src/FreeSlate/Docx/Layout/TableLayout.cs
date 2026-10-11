@@ -492,6 +492,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         BorderLine? Visible(BorderLine? b) => b is { Visible: true } ? b : null;
         var outer = (Top: Visible(format.Borders.Top), Left: Visible(format.Borders.Left), Bottom: Visible(format.Borders.Bottom), Right: Visible(format.Borders.Right));
         var grid = Grid(table, rows, columns, available - gap * (columns + 1) - (Width(outer.Left) + Width(outer.Right)) / 2, 0, fields);
+        // Autofit columns of cells without preferred widths hold the cells' own borders too, which every spaced cell
+        // draws on both sides (HTML tables Word imports, docx/local/altchunk).
+        if (format.Layout != "fixed" && rows.SelectMany(r => r.Cells).All(c => c.Format.Width is not { Type: "dxa" or "pct" } cw || cw.Value <= 0))
+        {
+            var inside = Width(Visible(format.Borders.InsideV));
+            for (var k = 0; k < grid.Length; k++)
+                grid[k] += (k == 0 ? Width(outer.Left) : inside) + (k == grid.Length - 1 ? Width(outer.Right) : inside);
+        }
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
             x[k + 1] = x[k] + grid[k];
