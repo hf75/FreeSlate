@@ -151,6 +151,9 @@ public readonly record struct LineSlot(double Offset, double Height, double Text
 /// </summary>
 public sealed record PageFields(int Page, string PageFormat, int Pages, int SectionPages)
 {
+    /// <summary>The page whose header or footer is laid out, for the fields that look at its paragraphs (STYLEREF).</summary>
+    public PageBox? On { get; init; }
+
     /// <summary>The chapter number and its separator before page numbers (w:pgNumType w:chapStyle), or "".</summary>
     public string Chapter { get; init; } = "";
 
@@ -223,6 +226,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
+
+    /// <summary>The fields Word computes when it prints, or null to show the saved results.</summary>
+    public FieldEvaluator? Evaluator { get; set; }
 
     /// <summary>
     /// Marks of notes that differ from the ones read, by kind (endnote or not) and id: footnotes numbered anew on every
@@ -908,8 +914,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 case TextInline t:
                     AddText(t.Text, format, t.Link);
                     break;
-                case FieldInline field when fields?.Value(field) is { } value:
-                    AddText(value, format);
+                case FieldInline field when (fields?.Value(field) ?? Evaluator?.Value(field, fields?.On)) is { } value:
+                    AddText(value, format, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
                 case FieldInline field:
                     foreach (var cached in field.Cached)

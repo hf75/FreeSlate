@@ -23,6 +23,9 @@ public sealed class PageBox
     /// <summary>The footnotes that begin on the page, in the order of their references.</summary>
     public List<string> Footnotes { get; } = [];
 
+    /// <summary>The body's paragraphs that begin on the page, in their order (for STYLEREF and PAGEREF).</summary>
+    public List<ParagraphBlock> Paragraphs { get; } = [];
+
     /// <summary>The number of the last chapter heading on the page or before it (section.pageNumbers), or "".</summary>
     public string Chapter { get; set; } = "";
 
@@ -174,7 +177,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
             return result;
         }
+        // Fields Word computes when it prints: those that depend on the pages take them from a layout before.
+        layout.Evaluator ??= new FieldEvaluator(context, blocks);
         var pages = Run();
+        for (var pass = 0; pass < 2 && layout.Evaluator.Update(pages); pass++)
+            pages = Run();
+        layout.Evaluator.Update(pages);
         // Footnotes numbered anew on every page (w:numRestart eachPage) take their numbers from the pages they land on;
         // the pages are laid out again with them until they stay (measured with docx/local/fnpages-b).
         for (var pass = 0; pass < 3 && footnotes is { Count: > 0 }; pass++)
@@ -637,7 +645,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var sectionPages = pages.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).ToDictionary(g => g.Key, g => g.Count());
             foreach (var p in pages)
             {
-                var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex)) { Chapter = p.ChapterPrefix };
+                var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex)) { Chapter = p.ChapterPrefix, On = p };
                 if (p.Header != null)
                     Story(p.Header, p, fields, header: true).AddTo(p);
                 if (p.Footer != null)
@@ -1619,6 +1627,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y) { Numbered = format.SuppressLineNumbers != true });
+            if (k == 0)
+                page.Paragraphs.Add(paragraph);
             // A chapter heading numbers its page and the pages after it (measured with docx/local/chapter: a page with
             // the end of one chapter and the start of the next has the next's number).
             if (k == 0 && paragraph.Label is { Own.Length: > 0 } chapterLabel && section.ChapterLevel is { } chapterLevel && format.OutlineLevel == chapterLevel - 1)

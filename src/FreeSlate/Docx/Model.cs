@@ -26,7 +26,14 @@ public sealed record NoteReferenceInline(string Id, bool Endnote, string Mark, R
 public sealed record SeparatorInline(bool Continuation, RunFormat Format) : Inline(Format);
 
 /// <summary>Where a bookmark starts (w:bookmarkStart, catalog: field.bookmarks): an anchor in the HTML.</summary>
-public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format);
+public sealed record BookmarkInline(string Name, RunFormat Format) : Inline(Format)
+{
+    /// <summary>The id its w:bookmarkEnd names.</summary>
+    public string? Id { get; init; }
+}
+
+/// <summary>Where a bookmark ends (w:bookmarkEnd): what REF fields show of it ends here.</summary>
+public sealed record BookmarkEndInline(string Id, RunFormat Format) : Inline(Format);
 
 /// <summary>
 /// A legacy check box form field (FORMCHECKBOX, catalog: field.forms): checked or not, its size in points (null: the
@@ -84,8 +91,9 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
     public static string TypeOf(string instruction) =>
         instruction.Trim().Split(' ', 2)[0].ToUpperInvariant();
 
-    /// <summary>The fields whose result the layout computes.</summary>
-    public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES";
+    /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
+    public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
+        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL";
 }
 
 /// <summary>A block of the body: a paragraph or a table.</summary>
@@ -746,7 +754,10 @@ public sealed partial class ModelReader(DocumentContext context)
                     field.Target(content).Add(new PermissionInline(e.Name.LocalName == "permStart", context.Styles.Run(paragraphStyle, null, null, tableRun)));
                     break;
                 case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
-                    field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)) { Id = e.Attr("id") });
+                    break;
+                case "bookmarkEnd" when e.Attr("id") is { } endId:
+                    field.Target(content).Add(new BookmarkEndInline(endId, context.Styles.Run(paragraphStyle, null, null, tableRun)));
                     break;
                 case "smartTag" or "customXml" or "ins" or "moveTo":
                     ReadInlines(e, paragraphStyle, content, field);
