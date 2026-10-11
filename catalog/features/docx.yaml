@@ -444,9 +444,9 @@ areas:
           with the paragraph's direction as the base, neutrals of w:rtl and w:dir runs reading right to left and w:bdo
           forcing its direction; lines are reordered between their tabs, right-to-left pieces reach the browser whole
           from their right end (shaped, mirrored brackets) and justification widens their spaces. Clusters of several
-          characters (marks, conjuncts, emoji sequences) are drawn whole (docx/local/bidi 94.1 %, fallback-marks 93.3
-          %). Word reverses a w:rtl run of Latin letters as a unit with its neutrals ("abc def!" shows "!abc def");
-          here only its neutrals turn.
+          characters (marks, conjuncts, emoji sequences) are drawn whole. In a left-to-right paragraph a right-to-left
+          run is an embedding of its own, reversed as a whole with its neutrals ("abc def!" shows "!abc def";
+          docx/local/bidi 94.1 %, every line as in Word; fallback-marks 93.3 %).
 
       - id: run.content
         title: Breaks, symbols and special characters
