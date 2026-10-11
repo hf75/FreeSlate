@@ -306,10 +306,36 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "customXml" or "smartTag" or "ins" or "moveTo":
                     ReadBlocks(e, blocks);
                     break;
+                case "subDoc" when e.Attr(Wml.R + "id") is { } subId && context.Package.Relationship(currentPart, subId) is { } sub:
+                    blocks.Add(SubDocument(sub.Target));
+                    break;
             }
         }
         if (pending != null)
             blocks.Add(pending);
+    }
+
+    /// <summary>
+    /// A collapsed subdocument (w:subDoc, catalog: document.subDoc): a paragraph of the default style showing the
+    /// subdocument's path, underlined in the hyperlink color (the Hyperlink style where the document has one, else
+    /// the theme's), linking to it (measured with docx/local/subdoc).
+    /// </summary>
+    ParagraphBlock SubDocument(string target)
+    {
+        var shown = Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.IsFile ? uri.LocalPath : Uri.UnescapeDataString(target);
+        var block = Paragraph(new XElement(Wml.W + "p"));
+        var styleId = context.Styles.ParagraphStyleOf(null);
+        RunFormat format;
+        if (context.Styles.Find("Hyperlink") is { Type: "character" })
+            format = context.Styles.Run(styleId, "Hyperlink", null, tableRun);
+        else
+        {
+            format = context.Styles.Run(styleId, null, null, tableRun).Clone();
+            format.Color = context.Theme.Colors.TryGetValue("hlink", out var hlink) ? hlink.ToHex().TrimStart('#').ToUpperInvariant() : "467886";
+            format.Underline = "single";
+        }
+        block.Content.Add(new TextInline(shown, format) { Link = target });
+        return block;
     }
 
     /// <param name="number">Whether a numbered paragraph takes its number (not where it runs into the next one).</param>
