@@ -136,6 +136,15 @@ switch (command)
     case "jxr":
         JpegXrCheck.Run(rest.FirstOrDefault() ?? ".");
         break;
+    case "convert" when rest.Count >= 2:
+        // One document to HTML as the engine converts it, a password-protected one with --password=….
+        var password = args.FirstOrDefault(a => a.StartsWith("--password=", StringComparison.Ordinal))?["--password=".Length..];
+        if (rest[0].EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+            FreeSlate.DocxConverter.ToFile(rest[0], rest[1], password: password);
+        else
+            FreeSlate.PptxConverter.ToFile(rest[0], rest[1], password: password);
+        Console.WriteLine($"  {rest[0]} → {rest[1]}");
+        break;
     case "animate":
         var animated = Animations.Run(decks);
         foreach (var r in animated)

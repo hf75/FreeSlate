@@ -80,10 +80,24 @@ public static class DocxConverter
         for (var i = 0; i < papers.Count; i++)
             paperCss.Append($"@page paper{i}{{size:{Units.Css(papers[i].Width + paperExtra)}pt {Units.Css(papers[i].Height + paperExtra)}pt;margin:0}}.paper{i}{{page:paper{i}}}\n");
 
-        var title = Path.GetFileNameWithoutExtension(docxPath);
+        // Document properties (catalog: package.properties) go into the head; the language is the core properties',
+        // else the document defaults' (w:lang).
+        var properties = Pptx.DeckInfo.ReadProperties(context.Package, context.Load);
+        var title = properties.Title ?? Path.GetFileNameWithoutExtension(docxPath);
+        var language = properties.Language ?? context.Styles.DefaultRun.Language;
         var html = new StringBuilder();
-        html.Append("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n");
+        html.Append("<!DOCTYPE html>\n").Append(language is { Length: > 0 } ? $"<html lang=\"{WebUtility.HtmlEncode(language)}\">\n" : "<html>\n");
+        html.Append("<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n");
         html.Append($"<title>{WebUtility.HtmlEncode(title)}</title>\n<meta name=\"generator\" content=\"FreeSlate\">\n");
+        foreach (var (name, value) in new[]
+                 {
+                     ("author", properties.Creator), ("description", properties.Description ?? properties.Subject),
+                     ("keywords", properties.Keywords), ("dcterms.created", properties.Created), ("dcterms.modified", properties.Modified),
+                 })
+        {
+            if (value != null)
+                html.Append($"<meta name=\"{name}\" content=\"{WebUtility.HtmlEncode(value)}\">\n");
+        }
         // Fonts the browser cannot find by name (Office cloud fonts such as Aptos) are embedded.
         html.Append("<style>\n").Append(PptxConverter.FontFaces(context.UsedFonts.Concat(drawings.UsedFonts).Distinct(StringComparer.OrdinalIgnoreCase), context.FontLocator)).Append(Css).Append('\n').Append(paperCss)
             .Append("</style>\n</head>\n<body>\n");

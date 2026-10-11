@@ -75,7 +75,7 @@ public sealed class DeckInfo
         }
 
         Show = ReadShowSettings(context);
-        Properties = ReadProperties(context);
+        Properties = ReadProperties(context.Package, context.Load);
     }
 
     static ShowSettings ReadShowSettings(PresentationContext context)
@@ -100,13 +100,13 @@ public sealed class DeckInfo
             Color(showPr?.Element(Ns.P + "extLst")?.Descendants(P14 + "laserClr").FirstOrDefault()));
     }
 
-    static DocumentProperties ReadProperties(PresentationContext context)
+    /// <summary>The document properties of a package (shared with Word documents).</summary>
+    public static DocumentProperties ReadProperties(Opc.OpcPackage package, Func<string, XDocument> load)
     {
-        var package = context.Package;
         XElement? Load(string type)
         {
             var part = package.FirstRelationship("/", type)?.Target;
-            return part != null && package.Exists(part) ? context.Load(part).Root : null;
+            return part != null && package.Exists(part) ? load(part).Root : null;
         }
         var core = Load("core-properties");
         var app = Load("extended-properties");
