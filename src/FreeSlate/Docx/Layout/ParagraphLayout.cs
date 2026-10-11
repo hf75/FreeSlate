@@ -161,6 +161,9 @@ public sealed record PageFields(int Page, string PageFormat, int Pages, int Sect
 /// </summary>
 public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
+    /// <summary>The run styles the layout measures with.</summary>
+    public RunStyles Styles => styles;
+
     /// <summary>The position of the character at a place in the paragraph's text within its line.</summary>
     static double CharacterX(Line line, int index)
     {

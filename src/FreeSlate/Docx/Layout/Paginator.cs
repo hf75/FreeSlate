@@ -8,7 +8,11 @@ namespace FreeSlate.Docx.Layout;
 /// rotated text (table cells, catalog: table.cells) turns by <paramref name="Angle"/> degrees clockwise about a point
 /// given relative to its left edge and top.
 /// </summary>
-public sealed record PlacedLine(Line Line, double Left, double Top, double Angle = 0, double PivotX = 0, double PivotY = 0);
+public sealed record PlacedLine(Line Line, double Left, double Top, double Angle = 0, double PivotX = 0, double PivotY = 0)
+{
+    /// <summary>A line of the body that line numbering counts (not in tables, notes or suppressed paragraphs).</summary>
+    public bool Numbered { get; init; }
+}
 
 /// <summary>A page of the laid-out document.</summary>
 public sealed class PageBox
@@ -55,6 +59,9 @@ public sealed class PageBox
 
     /// <summary>The page's border (catalog: section.pageBorders), or null.</summary>
     public PageBorderBox? Border { get; set; }
+
+    /// <summary>Line numbers (catalog: section.lineNumbers): the number, its style, where it ends and its baseline.</summary>
+    public List<(string Text, RunStyle Style, double Right, double Baseline)> LineNumbers { get; } = [];
 
     /// <summary>Bookmarks that start on the page: their names and where their paragraph begins (catalog: field.bookmarks).</summary>
     public List<(string Name, double X, double Y)> Bookmarks { get; } = [];
@@ -142,11 +149,49 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 break;
             known = found;
         }
+        NumberLines(result);
         return result;
 
         static bool Same(Dictionary<int, List<Exclusion>> a, Dictionary<int, List<Exclusion>> b) =>
             a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var other) && other.Count == kv.Value.Count
                 && other.Zip(kv.Value).All(p => Math.Abs(p.First.Top - p.Second.Top) < 0.01 && Math.Abs(p.First.Left - p.Second.Left) < 0.01));
+    }
+
+    /// <summary>
+    /// Line numbers (w:lnNumType, catalog: section.lineNumbers) as Word prints them (measured with
+    /// docx/local/line-numbers): every body line of a numbered section counts, empty ones too, except the lines of
+    /// paragraphs with w:suppressLineNumbers, tables, notes, headers and footers; the first line has w:start + 1, the
+    /// count starting again on every page (newPage, the default), in every section (newSection) or never
+    /// (continuous); every w:countBy-th number shows, right-aligned w:distance (0.25 in by default) left of its
+    /// column, on the line's baseline, in the Line Number style (not the paragraph's formatting).
+    /// </summary>
+    void NumberLines(List<PageBox> pages)
+    {
+        var count = 0;
+        var section = -1;
+        var styleId = context.Styles.Find("LineNumber") is { Type: "character" } ? "LineNumber" : null;
+        var style = layout.Styles.Style(context.Styles.Run(context.Styles.DefaultParagraphStyle, styleId, null), WordSlot.Ascii);
+        foreach (var page in pages)
+        {
+            if (page.Section.Element.Child("lnNumType") is not { } numbering || (numbering.Number("countBy") ?? 0) < 1)
+            {
+                section = -1;
+                continue;
+            }
+            var start = (int)(numbering.Number("start") ?? 0);
+            var every = (int)(numbering.Number("countBy") ?? 1);
+            var distance = numbering.Twips("distance") ?? 18;
+            var restart = numbering.Attr("restart") ?? "newPage";
+            if (section < 0 || restart == "newPage" || restart == "newSection" && page.SectionIndex != section)
+                count = start;
+            section = page.SectionIndex;
+            foreach (var placed in page.Lines.Where(l => l.Numbered))
+            {
+                count++;
+                if (count % every == 0)
+                    page.LineNumbers.Add((count.ToString(System.Globalization.CultureInfo.InvariantCulture), style, placed.Left - distance, placed.Top + placed.Line.Baseline));
+            }
+        }
     }
 
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
@@ -1097,7 +1142,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
-            page!.Lines.Add(new PlacedLine(line, left, y));
+            page!.Lines.Add(new PlacedLine(line, left, y) { Numbered = format.SuppressLineNumbers != true });
             here++;
             y += line.Height;
             columnEmpty = false;

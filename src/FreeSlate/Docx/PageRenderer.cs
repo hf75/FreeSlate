@@ -53,6 +53,12 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             Fills(back.Fills, back.Strokes, svg);
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
         Lines(page.Lines, svg, selection, front);
+        // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
+        foreach (var (number, style, right, baseline) in page.LineNumbers)
+        {
+            context.UsedFonts.Add(style.Font.Data.Family);
+            svg.Append($"<text x=\"{Px(right)}\" y=\"{Px(baseline)}\" text-anchor=\"end\" font-family=\"'{WebUtility.HtmlEncode(style.Font.Data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"{(style.Bold ? " font-weight=\"700\"" : "")}{(style.Italic ? " font-style=\"italic\"" : "")}>{number}</text>");
+        }
         if (page.Border is { Front: true } border)
             Fills(border.Fills, border.Strokes, svg);
         svg.Append(selection);
