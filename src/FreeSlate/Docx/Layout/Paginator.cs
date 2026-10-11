@@ -113,7 +113,123 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <param name="footnotes">The document's footnotes by id, with "separator" and "continuationSeparator".</param>
     /// <param name="endnotes">The document's endnotes by id in the order of their references, with the separators.</param>
+    /// <remarks>
+    /// Floating objects with text wrapping (catalog: engine.floats) stand on the page of their anchor and push aside
+    /// every line of that page, also of paragraphs above the anchor (measured with docx/generated/wrapping): the
+    /// document is paginated again with the objects of each page known from the run before, until the pages keep
+    /// their objects (at most four runs).
+    /// </remarks>
     public List<PageBox> Paginate(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
+        List<List<Block>>? endnotes = null, List<Block>? endnoteSeparator = null)
+    {
+        var known = new Dictionary<int, List<Exclusion>>();
+        List<PageBox> result = [];
+        for (var run = 0; run < 4; run++)
+        {
+            var paginator = new Paginator(context, layout, reader) { seeded = known };
+            result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+            var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList());
+            if (found.Values.All(e => e.Count == 0) || Same(known, found))
+                break;
+            known = found;
+        }
+        return result;
+
+        static bool Same(Dictionary<int, List<Exclusion>> a, Dictionary<int, List<Exclusion>> b) =>
+            a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var other) && other.Count == kv.Value.Count
+                && other.Zip(kv.Value).All(p => Math.Abs(p.First.Top - p.Second.Top) < 0.01 && Math.Abs(p.First.Left - p.Second.Left) < 0.01));
+    }
+
+    /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
+    Dictionary<int, List<Exclusion>> seeded = [];
+
+    /// <summary>
+    /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
+    /// distances around it; square, tight and through wrapping keep the box, top and bottom the whole width.
+    /// </summary>
+    public sealed record Exclusion(double Left, double Top, double Right, double Bottom, bool TopAndBottom, string Side);
+
+    static Exclusion? ExclusionOf(PlacedDrawing drawing)
+    {
+        var element = drawing.Drawing;
+        var wrap = element.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
+        if (wrap == null || wrap.Name.LocalName == "wrapNone")
+            return null;
+        double Emu(XElement e, string name) => double.TryParse((string?)e.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
+        var (el, et, er, eb) = effect != null ? (Emu(effect, "l"), Emu(effect, "t"), Emu(effect, "r"), Emu(effect, "b")) : (0, 0, 0, 0);
+        var (dl, dt, dr, db) = (Emu(element, "distL"), Emu(element, "distT"), Emu(element, "distR"), Emu(element, "distB"));
+        return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
+            wrap.Name.LocalName == "wrapTopAndBottom", (string?)wrap.Attribute("wrapText") ?? "bothSides");
+    }
+
+    /// <summary>The floating objects of the current page this run knows: the run before's and those placed so far.</summary>
+    List<Exclusion> PageExclusions()
+    {
+        var list = seeded.TryGetValue(page!.Number, out var before) ? before.ToList() : [];
+        foreach (var drawing in page.Drawings)
+        {
+            if (ExclusionOf(drawing) is { } exclusion && !list.Any(e => Math.Abs(e.Left - exclusion.Left) < 0.01 && Math.Abs(e.Top - exclusion.Top) < 0.01))
+                list.Add(exclusion);
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// The room a line has beside the floating objects: the column less every object its box overlaps, keeping the
+    /// sides the object's wrapText allows; where none is left, how far down the line must go.
+    /// </summary>
+    static LineRoom Room(List<Exclusion> exclusions, double paragraphTop, double offset, double height, double columnLeft, double columnWidth)
+    {
+        var top = paragraphTop + offset;
+        var segments = new List<(double Start, double End)> { (0, columnWidth) };
+        var skipTo = 0.0;
+        foreach (var e in exclusions)
+        {
+            if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01)
+                continue;
+            if (e.TopAndBottom)
+            {
+                segments.Clear();
+                skipTo = Math.Max(skipTo, e.Bottom - paragraphTop);
+                continue;
+            }
+            var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
+            var next = new List<(double Start, double End)>();
+            foreach (var (start, end) in segments)
+            {
+                var before = (start, Math.Min(end, l));
+                var after = (Math.Max(start, r), end);
+                var keepBefore = before.Item2 > before.start;
+                var keepAfter = after.end > after.Item1;
+                switch (e.Side)
+                {
+                    case "left": keepAfter = false; break;
+                    case "right": keepBefore = false; break;
+                    case "largest":
+                        if (keepBefore && keepAfter)
+                        {
+                            if (before.Item2 - before.start >= after.end - after.Item1) keepAfter = false;
+                            else keepBefore = false;
+                        }
+                        break;
+                }
+                if (r <= start || l >= end)
+                {
+                    next.Add((start, end));
+                    continue;
+                }
+                if (keepBefore) next.Add(before);
+                if (keepAfter) next.Add(after);
+            }
+            segments = next;
+            if (segments.Count == 0)
+                skipTo = Math.Max(skipTo, e.Bottom - paragraphTop);
+        }
+        return new LineRoom(segments, skipTo);
+    }
+
+    List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
         List<List<Block>>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
         this.footnotes = footnotes;
@@ -733,6 +849,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 y += 2 * between.Space + between.Total;
             }
         }
+        // An object kept free above and below that would push lines already on the page takes its anchor paragraph to
+        // the next page, where the object then stands (measured with docx/generated/wrapping: the rest of the page stays
+        // empty).
+        if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
+                ExclusionOf(Anchored(anchor, page!, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop))
+        {
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+        }
+        // Lines beside floating objects of the page are laid out again in the room the objects leave.
+        if (PageExclusions() is { Count: > 0 } exclusions)
+        {
+            var paragraphTop = y;
+            var bottom = paragraphTop + lines.Sum(l => l.Height);
+            if (exclusions.Any(e => e.Top < Math.Max(bottom, paragraphTop + 1) && e.Bottom > paragraphTop))
+            {
+                var (columnLeft, columnWidth) = (left, width);
+                lines = layout.Layout(paragraph, width, room: (offset, height) => Room(exclusions, paragraphTop, offset, height, columnLeft, columnWidth));
+            }
+        }
         var widow = format.WidowControl ?? true;
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
@@ -782,6 +918,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 here = 0;
                 hereAtTop = true;
             }
+            y += line.Skip;
             anchorAt ??= (page!, y, left, width);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));

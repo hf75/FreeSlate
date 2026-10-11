@@ -87,6 +87,33 @@ public static partial class DocumentGenerator
         w.Document.Endnotes.Add(End(last), missing, "The text of the endnote.");
     }
 
+    /// <summary>Text flowing around floating shapes: square at the left and right, both sides, top and bottom, tight.</summary>
+    static void Wrapping(Writer w)
+    {
+        // WdWrapSideType
+        const int BothSides = 0, Left = 1, Right = 2, Largest = 3, WrapTight = 1;
+        w.Paragraph("Text around floating shapes", StyleHeading1);
+        var first = w.Paragraph(Prose.Decisions + " " + Prose.Constraints);
+        var square = w.Document.Shapes.AddShape(ShapeRectangle, 72, 120, 150, 100, first.Range);
+        Place(square, 72, 120, WrapSquare);
+        square.WrapFormat.Side = BothSides;
+        w.Paragraph(Prose.Measuring);
+        var second = w.Paragraph(Prose.Decisions + " " + Prose.Rules);
+        var right = w.Document.Shapes.AddShape(ShapeOval, 380, 300, 140, 90, second.Range);
+        Place(right, 380, 300, WrapSquare);
+        right.WrapFormat.Side = BothSides;
+        w.Paragraph(Prose.Constraints);
+        var third = w.Paragraph(Prose.Decisions + " " + Prose.Measuring);
+        var center = w.Document.Shapes.AddShape(ShapeRectangle, 240, 470, 110, 80, third.Range);
+        Place(center, 240, 470, WrapSquare);
+        center.WrapFormat.Side = BothSides;
+        var largest = w.Paragraph(Prose.Rules + " " + Prose.Constraints);
+        var both = w.Document.Shapes.AddShape(ShapeRoundedRectangle, 200, 600, 200, 60, largest.Range);
+        Place(both, 200, 600, WrapTopBottom);
+        w.Paragraph(Prose.Decisions);
+        w.Paragraph(Prose.Measuring);
+    }
+
     /// <summary>A collapsed range at the end of a paragraph, before its mark.</summary>
     static dynamic End(dynamic paragraph)
     {

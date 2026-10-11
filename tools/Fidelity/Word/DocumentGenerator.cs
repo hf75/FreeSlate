@@ -36,6 +36,7 @@ public static partial class DocumentGenerator
         ("drawings", Drawings),
         ("textboxes", TextBoxes),
         ("notes", Notes),
+        ("wrapping", Wrapping),
     ];
 
     /// <summary>Generates the named documents (without folder and extension), or all of them.</summary>

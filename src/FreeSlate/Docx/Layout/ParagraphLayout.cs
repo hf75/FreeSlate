@@ -65,6 +65,16 @@ public sealed class Line
     /// <summary>The height the line needs on the page.</summary>
     public double FitHeight => Height - Overhang;
 
+    /// <summary>Space above the line where floating objects left no room beside it (catalog: engine.floats).</summary>
+    public double Skip { get; set; }
+
+    /// <summary>Where the line's room around floating objects begins and ends (from the column's left edge), or null.</summary>
+    public double? Start { get; set; }
+    public double? Limit { get; set; }
+
+    /// <summary>Whether the line continues past a floating object in a second segment.</summary>
+    public bool Jumped { get; set; }
+
     /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
     public List<string>? Notes { get; set; }
 
@@ -80,6 +90,12 @@ public sealed class Line
     public bool First { get; init; }
     public bool Last { get; set; }
 }
+
+/// <summary>
+/// The room a line has between floating objects (catalog: engine.floats): its segments from the column's left edge, or
+/// none and how far down (from the paragraph's first line) the line must move to find room.
+/// </summary>
+public sealed record LineRoom(List<(double Start, double End)> Segments, double SkipTo = 0);
 
 /// <summary>
 /// The values of the page fields where a paragraph stands (catalog: field.evaluation, section.pageNumbers): the page's
@@ -110,6 +126,9 @@ public sealed record PageFields(int Page, string PageFormat, int Pages, int Sect
 /// </summary>
 public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
+    /// <summary>Segments beside floating objects narrower than this take no text.</summary>
+    const double MinimumSegment = 18;
+
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
 
@@ -141,7 +160,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>Lays out a paragraph in a column <paramref name="width"/> points wide.</summary>
     /// <param name="fields">The page fields' values; without them, fields show the result Word saved.</param>
-    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null)
+    /// <param name="room">
+    /// The room of a line at an offset below the paragraph's first line top for an estimated height, where floating
+    /// objects stand beside the paragraph; null for the whole column.
+    /// </param>
+    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<double, double, LineRoom>? room = null)
     {
         var format = paragraph.Format;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
@@ -173,10 +196,33 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // Characters of the current line: [start, end) and where it starts.
         var lineStart = 0;
         var first = true;
+        var offset = 0.0;            // the line's top below the paragraph's first line top
+        var estimate = (mark.Metrics.Above + mark.Metrics.Below) * (format.LineRule is null or "auto" ? (format.Line ?? 240) / 240 : 1);
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
             var limit = width - right;
+            // Floating objects beside the line: its segments within the indents; none moves the line down.
+            var segments = new List<(double Start, double End)>();
+            var skip = 0.0;
+            if (room != null)
+            {
+                for (var attempt = 0; attempt < 20; attempt++)
+                {
+                    var r = room(offset + skip, estimate);
+                    segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= MinimumSegment).ToList();
+                    if (segments.Count > 0 || r.SkipTo <= offset + skip + 0.01)
+                        break;
+                    skip = r.SkipTo - offset;
+                }
+                if (segments.Count > 0)
+                {
+                    startX = segments[0].Start;
+                    limit = segments[0].End;
+                }
+            }
+            var segment = 0;
+            var jumps = new Dictionary<int, double>();
             var x = startX;
             var spaces = 0.0;          // width of the spaces on the line so far
             var end = lineStart;
@@ -240,6 +286,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         innerSpaces += advances[k];
                 }
                 var fits = contentX - squeeze * innerSpaces <= limit + 0.005;
+                // A word that does not fit the segment beside a floating object continues in the next segment.
+                if (!fits && segment + 1 < segments.Count)
+                {
+                    segment++;
+                    jumps[i] = segments[segment].Start;
+                    x = segments[segment].Start;
+                    limit = segments[segment].End;
+                    continue;
+                }
                 if (!fits && end > lineStart && HasContent(text, lineStart, end))
                     break;   // the word goes to the next line
                 if (!fits)
@@ -272,8 +327,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (lastFit < 0)
                 lastFit = end;
 
-            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit);
+            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
             line.EndBreak = endBreak;
+            line.Skip = skip;
+            if (room != null)
+            {
+                // The line's height decides where the next one stands beside the objects.
+                Space([line], format);
+                offset += skip + line.Height;
+                estimate = line.Height;
+                (line.Start, line.Limit) = (startX, segments.Count > 1 ? segments[^1].End : limit);
+            }
             lines.Add(line);
             first = false;
             lineStart = end;
@@ -288,7 +352,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         lines[^1].Last = true;
 
         foreach (var line in lines)
-            Align(line, format, width - right, left + (line.First ? firstLine - labelShift : 0));
+        {
+            // Lines broken around floating objects align in their room; lines in several segments stay as they are.
+            if (line.Jumped)
+                continue;
+            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
+        }
         Space(lines, format);
         if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
         {
@@ -544,7 +613,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <param name="labelEnd">Where the list number (and a space after it) ends in the text.</param>
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
-        ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit)
+        ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit, Dictionary<int, double>? jumps = null)
     {
         var line = new Line { First = start == 0 };
         foreach (var (index, id) in notes)
@@ -557,6 +626,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         for (var i = start; i <= end; i++)
         {
             var boundary = i == end || text[i] is '\t' or '\n' or '\f' or '\v' || i > pieceStart && !ReferenceEquals(charStyles[i], charStyles[pieceStart])
+                || jumps != null && jumps.ContainsKey(i) && i > start
                 || i > pieceStart && (text[i] == '\uFFFC' || text[i - 1] == '\uFFFC')
                 || i > pieceStart && i < end && links.Count > 0 && LinkAt(i) != LinkAt(pieceStart);
             if (!boundary)
@@ -576,6 +646,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 };
                 line.Pieces.Add(piece);
                 x += piece.Width;
+            }
+            // A jump over a floating object: an invisible spacer to the next segment.
+            if (jumps != null && i < end && i > start && jumps.TryGetValue(i, out var jumpTo))
+            {
+                line.Pieces.Add(new Piece { Text = "\t", Style = charStyles[i], X = x, Advances = [Math.Max(0, jumpTo - x)], IsTab = true });
+                line.Jumped = true;
+                x = jumpTo;
+                pieceStart = i;
+                if (text[i] != '\t')
+                    continue;
             }
             if (i < end && text[i] == '\t')
             {
