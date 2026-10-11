@@ -28,19 +28,19 @@ Attributes are counted per element: an attribute that three elements accept coun
 | | In scope | thereof Office extensions | SpreadsheetML (out of scope) |
 |---|---:|---:|---:|
 | Namespaces | 97 | 70 | 4 |
-| Elements | 2,540 | 676 | 500 |
-| Attributes | 4,561 | 907 | 1,640 |
+| Elements | 2,554 | 690 | 500 |
+| Attributes | 4,600 | 946 | 1,640 |
 | Complex types | 1,507 | 450 | 388 |
 | Simple types | 645 | 146 | 101 |
 | Enumeration values | 3,306 | 623 | 582 |
-| Linked specification sections | 3,377 | 839 | 622 |
+| Linked specification sections | 3,393 | 855 | 622 |
 | Linked MS-OI29500 sections | 1,181 | 0 | 373 |
 
 ## By area
 
 | Area | Namespaces | Elements | Attributes | Complex types | Simple types | Enum values | Spec sections | Office notes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| WordprocessingML (DOCX) | 18 | 766 | 1,252 | 369 | 138 | 980 | 1,057 | 488 |
+| WordprocessingML (DOCX) | 18 | 780 | 1,291 | 369 | 138 | 980 | 1,073 | 488 |
 | PresentationML (PPTX) | 22 | 378 | 563 | 267 | 103 | 420 | 530 | 100 |
 | DrawingML | 23 | 466 | 912 | 345 | 134 | 1,021 | 636 | 201 |
 | Charts | 11 | 490 | 459 | 296 | 108 | 232 | 569 | 187 |
@@ -68,7 +68,7 @@ data files (preset geometries, art borders) or rules in the specification text.
 | Prefix | Namespace | Area | Since | Elements | Attributes | Simple types | Enum values | Source |
 |---|---|---|---|---:|---:|---:|---:|---|
 | [w](namespaces/w.md) | `http://schemas.openxmlformats.org/wordprocessingml/2006/main` | WordprocessingML (DOCX) | 2007 | 613 | 1,016 | 110 | 733 | ECMA-376-4 transitional schema wml.xsd |
-| [w14](namespaces/w14.md) | `http://schemas.microsoft.com/office/word/2010/wordml` | WordprocessingML (DOCX) | 2010 | 51 | 66 | 16 | 202 | [MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1 |
+| [w14](namespaces/w14.md) | `http://schemas.microsoft.com/office/word/2010/wordml` | WordprocessingML (DOCX) | 2010 | 65 | 105 | 16 | 202 | [MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1 |
 | [w15](namespaces/w15.md) | `http://schemas.microsoft.com/office/word/2012/wordml` | WordprocessingML (DOCX) | 2013 | 18 | 23 | 2 | 3 | [MS-DOCX] v20260818 §5.2 |
 | [w16cei](namespaces/w16cei.md) | `http://schemas.microsoft.com/office/word/2026/wordml/cei` | WordprocessingML (DOCX) | ? | 2 | 1 | 0 | 0 | [MS-DOCX] v20260818 §5.10 |
 | [w16cex](namespaces/w16cex.md) | `http://schemas.microsoft.com/office/word/2018/wordml/cex` | WordprocessingML (DOCX) | 2021 | 3 | 3 | 0 | 0 | [MS-DOCX] v20260818 §5.6 |

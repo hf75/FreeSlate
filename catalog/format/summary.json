@@ -25,13 +25,13 @@
     "officeVersion": "Office2010",
     "source": "[MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1",
     "counts": {
-      "elements": 51,
-      "attributes": 64,
+      "elements": 65,
+      "attributes": 103,
       "globalAttributes": 2,
       "complexTypes": 38,
       "simpleTypes": 16,
       "enumValues": 202,
-      "specSections": 68,
+      "specSections": 84,
       "officeNotes": 0
     }
   },

@@ -6,13 +6,13 @@
   "officeVersion": "Office2010",
   "source": "[MS-ODRAWXML] v20261006 §5.3 + [MS-DOCX] v20260818 §5.1",
   "counts": {
-    "elements": 51,
-    "attributes": 64,
+    "elements": 65,
+    "attributes": 103,
     "globalAttributes": 2,
     "complexTypes": 38,
     "simpleTypes": 16,
     "enumValues": 202,
-    "specSections": 68,
+    "specSections": 84,
     "officeNotes": 0
   },
   "elements": [
@@ -49,7 +49,9 @@
       ],
       "attributes": [],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:textOutline"
+      ],
       "spec": []
     },
     {
@@ -72,7 +74,9 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:props3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -102,7 +106,9 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:props3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -195,7 +201,9 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:scene3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -280,6 +288,210 @@
       ]
     },
     {
+      "name": "w14:cntxtAlts",
+      "types": [
+        "w14:CT_OnOff"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_OnOff"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.2",
+          "title": "cntxtAlts",
+          "page": 38
+        }
+      ]
+    },
+    {
+      "name": "w14:conflictDel",
+      "types": [
+        "w:CT_RunTrackChange",
+        "w:CT_TrackChange"
+      ],
+      "attributes": [
+        {
+          "name": "w:author",
+          "type": "s:ST_String",
+          "required": true
+        },
+        {
+          "name": "w:date",
+          "type": "w:ST_DateTime"
+        },
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [
+        "w:customXml",
+        "w:smartTag",
+        "w:sdt",
+        "w:dir",
+        "w:bdo",
+        "w:r",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.3",
+          "title": "conflictDel",
+          "page": 39
+        },
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.4",
+          "title": "conflictDel",
+          "page": 39
+        }
+      ]
+    },
+    {
+      "name": "w14:conflictIns",
+      "types": [
+        "w:CT_RunTrackChange",
+        "w:CT_TrackChange"
+      ],
+      "attributes": [
+        {
+          "name": "w:author",
+          "type": "s:ST_String",
+          "required": true
+        },
+        {
+          "name": "w:date",
+          "type": "w:ST_DateTime"
+        },
+        {
+          "name": "w:id",
+          "type": "w:ST_DecimalNumber",
+          "required": true
+        }
+      ],
+      "children": [
+        "w:customXml",
+        "w:smartTag",
+        "w:sdt",
+        "w:dir",
+        "w:bdo",
+        "w:r",
+        "w:proofErr",
+        "w:permStart",
+        "w:permEnd",
+        "w:bookmarkStart",
+        "w:bookmarkEnd",
+        "w:moveFromRangeStart",
+        "w:moveFromRangeEnd",
+        "w:moveToRangeStart",
+        "w:moveToRangeEnd",
+        "w:commentRangeStart",
+        "w:commentRangeEnd",
+        "w:customXmlInsRangeStart",
+        "w:customXmlInsRangeEnd",
+        "w:customXmlDelRangeStart",
+        "w:customXmlDelRangeEnd",
+        "w:customXmlMoveFromRangeStart",
+        "w:customXmlMoveFromRangeEnd",
+        "w:customXmlMoveToRangeStart",
+        "w:customXmlMoveToRangeEnd",
+        "w:ins",
+        "w:del",
+        "w:moveFrom",
+        "w:moveTo",
+        "m:oMathPara",
+        "m:oMath",
+        "m:acc",
+        "m:bar",
+        "m:box",
+        "m:borderBox",
+        "m:d",
+        "m:eqArr",
+        "m:f",
+        "m:func",
+        "m:groupChr",
+        "m:limLow",
+        "m:limUpp",
+        "m:m",
+        "m:nary",
+        "m:phant",
+        "m:rad",
+        "m:sPre",
+        "m:sSub",
+        "m:sSubSup",
+        "m:sSup",
+        "m:r"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.5",
+          "title": "conflictIns",
+          "page": 39
+        },
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.6",
+          "title": "conflictIns",
+          "page": 40
+        }
+      ]
+    },
+    {
       "name": "w14:conflictMode",
       "global": true,
       "types": [
@@ -348,7 +560,9 @@
         "w14:srgbClr",
         "w14:schemeClr"
       ],
-      "parents": [],
+      "parents": [
+        "w14:props3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -585,7 +799,9 @@
         "w14:srgbClr",
         "w14:schemeClr"
       ],
-      "parents": [],
+      "parents": [
+        "w14:props3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -632,6 +848,31 @@
       ]
     },
     {
+      "name": "w14:glow",
+      "types": [
+        "w14:CT_Glow"
+      ],
+      "attributes": [
+        {
+          "name": "w14:rad",
+          "type": "a:ST_PositiveCoordinate"
+        }
+      ],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.16",
+          "title": "glow",
+          "page": 44
+        }
+      ]
+    },
+    {
       "name": "w14:gradFill",
       "types": [
         "w14:CT_GradientFillProperties"
@@ -642,7 +883,10 @@
         "w14:lin",
         "w14:path"
       ],
-      "parents": [],
+      "parents": [
+        "w14:textFill",
+        "w14:textOutline"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -728,6 +972,29 @@
       ]
     },
     {
+      "name": "w14:ligatures",
+      "types": [
+        "w14:CT_Ligatures"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_Ligatures",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.17",
+          "title": "ligatures",
+          "page": 44
+        }
+      ]
+    },
+    {
       "name": "w14:lightRig",
       "types": [
         "w14:CT_LightRig"
@@ -747,7 +1014,9 @@
       "children": [
         "w14:rot"
       ],
-      "parents": [],
+      "parents": [
+        "w14:scene3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -875,7 +1144,9 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:textOutline"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -892,8 +1163,57 @@
       ],
       "attributes": [],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:textFill",
+        "w14:textOutline"
+      ],
       "spec": []
+    },
+    {
+      "name": "w14:numForm",
+      "types": [
+        "w14:CT_NumForm"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_NumForm",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.18",
+          "title": "numForm",
+          "page": 44
+        }
+      ]
+    },
+    {
+      "name": "w14:numSpacing",
+      "types": [
+        "w14:CT_NumSpacing"
+      ],
+      "attributes": [
+        {
+          "name": "w14:val",
+          "type": "w14:ST_NumSpacing",
+          "required": true
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.19",
+          "title": "numSpacing",
+          "page": 45
+        }
+      ]
     },
     {
       "name": "w14:nvContentPartPr",
@@ -944,6 +1264,41 @@
       ]
     },
     {
+      "name": "w14:props3d",
+      "types": [
+        "w14:CT_Props3D"
+      ],
+      "attributes": [
+        {
+          "name": "w14:contourW",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:extrusionH",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:prstMaterial",
+          "type": "w14:ST_PresetMaterialType"
+        }
+      ],
+      "children": [
+        "w14:bevelT",
+        "w14:bevelB",
+        "w14:extrusionClr",
+        "w14:contourClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.20",
+          "title": "props3d",
+          "page": 45
+        }
+      ]
+    },
+    {
       "name": "w14:prstDash",
       "types": [
         "w14:CT_PresetLineDashProperties"
@@ -955,13 +1310,85 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:textOutline"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
           "section": "2.6.3.22",
           "title": "CT_PresetLineDashProperties",
           "page": 58
+        }
+      ]
+    },
+    {
+      "name": "w14:reflection",
+      "types": [
+        "w14:CT_Reflection"
+      ],
+      "attributes": [
+        {
+          "name": "w14:algn",
+          "type": "w14:ST_RectAlignment"
+        },
+        {
+          "name": "w14:blurRad",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:dir",
+          "type": "a:ST_PositiveFixedAngle"
+        },
+        {
+          "name": "w14:dist",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:endA",
+          "type": "a:ST_PositiveFixedPercentage"
+        },
+        {
+          "name": "w14:endPos",
+          "type": "a:ST_PositiveFixedPercentage"
+        },
+        {
+          "name": "w14:fadeDir",
+          "type": "a:ST_PositiveFixedAngle"
+        },
+        {
+          "name": "w14:kx",
+          "type": "a:ST_FixedAngle"
+        },
+        {
+          "name": "w14:ky",
+          "type": "a:ST_FixedAngle"
+        },
+        {
+          "name": "w14:stA",
+          "type": "a:ST_PositiveFixedPercentage"
+        },
+        {
+          "name": "w14:stPos",
+          "type": "a:ST_PositiveFixedPercentage"
+        },
+        {
+          "name": "w14:sx",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "w14:sy",
+          "type": "a:ST_Percentage"
+        }
+      ],
+      "children": [],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.21",
+          "title": "reflection",
+          "page": 45
         }
       ]
     },
@@ -1007,7 +1434,9 @@
       ],
       "attributes": [],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:textOutline"
+      ],
       "spec": []
     },
     {
@@ -1089,6 +1518,26 @@
       ]
     },
     {
+      "name": "w14:scene3d",
+      "types": [
+        "w14:CT_Scene3D"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:camera",
+        "w14:lightRig"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.22",
+          "title": "scene3d",
+          "page": 45
+        }
+      ]
+    },
+    {
       "name": "w14:schemeClr",
       "types": [
         "w14:CT_SchemeColor"
@@ -1115,7 +1564,9 @@
       "parents": [
         "w14:contourClr",
         "w14:extrusionClr",
+        "w14:glow",
         "w14:gs",
+        "w14:shadow",
         "w14:solidFill"
       ],
       "spec": [
@@ -1154,6 +1605,59 @@
       ]
     },
     {
+      "name": "w14:shadow",
+      "types": [
+        "w14:CT_Shadow"
+      ],
+      "attributes": [
+        {
+          "name": "w14:algn",
+          "type": "w14:ST_RectAlignment"
+        },
+        {
+          "name": "w14:blurRad",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:dir",
+          "type": "a:ST_PositiveFixedAngle"
+        },
+        {
+          "name": "w14:dist",
+          "type": "a:ST_PositiveCoordinate"
+        },
+        {
+          "name": "w14:kx",
+          "type": "a:ST_FixedAngle"
+        },
+        {
+          "name": "w14:ky",
+          "type": "a:ST_FixedAngle"
+        },
+        {
+          "name": "w14:sx",
+          "type": "a:ST_Percentage"
+        },
+        {
+          "name": "w14:sy",
+          "type": "a:ST_Percentage"
+        }
+      ],
+      "children": [
+        "w14:srgbClr",
+        "w14:schemeClr"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.23",
+          "title": "shadow",
+          "page": 46
+        }
+      ]
+    },
+    {
       "name": "w14:solidFill",
       "types": [
         "w14:CT_SolidColorFillProperties"
@@ -1163,7 +1667,10 @@
         "w14:srgbClr",
         "w14:schemeClr"
       ],
-      "parents": [],
+      "parents": [
+        "w14:textFill",
+        "w14:textOutline"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1200,7 +1707,9 @@
       "parents": [
         "w14:contourClr",
         "w14:extrusionClr",
+        "w14:glow",
         "w14:gs",
+        "w14:shadow",
         "w14:solidFill"
       ],
       "spec": [
@@ -1229,13 +1738,97 @@
         }
       ],
       "children": [],
-      "parents": [],
+      "parents": [
+        "w14:stylisticSets"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
           "section": "2.6.3.34",
           "title": "CT_StyleSet",
           "page": 67
+        }
+      ]
+    },
+    {
+      "name": "w14:stylisticSets",
+      "types": [
+        "w14:CT_StylisticSets"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:styleSet"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.24",
+          "title": "stylisticSets",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "w14:textFill",
+      "types": [
+        "w14:CT_FillTextEffect"
+      ],
+      "attributes": [],
+      "children": [
+        "w14:noFill",
+        "w14:solidFill",
+        "w14:gradFill"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.25",
+          "title": "textFill",
+          "page": 46
+        }
+      ]
+    },
+    {
+      "name": "w14:textOutline",
+      "types": [
+        "w14:CT_TextOutlineEffect"
+      ],
+      "attributes": [
+        {
+          "name": "w14:algn",
+          "type": "w14:ST_PenAlignment"
+        },
+        {
+          "name": "w14:cap",
+          "type": "w14:ST_LineCap"
+        },
+        {
+          "name": "w14:cmpd",
+          "type": "w14:ST_CompoundLine"
+        },
+        {
+          "name": "w14:w",
+          "type": "a:ST_LineWidth"
+        }
+      ],
+      "children": [
+        "w14:noFill",
+        "w14:solidFill",
+        "w14:gradFill",
+        "w14:prstDash",
+        "w14:round",
+        "w14:bevel",
+        "w14:miter"
+      ],
+      "parents": [],
+      "spec": [
+        {
+          "doc": "MS-DOCX",
+          "section": "2.6.1.26",
+          "title": "textOutline",
+          "page": 47
         }
       ]
     },
@@ -1432,7 +2025,9 @@
       "content": "elements",
       "model": "(w14:noFill | w14:solidFill | w14:gradFill)?",
       "attributes": [],
-      "usedBy": [],
+      "usedBy": [
+        "w14:textFill"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1449,7 +2044,9 @@
       "attributes": [
         "w14:rad"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:glow"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1518,7 +2115,9 @@
       "attributes": [
         "w14:val"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:ligatures"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1609,7 +2208,9 @@
       "attributes": [
         "w14:val"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:numForm"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1625,7 +2226,9 @@
       "attributes": [
         "w14:val"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:numSpacing"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1643,6 +2246,7 @@
       ],
       "usedBy": [
         "w14:checked",
+        "w14:cntxtAlts",
         "w14:conflictMode",
         "w14:discardImageEditingData"
       ],
@@ -1762,7 +2366,9 @@
         "w14:extrusionH",
         "w14:prstMaterial"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:props3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1790,7 +2396,9 @@
         "w14:sx",
         "w14:sy"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:reflection"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1845,7 +2453,9 @@
       "content": "elements",
       "model": "(w14:camera, w14:lightRig)",
       "attributes": [],
-      "usedBy": [],
+      "usedBy": [
+        "w14:scene3d"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1925,7 +2535,9 @@
         "w14:sx",
         "w14:sy"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:shadow"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -1996,7 +2608,9 @@
       "content": "elements",
       "model": "(w14:styleSet*)?",
       "attributes": [],
-      "usedBy": [],
+      "usedBy": [
+        "w14:stylisticSets"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",
@@ -2016,7 +2630,9 @@
         "w14:cmpd",
         "w14:w"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "w14:textOutline"
+      ],
       "spec": [
         {
           "doc": "MS-DOCX",

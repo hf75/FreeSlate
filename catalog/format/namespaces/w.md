@@ -55,7 +55,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:balanceSingleByteDoubleByteWidth`](#wbalancesinglebytedoublebytewidth) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.3.3 p.1161 |
 | [`w:bar`](#wbar) | `w:CT_Border` | 9 | 0 | 1 | §17.3.1.4 p.206, OI 2.1.38 |
 | [`w:basedOn`](#wbasedon) | `w:CT_String` | 1 | 0 | 1 | §17.7.4.3 p.631, OI 2.1.233 |
-| [`w:bdo`](#wbdo) | `w:CT_BdoContentRun` | 1 | 34 | 12 | §17.3.2.3 p.275, OI 2.1.70 |
+| [`w:bdo`](#wbdo) | `w:CT_BdoContentRun` | 1 | 34 | 14 | §17.3.2.3 p.275, OI 2.1.70 |
 | [`w:bdr`](#wbdr) | `w:CT_Border` | 9 | 0 | 1 | §17.3.2.4 p.276, OI 2.1.71 |
 | [`w:behavior`](#wbehavior) | `w:CT_DocPartBehavior` | 1 | 0 | 1 | §17.12.1 p.790 |
 | [`w:behaviors`](#wbehaviors) | `w:CT_DocPartBehaviors` | 0 | 1 | 1 | §17.12.2 p.793 |
@@ -69,8 +69,8 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:bookFoldPrinting`](#wbookfoldprinting) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.11 p.991, OI 2.1.389 |
 | [`w:bookFoldPrintingSheets`](#wbookfoldprintingsheets) | `w:CT_DecimalNumber` | 1 | 0 | 1 | §17.15.1.12 p.993, OI 2.1.390 |
 | [`w:bookFoldRevPrinting`](#wbookfoldrevprinting) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.13 p.995, OI 2.1.391 |
-| [`w:bookmarkEnd`](#wbookmarkend) | `w:CT_MarkupRange` | 2 | 0 | 36 | §17.13.6.1 p.917, OI 2.1.355 |
-| [`w:bookmarkStart`](#wbookmarkstart) | `w:CT_Bookmark` | 5 | 0 | 36 | §17.13.6.2 p.919, OI 2.1.356 |
+| [`w:bookmarkEnd`](#wbookmarkend) | `w:CT_MarkupRange` | 2 | 0 | 38 | §17.13.6.1 p.917, OI 2.1.355 |
+| [`w:bookmarkStart`](#wbookmarkstart) | `w:CT_Bookmark` | 5 | 0 | 38 | §17.13.6.2 p.919, OI 2.1.356 |
 | [`w:bordersDoNotSurroundFooter`](#wbordersdonotsurroundfooter) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.14 p.997 |
 | [`w:bordersDoNotSurroundHeader`](#wbordersdonotsurroundheader) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.15 p.997 |
 | [`w:bottom`](#wbottom) | `w:CT_Border`, `w:CT_BottomPageBorder`, `w:CT_TblWidth` | 14 | 0 | 7 | §17.3.1.7 p.209, OI 2.1.40; §17.4.2 p.384, OI 2.1.116; §17.4.3 p.385, OI 2.1.117; §17.4.4 p.385, OI 2.1.118; §17.4.5 p.386, OI 2.1.119; §17.6.2 p.558, OI 2.1.211; §17.15.2.4 p.1099, OI 2.1.431 |
@@ -102,8 +102,8 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:column`](#wcolumn) | `w:CT_DecimalNumber` | 1 | 0 | 2 | §17.14.6 p.946, OI 2.1.363; §17.14.7 p.948, OI 2.1.364 |
 | [`w:comboBox`](#wcombobox) | `w:CT_SdtComboBox` | 1 | 1 | 1 | §17.5.2.5 p.513 |
 | [`w:comment`](#wcomment) | `w:CT_Comment` | 4 | 30 | 1 | §17.13.4.2 p.812, OI 2.1.313 |
-| [`w:commentRangeEnd`](#wcommentrangeend) | `w:CT_MarkupRange` | 2 | 0 | 36 | §17.13.4.3 p.815, OI 2.1.314 |
-| [`w:commentRangeStart`](#wcommentrangestart) | `w:CT_MarkupRange` | 2 | 0 | 36 | §17.13.4.4 p.817, OI 2.1.315 |
+| [`w:commentRangeEnd`](#wcommentrangeend) | `w:CT_MarkupRange` | 2 | 0 | 38 | §17.13.4.3 p.815, OI 2.1.314 |
+| [`w:commentRangeStart`](#wcommentrangestart) | `w:CT_MarkupRange` | 2 | 0 | 38 | §17.13.4.4 p.817, OI 2.1.315 |
 | [`w:commentReference`](#wcommentreference) | `w:CT_Markup` | 1 | 0 | 2 | §17.13.4.5 p.819, OI 2.1.316 |
 | [`w:comments`](#wcomments) ◆ | `w:CT_Comments` | 0 | 1 | 0 | §17.13.4.6 p.821 |
 | [`w:compat`](#wcompat) | `w:CT_Compat` | 0 | 66 | 1 | §17.15.1.21 p.1017 |
@@ -117,15 +117,15 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:convMailMergeEsc`](#wconvmailmergeesc) | `w:CT_OnOff` | 1 | 0 | 1 | Part 4 §14.8.3.6 p.104, OI 2.1.1776 |
 | [`w:cr`](#wcr) | `w:CT_Empty` | 0 | 0 | 2 | §17.3.3.4 p.339 |
 | [`w:cs`](#wcs) | `w:CT_OnOff` | 1 | 0 | 1 | §17.3.2.7 p.280, OI 2.1.73 |
-| [`w:customXml`](#wcustomxml) | `w:CT_CustomXmlRun`, `w:CT_CustomXmlBlock`, `w:CT_CustomXmlRow`, `w:CT_CustomXmlCell` | 2 | 39 | 34 | §17.5.1.3 p.500, OI 2.1.188; §17.5.1.4 p.501, OI 2.1.189; §17.5.1.5 p.503, OI 2.1.190; §17.5.1.6 p.504, OI 2.1.191 |
-| [`w:customXmlDelRangeEnd`](#wcustomxmldelrangeend) | `w:CT_Markup` | 1 | 0 | 36 | §17.13.5.4 p.832, OI 2.1.320 |
-| [`w:customXmlDelRangeStart`](#wcustomxmldelrangestart) | `w:CT_TrackChange` | 3 | 0 | 36 | §17.13.5.5 p.834, OI 2.1.321 |
-| [`w:customXmlInsRangeEnd`](#wcustomxmlinsrangeend) | `w:CT_Markup` | 1 | 0 | 36 | §17.13.5.6 p.836, OI 2.1.322 |
-| [`w:customXmlInsRangeStart`](#wcustomxmlinsrangestart) | `w:CT_TrackChange` | 3 | 0 | 36 | §17.13.5.7 p.838, OI 2.1.323 |
-| [`w:customXmlMoveFromRangeEnd`](#wcustomxmlmovefromrangeend) | `w:CT_Markup` | 1 | 0 | 36 | §17.13.5.8 p.841, OI 2.1.324 |
-| [`w:customXmlMoveFromRangeStart`](#wcustomxmlmovefromrangestart) | `w:CT_TrackChange` | 3 | 0 | 36 | §17.13.5.9 p.843, OI 2.1.325 |
-| [`w:customXmlMoveToRangeEnd`](#wcustomxmlmovetorangeend) | `w:CT_Markup` | 1 | 0 | 36 | §17.13.5.10 p.846, OI 2.1.326 |
-| [`w:customXmlMoveToRangeStart`](#wcustomxmlmovetorangestart) | `w:CT_TrackChange` | 3 | 0 | 36 | §17.13.5.11 p.848, OI 2.1.327 |
+| [`w:customXml`](#wcustomxml) | `w:CT_CustomXmlRun`, `w:CT_CustomXmlBlock`, `w:CT_CustomXmlRow`, `w:CT_CustomXmlCell` | 2 | 39 | 36 | §17.5.1.3 p.500, OI 2.1.188; §17.5.1.4 p.501, OI 2.1.189; §17.5.1.5 p.503, OI 2.1.190; §17.5.1.6 p.504, OI 2.1.191 |
+| [`w:customXmlDelRangeEnd`](#wcustomxmldelrangeend) | `w:CT_Markup` | 1 | 0 | 38 | §17.13.5.4 p.832, OI 2.1.320 |
+| [`w:customXmlDelRangeStart`](#wcustomxmldelrangestart) | `w:CT_TrackChange` | 3 | 0 | 38 | §17.13.5.5 p.834, OI 2.1.321 |
+| [`w:customXmlInsRangeEnd`](#wcustomxmlinsrangeend) | `w:CT_Markup` | 1 | 0 | 38 | §17.13.5.6 p.836, OI 2.1.322 |
+| [`w:customXmlInsRangeStart`](#wcustomxmlinsrangestart) | `w:CT_TrackChange` | 3 | 0 | 38 | §17.13.5.7 p.838, OI 2.1.323 |
+| [`w:customXmlMoveFromRangeEnd`](#wcustomxmlmovefromrangeend) | `w:CT_Markup` | 1 | 0 | 38 | §17.13.5.8 p.841, OI 2.1.324 |
+| [`w:customXmlMoveFromRangeStart`](#wcustomxmlmovefromrangestart) | `w:CT_TrackChange` | 3 | 0 | 38 | §17.13.5.9 p.843, OI 2.1.325 |
+| [`w:customXmlMoveToRangeEnd`](#wcustomxmlmovetorangeend) | `w:CT_Markup` | 1 | 0 | 38 | §17.13.5.10 p.846, OI 2.1.326 |
+| [`w:customXmlMoveToRangeStart`](#wcustomxmlmovetorangestart) | `w:CT_TrackChange` | 3 | 0 | 38 | §17.13.5.11 p.848, OI 2.1.327 |
 | [`w:customXmlPr`](#wcustomxmlpr) | `w:CT_CustomXmlPr` | 0 | 2 | 1 | §17.5.1.7 p.505 |
 | [`w:dataBinding`](#wdatabinding) | `w:CT_DataBinding` | 3 | 0 | 1 | §17.5.2.6 p.515, OI 2.1.193 |
 | [`w:dataSource`](#wdatasource) | `w:CT_Rel` | 1 | 0 | 1 | §17.14.9 p.950, OI 2.1.365 |
@@ -139,12 +139,12 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:default`](#wdefault) | `w:CT_OnOff`, `w:CT_DecimalNumber`, `w:CT_String` | 1 | 0 | 3 | §17.16.10 p.1269, OI 2.1.515; §17.16.11 p.1271, OI 2.1.516; §17.16.12 p.1272, OI 2.1.517 |
 | [`w:defaultTabStop`](#wdefaulttabstop) | `w:CT_TwipsMeasure` | 1 | 0 | 1 | §17.15.1.25 p.1021, OI 2.1.399 |
 | [`w:defaultTableStyle`](#wdefaulttablestyle) | `w:CT_String` | 1 | 0 | 1 | §17.15.1.24 p.1020, OI 2.1.398 |
-| [`w:del`](#wdel) | `w:CT_RunTrackChange`, `w:CT_MathCtrlDel`, `w:CT_RPrChange`, `w:CT_TrackChange` | 3 | 52 | 39 | §17.13.5.12 p.851, OI 2.1.328; §17.13.5.13 p.853, OI 2.1.329; §17.13.5.14 p.854, OI 2.1.330; §17.13.5.15 p.856, OI 2.1.331 |
+| [`w:del`](#wdel) | `w:CT_RunTrackChange`, `w:CT_MathCtrlDel`, `w:CT_RPrChange`, `w:CT_TrackChange` | 3 | 52 | 41 | §17.13.5.12 p.851, OI 2.1.328; §17.13.5.13 p.853, OI 2.1.329; §17.13.5.14 p.854, OI 2.1.330; §17.13.5.15 p.856, OI 2.1.331 |
 | [`w:delInstrText`](#wdelinstrtext) | `w:CT_Text` | 1 | 0 | 2 | §17.16.13 p.1272 |
 | [`w:delText`](#wdeltext) | `w:CT_Text` | 1 | 0 | 2 | §17.3.3.7 p.341 |
 | [`w:description`](#wdescription) | `w:CT_String` | 1 | 0 | 1 | §17.12.4 p.794 |
 | [`w:destination`](#wdestination) | `w:CT_MailMergeDest` | 1 | 0 | 1 | §17.14.11 p.953 |
-| [`w:dir`](#wdir) | `w:CT_DirContentRun` | 1 | 34 | 12 | §17.3.2.8 p.281, OI 2.1.74 |
+| [`w:dir`](#wdir) | `w:CT_DirContentRun` | 1 | 34 | 14 | §17.3.2.8 p.281, OI 2.1.74 |
 | [`w:dirty`](#wdirty) | `w:CT_OnOff` | 1 | 0 | 1 | §17.3.3.8 p.342 |
 | [`w:displayBackgroundShape`](#wdisplaybackgroundshape) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.26 p.1022 |
 | [`w:displayHangulFixedWidth`](#wdisplayhangulfixedwidth) | `w:CT_OnOff` | 1 | 0 | 1 | Part 4 §14.8.3.7 p.105 |
@@ -295,7 +295,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:ilvl`](#wilvl) | `w:CT_DecimalNumber` | 1 | 0 | 1 | §17.9.3 p.706, OI 2.1.277 |
 | [`w:imprint`](#wimprint) | `w:CT_OnOff` | 1 | 0 | 1 | §17.3.2.18 p.293, OI 2.1.82 |
 | [`w:ind`](#wind) | `w:CT_Ind` | 12 | 0 | 1 | §17.3.1.12 p.229, OI 2.1.44 |
-| [`w:ins`](#wins) | `w:CT_RunTrackChange`, `w:CT_MathCtrlIns`, `w:CT_TrackChange` | 3 | 52 | 40 | §17.13.5.16 p.859, OI 2.1.332; §17.13.5.17 p.860, OI 2.1.333; §17.13.5.18 p.862, OI 2.1.334; §17.13.5.19 p.864, OI 2.1.335; §17.13.5.20 p.867, OI 2.1.336 |
+| [`w:ins`](#wins) | `w:CT_RunTrackChange`, `w:CT_MathCtrlIns`, `w:CT_TrackChange` | 3 | 52 | 42 | §17.13.5.16 p.859, OI 2.1.332; §17.13.5.17 p.860, OI 2.1.333; §17.13.5.18 p.862, OI 2.1.334; §17.13.5.19 p.864, OI 2.1.335; §17.13.5.20 p.867, OI 2.1.336 |
 | [`w:insideH`](#winsideh) | `w:CT_Border` | 9 | 0 | 2 | §17.4.22 p.416, OI 2.1.135; §17.4.23 p.418, OI 2.1.136 |
 | [`w:insideV`](#winsidev) | `w:CT_Border` | 9 | 0 | 2 | §17.4.24 p.419, OI 2.1.137; §17.4.25 p.419, OI 2.1.138 |
 | [`w:instrText`](#winstrtext) | `w:CT_Text` | 1 | 0 | 2 | §17.16.23 p.1289 |
@@ -350,12 +350,12 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:mirrorMargins`](#wmirrormargins) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.57 p.1054 |
 | [`w:monthLong`](#wmonthlong) | `w:CT_Empty` | 0 | 0 | 2 | §17.3.3.15 p.346 |
 | [`w:monthShort`](#wmonthshort) | `w:CT_Empty` | 0 | 0 | 2 | §17.3.3.16 p.347 |
-| [`w:moveFrom`](#wmovefrom) | `w:CT_RunTrackChange`, `w:CT_TrackChange` | 3 | 51 | 37 | §17.13.5.21 p.869, OI 2.1.337; §17.13.5.22 p.871, OI 2.1.338 |
-| [`w:moveFromRangeEnd`](#wmovefromrangeend) | `w:CT_MarkupRange` | 2 | 0 | 36 | §17.13.5.23 p.873, OI 2.1.339 |
-| [`w:moveFromRangeStart`](#wmovefromrangestart) | `w:CT_MoveBookmark` | 7 | 0 | 36 | §17.13.5.24 p.877, OI 2.1.340 |
-| [`w:moveTo`](#wmoveto) | `w:CT_RunTrackChange`, `w:CT_TrackChange` | 3 | 51 | 37 | §17.13.5.25 p.884, OI 2.1.341; §17.13.5.26 p.887, OI 2.1.342 |
-| [`w:moveToRangeEnd`](#wmovetorangeend) | `w:CT_MarkupRange` | 2 | 0 | 36 | §17.13.5.27 p.889, OI 2.1.343 |
-| [`w:moveToRangeStart`](#wmovetorangestart) | `w:CT_MoveBookmark` | 7 | 0 | 36 | §17.13.5.28 p.892, OI 2.1.344 |
+| [`w:moveFrom`](#wmovefrom) | `w:CT_RunTrackChange`, `w:CT_TrackChange` | 3 | 51 | 39 | §17.13.5.21 p.869, OI 2.1.337; §17.13.5.22 p.871, OI 2.1.338 |
+| [`w:moveFromRangeEnd`](#wmovefromrangeend) | `w:CT_MarkupRange` | 2 | 0 | 38 | §17.13.5.23 p.873, OI 2.1.339 |
+| [`w:moveFromRangeStart`](#wmovefromrangestart) | `w:CT_MoveBookmark` | 7 | 0 | 38 | §17.13.5.24 p.877, OI 2.1.340 |
+| [`w:moveTo`](#wmoveto) | `w:CT_RunTrackChange`, `w:CT_TrackChange` | 3 | 51 | 39 | §17.13.5.25 p.884, OI 2.1.341; §17.13.5.26 p.887, OI 2.1.342 |
+| [`w:moveToRangeEnd`](#wmovetorangeend) | `w:CT_MarkupRange` | 2 | 0 | 38 | §17.13.5.27 p.889, OI 2.1.343 |
+| [`w:moveToRangeStart`](#wmovetorangestart) | `w:CT_MoveBookmark` | 7 | 0 | 38 | §17.13.5.28 p.892, OI 2.1.344 |
 | [`w:movie`](#wmovie) | `w:CT_Rel` | 1 | 0 | 2 | §17.3.3.17 p.348, OI 2.1.108 |
 | [`w:multiLevelType`](#wmultileveltype) | `w:CT_MultiLevelType` | 1 | 0 | 1 | §17.9.12 p.722 |
 | [`w:mwSmallCaps`](#wmwsmallcaps) | `w:CT_OnOff` | 1 | 0 | 1 | Part 4 §14.8.3.26 p.134 |
@@ -406,8 +406,8 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:pageBreakBefore`](#wpagebreakbefore) | `w:CT_OnOff` | 1 | 0 | 1 | §17.3.1.23 p.247 |
 | [`w:panose1`](#wpanose1) | `w:CT_Panose` | 1 | 0 | 1 | §17.8.3.13 p.695, OI 2.1.272 |
 | [`w:paperSrc`](#wpapersrc) | `w:CT_PaperSource` | 2 | 0 | 1 | §17.6.9 p.585, OI 2.1.216 |
-| [`w:permEnd`](#wpermend) | `w:CT_Perm` | 2 | 0 | 36 | §17.13.7.1 p.927, OI 2.1.357 |
-| [`w:permStart`](#wpermstart) | `w:CT_PermStart` | 6 | 0 | 36 | §17.13.7.2 p.929, OI 2.1.358 |
+| [`w:permEnd`](#wpermend) | `w:CT_Perm` | 2 | 0 | 38 | §17.13.7.1 p.927, OI 2.1.357 |
+| [`w:permStart`](#wpermstart) | `w:CT_PermStart` | 6 | 0 | 38 | §17.13.7.2 p.929, OI 2.1.358 |
 | [`w:personal`](#wpersonal) | `w:CT_OnOff` | 1 | 0 | 1 | §17.7.4.11 p.646, OI 2.1.239 |
 | [`w:personalCompose`](#wpersonalcompose) | `w:CT_OnOff` | 1 | 0 | 1 | §17.7.4.12 p.646, OI 2.1.240 |
 | [`w:personalReply`](#wpersonalreply) | `w:CT_OnOff` | 1 | 0 | 1 | §17.7.4.13 p.647, OI 2.1.241 |
@@ -430,12 +430,12 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:printPostScriptOverText`](#wprintpostscriptovertext) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.63 p.1060, OI 2.1.413 |
 | [`w:printTwoOnOne`](#wprinttwoonone) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.64 p.1060 |
 | [`w:printerSettings`](#wprintersettings) | `w:CT_Rel` | 1 | 0 | 1 | §17.6.14 p.597, OI 2.1.221 |
-| [`w:proofErr`](#wprooferr) | `w:CT_ProofErr` | 1 | 0 | 36 | §17.13.8.1 p.937 |
+| [`w:proofErr`](#wprooferr) | `w:CT_ProofErr` | 1 | 0 | 38 | §17.13.8.1 p.937 |
 | [`w:proofState`](#wproofstate) | `w:CT_Proof` | 2 | 0 | 1 | §17.15.1.65 p.1062 |
 | [`w:ptab`](#wptab) | `w:CT_PTab` | 3 | 0 | 2 | §17.3.3.23 p.357 |
 | [`w:qFormat`](#wqformat) | `w:CT_OnOff` | 1 | 0 | 1 | §17.7.4.14 p.647 |
 | [`w:query`](#wquery) | `w:CT_String` | 1 | 0 | 1 | §17.14.26 p.967, OI 2.1.377 |
-| [`w:r`](#wr) | `w:CT_R` | 3 | 34 | 14 | §17.3.2.25 p.300, OI 2.1.87 |
+| [`w:r`](#wr) | `w:CT_R` | 3 | 34 | 16 | §17.3.2.25 p.300, OI 2.1.87 |
 | [`w:rFonts`](#wrfonts) | `w:CT_Fonts` | 9 | 0 | 1 | §17.3.2.26 p.301, OI 2.1.88 |
 | [`w:rPr`](#wrpr) | `w:CT_RPr`, `w:CT_RPrOriginal`, `w:CT_ParaRPrOriginal`, `w:CT_ParaRPr` | 0 | 44 | 13 | §17.3.1.29 p.253, OI 2.1.57; §17.3.1.30 p.254, OI 2.1.58; §17.3.2.27 p.314, OI 2.1.89; §17.3.2.28 p.315, OI 2.1.90; §17.5.2.27 p.539, OI 2.1.200; §17.5.2.28 p.541, OI 2.1.201; §17.7.5.4 p.659, OI 2.1.245; §17.7.6.2 p.665, OI 2.1.248; §17.7.9.1 p.679, OI 2.1.260; §17.9.24 p.736, OI 2.1.291 |
 | [`w:rPrChange`](#wrprchange) | `w:CT_RPrChange`, `w:CT_ParaRPrChange` | 3 | 1 | 1 | §17.13.5.30 p.901, OI 2.1.346; §17.13.5.31 p.903, OI 2.1.347 |
@@ -469,7 +469,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:saveThroughXslt`](#wsavethroughxslt) | `w:CT_SaveThroughXslt` | 2 | 0 | 1 | §17.15.1.76 p.1074, OI 2.1.417 |
 | [`w:saveXmlDataOnly`](#wsavexmldataonly) | `w:CT_OnOff` | 1 | 0 | 1 | §17.15.1.77 p.1075 |
 | [`w:scrollbar`](#wscrollbar) | `w:CT_FrameScrollbar` | 1 | 0 | 1 | §17.15.2.37 p.1145 |
-| [`w:sdt`](#wsdt) | `w:CT_SdtRun`, `w:CT_SdtBlock`, `w:CT_SdtRow`, `w:CT_SdtCell` | 0 | 3 | 34 | §17.5.2.29 p.541; §17.5.2.30 p.542, OI 2.1.202; §17.5.2.31 p.543, OI 2.1.203; §17.5.2.32 p.544, OI 2.1.204 |
+| [`w:sdt`](#wsdt) | `w:CT_SdtRun`, `w:CT_SdtBlock`, `w:CT_SdtRow`, `w:CT_SdtCell` | 0 | 3 | 36 | §17.5.2.29 p.541; §17.5.2.30 p.542, OI 2.1.202; §17.5.2.31 p.543, OI 2.1.203; §17.5.2.32 p.544, OI 2.1.204 |
 | [`w:sdtContent`](#wsdtcontent) | `w:CT_SdtContentBlock`, `w:CT_SdtContentRun`, `w:CT_SdtContentCell`, `w:CT_SdtContentRow` | 0 | 38 | 1 | §17.5.2.33 p.545, OI 2.1.205; §17.5.2.34 p.546, OI 2.1.206; §17.5.2.35 p.547, OI 2.1.207; §17.5.2.36 p.548, OI 2.1.208 |
 | [`w:sdtEndPr`](#wsdtendpr) | `w:CT_SdtEndPr` | 0 | 1 | 1 | §17.5.2.37 p.549 |
 | [`w:sdtPr`](#wsdtpr) | `w:CT_SdtPr` | 0 | 23 | 1 | §17.5.2.38 p.549 |
@@ -491,7 +491,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 | [`w:size`](#wsize) | `w:CT_HpsMeasure` | 1 | 0 | 1 | §17.16.29 p.1297 |
 | [`w:sizeAuto`](#wsizeauto) | `w:CT_OnOff` | 1 | 0 | 1 | §17.16.30 p.1297 |
 | [`w:smallCaps`](#wsmallcaps) | `w:CT_OnOff` | 1 | 0 | 1 | §17.3.2.33 p.320, OI 2.1.95 |
-| [`w:smartTag`](#wsmarttag) | `w:CT_SmartTagRun` | 2 | 35 | 21 | §17.5.1.9 p.507, OI 2.1.192 |
+| [`w:smartTag`](#wsmarttag) | `w:CT_SmartTagRun` | 2 | 35 | 23 | §17.5.1.9 p.507, OI 2.1.192 |
 | [`w:smartTagPr`](#wsmarttagpr) | `w:CT_SmartTagPr` | 0 | 1 | 1 | §17.5.1.10 p.509 |
 | [`w:smartTagType`](#wsmarttagtype) | `w:CT_SmartTagType` | 3 | 0 | 1 | §17.15.1.81 p.1077, OI 2.1.419 |
 | [`w:snapToGrid`](#wsnaptogrid) | `w:CT_OnOff` | 1 | 0 | 2 | §17.3.1.32 p.255; §17.3.2.34 p.321 |
@@ -1029,7 +1029,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_BdoContentRun`
 - Attributes: `w:val`
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `w:fldSimple`, `w:hyperlink`, `w:subDoc`
-- Parents: `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
+- Parents: `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
 - Specification: §17.3.2.3 p.275, OI 2.1.70
 
 ### w:bdr
@@ -1126,14 +1126,14 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 
 - Type: `w:CT_MarkupRange`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.6.1 p.917, OI 2.1.355
 
 ### w:bookmarkStart
 
 - Type: `w:CT_Bookmark`
 - Attributes: `w:colFirst`, `w:colLast`, `w:displacedByCustomXml`, `w:id`!, `w:name`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.6.2 p.919, OI 2.1.356
 
 ### w:bordersDoNotSurroundFooter
@@ -1359,14 +1359,14 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 
 - Type: `w:CT_MarkupRange`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.4.3 p.815, OI 2.1.314
 
 ### w:commentRangeStart
 
 - Type: `w:CT_MarkupRange`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.4.4 p.817, OI 2.1.315
 
 ### w:commentReference
@@ -1462,63 +1462,63 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_CustomXmlRun`, `w:CT_CustomXmlBlock`, `w:CT_CustomXmlRow`, `w:CT_CustomXmlCell`
 - Attributes: `w:element`!, `w:uri`
 - Children: `w:customXmlPr`, `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `w:fldSimple`, `w:hyperlink`, `w:subDoc`, `w:p`, `w:tbl`, `w:tr`, `w:tc`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.5.1.3 p.500, OI 2.1.188; §17.5.1.4 p.501, OI 2.1.189; §17.5.1.5 p.503, OI 2.1.190; §17.5.1.6 p.504, OI 2.1.191
 
 ### w:customXmlDelRangeEnd
 
 - Type: `w:CT_Markup`
 - Attributes: `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.4 p.832, OI 2.1.320
 
 ### w:customXmlDelRangeStart
 
 - Type: `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.5 p.834, OI 2.1.321
 
 ### w:customXmlInsRangeEnd
 
 - Type: `w:CT_Markup`
 - Attributes: `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.6 p.836, OI 2.1.322
 
 ### w:customXmlInsRangeStart
 
 - Type: `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.7 p.838, OI 2.1.323
 
 ### w:customXmlMoveFromRangeEnd
 
 - Type: `w:CT_Markup`
 - Attributes: `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.8 p.841, OI 2.1.324
 
 ### w:customXmlMoveFromRangeStart
 
 - Type: `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.9 p.843, OI 2.1.325
 
 ### w:customXmlMoveToRangeEnd
 
 - Type: `w:CT_Markup`
 - Attributes: `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.10 p.846, OI 2.1.326
 
 ### w:customXmlMoveToRangeStart
 
 - Type: `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.11 p.848, OI 2.1.327
 
 ### w:customXmlPr
@@ -1616,7 +1616,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_RunTrackChange`, `w:CT_MathCtrlDel`, `w:CT_RPrChange`, `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `m:acc`, `m:bar`, `m:box`, `m:borderBox`, `m:d`, `m:eqArr`, `m:f`, `m:func`, `m:groupChr`, `m:limLow`, `m:limUpp`, `m:m`, `m:nary`, `m:phant`, `m:rad`, `m:sPre`, `m:sSub`, `m:sSubSup`, `m:sSup`, `m:r`, `w:rPr`
-- Parents: `m:ctrlPr`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:trPr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:ctrlPr`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:trPr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.12 p.851, OI 2.1.328; §17.13.5.13 p.853, OI 2.1.329; §17.13.5.14 p.854, OI 2.1.330; §17.13.5.15 p.856, OI 2.1.331
 
 ### w:delInstrText
@@ -1652,7 +1652,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_DirContentRun`
 - Attributes: `w:val`
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `w:fldSimple`, `w:hyperlink`, `w:subDoc`
-- Parents: `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
+- Parents: `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
 - Specification: §17.3.2.8 p.281, OI 2.1.74
 
 ### w:dirty
@@ -2708,7 +2708,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_RunTrackChange`, `w:CT_MathCtrlIns`, `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `m:acc`, `m:bar`, `m:box`, `m:borderBox`, `m:d`, `m:eqArr`, `m:f`, `m:func`, `m:groupChr`, `m:limLow`, `m:limUpp`, `m:m`, `m:nary`, `m:phant`, `m:rad`, `m:sPre`, `m:sSub`, `m:sSubSup`, `m:sSup`, `m:r`, `w:rPr`
-- Parents: `m:ctrlPr`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:numPr`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:trPr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:ctrlPr`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:numPr`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:trPr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.16 p.859, OI 2.1.332; §17.13.5.17 p.860, OI 2.1.333; §17.13.5.18 p.862, OI 2.1.334; §17.13.5.19 p.864, OI 2.1.335; §17.13.5.20 p.867, OI 2.1.336
 
 ### w:insideH
@@ -3094,21 +3094,21 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_RunTrackChange`, `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `m:acc`, `m:bar`, `m:box`, `m:borderBox`, `m:d`, `m:eqArr`, `m:f`, `m:func`, `m:groupChr`, `m:limLow`, `m:limUpp`, `m:m`, `m:nary`, `m:phant`, `m:rad`, `m:sPre`, `m:sSub`, `m:sSubSup`, `m:sSup`, `m:r`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.21 p.869, OI 2.1.337; §17.13.5.22 p.871, OI 2.1.338
 
 ### w:moveFromRangeEnd
 
 - Type: `w:CT_MarkupRange`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.23 p.873, OI 2.1.339
 
 ### w:moveFromRangeStart
 
 - Type: `w:CT_MoveBookmark`
 - Attributes: `w:author`!, `w:colFirst`, `w:colLast`, `w:date`!, `w:displacedByCustomXml`, `w:id`!, `w:name`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.24 p.877, OI 2.1.340
 
 ### w:moveTo
@@ -3116,21 +3116,21 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_RunTrackChange`, `w:CT_TrackChange`
 - Attributes: `w:author`!, `w:date`, `w:id`!
 - Children: `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `m:acc`, `m:bar`, `m:box`, `m:borderBox`, `m:d`, `m:eqArr`, `m:f`, `m:func`, `m:groupChr`, `m:limLow`, `m:limUpp`, `m:m`, `m:nary`, `m:phant`, `m:rad`, `m:sPre`, `m:sSub`, `m:sSubSup`, `m:sSup`, `m:r`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rPr`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.25 p.884, OI 2.1.341; §17.13.5.26 p.887, OI 2.1.342
 
 ### w:moveToRangeEnd
 
 - Type: `w:CT_MarkupRange`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.27 p.889, OI 2.1.343
 
 ### w:moveToRangeStart
 
 - Type: `w:CT_MoveBookmark`
 - Attributes: `w:author`!, `w:colFirst`, `w:colLast`, `w:date`!, `w:displacedByCustomXml`, `w:id`!, `w:name`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.5.28 p.892, OI 2.1.344
 
 ### w:movie
@@ -3490,14 +3490,14 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 
 - Type: `w:CT_Perm`
 - Attributes: `w:displacedByCustomXml`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.7.1 p.927, OI 2.1.357
 
 ### w:permStart
 
 - Type: `w:CT_PermStart`
 - Attributes: `w:colFirst`, `w:colLast`, `w:displacedByCustomXml`, `w:ed`, `w:edGrp`, `w:id`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.7.2 p.929, OI 2.1.358
 
 ### w:personal
@@ -3658,7 +3658,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 
 - Type: `w:CT_ProofErr`
 - Attributes: `w:type`!
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.13.8.1 p.937
 
 ### w:proofState
@@ -3694,7 +3694,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_R`
 - Attributes: `w:rsidDel`, `w:rsidR`, `w:rsidRPr`
 - Children: `w:rPr`, `w:br`, `w:t`, `w:contentPart`, `w:delText`, `w:instrText`, `w:delInstrText`, `w:noBreakHyphen`, `w:softHyphen`, `w:dayShort`, `w:monthShort`, `w:yearShort`, `w:dayLong`, `w:monthLong`, `w:yearLong`, `w:annotationRef`, `w:footnoteRef`, `w:endnoteRef`, `w:separator`, `w:continuationSeparator`, `w:sym`, `w:pgNum`, `w:cr`, `w:tab`, `w:object`, `w:pict`, `w:fldChar`, `w:ruby`, `w:footnoteReference`, `w:endnoteReference`, `w:commentReference`, `w:drawing`, `w:ptab`, `w:lastRenderedPageBreak`
-- Parents: `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`
+- Parents: `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`
 - Specification: §17.3.2.25 p.300, OI 2.1.87
 
 ### w:rFonts
@@ -3932,7 +3932,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 
 - Type: `w:CT_SdtRun`, `w:CT_SdtBlock`, `w:CT_SdtRow`, `w:CT_SdtCell`
 - Children: `w:sdtPr`, `w:sdtEndPr`, `w:sdtContent`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §17.5.2.29 p.541; §17.5.2.30 p.542, OI 2.1.202; §17.5.2.31 p.543, OI 2.1.203; §17.5.2.32 p.544, OI 2.1.204
 
 ### w:sdtContent
@@ -4087,7 +4087,7 @@ Full detail (content models, attribute types, defaults): [w.json](w.json)
 - Type: `w:CT_SmartTagRun`
 - Attributes: `w:element`!, `w:uri`
 - Children: `w:smartTagPr`, `w:customXml`, `w:smartTag`, `w:sdt`, `w:dir`, `w:bdo`, `w:r`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`, `w:fldSimple`, `w:hyperlink`, `w:subDoc`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:customXml`, `w:del`, `w:dir`, `w:fldSimple`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:sdtContent`, `w:smartTag`
 - Specification: §17.5.1.9 p.507, OI 2.1.192
 
 ### w:smartTagPr

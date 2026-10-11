@@ -16,19 +16,19 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 | Element | Type | Attributes | Children | Parents | Specification |
 |---|---|---:|---:|---:|---|
-| [`m:acc`](#macc) | `m:CT_Acc` | 0 | 2 | 13 | §22.1.2.1 p.3616, OI 2.1.1643 |
+| [`m:acc`](#macc) | `m:CT_Acc` | 0 | 2 | 15 | §22.1.2.1 p.3616, OI 2.1.1643 |
 | [`m:accPr`](#maccpr) | `m:CT_AccPr` | 0 | 2 | 1 | §22.1.2.2 p.3617 |
 | [`m:aln`](#maln) | `m:CT_OnOff` | 1 | 0 | 2 | §22.1.2.3 p.3617, OI 2.1.1644 |
 | [`m:alnScr`](#malnscr) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.4 p.3619 |
 | [`m:argPr`](#margpr) | `m:CT_OMathArgPr` | 0 | 1 | 8 | §22.1.2.5 p.3620 |
 | [`m:argSz`](#margsz) | `m:CT_Integer2` | 1 | 0 | 1 | §22.1.2.6 p.3621 |
-| [`m:bar`](#mbar) | `m:CT_Bar` | 0 | 2 | 13 | §22.1.2.7 p.3623, OI 2.1.1645 |
+| [`m:bar`](#mbar) | `m:CT_Bar` | 0 | 2 | 15 | §22.1.2.7 p.3623, OI 2.1.1645 |
 | [`m:barPr`](#mbarpr) | `m:CT_BarPr` | 0 | 2 | 1 | §22.1.2.8 p.3623, OI 2.1.1646 |
 | [`m:baseJc`](#mbasejc) | `m:CT_YAlign` | 1 | 0 | 2 | §22.1.2.9 p.3624, OI 2.1.1647 |
 | [`m:begChr`](#mbegchr) | `m:CT_Char` | 1 | 0 | 1 | §22.1.2.10 p.3627 |
-| [`m:borderBox`](#mborderbox) | `m:CT_BorderBox` | 0 | 2 | 13 | §22.1.2.11 p.3628, OI 2.1.1648 |
+| [`m:borderBox`](#mborderbox) | `m:CT_BorderBox` | 0 | 2 | 15 | §22.1.2.11 p.3628, OI 2.1.1648 |
 | [`m:borderBoxPr`](#mborderboxpr) | `m:CT_BorderBoxPr` | 0 | 9 | 1 | §22.1.2.12 p.3628 |
-| [`m:box`](#mbox) | `m:CT_Box` | 0 | 2 | 13 | §22.1.2.13 p.3629, OI 2.1.1649 |
+| [`m:box`](#mbox) | `m:CT_Box` | 0 | 2 | 15 | §22.1.2.13 p.3629, OI 2.1.1649 |
 | [`m:boxPr`](#mboxpr) | `m:CT_BoxPr` | 0 | 6 | 1 | §22.1.2.14 p.3629 |
 | [`m:brk`](#mbrk) | `m:CT_ManualBreak` | 1 | 0 | 2 | §22.1.2.15 p.3630, OI 2.1.1650 |
 | [`m:brkBin`](#mbrkbin) | `m:CT_BreakBin` | 1 | 0 | 1 | §22.1.2.16 p.3632 |
@@ -39,7 +39,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 | [`m:chr`](#mchr) | `m:CT_Char` | 1 | 0 | 3 | §22.1.2.20 p.3637 |
 | [`m:count`](#mcount) | `m:CT_Integer255` | 1 | 0 | 1 | §22.1.2.21 p.3638, OI 2.1.1653 |
 | [`m:ctrlPr`](#mctrlpr) | `m:CT_CtrlPr` | 0 | 3 | 27 | §22.1.2.23 p.3640, OI 2.1.1655 |
-| [`m:d`](#md) | `m:CT_D` | 0 | 2 | 13 | §22.1.2.24 p.3641, OI 2.1.1656 |
+| [`m:d`](#md) | `m:CT_D` | 0 | 2 | 15 | §22.1.2.24 p.3641, OI 2.1.1656 |
 | [`m:dPr`](#mdpr) | `m:CT_DPr` | 0 | 6 | 1 | §22.1.2.31 p.3648 |
 | [`m:defJc`](#mdefjc) | `m:CT_OMathJc` | 1 | 0 | 1 | §22.1.2.25 p.3642, OI 2.1.1657 |
 | [`m:deg`](#mdeg) | `m:CT_OMathArg` | 0 | 52 | 1 | §22.1.2.26 p.3643, OI 2.1.1658 |
@@ -49,14 +49,14 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 | [`m:dispDef`](#mdispdef) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.30 p.3647, OI 2.1.1661 |
 | [`m:e`](#me) | `m:CT_OMathArg` | 0 | 52 | 18 | §22.1.2.32 p.3648, OI 2.1.1662 |
 | [`m:endChr`](#mendchr) | `m:CT_Char` | 1 | 0 | 1 | §22.1.2.33 p.3650 |
-| [`m:eqArr`](#meqarr) | `m:CT_EqArr` | 0 | 2 | 13 | §22.1.2.34 p.3650, OI 2.1.1663 |
+| [`m:eqArr`](#meqarr) | `m:CT_EqArr` | 0 | 2 | 15 | §22.1.2.34 p.3650, OI 2.1.1663 |
 | [`m:eqArrPr`](#meqarrpr) | `m:CT_EqArrPr` | 0 | 6 | 1 | §22.1.2.35 p.3652 |
-| [`m:f`](#mf) | `m:CT_F` | 0 | 3 | 13 | §22.1.2.36 p.3653, OI 2.1.1664 |
+| [`m:f`](#mf) | `m:CT_F` | 0 | 3 | 15 | §22.1.2.36 p.3653, OI 2.1.1664 |
 | [`m:fName`](#mfname) | `m:CT_OMathArg` | 0 | 52 | 1 | §22.1.2.37 p.3654, OI 2.1.1665 |
 | [`m:fPr`](#mfpr) | `m:CT_FPr` | 0 | 2 | 1 | §22.1.2.38 p.3654 |
-| [`m:func`](#mfunc) | `m:CT_Func` | 0 | 3 | 13 | §22.1.2.39 p.3655, OI 2.1.1666 |
+| [`m:func`](#mfunc) | `m:CT_Func` | 0 | 3 | 15 | §22.1.2.39 p.3655, OI 2.1.1666 |
 | [`m:funcPr`](#mfuncpr) | `m:CT_FuncPr` | 0 | 1 | 1 | §22.1.2.40 p.3655 |
-| [`m:groupChr`](#mgroupchr) | `m:CT_GroupChr` | 0 | 2 | 13 | §22.1.2.41 p.3656, OI 2.1.1667 |
+| [`m:groupChr`](#mgroupchr) | `m:CT_GroupChr` | 0 | 2 | 15 | §22.1.2.41 p.3656, OI 2.1.1667 |
 | [`m:groupChrPr`](#mgroupchrpr) | `m:CT_GroupChrPr` | 0 | 4 | 1 | §22.1.2.42 p.3657 |
 | [`m:grow`](#mgrow) | `m:CT_OnOff` | 1 | 0 | 2 | §22.1.2.43 p.3657, OI 2.1.1668 |
 | [`m:hideBot`](#mhidebot) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.44 p.3658 |
@@ -70,12 +70,12 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 | [`m:lMargin`](#mlmargin) | `m:CT_TwipsMeasure` | 1 | 0 | 1 | §22.1.2.59 p.3669 |
 | [`m:lim`](#mlim) | `m:CT_OMathArg` | 0 | 52 | 2 | §22.1.2.52 p.3664, OI 2.1.1673 |
 | [`m:limLoc`](#mlimloc) | `m:CT_LimLoc` | 1 | 0 | 1 | §22.1.2.53 p.3664 |
-| [`m:limLow`](#mlimlow) | `m:CT_LimLow` | 0 | 3 | 13 | §22.1.2.54 p.3665, OI 2.1.1674 |
+| [`m:limLow`](#mlimlow) | `m:CT_LimLow` | 0 | 3 | 15 | §22.1.2.54 p.3665, OI 2.1.1674 |
 | [`m:limLowPr`](#mlimlowpr) | `m:CT_LimLowPr` | 0 | 1 | 1 | §22.1.2.55 p.3666 |
-| [`m:limUpp`](#mlimupp) | `m:CT_LimUpp` | 0 | 3 | 13 | §22.1.2.56 p.3666, OI 2.1.1675 |
+| [`m:limUpp`](#mlimupp) | `m:CT_LimUpp` | 0 | 3 | 15 | §22.1.2.56 p.3666, OI 2.1.1675 |
 | [`m:limUppPr`](#mlimupppr) | `m:CT_LimUppPr` | 0 | 1 | 1 | §22.1.2.57 p.3667 |
 | [`m:lit`](#mlit) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.58 p.3668 |
-| [`m:m`](#mm) | `m:CT_M` | 0 | 2 | 13 | §22.1.2.60 p.3670, OI 2.1.1676 |
+| [`m:m`](#mm) | `m:CT_M` | 0 | 2 | 15 | §22.1.2.60 p.3670, OI 2.1.1676 |
 | [`m:mPr`](#mmpr) | `m:CT_MPr` | 0 | 9 | 1 | §22.1.2.68 p.3682 |
 | [`m:mathFont`](#mmathfont) | `m:CT_String` | 1 | 0 | 1 | §22.1.2.61 p.3672, OI 2.1.1677 |
 | [`m:mathPr`](#mmathpr) ◆ | `m:CT_MathPr` | 0 | 16 | 1 | §22.1.2.62 p.3673 |
@@ -85,37 +85,37 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 | [`m:mcPr`](#mmcpr) | `m:CT_MCPr` | 0 | 2 | 1 | §22.1.2.66 p.3679 |
 | [`m:mcs`](#mmcs) | `m:CT_MCS` | 0 | 1 | 1 | §22.1.2.67 p.3681, OI 2.1.1680 |
 | [`m:mr`](#mmr) | `m:CT_MR` | 0 | 1 | 1 | §22.1.2.69 p.3683, OI 2.1.1681 |
-| [`m:nary`](#mnary) | `m:CT_Nary` | 0 | 4 | 13 | §22.1.2.70 p.3685, OI 2.1.1682 |
+| [`m:nary`](#mnary) | `m:CT_Nary` | 0 | 4 | 15 | §22.1.2.70 p.3685, OI 2.1.1682 |
 | [`m:naryLim`](#mnarylim) | `m:CT_LimLoc` | 1 | 0 | 1 | §22.1.2.71 p.3686, OI 2.1.1683 |
 | [`m:naryPr`](#mnarypr) | `m:CT_NaryPr` | 0 | 6 | 1 | §22.1.2.72 p.3687 |
 | [`m:noBreak`](#mnobreak) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.73 p.3688, OI 2.1.1684 |
 | [`m:nor`](#mnor) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.74 p.3689 |
 | [`m:num`](#mnum) | `m:CT_OMathArg` | 0 | 52 | 1 | §22.1.2.75 p.3690, OI 2.1.1685 |
-| [`m:oMath`](#momath) ◆ | `m:CT_OMath` | 0 | 50 | 38 | §22.1.2.77 p.3692, OI 2.1.1687 |
-| [`m:oMathPara`](#momathpara) ◆ | `m:CT_OMathPara` | 0 | 2 | 36 | §22.1.2.78 p.3693, OI 2.1.1688 |
+| [`m:oMath`](#momath) ◆ | `m:CT_OMath` | 0 | 50 | 40 | §22.1.2.77 p.3692, OI 2.1.1687 |
+| [`m:oMathPara`](#momathpara) ◆ | `m:CT_OMathPara` | 0 | 2 | 38 | §22.1.2.78 p.3693, OI 2.1.1688 |
 | [`m:oMathParaPr`](#momathparapr) | `m:CT_OMathParaPr` | 0 | 1 | 1 | §22.1.2.79 p.3693 |
 | [`m:objDist`](#mobjdist) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.76 p.3691, OI 2.1.1686 |
 | [`m:opEmu`](#mopemu) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.80 p.3694, OI 2.1.1689 |
-| [`m:phant`](#mphant) | `m:CT_Phant` | 0 | 2 | 13 | §22.1.2.81 p.3695, OI 2.1.1690 |
+| [`m:phant`](#mphant) | `m:CT_Phant` | 0 | 2 | 15 | §22.1.2.81 p.3695, OI 2.1.1690 |
 | [`m:phantPr`](#mphantpr) | `m:CT_PhantPr` | 0 | 6 | 1 | §22.1.2.82 p.3696 |
 | [`m:plcHide`](#mplchide) | `m:CT_OnOff` | 1 | 0 | 1 | §22.1.2.83 p.3696 |
 | [`m:pos`](#mpos) | `m:CT_TopBot` | 1 | 0 | 2 | §22.1.2.84 p.3697, OI 2.1.1691 |
 | [`m:postSp`](#mpostsp) | `m:CT_TwipsMeasure` | 1 | 0 | 1 | §22.1.2.85 p.3698, OI 2.1.1692 |
 | [`m:preSp`](#mpresp) | `m:CT_TwipsMeasure` | 1 | 0 | 1 | §22.1.2.86 p.3698, OI 2.1.1693 |
-| [`m:r`](#mr) | `m:CT_R` | 0 | 36 | 13 | §22.1.2.87 p.3699, OI 2.1.1694 |
+| [`m:r`](#mr) | `m:CT_R` | 0 | 36 | 15 | §22.1.2.87 p.3699, OI 2.1.1694 |
 | [`m:rMargin`](#mrmargin) | `m:CT_TwipsMeasure` | 1 | 0 | 1 | §22.1.2.90 p.3700 |
 | [`m:rPr`](#mrpr) | `m:CT_RPR` | 0 | 6 | 1 | §22.1.2.91 p.3701 |
 | [`m:rSp`](#mrsp) | `m:CT_UnSignedInteger` | 1 | 0 | 2 | §22.1.2.92 p.3702, OI 2.1.1696 |
 | [`m:rSpRule`](#mrsprule) | `m:CT_SpacingRule` | 1 | 0 | 2 | §22.1.2.93 p.3703, OI 2.1.1697 |
-| [`m:rad`](#mrad) | `m:CT_Rad` | 0 | 3 | 13 | §22.1.2.88 p.3699, OI 2.1.1695 |
+| [`m:rad`](#mrad) | `m:CT_Rad` | 0 | 3 | 15 | §22.1.2.88 p.3699, OI 2.1.1695 |
 | [`m:radPr`](#mradpr) | `m:CT_RadPr` | 0 | 2 | 1 | §22.1.2.89 p.3700 |
-| [`m:sPre`](#mspre) | `m:CT_SPre` | 0 | 4 | 13 | §22.1.2.99 p.3709, OI 2.1.1701 |
+| [`m:sPre`](#mspre) | `m:CT_SPre` | 0 | 4 | 15 | §22.1.2.99 p.3709, OI 2.1.1701 |
 | [`m:sPrePr`](#msprepr) | `m:CT_SPrePr` | 0 | 1 | 1 | §22.1.2.100 p.3709 |
-| [`m:sSub`](#mssub) | `m:CT_SSub` | 0 | 3 | 13 | §22.1.2.101 p.3710, OI 2.1.1702 |
+| [`m:sSub`](#mssub) | `m:CT_SSub` | 0 | 3 | 15 | §22.1.2.101 p.3710, OI 2.1.1702 |
 | [`m:sSubPr`](#mssubpr) | `m:CT_SSubPr` | 0 | 1 | 1 | §22.1.2.102 p.3711 |
-| [`m:sSubSup`](#mssubsup) | `m:CT_SSubSup` | 0 | 4 | 13 | §22.1.2.103 p.3711, OI 2.1.1703 |
+| [`m:sSubSup`](#mssubsup) | `m:CT_SSubSup` | 0 | 4 | 15 | §22.1.2.103 p.3711, OI 2.1.1703 |
 | [`m:sSubSupPr`](#mssubsuppr) | `m:CT_SSubSupPr` | 0 | 2 | 1 | §22.1.2.104 p.3712 |
-| [`m:sSup`](#mssup) | `m:CT_SSup` | 0 | 3 | 13 | §22.1.2.105 p.3713, OI 2.1.1704 |
+| [`m:sSup`](#mssup) | `m:CT_SSup` | 0 | 3 | 15 | §22.1.2.105 p.3713, OI 2.1.1704 |
 | [`m:sSupPr`](#mssuppr) | `m:CT_SSupPr` | 0 | 1 | 1 | §22.1.2.106 p.3713 |
 | [`m:scr`](#mscr) | `m:CT_Script` | 1 | 0 | 1 | §22.1.2.94 p.3705, OI 2.1.1698 |
 | [`m:sepChr`](#msepchr) | `m:CT_Char` | 1 | 0 | 1 | §22.1.2.95 p.3706 |
@@ -168,7 +168,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Acc`
 - Children: `m:accPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.1 p.3616, OI 2.1.1643
 
 ### m:accPr
@@ -210,7 +210,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Bar`
 - Children: `m:barPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.7 p.3623, OI 2.1.1645
 
 ### m:barPr
@@ -238,7 +238,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_BorderBox`
 - Children: `m:borderBoxPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.11 p.3628, OI 2.1.1648
 
 ### m:borderBoxPr
@@ -252,7 +252,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Box`
 - Children: `m:boxPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.13 p.3629, OI 2.1.1649
 
 ### m:boxPr
@@ -329,7 +329,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_D`
 - Children: `m:dPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.24 p.3641, OI 2.1.1656
 
 ### m:dPr
@@ -399,7 +399,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_EqArr`
 - Children: `m:eqArrPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.34 p.3650, OI 2.1.1663
 
 ### m:eqArrPr
@@ -413,7 +413,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_F`
 - Children: `m:fPr`, `m:num`, `m:den`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.36 p.3653, OI 2.1.1664
 
 ### m:fName
@@ -434,7 +434,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Func`
 - Children: `m:funcPr`, `m:fName`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.39 p.3655, OI 2.1.1666
 
 ### m:funcPr
@@ -448,7 +448,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_GroupChr`
 - Children: `m:groupChrPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.41 p.3656, OI 2.1.1667
 
 ### m:groupChrPr
@@ -546,7 +546,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_LimLow`
 - Children: `m:limLowPr`, `m:e`, `m:lim`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.54 p.3665, OI 2.1.1674
 
 ### m:limLowPr
@@ -560,7 +560,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_LimUpp`
 - Children: `m:limUppPr`, `m:e`, `m:lim`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.56 p.3666, OI 2.1.1675
 
 ### m:limUppPr
@@ -581,7 +581,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_M`
 - Children: `m:mPr`, `m:mr`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.60 p.3670, OI 2.1.1676
 
 ### m:mPr
@@ -651,7 +651,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Nary`
 - Children: `m:naryPr`, `m:sub`, `m:sup`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.70 p.3685, OI 2.1.1682
 
 ### m:naryLim
@@ -693,14 +693,14 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_OMath`
 - Children: `m:acc`, `m:bar`, `m:box`, `m:borderBox`, `m:d`, `m:eqArr`, `m:f`, `m:func`, `m:groupChr`, `m:limLow`, `m:limUpp`, `m:m`, `m:nary`, `m:phant`, `m:rad`, `m:sPre`, `m:sSub`, `m:sSubSup`, `m:sSup`, `m:r`, `w:customXml`, `w:fldSimple`, `w:hyperlink`, `w:smartTag`, `w:sdt`, `w:proofErr`, `w:permStart`, `w:permEnd`, `w:bookmarkStart`, `w:bookmarkEnd`, `w:moveFromRangeStart`, `w:moveFromRangeEnd`, `w:moveToRangeStart`, `w:moveToRangeEnd`, `w:commentRangeStart`, `w:commentRangeEnd`, `w:customXmlInsRangeStart`, `w:customXmlInsRangeEnd`, `w:customXmlDelRangeStart`, `w:customXmlDelRangeEnd`, `w:customXmlMoveFromRangeStart`, `w:customXmlMoveFromRangeEnd`, `w:customXmlMoveToRangeStart`, `w:customXmlMoveToRangeEnd`, `w:ins`, `w:del`, `w:moveFrom`, `w:moveTo`, `m:oMathPara`, `m:oMath`
-- Parents: `a14:m`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:oMathPara`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `a14:m`, `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:oMathPara`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §22.1.2.77 p.3692, OI 2.1.1687
 
 ### m:oMathPara
 
 - Type: `m:CT_OMathPara`
 - Children: `m:oMathParaPr`, `m:oMath`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:bdo`, `w:body`, `w:comment`, `w:customXml`, `w:del`, `w:dir`, `w:docPartBody`, `w:endnote`, `w:fldSimple`, `w:footnote`, `w:ftr`, `w:hdr`, `w:hyperlink`, `w:ins`, `w:moveFrom`, `w:moveTo`, `w:p`, `w:rt`, `w:rubyBase`, `w:sdtContent`, `w:smartTag`, `w:tbl`, `w:tc`, `w:tr`, `w:txbxContent`, `wne:txbxContent`, `wp:txbxContent`
 - Specification: §22.1.2.78 p.3693, OI 2.1.1688
 
 ### m:oMathParaPr
@@ -728,7 +728,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Phant`
 - Children: `m:phantPr`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.81 p.3695, OI 2.1.1690
 
 ### m:phantPr
@@ -770,7 +770,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_R`
 - Children: `m:rPr`, `w:rPr`, `w:br`, `w:t`, `w:contentPart`, `w:delText`, `w:instrText`, `w:delInstrText`, `w:noBreakHyphen`, `w:softHyphen`, `w:dayShort`, `w:monthShort`, `w:yearShort`, `w:dayLong`, `w:monthLong`, `w:yearLong`, `w:annotationRef`, `w:footnoteRef`, `w:endnoteRef`, `w:separator`, `w:continuationSeparator`, `w:sym`, `w:pgNum`, `w:cr`, `w:tab`, `w:object`, `w:pict`, `w:fldChar`, `w:ruby`, `w:footnoteReference`, `w:endnoteReference`, `w:commentReference`, `w:drawing`, `w:ptab`, `w:lastRenderedPageBreak`, `m:t`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.87 p.3699, OI 2.1.1694
 
 ### m:rMargin
@@ -805,7 +805,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_Rad`
 - Children: `m:radPr`, `m:deg`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.88 p.3699, OI 2.1.1695
 
 ### m:radPr
@@ -819,7 +819,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_SPre`
 - Children: `m:sPrePr`, `m:sub`, `m:sup`, `m:e`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.99 p.3709, OI 2.1.1701
 
 ### m:sPrePr
@@ -833,7 +833,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_SSub`
 - Children: `m:sSubPr`, `m:e`, `m:sub`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.101 p.3710, OI 2.1.1702
 
 ### m:sSubPr
@@ -847,7 +847,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_SSubSup`
 - Children: `m:sSubSupPr`, `m:e`, `m:sub`, `m:sup`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.103 p.3711, OI 2.1.1703
 
 ### m:sSubSupPr
@@ -861,7 +861,7 @@ Full detail (content models, attribute types, defaults): [m.json](m.json)
 
 - Type: `m:CT_SSup`
 - Children: `m:sSupPr`, `m:e`, `m:sup`
-- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
+- Parents: `m:deg`, `m:den`, `m:e`, `m:fName`, `m:lim`, `m:num`, `m:oMath`, `m:sub`, `m:sup`, `w14:conflictDel`, `w14:conflictIns`, `w:del`, `w:ins`, `w:moveFrom`, `w:moveTo`
 - Specification: §22.1.2.105 p.3713, OI 2.1.1704
 
 ### m:sSupPr

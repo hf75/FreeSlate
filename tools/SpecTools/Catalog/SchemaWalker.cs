@@ -43,7 +43,16 @@ public sealed class SchemaWalker
             if (type is XmlSchemaComplexType complex)
                 Enqueue(complex);
         }
+        while (pending.TryDequeue(out var data))
+            CollectChildren(data.Type.ContentTypeParticle, data);
 
+        // Groups no type refers to still declare elements: w14's EG_RPrTextEffects (glow, textOutline, ...) and
+        // EG_RPrOpenType (ligatures, ...) extend w:rPr through markup compatibility, which a schema cannot express.
+        foreach (XmlSchema schema in set.Schemas())
+        {
+            foreach (XmlSchemaGroup group in schema.Groups.Values)
+                DeclareAll(group.Particle);
+        }
         while (pending.TryDequeue(out var data))
             CollectChildren(data.Type.ContentTypeParticle, data);
 
@@ -74,6 +83,9 @@ public sealed class SchemaWalker
         var type = element.ElementSchemaType;
         if (type == null && !element.RefName.IsEmpty && set.GlobalElements[element.RefName] is XmlSchemaElement target)
             type = target.ElementSchemaType;
+        // Elements of groups no type refers to are not compiled; their named type is still there.
+        if (type == null && !element.SchemaTypeName.IsEmpty)
+            type = set.GlobalTypes[element.SchemaTypeName] as XmlSchemaType;
 
         if (!elements.TryGetValue(name, out var data))
             elements.Add(name, data = new ElementData(name));
@@ -88,6 +100,20 @@ public sealed class SchemaWalker
             typeData.Users.Add(name);
             if (complex.QualifiedName.IsEmpty)
                 typeData.Owner ??= name;
+        }
+    }
+
+    void DeclareAll(XmlSchemaParticle? particle)
+    {
+        switch (particle)
+        {
+            case XmlSchemaElement element:
+                Declare(element, isGlobal: false);
+                break;
+            case XmlSchemaGroupBase group:
+                foreach (XmlSchemaParticle item in group.Items)
+                    DeclareAll(item);
+                break;
         }
     }
 
