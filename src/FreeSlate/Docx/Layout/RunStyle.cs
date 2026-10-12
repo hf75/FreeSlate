@@ -73,8 +73,8 @@ public sealed record RunStyle(
     public string? Override { get; init; }
 
     /// <summary>
-    /// Kerning from the font's kern table between ANSI characters instead of GPOS (documents before Word 2010,
-    /// w:useAnsiKerningPairs; catalog: settings.compatibility).
+    /// Kerning from the font's kern table instead of GPOS (documents before Word 2010), every pair of it, Cyrillic,
+    /// Greek and characters outside the ANSI code pages too (catalog: settings.compatibility).
     /// </summary>
     public bool LegacyKerning { get; init; }
 

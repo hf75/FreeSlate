@@ -274,7 +274,9 @@ areas:
           before mode 15 tables put the first cell's text at the indent, or center their left line on the margin where
           no indent is given at all (measured with docx/local/c2-tblpos in modes 11 to 15), and widen percentage
           widths by the outer cells' margins (table.width); before 14 there are no OpenType features and kerning comes
-          from the kern table (run.openType); before 15 the hyphenation zone counts (paragraph.hyphenation). Each
+          from the kern table, every pair of it (docx/local/legkern-*: Times New Roman, Calibri and Arial pairs of
+          Latin, Cyrillic, Greek, quotation marks and superscripts, in modes 11 and 12 as w:useAnsiKerningPairs alike;
+          run.openType); before 15 the hyphenation zone counts (paragraph.hyphenation). Each
           layout option was measured alone in Word in modes 15 and 12 (docx/local/compat15-* and compat12-*: 65
           options on a document of justified, bordered and spaced paragraphs, lists, tabs, small caps, raised text, a
           table and Japanese text), and those that changed anything again with what their rules depend on, in modes
