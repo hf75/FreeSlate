@@ -209,6 +209,13 @@ public sealed class DocumentContext : IDisposable
     /// <summary>The character decimal tab stops align on (w:decimalSymbol, the language's decimal separator).</summary>
     public char DecimalSymbol { get; }
 
+    /// <summary>
+    /// How much more 3D text the document draws as bodies, in characters of 12 pt: a 48 pt character takes 85 to 420 KB
+    /// of markup (docx/local/text-3d, docx/external/libreoffice/writerfilter-dmapper/fdo78333-1-minimized), so a page
+    /// of it would not fit in memory (fdo78333: 2900 characters in a text box); the rest is drawn flat.
+    /// </summary>
+    public double Text3DBudget { get; set; } = 400;
+
     /// <summary>The glyph outlines the document uses, defined once.</summary>
     public Html.GlyphCache Glyphs { get; } = new();
 

@@ -166,18 +166,31 @@ public sealed class StyleSheet
     /// <summary>The paragraph formatting of a paragraph with this style and direct formatting.</summary>
     /// <param name="numbering">The paragraph properties of the paragraph's list level, between the style and the direct formatting.</param>
     /// <param name="table">The paragraph properties of the table style of the paragraph's cell, above the document defaults.</param>
-    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null, ParagraphFormat? table = null)
+    /// <param name="numberingUnderStyle">
+    /// Whether the list level's properties go under the style's: where the numbering comes from the paragraph style,
+    /// the style's indents and tabs override the level's attribute by attribute (measured with docx/local/styleind-A …
+    /// -H: a style's left 1080 with a level's left 1620 and hanging 360 makes left 1080 and hanging 360); where the
+    /// paragraph numbers itself, the level's override the style's (docx/generated/lists).
+    /// </param>
+    public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null, ParagraphFormat? table = null,
+        bool numberingUnderStyle = false)
     {
         var result = DefaultParagraph.Clone();
         if (table != null)
             result.Overlay(table);
+        if (numbering != null && numberingUnderStyle)
+        {
+            var level = new ParagraphFormat();
+            level.Apply(numbering);
+            result.Overlay(level);
+        }
         foreach (var style in Chain(ParagraphStyleOf(styleId)))
         {
             var level = new ParagraphFormat();
             level.Apply(style.ParagraphProperties);
             result.Overlay(level);
         }
-        if (numbering != null)
+        if (numbering != null && !numberingUnderStyle)
         {
             var level = new ParagraphFormat();
             level.Apply(numbering);

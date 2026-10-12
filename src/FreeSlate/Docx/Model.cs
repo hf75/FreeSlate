@@ -735,9 +735,9 @@ public sealed partial class ModelReader(DocumentContext context)
         // with docx/generated/lists: a level indented 360 twips puts a List Paragraph, whose style says 720, at
         // 360); the number is drawn in the paragraph mark's formatting with the level's run properties over it.
         ListLabel? label = null;
-        if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0) : null) is { } next)
+        if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0, mark.Language) : null) is { } next)
         {
-            format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph);
+            format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph, numberingUnderStyle: direct.NumberingId == null);
             var levelRun = new RunFormat();
             levelRun.Apply(next.Level.RunProperties);
             var numberFormat = mark.Clone();

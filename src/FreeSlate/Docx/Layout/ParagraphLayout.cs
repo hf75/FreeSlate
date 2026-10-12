@@ -677,6 +677,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The place in its text of the tab after the list number of the paragraph being laid out, or -1.</summary>
     int labelTab = -1;
 
+    /// <summary>Whether the tab after a list number passes the hanging indent for a custom stop after it (see TabStop).</summary>
+    bool NumberTabSkipsIndent => numberTabSkipsIndent ??= context.CompatibilityMode < 15 && context.Compat("doNotUseIndentAsNumberingTabStop");
+    bool? numberTabSkipsIndent;
+
     /// <summary>Where absolute position tabs count from in the paragraph being laid out: its margins' and its indents' edges.</summary>
     (double MarginLeft, double MarginRight, double IndentLeft, double IndentRight) positionalArea;
 
@@ -784,6 +788,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
+        BreakAtSpaces(text, breaks);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
         // Punctuation that may not begin a line may hang past its end instead, where the paragraph lets it
@@ -1156,6 +1161,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             advances[index] = equation.Width;
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
+        BreakAtSpaces(text, breaks);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
         var left = format.Left ?? 0;
@@ -1646,9 +1652,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var label = tab == labelTab;
         if ((firstLine < 0 || label) && x < left + (label ? 0.005 : -0.005))
         {
-            // The left indent is a stop for the hanging first line, unless a custom stop comes before it.
+            // The left indent is a stop for the hanging first line, unless a custom stop comes before it; with
+            // w:doNotUseIndentAsNumberingTabStop before Word 2013 the number's tab takes any custom stop after it
+            // first (measured with docx/local/numtabind-*: modes 14, 12 and 11, not 15).
             var custom = format.Tabs?.FirstOrDefault(t => t.Position > x + 0.005 && t.Align != "bar");
-            if (custom == null || custom.Position > left)
+            if (custom == null || custom.Position > left && !(label && NumberTabSkipsIndent))
                 return left;
         }
         foreach (var t in format.Tabs ?? [])
@@ -2051,6 +2059,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
+    /// <summary>
+    /// A line may end at a space before any character but East Asian ones, whose kinsoku rules hold: Word breaks
+    /// before periods, closing brackets, quotes, slashes, percent signs and the like after a space too (measured with
+    /// docx/local/spacebreak: 19 characters; docx/external/libreoffice/extras-ooxmlexport/tdf95377 "indent .5/margin").
+    /// </summary>
+    static void BreakAtSpaces(string text, bool[] breaks)
+    {
+        for (var i = 0; i + 1 < text.Length; i++)
+        {
+            if (text[i] is ' ' or '\t' && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v') && !EastAsian(text[i + 1]))
+                breaks[i] = true;
+        }
+    }
+
     internal static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
 
     /// <summary>

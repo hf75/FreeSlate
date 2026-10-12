@@ -24,6 +24,8 @@ public static class MarkupCompatibility
         "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
         "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
         "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+        // Word 2010 markup: custom number formats (w:numFmt w:format) the engine reads.
+        "http://schemas.microsoft.com/office/word/2010/wordml",
     ];
 
     /// <summary>

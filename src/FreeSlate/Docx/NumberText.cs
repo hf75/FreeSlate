@@ -23,20 +23,26 @@ public static class NumberText
     static readonly string[] HindiVowels = ["अ", "आ", "इ", "ई", "उ", "ऊ", "ऋ", "ए", "ऐ", "ओ", "औ", "अं", "अः"];
     const string HindiConsonants = "कखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह";
 
-    /// <summary>Number <paramref name="n"/> in a number format; unknown formats are decimal.</summary>
-    public static string Format(int n, string? format) => format switch
+    /// <summary>
+    /// Number <paramref name="n"/> in a number format; unknown formats are decimal. Words and ordinals follow the
+    /// language of the text (<paramref name="language"/>, a tag like de-DE; see <see cref="NumberWords"/>).
+    /// </summary>
+    public static string Format(int n, string? format, string? language = null) => format switch
     {
         null or "decimal" => Decimal(n),
         "upperRoman" => Roman(n),
         "lowerRoman" => Roman(n).ToLowerInvariant(),
-        "upperLetter" => Repeated("ABCDEFGHIJKLMNOPQRSTUVWXYZ", n),
-        "lowerLetter" => Repeated("abcdefghijklmnopqrstuvwxyz", n),
-        "ordinal" => Decimal(n) + OrdinalSuffix(n),
-        "cardinalText" => Capitalized(Words(n)),
-        "ordinalText" => Capitalized(OrdinalWords(n)),
+        "upperLetter" => Letters("ABCDEFGHIJKLMNOPQRSTUVWXYZ", n),
+        "lowerLetter" => Letters("abcdefghijklmnopqrstuvwxyz", n),
+        "ordinal" => NumberWords.Ordinal(n, language),
+        "cardinalText" => NumberWords.Cardinal(n, language),
+        "ordinalText" => NumberWords.OrdinalText(n, language),
         "hex" => n.ToString("X", CultureInfo.InvariantCulture),
         "chicago" => Chicago(n),
         "decimalZero" => n is >= 0 and < 10 ? "0" + Decimal(n) : Decimal(n),
+        // Custom formats of zero-padded numbers ("001, 002, 003, ..." and longer, Word 2010).
+        _ when format.StartsWith("decimalZero", StringComparison.Ordinal) && int.TryParse(format.AsSpan(11), out var width) =>
+            Decimal(n).PadLeft(width, '0'),
         "decimalFullWidth" or "decimalFullWidth2" => FullWidth(Decimal(n)),
         "decimalHalfWidth" => Decimal(n),
         "decimalEnclosedCircle" or "decimalEnclosedCircleChinese" => Enclosed(n, 0x2460, 20) ?? Decimal(n),
@@ -55,8 +61,12 @@ public static class NumberText
         "koreanDigital" => DigitByDigit(n, "영일이삼사오육칠팔구"),
         "japaneseCounting" or "chineseCounting" or "taiwaneseCounting" or "chineseCountingThousand"
             or "taiwaneseCountingThousand" or "japaneseLegal" or "ideographLegalTraditional" or "chineseLegalSimplified"
-            or "koreanCounting" or "koreanLegal" => Chinese(n),
-        "ideographTraditional" => Cycled("甲乙丙丁戊己庚辛壬癸", n),
+            or "koreanCounting" or "koreanLegal" when format != "chineseCounting" || n < 100 => Chinese(n),
+        // Chinese counting writes numbers from a hundred digit by digit, zero as a white circle (measured with
+        // docx/external/powertools/LIR009-zh-CN-chineseCounting: 100 一○○, 2345 二三四五).
+        "chineseCounting" => DigitByDigit(n, "○一二三四五六七八九"),
+        // The ten heavenly stems, then decimal (LIR010-zh-CN-ideographTraditional: 11 after 癸).
+        "ideographTraditional" => n <= 10 ? Cycled("甲乙丙丁戊己庚辛壬癸", n) : Decimal(n),
         "ideographZodiac" => Cycled("子丑寅卯辰巳午未申酉戌亥", n),
         "ideographZodiacTraditional" => Decimal(n),
         "hebrew1" => Hebrew1(n),
@@ -111,6 +121,13 @@ public static class NumberText
         return sb.ToString();
     }
 
+    /// <summary>
+    /// A Latin letter, repeated after z (27 → AA) up to thirty times, then once again (781 → A; measured with
+    /// docx/external/powertools/LIR003-en-US-upperLetter, LIR019-en-US-lowerLetter: 3500 → 15 × P).
+    /// </summary>
+    static string Letters(string alphabet, int n) =>
+        n <= 0 ? Decimal(n) : new string(alphabet[(n - 1) % alphabet.Length], (n - 1) / alphabet.Length % 30 + 1);
+
     /// <summary>A letter of an alphabet, repeated after the last one (27 → AA, 28 → BB).</summary>
     static string Repeated(string alphabet, int n)
     {
@@ -155,54 +172,6 @@ public static class NumberText
         return new string(marks[(n - 1) % 4], (n - 1) / 4 + 1);
     }
 
-    static string OrdinalSuffix(int n) => (n % 100) switch
-    {
-        11 or 12 or 13 => "th",
-        _ => (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" },
-    };
-
-    static readonly string[] Ones = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
-    static readonly string[] Tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
-
-    /// <summary>The number in English words ("one hundred twenty-three").</summary>
-    static string Words(int n)
-    {
-        if (n < 0)
-            return "minus " + Words(-n);
-        if (n < 20)
-            return Ones[n];
-        if (n < 100)
-            return Tens[n / 10] + (n % 10 == 0 ? "" : "-" + Ones[n % 10]);
-        if (n < 1000)
-            return Ones[n / 100] + " hundred" + (n % 100 == 0 ? "" : " " + Words(n % 100));
-        if (n < 1_000_000)
-            return Words(n / 1000) + " thousand" + (n % 1000 == 0 ? "" : " " + Words(n % 1000));
-        return Words(n / 1_000_000) + " million" + (n % 1_000_000 == 0 ? "" : " " + Words(n % 1_000_000));
-    }
-
-    static string OrdinalWords(int n)
-    {
-        var words = Words(n);
-        var cut = Math.Max(words.LastIndexOf(' '), words.LastIndexOf('-')) + 1;
-        var last = words[cut..];
-        var ordinal = last switch
-        {
-            "one" => "first",
-            "two" => "second",
-            "three" => "third",
-            "five" => "fifth",
-            "eight" => "eighth",
-            "nine" => "ninth",
-            "twelve" => "twelfth",
-            _ when last.EndsWith('y') => last[..^1] + "ieth",
-            _ => last + "th",
-        };
-        return words[..cut] + ordinal;
-    }
-
-    static string Capitalized(string words) => words.Length == 0 ? words : char.ToUpperInvariant(words[0]) + words[1..];
-
     /// <summary>Hebrew numerals: letters add up (א = 1 … ת = 400), 15 and 16 written ט״ו and ט״ז.</summary>
     static string Hebrew1(int n)
     {
@@ -245,7 +214,9 @@ public static class NumberText
         if (n < 10000)
         {
             var rest = n % 1000;
-            return digits[n / 1000] + "千" + (rest == 0 ? "" : rest < 100 ? "〇" + Chinese(rest) : Chinese(rest));
+            // A gap before ten to nineteen writes their ten as 一十 (measured with docx/external/powertools/
+            // LIR008-zh-CH-chineseCountingThousand: 1010 一千〇一十).
+            return digits[n / 1000] + "千" + (rest == 0 ? "" : rest < 100 ? "〇" + (rest >= 10 && rest < 20 ? "一" : "") + Chinese(rest) : Chinese(rest));
         }
         return Decimal(n);
     }

@@ -296,7 +296,8 @@ areas:
           text out of the line height; splitPgBreakAndParaMark moves the mark after a page break that ends its
           paragraph to the next page as an empty line; suppressSpacingAtTopOfPage drops the extra of at-least and grid
           spacing above the first line on a page; allowSpaceOfSameStyleInTable turns contextual spacing off in table
-          cells. Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
+          cells; doNotUseIndentAsNumberingTabStop lets the tab after a list number pass the hanging indent for a
+          custom stop after it, before Word 2013 only (docx/local/numtabind-*: modes 14, 12, 11). Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
           truncateFontHeightsLikeWP6 (glyphs printed one dot smaller, positions within 0.5 %), useWord97LineBreakRules
           (Latin letters up to 0.15 pt, Japanese lines 0.03 pt higher). Measured and not modeled:
           useAltKinsokuLineBreakRules breaks two of 23 Japanese test paragraphs elsewhere in mode 12. Without effect
@@ -305,7 +306,7 @@ areas:
           and page tops: alignTablesRowByRow, autoSpaceLikeWord95, autofitToFirstFixedWidthCell, convMailMergeEsc,
           displayHangulFixedWidth, doNotAutofitConstrainedTables, doNotBreakConstrainedForcedTable,
           doNotBreakWrappedTables, doNotSnapToGridInCell, doNotSuppressIndentation, doNotSuppressParagraphBorders,
-          doNotUseEastAsianBreakRules, doNotUseIndentAsNumberingTabStop, doNotVertAlignCellWithSp,
+          doNotUseEastAsianBreakRules, doNotVertAlignCellWithSp,
           doNotVertAlignInTxbx, doNotWrapTextWithPunct, footnoteLayoutLikeWW8, forgetLastTabAlignment, growAutofit,
           layoutRawTableWidth, layoutTableRowsApart, lineWrapLikeWord6, noColumnBalance, noTabHangInd,
           printBodyTextBeforeHeader, printColBlack, selectFldWithFirstOrLastChar, shapeLayoutLikeWW8,
@@ -686,8 +687,10 @@ areas:
           w14:scene3d) Word draws as pictures of its lit glyphs; here it is PowerPoint's 3D text (pptx text.threeD) in
           the run's place, its baseline on the run's, under the run's light rig and always facing the viewer (a
           perspective camera draws as the front view in Word too); the glyphs' counters are holes the bevel runs into
-          (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). Known deviation: Word's bevels
-          are smoother at sharp corners and lit somewhat differently.
+          (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). Known deviations: Word's bevels
+          are smoother at sharp corners and lit somewhat differently; a document draws its first 400 characters of 12 pt
+          (fewer of larger ones) of 3D text as bodies, the rest flat, as each 48 pt character takes 85 to 420 KB of
+          markup (docx/external/libreoffice/writerfilter-dmapper/fdo78333-1-minimized: a page of it ran out of memory).
 
       - id: run.openType
         title: OpenType features
@@ -985,14 +988,21 @@ areas:
           Level texts with %1 to %9, about 60 number formats (decimal, roman, letters repeated after z, ordinals and
           number words, full-width, enclosed, Chinese, Japanese and Korean counting, Hebrew, Arabic, Thai, Hindi,
           Russian), legal numbering, suffix tab, space or nothing, numbers aligned left, centered or right at the
-          first line's indent (docx/local/num-rules). The tab after a number takes the left indent as its stop also
-          where the number ends right at it (an empty number, one right-aligned at the indent), leaving the text
-          there; custom and default stops count only after its place, as for other tabs (docx/local/emptylabel,
-          tabzero, tabzero2; docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab). The level's indents and tabs override the paragraph style's (a
-          level indented 360 twips puts a List Paragraph, whose style says 720, at 360; docx/generated/lists). The
-          number is drawn in the paragraph mark's formatting with the level's run properties over it; only its ascent
-          counts in the line height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high).
-          Picture bullets are numbering.pictureBullets.
+          first line's indent (docx/local/num-rules). Number words and ordinals follow the paragraph's language
+          (English, German, French, Russian; words only below a million); letters repeat up to thirty times, then
+          start over; Chinese counting goes digit by digit from 100 (○ for zero); the heavenly stems turn decimal
+          after ten; Word 2010's custom formats pad with zeros (docx/external/powertools/LIR001 … LIR020 and
+          docx/local/numwords2-*: every number exactly as Word writes it). The tab after a number takes the left
+          indent as its stop also where the number ends right at it (an empty number, one right-aligned at the
+          indent), leaving the text there; custom and default stops count only after its place, as for other tabs
+          (docx/local/emptylabel, tabzero, tabzero2; docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab).
+          The level's indents and tabs override the paragraph style's (a level indented 360 twips puts a List
+          Paragraph, whose style says 720, at 360; docx/generated/lists); where the numbering comes from the paragraph
+          style itself, the style's override the level's attribute by attribute (a style's left 1080 with a level's
+          left 1620 and hanging 360 makes left 1080, hanging 360; docx/local/styleind-A … -H). The number is drawn in
+          the paragraph mark's formatting with the level's run properties over it; only its ascent counts in the line
+          height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high). Picture bullets are
+          numbering.pictureBullets.
 
       - id: numbering.counting
         title: List counters
@@ -3216,8 +3226,9 @@ areas:
           metrics and line spacing, tabs, justification, East Asian grid and kinsoku, hyphenation, inline objects,
           lines shortened by floating objects.
         office: >-
-          Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between
-          characters; trailing spaces hang past the end; justified lines squeeze spaces for one more word where that
+          Lines break at UAX #14 opportunities with Word's kinsoku, and at every space before a character that is not
+          East Asian, also before periods, closing brackets and quotes, slashes and percent signs (docx/local/
+          spacebreak: 19 characters); a word longer than the line breaks between characters; trailing spaces hang past the end; justified lines squeeze spaces for one more word where that
           changes them less than stretching would (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
           snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
           Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same

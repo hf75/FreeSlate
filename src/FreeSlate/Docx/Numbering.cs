@@ -46,9 +46,13 @@ public sealed class NumberingLevel
         // A level text without w:val shows nothing; an empty one too.
         if (lvl.Child("lvlText") is { } text && text.Attr("val") == null)
             level.Text = null;
-        // w:numFmt w:val="custom" names its format in w:format (Word 2010).
+        // w:numFmt w:val="custom" names its format in w:format (Word 2010): zero-padded numbers as wide as the
+        // first one (measured with docx/external/powertools/LIR011-en-US-00001: 3499 → 03499).
         if (level.Format == "custom" && lvl.Child("numFmt").Attr("format") is { } custom)
-            level.Format = custom.StartsWith("0", StringComparison.Ordinal) ? "decimalZero" : "decimal";
+        {
+            var width = custom.TakeWhile(char.IsAsciiDigit).Count();
+            level.Format = !custom.StartsWith('0') ? "decimal" : width <= 2 ? "decimalZero" : "decimalZero" + width;
+        }
         return level;
     }
 }
@@ -183,7 +187,8 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
     /// where it has none.
     /// </summary>
-    public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl)
+    /// <param name="language">The language of the paragraph, for numbers in words.</param>
+    public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl, string? language = null)
     {
         if (definitions.Find(numId) is not { } instance)
             return null;
@@ -213,11 +218,11 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             if (restart == null || restart > 0 && ilvl < restart)
                 counters.Used[d] = false;
         }
-        var own = level.Format is "none" or "bullet" ? "" : NumberText.Format(counters.Values[ilvl], level.Legal ? "decimal" : level.Format);
-        return (Text(instance, counters, ilvl, level), level, own);
+        var own = level.Format is "none" or "bullet" ? "" : NumberText.Format(counters.Values[ilvl], level.Legal ? "decimal" : level.Format, language);
+        return (Text(instance, counters, ilvl, level, language), level, own);
     }
 
-    static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level)
+    static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level, string? language)
     {
         if (level.Text == null || level.Format == "none" && !level.Text.Contains('%'))
             return level.Text ?? "";
@@ -241,7 +246,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
                 var value = counters.Used[k] ? counters.Values[k] : referenced?.Start ?? 1;
                 var format = level.Legal ? "decimal" : referenced?.Format ?? "decimal";
                 if (format != "none")
-                    sb.Append(NumberText.Format(value, format == "bullet" ? "decimal" : format));
+                    sb.Append(NumberText.Format(value, format == "bullet" ? "decimal" : format, language));
                 i++;
                 continue;
             }

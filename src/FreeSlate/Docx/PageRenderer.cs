@@ -427,8 +427,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var (copies, moveX, moveY) = Relief(piece, x, textBaseline);
                 svg.Append(copies);
                 // 3D text is drawn as PowerPoint draws it, above the page; the text stays selectable.
-                if (piece.Style.Solid != null && drawings != null && !string.IsNullOrWhiteSpace(piece.Text))
+                var cost = piece.Text.Length * Math.Max(1, piece.Style.Size / 12);
+                if (piece.Style.Solid != null && drawings != null && !string.IsNullOrWhiteSpace(piece.Text) && context.Text3DBudget >= cost)
                 {
+                    context.Text3DBudget -= cost;
                     front.Add(drawings.Text3D(piece.Text, piece.Style, x, textBaseline, piece.Width));
                     selection.Append(SelectionText(piece, x, textBaseline));
                 }
