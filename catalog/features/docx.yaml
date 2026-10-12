@@ -1326,7 +1326,9 @@ areas:
           fits where it and the line that closes the table below it fit (docx/local/tblbottom-*). Rows that do not
           fit split at a line of each cell, a paragraph's last line fitting with its space after; header rows, rows of
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
-          cell whose first line does not fit move on whole (a picture line that fits without its space after too); the
+          cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
+          from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,
+          docx/local/rs3-*); the
           rest of a split row ends below its last paragraph's space after, at least its at-least height, and cells
           aligned to the middle or bottom align again in each part, the first down to its tallest content (tblsplit-*,
           docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt). Header rows go with the first row to the next page where it does not fit below them

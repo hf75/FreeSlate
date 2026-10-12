@@ -140,6 +140,25 @@ public sealed class RowBox
             var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align };
             // Where the lines would stand without the cell's vertical alignment, which each part applies again.
             var rest = cell.Lines.FirstOrDefault(l => l.Top - cell.Lowered + l.Line.Height + l.After > available + 0.01);
+            // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
+            // from Word 2013 on (measured with docx/local/rs3-*: three lines with two above the cut, or one, go on, four
+            // split two and two; before, rows split at any line).
+            if (rest != null && rest.Widow && !rest.Line.First)
+            {
+                var k = cell.Lines.FindIndex(l => ReferenceEquals(l, rest));
+                var first = k;
+                while (first > 0 && !cell.Lines[first].Line.First)
+                    first--;
+                var last = k;
+                while (last + 1 < cell.Lines.Count && !cell.Lines[last].Line.Last)
+                    last++;
+                var (above, below) = (k - first, last - k + 1);
+                if (below < 2 && above >= 3)
+                    k--;
+                else if (above < 2 || below < 2)
+                    k = first;
+                rest = cell.Lines[k];
+            }
             if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
                 return null;
             var offset = rest != null ? rest.Top - cell.ContentTop : 0;
@@ -1326,7 +1345,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     {
                         foreach (var anchor in line.Anchors ?? [])
                             lineTops[anchor] = (y, line.AnchorX?.GetValueOrDefault(anchor) ?? 0);
-                        lines.Add(new PlacedLine(line, 0, y));
+                        // Widow control holds where rows split from Word 2013 on (docx/local/rs3-*14, rs3-*12).
+                        lines.Add(new PlacedLine(line, 0, y) { Widow = (paragraph.Format.WidowControl ?? true) && context.CompatibilityMode >= 15 });
                         y += line.Height;
                     }
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())

@@ -18,6 +18,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
 
     /// <summary>The space after the line's paragraph where the line ends it, in table cells (RowBox.Split).</summary>
     public double After { get; init; }
+
+    /// <summary>Whether the line's paragraph has widow control, in table cells (RowBox.Split).</summary>
+    public bool Widow { get; init; }
 }
 
 /// <summary>A page of the laid-out document.</summary>
