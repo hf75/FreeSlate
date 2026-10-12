@@ -728,6 +728,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (pages.Count == 0)
             NewPage(lastSection, firstOfSection: true);
         PlaceNotes();
+        // Notes that go on past the last page of text fill pages of their own.
+        for (var extra = 0; extra < 20 && (carried != null || deferredNotes.Count > 0); extra++)
+        {
+            NewPage(section);
+            PlaceNotes();
+        }
         foreach (var p in pages)
         {
             AlignVertically(p);
@@ -1148,6 +1154,25 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     NoteBox? carried, carriedHere;
     double? bodyEnd;
 
+    /// <summary>
+    /// Lines no page break may come between (a unit: the lines of a paragraph that keeps them together, the first two
+    /// and the last two of one under widow control, the last line of a paragraph kept with the next and that one's
+    /// first) make room only for the notes the page held when the unit began, set here while it is placed: the notes
+    /// referred to in it take no room from it (measured with docx/local/fnkeep-*: a keep chain fills the page as
+    /// without them, a widow-controlled pair of lines stays above its note, which shows what fits below the text and
+    /// goes on to the next page).
+    /// </summary>
+    (PageBox Page, double Height)? keptNotes;
+
+    /// <summary>The notes the lines of the unit in hand referred to, in order.</summary>
+    readonly List<string> unitNotes = [];
+
+    /// <summary>Whether kept lines ran into the current page's notes, which then yield (YieldNotes).</summary>
+    bool notesYield;
+
+    /// <summary>Notes kept lines left no room for, whole, which go first on the next page.</summary>
+    readonly List<string> deferredNotes = [];
+
     /// <summary>A footnote (or a separator) laid out in a width: its lines and fills from its top, and its height.</summary>
     sealed record NoteBox(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height)
     {
@@ -1307,6 +1332,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The current page's footnotes at its bottom, above the bottom margin, under their separator.</summary>
     void PlaceNotes()
     {
+        if (notesYield)
+            YieldNotes();
+        notesYield = false;
         if (page == null || pageNotes.Count == 0 && carriedHere == null || footnotes == null)
         {
             pageNotes.Clear();
@@ -1362,12 +1390,75 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     void ContinueNotes()
     {
-        if (carried == null || page == null)
+        if (page == null)
             return;
-        var room = page.BodyBottom - page.BodyTop - SeparatorHeight - 36;
-        var (shown, rest) = carried.Cut(Math.Max(room, carried.Lines.Count > 0 ? carried.Lines[0].Line.Height : 0));
-        (carriedHere, carried) = (shown ?? carried, shown == null ? null : rest);
-        notesHeight = SeparatorHeight + carriedHere.Height;
+        if (carried != null)
+        {
+            var room = page.BodyBottom - page.BodyTop - SeparatorHeight - 36;
+            var (shown, rest) = carried.Cut(Math.Max(room, carried.Lines.Count > 0 ? carried.Lines[0].Line.Height : 0));
+            (carriedHere, carried) = (shown ?? carried, shown == null ? null : rest);
+            notesHeight = SeparatorHeight + carriedHere.Height;
+        }
+        // Notes kept lines left no room for follow, before the page's own.
+        AddNotes(deferredNotes.ToList());
+        deferredNotes.Clear();
+    }
+
+    /// <summary>
+    /// Whether notes referred to in a unit of kept lines ending at <paramref name="bottom"/> show below it, under the
+    /// notes the page held before it (<paramref name="before"/>): all but the last whole and the last with a line at
+    /// least, as a line's notes (SplitNotes); a unit whose notes do not show goes to the next page unless it began
+    /// its page (measured with docx/local/fnkeep-y4: a widow-controlled pair of lines at the bottom of the page moves
+    /// on with its note; fnkeep-q2: a keep chain below other text too).
+    /// </summary>
+    bool NotesShow(double bottom, double before, List<string> ids)
+    {
+        if (ids.Count == 0 || footnotes == null || page == null)
+            return true;
+        var room = page.BodyBottom - bottom - before - (before <= 0.01 ? SeparatorHeight : 0);
+        for (var i = 0; i + 1 < ids.Count; i++)
+            room -= Note(ids[i]).Height;
+        if (room < -0.01)
+            return false;
+        var last = Note(ids[^1]);
+        return last.Height <= room + 0.01 || last.Cut(room).Shown != null;
+    }
+
+    /// <summary>
+    /// The notes of a page whose kept lines left them too little room below the text (keptNotes): those that fit stay,
+    /// the first that does not shows the lines that fit, if any, and continues on the next page, where the notes after
+    /// it go whole (measured with docx/local/fnkeep-*: the next page shows them under the separator, before its own).
+    /// </summary>
+    void YieldNotes()
+    {
+        if (page == null || footnotes == null || splitNote != null)
+            return;
+        var room = page.BodyBottom - y - (carriedHere != null ? SeparatorHeight + carriedHere.Height : pageNotes.Count > 0 ? SeparatorHeight : 0);
+        var stays = new List<string>();
+        for (var i = 0; i < pageNotes.Count; i++)
+        {
+            var note = Note(pageNotes[i]);
+            if (note.Height <= room + 0.01)
+            {
+                stays.Add(pageNotes[i]);
+                room -= note.Height;
+                continue;
+            }
+            var (shown, rest) = note.Cut(room);
+            if (shown != null && rest != null)
+            {
+                stays.Add(pageNotes[i]);
+                splitNote = (pageNotes[i], shown);
+                carried = rest;
+            }
+            else
+                deferredNotes.Add(pageNotes[i]);
+            deferredNotes.AddRange(pageNotes.Skip(i + 1));
+            break;
+        }
+        pageNotes.Clear();
+        pageNotes.AddRange(stays);
+        RecountNotes();
     }
 
     void NextColumn(bool natural)
@@ -1803,15 +1894,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (!columnEmpty)
         {
             var chained = previous != null ? previous.Format.KeepNext == true : tableKept;
+            // A paragraph that goes on with a unit of kept lines needs room only for the notes before the unit.
+            var bottom = chained && keptNotes is { } open && open.Page == page ? Math.Min(page!.BodyBottom - open.Height, bodyEnd ?? double.MaxValue) : Bottom;
             bool moves;
             if (format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock or TableBlock && !chained)
                 moves = ChainBreaks(blocks, index, lines, width, y + gap);
             else if (format.KeepLines == true)
-                moves = y + gap + Needed(lines) > Bottom + 0.01;
+                moves = y + gap + Needed(lines) > bottom + 0.01;
             else
             {
                 var needed = gap + FirstLines(lines, format);
-                moves = y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
+                moves = y + needed > bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
             }
             if (moves)
             {
@@ -1895,6 +1988,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var firstLineTop = (Page: page!, Top: y);
         var widow = format.WidowControl ?? true;
+        // Lines no page break may come before (Bound) or after (Binds), which form units with their neighbours
+        // (keptNotes), on pages of one column: a paragraph's lines where it keeps them together, its second and last
+        // under widow control, its first after a paragraph kept with it, its last where it is kept with the next.
+        var keepsNext = format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock or TableBlock;
+        var chainedHere = previous != null ? previous.Format.KeepNext == true : tableKept;
+        var units = section.Columns == 1 && footnotes != null;
+        bool Bound(int k) => units && (k > 0
+            ? lines[k - 1].EndBreak is not ("page" or "column") && (format.KeepLines == true || widow && (k == 1 || k == lines.Count - 1))
+            : chainedHere);
+        bool Binds(int k) => k + 1 < lines.Count ? Bound(k + 1) : units && keepsNext;
+        if (!chainedHere || keptNotes is not { } going || going.Page != page)
+            keptNotes = null;
+        // Where the unit in hand began in the paragraph (-1: before it), and whether it began its page.
+        var unitStart = keptNotes != null ? -1 : 0;
+        var unitAtTop = false;
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
         var hereAtTop = columnEmpty;
@@ -1908,8 +2016,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             var line = lines[k];
             // A line with footnote references needs room for their notes too; a note too long for the rest of the page
-            // continues on the next.
+            // continues on the next. A kept line needs room only for the notes before its keep unit.
+            if (!Bound(k) && !Binds(k))
+                keptNotes = null;
+            else if (!Bound(k) || keptNotes is not { } unit || unit.Page != page)
+            {
+                keptNotes = (page!, notesHeight);
+                unitNotes.Clear();
+                (unitStart, unitAtTop) = (k, columnEmpty);
+            }
+            var keptLine = keptNotes != null;
             var notesNeeded = NotesHeight(line.Notes);
+            var limit = keptNotes is { } unitBefore ? Math.Min(page!.BodyBottom - unitBefore.Height, bodyEnd ?? double.MaxValue) : Bottom - notesNeeded;
             var split = false;
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
@@ -1918,13 +2036,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // the paragraph's own objects (measured with docx/local/anchorpush-*: a paragraph whose full-width object
             // leaves it no room on the page moves to the next with it, and the lines above keep their places).
             var skip = moved ? 0 : line.Skip;
-            if (y + skip + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + skip + line.FitHeight <= Bottom + 0.01
+            if (!keptLine && y + skip + line.FitHeight > limit + 0.01 && !columnEmpty && notesNeeded > 0 && y + skip + line.FitHeight <= Bottom + 0.01
                 && SplitNotes(line.Notes!, Bottom - y - skip - line.FitHeight))
                 split = true;
             // A line of nothing but a page or column break stays where it is, past the bottom too: it moves nothing on
             // (measured with docx/external/libreoffice/extras-ooxmlexport/FDO77715: headings that begin with a column
             // break, after a full page, stand at the top of the next page, no empty page between).
-            else if (y + skip + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && !BreakOnly(line))
+            else if (y + skip + fitHeight > limit + 0.01 && !columnEmpty && !BreakOnly(line))
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -1960,6 +2078,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 hereAtTop = true;
                 moved = true;
                 skip = 0;
+                // The unit goes on below the notes the new page begins with.
+                keptNotes = Bound(k) || Binds(k) ? (page!, notesHeight) : null;
+                unitNotes.Clear();
+                (unitStart, unitAtTop) = (k, true);
             }
             y += skip;
             // Where the first line stands as planned the paragraph begins above it; moved to another column or page,
@@ -1989,7 +2111,38 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (split)
                 bodyEnd = y;
             else
+            {
+                var had = pageNotes.Count;
                 AddNotes(line.Notes);
+                if (keptNotes != null)
+                {
+                    unitNotes.AddRange(pageNotes.Skip(had));
+                    notesYield |= y - line.Overhang > page!.BodyBottom - notesHeight + 0.01;
+                }
+            }
+            // A unit whose notes do not show below it goes to the next page with them, unless it began the page.
+            if (keptNotes is { } ending && !Binds(k) && unitStart >= 0 && !unitAtTop && line.EndBreak is not ("page" or "column")
+                && !NotesShow(y - line.Overhang, ending.Height, unitNotes))
+            {
+                var count = k - unitStart + 1;
+                page!.Lines.RemoveRange(page.Lines.Count - count, count);
+                flow.RemoveAll(f => f.Index >= page.Lines.Count);
+                foreach (var id in unitNotes)
+                    pageNotes.Remove(id);
+                RecountNotes();
+                notesYield = false;
+                if (unitStart == 0)
+                    page.Paragraphs.Remove(paragraph);
+                NextColumn(natural: true);
+                (left, width) = Column(column);
+                here = 0;
+                hereAtTop = true;
+                moved = true;
+                keptNotes = null;
+                unitNotes.Clear();
+                k = unitStart - 1;
+                continue;
+            }
             if (line.EndBreak is "page")
             {
                 NewPage(section);
@@ -2183,8 +2336,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// with docx/external/libreoffice/extras-ooxmlexport/FDO77715: headings that begin with a column break near the
     /// bottom of a page leave no empty page).
     /// </summary>
-    static double FirstLines(List<Line> lines, ParagraphFormat format) =>
-        Needed(lines.Take((format.WidowControl ?? true) && lines.Count > 1 && lines[0].EndBreak is not ("page" or "column") ? 2 : 1).ToList());
+    static double FirstLines(List<Line> lines, ParagraphFormat format) => Needed(lines.Take(FirstLineCount(lines, format)).ToList());
+
+    /// <summary>How many first lines of a paragraph go together: two under widow control, else one.</summary>
+    static int FirstLineCount(List<Line> lines, ParagraphFormat format) =>
+        (format.WidowControl ?? true) && lines.Count > 1 && lines[0].EndBreak is not ("page" or "column") ? 2 : 1;
 
     /// <summary>The height lines need on a page: all of them, the last without what may hang past the bottom.</summary>
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
@@ -2204,6 +2360,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var y = top;
         // Whether a paragraph of the chain placed so far could break and give its last lines to the next column.
         var gives = false;
+        // The notes the chain refers to, which must show below a chain that cannot break (NotesShow).
+        var notes = new List<string>();
         for (var k = index; k < blocks.Count; k++)
         {
             if (blocks[k] is TableBlock table)
@@ -2250,8 +2408,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var needed = last && paragraph.Format.KeepLines != true ? FirstLines(own, paragraph.Format) : Needed(own);
             if (needed <= room + 0.01)
             {
+                var counted = last && paragraph.Format.KeepLines != true ? own.Take(FirstLineCount(own, paragraph.Format)) : own;
+                foreach (var id in counted.SelectMany(l => l.Notes ?? []))
+                {
+                    if (footnotes != null && footnotes.ContainsKey(id) && !pageNotes.Contains(id) && !notes.Contains(id))
+                        notes.Add(id);
+                }
                 if (last)
-                    return false;
+                    return !gives && section.Columns == 1 && !NotesShow(y + needed, notesHeight, notes);
                 gives |= Breaks(own, paragraph.Format, double.MaxValue);
                 y += own.Sum(l => l.Height);
                 continue;
