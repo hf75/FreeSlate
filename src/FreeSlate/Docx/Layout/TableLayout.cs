@@ -59,6 +59,21 @@ public sealed class CellPart
 
     /// <summary>The diagonal lines of the cell: its left and right edge and the lines (tl2br, tr2bl).</summary>
     public (double Left, double Right, BorderLine? Down, BorderLine? Up) Diagonals { get; init; }
+
+    /// <summary>The cell's vertical alignment (w:vAlign) and how far it lowered the content.</summary>
+    public string? Align { get; init; }
+    public double Lowered { get; init; }
+
+    /// <summary>The part moved down by <paramref name="dy"/> points.</summary>
+    public CellPart Shifted(double dy)
+    {
+        var moved = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered + dy };
+        moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
+        moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
+        moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
+        moved.Anchors.AddRange(Anchors.Select(a => a.Offset(0, dy)));
+        return moved;
+    }
 }
 
 /// <summary>
@@ -102,11 +117,12 @@ public sealed class RowBox
 
     /// <summary>
     /// The row cut at <paramref name="available"/> points (catalog: table.rows): each cell keeps the lines that end
-    /// above the cut, the rest continue at the top of the continuation, below its top line and margin, which is at
-    /// least the row's at-least height again. Null where no cell has a line above the cut or none below it, and,
-    /// unless <paramref name="force"/>d (a row taller than its page), for rows Word does not split (measured with
-    /// docx/local/tblsplit-*): those that may not split, header rows, rows of exact height and rows whose at-least
-    /// height does not fit above the cut.
+    /// above the cut, a paragraph's last line with the paragraph's space after, the rest continue at the top of the
+    /// continuation, below its top line and margin, which is at least the row's at-least height again. Null where no
+    /// cell has a line above the cut or none below it, and, unless <paramref name="force"/>d (a row taller than its
+    /// page), for rows Word does not split (measured with docx/local/tblsplit-*, rowsplit-*, rowsplit2-*): those that
+    /// may not split, header rows, rows of exact height, rows whose at-least height does not fit above the cut and
+    /// rows with a cell whose first line does not (a picture line with space after it that fits alone moves on too).
     /// </summary>
     public (RowBox Head, RowBox Tail)? Split(double available, bool force = false)
     {
@@ -120,9 +136,12 @@ public sealed class RowBox
         var tailHeight = TopWidth;
         foreach (var cell in Cells)
         {
-            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals };
-            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals };
-            var rest = cell.Lines.FirstOrDefault(l => l.Top + l.Line.Height > available + 0.01);
+            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered };
+            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align };
+            // Where the lines would stand without the cell's vertical alignment, which each part applies again.
+            var rest = cell.Lines.FirstOrDefault(l => l.Top - cell.Lowered + l.Line.Height + l.After > available + 0.01);
+            if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
+                return null;
             var offset = rest != null ? rest.Top - cell.ContentTop : 0;
             foreach (var line in cell.Lines)
             {
@@ -159,14 +178,38 @@ public sealed class RowBox
                     tailPart.Anchors.Add(anchor.Offset(0, -offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
             }
             if (tailPart.Lines.Count > 0)
-                tailHeight = Math.Max(tailHeight, tailPart.Lines.Max(l => l.Top + l.Line.Height) + cell.BottomMargin);
+                tailHeight = Math.Max(tailHeight, tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After) + cell.BottomMargin);
             head.Cells.Add(headPart);
             tail.Cells.Add(tailPart);
         }
         if (!any || !continues)
             return null;
         tail.Height = Math.Max(tailHeight, TopWidth + Least);
+        Realign(head.Cells, null);
+        Realign(tail.Cells, tail.Height);
         return (head, tail);
+    }
+
+    /// <summary>
+    /// Cells aligned to the middle or the bottom align again in a part of a split row: within the part's height, or
+    /// for the part before the cut down to the bottom of its tallest content (measured with docx/local/rowsplit-28c).
+    /// </summary>
+    static void Realign(List<CellPart> parts, double? height)
+    {
+        double? Bottom(CellPart part) => part.Lines.Count == 0 ? null : part.Lines.Max(l => l.Top + l.Line.Height + l.After) - part.Lowered + part.BottomMargin;
+        var bottoms = parts.Select(Bottom).ToList();
+        if (height == null && bottoms.All(b => b == null))
+            return;
+        var room = height ?? bottoms.Max(b => b ?? 0);
+        for (var i = 0; i < parts.Count; i++)
+        {
+            if (parts[i].Align is not ("center" or "bottom") || bottoms[i] is not { } bottom)
+                continue;
+            var free = Math.Max(0, room - bottom);
+            var lowered = parts[i].Align == "center" ? free / 2 : free;
+            if (Math.Abs(lowered - parts[i].Lowered) > 0.001)
+                parts[i] = parts[i].Shifted(lowered - parts[i].Lowered);
+        }
     }
 
     RowBox Copy(double height)
@@ -504,6 +547,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     ContentTop = top,
                     BottomMargin = margins.Bottom,
                     Diagonals = (cellFrom, cellFrom + cellWidth, cell.CellBorders.TopLeftToBottomRight, cell.CellBorders.TopRightToBottomLeft),
+                    Align = Rotated(cell) ? null : cell.Format.VerticalAlign,
+                    Lowered = Rotated(cell) ? 0 : lowered,
                 };
                 if (Rotated(cell))
                 {
@@ -1276,6 +1321,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var paragraphTop = y + (first ? 0 : after);
                     y += first ? before : context.Between(after, before, ownAfter);
                     var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
+                    var firstLine = lines.Count;
                     foreach (var line in paragraphs.Layout(paragraph, width, fields))
                     {
                         foreach (var anchor in line.Anchors ?? [])
@@ -1292,6 +1338,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         ? (b == blocks.Count - 1 || blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
                         : paragraph.Format.After ?? 0;
                     after = !spaced && following == style ? 0 : ownAfter;
+                    if (lines.Count > firstLine)
+                        lines[^1] = lines[^1] with { After = after };
                     previous = style;
                     first = false;
                     break;
