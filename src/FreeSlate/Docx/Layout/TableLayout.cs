@@ -721,7 +721,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// three for triple; thin and thick lines with 0.75 pt for thin lines and small gaps (measured with
     /// docx/local/tbl-features).
     /// </summary>
-    static IEnumerable<(double Offset, double Width)> Stripes(BorderLine line)
+    internal static IEnumerable<(double Offset, double Width)> Stripes(BorderLine line)
     {
         var w = line.Width;
         switch (line.Style)

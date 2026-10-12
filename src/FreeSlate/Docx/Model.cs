@@ -58,7 +58,14 @@ public sealed record MathInline(XElement Element, bool Display, string? Justific
     : Inline(Format);
 
 /// <summary>A tab character (w:tab in a run, catalog: paragraph.tabs).</summary>
-public sealed record TabInline(RunFormat Format) : Inline(Format);
+public sealed record TabInline(RunFormat Format) : Inline(Format)
+{
+    /// <summary>
+    /// An absolute position tab (w:ptab): its alignment (left, center, right), what it is relative to (margin,
+    /// indent) and its leader; null for an ordinary tab.
+    /// </summary>
+    public (string Alignment, string RelativeTo, string Leader)? Positional { get; init; }
+}
 
 /// <summary>A break (w:br, w:cr, catalog: run.content): textWrapping (a line break), page or column, with its clear.</summary>
 public sealed record BreakInline(string Type, string? Clear, RunFormat Format) : Inline(Format);
@@ -1069,6 +1076,10 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "tab":
                     if (!field.Hidden)
                         field.Target(content).Add(new TabInline(format));
+                    break;
+                case "ptab":
+                    if (!field.Hidden)
+                        field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none") });
                     break;
                 case "br":
                     if (!field.Hidden)

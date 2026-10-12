@@ -868,13 +868,32 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var y = 0.0;
         double after = 0;
         var first = true;
-        foreach (var block in reader!.Story(part))
+        var blocks = reader!.Story(part);
+        // Paragraph borders and shading as in the body: paragraphs with the same frame share one box.
+        var boxTop = 0.0;
+        Frame? previousFrame = null;
+        for (var b = 0; b < blocks.Count; b++)
         {
+            var block = blocks[b];
             if (block is ParagraphBlock paragraph)
             {
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
                 var paragraphTop = y + (first ? 0 : after);
                 y += first ? paragraph.Format.Before ?? 0 : context.Between(after, paragraph.Format.Before ?? 0);
+                var frame = Frame.Read(paragraph.Format);
+                var continues = frame != null && frame.Same(previousFrame);
+                var nextContinues = frame != null && b + 1 < blocks.Count && blocks[b + 1] is ParagraphBlock following && frame.Same(Frame.Read(following.Format));
+                double? betweenAt = null;
+                if (frame != null && !continues)
+                {
+                    boxTop = y;
+                    y += frame.Top is { Visible: true } t ? t.Space + t.Total : 0;
+                }
+                else if (frame?.Between is { Visible: true } between)
+                {
+                    betweenAt = y + between.Space;
+                    y += 2 * between.Space + between.Total;
+                }
                 var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                 foreach (var line in layout.Layout(paragraph, width, fields))
                 {
@@ -883,6 +902,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     box.Lines.Add(new PlacedLine(line, left, y));
                     y += line.Height;
                 }
+                if (frame != null)
+                {
+                    if (!nextContinues)
+                        y += frame.Bottom is { Visible: true } bottomLine ? bottomLine.Space + bottomLine.Total : 0;
+                    frame.Draw(box.Shading, box.Borders, left, width, boxTop, y, top: !continues, bottom: !nextContinues, between: betweenAt);
+                }
+                previousFrame = frame;
                 foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                 {
                     var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, left));
@@ -909,6 +935,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 TableLayout.Frame(laid, left, tableTop, y, box.Borders);
                 after = 0;
+                previousFrame = null;
             }
             first = false;
         }
@@ -1505,24 +1532,39 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// between line and the bottom line. The shading reaches 1.4 pt left and 1.55 pt right of the text, the side
         /// lines stand their space outside it (measured with docx/local/pbdr).
         /// </summary>
-        public void Draw(PageBox page, double columnLeft, double columnWidth, ParagraphFormat format, double boxTop, double boxBottom, bool top, bool bottom, double? between)
+        public void Draw(PageBox page, double columnLeft, double columnWidth, ParagraphFormat format, double boxTop, double boxBottom, bool top, bool bottom, double? between) =>
+            Draw(page.Shading, page.Borders, columnLeft, columnWidth, boxTop, boxBottom, top, bottom, between);
+
+        public void Draw(List<FillRect> shadings, List<FillRect> lines, double columnLeft, double columnWidth, double boxTop, double boxBottom, bool top, bool bottom, double? between)
         {
             var innerLeft = columnLeft + indentLeft - 1.4 - (Left is { Visible: true } il ? il.Space : 0);
             var innerRight = columnLeft + columnWidth - indentRight + 1.55 + (Right is { Visible: true } ir ? ir.Space : 0);
             var left = innerLeft - (Left is { Visible: true } l ? l.Total : 0);
             var right = innerRight + (Right is { Visible: true } r ? r.Total : 0);
             if (Fill is { } fill)
-                page.Shading.Add(new FillRect(innerLeft, boxTop, innerRight - innerLeft, boxBottom - boxTop, fill));
+                shadings.Add(new FillRect(innerLeft, boxTop, innerRight - innerLeft, boxBottom - boxTop, fill));
+            // Double and thin-and-thick lines in their strokes, as tables draw them (docx/external/poi/FancyFoot: a
+            // thin-thick top line, 3 pt above 0.75 pt).
+            void Across(BorderLine line, double y)
+            {
+                foreach (var (offset, thickness) in TableLayout.Stripes(line))
+                    lines.Add(new FillRect(left, y + offset, right - left, thickness, line.Color));
+            }
+            void Down(BorderLine line, double x)
+            {
+                foreach (var (offset, thickness) in TableLayout.Stripes(line))
+                    lines.Add(new FillRect(x + offset, boxTop, thickness, boxBottom - boxTop, line.Color));
+            }
             if (Left is { Visible: true } leftLine)
-                page.Borders.Add(new FillRect(left, boxTop, leftLine.Total, boxBottom - boxTop, leftLine.Color));
+                Down(leftLine, left);
             if (Right is { Visible: true } rightLine)
-                page.Borders.Add(new FillRect(right - rightLine.Total, boxTop, rightLine.Total, boxBottom - boxTop, rightLine.Color));
+                Down(rightLine, right - rightLine.Total);
             if (top && Top is { Visible: true } topLine)
-                page.Borders.Add(new FillRect(left, boxTop, right - left, topLine.Total, topLine.Color));
+                Across(topLine, boxTop);
             if (between is { } betweenY && Between is { Visible: true } betweenLine)
-                page.Borders.Add(new FillRect(left, betweenY, right - left, betweenLine.Total, betweenLine.Color));
+                Across(betweenLine, betweenY);
             if (bottom && Bottom is { Visible: true } bottomLine)
-                page.Borders.Add(new FillRect(left, boxBottom - bottomLine.Total, right - left, bottomLine.Total, bottomLine.Color));
+                Across(bottomLine, boxBottom - bottomLine.Total);
         }
     }
 

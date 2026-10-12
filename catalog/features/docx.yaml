@@ -789,7 +789,9 @@ areas:
           line below the last, the between line between them with its space above and below it; each line and its
           space take room in the paragraph, the space before and after lie outside the box. The shading reaches 1.4 pt
           left and 1.55 pt right of the text (vertically just its lines), the side lines stand their space outside it
-          (measured with docx/local/pbdr, all lines within 0.15 pt).
+          (measured with docx/local/pbdr, all lines within 0.15 pt). Double and thin-and-thick lines are drawn in their
+          strokes as table borders are (a thin-thick top line 3 pt above 0.75 pt, docx/external/poi/FancyFoot);
+          headers and footers draw their paragraphs' borders and shading too.
 
       - id: paragraph.tabs
         title: Tab stops
@@ -806,7 +808,9 @@ areas:
           draw a line through the line and the space after the paragraph. Decimal stops align on the settings' decimal
           symbol (with a German comma, 12.5 ends at the stop). A left stop past the right margin moves the tab to the
           next line, where it fills the line; centered, right and decimal stops past it align at the margin
-          (docx/generated/tabs, docx/local/tab-rules, tab-break).
+          (docx/generated/tabs, docx/local/tab-rules, tab-break). An absolute position tab (w:ptab) aligns what follows
+          it at the left edge, the middle or the right edge of the margins or indents, as a stop of that alignment
+          there would (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt).
 
       - id: paragraph.frames
         title: Text frames and drop caps

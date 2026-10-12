@@ -671,6 +671,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The floating drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, AnchorInline Anchor)> anchored = [];
 
+    /// <summary>The absolute position tabs (w:ptab) of the paragraph being laid out, by their place in its text.</summary>
+    readonly Dictionary<int, (string Alignment, string RelativeTo, string Leader)> positional = [];
+
+    /// <summary>Where absolute position tabs count from in the paragraph being laid out: its margins' and its indents' edges.</summary>
+    (double MarginLeft, double MarginRight, double IndentLeft, double IndentRight) positionalArea;
+
     /// <summary>The starts and ends of editable ranges of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, bool Start)> permissions = [];
     readonly List<(int Index, string Id, bool Start)> commentMarks = [];
@@ -804,6 +810,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var left = format.Left ?? 0;
         var right = format.Right ?? 0;
         var firstLine = format.FirstLine ?? 0;
+        positionalArea = (0, width, left, width - right);
         var lines = new List<Line>();
         // Justified lines may squeeze the spaces between their words by a fifth to take one more word (measured with
         // Courier New, docx/local/jc-compress: ten words fit a column 12 pt narrower than they are, not 13 pt; left
@@ -1208,6 +1215,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         balanced.Clear();
         equations.Clear();
         anchored.Clear();
+        positional.Clear();
         permissions.Clear();
         commentMarks.Clear();
         changeMarks.Clear();
@@ -1396,7 +1404,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
-                case TabInline:
+                case TabInline tab:
+                    if (tab.Positional is { } absolute)
+                        positional[text.Length] = absolute;
                     text.Append('\t');
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
@@ -1581,6 +1591,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     double TabStop(ParagraphFormat format, double x, string text, int tab, List<RunStyle> charStyles, double[] advances, double left, double firstLine, double limit, out TabStop? stop)
     {
         stop = null;
+        // An absolute position tab aligns what follows it at the left edge, the middle or the right edge of the
+        // margins or the indents, as a stop of its alignment there would.
+        if (positional.TryGetValue(tab, out var absolute))
+        {
+            var (from, to) = absolute.RelativeTo == "indent" ? (positionalArea.IndentLeft, positionalArea.IndentRight) : (positionalArea.MarginLeft, positionalArea.MarginRight);
+            var (position, align) = absolute.Alignment switch { "center" => ((from + to) / 2, "center"), "right" => (to, "right"), _ => (from, "left") };
+            stop = new TabStop(position, align, absolute.Leader);
+            var next = tab + 1;
+            while (next < text.Length && text[next] is not ('\t' or '\n' or '\f' or '\v'))
+                next++;
+            var length = 0.0;
+            for (var k = tab + 1; k < next; k++)
+                length += advances[k];
+            return Math.Max(x, align switch { "center" => position - length / 2, "right" => position - length, _ => position });
+        }
         if (firstLine < 0 && x < left - 0.005)
         {
             // The left indent is a stop for the hanging first line, unless a custom stop comes before it.
