@@ -1387,7 +1387,10 @@ areas:
           order (whole table, column bands, row bands, first and last row, first and last column, corner cells),
           switched by w:tblLook, bands skipping the first and last row and column; a conditional format's borders
           apply at its region's edges, its inside lines inside the region; the style's paragraph and run properties
-          sit above the document defaults and under the paragraph style (docx/generated/tables). The first-row format
+          sit above the document defaults and under the paragraph style (docx/generated/tables); the row properties of
+          the formats of whole rows (w:trPr) under the row's own, so a first-row format's w:tblHeader repeats the first
+          row where w:tblLook asks for first-row formatting (docx/local/hc-1, hc-0; docx/external/libreoffice/
+          core-ooxml-pass/fdo78904_fileHang). The first-row format
           covers the first row and the header rows (w:tblHeader) right after it, one region for borders; with it off,
           bands still skip the header rows from the top; the last-row format applies to the last row unless it is a
           first row, also to a table's only row, the last column's alike; w:cnfStyle does not count

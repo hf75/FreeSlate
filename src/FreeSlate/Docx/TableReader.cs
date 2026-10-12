@@ -59,6 +59,27 @@ public sealed partial class ModelReader
 
         // Conditional formats and the formatting they bring, then the cells' content in their light.
         var leading = LeadingRows(model);
+        // The row properties of the conditional formats of whole rows, under the row's own (measured with
+        // docx/local/hc-1, hc-0: a first-row format's w:tblHeader repeats the first row where w:tblLook asks for
+        // first-row formatting, not where it does not; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
+        for (var r = 0; r < model.Rows.Count; r++)
+        {
+            if (model.Rows[r].Cells.Count == 0)
+                continue;
+            var applied = false;
+            foreach (var condition in Conditions(model, r, 0, leading).Where(c => c is "wholeTable" or "band1Horz" or "band2Horz" or "firstRow" or "lastRow"))
+            {
+                foreach (var style in chain)
+                {
+                    if (style.Element.Elements(Wml.W + "tblStylePr").FirstOrDefault(e => e.Attr("type") == condition)?.Child("trPr") is not { } trPr)
+                        continue;
+                    model.Rows[r].Format.Apply(trPr);
+                    applied = true;
+                }
+            }
+            if (applied)
+                model.Rows[r].Format.Apply(rows[r].Child("trPr"));
+        }
         for (var r = 0; r < model.Rows.Count; r++)
         {
             var row = model.Rows[r];
