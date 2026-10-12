@@ -20,7 +20,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 6 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 2 | 9 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 1 | 10 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 0 | 11 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 1 | 6 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **5** | **189** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **4** | **190** |
 
 <a id="package"></a>
 
@@ -501,7 +501,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | done | 14 | 3 |
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | done | 10 | 6 |
 | [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | partial | 2 | 1 |
-| [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | partial | 38 | 0 |
+| [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | done | 38 | 0 |
 | [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
 | [Animated text](#run.animated) | P3 | ●○○○○ | done | 1 | 1 |
 
@@ -637,13 +637,13 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Text effects (Word 2010)
 
-`run.textEffects` · P1 · difficulty 3 · partial
+`run.textEffects` · P1 · difficulty 3 · done
 
 Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 **Rendering:** Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).
 
-**Office behaviour:** w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). Still open: 3D text (w14:props3d, w14:scene3d), w14:lightRig.
+**Office behaviour:** w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). 3D text (w14:props3d with a bevel, depth or contour, w14:scene3d) Word draws as pictures of its lit glyphs; here it is PowerPoint's 3D text (pptx text.threeD) in the run's place, its baseline on the run's, under the run's light rig and always facing the viewer (a perspective camera draws as the front view in Word too); the glyphs' counters are holes the bevel runs into (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). Known deviation: Word's bevels are smoother at sharp corners and lit somewhat differently.
 
 **Elements (38):** [`w14:alpha`](../format/namespaces/w14.md#w14alpha), [`w14:bevel`](../format/namespaces/w14.md#w14bevel), [`w14:bevelB`](../format/namespaces/w14.md#w14bevelb), [`w14:bevelT`](../format/namespaces/w14.md#w14bevelt), [`w14:camera`](../format/namespaces/w14.md#w14camera), [`w14:contourClr`](../format/namespaces/w14.md#w14contourclr), [`w14:extrusionClr`](../format/namespaces/w14.md#w14extrusionclr), [`w14:fillToRect`](../format/namespaces/w14.md#w14filltorect), [`w14:glow`](../format/namespaces/w14.md#w14glow), [`w14:gradFill`](../format/namespaces/w14.md#w14gradfill), [`w14:gs`](../format/namespaces/w14.md#w14gs), [`w14:gsLst`](../format/namespaces/w14.md#w14gslst), [`w14:hueMod`](../format/namespaces/w14.md#w14huemod), [`w14:lightRig`](../format/namespaces/w14.md#w14lightrig), [`w14:lin`](../format/namespaces/w14.md#w14lin), [`w14:lum`](../format/namespaces/w14.md#w14lum), [`w14:lumMod`](../format/namespaces/w14.md#w14lummod), [`w14:lumOff`](../format/namespaces/w14.md#w14lumoff), [`w14:miter`](../format/namespaces/w14.md#w14miter), [`w14:noFill`](../format/namespaces/w14.md#w14nofill), [`w14:path`](../format/namespaces/w14.md#w14path), [`w14:props3d`](../format/namespaces/w14.md#w14props3d), [`w14:prstDash`](../format/namespaces/w14.md#w14prstdash), [`w14:reflection`](../format/namespaces/w14.md#w14reflection), [`w14:rot`](../format/namespaces/w14.md#w14rot), [`w14:round`](../format/namespaces/w14.md#w14round), [`w14:sat`](../format/namespaces/w14.md#w14sat), [`w14:satMod`](../format/namespaces/w14.md#w14satmod), [`w14:satOff`](../format/namespaces/w14.md#w14satoff), [`w14:scene3d`](../format/namespaces/w14.md#w14scene3d), [`w14:schemeClr`](../format/namespaces/w14.md#w14schemeclr), [`w14:shade`](../format/namespaces/w14.md#w14shade), [`w14:shadow`](../format/namespaces/w14.md#w14shadow), [`w14:solidFill`](../format/namespaces/w14.md#w14solidfill), [`w14:srgbClr`](../format/namespaces/w14.md#w14srgbclr), [`w14:textFill`](../format/namespaces/w14.md#w14textfill), [`w14:textOutline`](../format/namespaces/w14.md#w14textoutline), [`w14:tint`](../format/namespaces/w14.md#w14tint)
 

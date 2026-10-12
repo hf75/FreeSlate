@@ -4576,9 +4576,9 @@
       "description": "Glow, shadow, reflection, outline, gradient fill and 3D formats on text.",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).",
-      "office": "w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). Still open: 3D text (w14:props3d, w14:scene3d), w14:lightRig.",
+      "office": "w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow 1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944 end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines within 0.3 pt; docx/generated/shapes-effects 99.1 %). 3D text (w14:props3d with a bevel, depth or contour, w14:scene3d) Word draws as pictures of its lit glyphs; here it is PowerPoint's 3D text (pptx text.threeD) in the run's place, its baseline on the run's, under the run's light rig and always facing the viewer (a perspective camera draws as the front view in Word too); the glyphs' counters are holes the bevel runs into (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). Known deviation: Word's bevels are smoother at sharp corners and lit somewhat differently.",
       "elements": [
         "w14:alpha",
         "w14:bevel",

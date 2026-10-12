@@ -653,7 +653,7 @@ areas:
                    w14:sat, w14:satMod, w14:satOff, w14:schemeClr, w14:shade, w14:solidFill, w14:srgbClr, w14:tint]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Word's copy of the DrawingML text effects in the w14 namespace; map them onto the shared effect renderer
           (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).
@@ -663,8 +663,12 @@ areas:
           or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow
           1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944
           end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines
-          within 0.3 pt; docx/generated/shapes-effects 99.1 %). Still open: 3D text (w14:props3d, w14:scene3d),
-          w14:lightRig.
+          within 0.3 pt; docx/generated/shapes-effects 99.1 %). 3D text (w14:props3d with a bevel, depth or contour,
+          w14:scene3d) Word draws as pictures of its lit glyphs; here it is PowerPoint's 3D text (pptx text.threeD) in
+          the run's place, its baseline on the run's, under the run's light rig and always facing the viewer (a
+          perspective camera draws as the front view in Word too); the glyphs' counters are holes the bevel runs into
+          (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). Known deviation: Word's bevels
+          are smoother at sharp corners and lit somewhat differently.
 
       - id: run.openType
         title: OpenType features
