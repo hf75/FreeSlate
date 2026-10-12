@@ -64,10 +64,27 @@ public sealed class CellPart
     public string? Align { get; init; }
     public double Lowered { get; init; }
 
+    /// <summary>Lines of a cell merged down from a row above, which go on with this row (RowBox.Overflow).</summary>
+    public bool Carried { get; init; }
+
+    /// <summary>The rows the cell spans from this one down (w:vMerge), 1 where it ends here.</summary>
+    public int Span { get; init; } = 1;
+
+    /// <summary>The part as it stands, its content no longer lowered by an alignment.</summary>
+    public CellPart Settled()
+    {
+        var settled = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Carried = Carried, Span = Span };
+        settled.Lines.AddRange(Lines);
+        settled.Fills.AddRange(Fills);
+        settled.Strokes.AddRange(Strokes);
+        settled.Anchors.AddRange(Anchors);
+        return settled;
+    }
+
     /// <summary>The part moved down by <paramref name="dy"/> points.</summary>
     public CellPart Shifted(double dy)
     {
-        var moved = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered + dy };
+        var moved = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered + dy, Carried = Carried, Span = Span };
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
         moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
@@ -136,8 +153,8 @@ public sealed class RowBox
         var tailHeight = TopWidth;
         foreach (var cell in Cells)
         {
-            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered };
-            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align };
+            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered, Carried = cell.Carried, Span = cell.Span };
+            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Carried = cell.Carried, Span = cell.Span };
             // Where the lines would stand without the cell's vertical alignment, which each part applies again.
             var rest = cell.Lines.FirstOrDefault(l => l.Top - cell.Lowered + l.Line.Height + l.After > available + 0.01);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
@@ -229,6 +246,105 @@ public sealed class RowBox
             if (Math.Abs(lowered - parts[i].Lowered) > 0.001)
                 parts[i] = parts[i].Shifted(lowered - parts[i].Lowered);
         }
+    }
+
+    /// <summary>
+    /// The row without the lines of cells merged down into the rows below that end below it, as laid out from the
+    /// cell's top whatever its alignment, and those lines (with their fills and strokes, and the rest of a paragraph
+    /// that widow control would not let split there) as parts of their own, from the next row's top: they go on with
+    /// it, to the next page where the table breaks before it, there at the top of its content (measured with
+    /// docx/local/vmbw0-*, vmbw1-*; docx/external/poi/bug65649: the second line of a merged price goes on beside the
+    /// unit row below it, a merged heading centered on two rows stays with the first; docx/external/libreoffice/
+    /// extras-layout/tdf152298: the second line of a number aligned to the bottom of four rows goes on at the top of
+    /// the next page, its empty first line stays).
+    /// </summary>
+    public (RowBox Own, List<CellPart> Below) Overflow()
+    {
+        var below = new List<CellPart>();
+        bool Down(CellPart cell, double top, double height) => cell.Span > 1 && top - cell.Lowered + height > Height + 0.01;
+        if (!Cells.Any(c => c.Lines.Any(l => Down(c, l.Top, l.Line.Height))))
+            return (this, below);
+        var own = Copy(Height);
+        foreach (var cell in Cells)
+        {
+            var lines = cell.Lines;
+            var cut = lines.FindIndex(l => Down(cell, l.Top, l.Line.Height));
+            if (cut < 0)
+            {
+                own.Cells.Add(cell);
+                continue;
+            }
+            // Widow control: a paragraph keeps two lines on each side, else goes on whole.
+            if (lines[cut].Widow && !lines[cut].Line.First)
+            {
+                var first = cut;
+                while (first > 0 && !lines[first].Line.First)
+                    first--;
+                var last = cut;
+                while (last + 1 < lines.Count && !lines[last].Line.Last)
+                    last++;
+                var (above, after) = (cut - first, last - cut + 1);
+                if (after < 2 && above >= 3)
+                    cut--;
+                else if (above < 2 || after < 2)
+                    cut = first;
+            }
+            var limit = lines[cut].Top;
+            var stay = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered, Carried = cell.Carried };
+            var go = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Lowered = cell.Lowered, Carried = true, Span = cell.Span - 1 };
+            for (var k = 0; k < lines.Count; k++)
+                (k >= cut ? go : stay).Lines.Add(lines[k] with { Top = lines[k].Top - (k >= cut ? Height : 0) });
+            foreach (var fill in cell.Fills)
+            {
+                if (fill.Y >= limit - 0.01)
+                    go.Fills.Add(fill with { Y = fill.Y - Height });
+                else
+                    stay.Fills.Add(fill);
+            }
+            foreach (var stroke in cell.Strokes)
+            {
+                if (stroke.Y1 >= limit - 0.01)
+                    go.Strokes.Add(stroke.Offset(0, -Height));
+                else
+                    stay.Strokes.Add(stroke);
+            }
+            stay.Anchors.AddRange(cell.Anchors);
+            own.Cells.Add(stay);
+            below.Add(go);
+        }
+        return (own, below);
+    }
+
+    /// <summary>The row with more cell parts.</summary>
+    public RowBox With(IEnumerable<CellPart> parts)
+    {
+        var copy = Copy(Height);
+        copy.Cells.AddRange(Cells);
+        copy.Cells.AddRange(parts);
+        return copy;
+    }
+
+    /// <summary>
+    /// The row where it begins a page or column after the rows above it went on the page before: lines merged down
+    /// from them (Overflow) stand at the top of its content, as far apart as before.
+    /// </summary>
+    public RowBox Continued()
+    {
+        double? Raise(CellPart cell) => cell.Carried && cell.Lines.Count > 0 && cell.Lines.Min(l => l.Top) is var top && Math.Abs(top - cell.ContentTop) > 0.01
+            ? cell.ContentTop - top : null;
+        if (!Cells.Any(c => Raise(c) != null))
+            return this;
+        var copy = Copy(Height);
+        foreach (var cell in Cells)
+            copy.Cells.Add(Raise(cell) is { } dy ? cell.Shifted(dy).Settled() : cell);
+        // The last row of the merge grows to hold what goes on in it (docx/local/vmbw1-*: three lines of a merged cell
+        // the row below it on the page before was to share take a row of two lines' height and a third).
+        foreach (var cell in copy.Cells)
+        {
+            if (cell.Carried && cell.Span <= 1 && cell.Lines.Count > 0)
+                copy.Height = Math.Max(copy.Height, cell.Lines.Max(l => l.Top + l.Line.Height + l.After) + cell.BottomMargin);
+        }
+        return copy;
     }
 
     RowBox Copy(double height)
@@ -568,6 +684,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     Diagonals = (cellFrom, cellFrom + cellWidth, cell.CellBorders.TopLeftToBottomRight, cell.CellBorders.TopRightToBottomLeft),
                     Align = Rotated(cell) ? null : cell.Format.VerticalAlign,
                     Lowered = Rotated(cell) ? 0 : lowered,
+                    Span = Rotated(cell) ? 1 : rowsSpanned,
                 };
                 if (Rotated(cell))
                 {

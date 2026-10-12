@@ -1557,9 +1557,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             (left, width) = Column(column);
             tableTop = y;
         }
+        mergedDown.Clear();
         for (var r = 0; r < box.Rows.Count; r++)
         {
             var row = box.Rows[r];
+            // Lines of cells merged down from the row before go on with this one (RowBox.Overflow).
+            if (mergedDown.Count > 0)
+            {
+                row = row.With(mergedDown);
+                mergedDown.Clear();
+            }
+            var broke = false;
             while (!Fits(row, y))
             {
                 // A row that does not fit splits at a line of each cell (unless it may not split, measured with
@@ -1575,6 +1583,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 else if (columnEmpty)
                     break;
                 Break();
+                broke = true;
                 omitted = !row.Header && headers.Count > 0 && !Takes(row, y + headersHeight);
                 if (!row.Header && !omitted)
                 {
@@ -1585,10 +1594,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     }
                 }
             }
+            if (broke)
+                row = row.Continued();
             PlaceRow(row, left);
             AddNotes(NotesOf(row));
             last = row;
         }
+        // Lines merged down past the last row stand below it.
+        if (mergedDown.Count > 0)
+            TableLayout.Draw(new RowBox().With(mergedDown), 0, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
+        mergedDown.Clear();
         // A table that another table follows directly continues in it: Word joins them, one line between (measured
         // with docx/local/tbl-geom).
         if (last != null && !(index + 1 < blocks.Count && blocks[index + 1] is TableBlock))
@@ -1833,6 +1848,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     void PlaceRow(RowBox row, double left)
     {
+        // Lines of cells merged down that end below a table row go on with the next (RowBox.Overflow).
+        if (!row.Header)
+        {
+            var (own, below) = row.Overflow();
+            if (below.Count > 0)
+            {
+                row = own;
+                mergedDown.AddRange(below);
+            }
+        }
         var anchors = new List<CellAnchor>();
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
         foreach (var anchor in anchors)
@@ -1840,6 +1865,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         y += row.Height;
         columnEmpty = false;
     }
+
+    /// <summary>Lines of cells merged down below the table row placed last, for the next (RowBox.Overflow).</summary>
+    readonly List<CellPart> mergedDown = [];
 
     /// <summary>The lines below a row at the current position.</summary>
     void Below(RowBox row, double left)
