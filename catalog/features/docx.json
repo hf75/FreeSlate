@@ -23218,9 +23218,9 @@
       "title": "Embedded objects and controls",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "OLE objects, ActiveX controls and signature lines show their preview picture (often EMF or WMF, see picture.metafiles), as pptx `picture.ole` (done).",
-      "office": "Embedded objects (w:object) show the picture of their VML shape like any VML picture. Still open: ActiveX controls, signature lines.",
+      "office": "Embedded objects (w:object) show the picture of their VML shape like any VML picture; so do ActiveX controls (w:control): Word prints the picture they store, not the control (docx/local/ole-probe: a check box whose stored picture is a red rectangle prints as that rectangle). Signature lines (o:signatureline) Word draws itself whatever picture they store, scaled from 256 × 128 pixels to the shape: on white an X in 32 px Arial 10 px in with its baseline at 68, a line 2 px thick at 75 across the shape, the suggested signer, the signer's title and e-mail in 11 px Segoe UI 10 px in, their baselines at 91, 107 and 123 (docx/local/ole- sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and without signer and title, within 0.2 pt).",
       "elements": [
         "a15:objectPr",
         "a15:signatureLine",

@@ -42,9 +42,9 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 20 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
-| [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 1 | 2 |
+| [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **7** | **187** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **6** | **188** |
 
 <a id="package"></a>
 
@@ -3280,7 +3280,7 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [VML shapes, text boxes and WordArt](#vml.shapes) | P1 | ●●●●○ | done | 62 | 57 |
-| [Embedded objects and controls](#vml.ole) | P1 | ●●●○○ | partial | 8 | 7 |
+| [Embedded objects and controls](#vml.ole) | P1 | ●●●○○ | done | 8 | 7 |
 | [Watermarks](#vml.watermarks) | P1 | ●●●○○ | done | 3 | 3 |
 
 <a id="vml.shapes"></a>
@@ -3303,11 +3303,11 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 
 ### Embedded objects and controls
 
-`vml.ole` · P1 · difficulty 3 · partial
+`vml.ole` · P1 · difficulty 3 · done
 
 **Rendering:** OLE objects, ActiveX controls and signature lines show their preview picture (often EMF or WMF, see picture.metafiles), as pptx `picture.ole` (done).
 
-**Office behaviour:** Embedded objects (w:object) show the picture of their VML shape like any VML picture. Still open: ActiveX controls, signature lines.
+**Office behaviour:** Embedded objects (w:object) show the picture of their VML shape like any VML picture; so do ActiveX controls (w:control): Word prints the picture they store, not the control (docx/local/ole-probe: a check box whose stored picture is a red rectangle prints as that rectangle). Signature lines (o:signatureline) Word draws itself whatever picture they store, scaled from 256 × 128 pixels to the shape: on white an X in 32 px Arial 10 px in with its baseline at 68, a line 2 px thick at 75 across the shape, the suggested signer, the signer's title and e-mail in 11 px Segoe UI 10 px in, their baselines at 91, 107 and 123 (docx/local/ole- sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and without signer and title, within 0.2 pt).
 
 **Elements (8):** [`a15:objectPr`](../format/namespaces/a15.md#a15objectpr), [`a15:signatureLine`](../format/namespaces/a15.md#a15signatureline), [`o:OLEObject`](../format/namespaces/o.md#ooleobject), [`w:control`](../format/namespaces/w.md#wcontrol), [`w:movie`](../format/namespaces/w.md#wmovie), [`w:object`](../format/namespaces/w.md#wobject), [`w:objectEmbed`](../format/namespaces/w.md#wobjectembed), [`w:objectLink`](../format/namespaces/w.md#wobjectlink)
 
