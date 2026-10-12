@@ -1083,6 +1083,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
     }
 
+    /// <summary>
+    /// Whether two paragraphs that follow each other are items of the same list, between which HTML auto spacing leaves no
+    /// space (docx/external/poi/delins as Word prints it: list items 13.8 pt apart in 12 pt Times New Roman, 14 pt
+    /// before the first and after the last).
+    /// </summary>
+    public static bool ListPair(ParagraphBlock first, ParagraphBlock second) =>
+        first.Label != null && second.Label != null && first.Format.NumberingId == second.Format.NumberingId;
+
     /// <summary>The width rotated text is laid out in: wide enough not to wrap.</summary>
     const double Unwrapped = 1584;
 
@@ -1138,7 +1146,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // docx/local/autospace-cells-15 and -14).
                     var autoSpacing = !context.AddsSpacing;
                     var before = !spaced && previous == style ? 0
-                        : paragraph.Format.BeforeAuto == true && autoSpacing ? (first ? 0 : 14) : paragraph.Format.Before ?? 0;
+                        : paragraph.Format.BeforeAuto == true && autoSpacing ? (first || b > 0 && blocks[b - 1] is ParagraphBlock prior && ListPair(prior, paragraph) ? 0 : 14)
+                        : paragraph.Format.Before ?? 0;
                     var following = b + 1 < blocks.Count
                         ? blocks[b + 1] switch
                         {
@@ -1163,7 +1172,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
                         anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
                     }
-                    ownAfter = paragraph.Format.AfterAuto == true && autoSpacing ? (b == blocks.Count - 1 ? 0 : 14) : paragraph.Format.After ?? 0;
+                    ownAfter = paragraph.Format.AfterAuto == true && autoSpacing
+                        ? (b == blocks.Count - 1 || blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
+                        : paragraph.Format.After ?? 0;
                     after = !spaced && following == style ? 0 : ownAfter;
                     previous = style;
                     first = false;
