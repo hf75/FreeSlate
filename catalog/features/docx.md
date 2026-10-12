@@ -29,7 +29,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 0 | 8 |
 | [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 0 | 6 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 4 |
-| [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 2 | 2 |
+| [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 0 | 4 |
 | [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 0 | 9 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 6 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 2 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **2** | **192** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **0** | **194** |
 
 <a id="package"></a>
 
@@ -1453,8 +1453,8 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Comments](#review.comments) | P2 | ●●●○○ | partial | 18 | 4 |
-| [Tracked changes](#review.revisions) | P1 | ●●●○○ | partial | 39 | 40 |
+| [Comments](#review.comments) | P2 | ●●●○○ | done | 18 | 4 |
+| [Tracked changes](#review.revisions) | P1 | ●●●○○ | done | 39 | 40 |
 | [Editing permissions](#review.permissions) | P3 | ●○○○○ | done | 2 | 2 |
 | [Proofing state](#review.proofing) | P3 | ●○○○○ | done | 6 | 2 |
 
@@ -1462,11 +1462,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Comments
 
-`review.comments` · P2 · difficulty 3 · partial
+`review.comments` · P2 · difficulty 3 · done
 
 **Rendering:** Shown next to the pages (not on them) with their ranges highlighted; whether and how Word's PDF export includes comments is measured.
 
-**Office behaviour:** Without markup Word prints nothing of comments, and neither do we: ranges, references and the comments part are skipped (docx/generated/revisions). Not shown: comments beside the pages as the markup view has them.
+**Office behaviour:** Without markup Word prints nothing of comments, and neither do we by default: ranges, references and the comments part are skipped (docx/generated/revisions). With markup (the converter's markup option, as Word prints with markup: docx/local/markup-a, markup-d, markup-e, markup-f, markup-revisions; 84 to 98 %) a comment's range is shaded in its author's color at lightness 0.92 between thin brackets of the color, and its balloon stands in a gray pane (F2F2F2) 0.1 in right of the text, 3.6 in wide: 23.76 pt into the pane, 232.97 pt wide, as high as its text with 2.3 pt above and 1.8 pt below, in the shade of the range with an outline of 0.48 pt in the author's color, stacked 1.15 pt apart in the order of their places, at their line's top where there is room; a dotted line runs from the range's end along the line's bottom to the pane and on to 6 pt below the balloon's top. The balloon says "Commented [initials and number]:" in bold Segoe UI 9 pt, then the comment's text in its own fonts at 9 pt; a reply (w15:commentEx paraIdParent) has its own balloon labeled with "R" and the number it answers and no shading of its own; a resolved comment (done) is paler (range and balloon at lightness 0.98, outline and line at 0.875, text BFBFBF). Authors take Word's eight colors (D13438, 0078D4, 5C2E91, 498205, CC3595, 7160E8, 038387, 6D5700) in the order they appear (Word goes on counting over the documents of a session). The page with its pane is made smaller to fit the paper Word picks (a standard paper of the page's size within 10 pt, else A4 where the page fits, else Letter), at its top left in the middle of its height. Balloons speak German where the culture is German (measured), else English. Known deviation: the scale differs from Word's by up to 0.1 % (Word's pane width rounds).
 
 **Elements (18):** [`w15:commentEx`](../format/namespaces/w15.md#w15commentex), [`w15:commentsEx`](../format/namespaces/w15.md#w15commentsex), [`w15:people`](../format/namespaces/w15.md#w15people), [`w15:person`](../format/namespaces/w15.md#w15person), [`w15:presenceInfo`](../format/namespaces/w15.md#w15presenceinfo), [`w16cei:commentEntityInfo`](../format/namespaces/w16cei.md#w16ceicommententityinfo), [`w16cei:extLst`](../format/namespaces/w16cei.md#w16ceiextlst), [`w16cex:commentExtensible`](../format/namespaces/w16cex.md#w16cexcommentextensible), [`w16cex:commentsExtensible`](../format/namespaces/w16cex.md#w16cexcommentsextensible), [`w16cex:extLst`](../format/namespaces/w16cex.md#w16cexextlst), [`w16cid:commentId`](../format/namespaces/w16cid.md#w16cidcommentid), [`w16cid:commentsIds`](../format/namespaces/w16cid.md#w16cidcommentsids), [`w:annotationRef`](../format/namespaces/w.md#wannotationref), [`w:comment`](../format/namespaces/w.md#wcomment), [`w:commentRangeEnd`](../format/namespaces/w.md#wcommentrangeend), [`w:commentRangeStart`](../format/namespaces/w.md#wcommentrangestart), [`w:commentReference`](../format/namespaces/w.md#wcommentreference), [`w:comments`](../format/namespaces/w.md#wcomments)
 
@@ -1478,11 +1478,11 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 ### Tracked changes
 
-`review.revisions` · P1 · difficulty 3 · partial
+`review.revisions` · P1 · difficulty 3 · done
 
 **Rendering:** Render the document with all changes accepted (final view); a markup view with colored insertions, struck deletions and change bars follows Word's simple and all markup views.
 
-**Office behaviour:** Printed as Word exports without markup: insertions and moved-to text stay, deletions and moved-from text are left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins the next, which keeps its own formatting and number; formatting changes show the new formatting (docx/generated/revisions 91.8 %). Not drawn: the markup views (colored insertions, struck deletions, change bars, balloons).
+**Office behaviour:** Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved- from text are left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins the next, which keeps its own formatting and number; formatting changes show the new formatting (docx/generated/revisions 91.8 %). With markup (the converter's markup option, Word's "All Markup" with comments and formatting in balloons; docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions are underlined and deletions struck through in their author's color, moved text dark green (2C6234), struck through twice where it was and underlined twice where it is; deleted rows and paragraph marks stay; a change bar 0.75 pt wide stands half an inch left of the text beside every line with a change, over neighboring changed lines and the space between them; formatting changes of runs, paragraphs and tables get balloons ("Formatted:" with what the properties now have that they did not: font, size, bold, italic, underline, strikethrough, color, caps, position, highlight, hidden, spacing; alignment, indents, spacing, line spacing, keep options; 37 cases word for word as Word's German user interface says them), joined by a dotted line from a small triangle at the run's start or at the text's right edge. Without balloons the page keeps its size. Known deviation: only the all markup view with Word's default balloons; English balloon texts follow Word's terms but were not measured.
 
 **Elements (39):** [`w14:conflictDel`](../format/namespaces/w14.md#w14conflictdel), [`w14:conflictIns`](../format/namespaces/w14.md#w14conflictins), [`w14:customXmlConflictDelRangeEnd`](../format/namespaces/w14.md#w14customxmlconflictdelrangeend), [`w14:customXmlConflictDelRangeStart`](../format/namespaces/w14.md#w14customxmlconflictdelrangestart), [`w14:customXmlConflictInsRangeEnd`](../format/namespaces/w14.md#w14customxmlconflictinsrangeend), [`w14:customXmlConflictInsRangeStart`](../format/namespaces/w14.md#w14customxmlconflictinsrangestart), [`w:cellDel`](../format/namespaces/w.md#wcelldel), [`w:cellIns`](../format/namespaces/w.md#wcellins), [`w:cellMerge`](../format/namespaces/w.md#wcellmerge), [`w:customXmlDelRangeEnd`](../format/namespaces/w.md#wcustomxmldelrangeend), [`w:customXmlDelRangeStart`](../format/namespaces/w.md#wcustomxmldelrangestart), [`w:customXmlInsRangeEnd`](../format/namespaces/w.md#wcustomxmlinsrangeend), [`w:customXmlInsRangeStart`](../format/namespaces/w.md#wcustomxmlinsrangestart), [`w:customXmlMoveFromRangeEnd`](../format/namespaces/w.md#wcustomxmlmovefromrangeend), [`w:customXmlMoveFromRangeStart`](../format/namespaces/w.md#wcustomxmlmovefromrangestart), [`w:customXmlMoveToRangeEnd`](../format/namespaces/w.md#wcustomxmlmovetorangeend), [`w:customXmlMoveToRangeStart`](../format/namespaces/w.md#wcustomxmlmovetorangestart), [`w:del`](../format/namespaces/w.md#wdel), [`w:delText`](../format/namespaces/w.md#wdeltext), [`w:doNotTrackFormatting`](../format/namespaces/w.md#wdonottrackformatting), [`w:doNotTrackMoves`](../format/namespaces/w.md#wdonottrackmoves), [`w:ins`](../format/namespaces/w.md#wins), [`w:moveFrom`](../format/namespaces/w.md#wmovefrom), [`w:moveFromRangeEnd`](../format/namespaces/w.md#wmovefromrangeend), [`w:moveFromRangeStart`](../format/namespaces/w.md#wmovefromrangestart), [`w:moveTo`](../format/namespaces/w.md#wmoveto), [`w:moveToRangeEnd`](../format/namespaces/w.md#wmovetorangeend), [`w:moveToRangeStart`](../format/namespaces/w.md#wmovetorangestart), [`w:numberingChange`](../format/namespaces/w.md#wnumberingchange), [`w:pPrChange`](../format/namespaces/w.md#wpprchange), [`w:rPrChange`](../format/namespaces/w.md#wrprchange), [`w:revisionView`](../format/namespaces/w.md#wrevisionview), [`w:sectPrChange`](../format/namespaces/w.md#wsectprchange), [`w:tblGridChange`](../format/namespaces/w.md#wtblgridchange), [`w:tblPrChange`](../format/namespaces/w.md#wtblprchange), [`w:tblPrExChange`](../format/namespaces/w.md#wtblprexchange), [`w:tcPrChange`](../format/namespaces/w.md#wtcprchange), [`w:trPrChange`](../format/namespaces/w.md#wtrprchange), [`w:trackRevisions`](../format/namespaces/w.md#wtrackrevisions)
 

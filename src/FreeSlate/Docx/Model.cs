@@ -105,6 +105,10 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// <summary>The section this paragraph ends (its w:pPr/w:sectPr), or null.</summary>
     public SectionProperties? EndsSection { get; init; }
 
+    /// <summary>The tracked change of the paragraph's mark and its tracked formatting change, in the markup view.</summary>
+    public RevisionMark? MarkRevision { get; init; }
+    public FormatChange? Change { get; init; }
+
     /// <summary>The paragraph's list number or bullet (catalog: numbering.counting), or null.</summary>
     public ListLabel? Label { get; init; }
 }
@@ -237,6 +241,9 @@ public sealed class SectionProperties
 /// </summary>
 public sealed partial class ModelReader(DocumentContext context)
 {
+    /// <summary>The tracked change whose content is being read, in the markup view (catalog: review.revisions), or null.</summary>
+    RevisionMark? revision;
+
     /// <summary>The list counters of the story being read: the body and every header, footer and note count on their own.</summary>
     ListCounter counter = new(context.Numbering);
 
@@ -321,6 +328,83 @@ public sealed partial class ModelReader(DocumentContext context)
     /// The footnotes or endnotes of the document (catalog: note.footnotes, note.endnotes) by id, read after the
     /// body: their numbers come from the order of their references; separators are read under their types.
     /// </summary>
+    /// <summary>The comments of the comments part by id, read once.</summary>
+    Dictionary<string, XElement>? commentElements;
+
+    /// <summary>The comments whose ranges the body has, in their order (Word numbers comments so).</summary>
+    readonly List<string> commentOrder = [];
+
+    string? CommentsPart => context.Package.FirstRelationship(context.MainPart, "comments")?.Target;
+
+    XElement? CommentElement(string id)
+    {
+        if (commentElements == null)
+        {
+            commentElements = new(StringComparer.Ordinal);
+            if (CommentsPart is { } part && context.Package.Exists(part) && context.Load(part).Root is { } root)
+            {
+                foreach (var comment in root.Elements(Wml.W + "comment"))
+                    commentElements.TryAdd(comment.Attr("id") ?? "", comment);
+            }
+        }
+        return commentElements.GetValueOrDefault(id);
+    }
+
+    /// <summary>
+    /// A comment's range begins in the body (markup view): the comment takes the next number and its author a place
+    /// among the document's authors.
+    /// </summary>
+    void CommentAnchored(string id)
+    {
+        if (commentOrder.Contains(id))
+            return;
+        commentOrder.Add(id);
+        context.Author(CommentElement(id)?.Attr("author"));
+    }
+
+    /// <summary>
+    /// The comments of the body's ranges (catalog: review.comments), read after the body: each with its author, its
+    /// label (the author's initials and the comment's number in the order of the ranges, "[A11]") and its content.
+    /// </summary>
+    public Dictionary<string, Comment> Comments()
+    {
+        var comments = new Dictionary<string, Comment>(StringComparer.Ordinal);
+        if (CommentsPart is not { } part)
+            return comments;
+        // Replies and resolved comments (w15:commentsEx): a comment is known by its last paragraph's w14:paraId.
+        XNamespace w14 = "http://schemas.microsoft.com/office/word/2010/wordml", w15 = "http://schemas.microsoft.com/office/word/2012/wordml";
+        var extended = new Dictionary<string, (string? Parent, bool Done)>(StringComparer.OrdinalIgnoreCase);
+        if (context.Package.FirstRelationship(context.MainPart, "commentsExtended")?.Target is { } extendedPart && context.Package.Exists(extendedPart))
+        {
+            foreach (var e in context.Load(extendedPart).Root?.Elements(w15 + "commentEx") ?? [])
+            {
+                if ((string?)e.Attribute(w15 + "paraId") is { } paraId)
+                    extended[paraId] = ((string?)e.Attribute(w15 + "paraIdParent"), (string?)e.Attribute(w15 + "done") is "1" or "true");
+            }
+        }
+        string? ParaId(string id) => (string?)CommentElement(id)?.Elements(Wml.W + "p").LastOrDefault()?.Attribute(w14 + "paraId");
+        var numbers = commentOrder.Select((id, k) => (id, k + 1)).Where(p => ParaId(p.id) != null).ToDictionary(p => ParaId(p.id)!, p => p.Item2, StringComparer.OrdinalIgnoreCase);
+        var (savedCounter, savedPart) = (counter, currentPart);
+        counter = new ListCounter(context.Numbering);
+        currentPart = part;
+        for (var k = 0; k < commentOrder.Count; k++)
+        {
+            if (CommentElement(commentOrder[k]) is not { } element)
+                continue;
+            var blocks = new List<Block>();
+            ReadBlocks(element, blocks);
+            var (parent, done) = ParaId(commentOrder[k]) is { } paraId && extended.TryGetValue(paraId, out var ex) ? ex : (null, false);
+            var answers = parent != null && numbers.TryGetValue(parent, out var number) ? $"R{number}" : "";
+            comments[commentOrder[k]] = new Comment(commentOrder[k], context.Author(element.Attr("author")), $"[{element.Attr("initials")}{k + 1}{answers}]", blocks)
+            {
+                Reply = answers.Length > 0,
+                Done = done,
+            };
+        }
+        (counter, currentPart) = (savedCounter, savedPart);
+        return comments;
+    }
+
     public Dictionary<string, List<Block>> Notes(bool endnotes)
     {
         var notes = new Dictionary<string, List<Block>>(StringComparer.Ordinal);
@@ -398,6 +482,17 @@ public sealed partial class ModelReader(DocumentContext context)
             }
             switch (e.Name.LocalName)
             {
+                case "p" when context.Markup:
+                {
+                    // In the markup view a paragraph whose mark was deleted stays apart, its mark marked.
+                    var mark = e.Child("pPr")?.Child("rPr");
+                    var markRevision = mark?.Child("del") is { } deleted ? new RevisionMark("del", context.Author(deleted.Attr("author")))
+                        : mark?.Child("ins") is { } inserted ? new RevisionMark("ins", context.Author(inserted.Attr("author"))) : revision;
+                    var change = e.Child("pPr")?.Child("pPrChange") is { } pPrChange
+                        ? new FormatChange(context.Describe.Paragraph(e.Child("pPr"), pPrChange.Child("pPr")), context.Author(pPrChange.Attr("author"))) : null;
+                    blocks.Add(Paragraph(e) with { MarkRevision = markRevision, Change = change });
+                    break;
+                }
                 case "p":
                 {
                     var markDeleted = e.Child("pPr")?.Child("rPr")?.Child("del") != null;
@@ -722,6 +817,20 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "bookmarkEnd" when e.Attr("id") is { } endId:
                     field.Target(content).Add(new BookmarkEndInline(endId, context.Styles.Run(paragraphStyle, null, null, tableRun)));
                     break;
+                case "ins" or "moveTo" or "del" or "moveFrom" when context.Markup:
+                {
+                    // In the markup view tracked changes keep their text, marked with their kind and author.
+                    var saved = revision;
+                    revision = new RevisionMark(e.Name.LocalName, context.Author(e.Attr("author")));
+                    ReadInlines(e, paragraphStyle, content, field);
+                    revision = saved;
+                    break;
+                }
+                case "commentRangeStart" or "commentRangeEnd" when context.Markup && e.Attr("id") is { } commentId:
+                    if (e.Name.LocalName == "commentRangeStart")
+                        CommentAnchored(commentId);
+                    field.Target(content).Add(new CommentInline(commentId, e.Name.LocalName == "commentRangeStart", context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    break;
                 case "smartTag" or "customXml" or "ins" or "moveTo":
                     ReadInlines(e, paragraphStyle, content, field);
                     break;
@@ -801,6 +910,12 @@ public sealed partial class ModelReader(DocumentContext context)
         direct.Apply(r.Child("rPr"));
         var format = context.Styles.Run(paragraphStyle, direct.Style, direct, tableRun);
         (format.Override, format.Embedding) = (bidiOverride, bidiEmbedding);
+        if (context.Markup)
+        {
+            format.Revision = revision;
+            if (r.Child("rPr")?.Child("rPrChange") is { } rPrChange)
+                format.Change = new FormatChange(context.Describe.Run(r.Child("rPr"), rPrChange.Child("rPr")), context.Author(rPrChange.Attr("author")));
+        }
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)
@@ -847,8 +962,13 @@ public sealed partial class ModelReader(DocumentContext context)
                         field.Frames.Peek().Instruction.Append(e.Value);
                     break;
                 case "t":
+                case "delText" when context.Markup:
                     if (!field.Hidden)
                         field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
+                    break;
+                case "delInstrText" when context.Markup:
+                    if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
+                        field.Frames.Peek().Instruction.Append(e.Value);
                     break;
                 case "tab":
                     if (!field.Hidden)

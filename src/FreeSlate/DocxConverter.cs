@@ -23,7 +23,8 @@ public static class DocxConverter
         body:has(.page:target){background:#fff}
         body:has(.page:target) .page:not(:target){display:none}
         .page:target{margin:0}
-        .page>svg{position:absolute;left:0;top:0;overflow:visible}
+        .page>svg,.sheet>svg{position:absolute;left:0;top:0;overflow:visible}
+        .page>.sheet{position:absolute;left:0;top:0}
         .page text{white-space:pre;font-variant-ligatures:none}
         .page text.sel{fill-opacity:0}
         .glyphs{position:absolute;left:0;top:0}
@@ -36,7 +37,7 @@ public static class DocxConverter
         .page .sp text{white-space:pre;font-variant-ligatures:none}
         .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;overflow:hidden;padding:5px 6px;font:11px/13px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;pointer-events:none}
         .fs-nopic svg{vertical-align:top;margin-right:5px}
-        @media print{body{background:none}.page{margin:0;break-after:page}}
+        @media print{body{background:none}.page{margin:0;break-after:page}.page.markup{width:var(--pw)!important}.page.markup>.sheet{transform:translateY(var(--oy)) scale(var(--s));transform-origin:0 0}}
         """;
 
     /// <summary>The HTML document of a Word document; a password-protected one needs its password.</summary>
@@ -49,10 +50,15 @@ public static class DocxConverter
     /// (<see cref="CultureInfo.CurrentCulture"/>) as in Word when null.
     /// </param>
     /// <exception cref="PasswordException">The document needs a password, or the password is wrong.</exception>
+    /// <param name="markup">
+    /// Whether the document shows its markup as Word prints it with markup (catalog: review.revisions,
+    /// review.comments): tracked changes in their authors' colors, comments and formatting changes in balloons beside
+    /// the page; else as it reads with all changes accepted, as Word prints by default.
+    /// </param>
     public static string ToHtml(string docxPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
-        CultureInfo? culture = null)
+        CultureInfo? culture = null, bool markup = false)
     {
-        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture };
+        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture, Markup = markup };
         var reader = new ModelReader(context);
         var blocks = reader.Body();
         var styles = new RunStyles(context);
@@ -64,7 +70,10 @@ public static class DocxConverter
             .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
         var pages = new Paginator(context, layout, reader).Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
-        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout));
+        // The markup view's comments; its pages have the pane where the document has balloons.
+        var comments = markup ? reader.Comments() : [];
+        var pane = markup && (comments.Count > 0 || pages.Any(p => p.Lines.Any(l => l.Line.BlockChange != null || l.Line.Pieces.Any(x => x.Style.Change != null))));
+        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout)) { Comments = comments, MarkupPane = pane };
         var body = new StringBuilder();
         // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
         var papers = new List<(double Width, double Height)>();
@@ -109,9 +118,9 @@ public static class DocxConverter
     }
 
     public static void ToFile(string docxPath, string htmlPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
-        CultureInfo? culture = null)
+        CultureInfo? culture = null, bool markup = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra, culture));
+        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra, culture, markup));
     }
 }

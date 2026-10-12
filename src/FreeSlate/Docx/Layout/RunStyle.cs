@@ -35,6 +35,10 @@ public sealed record RunStyle(
 
     public bool Hidden { get; init; }
     public RgbColor? Highlight { get; init; }
+
+    /// <summary>The tracked change and the tracked formatting change of the run in the markup view (catalog: review.revisions), or null.</summary>
+    public RevisionMark? Revision { get; init; }
+    public FormatChange? Change { get; init; }
     public RgbColor? Shading { get; init; }
 
     /// <summary>How far the baseline is raised (points; negative lowers it): w:position and super/subscript.</summary>

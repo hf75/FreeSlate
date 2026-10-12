@@ -149,6 +149,20 @@ public sealed class Line
     /// <summary>The brackets of editable ranges in the line: where (from the column's left edge) and whether they open.</summary>
     public List<(double X, bool Start)>? Brackets { get; set; }
 
+    /// <summary>Where comments' ranges begin and end in the line, in the markup view (catalog: review.comments).</summary>
+    public List<(double X, string Id, bool Start)>? Comments { get; set; }
+
+    /// <summary>
+    /// In the markup view (catalog: review.revisions): whether the line has a change bar beside it whatever its text
+    /// (lines of a paragraph or table whose formatting changed, the last line of a paragraph whose mark changed), and
+    /// the formatting change of its paragraph or table whose balloon it anchors.
+    /// </summary>
+    public bool Changed { get; set; }
+    public FormatChange? BlockChange { get; set; }
+
+    /// <summary>The formatting changes of hidden text in the line and where it would stand (markup view).</summary>
+    public List<(double X, FormatChange Change)>? HiddenChanges { get; set; }
+
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
     public List<double>? Bars { get; set; }
 
@@ -659,6 +673,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The starts and ends of editable ranges of the paragraph being laid out, by their place in its text.</summary>
     readonly List<(int Index, bool Start)> permissions = [];
+    readonly List<(int Index, string Id, bool Start)> commentMarks = [];
+    readonly List<(int Index, FormatChange Change)> changeMarks = [];
 
     /// <summary>The bidirectional levels of the paragraph being laid out per UTF-16 unit, or null for left-to-right text.</summary>
     byte[]? levels;
@@ -699,6 +715,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// objects stand beside the paragraph; null for the whole column.
     /// </param>
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null)
+    {
+        var laid = LayoutLines(paragraph, width, fields, room);
+        // The markup view marks the lines of a paragraph whose formatting changed and the last line of one whose mark
+        // changed; the formatting change's balloon hangs from the first line.
+        if (laid.Count > 0 && (paragraph.Change != null || paragraph.MarkRevision != null))
+        {
+            foreach (var line in laid)
+                line.Changed |= paragraph.Change != null;
+            laid[^1].Changed = true;
+            laid[0].BlockChange = paragraph.Change;
+        }
+        return laid;
+    }
+
+    List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room)
     {
         var format = paragraph.Format;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
@@ -1040,6 +1071,29 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 (lines[k].Brackets ??= []).Add((CharacterX(lines[k], index), start));
             }
         }
+        // Formatting changes of hidden text, where it would stand.
+        if (changeMarks.Count > 0)
+        {
+            var starts = lines.Select(l => l.Pieces.Where(p => p.Start >= 0).Select(p => p.Start).DefaultIfEmpty(int.MaxValue).Min()).ToList();
+            foreach (var (index, change) in changeMarks)
+            {
+                var k = Math.Max(0, starts.FindLastIndex(s => s <= index));
+                (lines[k].HiddenChanges ??= []).Add((CharacterX(lines[k], index), change));
+            }
+        }
+        // Where comments' ranges begin and end in their lines: a range begins at the character after its start and
+        // ends after the character before its end.
+        if (commentMarks.Count > 0)
+        {
+            var starts = lines.Select(l => l.Pieces.Where(p => p.Start >= 0).Select(p => p.Start).DefaultIfEmpty(int.MaxValue).Min()).ToList();
+            foreach (var (index, id, start) in commentMarks)
+            {
+                var k = start ? starts.FindLastIndex(s => s <= index) : starts.FindLastIndex(s => s < index);
+                if (k < 0)
+                    k = 0;
+                (lines[k].Comments ??= []).Add((CharacterX(lines[k], index), id, start));
+            }
+        }
         // Where the drawings are anchored in their lines, once the lines are aligned: at the start of the character
         // before the anchor (measured with docx/local/anchor-char: after a space, a letter or a tab).
         foreach (var line in lines)
@@ -1151,6 +1205,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         equations.Clear();
         anchored.Clear();
         permissions.Clear();
+        commentMarks.Clear();
+        changeMarks.Clear();
         var breakAfterDisplay = false;
         links.Clear();
         notes.Clear();
@@ -1165,7 +1221,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (link != null)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true)
-                return;   // hidden text is not printed (Word's PDF export leaves it out)
+            {
+                // Hidden text is not printed (Word's PDF export leaves it out); its formatting change keeps its balloon.
+                if (format.Change is { } hiddenChange)
+                    changeMarks.Add((text.Length, hiddenChange));
+                return;
+            }
             if (BalanceSpaces && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
             {
                 for (var k = 0; k < value.Length; k++)
@@ -1293,6 +1354,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case PermissionInline permission:
                     permissions.Add((text.Length, permission.Start));
+                    break;
+                case CommentInline comment:
+                    commentMarks.Add((text.Length, comment.Id, comment.Start));
                     break;
                 case DrawingInline drawing:
                     objects[text.Length] = drawing;

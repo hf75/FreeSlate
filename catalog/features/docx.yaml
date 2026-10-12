@@ -1472,13 +1472,28 @@ areas:
         namespaces: [w16cid, w16cex, w16cei]
         priority: P2
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Shown next to the pages (not on them) with their ranges highlighted; whether and how Word's PDF export
           includes comments is measured.
         office: >-
-          Without markup Word prints nothing of comments, and neither do we: ranges, references and the comments part
-          are skipped (docx/generated/revisions). Not shown: comments beside the pages as the markup view has them.
+          Without markup Word prints nothing of comments, and neither do we by default: ranges, references and the
+          comments part are skipped (docx/generated/revisions). With markup (the converter's markup option, as Word
+          prints with markup: docx/local/markup-a, markup-d, markup-e, markup-f, markup-revisions; 84 to 98 %) a
+          comment's range is shaded in its author's color at lightness 0.92 between thin brackets of the color, and
+          its balloon stands in a gray pane (F2F2F2) 0.1 in right of the text, 3.6 in wide: 23.76 pt into the pane,
+          232.97 pt wide, as high as its text with 2.3 pt above and 1.8 pt below, in the shade of the range with an
+          outline of 0.48 pt in the author's color, stacked 1.15 pt apart in the order of their places, at their
+          line's top where there is room; a dotted line runs from the range's end along the line's bottom to the pane
+          and on to 6 pt below the balloon's top. The balloon says "Commented [initials and number]:" in bold Segoe UI
+          9 pt, then the comment's text in its own fonts at 9 pt; a reply (w15:commentEx paraIdParent) has its own
+          balloon labeled with "R" and the number it answers and no shading of its own; a resolved comment (done) is
+          paler (range and balloon at lightness 0.98, outline and line at 0.875, text BFBFBF). Authors take Word's
+          eight colors (D13438, 0078D4, 5C2E91, 498205, CC3595, 7160E8, 038387, 6D5700) in the order they appear (Word
+          goes on counting over the documents of a session). The page with its pane is made smaller to fit the paper
+          Word picks (a standard paper of the page's size within 10 pt, else A4 where the page fits, else Letter), at
+          its top left in the middle of its height. Balloons speak German where the culture is German (measured), else
+          English. Known deviation: the scale differs from Word's by up to 0.1 % (Word's pane width rounds).
 
       - id: review.revisions
         title: Tracked changes
@@ -1489,16 +1504,26 @@ areas:
                    w:trackRevisions, w:revisionView, w:doNotTrackMoves, w:doNotTrackFormatting]
         priority: P1
         difficulty: 3
-        status: partial
+        status: done
         strategy: >-
           Render the document with all changes accepted (final view); a markup view with colored insertions,
           struck deletions and change bars follows Word's simple and all markup views.
         office: >-
-          Printed as Word exports without markup: insertions and moved-to text stay, deletions and moved-from text are
-          left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins the next,
-          which keeps its own formatting and number; formatting changes show the new formatting
-          (docx/generated/revisions 91.8 %). Not drawn: the markup views (colored insertions, struck deletions, change
-          bars, balloons).
+          Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
+          from text are left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins
+          the next, which keeps its own formatting and number; formatting changes show the new formatting
+          (docx/generated/revisions 91.8 %). With markup (the converter's markup option, Word's "All Markup" with
+          comments and formatting in balloons; docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions
+          are underlined and deletions struck through in their author's color, moved text dark green (2C6234), struck
+          through twice where it was and underlined twice where it is; deleted rows and paragraph marks stay; a change
+          bar 0.75 pt wide stands half an inch left of the text beside every line with a change, over neighboring
+          changed lines and the space between them; formatting changes of runs, paragraphs and tables get balloons
+          ("Formatted:" with what the properties now have that they did not: font, size, bold, italic, underline,
+          strikethrough, color, caps, position, highlight, hidden, spacing; alignment, indents, spacing, line spacing,
+          keep options; 37 cases word for word as Word's German user interface says them), joined by a dotted line
+          from a small triangle at the run's start or at the text's right edge. Without balloons the page keeps its
+          size. Known deviation: only the all markup view with Word's default balloons; English balloon texts follow
+          Word's terms but were not measured.
 
       - id: review.permissions
         title: Editing permissions

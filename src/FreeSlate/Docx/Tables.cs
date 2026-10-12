@@ -391,4 +391,7 @@ public sealed class TableModel
     public TableFormat Format { get; } = new();
     public List<double> Grid { get; } = [];
     public List<RowModel> Rows { get; } = [];
+
+    /// <summary>The table's tracked formatting change (w:tblPrChange) in the markup view, or null.</summary>
+    public FormatChange? Change { get; set; }
 }

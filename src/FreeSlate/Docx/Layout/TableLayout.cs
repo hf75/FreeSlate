@@ -259,6 +259,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <param name="before">The style of the paragraph before the table (<see cref="NoParagraph"/> for none), which contextual spacing compares its first paragraph with.</param>
     public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph)
     {
+        var box = Laid(table, available, fields, before);
+        // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
+        if (table.Change is { } change)
+        {
+            var lines = box.Rows.SelectMany(r => r.Cells).SelectMany(c => c.Lines).ToList();
+            foreach (var line in lines)
+                line.Line.Changed = true;
+            if (lines.Count > 0)
+                lines[0].Line.BlockChange = change;
+        }
+        return box;
+    }
+
+    TableBox Laid(TableModel table, double available, PageFields? fields, string? before)
+    {
         var format = table.Format;
         var rows = table.Rows.Where(r => !r.Format.Hidden).ToList();
         var neighbors = Neighbors(rows, before);

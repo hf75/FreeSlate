@@ -10,7 +10,7 @@ namespace FreeSlate.Docx;
 /// Draws laid-out pages as SVG (catalog: engine.output): glyphs as outlines in font units placed with &lt;use&gt;,
 /// a transparent text layer on top for selection and search, decorations as rectangles.
 /// </summary>
-public sealed class PageRenderer(DocumentContext context, Drawings? drawings = null, TableLayout? blocks = null)
+public sealed partial class PageRenderer(DocumentContext context, Drawings? drawings = null, TableLayout? blocks = null)
 {
     const double PxPerPt = 96.0 / 72.0;
 
@@ -38,7 +38,20 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var height = page.PaperHeight * PxPerPt;
         var svg = new StringBuilder();
         defs.Clear();
-        svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+        // With the markup pane the page is as wide as the pane reaches; printed, it is made smaller to fit the paper's
+        // width, standing in the middle of its height (as Word prints with markup).
+        if (context.Markup && MarkupPane)
+        {
+            var composed = MarkupWidth(page) * PxPerPt;
+            var (paperWidth, paperHeight) = MarkupPaper(page.PaperWidth, page.PaperHeight);
+            var scale = Math.Min(paperWidth * PxPerPt / composed, paperHeight / page.PaperHeight);
+            svg.Append($"<section class=\"page markup {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(composed)}px;height:{Units.Css(height)}px;"
+                + $"--pw:{Units.Css(width)}px;--s:{Units.Css4(scale)};--oy:{Units.Css((paperHeight * PxPerPt - height * scale) / 2)}px\">");
+            svg.Append($"<div class=\"sheet\" style=\"width:{Units.Css(composed)}px;height:{Units.Css(height)}px\">");
+            width = composed;
+        }
+        else
+            svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
         // A page of vertical text is laid out turned a quarter: its body is turned back onto the page, its drawings
         // stand upright where their middles turn to, its header, footer and border stand upright.
         var turn = page.Upright != null ? $"translate({Units.Css(width)} 0) rotate(90)" : null;
@@ -64,6 +77,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         foreach (var (x, top, bottom) in page.ColumnLines)
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
+        var commentAnchors = CommentRanges(page, svg);
         var inline = new List<PlacedDrawing>();
         Lines(page.Lines, svg, selection, inline);
         front.AddRange(turn == null ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
@@ -73,6 +87,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             context.UsedFonts.Add(style.Font.Data.Family);
             svg.Append($"<text x=\"{Px(right)}\" y=\"{Px(baseline)}\" text-anchor=\"end\" font-family=\"'{WebUtility.HtmlEncode(style.Font.Data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"{(style.Bold ? " font-weight=\"700\"" : "")}{(style.Italic ? " font-style=\"italic\"" : "")}>{number}</text>");
         }
+        Markup(page, commentAnchors, svg, selection, inline);
         if (turn != null)
         {
             svg.Append(selection).Append("</g>");
@@ -95,6 +110,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             svg.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(name)}\" style=\"left:{Px(x)}px;top:{Px(y)}px\"></a>");
         if (defs.Length > 0)
             svg.Append("<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>").Append(defs).Append("</defs></svg>");
+        if (context.Markup && MarkupPane)
+            svg.Append("</div>");
         svg.Append("</section>\n");
         return svg.ToString();
     }

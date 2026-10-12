@@ -92,7 +92,9 @@ public static class Pipeline
         try
         {
             // Printed on paper larger than the pages (browsers round paper sizes); the rasterizer cuts Word's page sizes out.
-            DocxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), paperExtra: 12, culture: Repo.Regional);
+            // Documents named markup-* are shown with their markup, as Word prints them with markup.
+            DocxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), paperExtra: 12, culture: Repo.Regional,
+                markup: Repo.Markup(deck));
         }
         catch (Exception e) when (e is not OutOfMemoryException)
         {

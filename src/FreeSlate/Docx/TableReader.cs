@@ -29,7 +29,9 @@ public sealed partial class ModelReader
         foreach (var col in tbl.Child("tblGrid")?.Elements(Wml.W + "gridCol") ?? [])
             model.Grid.Add(col.Twips("w") ?? 0);
 
-        var rows = Rows(tbl).ToList();
+        var rows = Rows(tbl, context.Markup).ToList();
+        if (context.Markup && tblPr?.Child("tblPrChange") is { } tblPrChange)
+            model.Change = new FormatChange("", context.Author(tblPrChange.Attr("author")));
         foreach (var tr in rows)
         {
             var row = new RowModel();
@@ -93,10 +95,13 @@ public sealed partial class ModelReader
                 CopyFormat(format, cell.Format);
                 cell.CellBorders = borders.Overlay(BorderSet.Read(direct.Child("tcBorders")));
 
-                var (savedParagraph, savedRun) = (tableParagraph, tableRun);
+                var (savedParagraph, savedRun, savedRevision) = (tableParagraph, tableRun, revision);
                 (tableParagraph, tableRun) = (paragraph, run);
+                // In the markup view a deleted or inserted row's text is marked as its change.
+                if (context.Markup && rows[r].Child("trPr") is { } trPr && (trPr.Child("del") ?? trPr.Child("ins")) is { } rowChange)
+                    revision = new RevisionMark(rowChange.Name.LocalName, context.Author(rowChange.Attr("author")));
                 ReadBlocks(cellElements[c], cell.Blocks);
-                (tableParagraph, tableRun) = (savedParagraph, savedRun);
+                (tableParagraph, tableRun, revision) = (savedParagraph, savedRun, savedRevision);
             }
         }
         // Horizontally merged cells of old documents (w:hMerge): a cell that continues the merge widens the one before
@@ -160,21 +165,22 @@ public sealed partial class ModelReader
 
     /// <summary>
     /// The rows of a table, also inside content controls and custom XML; rows deleted as a tracked change are gone, as
-    /// Word prints the document without markup (catalog: review.revisions; measured with docx/generated/revisions).
+    /// Word prints the document without markup (catalog: review.revisions; measured with docx/generated/revisions),
+    /// and stay in the markup view.
     /// </summary>
-    static IEnumerable<XElement> Rows(XElement tbl)
+    static IEnumerable<XElement> Rows(XElement tbl, bool markup)
     {
         foreach (var e in tbl.Elements())
         {
             if (e.Name == Wml.W + "tr")
             {
-                if (e.Child("trPr")?.Child("del") == null)
+                if (markup || e.Child("trPr")?.Child("del") == null)
                     yield return e;
             }
             else if (e.Name == Wml.W + "sdt" && e.Child("sdtContent") is { } content)
-                foreach (var row in Rows(content)) yield return row;
+                foreach (var row in Rows(content, markup)) yield return row;
             else if (e.Name == Wml.W + "customXml")
-                foreach (var row in Rows(e)) yield return row;
+                foreach (var row in Rows(e, markup)) yield return row;
         }
     }
 

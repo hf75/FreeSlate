@@ -88,6 +88,13 @@ public static class References
 
                 if (Repo.IsDocument(deck))
                 {
+                    // Word gives the authors of tracked changes and comments their colors in the order it meets them in
+                    // a session, over all its documents: a document shown with its markup gets a Word of its own.
+                    if (Repo.Markup(deck) && word != null)
+                    {
+                        word.Dispose();
+                        word = null;
+                    }
                     word ??= new WordSession { StepLimit = DocumentStepLimit };
                     if (!RenderDocument(word, deck, source, hash, password))
                     {
@@ -97,6 +104,11 @@ public static class References
                             word.Dispose();
                             word = null;
                         }
+                    }
+                    if (Repo.Markup(deck) && word != null)
+                    {
+                        word.Dispose();
+                        word = null;
                     }
                     continue;
                 }
@@ -166,7 +178,7 @@ public static class References
         Directory.CreateDirectory(Path.GetDirectoryName(pdf)!);
         try
         {
-            var pages = word.ExportPdf(source, pdf, password);
+            var pages = word.ExportPdf(source, pdf, password, Repo.Markup(deck));
             var files = PdfPages.Rasterize(pdf, dir, DocumentScale);
             if (files.Count == 0)
             {

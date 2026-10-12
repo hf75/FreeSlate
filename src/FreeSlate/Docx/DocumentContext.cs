@@ -36,6 +36,34 @@ public sealed class DocumentContext : IDisposable
     public OpcPackage Package { get; }
     public string MainPart { get; }
 
+    /// <summary>
+    /// Whether the document is shown with its markup (catalog: review.revisions, review.comments): tracked changes
+    /// marked in their authors' colors, comments in balloons beside the page; else as it reads with all changes
+    /// accepted and without comments, as Word prints by default.
+    /// </summary>
+    public bool Markup { get; init; }
+
+    /// <summary>What the markup view's balloons say, in the language of the culture.</summary>
+    public Describe Describe => describe ??= new Describe(Culture);
+
+    Describe? describe;
+
+    /// <summary>The authors of tracked changes and comments, in the order they appear (their colors follow it).</summary>
+    public List<string> Authors { get; } = [];
+
+    /// <summary>An author's place among the document's authors.</summary>
+    public int Author(string? name)
+    {
+        name ??= "";
+        var index = Authors.IndexOf(name);
+        if (index < 0)
+        {
+            Authors.Add(name);
+            index = Authors.Count - 1;
+        }
+        return index;
+    }
+
     /// <summary>The document's page background (w:background), or null.</summary>
     public XElement? Background => Document?.Root?.Element(Wml.W + "background");
     public XDocument Document { get; }

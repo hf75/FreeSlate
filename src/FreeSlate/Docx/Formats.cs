@@ -35,6 +35,10 @@ public sealed class RunFormat
     public string? Emphasis, CombineBrackets;
     public bool? CombineLines, AcrossLine;
 
+    /// <summary>The tracked change the run belongs to and its tracked formatting change, in the markup view (catalog: review.revisions).</summary>
+    public RevisionMark? Revision;
+    public FormatChange? Change;
+
     /// <summary>w:color: hex RGB or "auto", with its theme color and tint or shade.</summary>
     public string? Color, ThemeColor, ThemeTint, ThemeShade;
 

@@ -181,13 +181,21 @@ public sealed class RunStyles(DocumentContext context)
         var raise = (format.Position ?? 0) + scriptShift;
         if (smallCapital)
             scriptSize = MacSmallCaps ? MacSmallCapsSize(scriptSize) : SmallCapsSize(scriptSize);
+        // Tracked changes in the markup view (catalog: review.revisions, measured with docx/local/markup-a): insertions
+        // underlined and deletions struck through in their author's color, moved text dark green, underlined twice
+        // where it is and struck through twice where it was.
+        var revision = format.Revision;
+        if (revision != null)
+            color = revision.Kind is "moveFrom" or "moveTo" ? Review.Moved : Review.Color(revision.Author);
         return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
         {
+            Revision = revision,
+            Change = format.Change,
             LineHeights = LineHeights,
-            Underline = format.Underline is { } u && u != "none" ? u : null,
-            UnderlineColor = format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
-            Strike = format.Strike == true,
-            DoubleStrike = format.DoubleStrike == true,
+            Underline = revision?.Kind switch { "ins" => "single", "moveTo" => "double", _ => format.Underline is { } u && u != "none" ? u : null },
+            UnderlineColor = revision?.Kind is "ins" or "moveTo" ? null : format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
+            Strike = revision?.Kind == "del" || format.Strike == true && revision?.Kind != "moveFrom",
+            DoubleStrike = revision?.Kind == "moveFrom" || format.DoubleStrike == true && revision?.Kind != "del",
             Emboss = format.Emboss == true,
             Imprint = format.Imprint == true,
             Hollow = format.Outline == true,

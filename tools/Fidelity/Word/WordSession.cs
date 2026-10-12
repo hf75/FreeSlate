@@ -13,7 +13,7 @@ public sealed class WordSession : IDisposable
 {
     // WdSaveFormat, WdExportFormat, WdExportOptimizeFor, WdExportRange, WdExportItem, WdExportCreateBookmarks
     const int FormatDocumentDefault = 16;
-    const int FormatPdf = 17, OptimizeForPrint = 0, ExportAllDocument = 0, ExportDocumentContent = 0, NoBookmarks = 0;
+    const int FormatPdf = 17, OptimizeForPrint = 0, ExportAllDocument = 0, ExportDocumentContent = 0, ExportDocumentWithMarkup = 7, NoBookmarks = 0;
     const int DoNotSaveChanges = 0;
 
     readonly dynamic app;
@@ -89,7 +89,8 @@ public sealed class WordSession : IDisposable
     /// Exports a document to PDF the way Word prints it: the document content without markup, all pages, optimized for
     /// print, missing fonts as bitmaps. Returns the number of pages.
     /// </summary>
-    public int ExportPdf(string documentPath, string pdfPath, string? password = null)
+    /// <param name="markup">Whether Word prints the document with its markup: all markup, comments and formatting in balloons.</param>
+    public int ExportPdf(string documentPath, string pdfPath, string? password = null, bool markup = false)
     {
         var document = Step(() => Open(documentPath, password));
         try
@@ -98,8 +99,14 @@ public sealed class WordSession : IDisposable
                 File.Delete(pdfPath);
             Step(() =>
             {
+                if (markup)
+                {
+                    var view = document.ActiveWindow.View;
+                    view.ShowRevisionsAndComments = true;
+                    view.RevisionsView = 0;
+                }
                 document.ExportAsFixedFormat(OutputFileName: Path.GetFullPath(pdfPath), ExportFormat: FormatPdf, OpenAfterExport: false,
-                    OptimizeFor: OptimizeForPrint, Range: ExportAllDocument, Item: ExportDocumentContent, IncludeDocProps: false,
+                    OptimizeFor: OptimizeForPrint, Range: ExportAllDocument, Item: markup ? ExportDocumentWithMarkup : ExportDocumentContent, IncludeDocProps: false,
                     KeepIRM: false, CreateBookmarks: NoBookmarks, DocStructureTags: false, BitmapMissingFonts: true, UseISO19005_1: false);
                 return 0;
             });

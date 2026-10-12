@@ -90,6 +90,9 @@ public static class Repo
         return result.Distinct().ToList();
     }
 
+    /// <summary>Whether a document is shown with its markup (comments, tracked changes): documents named markup-*.</summary>
+    public static bool Markup(string deck) => deck.StartsWith(DocumentPrefix, StringComparison.Ordinal) && Path.GetFileName(deck).StartsWith("markup-", StringComparison.Ordinal);
+
     public static string DeckFile(string deck)
     {
         if (deck.StartsWith(DocumentPrefix, StringComparison.Ordinal))
