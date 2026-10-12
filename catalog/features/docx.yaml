@@ -1335,8 +1335,9 @@ areas:
           their width, triple five; thin-and-thick lines lie top to bottom and left to right on every side, small gaps
           and thin lines 0.75 pt, medium ones half the width, large gaps the width beside 1.5 pt and 0.75 pt lines
           (docx/local/tblcompound-24, -12, as page borders); dotted and dashed lines are dashed strokes; diagonal
-          lines; with cell spacing every cell has its own frame, the cells twice the spacing apart. Shading patterns
-          are mixed to a flat color.
+          lines; with cell spacing every cell has its own frame, the cells twice the spacing apart, its content aligned
+          vertically as without spacing, and an autofit table its text fills as wide as the page with all frames
+          (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459). Shading patterns are mixed to a flat color.
 
       - id: table.styles
         title: Table styles and conditional formatting

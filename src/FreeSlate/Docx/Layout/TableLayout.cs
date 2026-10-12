@@ -603,22 +603,29 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // docx/local/altchunk-tables: a 300 px HTML table is 225.75 pt wide over its frame).
         var extras = gap * (columns + 1) + (Width(outer.Left) + Width(outer.Right)) / 2;
         var sized = format.Width is { Type: "dxa" or "pct" } tw && tw.Value > 0;
-        var grid = Grid(table, rows, columns, available - extras, sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
-            gaps: sized ? gap * (columns + 1) : 0, widthBase: available);
         // Autofit columns of cells without preferred widths hold the cells' own borders too, which every spaced cell
         // draws on both sides (HTML tables Word imports, docx/local/altchunk, altchunk-tables): a cell's own, else the
-        // table's inside line or side.
+        // table's inside line or side; they take their room from what the columns may have, so a table its text fills
+        // is as wide as the page (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459).
+        double[]? edges = null;
         if (!sized && format.Layout != "fixed" && rows.SelectMany(r => r.Cells).All(c => c.Format.Width is not { Type: "dxa" or "pct" } cw || cw.Value <= 0))
         {
             var inside = Visible(format.Borders.InsideV);
-            for (var k = 0; k < grid.Length; k++)
+            edges = new double[columns];
+            for (var k = 0; k < columns; k++)
             {
-                var edges = Width(k == 0 ? outer.Left : inside) + Width(k == grid.Length - 1 ? outer.Right : inside);
+                edges[k] = Width(k == 0 ? outer.Left : inside) + Width(k == columns - 1 ? outer.Right : inside);
                 foreach (var cell in rows.SelectMany(r => r.Cells).Where(c => c.Column == k && c.Format.GridSpan <= 1))
-                    edges = Math.Max(edges, Width(Visible(cell.CellBorders.Left) ?? (k == 0 ? outer.Left : inside))
-                                            + Width(Visible(cell.CellBorders.Right) ?? (k == grid.Length - 1 ? outer.Right : inside)));
-                grid[k] += edges;
+                    edges[k] = Math.Max(edges[k], Width(Visible(cell.CellBorders.Left) ?? (k == 0 ? outer.Left : inside))
+                                                  + Width(Visible(cell.CellBorders.Right) ?? (k == columns - 1 ? outer.Right : inside)));
             }
+        }
+        var grid = Grid(table, rows, columns, available - extras - (edges?.Sum() ?? 0), sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
+            gaps: sized ? gap * (columns + 1) : 0, widthBase: available);
+        if (edges != null)
+        {
+            for (var k = 0; k < grid.Length && k < edges.Length; k++)
+                grid[k] += edges[k];
         }
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
@@ -688,15 +695,25 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         rowBox.Frames.Add(rect with { Color = line.ColorOf(side, cell: true) });
                 }
                 var part = new CellPart { ContentTop = top0 + Width(borders.Top) + margins.Top, BottomMargin = margins.Bottom };
+                // Vertical alignment in the cell, as in tables without spacing (docx/external/poi/
+                // bib-chernigovka.netdo.ru_download_docs_17459: dates centered beside two lines of text).
+                var free = height - Width(borders.Top) - margins.Top - content.Height - margins.Bottom - Width(borders.Bottom);
+                var lowered = cell.Format.VerticalAlign switch
+                {
+                    "center" => Math.Max(0, free) / 2,
+                    "bottom" => Math.Max(0, free),
+                    _ => 0,
+                };
+                var contentTop = part.ContentTop + lowered;
                 foreach (var line in content.Lines)
-                    part.Lines.Add(line with { Left = origin0 + content.Left + line.Left, Top = part.ContentTop + line.Top });
+                    part.Lines.Add(line with { Left = origin0 + content.Left + line.Left, Top = contentTop + line.Top });
                 foreach (var nested in content.Fills)
-                    part.Fills.Add(nested with { X = origin0 + content.Left + nested.X, Y = part.ContentTop + nested.Y });
+                    part.Fills.Add(nested with { X = origin0 + content.Left + nested.X, Y = contentTop + nested.Y });
                 foreach (var stroke in content.Strokes)
-                    part.Strokes.Add(stroke.Offset(origin0 + content.Left, part.ContentTop));
+                    part.Strokes.Add(stroke.Offset(origin0 + content.Left, contentTop));
                 foreach (var anchor in content.Anchors)
                 {
-                    var moved = anchor.Offset(origin0 + content.Left, part.ContentTop);
+                    var moved = anchor.Offset(origin0 + content.Left, contentTop);
                     part.Anchors.Add(moved with
                     {
                         Text = moved.Text ?? (origin0 + content.Left, content.Width),
