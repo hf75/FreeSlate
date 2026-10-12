@@ -1951,8 +1951,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // break here (ChainBreaks), when it keeps its lines together and they do not fit, also more than a column of
         // them (measured with docx/local/kc7, kc9), or when its first lines do not fit but would in an empty column. A
         // paragraph the one before it is kept with continues that one's chain, which was decided at its start: at the
-        // top of a column a chain taller than the rest of it breaks where it must (docx/local/kc1, kc4).
-        if (!columnEmpty)
+        // top of a column a chain taller than the rest of it breaks where it must (docx/local/kc1, kc4), not at the top
+        // of the columns of a section that begins below other text of the page, where it moves on as elsewhere, column
+        // by column (docx/local/kcs-2-*, kcs-3-*: a heading kept with a paragraph, two lines from the page's end, takes
+        // a section of two or three columns to the next page).
+        while (!columnEmpty || columnTop > page!.BodyTop + 0.01)
         {
             var chained = previous != null ? previous.Format.KeepNext == true : tableKept;
             // A paragraph that goes on with a unit of kept lines needs room only for the notes before the unit.
@@ -1967,12 +1970,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var needed = gap + FirstLines(lines, format);
                 moves = y + needed > bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
             }
-            if (moves)
-            {
-                NextColumn(natural: true);
-                (left, width) = Column(column);
-                gap = 0;
-            }
+            if (!moves)
+                break;
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+            gap = 0;
         }
 
         // Paragraph borders and shading (catalog: paragraph.borders): paragraphs with the same borders form one box,

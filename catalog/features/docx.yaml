@@ -801,7 +801,9 @@ areas:
           it to the next page, back to one that can break and give its last lines or one that is not kept with the
           next; reaching the top of the page, they stay and the chain breaks where it must. So a chain begun below
           other text moves to the next page even when it is taller than a page, and lines kept together move although
-          they need more than a page (docx/local/kc1 … kc12). A first line that ends in a page or column break needs
+          they need more than a page (docx/local/kc1 … kc12). The columns of a section that begins below other text
+          count as below other text: a chain that does not fit moves on column by column, to the next page
+          (docx/local/kcs-2-*, kcs-3-*). A first line that ends in a page or column break needs
           no second line with it, a paragraph that ends with one ends its chain (docx/external/libreoffice/
           extras-ooxmlexport/testPageref: a page break kept with the next paragraph through its style makes no empty
           page), and a line of nothing but such a break stays on its page, past the bottom too
