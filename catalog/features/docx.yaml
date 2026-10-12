@@ -1769,7 +1769,11 @@ areas:
           its margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is
           set or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH,
           wp14:sizeRelV) apply to shapes as they are and to pictures only both together, scaled evenly to fit
-          (docx/local/size-rel-shape, size-rel).
+          (docx/local/size-rel-shape, size-rel). Alignment places the drawing with its effect extent (wp:effectExtent),
+          with or without an effect to fill it, each side where its alignment meets it, across the page and the
+          margins (docx/local/sa-d1, sa-d2, sb-*, sc-*: 80 pt left and 36 pt above take a shape centered at the page's
+          top 40 pt right and 36 pt down), except for shapes sized relative to the page or margins, whose stored
+          extent is not their own (extras-ooxmlimport/groupshape-relsize, DB-GlossaryDocuments/FooterContent-built).
 
       - id: drawing.wrap
         title: Text wrapping around objects
@@ -3260,8 +3264,12 @@ areas:
           default, in its color and opacity, a double shadow's second in color2 at offset2 behind it). Word 97 borders
           (w10:bordertop, borderleft, borderbottom, borderright) frame the shape outside, width/8 pt each floored to
           Word's 0.12 pt dots, double lines three times that, dotted and dashed ones dashed (docx/local/vml-border).
-          w10:anchorlock only locks the anchor while editing. Known deviation: a perspective shadow's matrix is left
-          out.
+          w10:anchorlock only locks the anchor while editing. A floating shape's shadow widens its extent on its side,
+          which alignment counts (docx/local/sa-v*: a shape centered at the page's top with a shadow 80 pt left and
+          36 pt up stands 40 pt right and 36 pt down; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw);
+          mso-wrap-distance-* keep wrapped text away (9 pt left and right, none above and below by default); a text
+          box with mso-fit-shape-to-text is as high as its text where it is drawn. Known deviations: a perspective
+          shadow's matrix is left out; the text wraps the stated height of a box fitted to its text.
 
       - id: vml.ole
         title: Embedded objects and controls

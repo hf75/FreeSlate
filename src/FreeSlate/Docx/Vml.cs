@@ -82,8 +82,26 @@ public static class Vml
                     new XAttribute("r", Emu(room.Right)), new XAttribute("b", Emu(room.Bottom))), docPr, graphic);
 
         var z = long.TryParse(style.GetValueOrDefault("z-index"), out var zi) ? zi : 0;
+        // A shadow widens the shape's extent on its side as DrawingML's effect extent does, which alignment counts
+        // (measured with docx/local/sa-v*: a shape centered at the page's top with a shadow 80 pt left and 36 pt up
+        // stands 40 pt right of the middle and 36 pt down; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw).
+        var (el, et, er, eb) = (0.0, 0.0, 0.0, 0.0);
+        if (shape.Name != V + "group" && ShadowOf(shape, type) is { } cast)
+        {
+            foreach (var (sx, sy) in (string?)cast.Attribute("type") == "double"
+                         ? new[] { ShadowOffset((string?)cast.Attribute("offset"), (2, 2)), ShadowOffset((string?)cast.Attribute("offset2"), (-2, -2)) }
+                         : new[] { ShadowOffset((string?)cast.Attribute("offset"), (2, 2)) })
+            {
+                (el, er) = (Math.Max(el, -sx), Math.Max(er, sx));
+                (et, eb) = (Math.Max(et, -sy), Math.Max(eb, sy));
+            }
+        }
+        // The distances wrapped text keeps (mso-wrap-distance-*), 9 pt left and right and none above and below unless
+        // given (docx/external/libreoffice/extras-ooxmlexport/testOuterShdw: 10.8 pt below a box at the page's top).
+        long Distance(string side, long fallback) => Length(style.GetValueOrDefault("mso-wrap-distance-" + side)) is { } d ? Emu(d) : fallback;
         var anchor = new XElement(Drawings.Wp + "anchor",
-            new XAttribute("distT", 0), new XAttribute("distB", 0), new XAttribute("distL", 114300), new XAttribute("distR", 114300),
+            new XAttribute("distT", Distance("top", 0)), new XAttribute("distB", Distance("bottom", 0)),
+            new XAttribute("distL", Distance("left", 114300)), new XAttribute("distR", Distance("right", 114300)),
             new XAttribute("simplePos", 0), new XAttribute("relativeHeight", Math.Abs(z)), new XAttribute("behindDoc", z < 0 ? 1 : 0),
             new XAttribute("locked", 0), new XAttribute("layoutInCell", 1), new XAttribute("allowOverlap", 1),
             new XElement(Drawings.Wp + "simplePos", new XAttribute("x", 0), new XAttribute("y", 0)),
@@ -92,7 +110,7 @@ public static class Vml
             Position("positionV", style.GetValueOrDefault("mso-position-vertical-relative"), style.GetValueOrDefault("mso-position-vertical"),
                 Length(style.GetValueOrDefault("margin-top")) ?? Length(style.GetValueOrDefault("top")) ?? 0, horizontal: false),
             extent,
-            new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0)),
+            new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(el)), new XAttribute("t", Emu(et)), new XAttribute("r", Emu(er)), new XAttribute("b", Emu(eb))),
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
         return anchor;
@@ -467,9 +485,13 @@ public static class Vml
             var inset = ((string?)shape.Element(V + "textbox")!.Attribute("inset") ?? "").Split(',');
             double Inset(int i, double fallback) => i < inset.Length && Length(inset[i].Trim()) is { } v ? v : fallback;
             var anchor = Style((string?)shape.Attribute("style")).GetValueOrDefault("v-text-anchor") switch { "middle" => "ctr", "bottom" => "b", _ => "t" };
+            // A text box that fits its shape to the text (mso-fit-shape-to-text) is as high as it (testOuterShdw: a box
+            // stated 42.45 pt high stands 39.8 pt high around a line of text and its paragraph's top border).
+            var fits = Style((string?)shape.Element(V + "textbox")!.Attribute("style")).GetValueOrDefault("mso-fit-shape-to-text") is "t" or "true";
             wsp.Add(new XElement(Drawings.Wps + "bodyPr",
                 new XAttribute("lIns", Emu(Inset(0, 7.2))), new XAttribute("tIns", Emu(Inset(1, 3.6))),
-                new XAttribute("rIns", Emu(Inset(2, 7.2))), new XAttribute("bIns", Emu(Inset(3, 3.6))), new XAttribute("anchor", anchor)));
+                new XAttribute("rIns", Emu(Inset(2, 7.2))), new XAttribute("bIns", Emu(Inset(3, 3.6))), new XAttribute("anchor", anchor),
+                fits ? new XElement(Ns.A + "spAutoFit") : null));
         }
         return wsp;
     }

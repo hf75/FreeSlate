@@ -1747,7 +1747,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outsideMargin" => odd ? (page.TextLeft + page.TextWidth, s.PageWidth - page.TextLeft - page.TextWidth) : (0.0, page.TextLeft),
                 _ => (page.TextLeft, page.TextWidth),
             };
-            x = Position(positionH, x0, xw, w, odd, horizontal: true);
+            // Alignment places the shape with its effect extent (measured with docx/local/sa-d1, sa-d2: 80 pt left and
+            // 36 pt above take a shape centered at the page's top 40 pt right and 36 pt down, with or without an effect;
+            // sb-*, sc-*: each side counts where its alignment meets it, across the page and the margins), except for a
+            // shape sized relative to the page or the margins, whose stored extent is not its own (docx/external/
+            // libreoffice/extras-ooxmlimport/groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
+            var effects = relativeWidth == null && relativeHeight == null ? element.Element(Docx.Drawings.Wp + "effectExtent") : null;
+            double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
+            x = Position(positionH, x0, xw, w, odd, horizontal: true, Effect("l"), Effect("r"));
             var positionV = element.Element(Docx.Drawings.Wp + "positionV");
             var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
             {
@@ -1761,7 +1768,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
             };
-            y = Position(positionV, y0, yh, h, odd, horizontal: false);
+            y = Position(positionV, y0, yh, h, odd, horizontal: false, Effect("t"), Effect("b"));
         }
         return new PlacedDrawing(element, anchor.Part, x, y, w, h)
         {
@@ -1771,18 +1778,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             ChildText = anchor.ChildText,
         };
 
-        double Position(XElement? position, double origin, double size, double extent, bool odd, bool horizontal)
+        double Position(XElement? position, double origin, double size, double extent, bool odd, bool horizontal, double before, double after)
         {
             if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
                 return origin + Emu(offset);
             if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
                 return origin + size * Emu(percent) * 12700 / 100000;
-            return position?.Element(Docx.Drawings.Wp + "align")?.Value switch
+            var whole = before + extent + after;
+            return before + position?.Element(Docx.Drawings.Wp + "align")?.Value switch
             {
-                "right" or "bottom" => origin + size - extent,
-                "center" => origin + (size - extent) / 2,
-                "inside" => odd == horizontal ? origin : origin + size - extent,
-                "outside" => odd == horizontal ? origin + size - extent : origin,
+                "right" or "bottom" => origin + size - whole,
+                "center" => origin + (size - whole) / 2,
+                "inside" => odd == horizontal ? origin : origin + size - whole,
+                "outside" => odd == horizontal ? origin + size - whole : origin,
                 _ => origin,
             };
         }
