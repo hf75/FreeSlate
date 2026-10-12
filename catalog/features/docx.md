@@ -21,7 +21,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
 | [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 2 | 9 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 10 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 0 | 11 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 1 | 6 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **12** | **182** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **11** | **183** |
 
 <a id="package"></a>
 
@@ -691,7 +691,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | done | 8 | 35 |
 | [Tab stops](#paragraph.tabs) | P0 | ●●●○○ | done | 5 | 3 |
 | [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | done | 2 | 1 |
-| [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | partial | 14 | 8 |
+| [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | done | 14 | 8 |
 | [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | done | 2 | 2 |
 | [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | done | 5 | 2 |
 | [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | done | 2 | 1 |
@@ -797,11 +797,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### East Asian line breaking and character grid
 
-`paragraph.eastAsian` · P1 · difficulty 4 · partial
+`paragraph.eastAsian` · P1 · difficulty 4 · done
 
 **Rendering:** Kinsoku (characters that may not start or end a line, custom lists in settings), hanging punctuation, automatic spacing between Asian and Latin text and digits, punctuation compression, and snapping to the section's document grid (section.docGrid).
 
-**Office behaviour:** The automatic space between East Asian text and Latin letters (w:autoSpaceDE) and digits (w:autoSpaceDN), on by default, is a quarter of the East Asian character's size at every boundary; w:textAlignment top, center and bottom align a line's characters by their fonts' win ascents and descents (docx/local/ec-none 92.5 %). Punctuation compression (w:characterSpacingControl) changed nothing in Word with MS Mincho (docx/local/ec-*). Kinsoku follows Word's default characters (engine.lineLayout). Still open: custom kinsoku lists (w:noLineBreaksAfter, w:noLineBreaksBefore), hanging and overflowing punctuation.
+**Office behaviour:** Kinsoku (w:kinsoku) with Word's characters per East Asian language of the paragraph's first East Asian character, measured with docx/local/kinsoku-chars* (154 candidates each where it would begin and where it would end a line): Japanese standard !%),.:;?]}¢°’”‰′″℃、。々〉》」』】〕゛゜ゝゞ・ヽヾ！％），．：；？］｝｡｣､･ﾞﾟ￠ may not begin a line and $([\{£¥‘“〈《「『【〔＄（［｛｢￡￥ not end one, w:strictFirstAndLastChars adds the small kana and ー; Simplified and Traditional Chinese have their own lists, Korean none, other languages take the Japanese ones. A document's own lists (w:noLineBreaksBefore, w:noLineBreaksAfter for a w:lang) replace both of Word's, a missing one by none (kinsoku-custom*); Word looks them up as written in code point order, as it writes them. East Asian punctuation and full-width forms break like ideographs (a line may end between 。 and 「, ea- adjust). Punctuation that may not begin a line hangs past the end instead where w:overflowPunct lets it (on by default): before Word 2013 in every paragraph, from then on in justified ones; Japanese ,.’”、。」』】），．］｝｡､, Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width. w:wordWrap off breaks Latin words anywhere (ea-opts). w:topLinePunct sets an East Asian opening bracket that begins a line half its width further left (toplinepunct15/12). In kerned runs (w:kern) an East Asian comma, period or closing bracket before another one or an opening bracket loses half its width unless w:noPunctuationKerning (ea-punctkern). The automatic space between East Asian and Latin text (w:autoSpaceDE, w:autoSpaceDN, on by default) exists only where the document's default East Asian font (w:docDefaults, through the theme) is an East Asian one (ea-auto-*: MS Mincho, SimSun, Yu Gothic yes whatever the language; Arial, none, a style's or the paragraph mark's no): a quarter of the East Asian character's size after East Asian text, half the Latin font's average character width (OS/2) after Latin text (ea-autospace2: Arial, Times New Roman, Calibri, Courier New, Segoe UI beside four East Asian fonts within 0.1 pt), none at a line's end. Justified lines with East Asian text (where that default font is one) share their free width equally among the gaps after and before every East Asian character and after every space, a space 0.45 of its width more and the automatic space at an East Asian/Latin boundary once more; distributed lines among all characters where the paragraph has East Asian text or the document such a font, else among their spaces (cjk-justify-lines, cjk- justify15/12, cjk-justify-western, docx/generated/paragraph-alignment). Before Word 2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by their fonts' win ascents and descents (ec-none); punctuation compression (w:characterSpacingControl) and w:adjustRightInd changed nothing in Word's printout (ec-*, ea-adjust). Known deviation: custom kinsoku lists not in code point order lose different characters in Word than here.
 
 **Elements (14):** [`w:adjustRightInd`](../format/namespaces/w.md#wadjustrightind), [`w:autoSpaceDE`](../format/namespaces/w.md#wautospacede), [`w:autoSpaceDN`](../format/namespaces/w.md#wautospacedn), [`w:characterSpacingControl`](../format/namespaces/w.md#wcharacterspacingcontrol), [`w:kinsoku`](../format/namespaces/w.md#wkinsoku), [`w:noLineBreaksAfter`](../format/namespaces/w.md#wnolinebreaksafter), [`w:noLineBreaksBefore`](../format/namespaces/w.md#wnolinebreaksbefore), [`w:noPunctuationKerning`](../format/namespaces/w.md#wnopunctuationkerning), [`w:overflowPunct`](../format/namespaces/w.md#woverflowpunct), [`w:snapToGrid`](../format/namespaces/w.md#wsnaptogrid), [`w:strictFirstAndLastChars`](../format/namespaces/w.md#wstrictfirstandlastchars), [`w:textAlignment`](../format/namespaces/w.md#wtextalignment), [`w:topLinePunct`](../format/namespaces/w.md#wtoplinepunct), [`w:wordWrap`](../format/namespaces/w.md#wwordwrap)
 
