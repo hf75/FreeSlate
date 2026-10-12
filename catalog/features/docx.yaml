@@ -863,7 +863,9 @@ areas:
         office: >-
           Consecutive paragraphs with the same w:framePr form a frame that takes no room in the text: w:w wide or as
           wide as its content, at w:x or aligned (w:xAlign) in its column, the margin or the page, w:y below the next
-          paragraph's top, the margin or the page; the paragraphs' borders frame it; text wraps around it with its
+          paragraph's top, the margin or the page, its first paragraph's space before inside it above its lines
+          (docx/local/fb-*: 6 and 12 pt before take its text and the text below it as much lower; fdo78904_fileHang);
+          the paragraphs' borders frame it; text wraps around it with its
           borders, w:hSpace and w:vSpace kept free (not beside it with notBeside, over it with none). A drop cap is a
           frame of its letter at the start of the next paragraph, whose lines go around it; a margin drop cap stands
           left of the column (docx/local/frames: every line as in Word). Frames in headers and footers stand alike,

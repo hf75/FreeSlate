@@ -448,8 +448,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var frameBorders = Frame.Read(first.Format);
         var borderTop = frameBorders?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
         content += borderTop + (frameBorders?.Bottom is { Visible: true } bb ? bb.Space + bb.Total : 0);
-        var height = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
         var dropCap = properties.Attr("dropCap");
+        // The first paragraph's space before stands in the frame, above its lines and borders (measured with
+        // docx/local/fb-*: 6 and 12 pt before put the frame's text and the text below it as much lower, after 12 pt
+        // after the paragraph above too; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
+        var spaceTop = dropCap is "drop" or "margin" ? 0 : SpaceBefore(first, null, false);
+        content += spaceTop;
+        var height = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
         // The paragraph the frame belongs to: the first after it.
         var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
         var textTop = y + (columnEmpty ? 0 : Gap(next != null ? SpaceBefore(next) : 0));
@@ -487,7 +492,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             _ => frameTop + Twips("y"),
         };
         // The frame's lines, its paragraphs' borders around the whole frame.
-        var lineTop = top + borderTop;
+        var lineTop = top + spaceTop + borderTop;
         for (var k = 0; k < group.Count; k++)
         {
             if (k > 0)
@@ -498,7 +503,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += line.Height;
             }
         }
-        frameBorders?.Draw(page, x, frameWidth, first.Format, top, top + height, top: true, bottom: true, between: null);
+        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + height, top: true, bottom: true, between: null);
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var vSpace = Twips("vSpace");
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
