@@ -809,7 +809,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             top = first ? Top.Document : Top.Section;
             return;
         }
-        // A continuous section goes on below what the page holds already, its first paragraph spaced as any other.
+        // A continuous section goes on below what the page holds already and the space after its last paragraph,
+        // where all its columns begin; its first paragraph adds what its space before has more (measured with
+        // docx/local/colsp-*: a second column begins level with the first below 12 pt after, without 24 pt before;
+        // balanced columns above hold that space already).
+        if (!balanced)
+            y += pendingAfter;
         columnTop = y;
         column = 0;
         columnEmpty = true;
@@ -1926,10 +1931,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             Top.Document => before,
             Top.Section => Math.Max(0, Gap(before) - pendingAfter),
-            // Below balanced columns, whose height holds the space after their last paragraphs, what the space before
-            // has more than that space after (measured with page-setup: the heading of the three-column section stands
-            // level with the other columns, its 8 pt before already in the 8 pt after above).
-            Top.Continuous => balanced ? Math.Max(0, Gap(before) - pendingAfter) : Gap(before),
+            // Below the space after the paragraph above, which a continuous section begins below (balanced columns
+            // hold it in their height), what the space before has more than that space after (measured with
+            // page-setup: the heading of the three-column section stands level with the other columns, its 8 pt before
+            // already in the 8 pt after above; docx/local/colsp-*).
+            Top.Continuous => Math.Max(0, Gap(before) - pendingAfter),
             // After a break that begins the paragraph, what its space before has more than the space after the
             // paragraph before it (measured with docx/external/libreoffice/extras-ooxmlexport/
             // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
@@ -2259,12 +2265,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>
-    /// Balances the columns of the current section on this page (catalog: section.columns): its lines are counted, not
-    /// measured, and spread over the columns, as many in each as the least count that holds them all, the first columns
-    /// taking the extra lines (measured with docx/local/cols-balance: 9 lines go 5/4, 15 lines 8/7; in
-    /// docx/generated/page-setup a heading and 60 lines go 31/30 although the first column is 42 pt longer), with the
-    /// rules of page breaks (widows and orphans, keep with next, keep lines together); the next section begins below
-    /// the longest column.
+    /// Balances the columns of the current section on this page (catalog: section.columns): the least column height in
+    /// whole lines of the section's least line height that holds all its lines, each column filled as far as that
+    /// height lets it by the rules of page breaks (widows and orphans, keep with next, keep lines together), the first
+    /// column with the space before its first paragraph, a column's last line with its text but not the extra space of
+    /// multiple line spacing below it, the space after its paragraph needing no room; the next section begins below the
+    /// longest column. Measured with docx/local/cb-*: a line with 60 pt after and ten lines go 3 / 8, ten lines and a
+    /// line with 60 pt after 6 / 5, four lines of 24 pt and eight of 12 pt 4 / 8, a line with 60 pt after and 14 lines in
+    /// three columns 1 / 7 / 7 as a single first line would be an orphan; docx/local/cbx-*, cbs-*: ten lines of 13.6 pt
+    /// below X before go 5 / 5 up to X = 13.6 pt, which counts as shown (less the space after above a new page);
+    /// docx/local/cbp-*: four paragraphs of four lines of 13.6 pt with A after, X before the first, move two lines of the
+    /// second into the second column where the first column would end below the least multiple of 13.6 pt that holds
+    /// the second with them (at X = 27.2, 36.8, 46.4, 42.4, 52.0, 48.0 and 57.6 pt for A = 0 to 24 pt); docx/local/cbq-*:
+    /// lines of 15.75 pt at 1.16 lines, their text 2.15 pt less, multiples of 15.75 pt; docx/local/cbr*-*: of 13.6 pt
+    /// where one line of 27.2 pt begins or ends the section, where the lines that move or most lines are 20.4 or
+    /// 27.2 pt; docx/generated/page-setup: a heading and 60 lines go 31 / 30 where moving two lines would make the
+    /// longest column 0.3 pt shorter, not where 4 pt (docx/local/ps-h*); docx/local/colsp-*, cols-balance.
     /// </summary>
     void Balance()
     {
@@ -2315,19 +2331,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return b > columnStart ? b : -1;
         }
 
-        List<(int Column, double Top)>? Place(int count)
+        // The columns filled up to a height, or null where they do not hold all lines.
+        List<(int Column, double Top)>? Place(double limit)
         {
             var placement = new List<(int Column, double Top)>();
             var c = 0;
             var used = 0.0;
             var columnStart = 0;
-            var bottom = Bottom - columnTop;
+            var bottom = Math.Min(limit, Bottom - columnTop);
             for (var i = 0; i < items.Count; i++)
             {
                 var g = i == 0 ? items[0].FirstGap : used > 0 ? items[i].Gap : 0;
-                if (used > 0 && (i - columnStart >= count || used + g + fits[i] > bottom + 0.01))
+                // Word tells heights 0.006 pt apart (docx/local/cbx-272: 13.6 pt and five lines of 13.594 pt exceed six).
+                if (used > 0 && used + g + fits[i] > bottom + 0.001)
                 {
                     var b = BreakBefore(i, columnStart);
+                    // Where the rules of page breaks cannot hold in the column, a greater height is tried (measured
+                    // with docx/local/kcs-3-4: the last two lines of a paragraph stand together in the first of three
+                    // columns, not one in each); the page's height breaks them as it must.
+                    if (b < 0 && bottom < Bottom - columnTop - 0.001)
+                        return null;
                     if (b < 0)
                         b = i;
                     c++;
@@ -2345,9 +2368,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return placement;
         }
 
+        // Whole lines of the least line height from a height no balance goes below, up to the least that holds all
+        // lines or the page's.
+        var unit = heights.Min();
         List<(int Column, double Top)>? result = null;
-        for (var count = (items.Count + columns - 1) / columns; result == null && count <= items.Count; count++)
-            result = Place(count);
+        if (unit > 0.01)
+        {
+            var room = Bottom - columnTop;
+            for (var k = Math.Max(1, (int)Math.Floor(Math.Max(fits.Max(), fits.Sum() / columns) / unit)); result == null && (k - 1) * unit <= room; k++)
+                result = Place(k * unit);
+        }
         if (result == null)
             return;
         var bottom = columnTop;
