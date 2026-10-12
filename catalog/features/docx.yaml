@@ -1313,7 +1313,10 @@ areas:
           WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a picture wider than a third);
           widths before and after rows do not widen columns. Word 2013
           tables start their grid at the indent and move it right by half the left border; older compatibility modes
-          put the first cell's text at the indent. Cells of tables without any table style (the document has no
+          put the first cell's text at the indent and let an autofit table as wide as its column end its last cell's
+          text at the column's right edge, the cell's margin and the line's middle beyond it (docx/local/tw-12-*,
+          tw-14-*, tw-15-*: margins of 0.5 and 8.5 pt reach as far past the right margin, in mode 15 nothing; docx/
+          external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 440.7 pt between 432 pt margins). Cells of tables without any table style (the document has no
           default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15).
           A fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
           between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before

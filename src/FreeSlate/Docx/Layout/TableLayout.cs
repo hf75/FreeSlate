@@ -547,8 +547,19 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
         // Column widths: the saved grid for fixed tables, Word's autofit for the others.
         var allowance = rows.Count > 0 ? (Width(vertical[0, 0]) + Width(vertical[0, columns])) / 2 : 0;
+        // Older modes let a table as wide as its column end its last cell's text at the column's right edge, the
+        // cell's margin and the line's middle beyond it, as its first cell's text begins at the indent (measured with
+        // docx/local/tw-12-*, tw-14-*: margins of 0.5 and 8.5 pt reach 0.5 and 8.5 pt past the right margin, in mode 15
+        // none; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 432 pt between the margins, 440.7 pt).
+        var reach = 0.0;
+        if (!Modern && format.Justification is not ("center" or "right" or "end") && rows.Count > 0 && rows[0].Cells.Count > 0)
+        {
+            var firstLeft = Margins(rows[0], rows[0].Cells[0], format).Left;
+            reach = allowance + Margins(rows[0], rows[0].Cells[^1], format).Right
+                + (format.Indent == null ? 0 : Math.Max(firstLeft, Width(vertical[0, 0]) / 2));
+        }
         var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
-            lines: vertical);
+            lines: vertical, reach: reach);
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
             x[k + 1] = x[k] + grid[k];
@@ -1041,13 +1052,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <param name="lines">The vertical lines of the rows (row, grid line), whose halves count where they are wider
     /// than the cells' margins beside them; none for tables with cell spacing.</param>
     double[] Grid(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
-        double gaps = 0, double? widthBase = null, BorderLine?[,]? lines = null)
+        double gaps = 0, double? widthBase = null, BorderLine?[,]? lines = null, double reach = 0)
     {
         var grid = new double[columns];
         for (var k = 0; k < columns; k++)
             grid[k] = k < table.Grid.Count ? table.Grid[k] : 0;
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
-            return Autofit(table, rows, columns, available, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps), lines);
+            return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps), lines);
         if (grid.All(w => w > 0))
             return Scaled(grid);
         // From the first row's cell widths.
