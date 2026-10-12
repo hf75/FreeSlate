@@ -375,6 +375,12 @@ public sealed class TableBox
     /// rows on every page; its top is in the first row's height, its bottom below the last row.
     /// </summary>
     public (BorderLine? Top, BorderLine? Left, BorderLine? Bottom, BorderLine? Right) Frame { get; init; }
+
+    /// <summary>
+    /// How far the table's left edge stands left of its indent: in older compatibility modes the first cell's text
+    /// stands at the indent (TableLayout), and at a floating table's position (Paginator.PlaceFloatingTable).
+    /// </summary>
+    public double Inset { get; init; }
 }
 
 /// <summary>
@@ -587,7 +593,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             // docx/local/c2-tblpos in modes 11 to 14).
             _ => indent - (Modern ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift)),
         };
-        var box = new TableBox { Left = origin0, Width = tableWidth };
+        var box = new TableBox { Left = origin0, Width = tableWidth, Inset = justification is "center" or "right" or "end" ? 0 : indent - origin0 };
         double X(double position) => origin0 + (rtl ? tableWidth - position : position);
         (double From, double Width) Range(double from, double to) => rtl ? (origin0 + tableWidth - to, to - from) : (origin0 + from, to - from);
 

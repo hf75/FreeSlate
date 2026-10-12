@@ -311,7 +311,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "center" => frameLeft + (frameWidth - tableWidth) / 2,
             "inside" => odd ? frameLeft : frameLeft + frameWidth - tableWidth,
             "outside" => odd ? frameLeft + frameWidth - tableWidth : frameLeft,
-            _ => frameLeft + Twips("tblpX"),
+            // Older modes put the first cell's text at the position, as they do at an indent (measured with
+            // docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in modes 14
+            // and 12, extras-ooxmlexport/fdo68607: the text at the margin, the table 5.4 pt left of it).
+            _ => frameLeft + Twips("tblpX") - (context.CompatibilityMode < 15 ? box.Inset : 0),
         };
         var top = position.Attr("tblpYSpec") switch
         {
