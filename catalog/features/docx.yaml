@@ -3285,8 +3285,10 @@ areas:
         office: >-
           Lines break at UAX #14 opportunities with Word's kinsoku, and at every space before a character that is not
           East Asian, also before periods, closing brackets and quotes, slashes and percent signs (docx/local/
-          spacebreak: 19 characters), and before and after inline pictures as beside ideographs (docx/local/tblpic3);
-          a word longer than the line breaks between characters; trailing spaces hang past the end; justified lines squeeze spaces for one more word where that
+          spacebreak: 19 characters), after every hyphen and en dash whatever stands before it, digits, punctuation
+          or a space, after the hyphen U+2010 from Word 2013 on, not after slashes, plus signs, underscores or
+          non-breaking hyphens (docx/local/hyphbreak-15, -12: 19 cases), and before and after inline pictures as
+          beside ideographs (docx/local/tblpic3); a word longer than the line breaks between characters; trailing spaces hang past the end; justified lines squeeze spaces for one more word where that
           changes them less than stretching would (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
           snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
           Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same

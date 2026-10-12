@@ -808,6 +808,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
         BreakAtSpaces(text, breaks);
+        BreakAfterHyphens(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         BreakAroundObjects(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
@@ -1200,6 +1201,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
         BreakAtSpaces(text, breaks);
+        BreakAfterHyphens(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         BreakAroundObjects(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
@@ -2106,6 +2108,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         for (var i = 0; i + 1 < text.Length; i++)
         {
             if (text[i] is ' ' or '\t' && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v') && !EastAsian(text[i + 1]))
+                breaks[i] = true;
+        }
+    }
+
+    /// <summary>
+    /// A line may end after a hyphen or an en dash whatever stands before it, digits, punctuation or a space, and after
+    /// the hyphen U+2010 from Word 2013 on (measured with docx/local/hyphbreak-15 and -12: "10-" | "08", "1)-" | "08",
+    /// "1 -" | "08"; not after a slash, plus sign, underscore, period or comma between digits, nor a non-breaking
+    /// hyphen; docx/external/poi/bug65649: "ТЕРм10-08-" | "001-02" in a narrow cell).
+    /// </summary>
+    void BreakAfterHyphens(string text, bool[] breaks, LineBreaker.Kinsoku rules, int labelEnd)
+    {
+        for (var i = labelEnd; i + 1 < text.Length; i++)
+        {
+            if ((text[i] is '-' or '\u2013' || text[i] == '\u2010' && context.CompatibilityMode >= 15)
+                && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v') && !rules.NotFirst.Contains(text[i + 1]))
                 breaks[i] = true;
         }
     }
