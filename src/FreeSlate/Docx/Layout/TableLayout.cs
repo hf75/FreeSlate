@@ -1165,37 +1165,33 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <summary>
-    /// Columns whose preferred widths do not fit where their contents would: those that need their minimum keep it,
-    /// the others share the rest in proportion to the widths they prefer, none below the minimum of its contents.
+    /// Columns whose preferred widths do not fit where their contents would: those that need more than they prefer
+    /// keep their contents' minimum, the others give up what is missing in proportion to how much they prefer over
+    /// their contents' minimum (measured with docx/local/overpref-O1 to -O4 within 0.4 pt: three cells preferring
+    /// 221 pt on 451 pt take 143.6, 157.1 and 150.3 pt beside words of 12, 48 and 30 pt;
+    /// docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
     /// </summary>
     static double[] Yielding(double[] min, double[] natural, double space)
     {
         var columns = min.Length;
         var widths = new double[columns];
-        var kept = new bool[columns];
+        var rest = space;
+        var preferred = 0.0;
+        var slack = 0.0;
         for (var k = 0; k < columns; k++)
-            kept[k] = natural[k] >= min[k] - 0.01;
-        while (true)
         {
-            var rest = space;
-            var shares = 0.0;
-            for (var k = 0; k < columns; k++)
+            if (natural[k] >= min[k] - 0.01)
+                rest -= natural[k];
+            else
             {
-                if (kept[k])
-                    rest -= natural[k];
-                else
-                    shares += min[k];
+                preferred += min[k];
+                slack += min[k] - natural[k];
             }
-            var narrowed = false;
-            for (var k = 0; k < columns; k++)
-            {
-                widths[k] = kept[k] || shares <= 0 ? natural[k] : min[k] * Math.Max(0, rest) / shares;
-                if (!kept[k] && widths[k] < natural[k] - 0.01)
-                    (kept[k], narrowed) = (true, true);
-            }
-            if (!narrowed)
-                return widths;
         }
+        var missing = Math.Max(0, preferred - rest);
+        for (var k = 0; k < columns; k++)
+            widths[k] = natural[k] >= min[k] - 0.01 ? natural[k] : min[k] - (slack > 0 ? missing * (min[k] - natural[k]) / slack : 0);
+        return widths;
     }
 
     /// <summary>

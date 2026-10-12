@@ -1306,8 +1306,9 @@ areas:
           a preferred cell width fixes its column; where the maxima fit the columns take them (stretched in proportion
           to them for a wider table width), where the minima fit each gets its minimum and a share of the rest in
           proportion to max - min; where preferred widths do not fit, columns whose contents need more keep their
-          minimum and the others share the rest in proportion to their preferred widths (docx/local/tblpic table B,
-          tblpic2); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
+          minimum and the others give up what is missing in proportion to how much they prefer over their contents'
+          minimum (docx/local/tblpic table B, tblpic2, overpref-O1 to -O4 within 0.2 pt: cells preferring 221 pt each
+          on 451 pt beside words of 12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
           aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt; docx/external/powertools/WC/
           WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a picture wider than a third);
           widths before and after rows do not widen columns. Word 2013
