@@ -153,8 +153,6 @@ public sealed class RowBox
         var tailHeight = TopWidth;
         foreach (var cell in Cells)
         {
-            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered, Carried = cell.Carried, Span = cell.Span };
-            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Carried = cell.Carried, Span = cell.Span };
             // Where the lines would stand without the cell's vertical alignment, which each part applies again.
             var rest = cell.Lines.FirstOrDefault(l => l.Top - cell.Lowered + l.Line.Height + l.After > available + 0.01);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
@@ -178,6 +176,12 @@ public sealed class RowBox
             }
             if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
                 return null;
+            // Content cut in two goes on at the top of the continuation, whatever the cell's alignment (measured with
+            // docx/local/vs-7 to vs-10: the second of two centered or bottom-aligned lines; docx/external/poi/bug65649);
+            // content that stands whole in one part aligns there (vs-1 to vs-6).
+            var cut = rest != null && !ReferenceEquals(rest, cell.Lines[0]);
+            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered, Carried = cell.Carried, Span = cell.Span };
+            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cut ? null : cell.Align, Carried = cell.Carried, Span = cell.Span };
             var offset = rest != null ? rest.Top - cell.ContentTop : 0;
             foreach (var line in cell.Lines)
             {
