@@ -55,8 +55,14 @@ all of them. Word has no export of a page as an image; the reference is what Wor
 PDF (`ExportAsFixedFormat`, the document without markup, optimized for print), and Windows' own PDF renderer
 (`Windows.Data.Pdf`, through `tools/Fidelity/Word/rasterize-pdf.ps1`) rasterizes every page at 96 dpi into
 `page-001.png`, … The PDF stays in `artifacts/fidelity/docx/…/reference.pdf` for measuring (it embeds font subsets
-and is not committed). Pages of a document may differ in size; each is compared at its own size. The rendering side
-of documents is still to come, so `run` skips them for now.
+and is not committed). Pages of a document may differ in size; each is compared at its own size. `run` converts a
+document with FreeSlate, prints it to PDF with headless Chrome or Edge and rasterizes that PDF with the same renderer,
+so that both sides go through the same rasterizer.
+
+Documents whose name begins with `markup-` (`docx/local/markup-revisions`) are rendered with their markup on both
+sides: Word prints them with all markup (`ExportDocumentWithMarkup`), FreeSlate converts them with `markup: true`.
+Word gives the authors of comments and tracked changes their colors in the order it meets them in a session, over all
+its documents, so every such document gets a Word session of its own.
 
 ## The corpus
 

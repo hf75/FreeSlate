@@ -1,30 +1,35 @@
 # FreeSlate
 
-FreeSlate renders PowerPoint presentations (`.pptx`) as a single, self-contained HTML document that looks like
-PowerPoint's own rendering — slide by slide, pixel by pixel — and plays the slide show with its transitions,
-animations and media in any modern browser. It is written in C# for .NET 10, runs on Windows, Linux and macOS, and
-does not depend on Office.
+FreeSlate renders PowerPoint presentations (`.pptx`) and Word documents (`.docx`) as a single, self-contained HTML
+document that looks like Office's own rendering — slide by slide and page by page, pixel by pixel. Presentations play
+their slide show with its transitions, animations and media in any modern browser; Word documents are laid out into
+pages by FreeSlate's own layout engine the way Word prints them. It is written in C# for .NET 10, runs on Windows,
+Linux and macOS, and does not depend on Office.
 
-The goal is fidelity, not approximation: every rule the engine follows was measured against PowerPoint. The test
-suite renders each slide with PowerPoint and with FreeSlate and compares the two images.
+The goal is fidelity, not approximation: every rule the engine follows was measured against PowerPoint and Word. The
+test suite renders each slide with PowerPoint and each page with Word, renders them with FreeSlate and compares the
+images.
 
-FreeSlate is meant to grow into the foundation of an open document editor; DOCX support comes next. The
-[Word feature catalog](catalog/features/docx.md) already assigns all 2,093 elements a DOCX file can contain to 194
-features.
+FreeSlate is meant to grow into the foundation of an open document editor.
 
 ## Status
 
 | | |
 |---|---|
-| Features | 146 of 146 features of the [PowerPoint feature catalog](catalog/features/pptx.md) implemented; all 1,653 elements a PPTX file can contain are assigned to a feature |
-| Fidelity, own test corpus | **98.3 %** over 414 slides in 57 decks built by PowerPoint (89 % of the slides score 95 % or better) |
+| PowerPoint features | 146 of 146 features of the [PowerPoint feature catalog](catalog/features/pptx.md) implemented; all 1,653 elements a PPTX file can contain are assigned to a feature |
+| Word features | 194 of 194 features of the [Word feature catalog](catalog/features/docx.md) implemented; all 2,093 elements a DOCX file can contain are assigned to a feature |
+| Fidelity, own test corpus | **98.3 %** over 414 slides in 57 decks built by PowerPoint (89 % of the slides score 95 % or better); **92.7 %** over 61 pages in 29 documents built by Word |
 | Fidelity, other projects' test decks | **94.5 %** over 1,229 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
 
-The score of a slide is the share of its content pixels that match PowerPoint's rendering within a small tolerance
-(see [Measuring fidelity](docs/fidelity.md)). Decks of other projects include deliberately broken and exotic files,
-which is why their average is lower.
+The score of a slide or page is the share of its content pixels that match the Office rendering within a small
+tolerance (see [Measuring fidelity](docs/fidelity.md)). Decks of other projects include deliberately broken and exotic
+files, which is why their average is lower. Word pages lose most of their points to anti-aliasing: Word prints text
+with the fonts' hinting, FreeSlate draws glyph outlines; the lines and glyphs stand where Word puts them.
 
 ## What it renders
+
+### Presentations
+
 
 - **Slides and structure**: masters, layouts, placeholders and their inheritance, themes and theme overrides, color
   mapping, backgrounds, headers and footers, sections, custom shows, hidden slides, speaker notes, comments.
@@ -49,8 +54,25 @@ which is why their average is lower.
   entrance, emphasis, exit and motion path animations with their timing and triggers, media playback, hyperlinks,
   action buttons and zoom objects.
 
-The [feature catalog](catalog/features/pptx.md) documents every feature with the PowerPoint behavior that was measured
-for it.
+### Word documents
+
+- **Layout**: Word's line layout (line heights, spacing, tabs, justification, hyphenation, East Asian typography and
+  kinsoku, right-to-left and vertical text), lists and numbering, styles and their inheritance, document grids,
+  compatibility modes of older Word versions.
+- **Pages**: sections, columns, page breaks, keep and widow rules, headers and footers, footnotes and endnotes, line
+  numbers, page borders, backgrounds and watermarks, vertical alignment.
+- **Tables**: autofit and fixed layouts, merged and nested cells, table styles with their conditional formats,
+  borders, floating tables, rows split over pages.
+- **Objects**: pictures, shapes, text boxes, groups and canvases, WordArt, charts and SmartArt (with the PowerPoint
+  renderers), equations, VML shapes, OLE objects, floating objects with all text wrapping modes.
+- **Fields and content**: page fields, references, sequences and other fields as Word computes them when it prints,
+  content controls and data binding, legacy form fields, imported content (HTML, RTF, text), ruby, emphasis marks.
+- **Review**: comments and tracked changes, as Word prints without markup (all changes accepted) or, as an option,
+  with markup: changes in their authors' colors, change bars, and comments and formatting changes in balloons beside
+  the page.
+
+The feature catalogs ([PowerPoint](catalog/features/pptx.md), [Word](catalog/features/docx.md)) document every feature
+with the Office behavior that was measured for it.
 
 ## Quick start
 
@@ -92,9 +114,26 @@ var fonts = new FreeSlate.Fonts.FontLocator(["/usr/share/fonts", "/home/me/fonts
 PptxConverter.ToFile("deck.pptx", "deck.html", fonts: fonts);
 ```
 
+### Converting a Word document
+
+```csharp
+using FreeSlate;
+
+// One self-contained HTML file: all pages one below the other, laid out as Word prints them.
+DocxConverter.ToFile("report.docx", "report.html");
+
+// With comments and tracked changes shown as Word prints them with markup.
+DocxConverter.ToFile("report.docx", "report-markup.html", markup: true);
+```
+
+The options of `PptxConverter` for passwords, fonts and the regional format (`password`, `fonts`, `culture`) work
+for Word documents too; the culture also chooses the language of the markup balloons (German or English).
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
+  `report.html` shows all pages one below the other; `report.html#page-3` shows a single page, and printing it
+  prints every page on its own paper size.
 - The play button or F5 starts the slide show full screen, Shift+F5 from the current slide, Alt+F5 (or V during the
   show) opens the presenter view with the next slide, the speaker notes and a timer. The keys work as in PowerPoint:
   arrow keys, space, Enter, Page Up/Down, Home/End, N/P, a slide number and Enter, B/W for a black or white screen,
@@ -163,11 +202,14 @@ demand and stay out of git.
 
 ## Known limitations
 
-- DOCX is not supported yet.
-- Slides look like PowerPoint's where the fonts they use are available: installed, embedded in the presentation, or
-  in Office's cloud font cache. Without Office fonts such as Calibri or Aptos (on Linux, for instance), text is set
+- Slides and pages look like Office's where the fonts they use are available: installed, embedded in the document,
+  or in Office's cloud font cache. Without Office fonts such as Calibri or Aptos (on Linux, for instance), text is set
   in substitutes with different metrics.
-- Slides are matched against PowerPoint for Windows (Microsoft 365); other PowerPoint versions differ in details.
+- Slides are matched against PowerPoint and pages against Word for Windows (Microsoft 365); other versions differ in
+  details.
+- Word documents are rendered as pages to read and print; FreeSlate does not edit them or reflow them to the window.
+  Word's pictorial art page borders (apples, hearts, …) are Microsoft's own pictures and are not drawn; the basic
+  geometric ones are.
 - A few rare cases still differ visibly, among them pies whose outside labels make PowerPoint shrink them, the axis
   intervals of some radar charts, text on circular WordArt paths, ActiveX controls, and modern oblique 3D cameras
   with a rotation of their own. The feature catalog lists the known deviations per feature.
@@ -175,11 +217,11 @@ demand and stay out of git.
 
 ## Contributing
 
-Issues and pull requests are welcome. The guiding rule of the project: behavior is measured against PowerPoint,
-not guessed. A change that alters the rendering comes with the measurement behind it (a probe deck, COM values or
-reference images) and keeps the fidelity of the test corpus (`Fidelity run generated`) at least where it was; the
-measured behavior goes into the feature catalog (`catalog/features/pptx.yaml`, then
-`dotnet run --project tools/SpecTools -- features`).
+Issues and pull requests are welcome. The guiding rule of the project: behavior is measured against PowerPoint and
+Word, not guessed. A change that alters the rendering comes with the measurement behind it (a probe deck or document,
+COM values or reference images) and keeps the fidelity of the test corpus (`Fidelity run generated`, `Fidelity run
+docx/generated`) at least where it was; the measured behavior goes into the feature catalog
+(`catalog/features/pptx.yaml` or `docx.yaml`, then `dotnet run --project tools/SpecTools -- features`).
 
 ## License
 
@@ -187,5 +229,5 @@ FreeSlate is released under the [MIT License](LICENSE).
 
 The preset shape and text warp definitions in `src/FreeSlate/Resources/` are part of ECMA-376 (© Ecma International)
 and included under Ecma's copyright policy; see [NOTICE](src/FreeSlate/Resources/NOTICE.md). The schemas in
-`spec/ms-xsd/` are extracted from the Microsoft Open Specifications. PowerPoint and Office are trademarks of
+`spec/ms-xsd/` are extracted from the Microsoft Open Specifications. PowerPoint, Word and Office are trademarks of
 Microsoft; FreeSlate is not affiliated with Microsoft.

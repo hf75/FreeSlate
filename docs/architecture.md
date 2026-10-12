@@ -1,7 +1,8 @@
 # Architecture
 
-FreeSlate turns a presentation into one HTML document. This page follows a presentation through the engine and
-describes the parts it meets on the way. Class and file names refer to `src/FreeSlate/`.
+FreeSlate turns a presentation or a Word document into one HTML document. This page follows a presentation through
+the engine and describes the parts it meets on the way, then a Word document. Class and file names refer to
+`src/FreeSlate/`.
 
 ## Output
 
@@ -102,6 +103,24 @@ morph), the timing tree with entrance, emphasis, exit and motion path effects, t
 video, hyperlinks and action settings, zoom objects, custom shows, the presenter view and the slide show settings of
 the presentation. `deck.html?frame=<ms>&fps=30#slide-3` renders a single moment of an animation, which the fidelity
 tool uses to compare animations with PowerPoint's video.
+
+## Word documents (`Docx/`)
+
+A Word document shares the package reader, the drawing, text, picture, chart and SmartArt parts with presentations;
+what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
+
+- `ModelReader` (`Model.cs`, `TableReader.cs`) reads the body, headers, footers, notes and comments into blocks:
+  paragraphs with their runs and resolved formatting (`StyleSheet`, `Formats`, `Numbering`), tables, drawings,
+  fields, content controls; imported content goes through `HtmlImport` and `RtfImport`. Without markup it reads the
+  document with all tracked changes accepted; with markup it keeps them, marked (`Review`).
+- `Layout/RunStyles` turns run formatting into styles with Word's font metrics; `Layout/ParagraphLayout` sets
+  paragraphs into lines by Word's rules (line heights, spacing, tabs, justification, kinsoku, bidi, vertical text);
+  `Layout/TableLayout` sizes and lays out tables; `Layout/Paginator` breaks the body into pages: sections, columns,
+  headers and footers, notes, floating objects and text wrapping, page borders (`PageBorders`, `ArtBorders`);
+  `Layout/FieldEvaluator` computes the fields Word recomputes when it prints.
+- `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
+  layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
+  (`PageRenderer.Markup`, `Describe`).
 
 ## Catalogs (`catalog/`)
 
