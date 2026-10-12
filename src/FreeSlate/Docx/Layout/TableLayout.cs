@@ -636,7 +636,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
-            var rowBox = new RowBox { Header = row.Format.Header, CantSplit = true };
+            // Rows split where they may, as other tables' rows, unless their cells' frames (borders, shading) would
+            // have to (docx/external/poi/drawing: a borderless table with cell spacing 0 holding a whole column).
+            var specified = row.Format.Height is { } rh && rh > 0 ? rh : 0;
+            var rowBox = new RowBox
+            {
+                Header = row.Format.Header, CantSplit = row.Format.CantSplit,
+                Exact = specified > 0 && row.Format.HeightRule == "exact", Least = row.Format.HeightRule == "exact" ? 0 : specified,
+            };
             var height = 0.0;
             var parts = new List<(CellModel Cell, CellContent Content, double Left, double Right, BorderSet Borders, (double Top, double Left, double Bottom, double Right) Margins)>();
             foreach (var cell in row.Cells)
