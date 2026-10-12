@@ -823,7 +823,11 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             var jc = (string?)e.Element(m + "oMathParaPr")?.Element(m + "jc")?.Attribute(m + "val")
                      ?? (string?)context.Settings?.Element(m + "mathPr")?.Element(m + "defJc")?.Attribute(m + "val") ?? "centerGroup";
-            foreach (var math in e.Elements(m + "oMath"))
+            // The equations of one math paragraph stand on one line, one after the other (measured with
+            // docx/local/mathset-*: E = mc and F = ma in one m:oMathPara show as E = mcF = ma).
+            var maths = e.Elements(m + "oMath").ToList();
+            var math = maths.Count == 1 ? maths[0] : new XElement(m + "oMath", maths.SelectMany(o => o.Elements()));
+            if (maths.Count > 0)
                 content.Add(new MathInline(math, true, jc, format, Formats(math)));
         }
     }

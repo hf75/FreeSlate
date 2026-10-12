@@ -114,40 +114,71 @@ public sealed class MathLayout
 
     /// <summary>
     /// A display equation broken into lines: the first no wider than <paramref name="width"/>, the others no wider
-    /// than that less <paramref name="indent"/>, before the binary and relation operators of its top level, which
-    /// keep their spacing at the start of a line (measured: Word breaks a long sum before a "+" and indents the next
-    /// line by m:wrapIndent). An equation that fits, or has nowhere to break, stays one line.
+    /// than that less <paramref name="indent"/>, at the binary and relation operators of its top level, which keep
+    /// their spacing at the start of a line (measured: Word breaks a long sum before a "+" and indents the next line
+    /// by m:wrapIndent). An equation that fits, or has nowhere to break, stays one line.
     /// </summary>
-    public List<MathItem> EquationLines(XElement oMath, double width, double indent)
+    /// <param name="binary">
+    /// Where a line breaks at a binary operator (m:brkBin): before it, after it, or at both (repeat), a repeated minus
+    /// shown as <paramref name="subtraction"/> says (m:brkBinSub: "--", "-+" or "+-", the sign at the end and the one
+    /// at the start; measured with docx/local/mathset-a to -c).
+    /// </param>
+    public List<MathItem> EquationLines(XElement oMath, double width, double indent, string binary = "before", string subtraction = "--")
     {
         var whole = Equation(oMath, true);
         if (whole.Width <= width + 0.01)
             return [whole];
         var size = Size(oMath);
         var env = new Env(Level.Display, false, false);
-        var atoms = oMath.Elements().SelectMany(e => Atoms(e, env, size)).ToList();
+        var atoms = new List<(Atom Atom, XElement Source)>();
+        foreach (var element in oMath.Elements())
+            atoms.AddRange(Atoms(element, env, size).Select(a => (a, element)));
         // Segments from one operator to the next: the places a line may end.
-        var segments = new List<List<Atom>>();
+        var segments = new List<List<(Atom Atom, XElement Source)>>();
         foreach (var atom in atoms)
         {
-            if (segments.Count == 0 || atom.Class is AtomClass.Bin or AtomClass.Rel && segments[^1].Count > 0)
+            if (segments.Count == 0 || atom.Atom.Class is AtomClass.Bin or AtomClass.Rel && segments[^1].Count > 0)
                 segments.Add([]);
             segments[^1].Add(atom);
         }
         if (segments.Count < 2)
             return [whole];
+        // A binary operator again as another sign: its run with the sign as its text.
+        Atom Sign((Atom Atom, XElement Source) op, char sign)
+        {
+            if (op.Source.Name != M + "r")
+                return op.Atom;
+            var run = new XElement(op.Source);
+            run.Elements(M + "t").Remove();
+            run.Add(new XElement(M + "t", sign.ToString()));
+            return Run(run, env).FirstOrDefault() ?? op.Atom;
+        }
         var lines = new List<MathItem>();
-        var current = segments[0];
+        var current = segments[0].Select(a => a.Atom).ToList();
         for (var k = 1; k < segments.Count; k++)
         {
             var limit = lines.Count == 0 ? width : width - indent;
-            var candidate = current.Concat(segments[k]).ToList();
+            var segment = segments[k].Select(a => a.Atom).ToList();
+            var candidate = current.Concat(segment).ToList();
             if (Row([.. candidate], env, size, lines.Count > 0).Width <= limit + 0.01)
+            {
                 current = candidate;
+                continue;
+            }
+            var op = segments[k][0];
+            if (op.Atom.Class == AtomClass.Bin && binary is "after" or "repeat")
+            {
+                var minus = op.Source.Value.Trim() is "\u2212" or "-";
+                var (atEnd, atStart) = binary == "repeat" && minus && subtraction.Length == 2
+                    ? (Sign(op, subtraction[0] == '+' ? '+' : '\u2212'), Sign(op, subtraction[1] == '+' ? '+' : '\u2212'))
+                    : (op.Atom, op.Atom);
+                lines.Add(Finished(Row([.. current, atEnd], env, size, lines.Count > 0, broken: true), true, size));
+                current = binary == "repeat" ? [atStart, .. segment.Skip(1)] : segment.Skip(1).ToList();
+            }
             else
             {
                 lines.Add(Finished(Row(current, env, size, lines.Count > 0), true, size));
-                current = segments[k];
+                current = segment;
             }
         }
         lines.Add(Finished(Row(current, env, size, lines.Count > 0), true, size));
@@ -269,14 +300,16 @@ public sealed class MathLayout
     /// into ordinary atoms.
     /// </summary>
     /// <param name="continued">The row continues a broken line: an operator at its start stays binary.</param>
-    MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false)
+    /// <param name="continued">Whether the row continues a broken equation: a binary operator at its start keeps its spacing.</param>
+    /// <param name="broken">Whether the row ends where the equation breaks: a binary operator at its end keeps the spacing before it.</param>
+    MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false, bool broken = false)
     {
         for (var i = 0; i < atoms.Count; i++)
         {
             if (atoms[i].Class != AtomClass.Bin)
                 continue;
             var before = i == 0 ? continued ? AtomClass.Ord : AtomClass.Open : atoms[i - 1].Right;
-            var after = i + 1 < atoms.Count ? atoms[i + 1].Class : AtomClass.Close;
+            var after = i + 1 < atoms.Count ? atoms[i + 1].Class : broken ? AtomClass.Ord : AtomClass.Close;
             if (before is AtomClass.Bin or AtomClass.Op or AtomClass.Rel or AtomClass.Open or AtomClass.Punct || after is AtomClass.Rel or AtomClass.Close or AtomClass.Punct)
                 atoms[i] = atoms[i] with { Class = AtomClass.Ord, Right = AtomClass.Ord };
         }

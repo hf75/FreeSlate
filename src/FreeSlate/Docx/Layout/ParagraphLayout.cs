@@ -575,11 +575,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             IntegralLimits = MathSetting("intLim") ?? "subSup",
             NaryLimits = MathSetting("naryLim") ?? "undOvr",
         };
-        var items = math.Display ? layout.EquationLines(math.Element, width, WrapIndent) : [layout.Equation(math.Element, false)];
+        var items = math.Display
+            ? layout.EquationLines(math.Element, width, WrapIndent, MathSetting("brkBin") ?? "before", MathSetting("brkBinSub") ?? "--")
+            : [layout.Equation(math.Element, false)];
         var lines = items.Select(item => new Equations.Equation(item)).ToList();
         laidEquations.AddOrUpdate(math, Tuple.Create(width, lines));
         return lines;
     }
+
+    /// <summary>A math setting in twips as points, 0 where not given.</summary>
+    double MathTwips(string name) =>
+        double.TryParse(MathSetting(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var twips) ? twips / 20 : 0;
 
     /// <summary>How far the continuation lines of a broken display equation are indented (m:wrapIndent, 1 inch by default).</summary>
     double WrapIndent => double.TryParse(MathSetting("wrapIndent"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var twips) ? twips / 20 : 72;
@@ -1152,7 +1158,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 case MathInline math:
                 {
-                    var lines = EquationLines(math, displayWidth);
+                    // Display equations keep the document's math margins (m:lMargin, m:rMargin; measured with
+                    // docx/local/mathset-d: they apply without m:dispDef, and the spacing m:preSp, m:postSp, m:interSp
+                    // and m:intraSp changes nothing).
+                    var (mathLeft, mathRight) = (MathTwips("lMargin"), MathTwips("rMargin"));
+                    var lines = EquationLines(math, displayWidth == double.MaxValue ? displayWidth : Math.Max(1, displayWidth - mathLeft - mathRight));
                     if (!math.Display)
                     {
                         foreach (var equation in lines)
@@ -1169,7 +1179,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     var indent = WrapIndent;
                     var group = lines.Count > 0 ? lines.Select((l, k) => l.Width + (k > 0 ? indent : 0)).Max() : 0;
                     var right = MathSetting("wrapRight") is "1" or "on" or "true" || MathSettings?.Element(Equations.MathLayout.M + "wrapRight") is { } wrapRight && wrapRight.Attribute(Equations.MathLayout.M + "val") == null;
-                    var available = displayWidth == double.MaxValue ? group : displayWidth;
+                    var available = displayWidth == double.MaxValue ? group : Math.Max(1, displayWidth - mathLeft - mathRight);
                     for (var k = 0; k < lines.Count; k++)
                     {
                         if (text.Length > 0 && text[^1] != '\n')
@@ -1187,7 +1197,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         };
                         if (k > 0 && right)
                             x = available - width;
-                        equations[text.Length] = (lines[k], Math.Max(0, x));
+                        equations[text.Length] = (lines[k], mathLeft + Math.Max(0, x));
                         text.Append('\uFFFC');
                         list.Add(styles.Style(format, WordSlot.Ascii));
                     }
