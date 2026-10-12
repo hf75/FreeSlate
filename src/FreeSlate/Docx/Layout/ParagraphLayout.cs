@@ -1347,8 +1347,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     AddText(t.Text, format, t.Link);
                     break;
                 case FieldInline field when (fields?.Value(field) ?? Evaluator?.Value(field, fields?.On)) is { } value:
-                    AddText(value, format, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
+                {
+                    // Word sets its error texts in bold before Word 2013 (measured with docx/local/fielderrors-14, -12).
+                    var shown = format;
+                    if (FieldEvaluator.IsError(value) && context.CompatibilityMode < 15 && format.Bold != true)
+                    {
+                        shown = format.Clone();
+                        shown.Bold = true;
+                    }
+                    AddText(value, shown, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
+                }
                 case FieldInline field:
                     foreach (var cached in field.Cached)
                         Add(cached);

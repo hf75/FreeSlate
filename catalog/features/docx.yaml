@@ -1229,6 +1229,10 @@ areas:
           tables start their grid at the indent and move it right by half the left border; older compatibility modes
           put the first cell's text at the indent. Cells of tables without any table style (the document has no
           default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15).
+          A fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
+          between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before
+          Word 2013 between the middles and wider by the outer cells' margins (docx/local/tblwidth-15, -14,
+          tblwidth2-15, -14).
 
       - id: table.rows
         title: Row height, splitting and header rows
@@ -1367,9 +1371,12 @@ areas:
           switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and
           about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved
           results of the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas,
-          FILENAME, FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Known
-          deviations: texts Word words in its user's language (\p, error messages) are English here; LISTNUM keeps its
-          saved result.
+          FILENAME, FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word
+          words in the language of its user interface follow the reader's culture, German as measured with
+          docx/local/fielderrors (REF and PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ
+          without a name, \p "oben", "unten", "Seite n"), else English; Word sets error texts in bold before Word
+          2013 (fielderrors-14, -12); a field without an instruction shows nothing. Known deviation: LISTNUM keeps
+          its saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks

@@ -10,9 +10,19 @@ namespace FreeSlate.Docx.Layout;
 /// times (DATE, TIME, PRINTDATE, SAVEDATE) and conditions (IF). Word keeps the saved results of the others (document
 /// properties, formulas, FILENAME, NUMWORDS, USERNAME, DOCVARIABLE, MERGEFIELD …), and so does the layout.
 /// </summary>
+/// <remarks>
+/// Error texts and the words of PAGEREF \p are in the language of Word's user interface: German as measured with
+/// docx/local/fielderrors, else English; an empty field shows nothing.
+/// </remarks>
 public sealed class FieldEvaluator
 {
     readonly DocumentContext context;
+    readonly bool german;
+
+    string T(string english, string germanText) => german ? germanText : english;
+
+    /// <summary>Whether a result is one of Word's error texts (which Word sets in bold before Word 2013).</summary>
+    public static bool IsError(string value) => value.StartsWith("Error! ", StringComparison.Ordinal) || value.StartsWith("Fehler! ", StringComparison.Ordinal);
     readonly Dictionary<FieldInline, string> sequences = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<FieldInline, int> sections = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<FieldInline, ParagraphBlock> paragraphOf = new(ReferenceEqualityComparer.Instance);
@@ -35,6 +45,7 @@ public sealed class FieldEvaluator
     public FieldEvaluator(DocumentContext context, List<Block> blocks)
     {
         this.context = context;
+        german = context.Culture.TwoLetterISOLanguageName == "de";
         var counters = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var section = 0;
         var open = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -61,8 +72,8 @@ public sealed class FieldEvaluator
                     continue;
                 paragraphOf[field] = paragraph;
                 sections[field] = section;
-                if (field.Type == "SEQ" && Sequence(field, counters) is { } value)
-                    sequences[field] = value;
+                if (field.Type == "SEQ")
+                    sequences[field] = Sequence(field, counters) ?? T("Error! No sequence specified.", "Fehler! Es wurde keine Folge festgelegt.");
                 Inlines(field.Cached, paragraph);
             }
         }
@@ -156,9 +167,13 @@ public sealed class FieldEvaluator
                 if (!words.Contains("\\p"))
                     return number;
                 if (page != target)
-                    return $"on page {number}";
-                return paragraph != null && Above(words[1], paragraph) ? "above" : "below";
+                    return T($"on page {number}", $"Seite {number}");
+                return paragraph != null && Above(words[1], paragraph) ? T("above", "oben") : T("below", "unten");
             }
+            case "PAGEREF" when words.Count > 1 && !bookmarks.ContainsKey(words[1]):
+                return T("Error! Bookmark not defined.", "Fehler! Textmarke nicht definiert.");
+            case "":
+                return "";
             case "STYLEREF" when words.Count > 1:
                 return StyleReference(words, field, on);
             case "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE":
@@ -168,7 +183,7 @@ public sealed class FieldEvaluator
             case "REF" when words.Count > 1 && !words[1].StartsWith('\\'):
                 // REF: the bookmark's text, or with \n the number of its paragraph.
                 if (!bookmarks.TryGetValue(words[1], out var marked))
-                    return null;
+                    return T("Error! Reference source not found.", "Fehler! Verweisquelle konnte nicht gefunden werden.");
                 return words.Contains("\\n") || words.Contains("\\r") || words.Contains("\\w") ? marked.Paragraph.Label?.Text ?? "" : marked.Text.ToString();
             case "SYMBOL" when words.Count > 1:
             {
@@ -249,7 +264,8 @@ public sealed class FieldEvaluator
             found = paragraphs.Take(at + 1).LastOrDefault(Matches) ?? paragraphs.Skip(at + 1).FirstOrDefault(Matches);
         }
         if (found == null)
-            return "Error! No text of specified style in document.";
+            return T($"Error! Use the Home tab to apply {name} to the text that you want to appear here.",
+                $"Fehler! Verwenden Sie die Registerkarte 'Start', um {name} dem Text zuzuweisen, der hier angezeigt werden soll.");
         if (words.Contains("\\n") || words.Contains("\\r") || words.Contains("\\w"))
             return found.Label?.Text ?? "";
         return Text(found.Content).Trim();

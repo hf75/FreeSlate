@@ -602,7 +602,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // docx/local/altchunk-tables: a 300 px HTML table is 225.75 pt wide over its frame).
         var extras = gap * (columns + 1) + (Width(outer.Left) + Width(outer.Right)) / 2;
         var sized = format.Width is { Type: "dxa" or "pct" } tw && tw.Value > 0;
-        var grid = Grid(table, rows, columns, available - extras, sized ? extras : 0, fields);
+        var grid = Grid(table, rows, columns, available - extras, sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
+            gaps: sized ? gap * (columns + 1) : 0, widthBase: available);
         // Autofit columns of cells without preferred widths hold the cells' own borders too, which every spaced cell
         // draws on both sides (HTML tables Word imports, docx/local/altchunk, altchunk-tables): a cell's own, else the
         // table's inside line or side.
@@ -792,15 +793,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <param name="allowance">What the outer vertical lines take of the available width.</param>
-    double[] Grid(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields)
+    /// <param name="gaps">What cell spacing takes of a table's own width (twice the spacing beside every cell).</param>
+    /// <param name="widthBase">What a percentage width is of, where not the available width.</param>
+    double[] Grid(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
+        double gaps = 0, double? widthBase = null)
     {
         var grid = new double[columns];
         for (var k = 0; k < columns; k++)
             grid[k] = k < table.Grid.Count ? table.Grid[k] : 0;
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
-            return Autofit(table, rows, columns, available, allowance, fields);
+            return Autofit(table, rows, columns, available, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps));
         if (grid.All(w => w > 0))
-            return grid;
+            return Scaled(grid);
         // From the first row's cell widths.
         foreach (var row in table.Rows)
         {
@@ -820,7 +824,42 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             for (var k = 0; k < columns; k++)
                 if (grid[k] <= 0) grid[k] = share;
         }
-        return grid;
+        return Scaled(grid);
+
+        // A fixed table with a width of its own stretches or shrinks its grid to it in proportion, whatever its cells
+        // say (measured with docx/local/tblwidth-15 and -14: percentages and points, wider and narrower than the grid).
+        double[] Scaled(double[] widths)
+        {
+            var sum = widths.Sum();
+            if (Target(table, rows, widthBase ?? available, allowance, gaps) is not { } target || sum <= 0)
+                return widths;
+            return widths.Select(w => w * target / sum).ToArray();
+        }
+    }
+
+    /// <summary>
+    /// The width a table asks for (w:tblW in points or percent of the available width) for its grid, or null. A width
+    /// in points lies between the outer lines' middles, also with cell spacing (whose gaps it holds); a percentage
+    /// between their outer edges, before Word 2013 (compatibility mode below 15) between the middles and wider by the
+    /// first cell's and the last cell's margins (measured with docx/local/tblwidth-15, -14, tblwidth2-15, -14 and
+    /// compat14-tables).
+    /// </summary>
+    double? Target(TableModel table, List<RowModel> rows, double available, double allowance, double gaps)
+    {
+        var format = table.Format;
+        if (format.Width is not { Type: "dxa" or "pct" } w || w.Resolve(available) is not { } tw || tw <= 0)
+            return null;
+        var target = tw - gaps;
+        if (w.Type != "pct")
+            return target;
+        if (Modern)
+            return target - allowance;
+        if (rows.Count > 0 && rows[0].Cells.Count > 0)
+        {
+            var (first, last) = (rows[0].Cells[0], rows[0].Cells[^1]);
+            target += Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
+        }
+        return target;
     }
 
     /// <summary>
@@ -831,17 +870,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// fit, every column gets its minimum and a share of the rest in proportion to its maximum less its minimum; where
     /// not even those fit, the contents' minima shrink in proportion.
     /// </summary>
-    double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields)
+    double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target)
     {
         var format = table.Format;
-        var target = format.Width is { Type: "dxa" or "pct" } w && w.Resolve(available) is { } tw && tw > 0 ? tw - allowance : (double?)null;
-        // Before Word 2013 (compatibility mode below 15) a percentage width measures between the first cell's text and
-        // the last cell's: the table is wider by those cells' margins (measured with docx/local/compat14-tables).
-        if (!Modern && target != null && format.Width is { Type: "pct" } && rows.Count > 0 && rows[0].Cells.Count > 0)
-        {
-            var (first, last) = (rows[0].Cells[0], rows[0].Cells[^1]);
-            target += Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
-        }
         var space = (target ?? available - allowance);
         var (min, max, margins, preferred) = Ranges(table, rows, columns, space, fields);
         var sumMin = min.Sum();

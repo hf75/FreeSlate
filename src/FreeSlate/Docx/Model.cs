@@ -93,7 +93,7 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
 
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
-        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL";
+        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "";
 }
 
 /// <summary>A block of the body: a paragraph or a table.</summary>
