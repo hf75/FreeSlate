@@ -1392,7 +1392,9 @@ areas:
           docx/local/rs3-*); the
           rest of a split row ends below its last paragraph's space after, at least its at-least height, and cells
           aligned to the middle or bottom align again in each part, the first down to its tallest content (tblsplit-*,
-          docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt); content that the cut divides goes on at the top
+          docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt); a row of a nested table goes on whole where its
+          at-least height does not fit, as the table's own rows do (docx/external/libreoffice/writerfilter-dmapper/
+          floattable-nested: an inner row of 85 pt with one line moves to the next page); content that the cut divides goes on at the top
           of the rest, whatever its cell's alignment (docx/local/vs-1 to vs-10: of two centered or bottom-aligned
           lines with one row line on the page the second stands at the next page's top; docx/external/poi/bug65649). Header rows go with the first row to the next page where it does not fit below them
           (all of it where it may not split, else a line), repeat after every break where the next row fits below
@@ -1476,8 +1478,16 @@ areas:
           as many lines down, so past the bottom margin or above it (floatsplit-14p-*, floattable-compat14, docx/
           external/libreoffice/core-doc/floating-table-dummy-text); w:doNotBreakWrappedTables keeps tables whole
           (writerfilter-dmapper/do-not-break-wrapped-tables). Drawings anchored in its cells stand as in other tables
-          (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). Known deviations: a
-          table centered on the margin stands about 5 pt further right in Word; tables anchored to the page that do
+          (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). In a table cell a
+          floating table stands in the cell's text area (tblpX from its left, the margin as the text, the page from the
+          cell's left edge, tblpXSpec right at its right), tblpY below the next paragraph's top or the content's top,
+          not above the cell, and the cell's text after it wraps around it; the cell is as high as it reaches (docx/
+          local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15; core-layout/floattable-del-empty, extras-layout/
+          tdf170477, writerfilter-dmapper/floattable-nested-layout); in notes it stays in the text
+          (writerfilter-dmapper/floattable-footnote-redline). Known deviations: a
+          table centered on the margin stands about 5 pt further right in Word; of two floating tables after each other
+          in a cell Word sets the second below the first before Word 2013, beside it from then on (docx/local/ng-3 to
+          ng-5), ours at its paragraph; a line centered beside a floating table centers in its segment in Word (nf-4); tables anchored to the page that do
           not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after
           the table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
 

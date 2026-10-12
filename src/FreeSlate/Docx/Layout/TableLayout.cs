@@ -154,7 +154,10 @@ public sealed class RowBox
         foreach (var cell in Cells)
         {
             // Where the lines would stand without the cell's vertical alignment, which each part applies again.
-            var rest = cell.Lines.FirstOrDefault(l => l.Top - cell.Lowered + l.Line.Height + l.After > available + 0.01);
+            // A row of a nested table goes on whole where its at-least height does not fit (measured with docx/external/
+            // libreoffice/writerfilter-dmapper/floattable-nested: an inner row of 85 pt with a line of text moves to the
+            // next page, as rows of the table itself do).
+            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) > available + 0.01).MinBy(l => l.Top);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
             // from Word 2013 on (measured with docx/local/rs3-*: three lines with two above the cut, or one, go on, four
             // split two and two; before, rows split at any line).
@@ -632,7 +635,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift);
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
                 if (!span.ContainsKey(cell))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -882,7 +885,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var margins = Margins(row, cell, format);
                 var textLeft = left + Width(borders.Left) + margins.Left;
                 var textRight = right - Width(borders.Right) - margins.Right;
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left);
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
                 height = Math.Max(height, Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom));
             }
@@ -1414,13 +1417,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Rotated text (w:textDirection tbRl, btLr) is laid out unwrapped along the cell; its height is its longest
     /// line, its lines are turned when the row is built.
     /// </remarks>
-    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors)
+    /// <param name="edge">How far the cell's text begins right of its left edge.</param>
+    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0)
     {
         // An empty cell whose end mark is hidden (w:hideMark) takes no height.
         if (cell.Format.HideMark && cell.Blocks.All(b => b is ParagraphBlock { Content.Count: 0 }))
             return new CellContent([], [], [], 0);
         if (!Rotated(cell))
-            return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After));
+            return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
         var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
         var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
         return content with { Height = length, Thickness = content.Height };
@@ -1483,7 +1487,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Contextual spacing works in cells as in the body, but not before Word 2013 where the document says
     /// w:allowSpaceOfSameStyleInTable (catalog: settings.compatibility, measured with docx/local/c5-cells).
     /// </remarks>
-    CellContent Content(List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph)
+    CellContent Content(List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph, double edge = 0,
+        bool floats = false)
     {
         var lines = new List<PlacedLine>();
         var fills = new List<FillRect>();
@@ -1493,6 +1498,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var after = 0.0;
         var ownAfter = 0.0;
         var first = true;
+        // Floating tables in the cell, which the text after them goes around, and how far down they reach.
+        var around = new List<Paginator.Exclusion>();
+        var floatBottom = 0.0;
         contextual ??= !(context.CompatibilityMode < 15 && context.Compat("allowSpaceOfSameStyleInTable"));
         for (var b = 0; b < blocks.Count; b++)
         {
@@ -1526,8 +1534,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     y += first ? before : context.Between(after, before, ownAfter);
                     var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                     var firstLine = lines.Count;
-                    foreach (var line in paragraphs.Layout(paragraph, width, fields))
+                    var linesTop = y;
+                    var laid = around.Any(f => f.Bottom > linesTop)
+                        ? paragraphs.Layout(paragraph, width, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width))
+                        : paragraphs.Layout(paragraph, width, fields);
+                    foreach (var line in laid)
                     {
+                        y += line.Skip;
                         foreach (var anchor in line.Anchors ?? [])
                             lineTops[anchor] = (y, line.AnchorX?.GetValueOrDefault(anchor) ?? 0);
                         // Widow control holds where rows split from Word 2013 on (docx/local/rs3-*14, rs3-*12).
@@ -1549,6 +1562,44 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     first = false;
                     break;
                 }
+                // A floating table in a cell stands at its position in the cell's text area, at the top of the paragraph
+                // after it or of the cell's content, and the text after it goes around it (measured with
+                // docx/local/nf-1 to nf-7: tblpX and tblpY from the text's left and the next paragraph's top, the margin
+                // as the text, the page from the cell's left edge, tblpXSpec right at the text's right; docx/external/
+                // libreoffice/core-layout/floattable-del-empty).
+                case TableBlock floating when floats && floating.Table.Format.Floating is { } position:
+                {
+                    var box = Layout(floating.Table, width, fields, previous);
+                    double Twips(string name) => position.Twips(name) ?? 0;
+                    var x = position.Attr("tblpXSpec") switch
+                    {
+                        "left" or "inside" => 0,
+                        "right" or "outside" => width - box.Width,
+                        "center" => (width - box.Width) / 2,
+                        _ => Twips("tblpX") - (position.Attr("horzAnchor") == "page" ? edge : 0) - (context.CompatibilityMode < 15 ? box.Inset : 0),
+                    };
+                    var top = Math.Max(0, (position.Attr("vertAnchor") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
+                    var tableTop = top;
+                    foreach (var row in box.Rows)
+                    {
+                        var drawn = lines.Count;
+                        Draw(row, row.Height, x - box.Left, top, lines, fills, fills, strokes, anchors);
+                        Unit(drawn, row, top);
+                        top += row.Height;
+                    }
+                    if (box.Rows.Count > 0)
+                    {
+                        var last = box.Rows[^1];
+                        fills.AddRange(last.BottomBorders.Select(f => f with { X = x - box.Left + f.X, Y = top + f.Y }));
+                        strokes.AddRange(last.BottomStrokes.Select(s => s.Offset(x - box.Left, top)));
+                        top += last.BottomBorderWidth;
+                    }
+                    Frame(box, x - box.Left, tableTop, top, fills);
+                    around.Add(new Paginator.Exclusion(x - Twips("leftFromText"), tableTop - Twips("topFromText"), x + box.Width + Twips("rightFromText"),
+                        top + Twips("bottomFromText"), false, "bothSides"));
+                    floatBottom = Math.Max(floatBottom, top);
+                    break;
+                }
                 case TableBlock nested:
                 {
                     y += first ? 0 : after;
@@ -1556,7 +1607,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var tableTop = y;
                     foreach (var row in box.Rows)
                     {
+                        var drawn = lines.Count;
                         Draw(row, row.Height, 0, y, lines, fills, fills, strokes, anchors);
+                        Unit(drawn, row, y);
                         y += row.Height;
                     }
                     if (box.Rows.Count > 0)
@@ -1575,7 +1628,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
             }
         }
-        return new CellContent(lines, fills, strokes, y + after) { Anchors = anchors };
+        return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom)) { Anchors = anchors };
+
+        // The lines of a nested table's row go with what of the row has to stand together.
+        void Unit(int from, RowBox row, double rowTop)
+        {
+            var bottom = rowTop + (row.CantSplit ? row.Height : row.TopWidth + row.Least);
+            for (var k = from; k < lines.Count; k++)
+                lines[k] = lines[k] with { UnitHeight = Math.Max(lines[k].UnitHeight, bottom - lines[k].Top) };
+        }
     }
 
     /// <summary>

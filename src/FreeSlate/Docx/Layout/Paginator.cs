@@ -21,6 +21,12 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
 
     /// <summary>Whether the line's paragraph has widow control, in table cells (RowBox.Split).</summary>
     public bool Widow { get; init; }
+
+    /// <summary>
+    /// How far below the line's top the part of a nested table it stands in reaches that has to go with it where a row
+    /// splits: its row's at-least height, the whole row where it may not split (RowBox.Split).
+    /// </summary>
+    public double UnitHeight { get; init; }
 }
 
 /// <summary>A page of the laid-out document.</summary>
@@ -624,7 +630,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// The room a line has beside the floating objects: the column less every object its box overlaps, keeping the
     /// sides the object's wrapText allows; where none is left, how far down the line must go.
     /// </summary>
-    static LineRoom Room(List<Exclusion> exclusions, double paragraphTop, LineSlot slot, double columnLeft, double columnWidth)
+    internal static LineRoom Room(List<Exclusion> exclusions, double paragraphTop, LineSlot slot, double columnLeft, double columnWidth)
     {
         var top = paragraphTop + slot.Offset;
         var height = slot.Height;
