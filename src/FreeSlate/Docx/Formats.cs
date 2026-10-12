@@ -28,9 +28,12 @@ public sealed class RunFormat
     /// </summary>
     public string? Override, Embedding;
 
-    /// <summary>East Asian emphasis marks (w:em: dot, comma, circle, underDot) and two lines in one (w:eastAsianLayout).</summary>
+    /// <summary>
+    /// East Asian emphasis marks (w:em: dot, comma, circle, underDot), two lines in one (w:eastAsianLayout w:combine) and
+    /// text set across the line (w:eastAsianLayout w:vert: horizontal in vertical text).
+    /// </summary>
     public string? Emphasis, CombineBrackets;
-    public bool? CombineLines;
+    public bool? CombineLines, AcrossLine;
 
     /// <summary>w:color: hex RGB or "auto", with its theme color and tint or shade.</summary>
     public string? Color, ThemeColor, ThemeTint, ThemeShade;
@@ -174,6 +177,7 @@ public sealed class RunFormat
                 case "eastAsianLayout":
                     CombineLines = e.Attr("combine") is { } combine ? combine is "1" or "true" or "on" : CombineLines;
                     CombineBrackets = e.Attr("combineBrackets") ?? CombineBrackets;
+                    AcrossLine = e.Attr("vert") is { } across ? across is "1" or "true" or "on" : AcrossLine;
                     break;
                 case "position": Position = e.Number("val") is { } position ? position / 2 : Position; break;
                 case "spacing": Spacing = e.Twips("val") ?? Spacing; break;

@@ -95,6 +95,16 @@ public sealed class PageBox
 
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
+
+    /// <summary>
+    /// A page of vertical text is laid out turned a quarter (its <see cref="Section"/> turned): this is the page as
+    /// printed, with what stands upright on it (header, footer and page border); null on other pages.
+    /// </summary>
+    public PageBox? Upright { get; set; }
+
+    /// <summary>The size of the page as printed.</summary>
+    public double PaperWidth => (Section.Upright ?? Section).PageWidth;
+    public double PaperHeight => (Section.Upright ?? Section).PageHeight;
 }
 
 /// <summary>
@@ -605,6 +615,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             var (sectionBlocks, properties) = sections[s];
             sectionIndex = s;
+            // Vertical text is laid out on the page turned a quarter (catalog: paragraph.bidi).
+            if (properties.Vertical)
+                properties = properties.Turned();
             StartSection(properties, s == 0);
             // Endnotes follow the document's last paragraph, after their separator, or each section's where the
             // settings put them at the end of sections (w:endnotePr/w:pos sectEnd), unless the section has none
@@ -649,7 +662,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NewPage(lastSection, firstOfSection: true);
         PlaceNotes();
         foreach (var p in pages)
+        {
             AlignVertically(p);
+            if (p.Section is { Upright: not null, LinesFromLeft: true })
+                Mirror(p);
+        }
         if (reader != null)
         {
             // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
@@ -657,10 +674,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             foreach (var p in pages)
             {
                 var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, pages.Count, sectionPages.GetValueOrDefault(p.SectionIndex)) { Chapter = p.ChapterPrefix, On = p };
+                // Headers and footers of pages of vertical text stand upright (measured with docx/local/vertical2).
+                var on = p.Upright ?? p;
                 if (p.Header != null)
-                    Story(p.Header, p, fields, header: true).AddTo(p);
+                    Story(p.Header, on, fields, header: true).AddTo(on);
                 if (p.Footer != null)
-                    Story(p.Footer, p, fields, header: false).AddTo(p);
+                    Story(p.Footer, on, fields, header: false).AddTo(on);
             }
         }
         return pages;
@@ -675,7 +694,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     void StartSection(SectionProperties properties, bool first)
     {
         var start = first ? "nextPage" : properties.Start;
+        // A section whose text runs another way begins a new page.
+        if (page != null && (page.Section.Upright != null) != (properties.Upright != null))
+            start = "nextPage";
         section = properties;
+        layout.Vertical = properties.Upright != null;
+        layout.TurnEastAsian = properties.TurnEastAsian;
         layout.LinePitch = GridPitch(properties);
         layout.CharacterExtra = properties.Element.Child("docGrid") is { } charGrid && charGrid.Attr("type") is "linesAndChars" or "snapToChars"
             ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
@@ -720,12 +744,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             : number % 2 == 0 && context.Settings.Child("evenAndOddHeaders").OnOff() == true ? "even" : "default";
         // Mirrored margins swap the left and right margins of even pages; the gutter is on the inside, at the top
         // (w:gutterAtTop) or on the right (w:rtlGutter).
-        var even = number % 2 == 0 && context.Settings.Child("mirrorMargins").OnOff() == true;
+        var (left, width) = TextArea(properties, number);
         var gutterAtTop = context.Settings.Child("gutterAtTop").OnOff() == true;
-        var rightGutter = properties.Element.Child("rtlGutter").OnOff() == true;
-        var gutterLeft = !gutterAtTop && (even ? rightGutter : !rightGutter);
-        var left = (even ? properties.Right : properties.Left) + (gutterLeft ? properties.Gutter : 0);
-        var width = properties.PageWidth - properties.Left - properties.Right - (gutterAtTop ? 0 : properties.Gutter);
         page = new PageBox
         {
             Number = pages.Count + 1,
@@ -748,11 +768,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var swapped = number % 2 == 1 && context.Settings.Child("printTwoOnOne").OnOff() == true;
         page.BodyTop = (swapped ? properties.Bottom : properties.Top) + (gutterAtTop ? properties.Gutter : 0);
         page.BodyBottom = properties.PageHeight - (swapped ? properties.Top : properties.Bottom);
-        if (page.Header != null && !properties.TopFixed)
-            page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
-        if (page.Footer != null && !properties.BottomFixed)
-            page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
-        page.Border = PageBorders.Layout(page, context.Settings);
+        if (properties.Upright is { } upright)
+        {
+            var (uprightLeft, uprightWidth) = TextArea(upright, number);
+            page.Upright = new PageBox
+            {
+                Number = page.Number, Section = upright, DisplayNumber = number, SectionIndex = sectionIndex, FirstOfSection = firstOfSection,
+                Blank = blank, Chapter = chapter, Header = page.Header, Footer = page.Footer, TextLeft = uprightLeft, TextWidth = uprightWidth,
+                BodyTop = upright.Top, BodyBottom = upright.PageHeight - upright.Bottom,
+            };
+        }
+        else
+        {
+            if (page.Header != null && !properties.TopFixed)
+                page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
+            if (page.Footer != null && !properties.BottomFixed)
+                page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
+        }
+        page.Border = PageBorders.Layout(page.Upright ?? page, context.Settings);
         pages.Add(page);
         column = 0;
         y = page.BodyTop;
@@ -770,6 +803,41 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// header from w:header below the page's top edge, a footer ending w:footer above its bottom edge; where its
     /// content begins and ends.
     /// </summary>
+    /// <summary>
+    /// The text area across a page of a section: mirrored margins swap the left and right margins of even pages; the
+    /// gutter is on the inside, at the top (w:gutterAtTop) or on the right (w:rtlGutter).
+    /// </summary>
+    (double Left, double Width) TextArea(SectionProperties properties, int number)
+    {
+        var even = number % 2 == 0 && context.Settings.Child("mirrorMargins").OnOff() == true;
+        var gutterAtTop = context.Settings.Child("gutterAtTop").OnOff() == true;
+        var rightGutter = properties.Element.Child("rtlGutter").OnOff() == true;
+        var gutterLeft = !gutterAtTop && (even ? rightGutter : !rightGutter);
+        var left = (even ? properties.Right : properties.Left) + (gutterLeft ? properties.Gutter : 0);
+        var width = properties.PageWidth - properties.Left - properties.Right - (gutterAtTop ? 0 : properties.Gutter);
+        return (left, Math.Max(1, width));
+    }
+
+    /// <summary>
+    /// A page of vertical text whose lines stack from the left (tbRlV, tbLrV): laid out from the right like the others,
+    /// its lines, fills and strokes are mirrored across the turned page, each line keeping its own way up.
+    /// </summary>
+    static void Mirror(PageBox p)
+    {
+        var across = p.Height;
+        for (var i = 0; i < p.Lines.Count; i++)
+            p.Lines[i] = p.Lines[i] with { Top = across - p.Lines[i].Top - p.Lines[i].Line.Height, Line = p.Lines[i].Line.Flipped() };
+        foreach (var fills in new[] { p.Shading, p.Borders })
+        {
+            for (var i = 0; i < fills.Count; i++)
+                fills[i] = fills[i] with { Y = across - fills[i].Y - fills[i].Height };
+        }
+        for (var i = 0; i < p.Strokes.Count; i++)
+            p.Strokes[i] = p.Strokes[i] with { Y1 = across - p.Strokes[i].Y1, Y2 = across - p.Strokes[i].Y2 };
+        for (var i = 0; i < p.ColumnLines.Count; i++)
+            p.ColumnLines[i] = (p.ColumnLines[i].X, across - p.ColumnLines[i].Bottom, across - p.ColumnLines[i].Top);
+    }
+
     /// <summary>The line pitch of a section's line grid (w:docGrid), or null where it has none.</summary>
     static double? GridPitch(SectionProperties properties) =>
         properties.Element.Child("docGrid") is { } grid && grid.Attr("type") is "lines" or "linesAndChars" or "snapToChars" && grid.Twips("linePitch") is { } pitch && pitch > 0
@@ -777,16 +845,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     StoryBox Story(string part, PageBox on, PageFields? fields, bool header)
     {
-        // Headers and footers do not snap to the body's grid.
-        var (pitch, extra) = (layout.LinePitch, layout.CharacterExtra);
-        (layout.LinePitch, layout.CharacterExtra) = (null, 0);
+        // Headers and footers do not snap to the body's grid, and their text runs across the page.
+        var (pitch, extra, vertical, turn) = (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian);
+        (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian) = (null, 0, false, false);
         try
         {
             return StoryOf(part, on, fields, header);
         }
         finally
         {
-            (layout.LinePitch, layout.CharacterExtra) = (pitch, extra);
+            (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian) = (pitch, extra, vertical, turn);
         }
     }
 

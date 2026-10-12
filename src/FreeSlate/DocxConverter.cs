@@ -70,10 +70,10 @@ public static class DocxConverter
         var papers = new List<(double Width, double Height)>();
         foreach (var page in pages)
         {
-            var paper = papers.FindIndex(p => Math.Abs(p.Width - page.Width) < 0.01 && Math.Abs(p.Height - page.Height) < 0.01);
+            var paper = papers.FindIndex(p => Math.Abs(p.Width - page.PaperWidth) < 0.01 && Math.Abs(p.Height - page.PaperHeight) < 0.01);
             if (paper < 0)
             {
-                papers.Add((page.Width, page.Height));
+                papers.Add((page.PaperWidth, page.PaperHeight));
                 paper = papers.Count - 1;
             }
             body.Append(renderer.Render(page, $"paper{paper}"));

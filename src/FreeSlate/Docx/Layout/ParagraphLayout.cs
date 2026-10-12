@@ -48,6 +48,9 @@ public sealed class Piece
     /// <summary>Text set as two lines in one (w:eastAsianLayout w:combine, catalog: run.eastAsian), or null.</summary>
     public TextInline? Combined { get; init; }
 
+    /// <summary>Text set across the line (w:eastAsianLayout w:vert, catalog: run.eastAsian), or null.</summary>
+    public TextInline? Across { get; init; }
+
     /// <summary>How far the piece stands above the line's baseline by the paragraph's w:textAlignment, in points.</summary>
     public double Shift { get; set; }
 
@@ -86,6 +89,18 @@ public sealed class Line
         var copy = (Line)MemberwiseClone();
         copy.Height -= by;
         copy.Baseline -= by;
+        return copy;
+    }
+
+    /// <summary>
+    /// A copy of the line for vertical text whose lines stack from the left (mongolianVert, tbLrV): what lies below its
+    /// text (the extra of multiple spacing) lies above it, on the side the next line follows (measured with
+    /// docx/local/textboxes: Arial 11 pt at 1.16 lines in a mongolianVert text box).
+    /// </summary>
+    public Line Flipped()
+    {
+        var copy = (Line)MemberwiseClone();
+        copy.Baseline = Height - Baseline + Above - Below;
         return copy;
     }
 
@@ -142,6 +157,15 @@ public sealed class Line
 
     /// <summary>The break that ends the line: none, a line break, a page break or a column break.</summary>
     public string? EndBreak { get; set; }
+
+    /// <summary>Whether the line runs down the page (vertical text): its height is across the page.</summary>
+    public bool Vertical { get; init; }
+
+    /// <summary>
+    /// Whether the line's East Asian characters are turned a quarter against it (counterclockwise): upright in vertical
+    /// text (w:textDirection tbRlV and tbLrV, and tbRl in sections), lying in lrTbV.
+    /// </summary>
+    public bool TurnEastAsian { get; init; }
 
     public bool First { get; init; }
     public bool Last { get; set; }
@@ -241,6 +265,45 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// Asian and Latin characters alike).
     /// </summary>
     public double CharacterExtra { get; set; }
+
+    /// <summary>
+    /// Whether the paragraphs being laid out run down the page (vertical text in sections and table cells): their
+    /// lines are thicker (see <see cref="Metrics"/>) and text set across them takes a horizontal line's height.
+    /// </summary>
+    public bool Vertical { get; set; }
+
+    /// <summary>Whether the lines' East Asian characters are turned a quarter against them (see <see cref="Line.TurnEastAsian"/>).</summary>
+    public bool TurnEastAsian { get; set; }
+
+    /// <summary>
+    /// A style's parts of a line above and below the baseline: in vertical lines 1/32 of the size more (1.3 times that
+    /// for East Asian fonts, as their lines are), half above and half below (measured with docx/local/vertical3,
+    /// vertical4, vertical5: Yu Mincho, MS Mincho, Meiryo, Yu Gothic and Arial at 8 to 28 pt, single and 1.5 lines, in
+    /// sections and table cells; exact and at least spacing keep their heights).
+    /// </summary>
+    static (double Above, double Below) Metrics(RunStyle style, bool vertical)
+    {
+        var (above, below) = style.Metrics;
+        if (!vertical)
+            return (above, below);
+        var extra = (style.Font.Data.EastAsian ? 1.3 : 1) * style.Size / 32;
+        return (above + extra / 2, below + extra / 2);
+    }
+
+    /// <summary>
+    /// Text set across the line (w:eastAsianLayout w:vert, catalog: run.eastAsian; measured with docx/local/vertical,
+    /// vertical2 and vertical3): a little line of its own, turned a quarter against the line (counterclockwise), in the
+    /// style of its first character; along the line it takes the height of a line across it (a vertical line's in
+    /// horizontal text, a horizontal one's in vertical text), its baseline that line's ascent from where it begins;
+    /// across the line it is centered on the middle of its font's win ascent and descent, reaching beyond the line's
+    /// text as far as it is long (w:vertCompress changes nothing in Word's printout).
+    /// </summary>
+    public (RunStyle Style, double Length, double Slot, double Ascent, double Middle) Across(TextInline run, bool verticalLine)
+    {
+        var style = styles.Style(run.Format, RunStyles.SlotOf(char.ConvertToUtf32(run.Text, 0), run.Format));
+        var (above, below) = Metrics(style, !verticalLine);
+        return (style, Measure(run.Text, style).Sum(), above + below, above, (style.Font.Data.WinAscent - style.Font.Data.WinDescent) / 2 * style.Size);
+    }
 
     /// <summary>The position of the character at a place in the paragraph's text within its line.</summary>
     static double CharacterX(Line line, int index)
@@ -486,6 +549,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The rubies and the two-lines-in-one runs of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, RubyInline> rubies = [];
     readonly Dictionary<int, TextInline> combined = [];
+    readonly Dictionary<int, TextInline> across = [];
 
     /// <summary>
     /// The spaces of runs whose East Asian font is one (with w:balanceSingleByteDoubleByteWidth), by their place in the
@@ -665,6 +729,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         foreach (var (index, run) in combined)
             advances[index] = Combination(run).Width;
+        foreach (var (index, run) in across)
+            advances[index] = Across(run, Vertical).Slot;
         foreach (var (index, continuation) in separators)
             advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
@@ -1080,6 +1146,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         boxes.Clear();
         rubies.Clear();
         combined.Clear();
+        across.Clear();
         balanced.Clear();
         equations.Clear();
         anchored.Clear();
@@ -1106,6 +1173,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (value[k] == ' ')
                         balanced.Add(text.Length + k);
                 }
+            }
+            if (format.AcrossLine == true && value.Length > 0)
+            {
+                across[text.Length] = new TextInline(value, format);
+                text.Append('\uFFFC');
+                list.Add(styles.Style(format, RunStyles.SlotOf(char.ConvertToUtf32(value, 0), format)));
+                return;
             }
             if (format.CombineLines == true && value.Length > 1)
             {
@@ -1482,7 +1556,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
         ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit, Dictionary<int, double>? jumps = null)
     {
-        var line = new Line { First = start == 0 };
+        var line = new Line { First = start == 0, Vertical = Vertical, TurnEastAsian = TurnEastAsian };
         foreach (var (index, id) in notes)
         {
             if (index >= start && (index < end || index == end && end == text.Length))
@@ -1526,6 +1600,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     CheckBox = text[pieceStart] == '\uFFFC' && boxes.TryGetValue(pieceStart, out var box) ? box : null,
                     Ruby = text[pieceStart] == '\uFFFC' && rubies.TryGetValue(pieceStart, out var ruby) ? ruby : null,
                     Combined = text[pieceStart] == '\uFFFC' && combined.TryGetValue(pieceStart, out var pair) ? pair : null,
+                    Across = text[pieceStart] == '\uFFFC' && across.TryGetValue(pieceStart, out var turned) ? turned : null,
                     DisplayX = text[pieceStart] == '\uFFFC' && equations.TryGetValue(pieceStart, out var display) ? display.DisplayX : null,
                     Separator = text[pieceStart] == '\uFFFC' && separators.ContainsKey(pieceStart),
                     Link = links.Count > 0 ? LinkAt(pieceStart) : null,
@@ -1572,7 +1647,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var drawings = false;
         // Spaces between drawings do not make the line taller (measured with docx/local/vml-inline2: two 40 pt shapes
         // or pictures with spaces between them make the line as high as one alone); beside text they count.
-        static bool Blank(Piece p) => p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Ruby == null && p.Combined == null && string.IsNullOrWhiteSpace(p.Text);
+        static bool Blank(Piece p) => p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Ruby == null && p.Combined == null && p.Across == null && string.IsNullOrWhiteSpace(p.Text);
         var onlyDrawings = line.Pieces.Any(p => p.Drawing != null) && line.Pieces.All(p => p.IsTab || p.Drawing != null || Blank(p));
         foreach (var piece in line.Pieces.Where(p => !p.IsTab && !(onlyDrawings && Blank(p))))
         {
@@ -1626,8 +1701,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 drawings = true;
                 continue;
             }
+            // Text set across the line reaches as far beyond its middle as it is long; the line's spacing is its font's.
+            if (piece.Across is { } turned)
+            {
+                var (_, length, _, _, middle) = Across(turned, Vertical);
+                var (fontAbove, fontBelow) = Metrics(piece.Style, Vertical);
+                above = Math.Max(above, Math.Max(fontAbove, middle + length / 2));
+                below = Math.Max(below, Math.Max(fontBelow, length / 2 - middle));
+                raised = Math.Max(raised, Math.Max(fontAbove, middle + length / 2));
+                lowered = Math.Max(lowered, Math.Max(fontBelow, length / 2 - middle));
+                largest = Math.Max(largest, fontAbove + fontBelow);
+                any = true;
+                continue;
+            }
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
-            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : piece.Style.Metrics;
+            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : Metrics(piece.Style, Vertical);
             var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
             above = Math.Max(above, a);
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
@@ -1645,14 +1733,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (drawings && !any)
         {
             // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra.
-            var (a, b) = mark.Metrics;
+            var (a, b) = Metrics(mark, Vertical);
             largest = a + b;
             any = true;
         }
         else if (any && below == 0 && largest == 0)
         {
             // Only a number on the line: the paragraph mark gives the rest.
-            var (a, b) = mark.Metrics;
+            var (a, b) = Metrics(mark, Vertical);
             below = b;
             largest = a + b;
             lowered = Math.Max(lowered, b);
@@ -1660,7 +1748,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!any)
         {
             var style = end > start && start < charStyles.Count ? charStyles[start] : mark;
-            (above, below) = style.Metrics;
+            (above, below) = Metrics(style, Vertical);
             largest = above + below;
             (raised, lowered) = (above, below);
         }
@@ -1814,7 +1902,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
-    static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
+    internal static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
 
     /// <summary>
     /// Justification of lines with East Asian text and distributed lines (measured with docx/local/cjk-justify-lines,
@@ -1830,7 +1918,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var chars = new List<(Piece Piece, int Index)>();
         foreach (var piece in pieces)
         {
-            if (piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null || piece.Combined != null)
+            if (piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null || piece.Combined != null || piece.Across != null)
             {
                 chars.Add((piece, -1));
                 continue;

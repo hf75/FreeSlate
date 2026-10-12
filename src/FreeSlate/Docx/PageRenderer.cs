@@ -34,34 +34,51 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
     /// <param name="paper">The named @page of the page's size, so that printing keeps every page at its size.</param>
     public string Render(PageBox page, string paper)
     {
-        var width = page.Width * PxPerPt;
-        var height = page.Height * PxPerPt;
+        var width = page.PaperWidth * PxPerPt;
+        var height = page.PaperHeight * PxPerPt;
         var svg = new StringBuilder();
         defs.Clear();
         svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+        // A page of vertical text is laid out turned a quarter: its body is turned back onto the page, its drawings
+        // stand upright where their middles turn to, its header, footer and border stand upright.
+        var turn = page.Upright != null ? $"translate({Units.Css(width)} 0) rotate(90)" : null;
+        var drawn = turn == null ? page.Drawings : page.Drawings.Select(d => Upright(d, page.PaperWidth)).ToList();
+        if (page.Upright is { } upright)
+            drawn.AddRange(upright.Drawings);
         // The page background, drawings behind the text, the text, then inline drawings and the drawings in front.
         var front = new List<PlacedDrawing>();
         if (drawings != null)
         {
-            svg.Append(drawings.Background(page.Width, page.Height));
-            foreach (var drawing in page.Drawings.Where(d => d.Behind).OrderBy(d => d.Order))
+            svg.Append(drawings.Background(page.PaperWidth, page.PaperHeight));
+            foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
                 svg.Append(Drawing(drawing, page));
         }
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
         var selection = new StringBuilder();
-        // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
-        foreach (var (x, top, bottom) in page.ColumnLines)
-            svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         // A page border behind the text, table shading and borders below the text, a page border in front of it.
         if (page.Border is { Front: false } back)
             Fills(back, svg);
+        if (turn != null)
+            svg.Append($"<g transform=\"{turn}\">");
+        // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
+        foreach (var (x, top, bottom) in page.ColumnLines)
+            svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
-        Lines(page.Lines, svg, selection, front);
+        var inline = new List<PlacedDrawing>();
+        Lines(page.Lines, svg, selection, inline);
+        front.AddRange(turn == null ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
         // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
         foreach (var (number, style, right, baseline) in page.LineNumbers)
         {
             context.UsedFonts.Add(style.Font.Data.Family);
             svg.Append($"<text x=\"{Px(right)}\" y=\"{Px(baseline)}\" text-anchor=\"end\" font-family=\"'{WebUtility.HtmlEncode(style.Font.Data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"{(style.Bold ? " font-weight=\"700\"" : "")}{(style.Italic ? " font-style=\"italic\"" : "")}>{number}</text>");
+        }
+        if (turn != null)
+        {
+            svg.Append(selection).Append("</g>");
+            selection.Clear();
+            Fills(page.Upright!.Shading.Concat(page.Upright.Borders), page.Upright.Strokes, svg);
+            Lines(page.Upright.Lines, svg, selection, front);
         }
         if (page.Border is { Front: true } border)
             Fills(border, svg);
@@ -69,7 +86,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         svg.Append("</svg>");
         if (drawings != null)
         {
-            foreach (var drawing in front.Concat(page.Drawings.Where(d => !d.Behind).OrderBy(d => d.Order)))
+            foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
                 svg.Append(Drawing(drawing, page));
         }
         foreach (var (text, x, y, w, h) in page.Alternatives)
@@ -81,6 +98,13 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         svg.Append("</section>\n");
         return svg.ToString();
     }
+
+    /// <summary>A drawing laid out on a page of vertical text (turned), upright on the page where its middle turns to.</summary>
+    static PlacedDrawing Upright(PlacedDrawing drawing, double paperWidth) => drawing with
+    {
+        X = paperWidth - drawing.Y - drawing.Height / 2 - drawing.Width / 2,
+        Y = drawing.X + drawing.Width / 2 - drawing.Height / 2,
+    };
 
     /// <summary>A page border's lines, then its art borders' shapes.</summary>
     void Fills(PageBorderBox border, StringBuilder svg)
@@ -200,7 +224,20 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         var story = (string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") ?? (string?)linked?.Attribute("id");
         var seq = linked != null && int.TryParse((string?)linked.Attribute("seq"), out var place) ? place : 0;
         if (text is { Count: > 0 })
-            (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, (string?)body?.Attribute("wrap") == "none" && vert == null ? 1e5 : areaWidth), fields);
+        {
+            // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
+            // upright (measured with docx/local/vertical6).
+            var (vertical, turn) = (layout!.Vertical, layout.TurnEastAsian);
+            (layout.Vertical, layout.TurnEastAsian) = (vert != null, vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl");
+            try
+            {
+                (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, (string?)body?.Attribute("wrap") == "none" && vert == null ? 1e5 : areaWidth), fields);
+            }
+            finally
+            {
+                (layout.Vertical, layout.TurnEastAsian) = (vertical, turn);
+            }
+        }
         else if (story != null && continued.Remove((story, seq), out var rest))
             (lines, height) = (rest, rest.Max(p => p.Top + p.Line.Height));
         else
@@ -218,8 +255,8 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         }
         var free = areaHeight - height;
         var offset = (string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 };
-        var width = page.Width * PxPerPt;
-        var heightPx = page.Height * PxPerPt;
+        var width = page.PaperWidth * PxPerPt;
+        var heightPx = page.PaperHeight * PxPerPt;
         var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
         if (rotation != 0)
             svg.Append($"<g transform=\"rotate({Units.Css(rotation)} {Px(x + w / 2)} {Px(y + h / 2)})\">");
@@ -236,7 +273,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             Lines(lines.Select(p => vert switch
             {
                 "vert270" => p with { Left = x + l + offset + p.Top, Top = y + h - b - p.Left, Angle = -90 },
-                "mongolianVert" => p with { Left = x + l + offset + p.Top + p.Line.Height, Top = y + t + p.Left, Angle = 90 },
+                "mongolianVert" or "wordArtVert" => p with { Line = p.Line.Flipped(), Left = x + l + offset + p.Top + p.Line.Height, Top = y + t + p.Left, Angle = 90 },
                 _ => p with { Left = x + w - r - offset - p.Top, Top = y + t + p.Left, Angle = 90 },
             }), svg, selection, []);
         }
@@ -346,7 +383,20 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, top + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;
                 }
-                var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
+                // Text set across the line: a little line of its own, turned a quarter against the line.
+                if (piece.Across is { } across && layout != null)
+                {
+                    var (acrossStyle, length, _, ascent, middle) = layout.Across(across, placed.Line.Vertical);
+                    var run = new Piece { Text = across.Text, Style = acrossStyle, Advances = ParagraphLayout.Measure(across.Text, acrossStyle) };
+                    var (originX, originY) = (x + ascent, baseline - piece.Style.Raise - piece.Shift - middle + length / 2);
+                    svg.Append($"<g transform=\"translate({Px(originX)} {Px(originY)}) rotate(-90)\">");
+                    svg.Append(acrossStyle.Size * PxPerPt < HintedBelow || acrossStyle.Font.Data.IsColor ? BrowserText(run, 0, 0) : Glyphs(run, 0, 0));
+                    svg.Append("</g>");
+                    continue;
+                }
+                // East Asian characters turned against the line are drawn from their outlines.
+                var turned = placed.Line.TurnEastAsian && piece.Text.Any(ParagraphLayout.EastAsian);
+                var browser = !turned && (piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor);
                 // Hyperlinks wrap their text (catalog: field.hyperlinks); bookmarks are anchors in the page.
                 if (piece.Link != null)
                     svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
@@ -364,7 +414,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                     svg.Append(WithEffects(piece, BrowserText(piece, x + moveX, textBaseline + moveY), x + moveX, textBaseline + moveY));
                 else
                 {
-                    svg.Append(Glyphs(piece, x + moveX, textBaseline + moveY));
+                    svg.Append(Glyphs(piece, x + moveX, textBaseline + moveY, turned));
                     selection.Append(SelectionText(piece, x + moveX, textBaseline + moveY));
                 }
                 svg.Append(Strikes(piece, x, textBaseline, contentEnd));
@@ -399,13 +449,18 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
         return positions;
     }
 
-    string Glyphs(Piece piece, double x, double baseline)
+    /// <param name="turnEastAsian">
+    /// Whether the piece's East Asian characters are turned a quarter counterclockwise against the line, each about the
+    /// middle of its em box (the font's, see <see cref="FontData.EmMiddle"/>), in their vertical forms (OpenType vert):
+    /// upright in vertical lines (measured with docx/local/vertical, vertical2: Yu Mincho, MS Mincho, Meiryo).
+    /// </param>
+    string Glyphs(Piece piece, double x, double baseline, bool turnEastAsian = false)
     {
         var style = piece.Style;
         var data = style.Font.Data;
         if (data.IsColor)
             return "";
-        var glyphs = data.GlyphsWithFeatures(piece.Text, style.Features, language: style.Language);
+        var glyphs = data.GlyphsWithFeatures(piece.Text, turnEastAsian ? [.. style.Features, "vert"] : style.Features, language: style.Language);
         var positions = Positions(piece);
         var scale = style.Size * PxPerPt / data.UnitsPerEm;
         var units = new StringBuilder();
@@ -425,11 +480,18 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 continue;
             var gy = -g.OffsetY * data.UnitsPerEm;
             units.Append($"<use href=\"#{id}\"");
+            var turn = "";
+            if (turnEastAsian && g.Cluster < piece.Text.Length && ParagraphLayout.EastAsian(piece.Text[g.Cluster]))
+            {
+                var middleX = (positions[g.Cluster] + piece.Advances[g.Cluster] / 2) * PxPerPt / scale;
+                turn = $"rotate(-90 {Units.Css1(middleX)} {Units.Css1(-data.EmMiddle * data.UnitsPerEm)}) ";
+            }
             // Horizontally scaled text (w:w) narrows or widens each glyph about its origin.
             if (Math.Abs(style.Scale - 1) > 1e-6)
-                units.Append($" transform=\"translate({Units.Css1(gx)} {Units.Css1(gy)}) scale({Units.Css4(style.Scale)} 1)\"");
+                units.Append($" transform=\"{turn}translate({Units.Css1(gx)} {Units.Css1(gy)}) scale({Units.Css4(style.Scale)} 1)\"");
             else
             {
+                if (turn.Length > 0) units.Append($" transform=\"{turn.TrimEnd()}\"");
                 if (Math.Abs(gx) > 0.05) units.Append($" x=\"{Units.Css1(gx)}\"");
                 if (Math.Abs(gy) > 0.05) units.Append($" y=\"{Units.Css1(gy)}\"");
             }
@@ -533,7 +595,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
     /// <summary>Whether a piece carries its underline: text and tabs, not objects or the spacers past floating objects.</summary>
     static bool Underlined(Piece piece) =>
         piece.Style.Underline != null && piece.Width > 0 && (!piece.IsTab || piece.Start >= 0) && piece.Drawing == null
-        && piece.Equation == null && piece.CheckBox == null && piece.Ruby == null && piece.Combined == null && !piece.Separator;
+        && piece.Equation == null && piece.CheckBox == null && piece.Ruby == null && piece.Combined == null && piece.Across == null && !piece.Separator;
 
     /// <summary>
     /// The underlines of a line (catalog: run.decoration), as Word prints them (measured with docx/local/underlines,

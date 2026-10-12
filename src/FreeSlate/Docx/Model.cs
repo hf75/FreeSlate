@@ -126,6 +126,42 @@ public sealed class SectionProperties
     public string VerticalAlign = "top";
     public XElement? Element;
 
+    /// <summary>The direction of the section's text (w:textDirection): lrTb, tbRl, btLr, tbRlV, tbLrV or lrTbV.</summary>
+    public string TextDirection = "lrTb";
+
+    /// <summary>The section as printed, where this is it turned for laying out vertical text (<see cref="Turned"/>), else null.</summary>
+    public SectionProperties? Upright;
+
+    /// <summary>
+    /// Whether the section's lines run down its pages (measured with docx/local/vertical2: tbRl and btLr stack them from
+    /// the right, tbRlV and tbLrV from the left; lrTbV keeps them across).
+    /// </summary>
+    public bool Vertical => TextDirection is "tbRl" or "btLr" or "tbRlV" or "tbLrV";
+
+    public bool LinesFromLeft => TextDirection is "tbRlV" or "tbLrV";
+
+    /// <summary>
+    /// Whether the section's East Asian characters are turned against its lines (measured with docx/local/vertical2):
+    /// upright in tbRl, tbRlV and tbLrV, lying in lrTbV; btLr turns all text with its lines.
+    /// </summary>
+    public bool TurnEastAsian => TextDirection is "tbRl" or "tbRlV" or "tbLrV" or "lrTbV";
+
+    /// <summary>
+    /// The section turned a quarter for laying out its vertical text: the page's height across, its lines running from
+    /// the top margin to the bottom one, the first at the right margin (at the left one where they stack from the left;
+    /// the pages are mirrored after their layout). The gutter is left out.
+    /// </summary>
+    public SectionProperties Turned()
+    {
+        var turned = (SectionProperties)MemberwiseClone();
+        turned.Upright = this;
+        (turned.PageWidth, turned.PageHeight) = (PageHeight, PageWidth);
+        (turned.Left, turned.Right) = (Top, Bottom);
+        (turned.Top, turned.Bottom) = LinesFromLeft ? (Left, Right) : (Right, Left);
+        (turned.TopFixed, turned.BottomFixed, turned.Gutter) = (false, false, 0);
+        return turned;
+    }
+
     /// <summary>The header and footer parts the section names, by type: default, first, even (catalog: headerFooter.parts).</summary>
     public Dictionary<string, string> Headers = new(StringComparer.Ordinal), Footers = new(StringComparer.Ordinal);
 
@@ -188,6 +224,7 @@ public sealed class SectionProperties
         if (cols?.Attr("equalWidth") is "0" or "false" or "off" && cols.Elements(Wml.W + "col").Any())
             s.ColumnWidths = cols.Elements(Wml.W + "col").Select(c => (c.Twips("w") ?? 0, c.Twips("space") ?? 0)).ToList();
         s.VerticalAlign = sectPr.Child("vAlign").Val() ?? "top";
+        s.TextDirection = sectPr.Child("textDirection").Val() ?? "lrTb";
         return s;
     }
 }

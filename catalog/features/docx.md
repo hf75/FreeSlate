@@ -20,7 +20,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 6 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 1 | 10 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 0 | 11 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 0 | 11 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
 | [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 0 | 7 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **3** | **191** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **2** | **192** |
 
 <a id="package"></a>
 
@@ -500,7 +500,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 | [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | done | 7 | 7 |
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | done | 14 | 3 |
 | [Ruby (phonetic guides)](#run.ruby) | P2 | ●●●●○ | done | 10 | 6 |
-| [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | partial | 2 | 1 |
+| [East Asian layout and emphasis marks](#run.eastAsian) | P2 | ●●●●○ | done | 2 | 1 |
 | [Text effects (Word 2010)](#run.textEffects) | P1 | ●●●○○ | done | 38 | 0 |
 | [OpenType features](#run.openType) | P2 | ●●●○○ | done | 6 | 0 |
 | [Animated text](#run.animated) | P3 | ●○○○○ | done | 1 | 1 |
@@ -621,11 +621,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### East Asian layout and emphasis marks
 
-`run.eastAsian` · P2 · difficulty 4 · partial
+`run.eastAsian` · P2 · difficulty 4 · done
 
 **Rendering:** Combined characters, horizontal-in-vertical text, two lines in one and emphasis marks.
 
-**Office behaviour:** Emphasis marks (w:em) over every character but spaces, measured at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in and 1.01 em above the baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot below (SimSun) 0.3 em in and 0.38 em below. Two lines in one (w:eastAsianLayout w:combine): the text's halves in half size above one another, between full-size brackets (docx/local/ruby). Still open: horizontal text in vertical text (w:vert), which needs vertical text first.
+**Office behaviour:** Emphasis marks (w:em) over every character but spaces, measured at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in and 1.01 em above the baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot below (SimSun) 0.3 em in and 0.38 em below. Two lines in one (w:eastAsianLayout w:combine): the text's halves in half size above one another, between full-size brackets (docx/local/ruby). Text across the line (w:eastAsianLayout w:vert, horizontal in vertical text) is a little line of its own turned a quarter counterclockwise against its line, in any text direction (horizontal text too): along the line it takes the height of a line across it (a vertical line's in horizontal text, a horizontal one's in vertical text), its baseline that line's ascent from where it begins; across the line it is centered on the middle of its font's win ascent and descent and makes the line as thick as it is long; w:vertCompress changes nothing in Word's printout (docx/local/vertical, vertical2, vertical3: Yu Mincho, MS Mincho, Meiryo, 2 to 6 digits, lines within 0.1 to 0.3 pt).
 
 **Elements (2):** [`w:eastAsianLayout`](../format/namespaces/w.md#weastasianlayout), [`w:em`](../format/namespaces/w.md#wem)
 
@@ -817,7 +817,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 **Rendering:** Right-to-left paragraphs mirror indents and alignment; vertical text direction in frames and cells.
 
-**Office behaviour:** A right-to-left paragraph (w:bidi) is laid out from its start edge and mirrored: w:left and w:start indent the right side, left and start alignment align right, tab stops count from the right margin and trailing spaces hang past the left one (docx/local/bidi: single and justified lines, indents, first line indent, tabs, mixed text, numbers and brackets as in Word). Vertical text (w:textDirection) is turned in table cells (table.cells); frames are paragraph.frames.
+**Office behaviour:** A right-to-left paragraph (w:bidi) is laid out from its start edge and mirrored: w:left and w:start indent the right side, left and start alignment align right, tab stops count from the right margin and trailing spaces hang past the left one (docx/local/bidi: single and justified lines, indents, first line indent, tabs, mixed text, numbers and brackets as in Word). Vertical text (w:textDirection) of a section is laid out on the page turned a quarter, its header, footer and page border upright (docx/local/vertical, vertical2): tbRl runs the lines down from the right margin with East Asian characters upright, btLr the same with all text turned, tbRlV and tbLrV from the left margin with East Asian characters upright, lrTbV keeps lines across and lays East Asian characters on their side; a section with another direction begins a new page. Upright characters are turned a quarter counterclockwise against their line about the middle of their em box (half an em above the BASE table's ideographic baseline, else the middle of the win metrics) in their vertical forms (OpenType vert). Vertical lines are 1/32 of their size thicker than horizontal ones (1.3 times that for East Asian fonts), half above and half below the text (docx/local/vertical3, vertical4: Yu Mincho, MS Mincho, Meiryo, Yu Gothic and Arial at 8 to 28 pt, single and 1.5 lines; exact and at least spacing keep their heights); lines that stack from the left keep the extra of their spacing on the side the next line follows. Table cells are table.cells, text boxes drawing.textBoxes, frames paragraph.frames. Known deviation: floating drawings on pages of vertical text stand upright where their middles turn to.
 
 **Elements (2):** [`w:bidi`](../format/namespaces/w.md#wbidi), [`w:textDirection`](../format/namespaces/w.md#wtextdirection)
 
@@ -1239,7 +1239,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 **Rendering:** Vertical alignment, rotated text in cells, cells whose end mark takes no height.
 
-**Office behaviour:** Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Fit text of cells (w:tcFitText) changes nothing in Word's printout: text too long for its cell wraps as in any other cell (docx/local/fittext).
+**Office behaviour:** Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); tbRlV and tbLrV run down like tbRl with East Asian characters upright, tbLrV's lines from the left, lrTbV keeps lines across with East Asian characters on their side; vertical lines are thicker (paragraph.bidi; docx/local/vertical2, vertical5); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Fit text of cells (w:tcFitText) changes nothing in Word's printout: text too long for its cell wraps as in any other cell (docx/local/fittext).
 
 **Elements (5):** [`w:header`](../format/namespaces/w.md#wheader), [`w:headers`](../format/namespaces/w.md#wheaders), [`w:hideMark`](../format/namespaces/w.md#whidemark), [`w:textDirection`](../format/namespaces/w.md#wtextdirection), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -1610,7 +1610,7 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 **Rendering:** The content is WordprocessingML laid out by our engine inside the shape's text rectangle (bodyPr insets, anchoring, rotation, autofit); linked text boxes continue the text from one box to the next.
 
-**Office behaviour:** A shape's text box content is laid out like body text in the shape's rectangle less the insets of wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes). Vertical text turns every line a quarter, the insets staying with the shape's sides: vert runs the lines down, the first at the right; vert270 runs them up, the first at the left; mongolianVert runs them down, the first at the left (eaVert and the WordArt kinds as vert). Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96 %). Known deviation: linked boxes of different widths keep the first box's line breaks.
+**Office behaviour:** A shape's text box content is laid out like body text in the shape's rectangle less the insets of wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes). Vertical text turns every line a quarter, the insets staying with the shape's sides: vert and eaVert run the lines down, the first at the right; vert270 runs them up, the first at the left; mongolianVert and wordArtVert run them down, the first at the left; eaVert, mongolianVert and the WordArt kinds set East Asian characters upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6). Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %). Known deviation: linked boxes of different widths keep the first box's line breaks.
 
 **Elements (7):** [`w:textboxTightWrap`](../format/namespaces/w.md#wtextboxtightwrap), [`w:txbxContent`](../format/namespaces/w.md#wtxbxcontent), [`wp:linkedTxbx`](../format/namespaces/wp.md#wplinkedtxbx), [`wp:txbx`](../format/namespaces/wp.md#wptxbx), [`wp:txbxContent`](../format/namespaces/wp.md#wptxbxcontent), [`wps:linkedTxbx`](../format/namespaces/wps.md#wpslinkedtxbx), [`wps:txbx`](../format/namespaces/wps.md#wpstxbx)
 

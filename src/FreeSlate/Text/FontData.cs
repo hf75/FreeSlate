@@ -479,6 +479,51 @@ public sealed class FontData : IDisposable
         }
     }
 
+    /// <summary>
+    /// The middle of the font's ideographic em box above the baseline, in em: half an em above the ideographic baseline
+    /// of its BASE table (the Han, kana or default script's), else the middle of its win ascent and descent.
+    /// </summary>
+    public double EmMiddle => emMiddle ??= IdeographicBaseline() is { } ideographic ? ideographic + 0.5 : (WinAscent - WinDescent) / 2;
+
+    double? emMiddle;
+
+    /// <summary>The ideographic baseline of the BASE table's horizontal axis relative to the Roman one, in em, or null.</summary>
+    double? IdeographicBaseline()
+    {
+        var table = Table("BASE");
+        if (table == null || table.Length < 8)
+            return null;
+        try
+        {
+            int U16(int at) => BinaryPrimitives.ReadUInt16BigEndian(table.AsSpan(at));
+            var axis = U16(4);
+            if (axis == 0)
+                return null;
+            var (tagList, scriptList) = (axis + U16(axis), axis + U16(axis + 2));
+            if (tagList == axis || scriptList == axis)
+                return null;
+            var tags = Enumerable.Range(0, U16(tagList)).Select(k => System.Text.Encoding.ASCII.GetString(table, tagList + 2 + 4 * k, 4)).ToList();
+            var (ideo, romn) = (tags.IndexOf("ideo"), tags.IndexOf("romn"));
+            if (ideo < 0)
+                return null;
+            var scripts = Enumerable.Range(0, U16(scriptList)).Select(k => (Tag: System.Text.Encoding.ASCII.GetString(table, scriptList + 2 + 6 * k, 4), Offset: scriptList + U16(scriptList + 6 + 6 * k))).ToList();
+            foreach (var preferred in new[] { "hani", "kana", "DFLT" })
+            {
+                if (scripts.FirstOrDefault(s => s.Tag == preferred) is not { Tag: not null } script || U16(script.Offset) == 0)
+                    continue;
+                var values = script.Offset + U16(script.Offset);
+                double Coordinate(int index) => BinaryPrimitives.ReadInt16BigEndian(table.AsSpan(values + U16(values + 4 + 2 * index) + 2));
+                if (U16(values + 2) != tags.Count)
+                    continue;
+                return (Coordinate(ideo) - (romn >= 0 ? Coordinate(romn) : 0)) / UnitsPerEm;
+            }
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
+        return null;
+    }
+
     /// <summary>The OS/2 typographic metrics in em (ascender, descender positive below, line gap) and whether USE_TYPO_METRICS is set.</summary>
     public (double Ascender, double Descender, double LineGap, bool Use)? Typo
     {

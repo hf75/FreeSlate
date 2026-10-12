@@ -467,12 +467,17 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (Rotated(cell))
                 {
                     // tbRl turns clockwise about the content's top right corner, btLr counterclockwise about its bottom
-                    // left (measured with docx/local/tbl-features: lines start at the cell's top and at its bottom).
-                    var down = cell.Format.TextDirection is "tbRl" or "tbRlV";
+                    // left (measured with docx/local/tbl-features: lines start at the cell's top and at its bottom);
+                    // tbRlV and tbLrV run down like tbRl, tbLrV's lines from the left (measured with docx/local/vertical5).
+                    var down = cell.Format.TextDirection is "tbRl" or "tbRlV" or "tbLrV";
+                    var fromLeft = cell.Format.TextDirection == "tbLrV";
                     var pivotX = down ? textFrom + content.Width : textFrom;
                     var pivotY = down ? top : topWidths[r] + total - margins.Bottom;
                     foreach (var line in content.Lines)
-                        part.Lines.Add(line with { Left = pivotX + line.Left, Top = pivotY + line.Top, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -line.Top });
+                    {
+                        var lineTop = fromLeft ? content.Width - line.Top - line.Line.Height : line.Top;
+                        part.Lines.Add(line with { Line = fromLeft ? line.Line.Flipped() : line.Line, Left = pivotX + line.Left, Top = pivotY + lineTop, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -lineTop });
+                    }
                 }
                 else
                 {
@@ -851,7 +856,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (cell.MergedAbove)
                     continue;
                 var m = Margins(row, cell, format);
-                var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : CellWidths(cell.Blocks, fields);
+                var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : Directed(cell, () => CellWidths(cell.Blocks, fields));
                 // A cell that may not wrap (w:noWrap) needs its whole width.
                 if (cell.Format.NoWrap)
                     cmin = cmax;
@@ -972,10 +977,32 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (cell.Format.HideMark && cell.Blocks.All(b => b is ParagraphBlock { Content.Count: 0 }))
             return new CellContent([], [], [], 0);
         if (!Rotated(cell))
-            return Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After);
-        var content = Content(cell.Blocks, Unwrapped, fields);
+            return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After));
+        var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
         var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
         return content with { Height = length, Thickness = content.Height };
+    }
+
+    /// <summary>
+    /// Laid out with the cell's text direction (measured with docx/local/vertical2 and vertical5): its lines vertical
+    /// where it turns them (tbRl, btLr, tbRlV, tbLrV), its East Asian characters turned against them in tbRlV, tbLrV
+    /// (upright) and lrTbV (lying); a cell without a direction of its own keeps the one it stands in.
+    /// </summary>
+    T Directed<T>(CellModel cell, Func<T> laid)
+    {
+        var direction = cell.Format.TextDirection;
+        if (direction is null or "lrTb")
+            return laid();
+        var (vertical, turn) = (paragraphs.Vertical, paragraphs.TurnEastAsian);
+        (paragraphs.Vertical, paragraphs.TurnEastAsian) = (Rotated(cell), direction is "tbRlV" or "tbLrV" or "lrTbV");
+        try
+        {
+            return laid();
+        }
+        finally
+        {
+            (paragraphs.Vertical, paragraphs.TurnEastAsian) = (vertical, turn);
+        }
     }
 
     /// <summary>The width rotated text is laid out in: wide enough not to wrap.</summary>
@@ -995,7 +1022,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>A rotated cell's width: the thickness of its lines.</summary>
     (double Min, double Max) RotatedWidths(CellModel cell, PageFields? fields)
     {
-        var content = Content(cell.Blocks, Unwrapped, fields);
+        var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
         return (content.Height, content.Height);
     }
 
