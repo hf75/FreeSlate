@@ -1517,7 +1517,10 @@ areas:
           PAGE, NUMPAGES, SECTIONPAGES, PAGEREF (the bookmark's page in its section's format; \p above, below or on
           page n), REF (the bookmark's text, its paragraph's number), STYLEREF (in a header or footer the first
           paragraph of the style on its page, \l the last, else the last before it; in the body the nearest before the
-          field; a heading level or a built-in heading's name in Word's languages), SEQ (\c, , \h, \s), SECTION, IF
+          field; a heading level or a built-in heading's name in Word's languages; of a character style the text of
+          the first or last runs in it, docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a
+          dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
+          before), SEQ (\c, , \h, \s), SECTION, IF
           (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
           language's short date and time) and SAVEDATE (when the document was saved); the page-dependent ones come
           from a layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format

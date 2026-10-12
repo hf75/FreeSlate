@@ -36,6 +36,42 @@ public sealed class FieldEvaluator
 
     // What the pages of the last layout tell.
     List<PageBox> pages = [];
+
+    /// <summary>The pages of the layout in progress, where a header's STYLEREF looks back from its page.</summary>
+    public List<PageBox>? Current { get; set; }
+
+    /// <summary>Whether a header's STYLEREF had to guess its page's paragraphs (no layout before): another one follows.</summary>
+    bool guessed;
+
+    /// <summary>The page whose header the layout in progress measures, for its fields without a page of their own.</summary>
+    public PageBox? Laying { get; set; }
+
+    /// <summary>
+    /// The body paragraphs of a page whose header is laid out: while the layout in progress lays the page out, those
+    /// of the same page of the last layout (a header's height decides where the page's text begins).
+    /// </summary>
+    List<ParagraphBlock> ParagraphsOf(PageBox on)
+    {
+        if (Current is { } current && !current.Contains(on) && on.Paragraphs.Count == 0)
+        {
+            if (pages.FirstOrDefault(p => p.Number == on.Number) is { } before)
+                return before.Paragraphs;
+            guessed = true;
+        }
+        return on.Paragraphs;
+    }
+
+    /// <summary>The pages before a page, the nearest first: of the layout in progress where it holds the page or is
+    /// laying it out, else of the last layout.</summary>
+    IEnumerable<PageBox> Before(PageBox on)
+    {
+        var list = Current is { } current && (current.Contains(on) || current.Count == 0 || current[^1].Number < on.Number) ? current : pages;
+        var index = list.IndexOf(on);
+        if (index < 0)
+            index = list.Count(p => p.Number < on.Number);
+        for (var p = index - 1; p >= 0; p--)
+            yield return list[p];
+    }
     readonly Dictionary<string, PageBox> bookmarkPages = new(StringComparer.Ordinal);
     readonly Dictionary<ParagraphBlock, PageBox> paragraphPages = new(ReferenceEqualityComparer.Instance);
 
@@ -118,6 +154,8 @@ public sealed class FieldEvaluator
         var before = new Dictionary<FieldInline, string?>(ReferenceEqualityComparer.Instance);
         foreach (var field in paragraphs.SelectMany(p => Fields(p.Content)).Where(Paged))
             before[field] = Value(field, null);
+        var again = guessed;
+        guessed = false;
         pages = laid;
         bookmarkPages.Clear();
         paragraphPages.Clear();
@@ -128,7 +166,7 @@ public sealed class FieldEvaluator
             foreach (var paragraph in page.Paragraphs)
                 paragraphPages.TryAdd(paragraph, page);
         }
-        return before.Any(f => Value(f.Key, null) != f.Value);
+        return again || before.Any(f => Value(f.Key, null) != f.Value);
 
         static IEnumerable<FieldInline> Fields(IEnumerable<Inline> inlines)
         {
@@ -235,7 +273,10 @@ public sealed class FieldEvaluator
     /// </summary>
     string StyleReference(List<string> words, FieldInline field, PageBox? on)
     {
+        on ??= Laying;
         var name = words[1];
+        if (CharacterReference(name, words.Contains("\\l"), field, on) is { } marked)
+            return marked;
         bool Matches(ParagraphBlock p)
         {
             var id = p.Format.Style ?? context.Styles.DefaultParagraphStyle;
@@ -249,13 +290,16 @@ public sealed class FieldEvaluator
         var last = words.Contains("\\l");
         if (on != null)
         {
-            var here = on.Paragraphs.Where(Matches).ToList();
+            var here = ParagraphsOf(on).Where(Matches).ToList();
             found = here.Count > 0 ? last ? here[^1] : here[0] : null;
             if (found == null)
             {
-                var index = pages.IndexOf(on);
-                for (var p = index - 1; p >= 0 && found == null; p--)
-                    found = pages[p].Paragraphs.LastOrDefault(Matches);
+                foreach (var page in Before(on))
+                {
+                    found = page.Paragraphs.LastOrDefault(Matches);
+                    if (found != null)
+                        break;
+                }
             }
         }
         else if (paragraphOf.TryGetValue(field, out var paragraph))
@@ -269,6 +313,58 @@ public sealed class FieldEvaluator
         if (words.Contains("\\n") || words.Contains("\\r") || words.Contains("\\w"))
             return found.Label?.Text ?? "";
         return Text(found.Content).Trim();
+    }
+
+    /// <summary>
+    /// STYLEREF of a character style: the text of the first run of runs in it on the page of a header or footer (the
+    /// last with \l), else the last before the page; in the body the nearest before the field, else after it; null
+    /// where the name is no character style (docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a
+    /// dictionary's headers show the first and the last entry of the page).
+    /// </summary>
+    string? CharacterReference(string name, bool last, FieldInline field, PageBox? on)
+    {
+        var style = context.Styles.Find(name) is { Type: "character" } byId ? byId
+            : context.Styles.IdByName(name, "character") is { } id ? context.Styles.Find(id) : null;
+        if (style == null)
+            return null;
+        // The groups of runs in the style, in a paragraph's order.
+        List<string> Groups(ParagraphBlock paragraph)
+        {
+            var groups = new List<string>();
+            StringBuilder? current = null;
+            foreach (var inline in paragraph.Content)
+            {
+                if (inline is TextInline text && text.Format.Style == style.Id)
+                    (current ??= new StringBuilder()).Append(text.Text);
+                else if (inline is TextInline or TabInline or FieldInline && current != null)
+                {
+                    groups.Add(current.ToString());
+                    current = null;
+                }
+            }
+            if (current != null)
+                groups.Add(current.ToString());
+            return groups.Where(g => g.Trim().Length > 0).ToList();
+        }
+        string? found = null;
+        if (on != null)
+        {
+            var here = ParagraphsOf(on).SelectMany(Groups).ToList();
+            found = here.Count > 0 ? last ? here[^1] : here[0] : null;
+            foreach (var page in Before(on))
+            {
+                if (found != null)
+                    break;
+                found = page.Paragraphs.SelectMany(Groups).LastOrDefault();
+            }
+        }
+        else if (paragraphOf.TryGetValue(field, out var paragraph))
+        {
+            var at = order.GetValueOrDefault(paragraph);
+            found = paragraphs.Take(at + 1).SelectMany(Groups).LastOrDefault() ?? paragraphs.Skip(at + 1).SelectMany(Groups).FirstOrDefault();
+        }
+        return found?.Trim() ?? T($"Error! Use the Home tab to apply {name} to the text that you want to appear here.",
+            $"Fehler! Verwenden Sie die Registerkarte 'Start', um {name} dem Text zuzuweisen, der hier angezeigt werden soll.");
     }
 
     /// <summary>

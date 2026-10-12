@@ -683,6 +683,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
         this.footnotes = footnotes;
+        // The pages of this run so far, which the fields of a header look back into (STYLEREF).
+        if (layout.Evaluator != null)
+            layout.Evaluator.Current = pages;
         // Each section's properties are given at its end.
         var sections = new List<(List<Block> Blocks, SectionProperties Properties)>();
         var current = new List<Block>();
@@ -905,7 +908,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         else
         {
             if (page.Header != null && !properties.TopFixed)
+            {
+                // The header's fields that look at the page's paragraphs (STYLEREF) see this page.
+                if (layout.Evaluator != null)
+                    layout.Evaluator.Laying = page;
                 page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
+                if (layout.Evaluator != null)
+                    layout.Evaluator.Laying = null;
+            }
             if (page.Footer != null && !properties.BottomFixed)
                 page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
         }
