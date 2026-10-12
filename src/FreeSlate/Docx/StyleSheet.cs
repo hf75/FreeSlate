@@ -38,8 +38,10 @@ public sealed class StyleSheet
     /// <summary>
     /// The document defaults Word gives a document without a styles part: those of its own Normal template, Aptos
     /// 12 pt (East Asian text falling back from it) with complex scripts in Arial, kerning and standard and contextual
-    /// ligatures, 8 pt after paragraphs and 1.16 lines (measured with docx/local/defaults-none; an empty
-    /// w:docDefaults leaves Times New Roman 10 pt and single spacing, docx/local/defaults-empty).
+    /// ligatures, 8 pt after paragraphs and 1.16 lines (measured with docx/local/defaults-none). So it does for each
+    /// of w:rPrDefault and w:pPrDefault a styles part leaves out (also in an empty w:docDefaults); where they are,
+    /// empty ones too, Times New Roman 10 pt and single spacing are the base (docx/local/defaults-empty,
+    /// nodefaults-none, -empty, -run, -para).
     /// </summary>
     static readonly XElement TemplateRun = new(Wml.W + "rPr",
         new XElement(Wml.W + "rFonts", new XAttribute(Wml.W + "ascii", "Aptos"), new XAttribute(Wml.W + "hAnsi", "Aptos"),
@@ -62,8 +64,8 @@ public sealed class StyleSheet
             return;
         }
         var defaults = root.Child("docDefaults");
-        DefaultRun.Apply(defaults.Child("rPrDefault").Child("rPr"));
-        DefaultParagraph.Apply(defaults.Child("pPrDefault").Child("pPr"));
+        DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateRun);
+        DefaultParagraph.Apply(defaults.Child("pPrDefault") is { } paragraphDefault ? paragraphDefault.Child("pPr") : TemplateParagraph);
         foreach (var e in root.Elements(Wml.W + "style"))
         {
             var id = e.Attr("styleId");

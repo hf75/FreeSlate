@@ -1134,7 +1134,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 {
                     var style = StyleOf(paragraph);
                     var spaced = paragraph.Format.ContextualSpacing != true || contextual == false;
-                    var before = !spaced && previous == style ? 0 : paragraph.Format.Before ?? 0;
+                    // HTML auto spacing is 14 pt between a cell's blocks, none at its top and bottom (measured with
+                    // docx/local/autospace-cells-15 and -14).
+                    var autoSpacing = !context.AddsSpacing;
+                    var before = !spaced && previous == style ? 0
+                        : paragraph.Format.BeforeAuto == true && autoSpacing ? (first ? 0 : 14) : paragraph.Format.Before ?? 0;
                     var following = b + 1 < blocks.Count
                         ? blocks[b + 1] switch
                         {
@@ -1159,7 +1163,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
                         anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
                     }
-                    ownAfter = paragraph.Format.After ?? 0;
+                    ownAfter = paragraph.Format.AfterAuto == true && autoSpacing ? (b == blocks.Count - 1 ? 0 : 14) : paragraph.Format.After ?? 0;
                     after = !spaced && following == style ? 0 : ownAfter;
                     previous = style;
                     first = false;
