@@ -1433,7 +1433,8 @@ areas:
           table anchored to the page or the margin breaks on its first page where it would at the paragraph after it,
           as many lines down, so past the bottom margin or above it (floatsplit-14p-*, floattable-compat14, docx/
           external/libreoffice/core-doc/floating-table-dummy-text); w:doNotBreakWrappedTables keeps tables whole
-          (writerfilter-dmapper/do-not-break-wrapped-tables). Known deviations: a
+          (writerfilter-dmapper/do-not-break-wrapped-tables). Drawings anchored in its cells stand as in other tables
+          (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). Known deviations: a
           table centered on the margin stands about 5 pt further right in Word; tables anchored to the page that do
           not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after
           the table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).

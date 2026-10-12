@@ -340,7 +340,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         void Draw(RowBox row)
         {
-            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page!.Lines, page.Shading, page.Borders, page.Strokes, []);
+            // Drawings anchored in the cells stand as in the rows of other tables (docx/external/libreoffice/
+            // extras-ooxmlexport/fdo68607: a text box with the title above the table).
+            var anchors = new List<CellAnchor>();
+            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            foreach (var anchor in anchors)
+                page.Drawings.Add(Anchored(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
             rowTop += row.Height;
             last = row;
             onPage++;
