@@ -575,8 +575,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             reach = allowance + Margins(rows[0], rows[0].Cells[^1], format).Right
                 + (format.Indent == null ? 0 : Math.Max(firstLeft, Width(vertical[0, 0]) / 2));
         }
+        // A percentage width is of the column's width, whatever the indent (measured with docx/local/tpi-1 to tpi-6:
+        // 100 % indented -15.9 or 36 pt is 450.8 pt wide, in modes 14 and 15; docx/external/poi/bug65649).
         var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
-            lines: vertical, reach: reach);
+            widthBase: available, lines: vertical, reach: reach);
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
             x[k + 1] = x[k] + grid[k];

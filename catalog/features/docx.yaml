@@ -1367,6 +1367,9 @@ areas:
           tw-14-*, tw-15-*: margins of 0.5 and 8.5 pt reach as far past the right margin, in mode 15 nothing; docx/
           external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 440.7 pt between 432 pt margins). Cells of tables without any table style (the document has no
           default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15).
+          A percentage width is of the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100 % indented
+          -15.9 or 36 pt is 450.8 pt wide, ending as far before or past the right margin, in modes 14 and 15;
+          docx/external/poi/bug65649).
           A fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
           between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before
           Word 2013 between the middles and wider by the outer cells' margins (docx/local/tblwidth-15, -14,
