@@ -909,7 +909,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 **Rendering:** Counters run per abstract numbering through the whole document (headers, footers and notes keep their own state), restart by w:lvlRestart, w:startOverride and numbering instances; measured against Word because the specification leaves gaps.
 
-**Office behaviour:** Instances of one abstract definition count together; an instance with a start override restarts the shared counter where it is first used, and the other instances go on from there (5, 6, then 7); a deeper level used before a higher one shows the higher one's start and counts from it (7.1.1. then 7.2.); w:lvlRestart 0 never restarts; paragraphs numbered through their style continue the same counters (docx/local/num-rules).
+**Office behaviour:** Instances of one abstract definition count together; an instance with a start override restarts the shared counter where it is first used, and the other instances go on from there (5, 6, then 7); a deeper level used before a higher one shows the higher one's start and counts from it (7.1.1. then 7.2.); w:lvlRestart 0 never restarts; paragraphs numbered through their style continue the same counters (docx/local/num-rules). A paragraph of nothing but a section break takes no number and counts for none, in modes 14 and 15 (docx/local/ sn-1 to sn-6: items 1, 2, an empty numbered section end, then 3; docx/external/libreoffice/extras-ooxmlexport/ section_break_numbering, tdf170602_exportContext).
 
 **Elements (3):** [`w:ilvl`](../format/namespaces/w.md#wilvl), [`w:numId`](../format/namespaces/w.md#wnumid), [`w:numPr`](../format/namespaces/w.md#wnumpr)
 

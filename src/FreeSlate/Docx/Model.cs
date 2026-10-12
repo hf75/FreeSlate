@@ -757,6 +757,12 @@ public sealed partial class ModelReader(DocumentContext context)
         // with docx/generated/lists: a level indented 360 twips puts a List Paragraph, whose style says 720, at
         // 360); the number is drawn in the paragraph mark's formatting with the level's run properties over it.
         ListLabel? label = null;
+        // A paragraph of nothing but a section break takes no number and counts for none (measured with
+        // docx/local/sn-1 to sn-6: items 1, 2, an empty numbered section end, then 3; in modes 14 and 15;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf170602_exportContext).
+        if (pPr.Child("sectPr") != null && !p.Elements().Where(e => e.Name != Wml.W + "pPr").SelectMany(e => e.DescendantsAndSelf())
+                .Any(e => e.Name.LocalName is "t" or "tab" or "br" or "cr" or "drawing" or "pict" or "object" or "sym" or "ptab" or "fldChar" or "fldSimple" or "noBreakHyphen" or "softHyphen"))
+            number = false;
         if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0, mark.Language) : null) is { } next)
         {
             format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph, numberingUnderStyle: direct.NumberingId == null);
