@@ -351,6 +351,13 @@ public sealed partial class ModelReader(DocumentContext context)
                 blocks.RemoveAt(k + 1);
                 k--;
             }
+            else if (k + 1 < blocks.Count && !paragraph.Shows)
+            {
+                // Before a table one with nothing to show is gone as well (docx/external/poi/bug59058: an HTML form's
+                // hidden "Top of Form").
+                blocks.RemoveAt(k);
+                k--;
+            }
             else if (k + 1 < blocks.Count)
             {
                 var format = paragraph.Format.Clone();
