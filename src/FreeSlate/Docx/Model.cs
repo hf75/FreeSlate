@@ -256,6 +256,11 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
     string? bidiOverride, bidiEmbedding;
 
+    /// <summary>How deep the table being read is nested, and how deep tables may nest before only their paragraphs are
+    /// read (a guard for the stack: Word itself does not open a test document with 5000 nested tables).</summary>
+    int tableDepth;
+    const int MaxTableDepth = 64;
+
     /// <summary>The values of data-bound content controls (catalog: sdt.dataBinding).</summary>
     DataBinding? binding;
     DataBinding Binding => binding ??= new DataBinding(context);
@@ -508,8 +513,20 @@ public sealed partial class ModelReader(DocumentContext context)
                         blocks.Add(paragraph);
                     break;
                 }
+                case "tbl" when tableDepth < MaxTableDepth:
+                    tableDepth++;
+                    try
+                    {
+                        blocks.Add(Table(e));
+                    }
+                    finally
+                    {
+                        tableDepth--;
+                    }
+                    break;
                 case "tbl":
-                    blocks.Add(Table(e));
+                    foreach (var nested in e.Descendants(Wml.W + "p").Where(p => !p.Ancestors(Wml.W + "p").Any()))
+                        blocks.Add(Paragraph(nested));
                     break;
                 case "sdt":
                     if (e.Child("sdtContent") is { } content)

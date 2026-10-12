@@ -235,8 +235,8 @@ public sealed class TableFormat
 
     /// <summary>
     /// Whether a table style applies (the table's own or the document's default): cells without margins of their own
-    /// have none then, as the style and the table give none; without any style, Word's built-in 0.075 in (measured
-    /// with docx/local/c2-tblpos: a table whose style is not based on the default style has its text at its lines).
+    /// have none then, as the style and the table give none (measured with docx/local/c2-tblpos: a table whose style
+    /// is not based on the default style has its text at its lines); without any style, 0.5 pt (docx/local/tblnostyle-*).
     /// </summary>
     public bool Styled;
     public TableWidth? Width;

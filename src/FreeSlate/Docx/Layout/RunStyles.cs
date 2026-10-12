@@ -264,7 +264,9 @@ public sealed class RunStyles(DocumentContext context)
                 themed = scripted;
             if (!string.IsNullOrEmpty(themed))
                 return themed;
-            if (east)
+            // An East Asian theme font in the ASCII slot itself (w:asciiTheme="minorEastAsia") has nothing further to
+            // fall back on.
+            if (east && slot != WordSlot.Ascii)
                 return name ?? Family(format, WordSlot.Ascii);
             if (bidi)
                 return name ?? "Times New Roman";

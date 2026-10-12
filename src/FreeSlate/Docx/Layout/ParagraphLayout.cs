@@ -991,6 +991,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             if (end == lineStart && i >= text.Length)
                 end = text.Length;
+            // Every line takes at least a character: one that starts at spaces where the indents leave no room at all
+            // (docx/external/libreoffice/extras-ooxmlexport/tdf124604) would else stand still.
+            if (end <= lineStart && lineStart < text.Length)
+                end = lineStart + (char.IsHighSurrogate(text[lineStart]) && lineStart + 1 < text.Length ? 2 : 1);
             if (lastFit < 0)
                 lastFit = end;
 

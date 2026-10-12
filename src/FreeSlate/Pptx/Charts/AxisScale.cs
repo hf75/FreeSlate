@@ -35,8 +35,20 @@ public readonly record struct AxisScale(double Min, double Max, double MajorUnit
             yield return Clean(Min + i * unit);
     }
 
-    /// <summary>Removes floating point noise such as 0.30000000000000004.</summary>
-    public static double Clean(double value) => Math.Abs(value) < 1e-12 ? 0 : Math.Round(value, 12 - (int)Math.Floor(Math.Log10(Math.Abs(value))));
+    /// <summary>Removes floating point noise such as 0.30000000000000004 (rounds to 13 significant digits).</summary>
+    public static double Clean(double value)
+    {
+        if (Math.Abs(value) < 1e-12)
+            return 0;
+        if (!double.IsFinite(value))
+            return value;
+        // Math.Round takes 0 to 15 decimals; values below 0.001 or from 10^13 on round at a power of ten instead.
+        var digits = 12 - (int)Math.Floor(Math.Log10(Math.Abs(value)));
+        if (digits is >= 0 and <= 15)
+            return Math.Round(value, digits);
+        var scale = Math.Pow(10, Math.Abs(digits));
+        return digits > 0 ? Math.Round(value * scale) / scale : Math.Round(value / scale) * scale;
+    }
 }
 
 /// <summary>

@@ -1218,7 +1218,8 @@ areas:
           width), where the minima fit each gets its minimum and a share of the rest in proportion to max - min, else
           the contents' minima shrink in proportion; widths before and after rows do not widen columns. Word 2013
           tables start their grid at the indent and move it right by half the left border; older compatibility modes
-          put the first cell's text at the indent.
+          put the first cell's text at the indent. Cells of tables without any table style (the document has no
+          default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15).
 
       - id: table.rows
         title: Row height, splitting and header rows
@@ -1228,9 +1229,15 @@ areas:
         status: done
         strategy: Exact and minimum row heights; rows split across pages unless w:cantSplit; header rows repeat on every page.
         office: >-
-          A row is its top line and its content; at-least heights count without the line, exact ones with it. Rows
-          that do not fit split at a line of each cell unless w:cantSplit; header rows repeat after every break; where
-          the table breaks the line below the page's last row closes it (docx/local/tbl-autofit, tbl-features).
+          A row is its top line and its content; at-least heights count without the line, exact ones with it. A row
+          fits where it and the line that closes the table below it fit (docx/local/tblbottom-*). Rows that do not
+          fit split at a line of each cell; header rows, rows of exact height, rows that may not split (w:cantSplit)
+          and rows whose at-least height does not fit move on whole, and the rest of a split at-least row is that high
+          again (tblsplit-*). Header rows go with the first row to the next page where it does not fit below them
+          (all of it where it may not split, else a line), repeat after every break where the next row fits below
+          them and stay off where it does not, which still pushes what follows the table to the next page; a row that
+          may not split splits at the top of a page that cannot hold it (tblhdr-*). Where the table breaks the line
+          below the page's last row closes it (docx/local/tbl-autofit, tbl-features).
 
       - id: table.borders
         title: Table and cell borders and shading

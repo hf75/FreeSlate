@@ -1227,6 +1227,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// where the table's header rows are repeated first; where the table breaks, the line below the last row of the
     /// page closes it. The paragraph before keeps its space after above the table.
     /// </summary>
+    /// <remarks>
+    /// Measured with docx/local/tblhdr-*: header rows that leave no room for the first row below them (all of it where
+    /// it may not split, else its first line) go with it to the next column or page, unless the table starts there.
+    /// They repeat only where the row that goes on fits below them in the same way; where they do not, the rows stand
+    /// at the top without them, and Word still counts them: what follows the table goes to the next page. A row that
+    /// may not split moves on whole and splits only at the top of a page that cannot hold it.
+    /// </remarks>
     void PlaceTable(List<Block> blocks, int index)
     {
         var table = (TableBlock)blocks[index];
@@ -1240,6 +1247,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (!columnEmpty)
             y += pendingAfter;
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
+        var headersHeight = headers.Sum(h => h.Height);
+        // Whether the header rows were left off this column or page.
+        var omitted = false;
         RowBox? last = null;
         var tableTop = y;
         // The table's alternative text, for the part of it on each page.
@@ -1262,14 +1272,27 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Footnotes of a row's cells need room below it as a paragraph's do.
         List<string> NotesOf(RowBox row) => row.Lines.SelectMany(l => l.Line.Notes ?? []).ToList();
+        // Whether a row, all of it or its split, fits below a position in this column (as the loop below places it):
+        // with the line that closes the table below it where the table breaks (measured with docx/local/tblbottom-*).
+        bool Fits(RowBox row, double top) => top + row.Height + row.BottomBorderWidth <= Bottom - NotesHeight(NotesOf(row)) + 0.01;
+        (RowBox Head, RowBox Tail)? Split(RowBox row, double top, bool force = false) =>
+            Bottom - top > row.TopWidth + 1 ? row.Split(Bottom - top - row.BottomBorderWidth, force) : null;
+        bool Takes(RowBox row, double top) => Fits(row, top) || Split(row, top) != null;
+        if (headers.Count > 0 && headers.Count < box.Rows.Count && !columnEmpty && !Takes(box.Rows[headers.Count], y + headersHeight))
+        {
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+            tableTop = y;
+        }
         for (var r = 0; r < box.Rows.Count; r++)
         {
             var row = box.Rows[r];
-            while (y + row.Height > Bottom - NotesHeight(NotesOf(row)) + 0.01)
+            while (!Fits(row, y))
             {
                 // A row that does not fit splits at a line of each cell (unless it may not split, measured with
-                // docx/local/tbl-autofit), else moves on; a row taller than a page that cannot split overflows.
-                if (Bottom - y > row.TopWidth + 1 && row.Split(Bottom - y) is { } parts)
+                // docx/local/tbl-autofit), else moves on; one that may not split splits at the top of a column it
+                // does not fit either, and one that cannot split at all overflows.
+                if (Split(row, y, force: columnEmpty) is { } parts)
                 {
                     PlaceRow(parts.Head, left);
                     AddNotes(NotesOf(parts.Head));
@@ -1279,7 +1302,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 else if (columnEmpty)
                     break;
                 Break();
-                if (!row.Header)
+                omitted = !row.Header && headers.Count > 0 && !Takes(row, y + headersHeight);
+                if (!row.Header && !omitted)
                 {
                     foreach (var header in headers)
                     {
@@ -1301,6 +1325,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         Describe();
         TableLayout.Frame(box, left, tableTop, y, page!.Borders);
+        if (omitted)
+            y += headersHeight;
         pendingAfter = 0;
         pendingOwnAfter = 0;
         page!.TrailingSpace = 0;
@@ -1563,7 +1589,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             var needed = gap + (format.KeepLines == true ? Needed(lines) : FirstLines(lines, format));
             if (format.KeepNext == true && next != null)
-                needed = gap + lines.Sum(l => l.Height) + KeptNext(blocks, index + 1, width);
+            {
+                var own = lines.Sum(l => l.Height);
+                needed = gap + own + KeptNext(blocks, index + 1, width, Bottom - page!.BodyTop - own + 0.01);
+            }
             // What does not fit even an empty column is broken anyway.
             if (y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01)
             {
@@ -1923,17 +1952,33 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The height lines need on a page: all of them, the last without what may hang past the bottom.</summary>
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
 
-    /// <summary>What a kept-with-next paragraph needs of the following ones: their keep chain and the first lines of the last.</summary>
-    double KeptNext(List<Block> blocks, int index, double width)
+    /// <summary>
+    /// What a kept-with-next paragraph needs of the following ones: their keep chain and the first lines of the last;
+    /// once more than <paramref name="limit"/> (a chain taller than a column breaks anyway), that much is enough, so
+    /// long chains (docx/external/powertools/LIR*: 3500 list items kept with each other) cost a column each.
+    /// </summary>
+    double KeptNext(List<Block> blocks, int index, double width, double limit)
     {
-        if (blocks[index] is not ParagraphBlock next || blocks[index - 1] is not ParagraphBlock before)
-            return 0;
-        var lines = layout.Layout(next, width);
-        var gap = Between(before, next);
-        if (next.Format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock)
-            return gap + lines.Sum(l => l.Height) + KeptNext(blocks, index + 1, width);
-        return gap + FirstLines(lines, next.Format);
+        var total = 0.0;
+        for (var k = index; k < blocks.Count && blocks[k] is ParagraphBlock next && blocks[k - 1] is ParagraphBlock before; k++)
+        {
+            if (!keptHeights.TryGetValue(next, out var heights) || heights.Width != width)
+            {
+                var lines = layout.Layout(next, width);
+                keptHeights[next] = heights = (width, lines.Sum(l => l.Height), FirstLines(lines, next.Format));
+            }
+            var gap = Between(before, next);
+            if (next.Format.KeepNext != true || k + 1 >= blocks.Count || blocks[k + 1] is not ParagraphBlock)
+                return total + gap + heights.First;
+            total += gap + heights.All;
+            if (total > limit)
+                break;
+        }
+        return total;
     }
+
+    /// <summary>The heights of paragraphs in keep chains: the width they were laid out at, all their lines and what they need at least.</summary>
+    readonly Dictionary<ParagraphBlock, (double Width, double All, double First)> keptHeights = new(ReferenceEqualityComparer.Instance);
 
     bool? suppressTopSpacing, suppressSpacingAtTop;
 

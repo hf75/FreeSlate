@@ -19,7 +19,9 @@ public sealed class DocumentContext : IDisposable
     {
         Package = package;
         MainPart = package.FirstRelationship("/", "officeDocument")?.Target
-                   ?? throw new InvalidDataException("No main document part (officeDocument relationship) in the package.");
+                   ?? throw new InvalidDataException(package.Exists("/mimetype")
+                       ? "The package is an OpenDocument file (it has a mimetype part), not an Office Open XML document."
+                       : "No main document part (officeDocument relationship) in the package.");
         Document = Load(MainPart);
         Styles = new StyleSheet(Related("styles"));
         Settings = Related("settings")?.Root;

@@ -72,6 +72,12 @@ public sealed class RowBox
     public bool Header { get; init; }
     public bool CantSplit { get; init; }
 
+    /// <summary>Whether the row has an exact height (w:hRule="exact").</summary>
+    public bool Exact { get; init; }
+
+    /// <summary>The row's at-least height without its top line (w:trHeight), 0 without one.</summary>
+    public double Least { get; init; }
+
     /// <summary>The height of the lines at the row's top, above its content.</summary>
     public double TopWidth { get; init; }
 
@@ -96,16 +102,21 @@ public sealed class RowBox
 
     /// <summary>
     /// The row cut at <paramref name="available"/> points (catalog: table.rows): each cell keeps the lines that end
-    /// above the cut, the rest continue at the top of the continuation, below its top line and margin; null where no
-    /// cell has a line above the cut.
+    /// above the cut, the rest continue at the top of the continuation, below its top line and margin, which is at
+    /// least the row's at-least height again. Null where no cell has a line above the cut or none below it, and,
+    /// unless <paramref name="force"/>d (a row taller than its page), for rows Word does not split (measured with
+    /// docx/local/tblsplit-*): those that may not split, header rows, rows of exact height and rows whose at-least
+    /// height does not fit above the cut.
     /// </summary>
-    public (RowBox Head, RowBox Tail)? Split(double available)
+    public (RowBox Head, RowBox Tail)? Split(double available, bool force = false)
     {
-        if (CantSplit || Frames.Count > 0 || Cells.Any(c => c.Lines.Any(l => l.Angle != 0)))
+        if (!force && (CantSplit || Header || Exact || TopWidth + Least > available + 0.01)
+            || Frames.Count > 0 || Cells.Any(c => c.Lines.Any(l => l.Angle != 0)))
             return null;
         var head = Copy(available);
         var tail = Copy(0);
         var any = false;
+        var continues = false;
         var tailHeight = TopWidth;
         foreach (var cell in Cells)
         {
@@ -121,7 +132,10 @@ public sealed class RowBox
                     any = true;
                 }
                 else
+                {
                     tailPart.Lines.Add(line with { Top = line.Top - offset });
+                    continues = true;
+                }
             }
             foreach (var fill in cell.Fills)
             {
@@ -149,15 +163,18 @@ public sealed class RowBox
             head.Cells.Add(headPart);
             tail.Cells.Add(tailPart);
         }
-        if (!any)
+        if (!any || !continues)
             return null;
-        tail.Height = Math.Max(tailHeight, TopWidth);
+        tail.Height = Math.Max(tailHeight, TopWidth + Least);
         return (head, tail);
     }
 
     RowBox Copy(double height)
     {
-        var copy = new RowBox { Height = height, Header = Header, CantSplit = CantSplit, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth };
+        var copy = new RowBox
+        {
+            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
+        };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
         copy.TopBorders.AddRange(TopBorders);
@@ -197,8 +214,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>Whether contextual spacing works in cells (see <see cref="Content(List{Block}, double, PageFields?, string?, string?)"/>).</summary>
     bool? contextual;
 
-    /// <summary>The left and right cell margin of tables without any table style (0.075 in; see <see cref="TableFormat.Styled"/>).</summary>
-    const double DefaultMargin = 5.4;
+    /// <summary>
+    /// The left and right cell margin of tables without any table style (see <see cref="TableFormat.Styled"/>): 0.5 pt,
+    /// measured with docx/local/tblnostyle-12, -14 and -15 for lines of 0 to 6 pt.
+    /// </summary>
+    const double DefaultMargin = 0.5;
 
     /// <summary>The paragraph layout the cells' text is laid out with.</summary>
     public ParagraphLayout Paragraphs => paragraphs;
@@ -437,7 +457,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
-            var rowBox = new RowBox { Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r] };
+            var specified = row.Format.Height is { } rh && rh > 0 ? rh : 0;
+            var rowBox = new RowBox
+            {
+                Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
+                Exact = specified > 0 && row.Format.HeightRule == "exact", Least = row.Format.HeightRule == "exact" ? 0 : specified,
+            };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)
             {
