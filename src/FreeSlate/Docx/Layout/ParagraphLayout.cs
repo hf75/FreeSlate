@@ -789,6 +789,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
         BreakAtSpaces(text, breaks);
+        BreakAroundObjects(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
         // Punctuation that may not begin a line may hang past its end instead, where the paragraph lets it
@@ -1051,9 +1052,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         if (lines.Count == 0)
             lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine - labelShift, format, left, firstLine, mark, labelEnd, width - right));
-        // A paragraph that ends with a break has an empty last line; one that ends with a page break too where its
-        // mark goes to the next page.
-        if ((lines[^1].EndBreak is "line" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length)
+        // A paragraph that ends with a break has an empty last line, after a column break in the next column or page
+        // (measured with docx/local/breakmark3-cx-*, breakmark4-cl-*, -c2-*: in all compatibility modes); one that
+        // ends with a page break too where its mark goes to the next page.
+        if ((lines[^1].EndBreak is "line" or "column" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length)
             lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0, width - right));
         lines[^1].Last = true;
 
@@ -1145,11 +1147,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// The narrowest and the widest a paragraph can be laid out (catalog: table.width): its longest piece between
     /// break opportunities and its longest line without wrapping, each with its indents.
     /// </summary>
-    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null)
+    /// <param name="pictures">
+    /// Whether pictures and boxes count with their width (a frame's width); table autofit leaves them out as Word does
+    /// (docx/external/powertools/WC/WC023-Table-4-Row-Image-Before: a picture wider than its cell widens no column).
+    /// </param>
+    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false)
     {
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
-        var (text, charStyles, _) = Flatten(paragraph, fields);
+        var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles, CharacterExtra);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
@@ -1157,11 +1163,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             KernPunctuation(text, charStyles, advances);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
+        // Pictures and boxes take their width where asked, as in Layout (a frame as wide as a picture and a word would
+        // else break the word: docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
+        if (pictures)
+        {
+            foreach (var (index, drawing) in objects)
+                advances[index] = drawing.Box.Width;
+            foreach (var (index, box) in boxes)
+                advances[index] = BoxMetrics(box) is var (a, b) ? a + b : 0;
+        }
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
         BreakAtSpaces(text, breaks);
+        BreakAroundObjects(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
         var left = format.Left ?? 0;
@@ -2058,7 +2074,6 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return sb.ToString();
     }
 
-    /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
     /// <summary>
     /// A line may end at a space before any character but East Asian ones, whose kinsoku rules hold: Word breaks
     /// before periods, closing brackets, quotes, slashes, percent signs and the like after a space too (measured with
@@ -2073,6 +2088,26 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
+    /// <summary>
+    /// A line may end before and after an inline picture, as beside an ideograph: not before a space or a character
+    /// that may not begin a line, not after one that may not end it, nor between the list number and the picture
+    /// (measured with docx/local/tblpic3: P2's first line ends right before its picture; in table I a word right after
+    /// a picture widens no column, nor in docx/external/powertools/WC/WC023-Table-4-Row-Image-Before).
+    /// </summary>
+    void BreakAroundObjects(string text, bool[] breaks, LineBreaker.Kinsoku rules, int labelEnd)
+    {
+        foreach (var index in objects.Keys)
+        {
+            if (index < labelEnd)
+                continue;
+            if (index > labelEnd && !rules.NotLast.Contains(text[index - 1]))
+                breaks[index - 1] = true;
+            if (index + 1 < text.Length && text[index + 1] is not (' ' or '\t') && !rules.NotFirst.Contains(text[index + 1]))
+                breaks[index] = true;
+        }
+    }
+
+    /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
     internal static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
 
     /// <summary>

@@ -908,13 +908,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// unwrapped), each with the cells' margins; a preferred cell width fixes its column. Where the maxima fit, the
     /// columns take them (stretched in proportion to them to a table width that asks for more); where only the minima
     /// fit, every column gets its minimum and a share of the rest in proportion to its maximum less its minimum; where
-    /// not even those fit, the contents' minima shrink in proportion.
+    /// not even those fit, the minima shrink in proportion, the margins stay; where every column has a preferred width
+    /// of its own, those give way instead: columns whose contents need more than they prefer keep their contents'
+    /// minimum, the others share the rest in proportion to their preferred widths, none below its contents' minimum
+    /// (measured with docx/local/tblpic, table B: beside a 250 pt picture two cells preferring 150 pt take 100 pt
+    /// each; tblpic2 V1), and where the contents' minima do not fit either, those shrink (docx/local/tblpic3, table G:
+    /// pictures 200, 200 and 100 pt wide in cells preferring 150 pt take 180, 180 and 91 pt).
     /// </summary>
     double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target)
     {
         var format = table.Format;
         var space = (target ?? available - allowance);
-        var (min, max, margins, preferred) = Ranges(table, rows, columns, space, fields);
+        var (min, max, margins, preferred, natural) = Ranges(table, rows, columns, space, fields);
         var sumMin = min.Sum();
         var sumMax = max.Sum();
         var widths = new double[columns];
@@ -939,16 +944,61 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 widths[k] = min[k] + (range > 0 ? (space - sumMin) * (max[k] - min[k]) / range : 0);
             return widths;
         }
-        // Not even the minima fit: the contents shrink in proportion, the margins stay.
-        var content = Enumerable.Range(0, columns).Sum(k => Math.Max(0, min[k] - margins[k]));
+        // Preferred widths give way where every column has one of its own (as measured); else the minima shrink as
+        // they are.
+        var own = preferred.All(p => p != null);
+        if (own && natural.Sum() <= space + 0.01)
+            return Yielding(min, natural, space);
+        // Not even the contents' minima fit: they shrink in proportion, the margins stay.
+        var shrinking = own ? natural : min;
+        var content = Enumerable.Range(0, columns).Sum(k => Math.Max(0, shrinking[k] - margins[k]));
         var room = space - margins.Sum();
         for (var k = 0; k < columns; k++)
-            widths[k] = margins[k] + (content > 0 ? Math.Max(0, min[k] - margins[k]) * Math.Max(0, room) / content : 0);
+            widths[k] = margins[k] + (content > 0 ? Math.Max(0, shrinking[k] - margins[k]) * Math.Max(0, room) / content : 0);
         return widths;
     }
 
-    /// <summary>The columns' minima and maxima, the cells' margins in them and their preferred widths.</summary>
-    (double[] Min, double[] Max, double[] Margins, double?[] Preferred) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields)
+    /// <summary>
+    /// Columns whose preferred widths do not fit where their contents would: those that need their minimum keep it,
+    /// the others share the rest in proportion to the widths they prefer, none below the minimum of its contents.
+    /// </summary>
+    static double[] Yielding(double[] min, double[] natural, double space)
+    {
+        var columns = min.Length;
+        var widths = new double[columns];
+        var kept = new bool[columns];
+        for (var k = 0; k < columns; k++)
+            kept[k] = natural[k] >= min[k] - 0.01;
+        while (true)
+        {
+            var rest = space;
+            var shares = 0.0;
+            for (var k = 0; k < columns; k++)
+            {
+                if (kept[k])
+                    rest -= natural[k];
+                else
+                    shares += min[k];
+            }
+            var narrowed = false;
+            for (var k = 0; k < columns; k++)
+            {
+                widths[k] = kept[k] || shares <= 0 ? natural[k] : min[k] * Math.Max(0, rest) / shares;
+                if (!kept[k] && widths[k] < natural[k] - 0.01)
+                    (kept[k], narrowed) = (true, true);
+            }
+            if (!narrowed)
+                return widths;
+        }
+    }
+
+    /// <summary>
+    /// The columns' minima and maxima, the cells' margins in them, their preferred widths and the minima of their own
+    /// cells' contents alone (Natural, before preferred widths fix them and cells across several columns widen them:
+    /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
+    /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
+    /// </summary>
+    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields)
     {
         var format = table.Format;
         var min = new double[columns];
@@ -968,8 +1018,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     continue;
                 var m = Margins(row, cell, format);
                 var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : Directed(cell, () => CellWidths(cell.Blocks, fields));
-                // A cell that may not wrap (w:noWrap) needs its whole width.
-                if (cell.Format.NoWrap)
+                // A cell that may not wrap (w:noWrap) needs its whole width, unless it prefers a width in points
+                // (measured with docx/local/nowrap: such a cell wraps as if it could, one preferring a percentage not).
+                if (cell.Format.NoWrap && cell.Format.Width is not { Type: "dxa", Value: > 0 })
                     cmin = cmax;
                 // Word measures content at most 22 inches wide, its longest line (measured with docx/local/tbl-features:
                 // a column beside one with a very long paragraph gets 52.8 pt, 51.2 pt without the limit).
@@ -992,6 +1043,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // Preferred widths fix their columns first; a cell over several columns then widens them equally where they
         // are too narrow for it together (measured with docx/local/hmerge-g: a 200 pt cell over two 100 pt columns
         // leaves them as they are).
+        var natural = (double[])min.Clone();
         for (var k = 0; k < columns; k++)
         {
             if (preferred[k] is { } p)
@@ -1020,7 +1072,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         for (var k = 0; k < columns; k++)
             max[k] = Math.Max(max[k], min[k]);
-        return (min, max, margins, preferred);
+        return (min, max, margins, preferred, natural);
     }
 
     /// <summary>The narrowest and widest a cell's content can be: of its paragraphs and nested tables.</summary>
@@ -1033,7 +1085,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             {
                 case ParagraphBlock paragraph:
                 {
-                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields);
+                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true);
                     min = Math.Max(min, pmin);
                     max = Math.Max(max, pmax);
                     break;
@@ -1049,7 +1101,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     }
                     else if (columns > 0)
                     {
-                        var (nmin, nmax, _, _) = Ranges(nested.Table, rows, columns, 100000, fields);
+                        var (nmin, nmax, _, _, _) = Ranges(nested.Table, rows, columns, 100000, fields);
                         min = Math.Max(min, nmin.Sum());
                         max = Math.Max(max, nmax.Sum());
                     }

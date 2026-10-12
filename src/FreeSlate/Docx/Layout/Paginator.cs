@@ -152,7 +152,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     int paragraphNumber;
     /// <summary>How the current column began, which decides the space before its first paragraph.</summary>
-    enum Top { Document, Section, Break, Continuous }
+    enum Top { Document, Section, Break, Continuous, Leading }
 
     Top top = Top.Document;
     double pendingAfter;      // space after the previous paragraph
@@ -354,7 +354,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var (left, width) = Column(column);
         double Twips(string name) => properties.Twips(name) ?? 0;
-        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p).Max);
+        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p, pictures: true).Max);
         var laid = group.Select(p => layout.Layout(p, frameWidth)).ToList();
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
@@ -872,9 +872,75 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Paragraph borders and shading as in the body: paragraphs with the same frame share one box.
         var boxTop = 0.0;
         Frame? previousFrame = null;
+        // Lines of text frames placed on the page itself (vAnchor margin or page), not moving with the story.
+        var placed = new List<PlacedLine>();
         for (var b = 0; b < blocks.Count; b++)
         {
             var block = blocks[b];
+            // A text frame (w:framePr) takes no room in the story, as in the body (see PlaceFrame): it stands aligned in
+            // or at w:x from the column, the margin or the page, w:y below the top of the paragraph after it, the
+            // margin or the page (measured with docx/external/libreoffice/extras-ooxmlexport/tdf168017: a footer's
+            // page number framed centered 1 twip below the next paragraph's top stands on its line).
+            if (block is ParagraphBlock { Format.Frame: { } properties } framed && properties.Attr("dropCap") is null or "none")
+            {
+                var group = new List<ParagraphBlock> { framed };
+                var end = b + 1;
+                while (end < blocks.Count && blocks[end] is ParagraphBlock { Format.Frame: { } other } p && XNode.DeepEquals(other, properties))
+                {
+                    group.Add(p);
+                    end++;
+                }
+                double Twips(string name) => properties.Twips(name) ?? 0;
+                var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p, fields, pictures: true).Max);
+                var laid = group.Select(p => layout.Layout(p, frameWidth, fields)).ToList();
+                var content = 0.0;
+                for (var k = 0; k < group.Count; k++)
+                    content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
+                var frameHeight = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
+                var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
+                var textTop = y + (first ? next?.Format.Before ?? 0 : context.Between(after, next?.Format.Before ?? 0));
+                var (spanLeft, span) = properties.Attr("hAnchor") switch
+                {
+                    "page" => (0.0, on.Width),
+                    "margin" => (on.TextLeft, on.TextWidth),
+                    _ => (left, width),
+                };
+                var x = properties.Attr("xAlign") switch
+                {
+                    "left" or "inside" => spanLeft,
+                    "right" or "outside" => spanLeft + span - frameWidth,
+                    "center" => spanLeft + (span - frameWidth) / 2,
+                    _ => spanLeft + Twips("x"),
+                };
+                var onPage = properties.Attr("vAnchor") is "page" or "margin";
+                var (areaTop, areaHeight) = properties.Attr("vAnchor") switch
+                {
+                    "page" => (0.0, s.PageHeight),
+                    "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
+                    _ => (textTop, 0.0),
+                };
+                var frameTop = properties.Attr("yAlign") switch
+                {
+                    "top" or "inside" => areaTop,
+                    "bottom" or "outside" => areaTop + areaHeight - frameHeight,
+                    "center" => areaTop + (areaHeight - frameHeight) / 2,
+                    "inline" => textTop,
+                    _ => areaTop + Twips("y"),
+                };
+                var lineTop = frameTop;
+                for (var k = 0; k < group.Count; k++)
+                {
+                    if (k > 0)
+                        lineTop += Between(group[k - 1], group[k]);
+                    foreach (var line in laid[k])
+                    {
+                        (onPage ? placed : box.Lines).Add(new PlacedLine(line, x, lineTop));
+                        lineTop += line.Height;
+                    }
+                }
+                b = end - 1;
+                continue;
+            }
             if (block is ParagraphBlock paragraph)
             {
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
@@ -942,6 +1008,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         y += after;
         var top = header ? s.Header : s.PageHeight - s.Footer - y;
         box.Move(top);
+        box.Lines.AddRange(placed);
         box.Top = top;
         box.Bottom = top + y;
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
@@ -1524,6 +1591,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 || frame.Right is { Visible: true } || frame.Between is { Visible: true } || fill != null ? frame : null;
         }
 
+        /// <summary>Whether the frame has a line to show.</summary>
+        bool Lined => Top is { Visible: true } || Left is { Visible: true } || Bottom is { Visible: true } || Right is { Visible: true }
+                      || Between is { Visible: true };
+
         /// <summary>The frame of an HTML division at its indents (the margins of it and the divisions around it).</summary>
         public static Frame Division(HtmlDiv div, double indentLeft, double indentRight) => new()
         {
@@ -1531,9 +1602,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             indentLeft = indentLeft, indentRight = indentRight,
         };
 
-        /// <summary>Whether another paragraph's frame continues this one: the same borders, shading and indents.</summary>
+        /// <summary>
+        /// Whether another paragraph's frame continues this one: the same borders and indents, whatever their shading
+        /// (measured with docx/local/bordergroup-b1, -b3, -b4: bordered paragraphs with different fills or none share
+        /// their lines, the between line too; docx/external/libreoffice/extras-ooxmlexport/
+        /// tdf153964_topMarginAfterBreak15); paragraphs without borders, by their shading.
+        /// </summary>
         public bool Same(Frame? other) =>
-            other != null && XNode.DeepEquals(borders, other.borders) && XNode.DeepEquals(shading, other.shading)
+            other != null && XNode.DeepEquals(borders, other.borders) && (Lined || XNode.DeepEquals(shading, other.shading))
             && Math.Abs(indentLeft - other.indentLeft) < 0.01 && Math.Abs(indentRight - other.indentRight) < 0.01;
 
         /// <summary>
@@ -1606,6 +1682,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     void Place(List<Block> blocks, int index)
     {
         var paragraph = (ParagraphBlock)blocks[index];
+        // A page or column break that begins a paragraph comes before it where the rest of the paragraph goes on in
+        // the next page or column (LeadingBreak): its number, its space before and its text go there (measured with
+        // docx/external/libreoffice/extras-ooxmlexport/wDateValueFormat: "1 Status" after a page break at the start of
+        // its heading stands at the top of the next page, 12 pt down).
+        if (LeadingBreak(paragraph) is { } leading)
+        {
+            if (leading.Type == "page")
+                NewPage(section);
+            else
+                NextColumn(natural: false);
+            top = Top.Leading;
+            paragraph = paragraph with { Content = paragraph.Content.Where(i => !ReferenceEquals(i, leading)).ToList() };
+        }
         var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
         var format = paragraph.Format;
         var (left, width) = Column(column);
@@ -1628,6 +1717,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // has more than that space after (measured with page-setup: the heading of the three-column section stands
             // level with the other columns, its 8 pt before already in the 8 pt after above).
             Top.Continuous => balanced ? Math.Max(0, Gap(before) - pendingAfter) : Gap(before),
+            // After a break that begins the paragraph, what its space before has more than the space after the
+            // paragraph before it (measured with docx/external/libreoffice/extras-ooxmlexport/
+            // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
+            // docx/local/breakmark2-*: all of it after paragraphs without space after).
+            Top.Leading => Math.Max(0, Gap(before) - pendingAfter),
             _ => 0,
         };
         balanced = false;
@@ -1760,7 +1854,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (y + skip + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + skip + line.FitHeight <= Bottom + 0.01
                 && SplitNotes(line.Notes!, Bottom - y - skip - line.FitHeight))
                 split = true;
-            else if (y + skip + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
+            // A line of nothing but a page or column break stays where it is, past the bottom too: it moves nothing on
+            // (measured with docx/external/libreoffice/extras-ooxmlexport/FDO77715: headings that begin with a column
+            // break, after a full page, stand at the top of the next page, no empty page between).
+            else if (y + skip + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && !BreakOnly(line))
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -2013,8 +2110,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>The height a paragraph needs at least: its first two lines with widow control, else its first.</summary>
+    /// <summary>
+    /// The height the first lines of a paragraph need together: two with widow control, one without; a first line
+    /// that ends in a page or column break stands alone, the lines after it go on in the next column anyway (measured
+    /// with docx/external/libreoffice/extras-ooxmlexport/FDO77715: headings that begin with a column break near the
+    /// bottom of a page leave no empty page).
+    /// </summary>
     static double FirstLines(List<Line> lines, ParagraphFormat format) =>
-        Needed(lines.Take((format.WidowControl ?? true) && lines.Count > 1 ? 2 : 1).ToList());
+        Needed(lines.Take((format.WidowControl ?? true) && lines.Count > 1 && lines[0].EndBreak is not ("page" or "column") ? 2 : 1).ToList());
 
     /// <summary>The height lines need on a page: all of them, the last without what may hang past the bottom.</summary>
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
@@ -2147,6 +2250,59 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         return fit >= least;
     }
+
+    /// <summary>
+    /// The page or column break a paragraph begins with (after marks that take no room) where the rest of the
+    /// paragraph goes on in the next page or column: always after a column break, also one that ends the page, whose
+    /// paragraph mark goes along and takes a line there with floating objects anchored to it; after a page break
+    /// where text or an inline drawing follows, or where w:splitPgBreakAndParaMark takes the mark along, which Word
+    /// 2013 and later ignore (compatibility mode 15); null otherwise (measured with docx/local/breakmark-* in modes 11,
+    /// 14 and 15, breakmark4-*; docx/external/libreoffice/extras-ooxmlexport/tdf153613_anchoredAfterPgBreak, -2, -3: a picture
+    /// anchored after a page break stays on the page before unless text follows or the option is on;
+    /// tdf153592_columnBreaks). The start of a content control is a mark that does take its place: the break then
+    /// ends the paragraph's first line like any other (ControlStartsBefore).
+    /// </summary>
+    BreakInline? LeadingBreak(ParagraphBlock paragraph)
+    {
+        var k = 0;
+        while (k < paragraph.Content.Count && paragraph.Content[k] is BookmarkInline or BookmarkEndInline or PermissionInline or CommentInline
+               or TextInline { Text.Length: 0 })
+            k++;
+        if (k >= paragraph.Content.Count || paragraph.Content[k] is not BreakInline { Type: "page" or "column" } leading)
+            return null;
+        if (ControlStartsBefore(paragraph.Element))
+            return null;
+        if (leading.Type == "column")
+            return leading;
+        var rest = paragraph.Content.Skip(k + 1).ToList();
+        if (rest.Any(i => i is TextInline { Text.Length: > 0 } or DrawingInline))
+            return leading;
+        return context.CompatibilityMode < 15 && context.Compat("splitPgBreakAndParaMark") ? leading : null;
+    }
+
+    /// <summary>
+    /// Whether a content control starts in a paragraph before its first page or column break: a block control whose
+    /// first paragraph it is, or a control in the paragraph around or before the break (measured with docx/local/
+    /// leadbreak-j, -m, -n, -o, -p, -q: there the space before and the number stay with the break on the page
+    /// before, the text goes on at the top of the next page; in a control's second paragraph they go with the text,
+    /// as docx/external/libreoffice/extras-ooxmlexport/tdf154478's TOC heading shows).
+    /// </summary>
+    static bool ControlStartsBefore(XElement element)
+    {
+        var w = Docx.Wml.W;
+        for (var a = element.Parent; a != null && a.Name != w + "body" && a.Name != w + "tc" && a.Name != w + "txbxContent"; a = a.Parent)
+            if (a.Name == w + "sdtContent" && a.Descendants(w + "p").FirstOrDefault() == element)
+                return true;
+        var first = element.Descendants(w + "br").FirstOrDefault(b => b.Attr("type") is "page" or "column");
+        if (first == null)
+            return false;
+        return first.Ancestors(w + "sdt").Any(c => c.Ancestors().Contains(element))
+               || element.Descendants(w + "sdt").Any(c => c.IsBefore(first));
+    }
+
+    /// <summary>Whether a line holds nothing but a page or column break (and marks that take no room).</summary>
+    static bool BreakOnly(Line line) =>
+        line.EndBreak is "page" or "column" && line.Pieces.All(p => p.Drawing == null && !p.IsLabel && string.IsNullOrWhiteSpace(p.Text));
 
     /// <summary>The lines of a paragraph in a keep chain, laid out once for the width they were laid out at.</summary>
     List<Line> KeptLines(ParagraphBlock paragraph, double width)

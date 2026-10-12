@@ -546,6 +546,19 @@ public sealed partial class ModelReader(DocumentContext context)
         return stories[part] = blocks;
     }
 
+    /// <summary>Bookmarks that start between paragraphs, for the next paragraph.</summary>
+    readonly List<Inline> blockBookmarks = [];
+
+    /// <summary>The paragraph with the bookmarks that started before it between paragraphs at its start.</summary>
+    ParagraphBlock WithBlockBookmarks(ParagraphBlock paragraph)
+    {
+        if (blockBookmarks.Count == 0)
+            return paragraph;
+        var marked = paragraph with { Content = [.. blockBookmarks, .. paragraph.Content] };
+        blockBookmarks.Clear();
+        return marked;
+    }
+
     void ReadBlocks(XElement container, List<Block> blocks)
     {
         // A paragraph whose mark was deleted as a tracked change runs into the next one, which keeps its own
@@ -573,13 +586,13 @@ public sealed partial class ModelReader(DocumentContext context)
                         : mark?.Child("ins") is { } inserted ? new RevisionMark("ins", context.Author(inserted.Attr("author"))) : revision;
                     var change = e.Child("pPr")?.Child("pPrChange") is { } pPrChange
                         ? new FormatChange(context.Describe.Paragraph(e.Child("pPr"), pPrChange.Child("pPr")), context.Author(pPrChange.Attr("author"))) : null;
-                    blocks.Add(Paragraph(e) with { MarkRevision = markRevision, Change = change });
+                    blocks.Add(WithBlockBookmarks(Paragraph(e) with { MarkRevision = markRevision, Change = change }));
                     break;
                 }
                 case "p":
                 {
                     var markDeleted = e.Child("pPr")?.Child("rPr")?.Child("del") != null;
-                    var paragraph = Paragraph(e, number: !markDeleted);
+                    var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
                     if (pending != null)
                     {
                         paragraph = paragraph with { Content = [.. pending.Content, .. paragraph.Content] };
@@ -623,6 +636,15 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 case "customXml" or "smartTag" or "ins" or "moveTo":
                     ReadBlocks(e, blocks);
+                    break;
+                // A bookmark between paragraphs starts at the next one and ends after the last (measured with docx/
+                // external/libreoffice/extras-ooxmlexport/tdf154478: PAGEREF finds a table of contents heading by the
+                // bookmark before the first paragraph of its content control, page 3 in Word).
+                case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
+                    blockBookmarks.Add(new BookmarkInline(name, context.Styles.Run(null, null, null, tableRun)) { Id = e.Attr("id") });
+                    break;
+                case "bookmarkEnd" when e.Attr("id") is { } endId && blocks.LastOrDefault() is ParagraphBlock last:
+                    last.Content.Add(new BookmarkEndInline(endId, last.MarkFormat));
                     break;
                 case "subDoc" when e.Attr(Wml.R + "id") is { } subId && context.Package.Relationship(currentPart, subId) is { } sub:
                     blocks.Add(SubDocument(sub.Target));
@@ -1055,8 +1077,14 @@ public sealed partial class ModelReader(DocumentContext context)
                             break;
                         case "end" when field.Frames.Count > 0:
                             var ended = field.Frames.Pop();
+                            // A field without a result (no separator) that Word computes gets one too (measured with
+                            // docx/external/libreoffice/extras-ooxmlexport/tdf154478: a PAGEREF of a missing bookmark
+                            // shows Word's error text on a line of its own).
+                            var instruction = ended.Instruction.ToString();
+                            if (ended.Cached == null && !ended.InResult && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
+                                ended.Cached = [];
                             if (ended.Cached != null)
-                                field.Target(content).Add(new FieldInline(ended.Instruction.ToString(), ended.Cached.FirstOrDefault()?.Format ?? ended.Format, ended.Cached));
+                                field.Target(content).Add(new FieldInline(instruction, ended.Cached.FirstOrDefault()?.Format ?? ended.Format, ended.Cached));
                             break;
                     }
                     break;
@@ -1067,7 +1095,9 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "t":
                 case "delText" when context.Markup:
                     if (!field.Hidden)
-                        field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
+                        // Line feeds and carriage returns in the text show as spaces, CR LF as one (measured with
+                        // docx/local/wtcontrol: Word breaks no line there; tabs stay tabs).
+                        field.Target(content).Add(new TextInline(e.Value.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format) { Link = field.Link ?? link });
                     break;
                 case "delInstrText" when context.Markup:
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
