@@ -674,6 +674,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The absolute position tabs (w:ptab) of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, (string Alignment, string RelativeTo, string Leader)> positional = [];
 
+    /// <summary>The place in its text of the tab after the list number of the paragraph being laid out, or -1.</summary>
+    int labelTab = -1;
+
     /// <summary>Where absolute position tabs count from in the paragraph being laid out: its margins' and its indents' edges.</summary>
     (double MarginLeft, double MarginRight, double IndentLeft, double IndentRight) positionalArea;
 
@@ -740,6 +743,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles, CharacterExtra);
         if (balanced.Count > 0)
@@ -812,11 +816,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var firstLine = format.FirstLine ?? 0;
         positionalArea = (0, width, left, width - right);
         var lines = new List<Line>();
-        // Justified lines may squeeze the spaces between their words by a fifth to take one more word (measured with
-        // Courier New, docx/local/jc-compress: ten words fit a column 12 pt narrower than they are, not 13 pt; left
-        // aligned lines take no word that does not fit, docx/local/jc-left); not before Word 2013 (measured with
+        // Justified lines may squeeze the spaces between their words to take one more word (see Squeezes); left
+        // aligned lines take no word that does not fit (docx/local/jc-left); not before Word 2013 (measured with
         // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed).
-        var squeeze = Justified(format) && context.CompatibilityMode >= 15 ? 0.2 : 0;
+        var squeezing = Justified(format) && context.CompatibilityMode >= 15;
 
         // Characters of the current line: [start, end) and where it starts.
         var lineStart = 0;
@@ -920,8 +923,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (text[k] == ' ')
                         innerSpaces += advances[k];
                 }
+                // Where the line would end without the word, and its spaces then, which justification stretches.
+                var (shortEnd, shortSpaces) = (x, spaces);
+                for (var k = i; k > lineStart && text[k - 1] == ' '; k--)
+                {
+                    shortEnd -= advances[k - 1];
+                    shortSpaces -= balanced.Contains(k - 1) ? 0 : advances[k - 1];
+                }
+                bool Takes(double contentEndX) => contentEndX <= limit + 0.005
+                    || squeezing && Squeezes(contentEndX - limit, innerSpaces, limit - shortEnd, shortSpaces);
                 // The automatic space after the content's last character goes where the line ends there.
-                var fits = contentX - EndSpace(contentEnd - 1) - squeeze * innerSpaces <= limit + 0.005;
+                var fits = Takes(contentX - EndSpace(contentEnd - 1));
                 // A word that does not fit the segment beside a floating object continues in the next segment.
                 if (!fits && segment + 1 < segments.Count)
                 {
@@ -932,7 +944,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     continue;
                 }
                 if (!fits && hanging.Length > 0 && contentEnd - 1 > i && hanging.Contains(text[contentEnd - 1])
-                    && contentX - advances[contentEnd - 1] - squeeze * innerSpaces <= limit + 0.005)
+                    && Takes(contentX - advances[contentEnd - 1]))
                 {
                     // The word fits but for its last character, which hangs past the end.
                     hangAt = contentEnd - 1;
@@ -1445,6 +1457,26 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return (text.ToString(), list, labelLength);
     }
 
+    /// <summary>
+    /// Whether a justified line takes a word that overflows it by squeezing its spaces: where they shrink less than half
+    /// as much (relative to their width) as the spaces of the line without the word would stretch, and by less than a
+    /// quarter (measured with docx/local/compress3: 223 of 225 lines of random words in Times New Roman, the boundary
+    /// between 0.496 and 0.501 of the stretch, the other two squeezing 25.4 % and 32 %; compress, compress2: a Russian
+    /// line taken at 23.6 %, not at 25.9 %; jc-compress: ten words of Courier New in a column 12 pt narrower than they
+    /// are, not 13 pt).
+    /// </summary>
+    /// <param name="overflow">How far the line with the word reaches past its end.</param>
+    /// <param name="spaces">The width of the spaces between the words of the line with the word.</param>
+    /// <param name="stretch">The room the line without the word leaves.</param>
+    /// <param name="shortSpaces">The width of the spaces between the words of the line without the word.</param>
+    static bool Squeezes(double overflow, double spaces, double stretch, double shortSpaces)
+    {
+        if (spaces <= 0)
+            return false;
+        var squeeze = overflow / spaces;
+        return squeeze < 0.25 && (shortSpaces <= 0 || squeeze < 0.5 * stretch / shortSpaces);
+    }
+
     /// <summary>The width of the hyphen a soft hyphen shows at a line's end, in the run's style.</summary>
     static double HyphenWidth(RunStyle style) =>
         style.Font.Data.GlyphsWithFeatures("-", style.Features, language: style.Language).Sum(g => g.Advance) * style.Size * style.Scale + style.Spacing;
@@ -1606,7 +1638,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 length += advances[k];
             return Math.Max(x, align switch { "center" => position - length / 2, "right" => position - length, _ => position });
         }
-        if (firstLine < 0 && x < left - 0.005)
+        // The tab after a list number takes the left indent as its stop also where the number ends right at it, which
+        // leaves the tab no width; custom and default stops count only after its place, as for other tabs (measured
+        // with docx/local/emptylabel, tabzero, tabzero2: an empty number or one right-aligned at the indent;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab: a number tab where the first line begins,
+        // past the indent, does not count).
+        var label = tab == labelTab;
+        if ((firstLine < 0 || label) && x < left + (label ? 0.005 : -0.005))
         {
             // The left indent is a stop for the hanging first line, unless a custom stop comes before it.
             var custom = format.Tabs?.FirstOrDefault(t => t.Position > x + 0.005 && t.Align != "bar");

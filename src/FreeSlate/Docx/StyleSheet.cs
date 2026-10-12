@@ -29,7 +29,11 @@ public sealed class StyleSheet
     public RunFormat DefaultRun { get; } = new();
     public ParagraphFormat DefaultParagraph { get; } = new();
 
-    /// <summary>The default paragraph style (w:default="1"), applied where a paragraph names none.</summary>
+    /// <summary>
+    /// The default paragraph style, applied where a paragraph names none: the last paragraph style marked w:default,
+    /// without one the paragraph style named Normal, in any case (measured with docx/local/nodefault-id, -name,
+    /// -other, -lower, -first, -mine, -two: its id does not count).
+    /// </summary>
     public string? DefaultParagraphStyle { get; }
 
     /// <summary>The default character style ("Default Paragraph Font").</summary>
@@ -84,17 +88,42 @@ public sealed class StyleSheet
                 TableProperties = e.Child("tblPr"),
                 Element = e,
             };
+            // Word keeps its own Normal Table: of a table style of that name only its place counts (docx/local/
+            // tn-default, tn-explicit, tn-named-only, tdef-zero: no borders, indent or text formatting of it show,
+            // cells keep 5.4 pt margins left and right; a style with its id and another name is used as it is).
+            if (style.Type == "table" && string.Equals(style.Name, "Normal Table", StringComparison.OrdinalIgnoreCase))
+                style = BuiltInNormalTable(id, style.Default);
             styles.TryAdd(id, style);
             if (style.Default && style.Type == "paragraph")
-                DefaultParagraphStyle ??= id;
+                DefaultParagraphStyle = id;
             if (style.Default && style.Type == "character")
-                DefaultCharacterStyle ??= id;
+                DefaultCharacterStyle = id;
             if (style.Default && style.Type == "table")
-                DefaultTableStyle ??= id;
+                DefaultTableStyle = id;
         }
+        DefaultParagraphStyle ??= IdByName("Normal", "paragraph");
     }
 
-    /// <summary>The default table style ("Normal Table"), applied where a table names none.</summary>
+    /// <summary>Word's own Normal Table under a document's id for it: no indent, cell margins 0 and 5.4 pt.</summary>
+    static StyleDefinition BuiltInNormalTable(string id, bool isDefault)
+    {
+        XElement Margin(string side, int twips) =>
+            new(Wml.W + side, new XAttribute(Wml.W + "w", twips), new XAttribute(Wml.W + "type", "dxa"));
+        var element = new XElement(Wml.W + "style", new XAttribute(Wml.W + "type", "table"), new XAttribute(Wml.W + "styleId", id),
+            new XElement(Wml.W + "name", new XAttribute(Wml.W + "val", "Normal Table")),
+            new XElement(Wml.W + "tblPr",
+                new XElement(Wml.W + "tblInd", new XAttribute(Wml.W + "w", 0), new XAttribute(Wml.W + "type", "dxa")),
+                new XElement(Wml.W + "tblCellMar", Margin("top", 0), Margin("left", 108), Margin("bottom", 0), Margin("right", 108))));
+        return new StyleDefinition
+        {
+            Id = id, Type = "table", Name = "Normal Table", Default = isDefault, TableProperties = element.Element(Wml.W + "tblPr"), Element = element,
+        };
+    }
+
+    /// <summary>
+    /// The default table style, applied where a table names none: the last table style marked w:default
+    /// (docx/local/tdef-two); none without one.
+    /// </summary>
     public string? DefaultTableStyle { get; }
 
     public StyleDefinition? Find(string? id) => id != null && styles.TryGetValue(id, out var style) ? style : null;

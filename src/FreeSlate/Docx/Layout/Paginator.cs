@@ -1265,7 +1265,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var table = (TableBlock)blocks[index];
         var (left, width) = Column(column);
-        var box = tables.Layout(table.Table, width, before: stylePrevious is { } prior ? context.Styles.ParagraphStyleOf(prior.Format.Style) : TableLayout.NoParagraph);
+        var box = LaidTable(table, width, stylePrevious, keep: false);
         if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0)
         {
             PlaceFloatingTable(blocks, index, floating, box, left, width);
@@ -1273,6 +1273,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (!columnEmpty)
             y += pendingAfter;
+        // A table whose first row is kept with the next one begins a keep chain, unless it continues one (measured
+        // with docx/local/tk1, tk4, tk7, tk9: such rows go to the next page with the paragraphs kept with them).
+        var chained = previous != null ? previous.Format.KeepNext == true : tableKept;
+        if (!columnEmpty && !chained && RowKept(table.Table, 0) && ChainBreaks(blocks, index, null, width, y))
+        {
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+        }
+        tableKept = RowKept(table.Table, box.Rows.Count - 1);
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);
         // Whether the header rows were left off this column or page.
@@ -1625,18 +1634,25 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The space a balanced column gives the paragraph where it does not begin the column.
         var flowGap = Gap(before);
 
-        // Keep with next and keep lines together: move the paragraph to the next column when it (and the first line
-        // of the next paragraph) does not fit here but would fit in an empty column.
+        // Keep with next and keep lines together: move the paragraph to the next column when its keep chain has to
+        // break here (ChainBreaks), when it keeps its lines together and they do not fit, also more than a column of
+        // them (measured with docx/local/kc7, kc9), or when its first lines do not fit but would in an empty column. A
+        // paragraph the one before it is kept with continues that one's chain, which was decided at its start: at the
+        // top of a column a chain taller than the rest of it breaks where it must (docx/local/kc1, kc4).
         if (!columnEmpty)
         {
-            var needed = gap + (format.KeepLines == true ? Needed(lines) : FirstLines(lines, format));
-            if (format.KeepNext == true && next != null)
+            var chained = previous != null ? previous.Format.KeepNext == true : tableKept;
+            bool moves;
+            if (format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock or TableBlock && !chained)
+                moves = ChainBreaks(blocks, index, lines, width, y + gap);
+            else if (format.KeepLines == true)
+                moves = y + gap + Needed(lines) > Bottom + 0.01;
+            else
             {
-                var own = lines.Sum(l => l.Height);
-                needed = gap + own + KeptNext(blocks, index + 1, width, Bottom - page!.BodyTop - own + 0.01);
+                var needed = gap + FirstLines(lines, format);
+                moves = y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
             }
-            // What does not fit even an empty column is broken anyway.
-            if (y + needed > Bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01)
+            if (moves)
             {
                 NextColumn(natural: true);
                 (left, width) = Column(column);
@@ -2004,32 +2020,144 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
 
     /// <summary>
-    /// What a kept-with-next paragraph needs of the following ones: their keep chain and the first lines of the last;
-    /// once more than <paramref name="limit"/> (a chain taller than a column breaks anyway), that much is enough, so
-    /// long chains (docx/external/powertools/LIR*: 3500 list items kept with each other) cost a column each.
+    /// Whether the paragraph at <paramref name="index"/>, kept with the next one and beginning at <paramref name="top"/>
+    /// below other content of the column, moves to the next column with its keep chain: laid on from here, the chain's
+    /// paragraphs (those kept with the next one and the first one that is not) reach one that does not fit and cannot
+    /// break here (a line or two, too few lines for widow control, lines kept together) and must begin the next column;
+    /// the paragraphs kept with it go along back to this one unless one of them can break and give its last lines (as
+    /// Word pushes paragraphs back, measured with docx/local/kc2 … kc12: chains taller than a column move too, a
+    /// paragraph that can break keeps its start here). Lays out no more than a column of paragraphs, so long chains
+    /// (docx/external/powertools/LIR*: 3500 list items kept with each other) cost little.
     /// </summary>
-    double KeptNext(List<Block> blocks, int index, double width, double limit)
+    bool ChainBreaks(List<Block> blocks, int index, List<Line>? lines, double width, double top)
     {
-        var total = 0.0;
-        for (var k = index; k < blocks.Count && blocks[k] is ParagraphBlock next && blocks[k - 1] is ParagraphBlock before; k++)
+        var y = top;
+        // Whether a paragraph of the chain placed so far could break and give its last lines to the next column.
+        var gives = false;
+        for (var k = index; k < blocks.Count; k++)
         {
-            if (!keptHeights.TryGetValue(next, out var heights) || heights.Width != width)
+            if (blocks[k] is TableBlock table)
             {
-                var lines = layout.Layout(next, width);
-                keptHeights[next] = heights = (width, lines.Sum(l => l.Height), FirstLines(lines, next.Format));
+                if (table.Table.Format.Floating != null)
+                    return false;
+                if (k > index && blocks[k - 1] is ParagraphBlock before)
+                    y += SpaceAfter(before, table);
+                // Rows do not break for a chain: each must fit; one kept with the next carries the chain on, through
+                // the table to the block after it where all are (docx/local/tk10, tk11, tk13: a heading goes along with
+                // a first row that does not fit below it).
+                var box = LaidTable(table, width, k > index ? blocks[k - 1] as ParagraphBlock ?? LastParagraph(blocks, k - 1) : stylePrevious, keep: true);
+                for (var r = 0; r < box.Rows.Count; r++)
+                {
+                    if (y + box.Rows[r].Height + box.Rows[r].BottomBorderWidth > Bottom + 0.01)
+                        return !gives;
+                    y += box.Rows[r].Height;
+                    if (!RowKept(table.Table, r))
+                        return false;
+                }
+                continue;
             }
-            var gap = Between(before, next);
-            if (next.Format.KeepNext != true || k + 1 >= blocks.Count || blocks[k + 1] is not ParagraphBlock)
-                return total + gap + heights.First;
-            total += gap + heights.All;
-            if (total > limit)
-                break;
+            if (blocks[k] is not ParagraphBlock paragraph)
+                return false;
+            if (k > index)
+            {
+                if (paragraph.Format.PageBreakBefore == true)
+                    return false;
+                y += blocks[k - 1] switch
+                {
+                    ParagraphBlock before => Between(before, paragraph),
+                    TableBlock before => context.Between(0, SpaceBefore(paragraph, LastParagraph(before.Table), false), 0),
+                    _ => 0,
+                };
+            }
+            var own = k == index && lines != null ? lines : KeptLines(paragraph, width);
+            var last = paragraph.Format.KeepNext != true || k + 1 >= blocks.Count || blocks[k + 1] is not (ParagraphBlock or TableBlock);
+            var room = Bottom - y;
+            // The last paragraph needs its first lines here, all of them where it keeps them together.
+            var needed = last && paragraph.Format.KeepLines != true ? FirstLines(own, paragraph.Format) : Needed(own);
+            if (needed <= room + 0.01)
+            {
+                if (last)
+                    return false;
+                gives |= Breaks(own, paragraph.Format, double.MaxValue);
+                y += own.Sum(l => l.Height);
+                continue;
+            }
+            if (!last && Breaks(own, paragraph.Format, room))
+                return false;
+            return !gives;
         }
-        return total;
+        return false;
     }
 
-    /// <summary>The heights of paragraphs in keep chains: the width they were laid out at, all their lines and what they need at least.</summary>
-    readonly Dictionary<ParagraphBlock, (double Width, double All, double First)> keptHeights = new(ReferenceEqualityComparer.Instance);
+    /// <summary>
+    /// Whether a table's row (of those that show) is kept with the next row or block: its first cell's first
+    /// paragraph is kept with the next one (measured with docx/local/tk4, tk6, tk8, tk9: the other cells and
+    /// paragraphs do not count).
+    /// </summary>
+    static bool RowKept(TableModel table, int row) =>
+        table.Rows.Where(r => !r.Format.Hidden).ElementAtOrDefault(row)?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.KeepNext: true };
+
+    /// <summary>Whether the last table placed ends with a row kept with the next block.</summary>
+    bool tableKept;
+
+    /// <summary>The last paragraph of the block before a position, if it is a table.</summary>
+    static ParagraphBlock? LastParagraph(List<Block> blocks, int index) =>
+        index >= 0 && blocks[index] is TableBlock table ? LastParagraph(table.Table) : null;
+
+    /// <summary>
+    /// A table laid out at a width below a paragraph (whose style counts for its spacing); one the keep chain
+    /// look-ahead laid out (<paramref name="keep"/>) is kept for the placement, which takes it.
+    /// </summary>
+    TableBox LaidTable(TableBlock table, double width, ParagraphBlock? prior, bool keep)
+    {
+        var before = prior != null ? context.Styles.ParagraphStyleOf(prior.Format.Style) : TableLayout.NoParagraph;
+        if (laidTables.Remove(table, out var laid) && laid.Width == width && laid.Before == before)
+        {
+            if (keep)
+                laidTables[table] = laid;
+            return laid.Box;
+        }
+        var box = tables.Layout(table.Table, width, before: before);
+        if (keep)
+            laidTables[table] = (width, before, box);
+        return box;
+    }
+
+    /// <summary>Tables the keep chain look-ahead laid out, with the width and the paragraph style before them.</summary>
+    readonly Dictionary<TableBlock, (double Width, string? Before, TableBox Box)> laidTables = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// Whether a paragraph's lines can break between columns with <paramref name="room"/> points here: not kept
+    /// together, and as many lines as widow and orphan control leave at least on each side (two, else one).
+    /// </summary>
+    static bool Breaks(List<Line> lines, ParagraphFormat format, double room)
+    {
+        if (format.KeepLines == true)
+            return false;
+        var least = format.WidowControl ?? true ? 2 : 1;
+        if (lines.Count < 2 * least)
+            return false;
+        var (fit, height) = (0, 0.0);
+        foreach (var line in lines)
+        {
+            if (height + line.FitHeight > room + 0.01)
+                break;
+            height += line.Height;
+            fit++;
+        }
+        return fit >= least;
+    }
+
+    /// <summary>The lines of a paragraph in a keep chain, laid out once for the width they were laid out at.</summary>
+    List<Line> KeptLines(ParagraphBlock paragraph, double width)
+    {
+        if (!keptLines.TryGetValue(paragraph, out var kept) || kept.Width != width)
+            keptLines[paragraph] = kept = (width, layout.Layout(paragraph, width));
+        return kept.Lines;
+    }
+
+    /// <summary>The lines of paragraphs in keep chains and the width they were laid out at.</summary>
+    readonly Dictionary<ParagraphBlock, (double Width, List<Line> Lines)> keptLines = new(ReferenceEqualityComparer.Instance);
 
     bool? suppressTopSpacing, suppressSpacingAtTop;
 

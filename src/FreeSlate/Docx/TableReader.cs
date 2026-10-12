@@ -58,6 +58,7 @@ public sealed partial class ModelReader
         }
 
         // Conditional formats and the formatting they bring, then the cells' content in their light.
+        var leading = LeadingRows(model);
         for (var r = 0; r < model.Rows.Count; r++)
         {
             var row = model.Rows[r];
@@ -65,7 +66,7 @@ public sealed partial class ModelReader
             for (var c = 0; c < row.Cells.Count; c++)
             {
                 var cell = row.Cells[c];
-                cell.Conditions.AddRange(Conditions(model, r, c));
+                cell.Conditions.AddRange(Conditions(model, r, c, leading));
                 var format = new CellFormat();
                 foreach (var style in chain)
                     format.Apply(style.Element.Child("tcPr"));
@@ -85,7 +86,7 @@ public sealed partial class ModelReader
                         if (conditional == null)
                             continue;
                         format.Apply(WithoutBorders(conditional.Child("tcPr")));
-                        borders = borders.Overlay(RegionBorders(BorderSet.Read(conditional.Child("tcPr").Child("tcBorders")), model, r, c, condition));
+                        borders = borders.Overlay(RegionBorders(BorderSet.Read(conditional.Child("tcPr").Child("tcBorders")), model, r, c, condition, leading));
                         paragraph.Overlay(Read(conditional.Child("pPr")));
                         run.Overlay(ReadRun(conditional.Child("rPr")));
                     }
@@ -198,16 +199,37 @@ public sealed partial class ModelReader
         }
     }
 
-    /// <summary>The conditional formats of the cell in row r, position c of its row, in the order they apply.</summary>
-    static IEnumerable<string> Conditions(TableModel model, int r, int c)
+    /// <summary>
+    /// The rows at the top of a table that horizontal bands skip: with the first-row format on, the first row and the
+    /// rows repeating as header rows right after it, which all take the first-row format; with it off, the rows
+    /// repeating as header rows from the top (measured with docx/local/hdrstyle, hdrstyle2, hdrstyle3: a row that
+    /// is no header row ends them, the cached w:cnfStyle does not count).
+    /// </summary>
+    static int LeadingRows(TableModel model)
+    {
+        var rows = model.Rows;
+        if (rows.Count == 0 || !model.Format.FirstRow && !rows[0].Format.Header)
+            return 0;
+        var count = 1;
+        while (count < rows.Count && rows[count].Format.Header)
+            count++;
+        return count;
+    }
+
+    /// <summary>
+    /// The conditional formats of the cell in row r, position c of its row, in the order they apply; leading is the
+    /// number of rows at the top that bands skip (LeadingRows). The last row's format applies to the last row unless
+    /// it is a first row, also to the one row of a table, and the last column's alike (docx/local/hdrstyle4, -5).
+    /// </summary>
+    static IEnumerable<string> Conditions(TableModel model, int r, int c, int leading)
     {
         var f = model.Format;
         var rows = model.Rows.Count;
         var cells = model.Rows[r].Cells.Count;
-        var firstRow = f.FirstRow && r == 0;
-        var lastRow = f.LastRow && r == rows - 1 && rows > 1;
+        var firstRow = f.FirstRow && r < leading;
+        var lastRow = f.LastRow && r == rows - 1 && !firstRow;
         var firstColumn = f.FirstColumn && c == 0;
-        var lastColumn = f.LastColumn && c == cells - 1 && cells > 1;
+        var lastColumn = f.LastColumn && c == cells - 1 && !firstColumn;
         yield return "wholeTable";
         // Bands skip the first and last column and row where those have formats of their own.
         if (!f.NoVerticalBand && !firstColumn && !lastColumn)
@@ -215,9 +237,9 @@ public sealed partial class ModelReader
             var band = (c - (f.FirstColumn ? 1 : 0)) / Math.Max(1, f.ColumnBandSize);
             yield return band % 2 == 0 ? "band1Vert" : "band2Vert";
         }
-        if (!f.NoHorizontalBand && !firstRow && !lastRow)
+        if (!f.NoHorizontalBand && r >= leading && !lastRow)
         {
-            var band = (r - (f.FirstRow ? 1 : 0)) / Math.Max(1, f.RowBandSize);
+            var band = (r - leading) / Math.Max(1, f.RowBandSize);
             yield return band % 2 == 0 ? "band1Horz" : "band2Horz";
         }
         if (firstRow) yield return "firstRow";
@@ -232,9 +254,11 @@ public sealed partial class ModelReader
 
     /// <summary>
     /// A conditional format's borders for one cell: its sides where the cell's edge is the region's edge, its inside
-    /// lines where the edge lies inside the region (a row region's cells meet at inside vertical lines …).
+    /// lines where the edge lies inside the region (a row region's cells meet at inside vertical lines …). The first
+    /// rows are one region: its top line above the first, inside horizontal lines between them, its bottom line
+    /// below the last (docx/local/hdrstyle2).
     /// </summary>
-    static BorderSet? RegionBorders(BorderSet? set, TableModel model, int r, int c, string condition)
+    static BorderSet? RegionBorders(BorderSet? set, TableModel model, int r, int c, string condition, int leading)
     {
         if (set == null)
             return null;
@@ -254,9 +278,14 @@ public sealed partial class ModelReader
         if (condition is "band1Horz" or "band2Horz")
         {
             var size = Math.Max(1, f.RowBandSize);
-            var offset = r - (f.FirstRow ? 1 : 0);
+            var offset = r - leading;
             topEdge = offset % size == 0;
             bottomEdge = offset % size == size - 1 || r == rows - 1;
+        }
+        else if (condition == "firstRow")
+        {
+            topEdge = r == 0;
+            bottomEdge = r == leading - 1;
         }
         else
         {

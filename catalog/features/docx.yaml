@@ -416,7 +416,11 @@ areas:
           formats), numbering, paragraph style, character style and direct formatting, each style through its basedOn
           chain (cycles cut); toggle properties (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint,
           outline, shadow) flip along the chain (17.7.3); default paragraph, character and table styles apply where
-          none is named. The other elements are for editing and change nothing printed.
+          none is named. The default paragraph and table style is the last one marked w:default; without one marked,
+          paragraphs take the paragraph style named Normal (in any case, whatever its id), tables none
+          (docx/local/nodefault-*, tdef-*). Word keeps its own Normal Table: a table style of that name shows no
+          borders, indent or formatting of its own, its cells 5.4 pt margins left and right (docx/local/tn-*). The
+          other elements are for editing and change nothing printed.
 
       - id: style.defaults
         title: Document defaults
@@ -725,9 +729,11 @@ areas:
           Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left,
           center, right, justified, distributed and the Arabic kashida variants.
         office: >-
-          Justified lines may squeeze the spaces between their words by a fifth to take one more word (ten Courier New
-          words fit a column 12 pt narrower than they are, not 13 pt; docx/local/jc-compress); left, centered and
-          right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified
+          Justified lines may squeeze the spaces between their words to take one more word: where the spaces shrink
+          less than half as much as the spaces of the line without the word would stretch, and by less than a quarter
+          (docx/local/compress3: 225 lines of random words alike; compress, compress2: a Russian line taken at 23.6 %,
+          not at 25.9 %; jc-compress: ten Courier New words fit a column 12 pt narrower than they are, not 13 pt);
+          left, centered and right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified
           paragraph keeps its natural spacing unless it was squeezed. Mirrored indents (w:mirrorIndents) trade the
           left and right indent on pages with even numbers, the lines breaking as on odd pages (docx/local/mirror:
           every line as in Word). Medium and high kashida justification lengthen every Arabic word by two or three
@@ -773,7 +779,15 @@ areas:
           page break before and natural breaks (docx/local/sp-pagetop). The extra space of auto line spacing below the
           last line may hang past the bottom margin (a line whose text ends 0.4 pt above the margin stays,
           docx/generated/headers-footers). Keep with next, keep lines together and widow control move whole paragraphs
-          or two lines (docx/generated/breaks).
+          or two lines (docx/generated/breaks). A paragraph that does not fit and cannot break where it stands (a line
+          or two, too few lines for widow control, its lines kept together) takes the paragraphs kept with it before
+          it to the next page, back to one that can break and give its last lines or one that is not kept with the
+          next; reaching the top of the page, they stay and the chain breaks where it must. So a chain begun below
+          other text moves to the next page even when it is taller than a page, and lines kept together move although
+          they need more than a page (docx/local/kc1 … kc12). Tables take part: a paragraph kept with a table goes
+          along with its first row, which does not break for it; a row whose first cell's first paragraph is kept with
+          the next one carries the chain on to the next row or block, its other cells and paragraphs do not count
+          (docx/local/tk1 … tk13).
 
       - id: paragraph.borders
         title: Paragraph borders and shading
@@ -971,7 +985,10 @@ areas:
           Level texts with %1 to %9, about 60 number formats (decimal, roman, letters repeated after z, ordinals and
           number words, full-width, enclosed, Chinese, Japanese and Korean counting, Hebrew, Arabic, Thai, Hindi,
           Russian), legal numbering, suffix tab, space or nothing, numbers aligned left, centered or right at the
-          first line's indent (docx/local/num-rules). The level's indents and tabs override the paragraph style's (a
+          first line's indent (docx/local/num-rules). The tab after a number takes the left indent as its stop also
+          where the number ends right at it (an empty number, one right-aligned at the indent), leaving the text
+          there; custom and default stops count only after its place, as for other tabs (docx/local/emptylabel,
+          tabzero, tabzero2; docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab). The level's indents and tabs override the paragraph style's (a
           level indented 360 twips puts a List Paragraph, whose style says 720, at 360; docx/generated/lists). The
           number is drawn in the paragraph mark's formatting with the level's run properties over it; only its ascent
           counts in the line height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high).
@@ -1297,7 +1314,11 @@ areas:
           order (whole table, column bands, row bands, first and last row, first and last column, corner cells),
           switched by w:tblLook, bands skipping the first and last row and column; a conditional format's borders
           apply at its region's edges, its inside lines inside the region; the style's paragraph and run properties
-          sit above the document defaults and under the paragraph style (docx/generated/tables).
+          sit above the document defaults and under the paragraph style (docx/generated/tables). The first-row format
+          covers the first row and the header rows (w:tblHeader) right after it, one region for borders; with it off,
+          bands still skip the header rows from the top; the last-row format applies to the last row unless it is a
+          first row, also to a table's only row, the last column's alike; w:cnfStyle does not count
+          (docx/local/hdrstyle, hdrstyle2 … 5).
 
       - id: table.floating
         title: Floating tables
@@ -3194,8 +3215,8 @@ areas:
           lines shortened by floating objects.
         office: >-
           Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between
-          characters; trailing spaces hang past the end; justified lines squeeze spaces by up to a fifth for one more
-          word (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
+          characters; trailing spaces hang past the end; justified lines squeeze spaces for one more word where that
+          changes them less than stretching would (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
           snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
           Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same
           rasterizer, so equal positions give equal pixels. Punctuation compression changed nothing in Word's printout
