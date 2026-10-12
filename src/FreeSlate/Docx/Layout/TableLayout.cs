@@ -194,7 +194,10 @@ public sealed class TableBox
 /// </summary>
 public sealed class TableLayout(DocumentContext context, ParagraphLayout paragraphs)
 {
-    /// <summary>The default left and right cell margin where neither table nor style gives one (0.075 in).</summary>
+    /// <summary>Whether contextual spacing works in cells (see <see cref="Content(List{Block}, double, PageFields?, string?, string?)"/>).</summary>
+    bool? contextual;
+
+    /// <summary>The left and right cell margin of tables without any table style (0.075 in; see <see cref="TableFormat.Styled"/>).</summary>
     const double DefaultMargin = 5.4;
 
     /// <summary>The paragraph layout the cells' text is laid out with.</summary>
@@ -206,10 +209,59 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     bool Modern => modern ??= context.Settings.Child("compat")?.Elements(Wml.W + "compatSetting")
         .FirstOrDefault(e => e.Attr("name") == "compatibilityMode")?.Attr("val") is { } v && int.TryParse(v, out var mode) && mode >= 15;
 
-    public TableBox Layout(TableModel table, double available, PageFields? fields = null)
+    /// <summary>Stands for no paragraph where contextual spacing compares paragraph styles.</summary>
+    public const string NoParagraph = "\0";
+
+    /// <summary>The paragraph style a paragraph has, as contextual spacing compares them.</summary>
+    string? StyleOf(ParagraphBlock paragraph) => context.Styles.ParagraphStyleOf(paragraph.Format.Style);
+
+    /// <summary>The first paragraph of a table: its first cell's, in a nested table the nested table's.</summary>
+    public static ParagraphBlock? FirstParagraph(TableModel table) =>
+        table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() switch
+        {
+            ParagraphBlock paragraph => paragraph,
+            TableBlock nested => FirstParagraph(nested.Table),
+            _ => null,
+        };
+
+    /// <summary>
+    /// The styles of the paragraphs before and after every cell's content in the document's order, which contextual
+    /// spacing compares the cell's first and last paragraphs with (measured with docx/local/c5-cells): a cell's first
+    /// paragraph follows the last paragraph of the cell before it in its row, the first cell's the end of the row
+    /// before (whose mark has the default paragraph style) or, in the first row, the paragraph before the table; a
+    /// cell's last paragraph precedes the next cell's first, the last cell's the end of its row.
+    /// </summary>
+    Dictionary<CellModel, (string? Before, string? After)> Neighbors(List<RowModel> rows, string? before)
+    {
+        var result = new Dictionary<CellModel, (string?, string?)>(ReferenceEqualityComparer.Instance);
+        var rowEnd = context.Styles.ParagraphStyleOf(null);
+        string? Last(CellModel cell) => cell.Blocks.LastOrDefault() switch
+        {
+            ParagraphBlock p => StyleOf(p),
+            TableBlock t => t.Table.Rows.Count > 0 ? rowEnd : NoParagraph,
+            _ => NoParagraph,
+        };
+        string? First(CellModel cell) => cell.Blocks.FirstOrDefault() switch
+        {
+            ParagraphBlock p => StyleOf(p),
+            TableBlock t => FirstParagraph(t.Table) is { } p ? StyleOf(p) : NoParagraph,
+            _ => NoParagraph,
+        };
+        for (var r = 0; r < rows.Count; r++)
+        {
+            var cells = rows[r].Cells;
+            for (var c = 0; c < cells.Count; c++)
+                result[cells[c]] = (c > 0 ? Last(cells[c - 1]) : r > 0 ? rowEnd : before, c + 1 < cells.Count ? First(cells[c + 1]) : rowEnd);
+        }
+        return result;
+    }
+
+    /// <param name="before">The style of the paragraph before the table (<see cref="NoParagraph"/> for none), which contextual spacing compares its first paragraph with.</param>
+    public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph)
     {
         var format = table.Format;
         var rows = table.Rows.Where(r => !r.Format.Hidden).ToList();
+        var neighbors = Neighbors(rows, before);
         var columns = Math.Max(table.Grid.Count, rows.Count == 0 ? 0 : rows.Max(r => r.Cells.Count == 0 ? 0 : r.Cells.Max(c => c.Column + c.Format.GridSpan) + r.Format.GridAfter));
         columns = Math.Max(1, columns);
 
@@ -241,7 +293,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
         var spacing = rows.Count > 0 ? rows[0].Format.CellSpacing ?? format.CellSpacing ?? 0 : format.CellSpacing ?? 0;
         if (spacing > 0)
-            return Spaced(table, rows, columns, at, available, spacing, fields);
+            return Spaced(table, rows, columns, at, available, spacing, fields, neighbors);
 
         // Borders: for each row boundary (0 … rows) and grid column the horizontal line, for each row and grid line
         // the vertical one; a cell's own border wins over the table's, two cells' borders are resolved by weight.
@@ -288,7 +340,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // the left border's outer edge lies at the table's left edge (measured with docx/local/tbl-geom: a 3 pt
         // inside line of a table with 0.5 pt outside lines is centered 0.25 pt right of its grid line).
         var shift = rows.Count > 0 ? Width(vertical[0, 0]) / 2 : 0;
-        var firstMargin = rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[0], format).Left : DefaultMargin;
+        var firstMargin = rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[0], format).Left : format.Styled ? 0 : DefaultMargin;
         var rightBorder = rows.Count > 0 ? Width(vertical[0, columns]) : 0;
         var tableWidth = x[^1] + shift + rightBorder / 2;
         var indent = format.Indent ?? 0;
@@ -302,7 +354,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         {
             "center" => (available - tableWidth) / 2,
             "right" or "end" => available - tableWidth - (rtl ? indent : 0),
-            _ => indent - (Modern ? 0 : shift + Math.Max(firstMargin, shift)),
+            // Older modes put the first cell's text at the indent; a table without any indent (none in its
+            // properties or style) has its left line centered on the column's edge there (measured with
+            // docx/local/c2-tblpos in modes 11 to 14).
+            _ => indent - (Modern ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift)),
         };
         var box = new TableBox { Left = origin0, Width = tableWidth };
         double X(double position) => origin0 + (rtl ? tableWidth - position : position);
@@ -330,7 +385,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields);
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
                 if (!span.ContainsKey(cell))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -488,7 +543,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// the spacing, then the cells, each with its own borders, twice the spacing apart; text starts after a cell's
     /// whole border and its margin.
     /// </summary>
-    TableBox Spaced(TableModel table, List<RowModel> rows, int columns, CellModel?[,] at, double available, double spacing, PageFields? fields)
+    TableBox Spaced(TableModel table, List<RowModel> rows, int columns, CellModel?[,] at, double available, double spacing, PageFields? fields,
+        Dictionary<CellModel, (string? Before, string? After)> neighbors)
     {
         var format = table.Format;
         var gap = 2 * spacing;
@@ -540,7 +596,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var margins = Margins(row, cell, format);
                 var textLeft = left + Width(borders.Left) + margins.Left;
                 var textRight = right - Width(borders.Right) - margins.Right;
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields);
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
                 height = Math.Max(height, Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom));
             }
@@ -672,7 +728,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     static (double Top, double Left, double Bottom, double Right) Margins(RowModel row, CellModel cell, TableFormat format)
     {
         var m = format.Margins.Overlay(row.MarginExceptions).Overlay(cell.Format.Margins);
-        return (m.Top ?? 0, m.Left ?? DefaultMargin, m.Bottom ?? 0, m.Right ?? DefaultMargin);
+        var side = format.Styled ? 0 : DefaultMargin;
+        return (m.Top ?? 0, m.Left ?? side, m.Bottom ?? 0, m.Right ?? side);
     }
 
     /// <param name="allowance">What the outer vertical lines take of the available width.</param>
@@ -895,13 +952,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Rotated text (w:textDirection tbRl, btLr) is laid out unwrapped along the cell; its height is its longest
     /// line, its lines are turned when the row is built.
     /// </remarks>
-    CellContent Content(CellModel cell, double width, PageFields? fields)
+    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors)
     {
         // An empty cell whose end mark is hidden (w:hideMark) takes no height.
         if (cell.Format.HideMark && cell.Blocks.All(b => b is ParagraphBlock { Content.Count: 0 }))
             return new CellContent([], [], [], 0);
         if (!Rotated(cell))
-            return Content(cell.Blocks, width, fields);
+            return Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After);
         var content = Content(cell.Blocks, Unwrapped, fields);
         var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
         return content with { Height = length, Thickness = content.Height };
@@ -928,7 +985,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return (content.Height, content.Height);
     }
 
-    CellContent Content(List<Block> blocks, double width, PageFields? fields)
+    /// <param name="previous">The style of the paragraph before the blocks (<see cref="NoParagraph"/> for none).</param>
+    /// <param name="next">The style of the paragraph after them.</param>
+    /// <remarks>
+    /// Contextual spacing works in cells as in the body, but not before Word 2013 where the document says
+    /// w:allowSpaceOfSameStyleInTable (catalog: settings.compatibility, measured with docx/local/c5-cells).
+    /// </remarks>
+    CellContent Content(List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph)
     {
         var lines = new List<PlacedLine>();
         var fills = new List<FillRect>();
@@ -936,17 +999,30 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var anchors = new List<CellAnchor>();
         var y = 0.0;
         var after = 0.0;
+        var ownAfter = 0.0;
         var first = true;
-        foreach (var block in blocks)
+        contextual ??= !(context.CompatibilityMode < 15 && context.Compat("allowSpaceOfSameStyleInTable"));
+        for (var b = 0; b < blocks.Count; b++)
         {
+            var block = blocks[b];
             switch (block)
             {
                 case ParagraphBlock paragraph:
                 {
-                    var before = paragraph.Format.Before ?? 0;
+                    var style = StyleOf(paragraph);
+                    var spaced = paragraph.Format.ContextualSpacing != true || contextual == false;
+                    var before = !spaced && previous == style ? 0 : paragraph.Format.Before ?? 0;
+                    var following = b + 1 < blocks.Count
+                        ? blocks[b + 1] switch
+                        {
+                            ParagraphBlock p => StyleOf(p),
+                            TableBlock t => FirstParagraph(t.Table) is { } p ? StyleOf(p) : NoParagraph,
+                            _ => NoParagraph,
+                        }
+                        : next;
                     // Drawings count from the paragraph's top above its own space before, as in the body.
                     var paragraphTop = y + (first ? 0 : after);
-                    y += first ? before : Math.Max(after, before);
+                    y += first ? before : context.Between(after, before, ownAfter);
                     var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                     foreach (var line in paragraphs.Layout(paragraph, width, fields))
                     {
@@ -960,14 +1036,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
                         anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
                     }
-                    after = paragraph.Format.After ?? 0;
+                    ownAfter = paragraph.Format.After ?? 0;
+                    after = !spaced && following == style ? 0 : ownAfter;
+                    previous = style;
                     first = false;
                     break;
                 }
                 case TableBlock nested:
                 {
                     y += first ? 0 : after;
-                    var box = Layout(nested.Table, width, fields);
+                    var box = Layout(nested.Table, width, fields, previous);
                     var tableTop = y;
                     foreach (var row in box.Rows)
                     {
@@ -983,6 +1061,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     }
                     Frame(box, 0, tableTop, y, fills);
                     after = 0;
+                    ownAfter = 0;
+                    previous = box.Rows.Count > 0 ? context.Styles.ParagraphStyleOf(null) : previous;
                     first = false;
                     break;
                 }

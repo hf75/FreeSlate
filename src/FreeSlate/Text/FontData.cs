@@ -105,6 +105,7 @@ public sealed class FontData : IDisposable
         {
             UnderlinePosition = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 8)) / (double)UnitsPerEm;
             UnderlineThickness = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(post + 10)) / (double)UnitsPerEm;
+            FixedPitch = post + 16 <= data.Length && BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(post + 12)) != 0;
         }
         if (tables.TryGetValue("OS/2", out var capTable) && capTable + 90 <= data.Length
             && BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(capTable)) >= 2 && BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(capTable + 88)) is > 0 and var cap)
@@ -245,6 +246,9 @@ public sealed class FontData : IDisposable
     public double CapHeight { get; } = 0.7;
 
     /// <summary>Underline offset below the baseline and thickness (post table), in em.</summary>
+    /// <summary>Whether all the font's glyphs are equally wide (post isFixedPitch), as Courier New's.</summary>
+    public bool FixedPitch { get; }
+
     public double UnderlinePosition { get; }
 
     public double UnderlineThickness { get; }

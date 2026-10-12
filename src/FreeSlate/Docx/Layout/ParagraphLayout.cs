@@ -77,6 +77,15 @@ public sealed class Line
     /// <summary>Whether the line ends with the hyphen of a word broken at its end (automatic or soft hyphenation).</summary>
     public bool Hyphenated { get; set; }
 
+    /// <summary>A copy of the line with less room above its text, its height and baseline <paramref name="by"/> less.</summary>
+    public Line Trimmed(double by)
+    {
+        var copy = (Line)MemberwiseClone();
+        copy.Height -= by;
+        copy.Baseline -= by;
+        return copy;
+    }
+
     /// <summary>The line's height in points, its baseline from its top and the natural parts above and below the baseline.</summary>
     public double Height { get; set; }
     public double Baseline { get; set; }
@@ -185,6 +194,37 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 {
     /// <summary>The run styles the layout measures with.</summary>
     public RunStyles Styles => styles;
+
+    bool? noSpaceRaiseLower, splitPageBreak, exactFromTop, yenBackslash, balanceSpaces;
+
+    /// <summary>
+    /// Whether a backslash in Japanese text (w:lang w:eastAsia ja) shows as a yen sign, unless its font is an East Asian
+    /// one: w:doNotLeaveBackslashAlone (measured with docx/local/c2-backslash and c3-yen: Arial, Times New Roman and
+    /// Courier New change, MS Mincho, MS Gothic, Yu Gothic, Meiryo, SimSun and Malgun Gothic keep the backslash).
+    /// </summary>
+    bool YenBackslash => yenBackslash ??= context.Compat("doNotLeaveBackslashAlone");
+
+    /// <summary>Whether spaces beside spaces and East Asian characters take half an em (w:balanceSingleByteDoubleByteWidth, see <see cref="Balance"/>).</summary>
+    bool BalanceSpaces => balanceSpaces ??= context.Compat("balanceSingleByteDoubleByteWidth");
+
+    /// <summary>
+    /// Whether raised and lowered text (w:position) stays out of the line height: w:noSpaceRaiseLower, which Word
+    /// follows before Word 2013 only (catalog: settings.compatibility, measured with docx/local/c2-legacy*: text 6 pt
+    /// up and down in modes 11 to 14).
+    /// </summary>
+    bool NoSpaceRaiseLower => noSpaceRaiseLower ??= context.CompatibilityMode < 15 && context.Compat("noSpaceRaiseLower");
+
+    /// <summary>
+    /// Whether the paragraph mark after a page break that ends its paragraph goes to the next page, an empty line
+    /// there: w:splitPgBreakAndParaMark, before Word 2013 only (measured with docx/local/compat12-* and c2-legacy*).
+    /// </summary>
+    bool SplitPageBreak => splitPageBreak ??= context.CompatibilityMode < 15 && context.Compat("splitPgBreakAndParaMark");
+
+    /// <summary>
+    /// Whether exact line heights put the text at their top instead of centering it: w:noExtraLineSpacing (measured
+    /// with docx/local/c2-exact* and c3-exact, in every mode).
+    /// </summary>
+    bool ExactFromTop => exactFromTop ??= context.Compat("noExtraLineSpacing");
 
     /// <summary>
     /// The line pitch of the section's document grid (w:docGrid type lines, linesAndChars or snapToChars), which lines
@@ -361,6 +401,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     readonly Dictionary<int, RubyInline> rubies = [];
     readonly Dictionary<int, TextInline> combined = [];
 
+    /// <summary>
+    /// The spaces of runs whose East Asian font is one (with w:balanceSingleByteDoubleByteWidth), by their place in the
+    /// text: those balance; after <see cref="Balance"/> the ones that did.
+    /// </summary>
+    readonly HashSet<int> balanced = [];
+
     /// <summary>The advance of every character of a text in one style, in points.</summary>
     public static double[] Measure(string text, RunStyle style)
     {
@@ -402,7 +448,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// height (measured with docx/local/form-boxes: Arial 8 to 36 pt and Aptos).
     /// </summary>
     (double Above, double Below) BoxMetrics(CheckBoxInline box) =>
-        styles.Style(box.Format, WordSlot.Ascii) is var style ? WordFonts.LineMetrics(style.Font.Data, box.Size ?? style.Size) : default;
+        styles.Style(box.Format, WordSlot.Ascii) is var style ? WordFonts.LineMetrics(style.Font.Data, box.Size ?? style.Size, style.LineHeights) : default;
 
     /// <summary>The equations of the paragraph being laid out, by their place in its text, display lines with their place.</summary>
     readonly Dictionary<int, (Equations.Equation Equation, double? DisplayX)> equations = [];
@@ -503,6 +549,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles, CharacterExtra);
+        if (balanced.Count > 0)
+            Balance(text, charStyles, advances, balanced);
         AutoSpace(text, charStyles, advances, format);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
@@ -718,7 +766,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 x = w;
                 for (var k = i; k < wordEnd; k++)
                 {
-                    if (text[k] == ' ')
+                    // Balanced spaces do not squeeze (measured with docx/local/c2-bsbdb).
+                    if (text[k] == ' ' && !balanced.Contains(k))
                         spaces += advances[k];
                 }
                 end = wordEnd;
@@ -740,7 +789,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (room != null)
             {
                 // The line's height decides where the next one stands beside the objects.
-                Space([line], format, Pitch(format));
+                Space([line], format, Pitch(format), ExactFromTop);
                 offset += skip + line.Height;
                 estimate = line.Height;
                 textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
@@ -755,11 +804,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         if (lines.Count == 0)
             lines.Add(BuildLine(text, charStyles, advances, 0, 0, left + firstLine - labelShift, format, left, firstLine, mark, labelEnd, width - right));
-        // A paragraph that ends with a break has an empty last line.
-        if (lines[^1].EndBreak is "line" && lineStart >= text.Length)
+        // A paragraph that ends with a break has an empty last line; one that ends with a page break too where its
+        // mark goes to the next page.
+        if ((lines[^1].EndBreak is "line" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length)
             lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0, width - right));
         lines[^1].Last = true;
 
+        var expandBreaks = !context.Compat("doNotExpandShiftReturn");
         foreach (var line in lines)
         {
             // Lines broken around floating objects align in their room; lines in several segments stay as they are.
@@ -771,7 +822,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 displayed.X = left + displayX;
                 continue;
             }
-            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0));
+            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks);
         }
         // Right-to-left paragraphs and runs: the lines, laid out from the start edge, read in visual order.
         if (levels != null || format.Bidi == true)
@@ -802,7 +853,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 (line.AnchorX ??= new(ReferenceEqualityComparer.Instance))[anchor] = CharacterX(line, index - 1);
             }
         }
-        Space(lines, format, Pitch(format));
+        Space(lines, format, Pitch(format), ExactFromTop);
         if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
         {
             foreach (var line in lines)
@@ -821,6 +872,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         displayWidth = double.MaxValue;
         var (text, charStyles, _) = Flatten(paragraph, fields);
         var advances = Advances(text, charStyles, CharacterExtra);
+        if (balanced.Count > 0)
+            Balance(text, charStyles, advances, balanced);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
         foreach (var (index, (equation, _)) in equations)
@@ -891,6 +944,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         boxes.Clear();
         rubies.Clear();
         combined.Clear();
+        balanced.Clear();
         equations.Clear();
         anchored.Clear();
         permissions.Clear();
@@ -909,6 +963,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true)
                 return;   // hidden text is not printed (Word's PDF export leaves it out)
+            if (BalanceSpaces && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
+            {
+                for (var k = 0; k < value.Length; k++)
+                {
+                    if (value[k] == ' ')
+                        balanced.Add(text.Length + k);
+                }
+            }
             if (format.CombineLines == true && value.Length > 1)
             {
                 combined[text.Length] = new TextInline(value, format);
@@ -916,16 +978,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 list.Add(styles.Style(format, WordSlot.EastAsia));
                 return;
             }
-            // All caps shows capitals; small caps shows lowercase letters as smaller capitals.
+            // All caps shows capitals; small caps shows lowercase letters as smaller capitals, the spaces between them
+            // at that size too, a long s as itself (measured with docx/local/smallcaps-chars: digits, punctuation,
+            // symbols, no-break spaces and tabs keep the text's size).
             var small = format.SmallCaps == true && format.Caps != true;
             RunStyle? previous = null;
             var runes = value.EnumerateRunes().ToList();
             for (var r = 0; r < runes.Count; r++)
             {
                 var rune = runes[r];
-                var lower = small && Rune.IsLower(rune);
-                var shown = format.Caps == true || lower ? Rune.ToUpperInvariant(rune) : rune;
+                var lower = small && (Rune.IsLower(rune) || rune.Value == ' ');
+                var shown = format.Caps == true || lower && rune.Value != 0x17F ? rune.Value == 0x131 ? new Rune('I') : Rune.ToUpperInvariant(rune) : rune;
                 var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
+                if (shown.Value == '\\' && YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
+                    && !style.Font.Data.EastAsian)
+                    shown = new Rune('\u00A5');
                 // A character the font lacks is drawn and measured in Word's fallback font; marks, joiners and
                 // variation selectors stay with the character before them.
                 if (previous != null && previous != style && Rune.GetUnicodeCategory(shown) is UnicodeCategory.NonSpacingMark
@@ -1144,6 +1211,29 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 advances[i] += styles[i].Size / 4;
             else if (Western(a, letters, digits) && Asian(b))
                 advances[i] += styles[i + 1].Size / 4;
+        }
+    }
+
+    /// <summary>
+    /// Spaces beside another space or an East Asian character half as wide as their font's size, as Word balances
+    /// single and double byte characters (w:balanceSingleByteDoubleByteWidth, catalog: settings.compatibility;
+    /// measured with docx/local/c2-bsbdb and c3-bsbdb: Arial, Times New Roman, Courier New and Consolas at 8 to 20 pt,
+    /// spaces between Latin words left alone, and so are the spaces of runs whose East Asian font is none).
+    /// </summary>
+    /// <param name="spaces">The spaces that may balance; left with those that did.</param>
+    static void Balance(string text, List<RunStyle> charStyles, double[] advances, HashSet<int> spaces)
+    {
+        bool Next(int k) => k >= 0 && k < text.Length && (text[k] == ' ' || text[k] >= 0x80 && Text.Scripts.Of(text[k]) is { Slot: Text.FontSlot.EastAsian });
+        foreach (var i in spaces.ToList())
+        {
+            if (i >= charStyles.Count || text[i] != ' ' || !(Next(i - 1) || Next(i + 1)))
+            {
+                spaces.Remove(i);
+                continue;
+            }
+            var style = charStyles[i];
+            var space = style.Font.Data.GlyphsWithFeatures(" ", style.Features, language: style.Language).Sum(g => g.Advance) * style.Size * style.Scale;
+            advances[i] += style.Size * style.Scale / 2 - space;
         }
     }
 
@@ -1385,8 +1475,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             }
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
-            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase) : piece.Style.Metrics;
-            var lift = piece.Style.Raise - piece.Style.ScriptShift;
+            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : piece.Style.Metrics;
+            var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
             above = Math.Max(above, a);
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
             var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
@@ -1471,7 +1561,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// line of auto spacing takes as many whole pitches as its natural height needs, times its spacing factor, the
     /// extra half above and half below the text; exact spacing keeps its height.
     /// </param>
-    static void Space(List<Line> lines, ParagraphFormat format, double? pitch = null)
+    /// <param name="fromTop">
+    /// Whether exact lines put their text at the top (w:noExtraLineSpacing): the baseline below the natural ascent, at
+    /// the line's bottom at most.
+    /// </param>
+    static void Space(List<Line> lines, ParagraphFormat format, double? pitch = null, bool fromTop = false)
     {
         var rule = format.LineRule ?? "auto";
         var value = format.Line ?? 240;
@@ -1482,7 +1576,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 case "exact":
                     line.Height = value / 20;
-                    line.Baseline = 0.8 * line.Height;
+                    line.Baseline = fromTop ? Math.Min(line.Above, line.Height) : 0.8 * line.Height;
                     continue;
                 case "atLeast":
                     line.Height = Math.Max(value / 20, natural);
@@ -1642,7 +1736,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
-    static void Align(Line line, ParagraphFormat format, double limit, double startX)
+    /// <param name="expandBreaks">
+    /// Whether justified lines that end with a manual line break are stretched, as Word does unless the document says
+    /// w:doNotExpandShiftReturn (catalog: settings.compatibility, measured with docx/local/compat15-*).
+    /// </param>
+    static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -1674,7 +1772,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         var justified = jc is "both" or "lowKashida" or "mediumKashida" or "highKashida" or "distribute" or "thaiDistribute";
         // The last line of a justified paragraph keeps its natural spacing, unless it took a word by squeezing.
-        var justify = justified && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0);
+        var justify = justified && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         if (!justify || Math.Abs(free) < 1e-9)
             return;
         // The spaces between words share the free width (trailing spaces excluded).

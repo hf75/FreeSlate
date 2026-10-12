@@ -60,6 +60,24 @@ public sealed class DocumentContext : IDisposable
     public int CompatibilityMode => Settings.Child("compat")?.Elements(Wml.W + "compatSetting")
         .FirstOrDefault(e => e.Attr("name") == "compatibilityMode")?.Attr("val") is { } v && int.TryParse(v, out var mode) ? mode : 12;
 
+    /// <summary>Whether one of the layout options of the compatibility settings (w:compat) is on.</summary>
+    public bool Compat(string option) => Settings.Child("compat").Child(option).OnOff() == true;
+
+    /// <summary>
+    /// The space between two paragraphs (catalog: paragraph.spacing): the space after the first and what the space
+    /// before the second has more than the first's own space after, as HTML collapses margins (where contextual
+    /// spacing dropped the space after, the space before still gives only its excess: 20 pt before after a dropped
+    /// 12 pt make 8 pt, measured with docx/local/c2-html); both in full where the document says
+    /// w:doNotUseHTMLParagraphAutoSpacing (catalog: settings.compatibility, measured with docx/local/compat15-* and
+    /// c2-html).
+    /// </summary>
+    public double Between(double after, double before, double? ownAfter = null) =>
+        AddsSpacing ? after + before : after + Math.Max(0, before - (ownAfter ?? after));
+
+    /// <summary>Whether paragraphs add their spaces after and before (w:doNotUseHTMLParagraphAutoSpacing) rather than overlap them.</summary>
+    public bool AddsSpacing => addsSpacing ??= Compat("doNotUseHTMLParagraphAutoSpacing");
+    bool? addsSpacing;
+
     /// <summary>The regional format for dates the document shows (date blocks, fields), the system's by default.</summary>
     public System.Globalization.CultureInfo Culture { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
 

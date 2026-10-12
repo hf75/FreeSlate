@@ -302,7 +302,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                 // crossed when checked, in 0.48 pt lines (measured with docx/local/form-boxes).
                 if (piece.CheckBox is { } box)
                 {
-                    var (_, boxBelow) = WordFonts.LineMetrics(piece.Style.Font.Data, box.Size ?? piece.Style.Size);
+                    var (_, boxBelow) = WordFonts.LineMetrics(piece.Style.Font.Data, box.Size ?? piece.Style.Size, piece.Style.LineHeights);
                     var side = piece.Width - 2.28;
                     var bottom = baseline + boxBelow - 1.08;
                     var (bx, top) = (x + 1.08, bottom - side);

@@ -24,6 +24,7 @@ public sealed partial class ModelReader
             .Where(s => s.Type == "table").ToList();
         foreach (var style in chain)
             model.Format.Apply(style.TableProperties);
+        model.Format.Styled = chain.Count > 0;
         model.Format.Apply(tblPr);
         foreach (var col in tbl.Child("tblGrid")?.Elements(Wml.W + "gridCol") ?? [])
             model.Grid.Add(col.Twips("w") ?? 0);

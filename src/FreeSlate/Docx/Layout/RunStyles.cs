@@ -118,6 +118,25 @@ public sealed class RunStyles(DocumentContext context)
     /// <summary>The size of the small capitals of text this size: 80 % on whole half points (12 pt → 9.5 pt, measured).</summary>
     public static double SmallCapsSize(double size) => Math.Round(size * 0.8 * 2, MidpointRounding.AwayFromZero) / 2;
 
+    /// <summary>
+    /// The size of small capitals as Word 5 for the Macintosh set them (w:mwSmallCaps, before Word 2013; catalog:
+    /// settings.compatibility): the largest of the Macintosh's standard sizes below the text's size, 7 pt at least
+    /// (measured with docx/local/c2-legacy* and c3-smallcaps12 from 5 to 72 pt: 11 pt → 10 pt, 24 pt → 18 pt).
+    /// </summary>
+    public static double MacSmallCapsSize(double size) => MacSizes.LastOrDefault(s => s < size - 1e-9, 7);
+
+    static readonly double[] MacSizes = [7, 9, 10, 12, 14, 18, 24, 36, 48, 60, 72];
+
+    bool? macSmallCaps;
+    LineHeights? lineHeights;
+
+    bool MacSmallCaps => macSmallCaps ??= context.CompatibilityMode < 15 && context.Compat("mwSmallCaps");
+
+    /// <summary>How the document takes line heights from fonts (w:noLeading, w:suppressTopSpacingWP; before Word 2013 only).</summary>
+    public LineHeights LineHeights => lineHeights ??= context.CompatibilityMode >= 15 ? LineHeights.Word
+        : context.Compat("suppressTopSpacingWP") ? LineHeights.WordPerfect
+        : context.Compat("noLeading") ? LineHeights.NoLeading : LineHeights.Word;
+
     RunStyle Create(RunFormat format, WordSlot slot, bool smallCapital)
     {
         var complex = slot == WordSlot.ComplexScript;
@@ -142,17 +161,18 @@ public sealed class RunStyles(DocumentContext context)
         {
             var superscript = vertical == "superscript";
             scriptSize = Math.Round(size * 2 * (superscript ? data.SuperscriptSize : data.SubscriptSize), MidpointRounding.AwayFromZero) / 2;
-            var (above, below) = WordFonts.LineMetrics(data, size);
+            var (above, below) = WordFonts.LineMetrics(data, size, LineHeights);
             var shift = superscript
                 ? Math.Min(data.SuperscriptOffset * size, above - WordFonts.Ascent(data) * scriptSize)
-                : Math.Min(data.SubscriptOffset * size, below - WordFonts.LineMetrics(data, scriptSize).Below);
+                : Math.Min(data.SubscriptOffset * size, below - WordFonts.LineMetrics(data, scriptSize, LineHeights).Below);
             scriptShift = (superscript ? 1 : -1) * Math.Round(Math.Max(0, shift) * 2, MidpointRounding.AwayFromZero) / 2;
         }
         var raise = (format.Position ?? 0) + scriptShift;
         if (smallCapital)
-            scriptSize = SmallCapsSize(scriptSize);
+            scriptSize = MacSmallCaps ? MacSmallCapsSize(scriptSize) : SmallCapsSize(scriptSize);
         return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
         {
+            LineHeights = LineHeights,
             Underline = format.Underline is { } u && u != "none" ? u : null,
             UnderlineColor = format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
             Strike = format.Strike == true,
@@ -166,7 +186,9 @@ public sealed class RunStyles(DocumentContext context)
             Highlight = WordFonts.Highlight(format.Highlight),
             Shading = format.ShadingPattern != null || format.ShadingFill != null ? Shading.Color(format.ShadingPattern, format.ShadingColor, format.ShadingFill) : null,
             Raise = raise,
-            ScriptBase = vertical is "superscript" or "subscript" ? size : null,
+            // Small capitals stand in the line of the text's size (measured with docx/local/c3-smallcaps12: Mac small caps
+            // larger than their 5 pt text leave its line as it is).
+            ScriptBase = vertical is "superscript" or "subscript" || smallCapital ? size : null,
             ScriptShift = scriptShift,
             Spacing = format.Spacing ?? 0,
             Scale = (format.Scale ?? 100) / 100,

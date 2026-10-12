@@ -82,9 +82,19 @@ public sealed record RunStyle(
     public XElement? Outline { get; init; }
     public XElement? TextFill { get; init; }
 
+    /// <summary>How the document takes line heights from fonts (its compatibility options).</summary>
+    public LineHeights LineHeights { get; init; }
+
     /// <summary>The line metrics Word takes from the font, in points (<see cref="WordFonts.LineMetrics"/>).</summary>
-    public (double Above, double Below) Metrics => WordFonts.LineMetrics(Font.Data, Size);
+    public (double Above, double Below) Metrics => WordFonts.LineMetrics(Font.Data, Size, LineHeights);
 }
+
+/// <summary>
+/// How a document takes line heights from fonts (catalog: settings.compatibility): as Word does, without the fonts'
+/// line gaps (w:noLeading), or as WordPerfect 5 did (w:suppressTopSpacingWP); Word follows the options before Word
+/// 2013 only.
+/// </summary>
+public enum LineHeights { Word, NoLeading, WordPerfect }
 
 /// <summary>What Word takes from fonts (catalog: engine.fonts, engine.lineLayout); every rule measured against Word.</summary>
 public static class WordFonts
@@ -102,8 +112,22 @@ public static class WordFonts
     /// what the hhea line spacing has more than they (Arial's and Times New Roman's 0.03 to 0.04 em; Calibri's and
     /// Consolas' hhea gaps are already in their win metrics).
     /// </summary>
-    public static (double Above, double Below) LineMetrics(FontData font, double size)
+    /// <param name="heights">
+    /// Without line gaps (w:noLeading) the line gap Word adds to the win metrics drops out (measured with
+    /// docx/local/c3-lines12: Arial and Times New Roman 11 pt lines 12.29 and 12.18 pt high, Calibri, Cambria, Segoe UI,
+    /// Aptos and Courier New unchanged); as WordPerfect did (w:suppressTopSpacingWP) a line is the font's size high and
+    /// 2 pt more where the font is not of fixed pitch, its descent below the baseline (measured with
+    /// docx/local/c3-lines12: 13 pt for 11 pt Arial, Times New Roman, Calibri, Cambria, Segoe UI and Aptos, 22 pt for
+    /// 20 pt Arial, 11 pt for 11 pt Courier New).
+    /// </param>
+    public static (double Above, double Below) LineMetrics(FontData font, double size, LineHeights heights = LineHeights.Word)
     {
+        if (heights == LineHeights.WordPerfect)
+        {
+            var descent = font.Typo is { Use: true } t ? t.Descender : font.WinDescent;
+            var line = size + (font.FixedPitch ? 0 : 2);
+            return (line - descent * size, descent * size);
+        }
         // East Asian fonts are 1.3 times their win ascent and descent high, the extra shared above and below (measured
         // with docx/local/ea-lines: MS Gothic, MS Mincho, Yu Gothic, SimSun, Malgun Gothic and Microsoft YaHei within
         // 0.07 pt, their hhea line gaps left out).
@@ -124,8 +148,8 @@ public static class WordFonts
         else
         {
             ascent = font.WinAscent;
-            gap = Math.Max(0, total - (font.WinAscent + font.WinDescent));
-            total = Math.Max(total, font.WinAscent + font.WinDescent);
+            gap = heights == LineHeights.NoLeading ? 0 : Math.Max(0, total - (font.WinAscent + font.WinDescent));
+            total = heights == LineHeights.NoLeading ? font.WinAscent + font.WinDescent : Math.Max(total, font.WinAscent + font.WinDescent);
         }
         var above = (gap + ascent) * size;
         return (above, total * size - above);

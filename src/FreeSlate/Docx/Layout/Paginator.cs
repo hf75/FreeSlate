@@ -143,7 +143,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     Top top = Top.Document;
     double pendingAfter;      // space after the previous paragraph
+    double pendingOwnAfter;   // the same before contextual spacing dropped it
     ParagraphBlock? previous;
+
+    /// <summary>
+    /// The paragraph contextual spacing compares the next one with: the previous paragraph, or after a table the last
+    /// paragraph of its last cell (measured with docx/local/c2-html: a contextually spaced paragraph after a table
+    /// whose last paragraph has its style loses its space before).
+    /// </summary>
+    ParagraphBlock? stylePrevious;
 
     /// <param name="footnotes">The document's footnotes by id, with "separator" and "continuationSeparator".</param>
     /// <param name="endnotes">The document's endnotes in the order of their references, with the sections that refer to them.</param>
@@ -268,7 +276,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         };
         // The top of the paragraph after the table, where its space before ends.
         var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
-        var textTop = y + (columnEmpty ? 0 : Math.Max(pendingAfter, next != null ? SpaceBefore(next) : 0));
+        var textTop = y + (columnEmpty ? 0 : Gap(next != null ? SpaceBefore(next) : 0));
         var (frameTop, frameHeight) = position.Attr("vertAnchor") switch
         {
             "page" => (0.0, page!.Height),
@@ -337,7 +345,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var laid = group.Select(p => layout.Layout(p, frameWidth)).ToList();
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
-            content += (k > 0 ? Math.Max(SpaceAfter(group[k - 1], group[k]), SpaceBefore(group[k])) : 0) + laid[k].Sum(l => l.Height);
+            content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
         // The paragraphs' borders frame the content: their top and bottom lines with their space take room.
         var frameBorders = Frame.Read(first.Format);
         var borderTop = frameBorders?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
@@ -346,7 +354,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var dropCap = properties.Attr("dropCap");
         // The paragraph the frame belongs to: the first after it.
         var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
-        var textTop = y + (columnEmpty ? 0 : Math.Max(pendingAfter, next != null ? SpaceBefore(next) : 0));
+        var textTop = y + (columnEmpty ? 0 : Gap(next != null ? SpaceBefore(next) : 0));
         var (frameLeft, frameSpan) = properties.Attr("hAnchor") switch
         {
             "page" when dropCap is not "margin" => (0.0, page!.Width),
@@ -385,7 +393,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         for (var k = 0; k < group.Count; k++)
         {
             if (k > 0)
-                lineTop += Math.Max(SpaceAfter(group[k - 1], group[k]), SpaceBefore(group[k]));
+                lineTop += Between(group[k - 1], group[k]);
             foreach (var line in laid[k])
             {
                 page.Lines.Add(new PlacedLine(line, x, lineTop));
@@ -795,7 +803,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
                 var paragraphTop = y + (first ? 0 : after);
-                y += first ? paragraph.Format.Before ?? 0 : Math.Max(after, paragraph.Format.Before ?? 0);
+                y += first ? paragraph.Format.Before ?? 0 : context.Between(after, paragraph.Format.Before ?? 0);
                 var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                 foreach (var line in layout.Layout(paragraph, width, fields))
                 {
@@ -1152,7 +1160,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var table = (TableBlock)blocks[index];
         var (left, width) = Column(column);
-        var box = tables.Layout(table.Table, width);
+        var box = tables.Layout(table.Table, width, before: stylePrevious is { } prior ? context.Styles.ParagraphStyleOf(prior.Format.Style) : TableLayout.NoParagraph);
         if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0)
         {
             PlaceFloatingTable(blocks, index, floating, box, left, width);
@@ -1223,8 +1231,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         Describe();
         TableLayout.Frame(box, left, tableTop, y, page!.Borders);
         pendingAfter = 0;
+        pendingOwnAfter = 0;
         page!.TrailingSpace = 0;
         previous = null;
+        stylePrevious = LastParagraph(table.Table);
         paragraphNumber++;
     }
 
@@ -1462,19 +1472,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         // Space between this paragraph and the previous one.
         var before = SpaceBefore(paragraph);
-        var gap = !columnEmpty ? Math.Max(pendingAfter, before) : top switch
+        var gap = !columnEmpty ? Gap(before) : top switch
         {
             Top.Document => before,
-            Top.Section => Math.Max(0, before - pendingAfter),
+            Top.Section => Math.Max(0, Gap(before) - pendingAfter),
             // Below balanced columns, whose height holds the space after their last paragraphs, what the space before
             // has more than that space after (measured with page-setup: the heading of the three-column section stands
             // level with the other columns, its 8 pt before already in the 8 pt after above).
-            Top.Continuous => balanced ? Math.Max(0, before - pendingAfter) : Math.Max(pendingAfter, before),
+            Top.Continuous => balanced ? Math.Max(0, Gap(before) - pendingAfter) : Gap(before),
             _ => 0,
         };
         balanced = false;
         // The space a balanced column gives the paragraph where it does not begin the column.
-        var flowGap = Math.Max(pendingAfter, before);
+        var flowGap = Gap(before);
 
         // Keep with next and keep lines together: move the paragraph to the next column when it (and the first line
         // of the next paragraph) does not fit here but would fit in an empty column.
@@ -1627,6 +1637,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 ? paragraphTop.Top : y, left, width);
             foreach (var anchor in line.Anchors ?? [])
                 lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
+            if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
+                line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y) { Numbered = format.SuppressLineNumbers != true });
@@ -1691,13 +1703,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
                 character: inLine ? at.X : columnLeft));
         }
-        pendingAfter = SpaceAfter(paragraph, next);
+        pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
+        pendingOwnAfter = OwnAfter(paragraph);
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).
         lines[^1].BarExtension = pendingAfter;
         if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
             flow[^1].After = pendingAfter;
         page!.TrailingSpace = pendingAfter;
         previous = paragraph;
+        stylePrevious = paragraph;
         paragraphNumber++;
     }
 
@@ -1840,21 +1854,68 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (blocks[index] is not ParagraphBlock next || blocks[index - 1] is not ParagraphBlock before)
             return 0;
         var lines = layout.Layout(next, width);
-        var gap = Math.Max(SpaceAfter(before, next), SpaceBefore(next));
+        var gap = Between(before, next);
         if (next.Format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock)
             return gap + lines.Sum(l => l.Height) + KeptNext(blocks, index + 1, width);
         return gap + FirstLines(lines, next.Format);
     }
 
-    /// <summary>The space before a paragraph; contextual spacing drops it after a paragraph of the same style.</summary>
-    double SpaceBefore(ParagraphBlock paragraph)
+    bool? suppressTopSpacing, suppressSpacingAtTop;
+
+    /// <summary>
+    /// How much less room the first line on a page has above its text (catalog: settings.compatibility): where the
+    /// document says w:suppressTopSpacing, an exact line has its baseline 9.6 pt below its top and an at-least line
+    /// loses its height less 9.6 pt, whatever its text (measured with docx/local/c5-top and c6-top in modes 15 and
+    /// 12: Arial from 8 to 40 pt, Times New Roman and Calibri at 15 to 40 pt high lines, the text of large fonts above
+    /// the page's margin then); before Word 2013, where it says w:suppressSpacingAtTopOfPage, an at-least line or one
+    /// on the document grid has its natural ascent above the baseline (measured with docx/local/c4-misc12, c5-top12
+    /// and c6-top12).
+    /// </summary>
+    double TopTrim(Line line, ParagraphFormat format)
     {
-        if (paragraph.Format.ContextualSpacing == true && previous != null && SameStyle(previous, paragraph))
+        suppressTopSpacing ??= context.Compat("suppressTopSpacing");
+        suppressSpacingAtTop ??= context.CompatibilityMode < 15 && context.Compat("suppressSpacingAtTopOfPage");
+        var rule = format.LineRule ?? "auto";
+        if (suppressTopSpacing == true && rule is "exact")
+            return line.Baseline - 9.6;
+        if (suppressTopSpacing == true && rule is "atLeast")
+            return (format.Line ?? 240) / 20 - 9.6;
+        if (suppressSpacingAtTop == true && (rule is "atLeast" || rule is "auto" && layout.LinePitch != null && format.SnapToGrid != false))
+            return line.Baseline - line.Above - line.RaisedAbove;
+        return 0;
+    }
+
+    /// <summary>The space between the previous paragraph and one with the given space before (see <see cref="DocumentContext.Between"/>).</summary>
+    double Gap(double before) => context.Between(pendingAfter, before, pendingOwnAfter);
+
+    /// <summary>The space between two paragraphs that follow each other (see <see cref="DocumentContext.Between"/>).</summary>
+    double Between(ParagraphBlock first, ParagraphBlock second) =>
+        context.Between(SpaceAfter(first, second), SpaceBefore(second, first, false), OwnAfter(first));
+
+    /// <summary>The space before the paragraph being placed, after the previous one.</summary>
+    double SpaceBefore(ParagraphBlock paragraph) => SpaceBefore(paragraph, stylePrevious, paragraphNumber == 0);
+
+    /// <summary>The last paragraph of a table: its last cell's, in a nested table the nested table's.</summary>
+    static ParagraphBlock? LastParagraph(TableModel table) =>
+        table.Rows.LastOrDefault()?.Cells.LastOrDefault()?.Blocks.LastOrDefault() switch
+        {
+            ParagraphBlock paragraph => paragraph,
+            TableBlock nested => LastParagraph(nested.Table),
+            _ => null,
+        };
+
+    /// <summary>The space before a paragraph; contextual spacing drops it after a paragraph of the same style.</summary>
+    /// <param name="prior">The paragraph before it, if one.</param>
+    /// <param name="first">Whether it begins the document.</param>
+    double SpaceBefore(ParagraphBlock paragraph, ParagraphBlock? prior, bool first)
+    {
+        if (paragraph.Format.ContextualSpacing == true && prior != null && SameStyle(prior, paragraph))
             return 0;
-        // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph or after a table
-        // (measured with docx/local/html-divs and altchunk).
-        if (paragraph.Format.BeforeAuto == true)
-            return previous == null ? 0 : 14;
+        // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph (measured with
+        // docx/local/html-divs, altchunk and c2-html, 14 pt after a table too); where the document says
+        // w:doNotUseHTMLParagraphAutoSpacing, the paragraph's own space before (measured with docx/local/c2-html).
+        if (paragraph.Format.BeforeAuto == true && !context.AddsSpacing)
+            return first ? 0 : 14;
         return paragraph.Format.Before ?? 0;
     }
 
@@ -1873,14 +1934,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>The space after a paragraph; contextual spacing drops it before a paragraph of the same style.</summary>
-    double SpaceAfter(ParagraphBlock paragraph, ParagraphBlock? next)
-    {
-        if (paragraph.Format.ContextualSpacing == true && next != null && SameStyle(paragraph, next))
-            return 0;
-        if (paragraph.Format.AfterAuto == true)
-            return 14;
-        return paragraph.Format.After ?? 0;
-    }
+    double SpaceAfter(ParagraphBlock paragraph, ParagraphBlock? next) =>
+        paragraph.Format.ContextualSpacing == true && next != null && SameStyle(paragraph, next) ? 0 : OwnAfter(paragraph);
+
+    /// <summary>The space after a paragraph before the block that follows it: a table's first paragraph counts for contextual spacing (measured with docx/local/c5-cells).</summary>
+    double SpaceAfter(ParagraphBlock paragraph, Block? next) =>
+        SpaceAfter(paragraph, next switch { ParagraphBlock p => p, TableBlock t => TableLayout.FirstParagraph(t.Table), _ => null });
+
+    /// <summary>A paragraph's space after, contextual spacing aside: HTML auto spacing (w:afterAutospacing) 14 pt.</summary>
+    double OwnAfter(ParagraphBlock paragraph) =>
+        paragraph.Format.AfterAuto == true && !context.AddsSpacing ? 14 : paragraph.Format.After ?? 0;
 
     bool SameStyle(ParagraphBlock a, ParagraphBlock b) =>
         context.Styles.ParagraphStyleOf(a.Format.Style) == context.Styles.ParagraphStyleOf(b.Format.Style);
