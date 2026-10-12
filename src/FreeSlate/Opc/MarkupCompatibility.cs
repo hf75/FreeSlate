@@ -50,7 +50,9 @@ public static class MarkupCompatibility
 
     public static void Process(XDocument document)
     {
-        foreach (var alternate in document.Descendants(Mc + "AlternateContent").ToList())
+        // Innermost first: an alternative inside a chosen one (a wp14 position inside a Word 2010 drawing) is resolved
+        // before the chosen content is copied into its place.
+        foreach (var alternate in document.Descendants(Mc + "AlternateContent").Reverse().ToList())
         {
             if (alternate.Parent == null)
                 continue;   // inside an alternative that was already removed
