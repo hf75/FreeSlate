@@ -183,6 +183,9 @@ public sealed class Line
 
     public bool First { get; init; }
     public bool Last { get; set; }
+
+    /// <summary>Where the line's text begins in its paragraph's text.</summary>
+    public int TextStart { get; init; }
 }
 
 /// <summary>
@@ -746,9 +749,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// The room of a line at an offset below the paragraph's first line top for an estimated height, where floating
     /// objects stand beside the paragraph; null for the whole column.
     /// </param>
-    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null)
+    /// <param name="from">Where in the paragraph's text the lines begin (Line.TextStart): its rest in another column.</param>
+    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null, int from = 0)
     {
-        var laid = LayoutLines(paragraph, width, fields, room);
+        var laid = LayoutLines(paragraph, width, fields, room, from);
         // The markup view marks the lines of a paragraph whose formatting changed and the last line of one whose mark
         // changed; the formatting change's balloon hangs from the first line.
         if (laid.Count > 0 && (paragraph.Change != null || paragraph.MarkRevision != null))
@@ -761,7 +765,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return laid;
     }
 
-    List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room)
+    List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from = 0)
     {
         var format = paragraph.Format;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
@@ -856,8 +860,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var squeezing = Justified(format) && context.CompatibilityMode >= 15;
 
         // Characters of the current line: [start, end) and where it starts.
-        var lineStart = 0;
-        var first = true;
+        var lineStart = Math.Clamp(from, 0, text.Length);
+        var first = lineStart == 0;
         var offset = 0.0;            // the line's top below the paragraph's first line top
         var estimate = (mark.Metrics.Above + mark.Metrics.Below) * (format.LineRule is null or "auto" ? (format.Line ?? 240) / 240 : 1);
         var textBand = (Top: 0.0, Bottom: mark.Metrics.Above + mark.Metrics.Below);
@@ -1759,7 +1763,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
         ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit, Dictionary<int, double>? jumps = null)
     {
-        var line = new Line { First = start == 0, Vertical = Vertical, TurnEastAsian = TurnEastAsian };
+        var line = new Line { First = start == 0, TextStart = start, Vertical = Vertical, TurnEastAsian = TurnEastAsian };
         foreach (var (index, id) in notes)
         {
             if (index >= start && (index < end || index == end && end == text.Length))

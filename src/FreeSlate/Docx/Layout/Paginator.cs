@@ -151,6 +151,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         /// <summary>The space after the line's paragraph when the line is its last.</summary>
         public double After { get; set; }
+
+        /// <summary>The line's paragraph, as laid out.</summary>
+        public ParagraphBlock? Block { get; init; }
     }
 
     /// <summary>Whether the section before ended with balanced columns, whose height holds their last space after.</summary>
@@ -2142,6 +2145,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var firstLineTop = (Page: page!, Top: y);
         var widow = format.WidowControl ?? true;
+        // The rest of a paragraph that goes on in a column of another width (w:cols with w:equalWidth 0) breaks its
+        // lines anew there (measured with docx/local/uc-7, uc-8: 400 words from a 132 pt column on in a 264 pt one).
+        var laidWidth = width;
+        void Relayout(int k)
+        {
+            if (Math.Abs(width - laidWidth) < 0.01 || k >= lines.Count)
+                return;
+            lines = [.. lines.Take(k), .. layout.Layout(paragraph, width, from: lines[k].TextStart)];
+            laidWidth = width;
+        }
         // Lines no page break may come before (Bound) or after (Binds), which form units with their neighbours
         // (keptNotes), on pages of one column: a paragraph's lines where it keeps them together, its second and last
         // under widow control, its first after a paragraph kept with it, its last where it is kept with the next.
@@ -2168,6 +2181,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var moved = false;
         for (var k = 0; k < lines.Count; k++)
         {
+            Relayout(k);
             var line = lines[k];
             // A line with footnote references needs room for their notes too; a note too long for the rest of the page
             // continues on the next. A kept line needs room only for the notes before its keep unit.
@@ -2228,6 +2242,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 NextColumn(natural: true);
                 (left, width) = Column(column);
+                Relayout(k);
+                line = lines[k];
                 here = 0;
                 hereAtTop = true;
                 moved = true;
@@ -2247,7 +2263,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
                 line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
-                widow, format.KeepNext == true, format.KeepLines == true));
+                widow, format.KeepNext == true, format.KeepLines == true) { Block = paragraph });
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y)
             {
                 Numbered = format.SuppressLineNumbers != true,
@@ -2382,6 +2398,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (page == null || flow.Count == 0)
             return;
+        if (Enumerable.Range(1, Math.Max(0, section.Columns - 1)).Any(c => Math.Abs(Column(c).Width - Column(0).Width) > 0.01) && flow.All(f => f.Block != null))
+        {
+            BalanceUnequal();
+            return;
+        }
         var items = flow;
         var heights = items.Select(f => page.Lines[f.Index].Line.Height).ToList();
         var fits = items.Select(f => page.Lines[f.Index].Line.FitHeight).ToList();
@@ -2488,6 +2509,166 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             bottom = Math.Max(bottom, columnTop + offset + old.Line.Height + (columnEnds ? items[i].After : 0));
         }
         y = bottom;
+        column = 0;
+        balanced = true;
+    }
+
+    /// <summary>
+    /// Balances columns of different widths (w:cols with w:equalWidth 0) as Balance does, a paragraph that goes on in
+    /// another column breaking its rest anew at that column's width (measured with docx/local/uc-1 to uc-6: 90 words
+    /// in columns of 132 and 264 pt, either first; docx/external/openxml-sdk/complex0).
+    /// </summary>
+    void BalanceUnequal()
+    {
+        var columns = section.Columns;
+        // The section's paragraphs on the page, each from where its first line here begins.
+        var groups = new List<(ParagraphBlock Block, int From, double Gap, double After, int Before, bool Widows, bool KeepNext, bool KeepLines)>();
+        for (var i = 0; i < flow.Count; i++)
+        {
+            var f = flow[i];
+            if (i == 0 || f.Paragraph != flow[i - 1].Paragraph)
+                groups.Add((f.Block!, page!.Lines[f.Index].Line.TextStart, f.Gap, 0, f.Line, f.Widows, f.KeepNext, f.KeepLines));
+            if (i + 1 == flow.Count || flow[i + 1].Paragraph != f.Paragraph)
+                groups[^1] = groups[^1] with { After = f.After };
+        }
+        var firstGap = flow[0].FirstGap;
+
+        // Where a column must end before the line after the placed ones, by the rules of page breaks (as in Balance);
+        // -1 where the column began there.
+        int BreakBefore(List<(int Group, Line Line, int Column, double Top, int Number, int Count)> placed, (int Group, int Number, int Count) next, int columnStart)
+        {
+            (int Group, int Number, int Count) At(int i) => i < placed.Count ? (placed[i].Group, placed[i].Number, placed[i].Count) : next;
+            var b = placed.Count;
+            var moved = true;
+            while (moved && b > columnStart)
+            {
+                moved = false;
+                var (group, number, count) = At(b);
+                if (groups[group].Widows && count > 1)
+                {
+                    if (number == count - 1 && number >= 1)
+                    {
+                        b -= number >= 2 ? 1 : number;
+                        moved = true;
+                        continue;
+                    }
+                    if (number == 1)
+                    {
+                        b -= 1;
+                        moved = true;
+                        continue;
+                    }
+                }
+                if (groups[group].KeepLines && number > 0)
+                {
+                    b -= number;
+                    moved = true;
+                    continue;
+                }
+                if (number == 0 && b > 0 && groups[At(b - 1).Group].KeepNext)
+                {
+                    b -= At(b - 1).Number + 1;
+                    moved = true;
+                }
+            }
+            return b > columnStart ? b : -1;
+        }
+
+        // The columns filled up to a height, each paragraph's rest laid out anew in the column it goes on in; null
+        // where they do not hold it all.
+        List<(int Group, Line Line, int Column, double Top, int Number, int Count)>? Place(double limit)
+        {
+            var placed = new List<(int Group, Line Line, int Column, double Top, int Number, int Count)>();
+            var (c, used, columnStart) = (0, 0.0, 0);
+            var bottom = Math.Min(limit, Bottom - columnTop);
+            var (g, from) = (0, groups[0].From);
+            for (var steps = 0; g < groups.Count; steps++)
+            {
+                if (steps > 10000)
+                    return null;
+                var group = groups[g];
+                var lines = layout.Layout(group.Block, Column(c).Width, from: from);
+                var number = group.Before + placed.Count(p => p.Group == g);
+                var count = number + lines.Count;
+                var broke = false;
+                for (var j = 0; j < lines.Count; j++)
+                {
+                    var line = lines[j];
+                    var gap = placed.Count == 0 ? firstGap : j == 0 && from == group.From && used > 0 ? group.Gap : 0;
+                    if (used > 0 && used + gap + line.FitHeight > bottom + 0.001)
+                    {
+                        var b = BreakBefore(placed, (g, number + j, count), columnStart);
+                        if (b < 0 && bottom < Bottom - columnTop - 0.001)
+                            return null;
+                        if (b < 0)
+                            b = placed.Count;
+                        if (++c >= columns)
+                            return null;
+                        if (b < placed.Count)
+                        {
+                            (g, from) = (placed[b].Group, placed[b].Line.TextStart);
+                            placed.RemoveRange(b, placed.Count - b);
+                        }
+                        else
+                            from = line.TextStart;
+                        columnStart = placed.Count;
+                        used = 0;
+                        broke = true;
+                        break;
+                    }
+                    placed.Add((g, line, c, used + gap, number + j, count));
+                    used += gap + line.Height;
+                }
+                if (broke)
+                    continue;
+                if (++g < groups.Count)
+                    from = groups[g].From;
+            }
+            return placed;
+        }
+
+        // Whole lines of the least line height from a height no balance goes below (the lines laid out in the widest
+        // column, shared out) up to the least that holds all lines or the page's.
+        var unit = flow.Min(f => page!.Lines[f.Index].Line.Height);
+        if (unit <= 0.01)
+            return;
+        var widest = Enumerable.Range(0, columns).Max(c => Column(c).Width);
+        var least = groups.Sum(group => layout.Layout(group.Block, widest, from: group.From).Sum(l => l.Height)) / columns;
+        var room = Bottom - columnTop;
+        List<(int Group, Line Line, int Column, double Top, int Number, int Count)>? result = null;
+        for (var k = Math.Max(1, (int)Math.Floor(Math.Max(least, flow.Max(f => page!.Lines[f.Index].Line.FitHeight)) / unit)); result == null && (k - 1) * unit <= room; k++)
+            result = Place(k * unit);
+        if (result == null)
+            return;
+        // The balanced lines take the place of the section's lines on the page.
+        var indices = flow.Select(f => f.Index).ToHashSet();
+        var at = flow[0].Index;
+        var others = page!.Lines.Where((_, i) => !indices.Contains(i) && i >= at).ToList();
+        page.Lines.RemoveRange(at, page.Lines.Count - at);
+        var bottomEdge = columnTop;
+        var rebuilt = new List<FlowLine>();
+        for (var i = 0; i < result.Count; i++)
+        {
+            var (group, line, c, top, number, count) = result[i];
+            var block = groups[group].Block;
+            var last = number == count - 1;
+            rebuilt.Add(new FlowLine(page.Lines.Count, 0, 0, group, number, count, groups[group].Widows, groups[group].KeepNext, groups[group].KeepLines)
+            {
+                Block = block,
+                After = last ? groups[group].After : 0,
+            });
+            page.Lines.Add(new PlacedLine(line, Column(c).Left + Mirror(block.Format), columnTop + top)
+            {
+                Numbered = block.Format.SuppressLineNumbers != true,
+                HangTop = number == 0 ? columnTop + top : null,
+            });
+            var columnEnds = i + 1 == result.Count || result[i + 1].Column != c;
+            bottomEdge = Math.Max(bottomEdge, columnTop + top + line.Height + (columnEnds && last ? groups[group].After : 0));
+        }
+        page.Lines.AddRange(others);
+        flow.Clear();
+        flow.AddRange(rebuilt);
+        y = bottomEdge;
         column = 0;
         balanced = true;
     }
