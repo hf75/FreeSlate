@@ -349,7 +349,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var tableLine = r == 0 || above == null ? TableBorder(rows[Math.Min(r, rows.Count - 1)], format, b => b.Top)
                     : r == rows.Count || below == null ? TableBorder(rows[r - 1], format, b => b.Bottom)
                     : TableBorder(rows[r], format, b => b.InsideH);
-                horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine);
+                horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null);
             }
         }
         for (var r = 0; r < rows.Count; r++)
@@ -363,7 +363,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var tableLine = k == 0 || left == null ? TableBorder(rows[r], format, b => b.Left)
                     : k == columns || right == null ? TableBorder(rows[r], format, b => b.Right)
                     : TableBorder(rows[r], format, b => b.InsideV);
-                vertical[r, k] = Edge(Owner(left)?.CellBorders.Right, Owner(right)?.CellBorders.Left, tableLine);
+                vertical[r, k] = Edge(Owner(left)?.CellBorders.Right, Owner(right)?.CellBorders.Left, tableLine, left != null && right != null);
             }
         }
 
@@ -828,14 +828,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <summary>
-    /// The line where two cells meet (MS-OI29500 17.4.66): a cell's own border wins over the table's; two cell
-    /// borders are resolved by weight, style and color.
+    /// The line where two cells meet (measured with docx/local/nilborder-* and rowborder-k, -l): each side brings its
+    /// cell's own border, else the table's, and nothing where it is nil or none, so the other side's line still shows
+    /// (a row of nil sides below a bottom line keeps it, and its room); two lines are resolved by weight, style and
+    /// color (MS-OI29500 17.4.66), a table's thick inside line over a cell's own thin one too. At the table's edge,
+    /// where one cell meets none, its own border wins over the table's.
     /// </summary>
-    static BorderLine? Edge(BorderLine? a, BorderLine? b, BorderLine? table)
+    static BorderLine? Edge(BorderLine? a, BorderLine? b, BorderLine? table, bool inside)
     {
-        if (a != null || b != null)
-            return BorderLine.Resolve(a, b);
-        return table;
+        if (!inside)
+            return a != null || b != null ? BorderLine.Resolve(a, b) : table;
+        static BorderLine? Side(BorderLine? own, BorderLine? table) => (own ?? table) is { Visible: true } line ? line : null;
+        return BorderLine.Resolve(Side(a, table), Side(b, table));
     }
 
     /// <summary>A table border of a row: the row's exceptions over the table's.</summary>

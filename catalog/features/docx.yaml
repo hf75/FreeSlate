@@ -1346,8 +1346,11 @@ areas:
           Every vertical line is centered on its grid line (moved right by half the table's left border); text starts
           the larger of the margin and half the line after it, below the whole top line and the top margin (a 3 pt
           inside line of a table with 0.5 pt outside lines is centered 0.25 pt right of its grid line; docx/local/tbl-
-          geom). Conflicts follow MS-OI29500 17.4.66: a cell's own border wins over the table's, then weight (eighths
-          of a point times the style number, dotted and dashed 1), style, darker color. Double lines take three times
+          geom). Where two cells meet each side brings its own border, else the table's, nothing where it is nil or
+          none, so the other side's line shows and takes its room (docx/local/nilborder-*, rowborder-*: 21 cases within
+          0.1 pt); the two are resolved by MS-OI29500 17.4.66: weight (eighths of a point times the style number,
+          dotted and dashed 1), style, darker color, a table's thick inside line over a cell's thin own one too; at the
+          table's edge a cell's own border wins over the table's. Double lines take three times
           their width, triple five; thin-and-thick lines lie top to bottom and left to right on every side, small gaps
           and thin lines 0.75 pt, medium ones half the width, large gaps the width beside 1.5 pt and 0.75 pt lines
           (docx/local/tblcompound-24, -12, as page borders); dotted and dashed lines are dashed strokes; diagonal
