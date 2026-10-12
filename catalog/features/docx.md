@@ -17,20 +17,20 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 7 |
 | [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 2 | 3 |
-| [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 5 |
+| [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 6 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
-| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 5 | 6 |
-| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 2 | 8 |
+| [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 2 | 9 |
+| [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 1 | 10 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 3 | 4 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 1 | 6 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
-| [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 2 | 0 |
-| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 2 | 6 |
-| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 1 | 5 |
+| [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
+| [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 0 | 8 |
+| [Fields, hyperlinks and bookmarks](#field) | 6 | 2 | 2 | 1 | 1 | 2.5 | 0 | 6 |
 | [Content controls and custom markup](#sdt) | 4 | 1 | 1 | 2 | 0 | 2.0 | 0 | 4 |
 | [Comments, revisions and proofing](#review) | 4 | 0 | 1 | 1 | 2 | 2.0 | 2 | 2 |
-| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 1 | 8 |
+| [Drawing objects in text](#drawing) | 9 | 5 | 1 | 1 | 2 | 3.4 | 0 | 9 |
 | [Themes and styles](#theme) | 6 | 4 | 0 | 1 | 1 | 1.5 | 0 | 6 |
 | [Colors](#color) | 2 | 2 | 0 | 0 | 0 | 2.0 | 0 | 2 |
 | [Shapes and geometry](#shape) | 11 | 6 | 2 | 1 | 2 | 2.0 | 0 | 11 |
@@ -39,12 +39,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 11 |
 | [Pictures and media](#picture) | 9 | 2 | 4 | 2 | 1 | 2.2 | 0 | 9 |
 | [DrawingML text (charts, SmartArt, WordArt)](#text) | 18 | 8 | 4 | 5 | 1 | 3.3 | 0 | 18 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 2 | 18 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 1 | 19 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
-| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 3 | 4 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **28** | **164** |
+| [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **12** | **182** |
 
 <a id="package"></a>
 
@@ -266,7 +266,7 @@ A part in another format (HTML, RTF, plain text, another DOCX) that Word convert
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Compatibility mode and options](#settings.compatibility) | P0 | ●●●●○ | todo | 70 | 7 |
+| [Compatibility mode and options](#settings.compatibility) | P0 | ●●●●○ | done | 70 | 7 |
 | [View settings](#settings.view) | P3 | ●○○○○ | done | 16 | 9 |
 | [Protection and privacy](#settings.protection) | P3 | ●○○○○ | done | 4 | 2 |
 | [Editor and save options](#settings.editor) | P3 | ●○○○○ | done | 35 | 13 |
@@ -277,11 +277,13 @@ A part in another format (HTML, RTF, plain text, another DOCX) that Word convert
 
 ### Compatibility mode and options
 
-`settings.compatibility` · P0 · difficulty 4 · todo
+`settings.compatibility` · P0 · difficulty 4 · done
 
 w:compatSetting compatibilityMode (11 = Word 2003, 12 = 2007, 14 = 2010, 15 = 2013 and later) and the layout options older documents carry; each switches a layout rule of the engine.
 
 **Rendering:** One switch per option in the layout engine, each measured in Word with a generated document that differs only in that option. Mode 15 comes first: it is what current Word writes.
+
+**Office behaviour:** Word lays a document out in its compatibility mode (w:compatSetting compatibilityMode, 12 without one): before mode 15 tables put the first cell's text at the indent, or center their left line on the margin where no indent is given at all (measured with docx/local/c2-tblpos in modes 11 to 15), and widen percentage widths by the outer cells' margins (table.width); before 14 there are no OpenType features and kerning comes from the kern table (run.openType); before 15 the hyphenation zone counts (paragraph.hyphenation). Each layout option was measured alone in Word in modes 15 and 12 (docx/local/compat15-* and compat12-*: 65 options on a document of justified, bordered and spaced paragraphs, lists, tabs, small caps, raised text, a table and Japanese text), and those that changed anything again with what their rules depend on, in modes 15, 14, 12 and 11 (c2- to c7-*); each of them switches its rule in the engine. doNotExpandShiftReturn: justified lines that end with a manual line break are not stretched. doNotUseHTMLParagraphAutoSpacing: the space after a paragraph and the space before the next add up instead of overlapping, and HTML auto spacing takes the paragraphs' own values. doNotLeaveBackslashAlone: a backslash in Japanese text (w:lang w:eastAsia ja) shows as a yen sign unless its font is an East Asian one. balanceSingleByteDoubleByteWidth: spaces beside spaces or East Asian characters are half the font size wide where the run's East Asian font is one, and do not squeeze in justified lines. noExtraLineSpacing: exact lines put their baseline below the font's ascent and line gap, at the line's bottom at most. suppressTopSpacing: the first line on a page has its baseline 9.6 pt below its top where its height is exact, and loses its at-least height less 9.6 pt above its text where it is at least, whatever its font (Arial from 8 to 40 pt, Times New Roman, Calibri). Before Word 2013 only (modes 11 to 14; Word 2013 and later ignore them): mwSmallCaps sets small capitals in the largest Macintosh size (7, 9, 10, 12, 14, 18, 24, 36, 48, 60 or 72 pt) below the text's size, 7 pt at least, in the line of the text's size; noLeading drops the line gap Word adds to the fonts' win metrics (11 pt Arial lines 12.29 pt high); suppressTopSpacingWP makes lines as WordPerfect 5 did: the font size and 2 pt high, fixed- pitch fonts without the 2 pt, the descent below the baseline; noSpaceRaiseLower leaves raised and lowered text out of the line height; splitPgBreakAndParaMark moves the mark after a page break that ends its paragraph to the next page as an empty line; suppressSpacingAtTopOfPage drops the extra of at-least and grid spacing above the first line on a page; allowSpaceOfSameStyleInTable turns contextual spacing off in table cells. Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower), truncateFontHeightsLikeWP6 (glyphs printed one dot smaller, positions within 0.5 %), useWord97LineBreakRules (Latin letters up to 0.15 pt, Japanese lines 0.03 pt higher). Measured and not modeled: useAltKinsokuLineBreakRules breaks two of 23 Japanese test paragraphs elsewhere in mode 12. Without effect on Word's printed output in modes 15 and 12, on the probes' paragraphs, lists, tabs, tables (autofit wider than the page, contextual spacing in cells), Japanese text at 23 widths, two columns, a line grid, footnotes and page tops: alignTablesRowByRow, autoSpaceLikeWord95, autofitToFirstFixedWidthCell, convMailMergeEsc, displayHangulFixedWidth, doNotAutofitConstrainedTables, doNotBreakConstrainedForcedTable, doNotBreakWrappedTables, doNotSnapToGridInCell, doNotSuppressIndentation, doNotSuppressParagraphBorders, doNotUseEastAsianBreakRules, doNotUseIndentAsNumberingTabStop, doNotVertAlignCellWithSp, doNotVertAlignInTxbx, doNotWrapTextWithPunct, footnoteLayoutLikeWW8, forgetLastTabAlignment, growAutofit, layoutRawTableWidth, layoutTableRowsApart, lineWrapLikeWord6, noColumnBalance, noTabHangInd, printBodyTextBeforeHeader, printColBlack, selectFldWithFirstOrLastChar, shapeLayoutLikeWW8, showBreaksInFrames, spaceForUL, spacingInWholePoints, subFontBySize, suppressSpBfAfterPgBrk, swapBordersFacingPages, ulTrailSpace, underlineTabInNumList, useAnsiKerningPairs (kerning without w:kern), useFELayout, useNormalStyleForList, usePrinterMetrics, useSingleBorderforContiguousCells, useWord2002TableStyleRules, wpJustification, wpSpaceWidth, wrapTrailSpaces, adjustLineHeightInTable, applyBreakingRules, cachedColBalance, and the compatSettings enableOpenTypeFeatures, overrideTableStyleFontSizeAndJustification and doNotFlipMirrorIndents set to 0 in mode 15. Measured along the way and fixed in the base layout: a paragraph after a table gets HTML auto spacing; contextual spacing compares a table's first paragraph with the paragraph before it and the paragraph after it with the table's last, works in cells (a cell's first paragraph follows the cell before or the end of the row before), and where it drops a space after, the next space before gives only its excess; a table whose style is not based on the default table style has no cell margins of its own; small caps set spaces at the small size and keep the line of the text's size. Known deviation: Word before 2010 measures Aptos spaces 0.26 pt wider at 11 pt (docx/local/c3-lines12).
 
 **Elements (70):** [`w:adjustLineHeightInTable`](../format/namespaces/w.md#wadjustlineheightintable), [`w:alignTablesRowByRow`](../format/namespaces/w.md#waligntablesrowbyrow), [`w:allowSpaceOfSameStyleInTable`](../format/namespaces/w.md#wallowspaceofsamestyleintable), [`w:applyBreakingRules`](../format/namespaces/w.md#wapplybreakingrules), [`w:autoSpaceLikeWord95`](../format/namespaces/w.md#wautospacelikeword95), [`w:autofitToFirstFixedWidthCell`](../format/namespaces/w.md#wautofittofirstfixedwidthcell), [`w:balanceSingleByteDoubleByteWidth`](../format/namespaces/w.md#wbalancesinglebytedoublebytewidth), [`w:cachedColBalance`](../format/namespaces/w.md#wcachedcolbalance), [`w:compat`](../format/namespaces/w.md#wcompat), [`w:compatSetting`](../format/namespaces/w.md#wcompatsetting), [`w:convMailMergeEsc`](../format/namespaces/w.md#wconvmailmergeesc), [`w:displayHangulFixedWidth`](../format/namespaces/w.md#wdisplayhangulfixedwidth), [`w:doNotAutofitConstrainedTables`](../format/namespaces/w.md#wdonotautofitconstrainedtables), [`w:doNotBreakConstrainedForcedTable`](../format/namespaces/w.md#wdonotbreakconstrainedforcedtable), [`w:doNotBreakWrappedTables`](../format/namespaces/w.md#wdonotbreakwrappedtables), [`w:doNotExpandShiftReturn`](../format/namespaces/w.md#wdonotexpandshiftreturn), [`w:doNotLeaveBackslashAlone`](../format/namespaces/w.md#wdonotleavebackslashalone), [`w:doNotSnapToGridInCell`](../format/namespaces/w.md#wdonotsnaptogridincell), [`w:doNotSuppressIndentation`](../format/namespaces/w.md#wdonotsuppressindentation), [`w:doNotSuppressParagraphBorders`](../format/namespaces/w.md#wdonotsuppressparagraphborders), [`w:doNotUseEastAsianBreakRules`](../format/namespaces/w.md#wdonotuseeastasianbreakrules), [`w:doNotUseHTMLParagraphAutoSpacing`](../format/namespaces/w.md#wdonotusehtmlparagraphautospacing), [`w:doNotUseIndentAsNumberingTabStop`](../format/namespaces/w.md#wdonotuseindentasnumberingtabstop), [`w:doNotVertAlignCellWithSp`](../format/namespaces/w.md#wdonotvertaligncellwithsp), [`w:doNotVertAlignInTxbx`](../format/namespaces/w.md#wdonotvertalignintxbx), [`w:doNotWrapTextWithPunct`](../format/namespaces/w.md#wdonotwraptextwithpunct), [`w:footnoteLayoutLikeWW8`](../format/namespaces/w.md#wfootnotelayoutlikeww8), [`w:forgetLastTabAlignment`](../format/namespaces/w.md#wforgetlasttabalignment), [`w:growAutofit`](../format/namespaces/w.md#wgrowautofit), [`w:hdrShapeDefaults`](../format/namespaces/w.md#whdrshapedefaults), [`w:layoutRawTableWidth`](../format/namespaces/w.md#wlayoutrawtablewidth), [`w:layoutTableRowsApart`](../format/namespaces/w.md#wlayouttablerowsapart), [`w:lineWrapLikeWord6`](../format/namespaces/w.md#wlinewraplikeword6), [`w:mwSmallCaps`](../format/namespaces/w.md#wmwsmallcaps), [`w:noColumnBalance`](../format/namespaces/w.md#wnocolumnbalance), [`w:noExtraLineSpacing`](../format/namespaces/w.md#wnoextralinespacing), [`w:noLeading`](../format/namespaces/w.md#wnoleading), [`w:noSpaceRaiseLower`](../format/namespaces/w.md#wnospaceraiselower), [`w:noTabHangInd`](../format/namespaces/w.md#wnotabhangind), [`w:printBodyTextBeforeHeader`](../format/namespaces/w.md#wprintbodytextbeforeheader), [`w:printColBlack`](../format/namespaces/w.md#wprintcolblack), [`w:relyOnVML`](../format/namespaces/w.md#wrelyonvml), [`w:selectFldWithFirstOrLastChar`](../format/namespaces/w.md#wselectfldwithfirstorlastchar), [`w:shapeDefaults`](../format/namespaces/w.md#wshapedefaults), [`w:shapeLayoutLikeWW8`](../format/namespaces/w.md#wshapelayoutlikeww8), [`w:showBreaksInFrames`](../format/namespaces/w.md#wshowbreaksinframes), [`w:spaceForUL`](../format/namespaces/w.md#wspaceforul), [`w:spacingInWholePoints`](../format/namespaces/w.md#wspacinginwholepoints), [`w:splitPgBreakAndParaMark`](../format/namespaces/w.md#wsplitpgbreakandparamark), [`w:subFontBySize`](../format/namespaces/w.md#wsubfontbysize), [`w:suppressBottomSpacing`](../format/namespaces/w.md#wsuppressbottomspacing), [`w:suppressSpBfAfterPgBrk`](../format/namespaces/w.md#wsuppressspbfafterpgbrk), [`w:suppressSpacingAtTopOfPage`](../format/namespaces/w.md#wsuppressspacingattopofpage), [`w:suppressTopSpacing`](../format/namespaces/w.md#wsuppresstopspacing), [`w:suppressTopSpacingWP`](../format/namespaces/w.md#wsuppresstopspacingwp), [`w:swapBordersFacingPages`](../format/namespaces/w.md#wswapbordersfacingpages), [`w:truncateFontHeightsLikeWP6`](../format/namespaces/w.md#wtruncatefontheightslikewp6), [`w:ulTrailSpace`](../format/namespaces/w.md#wultrailspace), [`w:underlineTabInNumList`](../format/namespaces/w.md#wunderlinetabinnumlist), [`w:useAltKinsokuLineBreakRules`](../format/namespaces/w.md#wusealtkinsokulinebreakrules), [`w:useAnsiKerningPairs`](../format/namespaces/w.md#wuseansikerningpairs), [`w:useFELayout`](../format/namespaces/w.md#wusefelayout), [`w:useNormalStyleForList`](../format/namespaces/w.md#wusenormalstyleforlist), [`w:usePrinterMetrics`](../format/namespaces/w.md#wuseprintermetrics), [`w:useSingleBorderforContiguousCells`](../format/namespaces/w.md#wusesingleborderforcontiguouscells), [`w:useWord2002TableStyleRules`](../format/namespaces/w.md#wuseword2002tablestylerules), [`w:useWord97LineBreakRules`](../format/namespaces/w.md#wuseword97linebreakrules), [`w:wpJustification`](../format/namespaces/w.md#wwpjustification), [`w:wpSpaceWidth`](../format/namespaces/w.md#wwpspacewidth), [`w:wrapTrailSpaces`](../format/namespaces/w.md#wwraptrailspaces)
 
@@ -491,9 +493,9 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Runs, fonts, size and color](#run.basic) | P0 | ●●○○○ | partial | 10 | 21 |
-| [Underline, strike, caps, highlight, borders and shading](#run.decoration) | P0 | ●●○○○ | partial | 13 | 12 |
-| [Character spacing, scale, kerning and position](#run.spacing) | P1 | ●●○○○ | partial | 5 | 4 |
+| [Runs, fonts, size and color](#run.basic) | P0 | ●●○○○ | done | 10 | 21 |
+| [Underline, strike, caps, highlight, borders and shading](#run.decoration) | P0 | ●●○○○ | done | 13 | 12 |
+| [Character spacing, scale, kerning and position](#run.spacing) | P1 | ●●○○○ | done | 5 | 4 |
 | [Hidden text](#run.hidden) | P1 | ●●○○○ | done | 3 | 2 |
 | [Right-to-left and complex scripts](#run.complexScript) | P1 | ●●●●○ | done | 7 | 7 |
 | [Breaks, symbols and special characters](#run.content) | P0 | ●●○○○ | done | 14 | 3 |
@@ -507,11 +509,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Runs, fonts, size and color
 
-`run.basic` · P0 · difficulty 2 · partial
+`run.basic` · P0 · difficulty 2 · done
 
 **Rendering:** Each run picks one of its four fonts (ascii, hAnsi, eastAsia, cs) per character by Unicode range and the w:hint attribute, then is measured and broken into lines by our text engine (engine.lineLayout).
 
-**Office behaviour:** Widths are the fonts' advances shaped by HarfBuzz at the nominal size (not rounded to the 600 dpi device); GPOS kerning only where w:kern is set and the size reaches its threshold, ligatures and contextual alternates only per w14:ligatures and w14:cntxtAlts (measured with docx/generated/text-fonts: positions within 0.1 pt per line without kerning). Theme fonts and theme colors resolve through the theme and the settings' color scheme mapping. Still open: font fallback for missing glyphs per Word's rules.
+**Office behaviour:** Widths are the fonts' advances shaped by HarfBuzz at the nominal size (not rounded to the 600 dpi device); GPOS kerning only where w:kern is set and the size reaches its threshold, ligatures and contextual alternates only per w14:ligatures and w14:cntxtAlts (measured with docx/generated/text-fonts: positions within 0.1 pt per line without kerning). Theme fonts and theme colors resolve through the theme and the settings' color scheme mapping. Characters the run's font lacks fall back per Unicode range as Word's do (Segoe UI Symbol and Emoji, Cambria Math, Nirmala UI, Leelawadee, MS Mincho, …), the line growing with them, whole clusters together (engine.fonts, docx/local/fallback).
 
 **Elements (10):** [`w:b`](../format/namespaces/w.md#wb), [`w:color`](../format/namespaces/w.md#wcolor), [`w:i`](../format/namespaces/w.md#wi), [`w:lang`](../format/namespaces/w.md#wlang), [`w:r`](../format/namespaces/w.md#wr), [`w:rFonts`](../format/namespaces/w.md#wrfonts), [`w:rPr`](../format/namespaces/w.md#wrpr), [`w:rStyle`](../format/namespaces/w.md#wrstyle), [`w:sz`](../format/namespaces/w.md#wsz), [`w:t`](../format/namespaces/w.md#wt)
 
@@ -523,11 +525,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Underline, strike, caps, highlight, borders and shading
 
-`run.decoration` · P0 · difficulty 2 · partial
+`run.decoration` · P0 · difficulty 2 · done
 
 **Rendering:** Drawn with the glyph runs as SVG: 18 underline styles with their own color, single and double strike, highlight and shading behind the line box, run borders merged across adjacent runs with the same border.
 
-**Office behaviour:** Superscript and subscript are 58 % of the size, raised by 33 % or lowered by 8 % of it; small caps are 80 % of the size rounded to half points (12 pt to 9.5 pt); single underline lies at the font's post table underline position and thickness; highlight and shading cover the line's natural box (ascent above the baseline, the rest below), measured with docx/generated/character-formats. Still open: the other underline styles (double lines 0.12 pt apart by 1.08 pt, dotted 1.44 pt dots every 2.88 pt, wavy), emboss, imprint, outline and shadow, which Word draws as several copies of the text, and run borders.
+**Office behaviour:** Measured with docx/local/underlines, ulsizes, ulmixed, supsizes, supsizes2 and raised (Arial, Times New Roman, Calibri, Courier New, Segoe UI, Cambria, Aptos from 8 to 72 pt). Word draws on its 600 dpi device: a single underline from the font's post underline position, as thick as its underline thickness, both in whole 0.12 pt dots; double lines half as thick (rounded up), the first from half the position, the second ending with the single line or 8 dots below the first; thick lines and the heavy patterns fill from the first double line to the second; dotted, dashed, long dashed, dot-dash and dot-dot-dash underlines have fixed lengths whatever the size (1.44/1.44, 3.96/1.92, 7.92/3.96, 3.0/0.96/0.96/0.96, 2.16/0.72 pt) from the underline's start; waves are 2.4 pt long, crests on the page's 2.4 pt grid, 0.24 pt thin (heavy 0.96 pt), within half the double band less 3 dots, wavy double splitting it. Neighbouring runs with the same underline share one, at their lowest baseline, its lines averaging theirs by width; superscripts underline alone at their own baseline; spaces at a line's end stay bare, tabs not; words leaves out spaces. Strikethrough from the OS/2 strikeout position and size, double strikethrough that line moved up and down by its thickness. Emboss: gray (#999999) copy in place, black copy 1.92 pt up-left, the text 0.96 pt up-left; imprint the same down-right; shadow a #C0C0C0 copy a 24th of the size down-right; outline hollow letters stroked 0.14 pt (white over a shadow). Run borders take their lines and space (floored to dots) beside the text in the line, neighbouring runs with one border sharing a frame over the font's height. Super- and subscripts take the font's OS/2 sizes in whole half-points (Calibri 11 pt: 7 pt; Aptos 12 pt: 7 pt), raised by its superscript offset or as far as the line's top allows, lowered by its subscript offset or as far as its bottom allows, in half-points, and make no line higher (within half a point where the line decides). Small caps are 80 % of the size rounded to half points; highlight and shading (patterns mixed over the fill) cover the line's natural box. Known deviations: double and thick underlines of Arial and Courier New below 12 pt stand up to 3 dots higher; Garamond from 12 pt takes other super- and subscript sizes.
 
 **Elements (13):** [`w:bdr`](../format/namespaces/w.md#wbdr), [`w:caps`](../format/namespaces/w.md#wcaps), [`w:dstrike`](../format/namespaces/w.md#wdstrike), [`w:emboss`](../format/namespaces/w.md#wemboss), [`w:highlight`](../format/namespaces/w.md#whighlight), [`w:imprint`](../format/namespaces/w.md#wimprint), [`w:outline`](../format/namespaces/w.md#woutline), [`w:shadow`](../format/namespaces/w.md#wshadow), [`w:shd`](../format/namespaces/w.md#wshd), [`w:smallCaps`](../format/namespaces/w.md#wsmallcaps), [`w:strike`](../format/namespaces/w.md#wstrike), [`w:u`](../format/namespaces/w.md#wu), [`w:vertAlign`](../format/namespaces/w.md#wvertalign)
 
@@ -539,11 +541,11 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 ### Character spacing, scale, kerning and position
 
-`run.spacing` · P1 · difficulty 2 · partial
+`run.spacing` · P1 · difficulty 2 · done
 
 **Rendering:** Applied in measurement; kerning from the font's kern/GPOS data above the w:kern threshold size.
 
-**Office behaviour:** Character spacing is added after every cluster, horizontal scale stretches the advances, raised and lowered text adds what it reaches beyond the line outside the line spacing multiple (text 3 pt up and 3 pt down makes a 1.15 line 6 pt higher, not 6.95 pt; docx/generated/character-formats). Still open: w:fitText.
+**Office behaviour:** Character spacing is added after every cluster, horizontal scale stretches the advances, raised and lowered text adds what it reaches beyond the line outside the line spacing multiple (text 3 pt up and 3 pt down makes a 1.15 line 6 pt higher, not 6.95 pt; docx/generated/character-formats). Fit text (w:fitText): neighboring runs with one id fit together into the width; wider text is scaled horizontally to it, narrower text spreads with equal gaps between its characters, the last ending at the width (docx/local/fittext, fittext2). Known deviation: Word also narrows spread characters, to between (n - 1)/n of their width (very wide fits) and all of it, and quantizes the scale to its 600 dpi font widths; characters here keep their width, each standing within about a point of Word's.
 
 **Elements (5):** [`w:fitText`](../format/namespaces/w.md#wfittext), [`w:kern`](../format/namespaces/w.md#wkern), [`w:position`](../format/namespaces/w.md#wposition), [`w:spacing`](../format/namespaces/w.md#wspacing), [`w:w`](../format/namespaces/w.md#ww)
 
@@ -683,7 +685,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Paragraphs, alignment and indentation](#paragraph.basic) | P0 | ●●●○○ | partial | 6 | 14 |
+| [Paragraphs, alignment and indentation](#paragraph.basic) | P0 | ●●●○○ | done | 6 | 14 |
 | [Line and paragraph spacing](#paragraph.spacing) | P0 | ●●●●○ | done | 2 | 2 |
 | [Keep with next, keep lines together, widow control, page break before](#paragraph.pagination) | P0 | ●●●●○ | done | 4 | 2 |
 | [Paragraph borders and shading](#paragraph.borders) | P1 | ●●●○○ | done | 8 | 35 |
@@ -691,7 +693,7 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 | [Text frames and drop caps](#paragraph.frames) | P2 | ●●●●○ | done | 2 | 1 |
 | [East Asian line breaking and character grid](#paragraph.eastAsian) | P1 | ●●●●○ | partial | 14 | 8 |
 | [Right-to-left paragraphs and text direction](#paragraph.bidi) | P1 | ●●●●○ | done | 2 | 2 |
-| [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | todo | 5 | 2 |
+| [Hyphenation](#paragraph.hyphenation) | P1 | ●●●●○ | done | 5 | 2 |
 | [Outline levels and collapsed headings](#paragraph.outline) | P2 | ●○○○○ | done | 2 | 1 |
 | [HTML divisions](#paragraph.htmlDivs) | P2 | ●●●○○ | done | 11 | 5 |
 
@@ -699,11 +701,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Paragraphs, alignment and indentation
 
-`paragraph.basic` · P0 · difficulty 3 · partial
+`paragraph.basic` · P0 · difficulty 3 · done
 
 **Rendering:** Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left, center, right, justified, distributed and the Arabic kashida variants.
 
-**Office behaviour:** Justified lines may squeeze the spaces between their words by a fifth to take one more word (ten Courier New words fit a column 12 pt narrower than they are, not 13 pt; docx/local/jc-compress); left, centered and right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified paragraph keeps its natural spacing unless it was squeezed. Still open: w:mirrorIndents and the kashida variants.
+**Office behaviour:** Justified lines may squeeze the spaces between their words by a fifth to take one more word (ten Courier New words fit a column 12 pt narrower than they are, not 13 pt; docx/local/jc-compress); left, centered and right aligned lines take no word that does not fit (docx/local/jc-left). The last line of a justified paragraph keeps its natural spacing unless it was squeezed. Mirrored indents (w:mirrorIndents) trade the left and right indent on pages with even numbers, the lines breaking as on odd pages (docx/local/mirror: every line as in Word). Medium and high kashida justification lengthen every Arabic word by two or three kashidas at one joining place, chosen by the Arabic justification priorities (after seen or sad, before a final teh marbuta, heh or dal, before a final alef, tah, lam or kaf, before a medial beh, before a final waw, ain, qaf or feh, before another final letter), and justify with them (docx/local/kashida). Known deviations: low kashida justification widens spaces where Word inserts single kashidas; lines with kashidas break up to a word differently.
 
 **Elements (6):** [`w:ind`](../format/namespaces/w.md#wind), [`w:jc`](../format/namespaces/w.md#wjc), [`w:mirrorIndents`](../format/namespaces/w.md#wmirrorindents), [`w:p`](../format/namespaces/w.md#wp), [`w:pPr`](../format/namespaces/w.md#wppr), [`w:pStyle`](../format/namespaces/w.md#wpstyle)
 
@@ -827,9 +829,11 @@ Glow, shadow, reflection, outline, gradient fill and 3D formats on text.
 
 ### Hyphenation
 
-`paragraph.hyphenation` · P1 · difficulty 4 · todo
+`paragraph.hyphenation` · P1 · difficulty 4 · done
 
 **Rendering:** Automatic hyphenation per language with our own pattern-based hyphenator; which word breaks Word chooses with its proofing dictionaries is measured on generated documents. Soft and non-breaking hyphens are run content (run.content).
+
+**Office behaviour:** Automatic hyphenation (w:autoHyphenation) by Liang's algorithm with the hyph-utf8 patterns of German (reformed spelling) and American and British English, by the language of each word (w:lang, else the document's culture), at least 2 letters before and 2 (German) or 3 (English) after a break; w:suppressAutoHyphens turns it off for a paragraph, w:doNotHyphenateCaps for words in capitals, w:consecutiveHyphenLimit limits the lines in a row that end with a hyphen. As Word breaks (measured with docx/local/hyph-a to -d and hyph-fit, every line as in Word): the word that does not fit breaks at its last place where its part and a hyphen fit; justified lines may squeeze their spaces by 23 % for it (Word takes 21.9 %, not 25.2 %); other lines break so only where they would end more than the hyphenation zone short: 0.25 in from Word 2013 on whatever w:hyphenationZone says (zones of 0, 0.25 and 1 in break alike), w:hyphenationZone in older compatibility modes; a word longer than a line breaks at its last fitting place; a line ending with a hyphen does not end a column or page. Known deviations: Word's own dictionaries may allow other places than the patterns (it leaves un-characteristically whole); other languages are not hyphenated.
 
 **Elements (5):** [`w:autoHyphenation`](../format/namespaces/w.md#wautohyphenation), [`w:consecutiveHyphenLimit`](../format/namespaces/w.md#wconsecutivehyphenlimit), [`w:doNotHyphenateCaps`](../format/namespaces/w.md#wdonothyphenatecaps), [`w:hyphenationZone`](../format/namespaces/w.md#whyphenationzone), [`w:suppressAutoHyphens`](../format/namespaces/w.md#wsuppressautohyphens)
 
@@ -933,11 +937,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | partial | 9 | 7 |
+| [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | done | 9 | 7 |
 | [Columns](#section.columns) | P1 | ●●●●○ | done | 2 | 2 |
 | [Page borders](#section.pageBorders) | P2 | ●●●○○ | partial | 8 | 29 |
 | [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | done | 2 | 1 |
-| [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | partial | 2 | 1 |
+| [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | done | 2 | 1 |
 | [Document grid](#section.docGrid) | P1 | ●●●●○ | done | 1 | 0 |
 | [Printer and book fold settings](#section.printing) | P3 | ●●○○○ | done | 6 | 5 |
 
@@ -945,11 +949,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page size, margins and section breaks
 
-`section.page` · P0 · difficulty 3 · partial
+`section.page` · P0 · difficulty 3 · done
 
 **Rendering:** Every section starts on a new page, an even or odd page (inserting a blank page) or continues on the same page; orientation, margins with gutter, mirrored margins and vertical alignment of the page content.
 
-**Office behaviour:** Sections start on a new page, continue, or start on an odd or even page; odd and even mean the page numbers, not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored margins any section whose first number has the parity of the page before gets a blank page before it (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES. Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the space after its last (docx/generated/page-setup, page 4). Still open: w:formProt (nothing to draw) and page sizes beyond what browsers print.
+**Office behaviour:** Sections start on a new page, continue, or start on an odd or even page; odd and even mean the page numbers, not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored margins any section whose first number has the parity of the page before gets a blank page before it (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES. Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards editing and shows nothing; pages keep their sizes in the HTML whatever a browser can print.
 
 **Elements (9):** [`w:formProt`](../format/namespaces/w.md#wformprot), [`w:gutterAtTop`](../format/namespaces/w.md#wgutterattop), [`w:mirrorMargins`](../format/namespaces/w.md#wmirrormargins), [`w:pgMar`](../format/namespaces/w.md#wpgmar), [`w:pgSz`](../format/namespaces/w.md#wpgsz), [`w:rtlGutter`](../format/namespaces/w.md#wrtlgutter), [`w:sectPr`](../format/namespaces/w.md#wsectpr), [`w:type`](../format/namespaces/w.md#wtype), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -1009,11 +1013,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page numbering
 
-`section.pageNumbers` · P0 · difficulty 2 · partial
+`section.pageNumbers` · P0 · difficulty 2 · done
 
 **Rendering:** Number format and restart per section, chapter numbers from heading styles; PAGE fields read them.
 
-**Office behaviour:** PAGE shows the page number in the section's format (w:pgNumType/@fmt) unless the field's own \* switch names one; w:pgNumType/@start restarts the count at the section's first page (docx/local/hf-parity). Still open: chapter numbers (w:chapStyle, w:chapSep).
+**Office behaviour:** PAGE shows the page number in the section's format (w:pgNumType/@fmt) unless the field's own \* switch names one; w:pgNumType/@start restarts the count at the section's first page (docx/local/hf-parity). With chapter numbers (w:chapStyle) the number of the last heading of that level on the page or before it, in its level's format alone (Chapter B shows B), stands before it with the separator of w:chapSep (hyphen, period, colon, em dash, en dash; docx/local/chapter: a page ending one chapter and starting the next shows the next's).
 
 **Elements (2):** [`w:pgNum`](../format/namespaces/w.md#wpgnum), [`w:pgNumType`](../format/namespaces/w.md#wpgnumtype)
 
@@ -1081,18 +1085,18 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Footnotes](#note.footnotes) | P1 | ●●●●○ | partial | 12 | 8 |
-| [Endnotes](#note.endnotes) | P1 | ●●●○○ | partial | 6 | 3 |
+| [Footnotes](#note.footnotes) | P1 | ●●●●○ | done | 12 | 8 |
+| [Endnotes](#note.endnotes) | P1 | ●●●○○ | done | 6 | 3 |
 
 <a id="note.footnotes"></a>
 
 ### Footnotes
 
-`note.footnotes` · P1 · difficulty 4 · partial
+`note.footnotes` · P1 · difficulty 4 · done
 
 **Rendering:** Footnotes go to the bottom of the page of their reference (or below the text), continue on the next page with the continuation separator when they do not fit, and take space from the body (engine.pagination).
 
-**Office behaviour:** Footnotes are numbered by the order of their references (w:footnotePr numFmt and numStart), their marks drawn in the reference style; a line with references needs room for their notes, else it goes to the next page with them; the notes stand at the bottom of the page, ending at the bottom margin, under the separator (0.6 pt thick, 144 pt long, through the middle of its line; measured with docx/generated/notes, all lines within 0.2 pt). Still open: footnotes continued on the next page, restarts per page or section, notes beneath the text, columns.
+**Office behaviour:** Footnotes are numbered by the order of their references in the format, from the start and with the restarts of the section of the reference (w:footnotePr in w:sectPr, else the settings'; decimal by default, counting on through the sections; eachSect starts each section anew, eachPage each page, numbered from a second layout), their marks drawn in the reference style. A line with references needs room for their notes; where the last note does not fit but shows a line, it stays and the note continues on the next page under the separator, before that page's own notes, the page taking no more text (Word prints its continuation separator as the separator; docx/local/fnpages-a, -d). The notes stand at the bottom of the page, ending at the bottom margin, under the separator (0.6 pt thick, 144 pt long, through the middle of its line); a section whose own w:footnotePr puts them beneath the text has them follow its last line (the settings' alone do not; docx/local/fnpages-f, -g); pages of several columns spread whole notes into columns of their own width, each column taking notes until it holds its share of their height, under one separator at the left, every column of text ending above them (docx/local/fnpages-h). Notes of table cells need room with their row. Measured with docx/generated/notes and docx/local/fnpages-a to -h: all lines within 0.2 pt but the note marks, whose superscripts stand within half a point (run.decoration).
 
 **Elements (12):** [`w15:footnoteColumns`](../format/namespaces/w15.md#w15footnotecolumns), [`w:continuationSeparator`](../format/namespaces/w.md#wcontinuationseparator), [`w:footnote`](../format/namespaces/w.md#wfootnote), [`w:footnotePr`](../format/namespaces/w.md#wfootnotepr), [`w:footnoteRef`](../format/namespaces/w.md#wfootnoteref), [`w:footnoteReference`](../format/namespaces/w.md#wfootnotereference), [`w:footnotes`](../format/namespaces/w.md#wfootnotes), [`w:numFmt`](../format/namespaces/w.md#wnumfmt), [`w:numRestart`](../format/namespaces/w.md#wnumrestart), [`w:numStart`](../format/namespaces/w.md#wnumstart), [`w:pos`](../format/namespaces/w.md#wpos), [`w:separator`](../format/namespaces/w.md#wseparator)
 
@@ -1104,11 +1108,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Endnotes
 
-`note.endnotes` · P1 · difficulty 3 · partial
+`note.endnotes` · P1 · difficulty 3 · done
 
 **Rendering:** Collected at the end of the section or the document.
 
-**Office behaviour:** Endnotes follow the document's last paragraph under their separator, in the order of their references, numbered in lower roman by default (docx/generated/notes). Still open: endnotes at the end of each section.
+**Office behaviour:** Endnotes follow the document's last paragraph under their separator, in the order of their references, or, where the settings put them at the end of sections (w:endnotePr/w:pos sectEnd), follow the text of each section's last paragraph, an empty section-break paragraph taking no line before them, unless the section has w:noEndnote (then the next section takes them). Their marks follow the format and start of the section of the reference, lower roman by default, counting on through the sections (docx/generated/notes, docx/local/fnpages-c, -e).
 
 **Elements (6):** [`w:endnote`](../format/namespaces/w.md#wendnote), [`w:endnotePr`](../format/namespaces/w.md#wendnotepr), [`w:endnoteRef`](../format/namespaces/w.md#wendnoteref), [`w:endnoteReference`](../format/namespaces/w.md#wendnotereference), [`w:endnotes`](../format/namespaces/w.md#wendnotes), [`w:noEndnote`](../format/namespaces/w.md#wnoendnote)
 
@@ -1122,24 +1126,24 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
-| [Rows, cells, merged cells and nested tables](#table.structure) | P0 | ●●●○○ | partial | 18 | 20 |
+| [Rows, cells, merged cells and nested tables](#table.structure) | P0 | ●●●○○ | done | 18 | 20 |
 | [Table and column widths (autofit)](#table.width) | P0 | ●●●●● | done | 16 | 52 |
 | [Row height, splitting and header rows](#table.rows) | P0 | ●●●●○ | done | 3 | 2 |
 | [Table and cell borders and shading](#table.borders) | P0 | ●●●●○ | done | 13 | 51 |
 | [Table styles and conditional formatting](#table.styles) | P0 | ●●●●○ | done | 7 | 10 |
 | [Floating tables](#table.floating) | P1 | ●●●●○ | done | 2 | 2 |
-| [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | partial | 5 | 6 |
+| [Cell alignment, text direction and header cells](#table.cells) | P1 | ●●●○○ | done | 5 | 6 |
 | [Table title and description](#table.accessibility) | P3 | ●○○○○ | done | 2 | 0 |
 
 <a id="table.structure"></a>
 
 ### Rows, cells, merged cells and nested tables
 
-`table.structure` · P0 · difficulty 3 · partial
+`table.structure` · P0 · difficulty 3 · done
 
 **Rendering:** Grid columns, horizontal spans, vertical merges, rows that skip grid columns, right-to-left tables.
 
-**Office behaviour:** Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the first column at the right, the table at the right margin); tables that follow each other directly are joined with one line between (docx/local/tbl-geom, tbl-features). Still open: w:hMerge of old documents.
+**Office behaviour:** Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the first column at the right, the table at the right margin); tables that follow each other directly are joined with one line between (docx/local/tbl-geom, tbl-features). Horizontal merges of old documents (w:hMerge): a cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does not show) and takes the right border of the last (docx/local/hmerge, 99.8 %).
 
 **Elements (18):** [`w:bidiVisual`](../format/namespaces/w.md#wbidivisual), [`w:gridAfter`](../format/namespaces/w.md#wgridafter), [`w:gridBefore`](../format/namespaces/w.md#wgridbefore), [`w:gridCol`](../format/namespaces/w.md#wgridcol), [`w:gridSpan`](../format/namespaces/w.md#wgridspan), [`w:hMerge`](../format/namespaces/w.md#whmerge), [`w:hidden`](../format/namespaces/w.md#whidden), [`w:tbl`](../format/namespaces/w.md#wtbl), [`w:tblGrid`](../format/namespaces/w.md#wtblgrid), [`w:tblPr`](../format/namespaces/w.md#wtblpr), [`w:tblPrEx`](../format/namespaces/w.md#wtblprex), [`w:tc`](../format/namespaces/w.md#wtc), [`w:tcPr`](../format/namespaces/w.md#wtcpr), [`w:tr`](../format/namespaces/w.md#wtr), [`w:trPr`](../format/namespaces/w.md#wtrpr), [`w:vMerge`](../format/namespaces/w.md#wvmerge), [`w:wAfter`](../format/namespaces/w.md#wwafter), [`w:wBefore`](../format/namespaces/w.md#wwbefore)
 
@@ -1231,11 +1235,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Cell alignment, text direction and header cells
 
-`table.cells` · P1 · difficulty 3 · partial
+`table.cells` · P1 · difficulty 3 · done
 
 **Rendering:** Vertical alignment, rotated text in cells, cells whose end mark takes no height.
 
-**Office behaviour:** Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Still open: w:tcFitText.
+**Office behaviour:** Vertical alignment; rotated text (tbRl starts at the cell's top right and runs down, btLr at its bottom left and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Fit text of cells (w:tcFitText) changes nothing in Word's printout: text too long for its cell wraps as in any other cell (docx/local/fittext).
 
 **Elements (5):** [`w:header`](../format/namespaces/w.md#wheader), [`w:headers`](../format/namespaces/w.md#wheaders), [`w:hideMark`](../format/namespaces/w.md#whidemark), [`w:textDirection`](../format/namespaces/w.md#wtextdirection), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -1264,7 +1268,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Simple and complex fields](#field.structure) | P0 | ●●●○○ | done | 5 | 1 |
-| [Field evaluation](#field.evaluation) | P1 | ●●●●○ | partial | 4 | 3 |
+| [Field evaluation](#field.evaluation) | P1 | ●●●●○ | done | 4 | 3 |
 | [Hyperlinks](#field.hyperlinks) | P0 | ●●○○○ | done | 6 | 4 |
 | [Bookmarks](#field.bookmarks) | P1 | ●○○○○ | done | 2 | 2 |
 | [Legacy form fields](#field.forms) | P2 | ●●●○○ | done | 25 | 15 |
@@ -1290,13 +1294,13 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Field evaluation
 
-`field.evaluation` · P1 · difficulty 4 · partial
+`field.evaluation` · P1 · difficulty 4 · done
 
 The 72 field codes of the format catalog (field-codes.md): page and section numbers, references, sequences, dates, document properties, formulas, IF, TOC and index entries.
 
 **Rendering:** Page-dependent fields (PAGE, NUMPAGES, SECTIONPAGES, PAGEREF, STYLEREF in headers) are computed after pagination; others keep their cached result unless Word is measured to update them.
 
-**Office behaviour:** PAGE, NUMPAGES and SECTIONPAGES are computed for every header and footer after pagination, with the number format switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Other fields keep their saved results. Still open: PAGEREF, STYLEREF, SEQ, dates and the rest of the field codes.
+**Office behaviour:** Measured with docx/local/fields, a document whose fields saved wrong results, printed by Word: Word computes PAGE, NUMPAGES, SECTIONPAGES, PAGEREF (the bookmark's page in its section's format; \p above, below or on page n), REF (the bookmark's text, its paragraph's number), STYLEREF (in a header or footer the first paragraph of the style on its page, \l the last, else the last before it; in the body the nearest before the field; a heading level or a built-in heading's name in Word's languages), SEQ (\c, , \h, \s), SECTION, IF (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the language's short date and time) and SAVEDATE (when the document was saved); the page-dependent ones come from a layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved results of the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas, FILENAME, FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Known deviations: texts Word words in its user's language (\p, error messages) are English here; LISTNUM keeps its saved result.
 
 **Elements (4):** [`w:docVar`](../format/namespaces/w.md#wdocvar), [`w:docVars`](../format/namespaces/w.md#wdocvars), [`w:listSeparator`](../format/namespaces/w.md#wlistseparator), [`w:updateFields`](../format/namespaces/w.md#wupdatefields)
 
@@ -1530,7 +1534,7 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 | [Floating objects and their position](#drawing.anchor) | P0 | ●●●●○ | done | 12 | 3 |
 | [Text wrapping around objects](#drawing.wrap) | P0 | ●●●●● | done | 8 | 2 |
 | [Word shapes](#drawing.shapes) | P0 | ●●●○○ | done | 14 | 0 |
-| [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | partial | 7 | 2 |
+| [Text boxes](#drawing.textBoxes) | P0 | ●●●●○ | done | 7 | 2 |
 | [Groups](#drawing.groups) | P1 | ●●●○○ | done | 16 | 0 |
 | [Drawing canvas](#drawing.canvas) | P2 | ●●●○○ | done | 8 | 0 |
 | [Ink](#drawing.ink) | P3 | ●●●●○ | done | 9 | 1 |
@@ -1602,11 +1606,11 @@ How DrawingML objects sit in the text flow; what they draw is the shared Drawing
 
 ### Text boxes
 
-`drawing.textBoxes` · P0 · difficulty 4 · partial
+`drawing.textBoxes` · P0 · difficulty 4 · done
 
 **Rendering:** The content is WordprocessingML laid out by our engine inside the shape's text rectangle (bodyPr insets, anchoring, rotation, autofit); linked text boxes continue the text from one box to the next.
 
-**Office behaviour:** A shape's text box content is laid out like body text in the shape's rectangle less the insets of wps:bodyPr, at its top, middle or bottom (docx/generated/textboxes). Still open: vertical text, linked text boxes, autofit; Word measures the insets from inside the outline (text 0.3 pt further in with a 0.75 pt outline).
+**Office behaviour:** A shape's text box content is laid out like body text in the shape's rectangle less the insets of wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes). Vertical text turns every line a quarter, the insets staying with the shape's sides: vert runs the lines down, the first at the right; vert270 runs them up, the first at the left; mongolianVert runs them down, the first at the left (eaVert and the WordArt kinds as vert). Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96 %). Known deviation: linked boxes of different widths keep the first box's line breaks.
 
 **Elements (7):** [`w:textboxTightWrap`](../format/namespaces/w.md#wtextboxtightwrap), [`w:txbxContent`](../format/namespaces/w.md#wtxbxcontent), [`wp:linkedTxbx`](../format/namespaces/wp.md#wplinkedtxbx), [`wp:txbx`](../format/namespaces/wp.md#wptxbx), [`wp:txbxContent`](../format/namespaces/wp.md#wptxbxcontent), [`wps:linkedTxbx`](../format/namespaces/wps.md#wpslinkedtxbx), [`wps:txbx`](../format/namespaces/wps.md#wpstxbx)
 
@@ -2835,7 +2839,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 | [Trendlines and error bars](#chart.analysis) | P2 | ●●●○○ | done | 16 | 15 |
 | [Shapes drawn on charts](#chart.userShapes) | P3 | ●●○○○ | done | 30 | 15 |
 | [Pivot chart settings](#chart.pivot) | P3 | ●○○○○ | done | 12 | 3 |
-| [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | partial | 118 | 0 |
+| [Office 2016 charts (chartex)](#chart.ex) | P2 | ●●●●○ | done | 118 | 0 |
 
 <a id="chart.part"></a>
 
@@ -3141,13 +3145,13 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Office 2016 charts (chartex)
 
-`chart.ex` · P2 · difficulty 4 · partial
+`chart.ex` · P2 · difficulty 4 · done
 
 Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and region map.
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.ex` (done).
 
-**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.ex (done). Word's AddChart2 refuses Office 2016 charts, so they are untested in Word documents (where Word writes a fallback, it is taken).
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping. An Office 2016 chart (cx:chart) whose alternate content carries a fallback picture, as Office writes one, shows that picture, Office's own rendering of the chart; without one the chart is drawn as pptx chart.ex (done, measured in PowerPoint). Word's automation refuses to insert Office 2016 charts (AddChart2), so no generated Word document has one.
 
 **Elements (118):** [`cx:address`](../format/namespaces/cx.md#cxaddress), [`cx:aggregation`](../format/namespaces/cx.md#cxaggregation), [`cx:artifact`](../format/namespaces/cx.md#cxartifact), [`cx:artifacts`](../format/namespaces/cx.md#cxartifacts), [`cx:axis`](../format/namespaces/cx.md#cxaxis), [`cx:axisId`](../format/namespaces/cx.md#cxaxisid), [`cx:binCount`](../format/namespaces/cx.md#cxbincount), [`cx:binSize`](../format/namespaces/cx.md#cxbinsize), [`cx:binary`](../format/namespaces/cx.md#cxbinary), [`cx:binding`](../format/namespaces/cx.md#cxbinding), [`cx:bindings`](../format/namespaces/cx.md#cxbindings), [`cx:binning`](../format/namespaces/cx.md#cxbinning), [`cx:catScaling`](../format/namespaces/cx.md#cxcatscaling), [`cx:chart`](../format/namespaces/cx.md#cxchart), [`cx:chartData`](../format/namespaces/cx.md#cxchartdata), [`cx:chartSpace`](../format/namespaces/cx.md#cxchartspace), [`cx:clear`](../format/namespaces/cx.md#cxclear), [`cx:clrMapOvr`](../format/namespaces/cx.md#cxclrmapovr), [`cx:copyright`](../format/namespaces/cx.md#cxcopyright), [`cx:copyrights`](../format/namespaces/cx.md#cxcopyrights), [`cx:dashboard`](../format/namespaces/cx.md#cxdashboard), [`cx:data`](../format/namespaces/cx.md#cxdata), [`cx:dataId`](../format/namespaces/cx.md#cxdataid), [`cx:dataLabel`](../format/namespaces/cx.md#cxdatalabel), [`cx:dataLabelHidden`](../format/namespaces/cx.md#cxdatalabelhidden), [`cx:dataLabels`](../format/namespaces/cx.md#cxdatalabels), [`cx:dataPt`](../format/namespaces/cx.md#cxdatapt), [`cx:entityType`](../format/namespaces/cx.md#cxentitytype), [`cx:evenFooter`](../format/namespaces/cx.md#cxevenfooter), [`cx:evenHeader`](../format/namespaces/cx.md#cxevenheader), [`cx:ext`](../format/namespaces/cx.md#cxext), [`cx:extLst`](../format/namespaces/cx.md#cxextlst), [`cx:externalData`](../format/namespaces/cx.md#cxexternaldata), [`cx:extremeValue`](../format/namespaces/cx.md#cxextremevalue), [`cx:f`](../format/namespaces/cx.md#cxf), [`cx:firstFooter`](../format/namespaces/cx.md#cxfirstfooter), [`cx:firstHeader`](../format/namespaces/cx.md#cxfirstheader), [`cx:fmtOvr`](../format/namespaces/cx.md#cxfmtovr), [`cx:fmtOvrs`](../format/namespaces/cx.md#cxfmtovrs), [`cx:geoCache`](../format/namespaces/cx.md#cxgeocache), [`cx:geoChildEntities`](../format/namespaces/cx.md#cxgeochildentities), [`cx:geoChildEntitiesQuery`](../format/namespaces/cx.md#cxgeochildentitiesquery), [`cx:geoChildEntitiesQueryResult`](../format/namespaces/cx.md#cxgeochildentitiesqueryresult), [`cx:geoChildEntitiesQueryResults`](../format/namespaces/cx.md#cxgeochildentitiesqueryresults), [`cx:geoChildTypes`](../format/namespaces/cx.md#cxgeochildtypes), [`cx:geoData`](../format/namespaces/cx.md#cxgeodata), [`cx:geoDataEntityQuery`](../format/namespaces/cx.md#cxgeodataentityquery), [`cx:geoDataEntityQueryResult`](../format/namespaces/cx.md#cxgeodataentityqueryresult), [`cx:geoDataEntityQueryResults`](../format/namespaces/cx.md#cxgeodataentityqueryresults), [`cx:geoDataPointQuery`](../format/namespaces/cx.md#cxgeodatapointquery), [`cx:geoDataPointToEntityQuery`](../format/namespaces/cx.md#cxgeodatapointtoentityquery), [`cx:geoDataPointToEntityQueryResult`](../format/namespaces/cx.md#cxgeodatapointtoentityqueryresult), [`cx:geoDataPointToEntityQueryResults`](../format/namespaces/cx.md#cxgeodatapointtoentityqueryresults), [`cx:geoEntity`](../format/namespaces/cx.md#cxgeoentity), [`cx:geoHierarchyEntity`](../format/namespaces/cx.md#cxgeohierarchyentity), [`cx:geoLocation`](../format/namespaces/cx.md#cxgeolocation), [`cx:geoLocationQuery`](../format/namespaces/cx.md#cxgeolocationquery), [`cx:geoLocationQueryResult`](../format/namespaces/cx.md#cxgeolocationqueryresult), [`cx:geoLocationQueryResults`](../format/namespaces/cx.md#cxgeolocationqueryresults), [`cx:geoLocations`](../format/namespaces/cx.md#cxgeolocations), [`cx:geoParentEntitiesQuery`](../format/namespaces/cx.md#cxgeoparententitiesquery), [`cx:geoParentEntitiesQueryResult`](../format/namespaces/cx.md#cxgeoparententitiesqueryresult), [`cx:geoParentEntitiesQueryResults`](../format/namespaces/cx.md#cxgeoparententitiesqueryresults), [`cx:geoParentEntity`](../format/namespaces/cx.md#cxgeoparententity), [`cx:geoPolygon`](../format/namespaces/cx.md#cxgeopolygon), [`cx:geoPolygons`](../format/namespaces/cx.md#cxgeopolygons), [`cx:geography`](../format/namespaces/cx.md#cxgeography), [`cx:headerFooter`](../format/namespaces/cx.md#cxheaderfooter), [`cx:idx`](../format/namespaces/cx.md#cxidx), [`cx:layoutPr`](../format/namespaces/cx.md#cxlayoutpr), [`cx:legend`](../format/namespaces/cx.md#cxlegend), [`cx:lvl`](../format/namespaces/cx.md#cxlvl), [`cx:majorGridlines`](../format/namespaces/cx.md#cxmajorgridlines), [`cx:majorTickMarks`](../format/namespaces/cx.md#cxmajortickmarks), [`cx:max`](../format/namespaces/cx.md#cxmax), [`cx:maxColor`](../format/namespaces/cx.md#cxmaxcolor), [`cx:mid`](../format/namespaces/cx.md#cxmid), [`cx:midColor`](../format/namespaces/cx.md#cxmidcolor), [`cx:min`](../format/namespaces/cx.md#cxmin), [`cx:minColor`](../format/namespaces/cx.md#cxmincolor), [`cx:minorGridlines`](../format/namespaces/cx.md#cxminorgridlines), [`cx:minorTickMarks`](../format/namespaces/cx.md#cxminortickmarks), [`cx:nf`](../format/namespaces/cx.md#cxnf), [`cx:numDim`](../format/namespaces/cx.md#cxnumdim), [`cx:numFmt`](../format/namespaces/cx.md#cxnumfmt), [`cx:number`](../format/namespaces/cx.md#cxnumber), [`cx:oddFooter`](../format/namespaces/cx.md#cxoddfooter), [`cx:oddHeader`](../format/namespaces/cx.md#cxoddheader), [`cx:offset`](../format/namespaces/cx.md#cxoffset), [`cx:pageMargins`](../format/namespaces/cx.md#cxpagemargins), [`cx:pageSetup`](../format/namespaces/cx.md#cxpagesetup), [`cx:parentLabelLayout`](../format/namespaces/cx.md#cxparentlabellayout), [`cx:percent`](../format/namespaces/cx.md#cxpercent), [`cx:plotArea`](../format/namespaces/cx.md#cxplotarea), [`cx:plotAreaRegion`](../format/namespaces/cx.md#cxplotarearegion), [`cx:plotSurface`](../format/namespaces/cx.md#cxplotsurface), [`cx:printSettings`](../format/namespaces/cx.md#cxprintsettings), [`cx:pt`](../format/namespaces/cx.md#cxpt), [`cx:regionLabelLayout`](../format/namespaces/cx.md#cxregionlabellayout), [`cx:rich`](../format/namespaces/cx.md#cxrich), [`cx:separator`](../format/namespaces/cx.md#cxseparator), [`cx:series`](../format/namespaces/cx.md#cxseries), [`cx:spPr`](../format/namespaces/cx.md#cxsppr), [`cx:statistics`](../format/namespaces/cx.md#cxstatistics), [`cx:strDim`](../format/namespaces/cx.md#cxstrdim), [`cx:subtotals`](../format/namespaces/cx.md#cxsubtotals), [`cx:tickLabels`](../format/namespaces/cx.md#cxticklabels), [`cx:title`](../format/namespaces/cx.md#cxtitle), [`cx:tx`](../format/namespaces/cx.md#cxtx), [`cx:txData`](../format/namespaces/cx.md#cxtxdata), [`cx:txPr`](../format/namespaces/cx.md#cxtxpr), [`cx:units`](../format/namespaces/cx.md#cxunits), [`cx:unitsLabel`](../format/namespaces/cx.md#cxunitslabel), [`cx:v`](../format/namespaces/cx.md#cxv), [`cx:valScaling`](../format/namespaces/cx.md#cxvalscaling), [`cx:valueColorPositions`](../format/namespaces/cx.md#cxvaluecolorpositions), [`cx:valueColors`](../format/namespaces/cx.md#cxvaluecolors), [`cx:visibility`](../format/namespaces/cx.md#cxvisibility)
 
@@ -3338,9 +3342,9 @@ Features without elements of their own that decide the fidelity of everything el
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [HTML output](#engine.output) | P0 | ●●●○○ | done | 0 | 0 |
-| [Pagination](#engine.pagination) | P0 | ●●●●● | partial | 0 | 0 |
-| [Line layout](#engine.lineLayout) | P0 | ●●●●● | partial | 0 | 0 |
-| [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | partial | 0 | 0 |
+| [Pagination](#engine.pagination) | P0 | ●●●●● | done | 0 | 0 |
+| [Line layout](#engine.lineLayout) | P0 | ●●●●● | done | 0 | 0 |
+| [Floating objects and text wrapping](#engine.floats) | P0 | ●●●●● | done | 0 | 0 |
 | [Table layout](#engine.tableLayout) | P0 | ●●●●● | done | 0 | 0 |
 | [Font resolution and fallback](#engine.fonts) | P0 | ●●●●○ | done | 0 | 0 |
 | [Fidelity measurement](#engine.fidelity) | P0 | ●●●○○ | done | 0 | 0 |
@@ -3359,31 +3363,31 @@ Features without elements of their own that decide the fidelity of everything el
 
 ### Pagination
 
-`engine.pagination` · P0 · difficulty 5 · partial
+`engine.pagination` · P0 · difficulty 5 · done
 
 **Rendering:** Page breaking with widow and orphan control, keep with next, keep lines together, page and column breaks, table rows that split or repeat, footnotes that share the page with their references, section breaks of all types and continuous sections with balanced columns.
 
-**Office behaviour:** Pages, columns, sections, headers and footers and the paragraph keep rules match Word's line positions within 0.1 pt on the generated documents (word-lines). Still open: tables, footnotes, floating objects.
+**Office behaviour:** Pages, columns, sections, headers and footers and the paragraph keep rules match Word's line positions within 0.1 pt on the generated documents (word-lines); tables break between rows and split rows at lines, repeat their header rows, keep rows that may not split and rows whose paragraphs keep with the next (docx/local/tblpages: 229 lines, mean 0.06 pt); footnotes share the page with their references and continue on the next (note.footnotes); floating objects stay on their anchor's page (engine.floats).
 
 <a id="engine.lineLayout"></a>
 
 ### Line layout
 
-`engine.lineLayout` · P0 · difficulty 5 · partial
+`engine.lineLayout` · P0 · difficulty 5 · done
 
 **Rendering:** The text engine of pptx `engine.textLayout` (done) extended by Word's rules: line height from the font's metrics and line spacing, tabs, justification, East Asian grid and kinsoku, hyphenation, inline objects, lines shortened by floating objects.
 
-**Office behaviour:** Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between characters; trailing spaces hang past the end. Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same rasterizer, so equal positions give equal pixels. Still open: hyphenation, East Asian grid and compression rules.
+**Office behaviour:** Lines break at UAX #14 opportunities with Word's kinsoku; a word longer than the line breaks between characters; trailing spaces hang past the end; justified lines squeeze spaces by up to a fifth for one more word (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian). Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same rasterizer, so equal positions give equal pixels. Punctuation compression changed nothing in Word's printout (docx/local/ec-*).
 
 <a id="engine.floats"></a>
 
 ### Floating objects and text wrapping
 
-`engine.floats` · P0 · difficulty 5 · partial
+`engine.floats` · P0 · difficulty 5 · done
 
 **Rendering:** Anchored objects, frames and floating tables are placed first, then lines are broken into the space around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
 
-**Office behaviour:** Floating drawings are placed on their anchor's page and the page is laid out again around them until it is stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping, wrap-types). Still open: frames (paragraph.frames) and floating tables (table.floating).
+**Office behaviour:** Floating drawings are placed on their anchor's page and the page is laid out again around them until it is stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping, wrap-types). Text frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in the same exclusions.
 
 <a id="engine.tableLayout"></a>
 
