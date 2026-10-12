@@ -298,7 +298,7 @@ areas:
           (docx/local/breakmark-*); suppressSpacingAtTopOfPage drops the extra of at-least and grid
           spacing above the first line on a page; allowSpaceOfSameStyleInTable turns contextual spacing off in table
           cells; doNotUseIndentAsNumberingTabStop lets the tab after a list number pass the hanging indent for a
-          custom stop after it, before Word 2013 only (docx/local/numtabind-*: modes 14, 12, 11). Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
+          custom stop after it, before Word 2013 only (docx/local/numtabind-*: modes 14, 12, 11). In all modes: doNotBreakWrappedTables keeps floating tables whole (table.floating). Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
           truncateFontHeightsLikeWP6 (glyphs printed one dot smaller, positions within 0.5 %), useWord97LineBreakRules
           (Latin letters up to 0.15 pt, Japanese lines 0.03 pt higher). Measured and not modeled:
           useAltKinsokuLineBreakRules breaks two of 23 Japanese test paragraphs elsewhere in mode 12. Without effect
@@ -306,7 +306,7 @@ areas:
           than the page, contextual spacing in cells), Japanese text at 23 widths, two columns, a line grid, footnotes
           and page tops: alignTablesRowByRow, autoSpaceLikeWord95, autofitToFirstFixedWidthCell, convMailMergeEsc,
           displayHangulFixedWidth, doNotAutofitConstrainedTables, doNotBreakConstrainedForcedTable,
-          doNotBreakWrappedTables, doNotSnapToGridInCell, doNotSuppressIndentation, doNotSuppressParagraphBorders,
+          doNotSnapToGridInCell, doNotSuppressIndentation, doNotSuppressParagraphBorders,
           doNotUseEastAsianBreakRules, doNotVertAlignCellWithSp,
           doNotVertAlignInTxbx, doNotWrapTextWithPunct, footnoteLayoutLikeWW8, forgetLastTabAlignment, growAutofit,
           layoutRawTableWidth, layoutTableRowsApart, lineWrapLikeWord6, noColumnBalance, noTabHangInd,
@@ -1277,7 +1277,8 @@ areas:
         office: >-
           Fixed tables use the grid; autofit tables are recomputed as Word does (measured with docx/local/tbl-autofit
           in Courier New, ten cases within 0.15 pt): each column's minimum (its widest unbreakable content) and
-          maximum (its content unwrapped, at most 22 inches) with the cells' margins, inline pictures with their width;
+          maximum (its content unwrapped, at most 22 inches) with the cells' margins, where narrower than half the
+          line beside them that half (docx/local/cellborder), inline pictures with their width;
           a preferred cell width fixes its column; where the maxima fit the columns take them (stretched in proportion
           to them for a wider table width), where the minima fit each gets its minimum and a share of the rest in
           proportion to max - min; where preferred widths do not fit, columns whose contents need more keep their
@@ -1364,10 +1365,22 @@ areas:
         strategy: Positioned like a frame; text wraps around it (engine.floats).
         office: >-
           Tables with w:tblpPr take no room in the text: their outer left edge stands w:tblpX from their column, the
-          margin or the page (or aligns by w:tblpXSpec), their top w:tblpY below the next paragraph's top, the margin
-          or the page (or aligns by w:tblpYSpec); text wraps around them on both sides, their distances kept free
-          (docx/local/float-tables 91.3 %: a column-aligned table exactly as in Word). Known deviation: a table
-          centered on the margin stands about 5 pt further right in Word.
+          margin or the page (or aligns by w:tblpXSpec), their top w:tblpY below the next paragraph's top above its
+          space before (docx/local/floatanchor-*), the margin or the page (or aligns by w:tblpYSpec); text wraps
+          around them on both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table
+          exactly as in Word). The paragraph after the table adds all its space before to the space after the one
+          before it. A table taller than the rest of the page goes on at the top of the next page's body at the same
+          place across, its rows split at a line of each cell as in the text (in Word 2013 and before alike), header
+          rows repeated, the line below the last row of a page closing each part; the paragraph after it begins at the
+          top of its last page (docx/local/floatsplit-*: anchored to the text exactly as in Word; docx/external/
+          libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages). Before Word 2013 a
+          table anchored to the page or the margin breaks on its first page where it would at the paragraph after it,
+          as many lines down, so past the bottom margin or above it (floatsplit-14p-*, floattable-compat14, docx/
+          external/libreoffice/core-doc/floating-table-dummy-text); w:doNotBreakWrappedTables keeps tables whole
+          (writerfilter-dmapper/do-not-break-wrapped-tables). Known deviations: a
+          table centered on the margin stands about 5 pt further right in Word; tables anchored to the page that do
+          not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after
+          the table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
 
       - id: table.cells
         title: Cell alignment, text direction and header cells

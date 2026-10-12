@@ -369,7 +369,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
         // Column widths: the saved grid for fixed tables, Word's autofit for the others.
         var allowance = rows.Count > 0 ? (Width(vertical[0, 0]) + Width(vertical[0, columns])) / 2 : 0;
-        var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields);
+        var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
+            lines: vertical);
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
             x[k + 1] = x[k] + grid[k];
@@ -835,14 +836,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <param name="allowance">What the outer vertical lines take of the available width.</param>
     /// <param name="gaps">What cell spacing takes of a table's own width (twice the spacing beside every cell).</param>
     /// <param name="widthBase">What a percentage width is of, where not the available width.</param>
+    /// <param name="lines">The vertical lines of the rows (row, grid line), whose halves count where they are wider
+    /// than the cells' margins beside them; none for tables with cell spacing.</param>
     double[] Grid(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
-        double gaps = 0, double? widthBase = null)
+        double gaps = 0, double? widthBase = null, BorderLine?[,]? lines = null)
     {
         var grid = new double[columns];
         for (var k = 0; k < columns; k++)
             grid[k] = k < table.Grid.Count ? table.Grid[k] : 0;
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
-            return Autofit(table, rows, columns, available, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps));
+            return Autofit(table, rows, columns, available, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps), lines);
         if (grid.All(w => w > 0))
             return Scaled(grid);
         // From the first row's cell widths.
@@ -915,11 +918,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// each; tblpic2 V1), and where the contents' minima do not fit either, those shrink (docx/local/tblpic3, table G:
     /// pictures 200, 200 and 100 pt wide in cells preferring 150 pt take 180, 180 and 91 pt).
     /// </summary>
-    double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target)
+    double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target,
+        BorderLine?[,]? lines = null)
     {
         var format = table.Format;
         var space = (target ?? available - allowance);
-        var (min, max, margins, preferred, natural) = Ranges(table, rows, columns, space, fields);
+        var (min, max, margins, preferred, natural) = Ranges(table, rows, columns, space, fields, lines);
         var sumMin = min.Sum();
         var sumMax = max.Sum();
         var widths = new double[columns];
@@ -998,7 +1002,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
     /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
     /// </summary>
-    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields)
+    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
+        BorderLine?[,]? lines = null)
     {
         var format = table.Format;
         var min = new double[columns];
@@ -1006,8 +1011,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var margins = new double[columns];
         var preferred = new double?[columns];
         var spanning = new List<(int From, int To, double Min, double Max, double? Preferred)>();
-        foreach (var row in rows)
+        for (var r = 0; r < rows.Count; r++)
         {
+            var row = rows[r];
             // Widths before and after a row (w:wBefore, w:wAfter) do not widen autofit columns (measured with
             // docx/local/tbl-features).
             foreach (var cell in row.Cells)
@@ -1016,7 +1022,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var c1 = Math.Min(columns, cell.Column + cell.Format.GridSpan);
                 if (cell.MergedAbove)
                     continue;
+                // Margins narrower than half the line beside them give way to it, as in the cell's layout (measured
+                // with docx/local/cellborder: margins 0 or 1 pt beside 3 pt lines leave 1.5 pt, 5.4 pt stay).
                 var m = Margins(row, cell, format);
+                if (lines != null && r < lines.GetLength(0))
+                    m = (m.Top, Math.Max(m.Left, Width(lines[r, c0]) / 2), m.Bottom, Math.Max(m.Right, Width(lines[r, c1]) / 2));
                 var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : Directed(cell, () => CellWidths(cell.Blocks, fields));
                 // A cell that may not wrap (w:noWrap) needs its whole width, unless it prefers a width in points
                 // (measured with docx/local/nowrap: such a cell wraps as if it could, one preferring a percentage not).

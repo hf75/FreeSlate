@@ -287,9 +287,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "margin" => (page!.TextLeft, page.TextWidth),
             _ => (left, width),
         };
-        // The top of the paragraph after the table, where its space before ends.
-        var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
-        var textTop = y + (columnEmpty ? 0 : Gap(next != null ? SpaceBefore(next) : 0));
+        // The top of the paragraph after the table, above its space before (measured with docx/local/floatanchor-*: a
+        // table at tblpY 0 stands right below the space after the paragraph before it, whatever the next one has
+        // before; docx/external/libreoffice/core-text/floattable-heading-split-hyphen).
+        var textTop = y + (columnEmpty ? 0 : pendingAfter);
         var (frameTop, frameHeight) = position.Attr("vertAnchor") switch
         {
             "page" => (0.0, page!.Height),
@@ -314,22 +315,88 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "inline" => textTop,
             _ => frameTop + Twips("tblpY"),
         };
-        // The rows at the table's place (their own offset is the table's indent, which the position replaces).
+        // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
+        // that does not fit below the rows before it on the page goes on at the top of the next page's body, where
+        // the table stands at the same place across, its header rows repeated; the line below the last row of a page
+        // closes the part there, and the paragraph after the table begins at the top of its last page (measured with
+        // docx/external/libreoffice/core-layout/floattable, floattable-3pages, floattable-compat14 and fdo68607).
         var rowTop = top;
-        foreach (var row in box.Rows)
+        var partTop = top;
+        var onPage = 0;
+        RowBox? last = null;
+        var headers = box.Rows.TakeWhile(r => r.Header).ToList();
+        void Draw(RowBox row)
         {
-            var anchors = new List<CellAnchor>();
-            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page!.Lines, page.Shading, page.Borders, page.Strokes, []);
             rowTop += row.Height;
+            last = row;
+            onPage++;
         }
-        if (box.Rows.Count > 0)
+        void Close(RowBox row)
         {
-            foreach (var fill in box.Rows[^1].BottomBorders)
-                page.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
-            page.Strokes.AddRange(box.Rows[^1].BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
+            foreach (var fill in row.BottomBorders)
+                page!.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
+            page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
+            page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), partTop - Twips("topFromText"),
+                x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides"));
         }
-        page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
-            x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides"));
+        var split = false;
+        // Before Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
+        // paragraph after it, as many lines down, and so may reach past the bottom margin or stop above it (measured
+        // with docx/local/floatsplit-14p-*: as many lines as anchored to the text; dummyv0, -v2, -v4: variants of
+        // docx/external/libreoffice/core-doc/floating-table-dummy-text; floattable-compat14); Word 2013 breaks it at
+        // the bottom margin (floattable-2cols, floattable-footer).
+        var shift = position.Attr("vertAnchor") is "page" or "margin" && context.CompatibilityMode < 15 ? textTop - top : 0;
+        double Limit() => Bottom - (split ? 0 : shift);
+        // w:doNotBreakWrappedTables keeps the table whole where it stands (docx/external/libreoffice/
+        // writerfilter-dmapper/do-not-break-wrapped-tables).
+        var breaks = !context.Compat("doNotBreakWrappedTables");
+        foreach (var source in box.Rows)
+        {
+            var row = source;
+            // A row that does not fit splits at a line of each cell as in a table in the text, in Word 2013 and before
+            // alike (also one that may not split where no row of the page is before it), else moves on; a row that
+            // cannot split at the top of a page overflows (measured with docx/local/floatsplit-*: anchored to the text
+            // or the page, its first row of lines or of one long paragraph; docx/external/libreoffice/core-layout/
+            // floattable-rowsplit, floattable-table-row-keep).
+            while (breaks && rowTop + row.Height + row.BottomBorderWidth > Limit() + 0.01)
+            {
+                if (Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, onPage == 0) is { } parts)
+                {
+                    Draw(parts.Head);
+                    row = parts.Tail;
+                }
+                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01))
+                    break;
+                if (last != null)
+                    Close(last);
+                NewPage(section);
+                rowTop = partTop = page!.BodyTop;
+                onPage = 0;
+                split = true;
+                if (!row.Header)
+                {
+                    foreach (var header in headers)
+                        Draw(header);
+                    onPage = 0;
+                }
+            }
+            Draw(row);
+        }
+        if (last != null)
+            Close(last);
+        else
+            page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
+                x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides"));
+        if (split)
+        {
+            y = page!.BodyTop;
+            columnEmpty = true;
+            this.top = Top.Break;
+        }
+        // The paragraph after the table adds all its space before to the space after the paragraph before the table
+        // (docx/local/floatanchor-fb: 12 pt after and 24 pt before make 36).
+        pendingOwnAfter = 0;
     }
 
     /// <summary>
