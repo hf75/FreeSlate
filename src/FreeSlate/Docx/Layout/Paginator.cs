@@ -1550,6 +1550,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NextColumn(natural: true);
             (left, width) = Column(column);
             tableTop = y;
+            // A part that goes on below rows of the page before begins below its frame's top line and the spacing; a
+            // table that moves whole has them in its first row.
+            if (last != null)
+                y += box.ContinuationTop;
         }
         // Footnotes of a row's cells need room below it as a paragraph's do.
         List<string> NotesOf(RowBox row) => row.Lines.SelectMany(l => l.Line.Notes ?? []).ToList();

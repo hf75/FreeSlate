@@ -381,6 +381,13 @@ public sealed class TableBox
     /// stands at the indent (TableLayout), and at a floating table's position (Paginator.PlaceFloatingTable).
     /// </summary>
     public double Inset { get; init; }
+
+    /// <summary>
+    /// The room above the first row of a part of a table with cell spacing that goes on on another page: its frame's
+    /// top line and the cell spacing (measured with docx/local/sb-*: 1.5 pt lines and 3 pt spacing 4.5 pt, no lines
+    /// 2.9 pt, 0.75 pt lines and spacing 1.5 pt; docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459).
+    /// </summary>
+    public double ContinuationTop { get; init; }
 }
 
 /// <summary>
@@ -838,7 +845,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             _ => format.Indent ?? 0,
         };
         var frameTop = Width(outer.Top) + gap;
-        var box = new TableBox { Left = origin0, Width = tableWidth, Frame = outer };
+        var box = new TableBox { Left = origin0, Width = tableWidth, Frame = outer, ContinuationTop = Width(outer.Top) + spacing };
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
