@@ -17821,9 +17821,9 @@
       "title": "Scatter and bubble charts",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.scatterBubble` (done).",
-      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %). Still open: Word's default bubble chart takes its x axis to 3.5 where we stop at 3 (the bubbles' share of the axis).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %) and docx/local/bubble-* (the default bubble chart with its largest bubble moved to x from 1.8 to 2.95 at bubble scales 50, 100 and 200 %). Known deviation: Word lets a bubble near the end of its x axis grow the axis by a major unit a little earlier than the bubble's radius says, by an amount that grows faster than the bubble (at 100 % a 49.8 pt bubble at 2.58 of an axis to 3 in a 392 pt plot area, at 200 % an 81 pt one at 2.3; at 50 % as here); Word's default bubble chart therefore ends at 3.5 where it ends at 3 here, while PowerPoint's, the same chart in a smaller plot area, ends at 3.5 in both.",
       "elements": [
         "c15:bubble3D",
         "c16:bubble3D",

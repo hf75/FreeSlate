@@ -39,12 +39,12 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Effects](#effect) | 11 | 0 | 2 | 6 | 3 | 3.4 | 0 | 11 |
 | [Pictures and media](#picture) | 9 | 2 | 4 | 2 | 1 | 2.2 | 0 | 9 |
 | [DrawingML text (charts, SmartArt, WordArt)](#text) | 18 | 8 | 4 | 5 | 1 | 3.3 | 0 | 18 |
-| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 1 | 19 |
+| [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 0 | 20 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **10** | **184** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **9** | **185** |
 
 <a id="package"></a>
 
@@ -2826,7 +2826,7 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 | [Line charts](#chart.line) | P1 | ●●●○○ | done | 13 | 4 |
 | [Pie and doughnut charts](#chart.pie) | P1 | ●●●○○ | done | 16 | 11 |
 | [Area charts](#chart.area) | P1 | ●●●○○ | done | 2 | 1 |
-| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | partial | 9 | 3 |
+| [Scatter and bubble charts](#chart.scatterBubble) | P1 | ●●●○○ | done | 9 | 3 |
 | [Radar charts](#chart.radar) | P2 | ●●●○○ | done | 2 | 2 |
 | [Stock charts](#chart.stock) | P2 | ●●●○○ | done | 1 | 0 |
 | [Surface charts](#chart.surface) | P3 | ●●●●○ | done | 5 | 3 |
@@ -2941,11 +2941,11 @@ a:bodyPr/@vert (vert, vert270, eaVert, mongolianVert, wordArtVert), @upright and
 
 ### Scatter and bubble charts
 
-`chart.scatterBubble` · P1 · difficulty 3 · partial
+`chart.scatterBubble` · P1 · difficulty 3 · done
 
 **Rendering:** Shared DrawingML renderer, as pptx `chart.scatterBubble` (done).
 
-**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %). Still open: Word's default bubble chart takes its x axis to 3.5 where we stop at 3 (the bubbles' share of the axis).
+**Office behaviour:** Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx chart.scatterBubble (done). Verified against Word with docx/generated/charts, charts-more, charts-more2 and charts-more3 (88 to 98 %) and docx/local/bubble-* (the default bubble chart with its largest bubble moved to x from 1.8 to 2.95 at bubble scales 50, 100 and 200 %). Known deviation: Word lets a bubble near the end of its x axis grow the axis by a major unit a little earlier than the bubble's radius says, by an amount that grows faster than the bubble (at 100 % a 49.8 pt bubble at 2.58 of an axis to 3 in a 392 pt plot area, at 200 % an 81 pt one at 2.3; at 50 % as here); Word's default bubble chart therefore ends at 3.5 where it ends at 3 here, while PowerPoint's, the same chart in a smaller plot area, ends at 3.5 in both.
 
 **Elements (9):** [`c15:bubble3D`](../format/namespaces/c15.md#c15bubble3d), [`c16:bubble3D`](../format/namespaces/c16.md#c16bubble3d), [`c:bubble3D`](../format/namespaces/c.md#cbubble3d), [`c:bubbleChart`](../format/namespaces/c.md#cbubblechart), [`c:bubbleScale`](../format/namespaces/c.md#cbubblescale), [`c:scatterChart`](../format/namespaces/c.md#cscatterchart), [`c:scatterStyle`](../format/namespaces/c.md#cscatterstyle), [`c:showNegBubbles`](../format/namespaces/c.md#cshownegbubbles), [`c:sizeRepresents`](../format/namespaces/c.md#csizerepresents)
 
