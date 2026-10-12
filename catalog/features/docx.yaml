@@ -367,7 +367,9 @@ areas:
         status: done
         strategy: Not rendered.
         office: >-
-          Editor settings (attached template, captions, automatic formatting, scripts) draw nothing.
+          Editor settings (attached template, captions, automatic formatting, scripts) draw nothing, except
+          w:linkStyles without an attached template: Word updates the styles from its Normal template on opening
+          (style.defaults; docx/local/lsk-1; with a template attached that cannot be found nothing changes, lsk-2).
 
       - id: settings.web
         title: Web page settings and frames
@@ -439,7 +441,12 @@ areas:
           empty, 94.3 %). A document without a styles part gets the defaults of Word's Normal template: Aptos 12 pt,
           complex scripts in Arial, kerning, standard and contextual ligatures, 8 pt after paragraphs, 1.16 lines
           (docx/local/defaults-none, 91.7 %); so does each of w:rPrDefault and w:pPrDefault a styles part leaves out,
-          also in an empty w:docDefaults (docx/local/nodefaults-none, -empty, -run, -para).
+          also in an empty w:docDefaults (docx/local/nodefaults-none, -empty, -run, -para). A document whose styles
+          update from the template (w:linkStyles) without one attached takes the template's defaults in the theme's
+          minor fonts and its Normal style, which states nothing; its other styles stay, based on them (docx/local/
+          lsk-1: Arial 10 pt single in Normal turns to 12 pt at 1.16 lines, a heading keeps 16 pt bold;
+          docx/external/libreoffice/extras-ooxmlexport/tdf61000). Theme fonts without a theme part are Word's own
+          since 2023, Aptos Display and Aptos (lsk-1).
 
       - id: style.latent
         title: Latent styles

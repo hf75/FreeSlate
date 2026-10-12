@@ -49,9 +49,10 @@ public sealed class DocumentContext : IDisposable
                        : "No main document part (officeDocument relationship) in the package.");
         Document = Load(MainPart);
         JoinBodies(Document);
-        Styles = new StyleSheet(Related("styles"));
         Settings = Related("settings")?.Root;
-        Theme = Theme.Load(Related("theme"));
+        // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
+        Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
+        Theme = Related("theme") is { } theme ? Theme.Load(theme) : Theme.WordDefault();
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;

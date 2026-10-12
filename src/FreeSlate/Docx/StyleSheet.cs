@@ -58,7 +58,23 @@ public sealed class StyleSheet
     static readonly XElement TemplateParagraph = new(Wml.W + "pPr",
         new XElement(Wml.W + "spacing", new XAttribute(Wml.W + "after", "160"), new XAttribute(Wml.W + "line", "278"), new XAttribute(Wml.W + "lineRule", "auto")));
 
-    public StyleSheet(XDocument? document)
+    /// <summary>The Normal template's document defaults as its styles part states them: the theme's minor fonts.</summary>
+    static readonly XElement TemplateThemeRun = new(Wml.W + "rPr",
+        new XElement(Wml.W + "rFonts", new XAttribute(Wml.W + "asciiTheme", "minorHAnsi"), new XAttribute(Wml.W + "eastAsiaTheme", "minorHAnsi"),
+            new XAttribute(Wml.W + "hAnsiTheme", "minorHAnsi"), new XAttribute(Wml.W + "cstheme", "minorBidi")),
+        new XElement(Wml.W + "kern", new XAttribute(Wml.W + "val", "2")),
+        new XElement(Wml.W + "sz", new XAttribute(Wml.W + "val", "24")),
+        new XElement(Wml.W + "szCs", new XAttribute(Wml.W + "val", "24")),
+        new XElement(Wml.W14 + "ligatures", new XAttribute(Wml.W14 + "val", "standardContextual")));
+
+    /// <param name="fromTemplate">
+    /// Whether the styles update from the template on opening (w:linkStyles) without one attached: Word takes its
+    /// Normal template's document defaults and its Normal style, which states nothing, the document's other styles
+    /// based on them (measured with docx/local/lsk-1: Arial 10 pt single in Normal turns to the theme font at 12 pt,
+    /// 1.16 lines and 8 pt after, a heading keeps its 16 pt bold; lsk-2: with a template attached that cannot be found
+    /// nothing changes; docx/external/libreoffice/extras-ooxmlexport/tdf61000).
+    /// </param>
+    public StyleSheet(XDocument? document, bool fromTemplate = false)
     {
         var root = document?.Root;
         if (root == null)
@@ -68,8 +84,16 @@ public sealed class StyleSheet
             return;
         }
         var defaults = root.Child("docDefaults");
-        DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateRun);
-        DefaultParagraph.Apply(defaults.Child("pPrDefault") is { } paragraphDefault ? paragraphDefault.Child("pPr") : TemplateParagraph);
+        if (fromTemplate)
+        {
+            DefaultRun.Apply(TemplateThemeRun);
+            DefaultParagraph.Apply(TemplateParagraph);
+        }
+        else
+        {
+            DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateRun);
+            DefaultParagraph.Apply(defaults.Child("pPrDefault") is { } paragraphDefault ? paragraphDefault.Child("pPr") : TemplateParagraph);
+        }
         foreach (var e in root.Elements(Wml.W + "style"))
         {
             var id = e.Attr("styleId");
@@ -93,6 +117,14 @@ public sealed class StyleSheet
             // cells keep 5.4 pt margins left and right; a style with its id and another name is used as it is).
             if (style.Type == "table" && string.Equals(style.Name, "Normal Table", StringComparison.OrdinalIgnoreCase))
                 style = BuiltInNormalTable(id, style.Default);
+            // The template's Normal style states nothing.
+            if (fromTemplate && style.Type == "paragraph" && string.Equals(style.Name, "Normal", StringComparison.OrdinalIgnoreCase))
+                style = new StyleDefinition
+                {
+                    Id = id, Type = "paragraph", Name = style.Name, Next = style.Next, Default = style.Default,
+                    Element = new XElement(Wml.W + "style", new XAttribute(Wml.W + "type", "paragraph"), new XAttribute(Wml.W + "styleId", id),
+                        new XElement(Wml.W + "name", new XAttribute(Wml.W + "val", style.Name!))),
+                };
             styles.TryAdd(id, style);
             if (style.Default && style.Type == "paragraph")
                 DefaultParagraphStyle = id;

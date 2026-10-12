@@ -17,6 +17,12 @@ public sealed class Theme
     public List<XElement> EffectStyles { get; } = [];
     public List<XElement> BackgroundFillStyles { get; } = [];
 
+    /// <summary>
+    /// The theme Word gives a document without a theme part, its own since 2023: Aptos Display and Aptos (measured with
+    /// docx/local/lsk-1: theme fonts without a theme part show in Aptos).
+    /// </summary>
+    public static Theme WordDefault() => new() { MajorLatin = "Aptos Display", MinorLatin = "Aptos" };
+
     /// <param name="part">The theme's part: pictures of its fill styles are relationships of it.</param>
     public static Theme Load(XDocument? document, string? part = null)
     {
