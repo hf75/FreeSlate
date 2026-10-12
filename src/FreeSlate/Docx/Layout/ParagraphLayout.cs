@@ -434,6 +434,25 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
+    /// <summary>Whether a paragraph's runs or mark have an East Asian language for East Asian text (w:lang w:eastAsia).</summary>
+    static bool HasEastAsianLanguage(ParagraphBlock paragraph)
+    {
+        static bool Asian(string? tag) => tag != null && (tag.StartsWith("ja", StringComparison.OrdinalIgnoreCase)
+            || tag.StartsWith("zh", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("ko", StringComparison.OrdinalIgnoreCase));
+        return Asian(paragraph.MarkFormat.LanguageEastAsia) || paragraph.Content.Any(i => Asian(i.Format.LanguageEastAsia));
+    }
+
+    /// <summary>Whether a paragraph's text has East Asian characters.</summary>
+    static bool HasEastAsian(string text)
+    {
+        foreach (var c in text)
+        {
+            if (c >= 0x80 && Text.Scripts.Of(c) is { Slot: Text.FontSlot.EastAsian })
+                return true;
+        }
+        return false;
+    }
+
     /// <summary>The East Asian language of a paragraph's text, for its kinsoku: that of its first East Asian character.</summary>
     static string? EastAsianLanguage(string text, List<RunStyle> charStyles)
     {
@@ -794,9 +813,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             BreakWords(text, breaks, rules);
         // Punctuation that may not begin a line may hang past its end instead, where the paragraph lets it
         // (w:overflowPunct, on by default): before Word 2013 always, from then on in justified paragraphs (measured with
-        // docx/local/kinsoku-chars12-*, kinsoku-chars14-ja-JP and kinsoku-chars15-*-both, distribute).
+        // docx/local/kinsoku-chars12-*, kinsoku-chars14-ja-JP and kinsoku-chars15-*-both, distribute), where the paragraph
+        // has East Asian text or its runs an East Asian language for it (docx/local/hangcomma-*: a comma after Latin words
+        // goes down with its word, with a Japanese word in the paragraph it hangs; docx/external/poi/bug65649's Russian
+        // footnotes; c3-lines12-* with ja-JP and docx/external/libreoffice/core-ooxml-pass/fdo63164-1 with zh-CN: after
+        // Latin words; docx/external/powertools/DB007-Abstract, openxml-sdk/May_12_04 with en-US: not).
         var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
-            && (context.CompatibilityMode < 15 || Justified(format)) ? rules.Hanging : "";
+            && (context.CompatibilityMode < 15 || Justified(format)) && (HasEastAsian(text) || HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
         var hangAt = -1;
         var hyphens = Hyphenation(text, charStyles, format);
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;

@@ -887,7 +887,10 @@ areas:
           East Asian punctuation and full-width forms break like ideographs (a line may end between 。 and 「, ea-
           adjust). Punctuation that may not begin a line hangs past the end instead where w:overflowPunct lets it (on
           by default): before Word 2013 in every paragraph, from then on in justified ones; Japanese ,.’”、。」』】），．］｝｡､,
-          Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width. w:wordWrap off
+          Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width. Only paragraphs
+          with East Asian text or an East Asian language for it hang punctuation: a comma after Latin words goes down
+          with its word (hangcomma-*; docx/external/poi/bug65649), with ja-JP or zh-CN as the East Asian language it
+          hangs (c3-lines12-*; docx/external/libreoffice/core-ooxml-pass/fdo63164-1). w:wordWrap off
           breaks Latin words anywhere (ea-opts). w:topLinePunct sets an East Asian opening bracket that begins a line
           half its width further left (toplinepunct15/12). In kerned runs (w:kern) an East Asian comma, period or
           closing bracket before another one or an opening bracket loses half its width unless w:noPunctuationKerning
