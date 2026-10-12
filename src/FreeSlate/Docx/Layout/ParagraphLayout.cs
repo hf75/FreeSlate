@@ -818,9 +818,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // has East Asian text or its runs an East Asian language for it (docx/local/hangcomma-*: a comma after Latin words
         // goes down with its word, with a Japanese word in the paragraph it hangs; docx/external/poi/bug65649's Russian
         // footnotes; c3-lines12-* with ja-JP and docx/external/libreoffice/core-ooxml-pass/fdo63164-1 with zh-CN: after
-        // Latin words; docx/external/powertools/DB007-Abstract, openxml-sdk/May_12_04 with en-US: not).
+        // Latin words; docx/external/powertools/DB007-Abstract, openxml-sdk/May_12_04 with en-US: not); from Word 2013 on
+        // the language alone does not do (docx/local/hangcomma-h4, -h7: zh-CN and ja-JP for East Asian text, no hanging
+        // comma; docx/external/libreoffice/extras-ooxmlexport/tdf163894).
         var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
-            && (context.CompatibilityMode < 15 || Justified(format)) && (HasEastAsian(text) || HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
+            && (context.CompatibilityMode < 15 || Justified(format))
+            && (HasEastAsian(text) || context.CompatibilityMode < 15 && HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
         var hangAt = -1;
         var hyphens = Hyphenation(text, charStyles, format);
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;
