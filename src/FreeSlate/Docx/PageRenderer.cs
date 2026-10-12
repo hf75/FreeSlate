@@ -278,11 +278,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (rotation != 0)
             svg.Append($"<g transform=\"rotate({Units.Css(rotation)} {Px(x + w / 2)} {Px(y + h / 2)})\">");
         var selection = new StringBuilder();
+        // Pictures and shapes in the box's lines, drawn over it (an unturned box's).
+        var inner = new List<PlacedDrawing>();
         if (vert == null)
         {
             var (left, top) = (x + l, y + t + offset);
             Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
-            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, []);
+            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, rotation == 0 ? inner : []);
         }
         else
         {
@@ -297,7 +299,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         svg.Append(selection);
         if (rotation != 0)
             svg.Append("</g>");
-        return svg.Append("</svg>").ToString();
+        svg.Append("</svg>");
+        foreach (var drawing in inner)
+            svg.Append(Drawing(drawing, page));
+        return svg.ToString();
     }
 
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front)

@@ -654,6 +654,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     container.Add(document.Root.Child("body")?.Elements().Where(x => x.Name != Wml.W + "sectPr").Select(x => new XElement(x)));
                 }
             }
+            else if (type.Contains("rfc822") || type.Contains("mhtml") || type.StartsWith("multipart/", StringComparison.Ordinal))
+            {
+                // A web archive: its HTML (the pictures it carries are left out).
+                if (Mhtml.Html(bytes) is { } archived)
+                    container.Add(HtmlImport.Convert(archived));
+            }
             else if (type.Contains("html"))
                 container.Add(HtmlImport.Convert(Text()));
             else if (type.Contains("rtf"))

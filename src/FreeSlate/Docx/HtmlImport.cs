@@ -341,7 +341,10 @@ public static class HtmlImport
     /// altchunk again): cells a pixel (15 twips) of cell spacing apart, 0 with cellspacing="0"; with a border an
     /// outset frame of that many pixels and outset cells of one; the padding a pixel unless cellpadding names
     /// another; a width in pixels; cells vertically centered and sized by their content, their paragraphs in the
-    /// document's own spacing and font; header cells bold and centered.
+    /// document's own spacing and font; header cells bold and centered. CSS borders (border: 1px solid black) become
+    /// single lines of that width on the table's sides and the cells, collapsed borders (border-collapse: collapse)
+    /// leave out the cell spacing, and a cell's CSS width becomes its width and its column's (measured by letting
+    /// Word save docx/external/tika/testAltChunkHTML).
     /// </summary>
     static XElement Table(Node table, Run run)
     {
@@ -350,27 +353,47 @@ public static class HtmlImport
         static int Pixels(Node node, string attribute, int fallback) =>
             node.Attributes.TryGetValue(attribute, out var v) && int.TryParse(v.Trim().TrimEnd('x', 'p'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n >= 0 ? n : fallback;
         var border = Pixels(table, "border", table.Attributes.ContainsKey("border") ? 1 : 0);
-        var spacing = Pixels(table, "cellspacing", 1) * 15;
+        var collapsed = Style(table, "border-collapse") == "collapse";
+        var spacing = collapsed ? 0 : Pixels(table, "cellspacing", 1) * 15;
+        var tableLine = CssBorder(table);
         var padding = Pixels(table, "cellpadding", 1) * 15;
         var width = table.Attributes.TryGetValue("width", out var w) && !w.Contains('%') ? Pixels(table, "width", 0) * 15 : 0;
         XElement Side(string side, int eighths) =>
             new(W + side, new XAttribute(W + "val", "outset"), new XAttribute(W + "sz", eighths.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "space", "0"), new XAttribute(W + "color", "auto"));
         var sides = new[] { "top", "left", "bottom", "right" };
+        XElement Line(string side, (string Value, int Eighths, string Color) css) =>
+            new(W + side, new XAttribute(W + "val", css.Value), new XAttribute(W + "sz", css.Eighths.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "space", "0"), new XAttribute(W + "color", css.Color));
         var tblPr = new XElement(W + "tblPr",
             new XElement(W + "tblW", new XAttribute(W + "w", width.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", width > 0 ? "dxa" : "auto")),
-            new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa")),
-            border > 0 ? new XElement(W + "tblBorders", sides.Select(side => Side(side, border * 6))) : null,
+            collapsed ? null : new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa")),
+            tableLine is { } framed ? new XElement(W + "tblBorders", sides.Select(side => Line(side, framed)))
+                : border > 0 ? new XElement(W + "tblBorders", sides.Select(side => Side(side, border * 6))) : null,
             new XElement(W + "tblCellMar", sides.Select(side => new XElement(W + side, new XAttribute(W + "w", padding.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa")))));
         var tbl = new XElement(W + "tbl", tblPr);
-        tbl.Add(new XElement(W + "tblGrid", Enumerable.Range(0, columns).Select(_ => new XElement(W + "gridCol"))));
+        // Columns as wide as a cell's CSS width says (in pixels), the first such cell of each.
+        var widths = new int[columns];
         foreach (var row in rows)
         {
-            var tr = new XElement(W + "tr", new XElement(W + "trPr", new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa"))));
+            var k = 0;
             foreach (var cell in row.Children.OfType<Node>().Where(c => c.Name is "td" or "th"))
             {
+                if (k < columns && widths[k] == 0 && CssPixels(cell, "width") is { } px)
+                    widths[k] = px * 15;
+                k++;
+            }
+        }
+        tbl.Add(new XElement(W + "tblGrid", widths.Select(w => w > 0 ? new XElement(W + "gridCol", new XAttribute(W + "w", w.ToString(CultureInfo.InvariantCulture))) : new XElement(W + "gridCol"))));
+        foreach (var row in rows)
+        {
+            var tr = new XElement(W + "tr", collapsed ? null : new XElement(W + "trPr", new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa"))));
+            foreach (var cell in row.Children.OfType<Node>().Where(c => c.Name is "td" or "th"))
+            {
+                var cellWidth = CssPixels(cell, "width") is { } cellPx ? cellPx * 15 : 0;
+                var cellLine = CssBorder(cell);
                 var tc = new XElement(W + "tc", new XElement(W + "tcPr",
-                    new XElement(W + "tcW", new XAttribute(W + "w", "0"), new XAttribute(W + "type", "auto")),
-                    border > 0 ? new XElement(W + "tcBorders", sides.Select(side => Side(side, 6))) : null,
+                    new XElement(W + "tcW", new XAttribute(W + "w", cellWidth.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", cellWidth > 0 ? "dxa" : "auto")),
+                    cellLine is { } lined ? new XElement(W + "tcBorders", sides.Select(side => Line(side, lined)))
+                        : border > 0 ? new XElement(W + "tcBorders", sides.Select(side => Side(side, 6))) : null,
                     new XElement(W + "vAlign", new XAttribute(W + "val", "center"))));
                 var blocks = new List<XElement>();
                 var styled = Styled(cell, run);
@@ -419,6 +442,54 @@ public static class HtmlImport
             }
         }
         return sheet != null && sheet.TryGetValue(node.Name, out var rules) && rules.TryGetValue(property, out var value) ? value : null;
+    }
+
+    /// <summary>A CSS length in whole pixels (width: 300px), or null.</summary>
+    static int? CssPixels(Node node, string property) =>
+        Style(node, property) is { } value && Regex.Match(value, "^([0-9.]+)\\s*px$") is { Success: true } m
+        && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var px) && px > 0 ? (int)Math.Round(px) : null;
+
+    /// <summary>
+    /// A CSS border (border: 1px solid black) as a Word line: its kind, its width in eighths of a point (a pixel is
+    /// six) and its color; null without one or for none and hidden.
+    /// </summary>
+    static (string Value, int Eighths, string Color)? CssBorder(Node node)
+    {
+        if (Style(node, "border") is not { } value)
+            return null;
+        string kind = "single", color = "auto";
+        var eighths = 6;
+        var seen = false;
+        foreach (var token in Regex.Split(value.Trim(), "\\s+(?![^(]*\\))"))
+        {
+            switch (token)
+            {
+                case "none" or "hidden":
+                    return null;
+                case "solid":
+                    (kind, seen) = ("single", true);
+                    break;
+                case "dashed" or "dotted" or "double":
+                    (kind, seen) = (token, true);
+                    break;
+                case "thin":
+                    eighths = 6;
+                    break;
+                case "medium":
+                    eighths = 18;
+                    break;
+                case "thick":
+                    eighths = 30;
+                    break;
+                default:
+                    if (Regex.Match(token, "^([0-9.]+)(px|pt)$") is { Success: true } m && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var n))
+                        eighths = (int)Math.Round(m.Groups[2].Value == "px" ? n * 6 : n * 8);
+                    else if (Color(token) is { } c)
+                        color = c;
+                    break;
+            }
+        }
+        return seen && eighths > 0 ? (kind, eighths, color) : null;
     }
 
     /// <summary>A CSS color as six hex digits: #rgb, #rrggbb, rgb() or a basic color name.</summary>

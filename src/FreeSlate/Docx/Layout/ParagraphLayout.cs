@@ -1722,6 +1722,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
         var any = false;
         var drawings = false;
+        var pictures = false;
         // Spaces between drawings do not make the line taller (measured with docx/local/vml-inline2: two 40 pt shapes
         // or pictures with spaces between them make the line as high as one alone); beside text they count.
         static bool Blank(Piece p) => p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Ruby == null && p.Combined == null && p.Across == null && string.IsNullOrWhiteSpace(p.Text);
@@ -1776,6 +1777,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 above = Math.Max(above, drawing.Box.Height);
                 raised = Math.Max(raised, drawing.Box.Height);
                 drawings = true;
+                pictures = true;
                 continue;
             }
             // Text set across the line reaches as far beyond its middle as it is long; the line's spacing is its font's.
@@ -1809,9 +1811,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         if (drawings && !any)
         {
-            // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra.
+            // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra; pictures
+            // smaller than the mark's line still take its whole height (measured with docx/local/smallpic-single and
+            // -115: pictures of 2 to 12 pt beside an 11 pt Calibri mark stand 13.43 pt high, larger ones their own).
             var (a, b) = Metrics(mark, Vertical);
             largest = a + b;
+            if (pictures)
+            {
+                above = Math.Max(above, a + b);
+                raised = Math.Max(raised, a + b);
+            }
             any = true;
         }
         else if (any && below == 0 && largest == 0)
