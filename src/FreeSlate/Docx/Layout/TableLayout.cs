@@ -735,14 +735,47 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 yield return (2 * w, w);
                 yield return (4 * w, w);
                 break;
-            case "thinThickSmallGap" or "thickThinSmallGap" or "thinThickMediumGap" or "thickThinMediumGap" or "thinThickLargeGap" or "thickThinLargeGap":
+            // Top to bottom and left to right on every side, as Word draws them (measured with docx/local/
+            // tblcompound-24, -12, as page borders): thin lines and small gaps 0.75 pt, medium ones half the width,
+            // large gaps the width with 1.5 pt lines beside them.
+            case "thinThickSmallGap":
                 yield return (0, w);
-                yield return (line.Total - 0.75, 0.75);
+                yield return (w + 0.75, 0.75);
                 break;
-            case "thinThickThinSmallGap" or "thinThickThinMediumGap" or "thinThickThinLargeGap":
+            case "thickThinSmallGap":
                 yield return (0, 0.75);
                 yield return (1.5, w);
-                yield return (line.Total - 0.75, 0.75);
+                break;
+            case "thinThickMediumGap":
+                yield return (0, w);
+                yield return (1.5 * w, w / 2);
+                break;
+            case "thickThinMediumGap":
+                yield return (0, w / 2);
+                yield return (w, w);
+                break;
+            case "thinThickLargeGap":
+                yield return (0, 1.5);
+                yield return (1.5 + w, 0.75);
+                break;
+            case "thickThinLargeGap":
+                yield return (0, 0.75);
+                yield return (0.75 + w, 1.5);
+                break;
+            case "thinThickThinSmallGap":
+                yield return (0, 0.75);
+                yield return (1.5, w);
+                yield return (w + 2.25, 0.75);
+                break;
+            case "thinThickThinMediumGap":
+                yield return (0, w / 2);
+                yield return (w, w);
+                yield return (2.5 * w, w / 2);
+                break;
+            case "thinThickThinLargeGap":
+                yield return (0, 0.75);
+                yield return (0.75 + w, 1.5);
+                yield return (2.25 + 2 * w, 0.75);
                 break;
             default:
                 yield return (0, w);

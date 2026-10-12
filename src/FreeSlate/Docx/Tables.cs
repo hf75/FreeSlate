@@ -47,14 +47,21 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         };
     }
 
-    /// <summary>The total width the border takes: double and triple lines are wider than one stroke.</summary>
+    /// <summary>
+    /// The total width the border takes: double, triple and thin-and-thick lines are wider than one stroke, by their
+    /// lines and gaps (see TableLayout.Stripes).
+    /// </summary>
     public double Total => Style switch
     {
         _ when !Visible => 0,
         "double" => Width * 3,
         "triple" => Width * 5,
-        "thinThickSmallGap" or "thickThinSmallGap" => Width + 0.75 + 0.75,
-        "thinThickThinSmallGap" => Width + 1.5 + 0.75 * 2,
+        "thinThickSmallGap" or "thickThinSmallGap" => Width + 1.5,
+        "thinThickMediumGap" or "thickThinMediumGap" => Width * 2,
+        "thinThickLargeGap" or "thickThinLargeGap" => Width + 2.25,
+        "thinThickThinSmallGap" => Width + 3,
+        "thinThickThinMediumGap" => Width * 3,
+        "thinThickThinLargeGap" => Width * 2 + 3,
         _ => Width,
     };
 
