@@ -34,7 +34,7 @@ dotnet run --project tools/Fidelity -c Release --no-build -- run generated
 | `generate` | builds the test decks of `tests/corpus/pptx/generated/` through PowerPoint | Windows, PowerPoint |
 | `generate docx` | builds the test documents of `tests/corpus/docx/generated/` through Word | Windows, Word |
 | `reference [decks] [--force]` | renders PowerPoint's references (`Slide.Export`), Word's for documents (see below) | Windows, PowerPoint, Word |
-| `fetch` | downloads the test decks of other projects | network |
+| `fetch`, `fetch docx` | downloads the test decks or the Word documents of other projects | network |
 | `animate-reference`, `animate` | records PowerPoint's video of animated slides and compares the player's frames with it | Windows, PowerPoint, ffmpeg |
 | `transitions-reference` | the same for slide transitions | Windows, PowerPoint, ffmpeg |
 | `smartart [files]` | compares the SmartArt engine's layout with the drawings PowerPoint saved | |
@@ -76,6 +76,9 @@ its documents, so every such document gets a Word session of its own.
   (pinned commits; the license of each source is recorded with it) into `spec/downloads/testdecks/`. They contain
   files from many producers, including damaged and unusual ones. `reference external` renders their references,
   `run external` scores them. Neither the decks nor their references are committed.
+- `fetch docx` does the same for about 3,300 Word documents of LibreOffice, Apache POI, Apache Tika, the Open XML
+  SDK, python-docx, mammoth, pandoc and the Open XML PowerTools into `spec/downloads/testdocs/`, named
+  `docx/external/<source>/…` (`reference docx/external/poi`, `run docx/external/poi`).
 - `tests/corpus/docx/generated/` holds the test documents `tools/Fidelity/Word/DocumentGenerator.cs` builds through
   Word's object model, anonymized like the decks; their references (`tests/fidelity/reference/docx/generated/`) are
   committed.

@@ -55,7 +55,11 @@ switch (command)
         CmykHarvest.Run();
         break;
     case "fetch":
-        ExternalDecks.Fetch();
+        // Other projects' test decks, or with "docx" their Word documents.
+        if (rest.Contains("docx"))
+            ExternalDocuments.Fetch();
+        else
+            ExternalDecks.Fetch();
         break;
     case "generate" or "reference" or "calibrate" or "animate-reference" or "transitions-reference" or "harvest-cmyk":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
@@ -180,6 +184,7 @@ switch (command)
               harvest-patterns     read the preset pattern tiles from PowerPoint's rendering of the fills deck
               harvest-cmyk         measure PowerPoint's colors of profile-less CMYK pictures (Windows)
               fetch                download other projects' test decks (spec/downloads/testdecks, decks "external/…")
+              fetch docx           download other projects' Word documents (spec/downloads/testdocs, "docx/external/…")
             """);
         break;
 }

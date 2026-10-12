@@ -16,8 +16,9 @@ tests/fidelity/reference/local/
 tests/corpus/docx/local/
 tests/fidelity/reference/docx/local/
 
-# References of other projects' test decks (the decks live in spec/downloads/testdecks)
+# References of other projects' test decks and documents (they live in spec/downloads/testdecks and testdocs)
 tests/fidelity/reference/external/
+tests/fidelity/reference/docx/external/
 
 # Decks of users (their data stays out of git)
 tests/user/

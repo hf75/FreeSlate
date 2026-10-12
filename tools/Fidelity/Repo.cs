@@ -23,6 +23,9 @@ public static class Repo
     /// <summary>Test decks of other projects, downloaded by `fetch` (not committed, see <see cref="ExternalDecks"/>).</summary>
     public static string External => Path.Combine(Root, "spec", "downloads", "testdecks");
 
+    /// <summary>Word documents of other projects, downloaded by `fetch docx` (not committed, see <see cref="Fidelity.ExternalDocuments"/>).</summary>
+    public static string ExternalDocuments => Path.Combine(Root, "spec", "downloads", "testdocs");
+
     /// <summary>PowerPoint's Open XML formats: presentation, macro-enabled presentation, template and show.</summary>
     public static readonly string[] Extensions = [".pptx", ".pptm", ".potx", ".potm", ".ppsx", ".ppsm"];
 
@@ -30,6 +33,9 @@ public static class Repo
     public static readonly string[] DocumentExtensions = [".docx", ".docm", ".dotx", ".dotm"];
 
     const string ExternalPrefix = "external/";
+
+    /// <summary>Prefix of the names of other projects' Word documents, e.g. "docx/external/poi/sample".</summary>
+    const string ExternalDocumentPrefix = "docx/external/";
 
     /// <summary>Prefix of the names of Word documents in <see cref="DocumentCorpus"/>, e.g. "docx/generated/paragraphs".</summary>
     public const string DocumentPrefix = "docx/";
@@ -70,15 +76,28 @@ public static class Repo
                 .ToList()
             : [];
 
+    /// <summary>The downloaded Word documents of other projects, named "docx/external/&lt;source&gt;/…" without extension.</summary>
+    public static List<string> ExternalDocumentNames() =>
+        Directory.Exists(ExternalDocuments)
+            ? Directory.GetFiles(ExternalDocuments, "*", SearchOption.AllDirectories)
+                .Where(f => DocumentExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+                .Select(f => ExternalDocumentPrefix + Path.ChangeExtension(Path.GetRelativePath(ExternalDocuments, f), null).Replace('\\', '/'))
+                .Order(StringComparer.Ordinal)
+                .ToList()
+            : [];
+
     /// <summary>
     /// The decks the command line names: a deck, or a folder standing for every deck in it ("generated", "external/poi",
-    /// "docx"); without names the presentations of the corpus (Word documents and downloaded decks only when named).
+    /// "docx"); without names the presentations of the corpus (Word documents and downloaded decks only when named;
+    /// other projects' Word documents only as "docx/external…").
     /// </summary>
     public static List<string> Select(IReadOnlyList<string> names)
     {
         if (names.Count == 0)
             return Decks();
         var all = Decks().Concat(Documents()).Concat(ExternalDecks()).ToList();
+        if (names.Any(n => n.StartsWith(ExternalDocumentPrefix.TrimEnd('/'), StringComparison.Ordinal)))
+            all.AddRange(ExternalDocumentNames());
         var result = new List<string>();
         foreach (var name in names)
         {
@@ -95,6 +114,11 @@ public static class Repo
 
     public static string DeckFile(string deck)
     {
+        if (deck.StartsWith(ExternalDocumentPrefix, StringComparison.Ordinal))
+        {
+            var external = Path.Combine(ExternalDocuments, deck[ExternalDocumentPrefix.Length..]);
+            return DocumentExtensions.Select(e => external + e).FirstOrDefault(File.Exists) ?? external + ".docx";
+        }
         if (deck.StartsWith(DocumentPrefix, StringComparison.Ordinal))
         {
             var document = Path.Combine(DocumentCorpus, deck[DocumentPrefix.Length..]);
