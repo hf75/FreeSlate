@@ -1149,7 +1149,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     {
         var format = table.Format;
         var space = (target ?? available - allowance);
-        var (min, max, margins, preferred, natural) = Ranges(table, rows, columns, space, fields, lines);
+        var (min, max, margins, preferred, natural, spans) = Ranges(table, rows, columns, space, fields, lines);
         var sumMin = min.Sum();
         var sumMax = max.Sum();
         var widths = new double[columns];
@@ -1185,6 +1185,35 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var room = space - margins.Sum();
         for (var k = 0; k < columns; k++)
             widths[k] = margins[k] + (content > 0 ? Math.Max(0, shrinking[k] - margins[k]) * Math.Max(0, room) / content : 0);
+        // Where cells over several columns preferred more than the table has, none becomes narrower than its contents
+        // need: its last column takes what is missing from the columns of the other cells (docx/external/libreoffice/
+        // extras-ooxmlexport/tdf123705: a form of 41 columns keeps "n/m" on one line in its last cell, 33.4 pt wide).
+        if (!own)
+        {
+            var kept = new bool[columns];
+            var raised = (double[])widths.Clone();
+            var missing = 0.0;
+            foreach (var (from, to, need) in spans)
+            {
+                var have = 0.0;
+                for (var k = from; k < to; k++)
+                    have += raised[k];
+                if (need > have + 0.01)
+                {
+                    raised[to - 1] += need - have;
+                    missing += need - have;
+                    for (var k = from; k < to; k++)
+                        kept[k] = true;
+                }
+            }
+            // Only where the other columns can give it.
+            var giving = Enumerable.Range(0, columns).Where(k => !kept[k]).Sum(k => Math.Max(0, raised[k] - margins[k]));
+            if (missing > 0 && missing < giving)
+            {
+                for (var k = 0; k < columns; k++)
+                    widths[k] = kept[k] ? raised[k] : raised[k] - Math.Max(0, raised[k] - margins[k]) * missing / giving;
+            }
+        }
         return widths;
     }
 
@@ -1224,7 +1253,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
     /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
     /// </summary>
-    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
+    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural, List<(int From, int To, double Min)> Spans) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
         BorderLine?[,]? lines = null)
     {
         var format = table.Format;
@@ -1272,39 +1301,52 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     spanning.Add((c0, c1, cmin, cmax, pref));
             }
         }
-        // Preferred widths fix their columns first; a cell over several columns then widens them equally where they
-        // are too narrow for it together (measured with docx/local/hmerge-g: a 200 pt cell over two 100 pt columns
-        // leaves them as they are).
+        // Preferred widths fix their columns first; cells over several columns then widen them where they are too
+        // narrow for them together (measured with docx/local/hmerge-g: a 200 pt cell over two 100 pt columns leaves
+        // them as they are), the narrower spans first: what is missing goes to the columns nothing has given a width
+        // yet (in proportion to the grid's widths), else to those without a preferred width of their own in proportion
+        // to their widths, else to the last column (measured with docx/local/so-1 to so-10 and gw-1 to gw-10: a 300 pt
+        // cell over a 15 pt column and two of 250 pt together makes them 17.2 and 282.8 pt, wherever it stands; over
+        // columns preferring 100 and 50 pt 100 and 200 pt; cells over three and two columns of 125 pt above cells over
+        // two and three of 75 and 175 pt leave the middle column 50 pt; a cell over all columns of a table of
+        // percentages leaves them theirs; docx/external/libreoffice/extras-ooxmlexport/wDateValueFormat).
         var natural = (double[])min.Clone();
         for (var k = 0; k < columns; k++)
         {
             if (preferred[k] is { } p)
                 min[k] = max[k] = Math.Max(p, min[k]);
         }
-        foreach (var (from, to, cmin, cmax, pref) in spanning)
+        foreach (var (from, to, cmin, cmax, pref) in spanning.OrderBy(s => s.To - s.From))
         {
             if (to <= from)
                 continue;
-            var n = to - from;
-            var haveMin = 0.0;
-            var haveMax = 0.0;
+            var takers = Enumerable.Range(from, to - from).Where(k => max[k] <= 0).ToList();
+            if (takers.Count == 0)
+                takers = Enumerable.Range(from, to - from).Where(k => preferred[k] == null).ToList();
+            if (takers.Count == 0)
+                takers.Add(to - 1);
+            Widen(min, from, to, takers, Math.Max(cmin, pref ?? 0), table.Grid);
+            Widen(max, from, to, takers, Math.Max(cmax, pref ?? 0), table.Grid);
             for (var k = from; k < to; k++)
-            {
-                haveMin += min[k];
-                haveMax += max[k];
-            }
-            var wantMin = Math.Max(cmin, pref ?? 0);
-            var wantMax = Math.Max(cmax, pref ?? 0);
-            for (var k = from; k < to; k++)
-            {
-                if (wantMin > haveMin) min[k] += (wantMin - haveMin) / n;
-                if (wantMax > haveMax) max[k] += (wantMax - haveMax) / n;
                 max[k] = Math.Max(max[k], min[k]);
-            }
         }
         for (var k = 0; k < columns; k++)
             max[k] = Math.Max(max[k], min[k]);
-        return (min, max, margins, preferred, natural);
+        return (min, max, margins, preferred, natural, spanning.Select(s => (s.From, s.To, s.Min)).ToList());
+
+        static void Widen(double[] widths, int from, int to, List<int> takers, double want, List<double> grid)
+        {
+            var have = 0.0;
+            for (var k = from; k < to; k++)
+                have += widths[k];
+            if (want <= have)
+                return;
+            double Share(int k) => k < grid.Count ? Math.Max(0, grid[k]) : 0;
+            var basis = takers.Sum(k => widths[k]);
+            var gridBasis = takers.Sum(Share);
+            foreach (var k in takers)
+                widths[k] += (want - have) * (basis > 0 ? widths[k] / basis : gridBasis > 0 ? Share(k) / gridBasis : 1.0 / takers.Count);
+        }
     }
 
     /// <summary>The narrowest and widest a cell's content can be: of its paragraphs and nested tables.</summary>
@@ -1333,7 +1375,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     }
                     else if (columns > 0)
                     {
-                        var (nmin, nmax, _, _, _) = Ranges(nested.Table, rows, columns, 100000, fields);
+                        var (nmin, nmax, _, _, _, _) = Ranges(nested.Table, rows, columns, 100000, fields);
                         min = Math.Max(min, nmin.Sum());
                         max = Math.Max(max, nmax.Sum());
                     }
