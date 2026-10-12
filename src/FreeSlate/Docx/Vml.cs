@@ -59,11 +59,12 @@ public static class Vml
             style.TryAdd("position", "absolute");
         }
         var type = (string?)shape.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
-        var content = shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height);
+        var signature = SignatureLine(shape, width, height);
+        var content = signature ?? (shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height));
         if (content == null)
             return null;
-        var room = shape.Name == V + "group" ? (0, 0) : Room(shape, type, content, width, height);
-        var picture = content.Name.Namespace == Drawings.Pic;
+        var room = shape.Name == V + "group" || signature != null ? (0, 0) : Room(shape, type, content, width, height);
+        var picture = content.Name.Namespace == Drawings.Pic || signature != null;
         if (shape.Name != V + "group" && Bordered(content, shape, width, height) is { } framed)
             (content, width, height) = framed;
         else if (shape.Name != V + "group" && DoubleShadow(content, shape, type, width, height) is { } doubled)
@@ -95,6 +96,66 @@ public static class Vml
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
         return anchor;
+    }
+
+    /// <summary>
+    /// A signature line (o:signatureline, catalog: vml.ole): Word draws it itself, whatever picture it stores, scaled
+    /// from 256 × 128 pixels: on white an X in 32 px Arial 10 px in, its baseline at 68, a line 2 px thick at 75
+    /// across, the suggested signer, the signer's title and e-mail in 11 px Segoe UI 10 px in, their baselines 91, 107
+    /// and 123 (measured with docx/local/ole-probe, ole-sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and
+    /// without the title and the signer); a group of its rectangles and text boxes, null for other shapes.
+    /// </summary>
+    static XElement? SignatureLine(XElement shape, double width, double height)
+    {
+        if (shape.Element(O + "signatureline") is not { } line || (string?)line.Attribute("issignatureline") is not ("t" or "true" or "1")
+            || width <= 0 || height <= 0)
+            return null;
+        var (sx, sy) = (width / 256, height / 128);
+        var w = Wml.W;
+        static XElement Xfrm(double x, double y, double cx, double cy) => new(Ns.A + "xfrm",
+            new XElement(Ns.A + "off", new XAttribute("x", Emu(x)), new XAttribute("y", Emu(y))),
+            new XElement(Ns.A + "ext", new XAttribute("cx", Emu(Math.Max(0, cx))), new XAttribute("cy", Emu(Math.Max(0, cy)))));
+        XElement Rect(double x, double y, double cx, double cy, string color) => new(Drawings.Wps + "wsp", new XElement(Drawings.Wps + "cNvSpPr"),
+            new XElement(Drawings.Wps + "spPr", Xfrm(x, y, cx, cy), new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", color))), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
+            new XElement(Drawings.Wps + "bodyPr"));
+        // A line of text as a text box whose exact line puts the baseline where Word's is; the sizes stay exact (the
+        // converted text is ours, not Word's half points).
+        XElement Text(string text, string font, double size, double x, double baseline)
+        {
+            var halfPoints = Math.Round(Math.Max(1, size) * 2, 3).ToString(CultureInfo.InvariantCulture);
+            var lineTwips = Math.Round(Math.Max(1, size) * 1.25 * 20, 2);
+            var top = baseline - 0.8 * lineTwips / 20.0;
+            var run = new XElement(w + "r",
+                new XElement(w + "rPr", new XElement(w + "rFonts", new XAttribute(w + "ascii", font), new XAttribute(w + "hAnsi", font), new XAttribute(w + "cs", font), new XAttribute(w + "eastAsia", font)),
+                    new XElement(w + "color", new XAttribute(w + "val", "000000")), new XElement(w + "sz", new XAttribute(w + "val", halfPoints)), new XElement(w + "szCs", new XAttribute(w + "val", halfPoints))),
+                new XElement(w + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text));
+            var paragraph = new XElement(w + "p",
+                new XElement(w + "pPr", new XElement(w + "spacing", new XAttribute(w + "before", 0), new XAttribute(w + "after", 0), new XAttribute(w + "line", lineTwips.ToString(CultureInfo.InvariantCulture)), new XAttribute(w + "lineRule", "exact")),
+                    new XElement(w + "ind", new XAttribute(w + "left", 0), new XAttribute(w + "right", 0), new XAttribute(w + "firstLine", 0)), new XElement(w + "jc", new XAttribute(w + "val", "left"))),
+                run);
+            return new XElement(Drawings.Wps + "wsp", new XElement(Drawings.Wps + "cNvSpPr", new XAttribute("txBox", 1)),
+                new XElement(Drawings.Wps + "spPr", Xfrm(x, top, width - x, lineTwips / 20.0), new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                    new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
+                new XElement(Drawings.Wps + "txbx", new XElement(w + "txbxContent", paragraph)),
+                new XElement(Drawings.Wps + "bodyPr", new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0), new XAttribute("bIns", 0),
+                    new XAttribute("anchor", "t"), new XAttribute("wrap", "none")));
+        }
+        var group = new XElement(Drawings.Wpg + "wgp", new XElement(Drawings.Wpg + "cNvGrpSpPr"),
+            new XElement(Drawings.Wpg + "grpSpPr", new XElement(Ns.A + "xfrm",
+                new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)),
+                new XElement(Ns.A + "ext", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))),
+                new XElement(Ns.A + "chOff", new XAttribute("x", 0), new XAttribute("y", 0)),
+                new XElement(Ns.A + "chExt", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))))),
+            Rect(0, 0, width, height, "FFFFFF"), Rect(0, 75 * sy, width, 2 * sy, "000000"), Text("X", "Arial", 32 * sy, 10 * sx, 68 * sy));
+        var baseline = 91.0;
+        foreach (var name in new[] { "suggestedsigner", "suggestedsigner2", "suggestedsigneremail" })
+        {
+            if (((string?)line.Attribute(O + name) ?? (string?)line.Attribute(name)) is { Length: > 0 } value)
+                group.Add(Text(value, "Segoe UI", 11 * sy, 10 * sx, baseline * sy));
+            baseline += 16;
+        }
+        return group;
     }
 
     /// <summary>

@@ -974,10 +974,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     foreach (var d in Vml.ToDrawings(e))
                     {
                         var text = TextBox(d);
+                        var children = ChildTextBoxes(d);
                         if (d.Name == Drawings.Wp + "inline")
-                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text });
+                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
                         else
-                            field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text });
+                            field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
                     }
                     break;
                 case "footnoteReference" or "endnoteReference" when !field.Hidden && e.Attr("id") is { } noteId:
