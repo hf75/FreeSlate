@@ -160,6 +160,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// page is the one it begins on).</summary>
     bool sectionShown = true;
 
+    /// <summary>Whether the current page was begun by a page break and holds nothing yet: a section on a new page that
+    /// would begin after it begins on it instead (StartSection).</summary>
+    bool breakPage;
+
     int paragraphNumber;
     /// <summary>How the current column began, which decides the space before its first paragraph.</summary>
     enum Top { Document, Section, Break, Continuous, Leading }
@@ -807,6 +811,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
         if (page == null || start != "continuous" && start != "nextColumn")
         {
+            // A page a page break began that holds nothing yet is the section's first page (measured with
+            // docx/local/pbs-*: a page break right before a section break on a new page leaves no empty page, also
+            // where the section is landscape or the break ends a paragraph with text, one of two page breaks does).
+            if (!first && breakPage && page is { Lines.Count: 0 } && pageNotes.Count == 0 && pages.Count > 1 && ReferenceEquals(pages[^1], page))
+            {
+                pages.RemoveAt(pages.Count - 1);
+                page = pages[^1];
+            }
             // Odd page numbers are right-hand pages: an odd or even page section leaves a blank page where the next
             // number has the wrong parity, and with different odd and even headers or mirrored margins so does any
             // section whose first number has the parity of the page before (measured with docx/local/hf-oddpage,
@@ -827,8 +839,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A continuous section goes on below what the page holds already and the space after its last paragraph,
         // where all its columns begin; its first paragraph adds what its space before has more (measured with
         // docx/local/colsp-*: a second column begins level with the first below 12 pt after, without 24 pt before;
-        // balanced columns above hold that space already).
-        if (!balanced)
+        // balanced columns above hold that space already; at the top of a page nothing, docx/local/pbs-4).
+        if (!balanced && !columnEmpty)
             y += pendingAfter;
         columnTop = y;
         column = 0;
@@ -843,6 +855,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <param name="blank">A page left blank before a section: it has a number but no header or footer.</param>
     void NewPage(SectionProperties properties, bool firstOfSection = false, bool blank = false)
     {
+        breakPage = false;
         CloseColumns();
         PlaceNotes();
         var number = firstOfSection && properties.PageNumberStart is { } restart ? restart
@@ -1895,6 +1908,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         y += row.Height;
         columnEmpty = false;
         sectionShown = true;
+        breakPage = false;
     }
 
     /// <summary>Lines of cells merged down below the table row placed last, for the next (RowBox.Overflow).</summary>
@@ -1915,9 +1929,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // continuous section, no line and no space (measured with docx/local/colsect-*: sections of one or two columns,
         // in balanced columns too, in modes 12 and 15); alone in its section, before a section on a new page (whose
         // first paragraph its space after still shortens) or with text it is a line as any other
-        // (docx/external/libreoffice/extras-ooxmlexport/tdf64372_continuousBreaks, tdf170003_bottomSpacing).
-        if (paragraph is { EndsSection: not null, Format.Frame: null } && index > 0 && nextContinuous && paragraph.Label is not { Own.Length: > 0 }
-            && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline))
+        // (docx/external/libreoffice/extras-ooxmlexport/tdf64372_continuousBreaks, tdf170003_bottomSpacing), except at
+        // the top of a page a page break began, which the section after it takes (docx/local/pbs-1).
+        if (paragraph is { EndsSection: not null, Format.Frame: null } && (index > 0 && nextContinuous || breakPage && !nextContinuous && page!.Lines.Count == 0)
+            && paragraph.Label is not { Own.Length: > 0 } && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline))
         {
             foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
                 page!.Bookmarks.Add((bookmark.Name, Column(column).Left, y));
@@ -2195,6 +2210,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             y += line.Height;
             columnEmpty = false;
             sectionShown = true;
+            breakPage = false;
             if (split)
                 bodyEnd = y;
             else
@@ -2233,6 +2249,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (line.EndBreak is "page")
             {
                 NewPage(section);
+                breakPage = true;
                 top = Top.Break;
                 (left, width) = Column(column);
                 here = 0;

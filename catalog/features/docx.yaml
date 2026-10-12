@@ -1079,7 +1079,11 @@ areas:
           not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put
           that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored
           margins any section whose first number has the parity of the page before gets a blank page before it
-          (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES.
+          (docx/local/hf-restart-*). A section on a new page right after a page break begins on the page the break
+          began while that holds nothing, an empty paragraph holding the break taking no line there (docx/local/pbs-*:
+          no empty page between, also before a landscape section or after a break that ends a paragraph with text; of
+          two page breaks one page stays empty; docx/external/poi/bug65649). Blank pages have no header or footer,
+          count in NUMPAGES but not in SECTIONPAGES.
           Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the
           space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards
           editing and shows nothing; pages keep their sizes in the HTML whatever a browser can print. What the
