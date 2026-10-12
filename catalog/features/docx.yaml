@@ -1215,7 +1215,8 @@ areas:
           ends w:footer above the bottom edge with the space after its last. A header reaching below the top margin
           pushes the body down to its end including that space after, a footer reaching above the bottom margin moves
           the body's end up (docx/local/hf-tall, hf-short). The first page of a section with a title page has the
-          first header, even page numbers the even header when the settings ask for different odd and even headers; a
+          first header, also the page a continuous section begins at the top of, not the one after a page where it
+          has lines (docx/local/hfc-0t, hfc-2t; a page's header is its top's section's), even page numbers the even header when the settings ask for different odd and even headers; a
           section without a header of a type inherits the previous section's, and a type no section gives is an empty
           header. Word's footers stand 0.14 pt lower than the footer distance says (its 600 dpi device grid), which
           the layout does not copy.

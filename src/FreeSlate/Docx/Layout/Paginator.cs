@@ -156,6 +156,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether the section before ended with balanced columns, whose height holds their last space after.</summary>
     bool balanced;
 
+    /// <summary>Whether lines or rows of the current section stand on a page already (a continuous section's first
+    /// page is the one it begins on).</summary>
+    bool sectionShown = true;
+
     int paragraphNumber;
     /// <summary>How the current column began, which decides the space before its first paragraph.</summary>
     enum Top { Document, Section, Break, Continuous, Leading }
@@ -806,6 +810,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     NewPage(pages[^1].Section, blank: true);
             }
             NewPage(properties, firstOfSection: true);
+            sectionShown = true;
             top = first ? Top.Document : Top.Section;
             return;
         }
@@ -818,6 +823,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         columnTop = y;
         column = 0;
         columnEmpty = true;
+        sectionShown = false;
         top = Top.Continuous;
         flow.Clear();
         if (start == "nextColumn")
@@ -831,9 +837,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         PlaceNotes();
         var number = firstOfSection && properties.PageNumberStart is { } restart ? restart
             : pages.Count == 0 ? 1 : pages[^1].DisplayNumber + 1;
-        // The first page of a section with a title page has the first header; with different odd and even pages
-        // (w:evenAndOddHeaders) even pages have the even one; a type the sections do not give is an empty header.
-        var type = firstOfSection && properties.TitlePage ? "first"
+        // The first page of a section with a title page has the first header, also the page a continuous section
+        // begins at the top of (measured with docx/local/hfc-0t: not where lines of the section stand on the page
+        // before, hfc-2t); with different odd and even pages (w:evenAndOddHeaders) even pages have the even one; a
+        // type the sections do not give is an empty header.
+        var type = (firstOfSection || !sectionShown) && properties.TitlePage ? "first"
             : number % 2 == 0 && context.Settings.Child("evenAndOddHeaders").OnOff() == true ? "even" : "default";
         // Mirrored margins swap the left and right margins of even pages; the gutter is on the inside, at the top
         // (w:gutterAtTop) or on the right (w:rtlGutter).
@@ -1876,6 +1884,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.Drawings.Add(Anchored(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
         y += row.Height;
         columnEmpty = false;
+        sectionShown = true;
     }
 
     /// <summary>Lines of cells merged down below the table row placed last, for the next (RowBox.Overflow).</summary>
@@ -2175,6 +2184,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             here++;
             y += line.Height;
             columnEmpty = false;
+            sectionShown = true;
             if (split)
                 bodyEnd = y;
             else
