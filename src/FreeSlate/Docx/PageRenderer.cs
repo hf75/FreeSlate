@@ -54,7 +54,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
         // A page border behind the text, table shading and borders below the text, a page border in front of it.
         if (page.Border is { Front: false } back)
-            Fills(back.Fills, back.Strokes, svg);
+            Fills(back, svg);
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
         Lines(page.Lines, svg, selection, front);
         // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
@@ -64,7 +64,7 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             svg.Append($"<text x=\"{Px(right)}\" y=\"{Px(baseline)}\" text-anchor=\"end\" font-family=\"'{WebUtility.HtmlEncode(style.Font.Data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"{(style.Bold ? " font-weight=\"700\"" : "")}{(style.Italic ? " font-style=\"italic\"" : "")}>{number}</text>");
         }
         if (page.Border is { Front: true } border)
-            Fills(border.Fills, border.Strokes, svg);
+            Fills(border, svg);
         svg.Append(selection);
         svg.Append("</svg>");
         if (drawings != null)
@@ -80,6 +80,22 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
             svg.Append("<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>").Append(defs).Append("</defs></svg>");
         svg.Append("</section>\n");
         return svg.ToString();
+    }
+
+    /// <summary>A page border's lines, then its art borders' shapes.</summary>
+    void Fills(PageBorderBox border, StringBuilder svg)
+    {
+        Fills(border.Fills, border.Strokes, svg);
+        if (border.Art.Count == 0)
+            return;
+        // The shapes are in points.
+        svg.Append($"<g transform=\"scale({Units.Css4(PxPerPt)})\">");
+        foreach (var shape in border.Art)
+        {
+            var stroke = shape.Stroke is { } line ? $" stroke=\"{line.ToHex()}\" stroke-width=\"{Units.Css4(shape.StrokeWidth)}\"" : "";
+            svg.Append($"<path d=\"{shape.Path}\" fill=\"{shape.Fill?.ToHex() ?? "none"}\"{stroke}/>");
+        }
+        svg.Append("</g>");
     }
 
     void Fills(IEnumerable<FillRect> fills, IEnumerable<Stroke> strokes, StringBuilder svg)

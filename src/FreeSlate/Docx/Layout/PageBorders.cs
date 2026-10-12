@@ -4,7 +4,11 @@ using FreeSlate.Drawing;
 namespace FreeSlate.Docx.Layout;
 
 /// <summary>The page border of a page: its lines as filled rectangles and strokes, in front of the text or behind it.</summary>
-public sealed record PageBorderBox(List<FillRect> Fills, List<Stroke> Strokes, bool Front);
+public sealed record PageBorderBox(List<FillRect> Fills, List<Stroke> Strokes, bool Front)
+{
+    /// <summary>The shapes of art borders (see <see cref="ArtBorders"/>).</summary>
+    public List<ArtShape> Art { get; init; } = [];
+}
 
 /// <summary>
 /// Page borders (w:pgBorders, catalog: section.pageBorders) as Word prints them (measured with
@@ -26,6 +30,8 @@ public sealed record PageBorderBox(List<FillRect> Fills, List<Stroke> Strokes, b
 /// the lines' width; from the page's edge the frame moves in by its lines' width so that the shadow keeps the
 /// space.</item>
 /// <item>Waves and stroked dash-dots are pictures in Word; they are drawn as lines of their fixed widths here.</item>
+/// <item>Art borders take one art for all sides (see <see cref="Layout"/>) and are drawn as tiles by
+/// <see cref="ArtBorders"/>.</item>
 /// </list>
 /// </summary>
 public static class PageBorders
@@ -47,7 +53,20 @@ public static class PageBorders
         var display = borders.Attr("display") ?? "allPages";
         if (display == "firstPage" && !page.FirstOfSection || display == "notFirstPage" && page.FirstOfSection)
             return null;
-        var (top, left, bottom, right) = (Read(borders.Child("top")), Read(borders.Child("left")), Read(borders.Child("bottom")), Read(borders.Child("right")));
+        var lines = new[] { "top", "left", "bottom", "right" }.Select(name => BorderLine.Read(borders.Child(name)) is { Visible: true } line ? line : null).ToArray();
+        // With an art on any side Word draws every side there is with the art and the color of the last side (top,
+        // left, bottom, right) at the size of the first art, at its own space; nothing at all when the last side has a
+        // line (docx/local/pgb-art3).
+        if (lines.FirstOrDefault(line => line != null && Art(line.Style)) is { } firstArt)
+        {
+            var last = lines.Last(line => line != null)!;
+            if (!Art(last.Style))
+                return null;
+            for (var k = 0; k < lines.Length; k++)
+                lines[k] = lines[k] is { } line ? line with { Style = last.Style, Color = last.Color, Width = firstArt.Width } : null;
+        }
+        static Side? Of(BorderLine? line) => line != null ? SideOf(line) : null;
+        var (top, left, bottom, right) = (Of(lines[0]), Of(lines[1]), Of(lines[2]), Of(lines[3]));
         if (top == null && left == null && bottom == null && right == null)
             return null;
 
@@ -83,15 +102,28 @@ public static class PageBorders
             fills.Add(new FillRect(r, t + Total(top), right.Total, b + Total(bottom) - t - Total(top), RgbColor.Black));
         if (bottom is { Line.Shadow: true })
             fills.Add(new FillRect(l + Total(left), b, r + Total(right) - l - Total(left), bottom.Total, RgbColor.Black));
-        if (top != null)
-            Draw(top, true, false, t, l, r, left, right, fills, strokes);
-        if (bottom != null)
-            Draw(bottom, true, true, b, l, r, left, right, fills, strokes);
-        if (left != null)
-            Draw(left, false, false, l, t, b, top, bottom, fills, strokes);
-        if (right != null)
-            Draw(right, false, true, r, t, b, top, bottom, fills, strokes);
-        return new PageBorderBox(fills, strokes, borders.Attr("zOrder") != "back");
+        var art = new List<ArtShape>();
+        // Art borders: tiles along each side between the corners' tiles, which end every side there is, at the page's
+        // edge (or the margin) where the side it meets is left out (ArtBorders).
+        void Side(Side? side, bool horizontal, bool far, double edge, double from, double to, Side? start, Side? end)
+        {
+            if (side == null)
+                return;
+            if (ArtBorders.Drawn(side.Line.Style))
+                ArtBorders.Side(side.Line.Style, side.Line.Color, side.Total, horizontal, far, edge, from + side.Total, to - side.Total, art);
+            else
+                Draw(side, horizontal, far, edge, from, to, start, end, fills, strokes);
+        }
+        Side(top, true, false, t, l, r, left, right);
+        Side(bottom, true, true, b, l, r, left, right);
+        Side(left, false, false, l, t, b, top, bottom);
+        Side(right, false, true, r, t, b, top, bottom);
+        foreach (var (horizontal, vertical, isRight, isBottom) in new[] { (top, left, false, false), (top, right, true, false), (bottom, left, false, true), (bottom, right, true, true) })
+        {
+            if ((horizontal ?? vertical) is { } owner && ArtBorders.Drawn(owner.Line.Style))
+                ArtBorders.Corner(owner.Line.Style, owner.Line.Color, owner.Total, isRight ? r : l, isBottom ? b : t, isRight, isBottom, art);
+        }
+        return new PageBorderBox(fills, strokes, borders.Attr("zOrder") != "back") { Art = art };
     }
 
     /// <summary>The room a run border takes beside its text: its space and its lines (catalog: run.decoration).</summary>
@@ -219,9 +251,6 @@ public static class PageBorders
 
     static string Pattern(params double[] lengths) => string.Join(' ', lengths.Select(Units.Css));
 
-    /// <summary>A side's line and stripes, or null where it has none.</summary>
-    static Side? Read(XElement? e) => BorderLine.Read(e) is { Visible: true } line ? SideOf(line) : null;
-
     /// <summary>A line's stripes, or null where it shows none.</summary>
     static Side? SideOf(BorderLine line)
     {
@@ -247,6 +276,8 @@ public static class PageBorders
             // Pictures in Word of fixed widths.
             "wave" or "dashDotStroked" => [(3, Kind.Line)],
             "doubleWave" => [(5.16, Kind.Line)],
+            // Art borders are as wide as their size in points (w:sz of art borders counts points, not eighths).
+            _ when Art(line.Style) && ArtBorders.Drawn(line.Style) => [(line.Width * 8, Kind.Line)],
             _ when Art(line.Style) => [],
             _ => [(w, Kind.Line)],
         };

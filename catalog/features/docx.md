@@ -23,7 +23,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Runs and character formatting](#run) | 11 | 3 | 4 | 3 | 1 | 2.6 | 1 | 10 |
 | [Paragraphs](#paragraph) | 11 | 4 | 4 | 3 | 0 | 3.4 | 0 | 11 |
 | [Lists and numbering](#numbering) | 3 | 2 | 0 | 1 | 0 | 3.7 | 0 | 3 |
-| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 1 | 6 |
+| [Sections and pages](#section) | 7 | 2 | 2 | 2 | 1 | 3.0 | 0 | 7 |
 | [Headers and footers](#headerFooter) | 1 | 1 | 0 | 0 | 0 | 3.0 | 0 | 1 |
 | [Footnotes and endnotes](#note) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Tables](#table) | 8 | 5 | 2 | 0 | 1 | 3.5 | 0 | 8 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **4** | **190** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **3** | **191** |
 
 <a id="package"></a>
 
@@ -939,7 +939,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 |---|---|---|---|---:|---:|
 | [Page size, margins and section breaks](#section.page) | P0 | ●●●○○ | done | 9 | 7 |
 | [Columns](#section.columns) | P1 | ●●●●○ | done | 2 | 2 |
-| [Page borders](#section.pageBorders) | P2 | ●●●○○ | partial | 8 | 29 |
+| [Page borders](#section.pageBorders) | P2 | ●●●○○ | done | 8 | 29 |
 | [Line numbers](#section.lineNumbers) | P2 | ●●●○○ | done | 2 | 1 |
 | [Page numbering](#section.pageNumbers) | P0 | ●●○○○ | done | 2 | 1 |
 | [Document grid](#section.docGrid) | P1 | ●●●●○ | done | 1 | 0 |
@@ -981,11 +981,11 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 ### Page borders
 
-`section.pageBorders` · P2 · difficulty 3 · partial
+`section.pageBorders` · P2 · difficulty 3 · done
 
 **Rendering:** Line borders and the 165 art borders of the format catalog, measured from the page edge or the text, on all pages, the first page or all but the first.
 
-**Office behaviour:** Line borders as Word prints them: from the page's edge a side's outer edge stands its space from the edge, from the text its inner edge its space outside the margins and around a header and footer the page has (w:bordersDoNotSurroundHeader, w:bordersDoNotSurroundFooter); on all pages, the first or all but the first; in front of or behind the text. Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades; shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c: line styles 85 to 99.9 %). Waves and stroked dash-dots, pictures in Word, are drawn as lines. Not drawn: the art borders, Word's own pictures (the basic dots, dashes, squares and lines among them).
+**Office behaviour:** Line borders as Word prints them: from the page's edge a side's outer edge stands its space from the edge, from the text its inner edge its space outside the margins and around a header and footer the page has (w:bordersDoNotSurroundHeader, w:bordersDoNotSurroundFooter); on all pages, the first or all but the first; in front of or behind the text. Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades; shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c: line styles 85 to 99.9 %). Waves and stroked dash-dots, pictures in Word, are drawn as lines. Art borders: with an art on any side Word draws every side there is with the art and color of the last side at the size of the first art (w:sz in points), nothing when the last side has a line; a square tile in each corner, which ends a side at the page's edge where the side it meets is left out, and between the corners as many tiles as fit of the picture's length in whole device dots plus one, stretched to the side dot by dot (the first tiles a dot shorter). The ten basic art borders (black and white dots, dashes and squares, thin, wide inline, midline and outline lines) are drawn from their measured geometry, the bottom's and right's tiles as Word's own (docx/local/pgb-art2 99.3 %, pgb-art3 99.4 %, sizes 10 to 31 pt). Known deviation: Word's other 155 art borders are pictures of its own (apples, hearts, trees ...) and are left out.
 
 **Elements (8):** [`w:alignBordersAndEdges`](../format/namespaces/w.md#walignbordersandedges), [`w:bordersDoNotSurroundFooter`](../format/namespaces/w.md#wbordersdonotsurroundfooter), [`w:bordersDoNotSurroundHeader`](../format/namespaces/w.md#wbordersdonotsurroundheader), [`w:bottom`](../format/namespaces/w.md#wbottom), [`w:left`](../format/namespaces/w.md#wleft), [`w:pgBorders`](../format/namespaces/w.md#wpgborders), [`w:right`](../format/namespaces/w.md#wright), [`w:top`](../format/namespaces/w.md#wtop)
 
