@@ -1077,6 +1077,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (!field.Hidden)
                         field.Target(content).Add(new TabInline(format));
                     break;
+                case "pgNum":
+                    // The page number as an element of the run (catalog: section.pageNumbers), shown as a PAGE field would.
+                    if (!field.Hidden)
+                        field.Target(content).Add(new FieldInline("PAGE", format, []));
+                    break;
                 case "ptab":
                     if (!field.Hidden)
                         field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none") });
