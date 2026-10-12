@@ -101,6 +101,7 @@ public sealed partial class ModelReader
                 if (context.Markup && rows[r].Child("trPr") is { } trPr && (trPr.Child("del") ?? trPr.Child("ins")) is { } rowChange)
                     revision = new RevisionMark(rowChange.Name.LocalName, context.Author(rowChange.Attr("author")));
                 ReadBlocks(cellElements[c], cell.Blocks);
+                JoinHidden(cell.Blocks, cell: true);
                 (tableParagraph, tableRun, revision) = (savedParagraph, savedRun, savedRevision);
             }
         }

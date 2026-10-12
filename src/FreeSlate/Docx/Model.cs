@@ -105,6 +105,9 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// <summary>The section this paragraph ends (its w:pPr/w:sectPr), or null.</summary>
     public SectionProperties? EndsSection { get; init; }
 
+    /// <summary>Whether anything of the paragraph's content shows: not hidden, not a bookmark or permission mark.</summary>
+    public bool Shows => Content.Any(i => i is not (BookmarkInline or BookmarkEndInline or PermissionInline) && i.Format.Vanish != true);
+
     /// <summary>The tracked change of the paragraph's mark and its tracked formatting change, in the markup view.</summary>
     public RevisionMark? MarkRevision { get; init; }
     public FormatChange? Change { get; init; }
@@ -184,9 +187,22 @@ public sealed class SectionProperties
     public string ChapterSeparator = "-";
 
     /// <param name="resolve">Finds the part a relationship id of the main document points to.</param>
-    public static SectionProperties Read(XElement? sectPr, Func<string, string?>? resolve = null)
+    /// <param name="culture">The reader's regional format, which picks Word's Normal template (see below).</param>
+    /// <remarks>
+    /// What the document leaves out comes from Word's Normal template (measured on German Word with
+    /// docx/local/nosect*): without w:sectPr its paper, A4; with one but without w:pgSz Letter; margins it leaves out
+    /// 2.5 cm, the bottom 2 cm, header and footer 0.5 in. Regions measuring in inches get Word's US template: Letter
+    /// and 1 inch margins.
+    /// </remarks>
+    public static SectionProperties Read(XElement? sectPr, Func<string, string?>? resolve = null, System.Globalization.CultureInfo? culture = null)
     {
         var s = new SectionProperties { Element = sectPr };
+        if (Metric(culture))
+        {
+            (s.Top, s.Bottom, s.Left, s.Right) = (70.85, 56.7, 70.85, 70.85);
+            if (sectPr == null)
+                (s.PageWidth, s.PageHeight) = (595.3, 841.9);
+        }
         if (sectPr == null)
             return s;
         foreach (var (name, into) in new[] { ("headerReference", s.Headers), ("footerReference", s.Footers) })
@@ -230,6 +246,21 @@ public sealed class SectionProperties
         s.VerticalAlign = sectPr.Child("vAlign").Val() ?? "top";
         s.TextDirection = sectPr.Child("textDirection").Val() ?? "lrTb";
         return s;
+    }
+
+    /// <summary>Whether a culture's region measures in centimeters (Word's template then is A4 with metric margins).</summary>
+    static bool Metric(System.Globalization.CultureInfo? culture)
+    {
+        if (culture == null || string.IsNullOrEmpty(culture.Name))
+            return false;
+        try
+        {
+            return new System.Globalization.RegionInfo(culture.Name).IsMetric;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 }
 
@@ -297,12 +328,42 @@ public sealed partial class ModelReader(DocumentContext context)
                 sectionOf[p] = (body.Child("sectPr"), index);
             currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
             ReadBlocks(body, blocks);
+            JoinHidden(blocks, cell: false);
         }
         return blocks;
     }
 
+    /// <summary>
+    /// Paragraphs whose mark is hidden (w:vanish on the mark, catalog: run.hidden) as Word prints them (measured with
+    /// docx/local/hiddenmark): such a paragraph runs into the next one, the joined paragraph in its own formatting
+    /// (the first's alignment and space before); one whose text is all hidden too is gone; before a table it stays,
+    /// without its space after; a cell's last paragraph stays even when all of it is hidden, the body's goes.
+    /// </summary>
+    static void JoinHidden(List<Block> blocks, bool cell)
+    {
+        for (var k = 0; k < blocks.Count; k++)
+        {
+            if (blocks[k] is not ParagraphBlock { MarkFormat.Vanish: true, EndsSection: null } paragraph)
+                continue;
+            if (k + 1 < blocks.Count && blocks[k + 1] is ParagraphBlock next)
+            {
+                blocks[k] = paragraph with { Content = [.. paragraph.Content, .. next.Content], MarkFormat = next.MarkFormat, EndsSection = next.EndsSection };
+                blocks.RemoveAt(k + 1);
+                k--;
+            }
+            else if (k + 1 < blocks.Count)
+            {
+                var format = paragraph.Format.Clone();
+                (format.After, format.AfterLines, format.AfterAuto) = (0, null, false);
+                blocks[k] = paragraph with { Format = format };
+            }
+            else if (!cell && !paragraph.Shows)
+                blocks.RemoveAt(k);
+        }
+    }
+
     /// <summary>The properties of the document's last section (the body's own w:sectPr).</summary>
-    public SectionProperties LastSection() => SectionProperties.Read(context.Document.Root.Child("body").Child("sectPr"), Resolve);
+    public SectionProperties LastSection() => SectionProperties.Read(context.Document.Root.Child("body").Child("sectPr"), Resolve, context.Culture);
 
     /// <summary>The part a relationship id of the main document points to, where it exists.</summary>
     string? Resolve(string id) =>
@@ -398,6 +459,7 @@ public sealed partial class ModelReader(DocumentContext context)
                 continue;
             var blocks = new List<Block>();
             ReadBlocks(element, blocks);
+            JoinHidden(blocks, cell: false);
             var (parent, done) = ParaId(commentOrder[k]) is { } paraId && extended.TryGetValue(paraId, out var ex) ? ex : (null, false);
             var answers = parent != null && numbers.TryGetValue(parent, out var number) ? $"R{number}" : "";
             comments[commentOrder[k]] = new Comment(commentOrder[k], context.Author(element.Attr("author")), $"[{element.Attr("initials")}{k + 1}{answers}]", blocks)
@@ -427,6 +489,7 @@ public sealed partial class ModelReader(DocumentContext context)
             noteId = id;
             var blocks = new List<Block>();
             ReadBlocks(note, blocks);
+            JoinHidden(blocks, cell: false);
             notes[type == "normal" ? id : type] = blocks;
         }
         noteMark = null;
@@ -464,6 +527,7 @@ public sealed partial class ModelReader(DocumentContext context)
         currentPart = part;
         if (context.Load(part).Root is { } root)
             ReadBlocks(root, blocks);
+        JoinHidden(blocks, cell: false);
         (counter, currentPart) = (bodyCounter, bodyPart);
         return stories[part] = blocks;
     }
@@ -671,7 +735,7 @@ public sealed partial class ModelReader(DocumentContext context)
         ReadInlines(p, styleId, content, field);
         return new ParagraphBlock(p, format, content, mark)
         {
-            EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve) : null,
+            EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
             Label = label,
         };
     }
@@ -695,6 +759,7 @@ public sealed partial class ModelReader(DocumentContext context)
             (tableParagraph, tableRun) = (null, null);
             var blocks = new List<Block>();
             ReadBlocks(box, blocks);
+            JoinHidden(blocks, cell: false);
             (tableParagraph, tableRun) = (savedParagraph, savedRun);
             result.Add((shape, blocks));
         }
@@ -709,6 +774,7 @@ public sealed partial class ModelReader(DocumentContext context)
         (tableParagraph, tableRun) = (null, null);
         var blocks = new List<Block>();
         ReadBlocks(content, blocks);
+        JoinHidden(blocks, cell: false);
         (tableParagraph, tableRun) = (savedParagraph, savedRun);
         return blocks;
     }

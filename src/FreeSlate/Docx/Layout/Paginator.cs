@@ -1682,6 +1682,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
         var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top, double X)>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
+        // Whether the paragraph went on in another column or page, where the objects that pushed its lines down here
+        // are not in their way.
+        var moved = false;
         for (var k = 0; k < lines.Count; k++)
         {
             var line = lines[k];
@@ -1692,10 +1695,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
             var fitHeight = line.Hyphenated && k + 1 < lines.Count ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
-            if (y + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + line.FitHeight <= Bottom + 0.01
-                && SplitNotes(line.Notes!, Bottom - y - line.FitHeight))
+            // A line a floating object pushes down has to fit below it, else it goes to the next column or page, with
+            // the paragraph's own objects (measured with docx/local/anchorpush-*: a paragraph whose full-width object
+            // leaves it no room on the page moves to the next with it, and the lines above keep their places).
+            var skip = moved ? 0 : line.Skip;
+            if (y + skip + line.FitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty && notesNeeded > 0 && y + skip + line.FitHeight <= Bottom + 0.01
+                && SplitNotes(line.Notes!, Bottom - y - skip - line.FitHeight))
                 split = true;
-            else if (y + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
+            else if (y + skip + fitHeight > Bottom - notesNeeded + 0.01 && !columnEmpty)
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).
@@ -1729,11 +1736,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 (left, width) = Column(column);
                 here = 0;
                 hereAtTop = true;
+                moved = true;
+                skip = 0;
             }
-            y += line.Skip;
+            y += skip;
             // Where the first line stands as planned the paragraph begins above it; moved to another column or page,
             // it begins with the line.
-            anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - line.Skip - firstLineTop.Top) < 0.01
+            anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - skip - firstLineTop.Top) < 0.01
                 ? paragraphTop.Top : y, left, width);
             foreach (var anchor in line.Anchors ?? [])
                 lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));

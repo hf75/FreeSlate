@@ -186,7 +186,7 @@ Properties Office keeps for older versions or for converted VML content.
 
 **Rendering:** The body's block content (paragraphs, tables, content controls, custom XML, section properties) flows through the layout engine into pages; the last w:sectPr of the body describes the last section.
 
-**Office behaviour:** The body's paragraphs, tables, content controls and custom XML flow through the layout into pages; each section's w:sectPr in the last paragraph of the section, the body's own w:sectPr for the last section.
+**Office behaviour:** The body's paragraphs, tables, content controls and custom XML flow through the layout into pages; each section's w:sectPr in the last paragraph of the section, the body's own w:sectPr for the last section. A damaged document with several w:body elements shows them all, one after the other (docx/external/poi/MultipleBodyBug).
 
 **Elements (2):** [`w:body`](../format/namespaces/w.md#wbody), [`w:document`](../format/namespaces/w.md#wdocument)
 
@@ -561,7 +561,7 @@ rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme refer to the theme's ma
 
 **Rendering:** Hidden runs take no space in the printed layout unless Word is measured to print them.
 
-**Office behaviour:** Hidden text (w:vanish, w:specVanish) is left out of Word's PDF export and takes no space; the layout drops it the same way.
+**Office behaviour:** Hidden text (w:vanish, w:specVanish) is left out of Word's PDF export and takes no space; the layout drops it the same way. A paragraph whose mark is hidden runs into the next one, the joined paragraph in the first's formatting (alignment, space before); one whose text is all hidden too is gone; before a table it stays without its space after; a cell's last paragraph stays even when all of it is hidden, the body's goes (docx/local/hiddenmark).
 
 **Elements (3):** [`w:specVanish`](../format/namespaces/w.md#wspecvanish), [`w:vanish`](../format/namespaces/w.md#wvanish), [`w:webHidden`](../format/namespaces/w.md#wwebhidden)
 
@@ -953,7 +953,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 **Rendering:** Every section starts on a new page, an even or odd page (inserting a blank page) or continues on the same page; orientation, margins with gutter, mirrored margins and vertical alignment of the page content.
 
-**Office behaviour:** Sections start on a new page, continue, or start on an odd or even page; odd and even mean the page numbers, not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored margins any section whose first number has the parity of the page before gets a blank page before it (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES. Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards editing and shows nothing; pages keep their sizes in the HTML whatever a browser can print.
+**Office behaviour:** Sections start on a new page, continue, or start on an odd or even page; odd and even mean the page numbers, not the sheets: an odd page section after a page numbered 1 leaves a blank page even when the restart put that page on the second sheet (docx/local/hf-oddpage). With different odd and even headers or mirrored margins any section whose first number has the parity of the page before gets a blank page before it (docx/local/hf-restart-*). Blank pages have no header or footer, count in NUMPAGES but not in SECTIONPAGES. Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards editing and shows nothing; pages keep their sizes in the HTML whatever a browser can print. What the document leaves out comes from Word's Normal template, which depends on the region (measured on German Word, docx/local/nosect*): without w:sectPr A4, with one but without w:pgSz Letter; missing margins 2.5 cm, the bottom 2 cm, header and footer 0.5 in; regions measuring in inches get Letter and 1 inch.
 
 **Elements (9):** [`w:formProt`](../format/namespaces/w.md#wformprot), [`w:gutterAtTop`](../format/namespaces/w.md#wgutterattop), [`w:mirrorMargins`](../format/namespaces/w.md#wmirrormargins), [`w:pgMar`](../format/namespaces/w.md#wpgmar), [`w:pgSz`](../format/namespaces/w.md#wpgsz), [`w:rtlGutter`](../format/namespaces/w.md#wrtlgutter), [`w:sectPr`](../format/namespaces/w.md#wsectpr), [`w:type`](../format/namespaces/w.md#wtype), [`w:vAlign`](../format/namespaces/w.md#wvalign)
 
@@ -1143,7 +1143,7 @@ Paragraphs of documents that came from HTML refer to nested divisions with margi
 
 **Rendering:** Grid columns, horizontal spans, vertical merges, rows that skip grid columns, right-to-left tables.
 
-**Office behaviour:** Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the first column at the right, the table at the right margin); tables that follow each other directly are joined with one line between (docx/local/tbl-geom, tbl-features). Horizontal merges of old documents (w:hMerge): a cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does not show) and takes the right border of the last (docx/local/hmerge, 99.8 %).
+**Office behaviour:** Grid columns, horizontal spans, vertical merges (a merged cell taller than its rows makes the last one higher), rows that skip grid columns (no lines where no cell is), nested tables, right-to-left tables (the first column at the right, the table at the right margin); tables that follow each other directly are joined with one line between (docx/local/tbl-geom, tbl-features). Horizontal merges of old documents (w:hMerge): a cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does not show) and takes the right border of the last (docx/local/hmerge, 99.8 %). A cell's empty last paragraph after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15).
 
 **Elements (18):** [`w:bidiVisual`](../format/namespaces/w.md#wbidivisual), [`w:gridAfter`](../format/namespaces/w.md#wgridafter), [`w:gridBefore`](../format/namespaces/w.md#wgridbefore), [`w:gridCol`](../format/namespaces/w.md#wgridcol), [`w:gridSpan`](../format/namespaces/w.md#wgridspan), [`w:hMerge`](../format/namespaces/w.md#whmerge), [`w:hidden`](../format/namespaces/w.md#whidden), [`w:tbl`](../format/namespaces/w.md#wtbl), [`w:tblGrid`](../format/namespaces/w.md#wtblgrid), [`w:tblPr`](../format/namespaces/w.md#wtblpr), [`w:tblPrEx`](../format/namespaces/w.md#wtblprex), [`w:tc`](../format/namespaces/w.md#wtc), [`w:tcPr`](../format/namespaces/w.md#wtcpr), [`w:tr`](../format/namespaces/w.md#wtr), [`w:trPr`](../format/namespaces/w.md#wtrpr), [`w:vMerge`](../format/namespaces/w.md#wvmerge), [`w:wAfter`](../format/namespaces/w.md#wwafter), [`w:wBefore`](../format/namespaces/w.md#wwbefore)
 
@@ -3387,7 +3387,7 @@ Features without elements of their own that decide the fidelity of everything el
 
 **Rendering:** Anchored objects, frames and floating tables are placed first, then lines are broken into the space around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
 
-**Office behaviour:** Floating drawings are placed on their anchor's page and the page is laid out again around them until it is stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping, wrap-types). Text frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in the same exclusions.
+**Office behaviour:** Floating drawings are placed on their anchor's page and the page is laid out again around them until it is stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping, wrap-types), and to the next page where they do not fit below it: a paragraph whose own object leaves it no room on the page moves on with the object, and the page it left is laid out without it (docx/local/anchorpush-*). Text frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in the same exclusions.
 
 <a id="engine.tableLayout"></a>
 

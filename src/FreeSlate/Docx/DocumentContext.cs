@@ -15,6 +15,31 @@ public sealed class DocumentContext : IDisposable
 {
     readonly Dictionary<string, XDocument> documents = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A damaged document with several w:body elements shows them all, one after the other, under the last one's
+    /// section properties (measured with docx/external/poi/MultipleBodyBug).
+    /// </summary>
+    static void JoinBodies(XDocument document)
+    {
+        if (document.Root?.Elements(Wml.W + "body").ToList() is not { Count: > 1 } bodies)
+            return;
+        var first = bodies[0];
+        var section = first.Elements(Wml.W + "sectPr").LastOrDefault();
+        section?.Remove();
+        foreach (var extra in bodies.Skip(1))
+        {
+            if (extra.Elements(Wml.W + "sectPr").LastOrDefault() is { } own)
+            {
+                own.Remove();
+                section = own;
+            }
+            first.Add(extra.Elements());
+            extra.Remove();
+        }
+        if (section != null)
+            first.Add(section);
+    }
+
     public DocumentContext(OpcPackage package, FontLocator? fonts = null)
     {
         Package = package;
@@ -23,6 +48,7 @@ public sealed class DocumentContext : IDisposable
                        ? "The package is an OpenDocument file (it has a mimetype part), not an Office Open XML document."
                        : "No main document part (officeDocument relationship) in the package.");
         Document = Load(MainPart);
+        JoinBodies(Document);
         Styles = new StyleSheet(Related("styles"));
         Settings = Related("settings")?.Root;
         Theme = Theme.Load(Related("theme"));

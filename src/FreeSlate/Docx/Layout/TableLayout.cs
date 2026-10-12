@@ -1088,6 +1088,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             var block = blocks[b];
             switch (block)
             {
+                // A cell's empty last paragraph after a nested table takes no room, whatever its spacing and mark
+                // (measured with docx/local/nestedend-12, -14 and -15).
+                case ParagraphBlock last when b == blocks.Count - 1 && b > 0 && blocks[b - 1] is TableBlock && !last.Shows:
+                    break;
                 case ParagraphBlock paragraph:
                 {
                     var style = StyleOf(paragraph);
