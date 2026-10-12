@@ -41,10 +41,10 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [DrawingML text (charts, SmartArt, WordArt)](#text) | 18 | 8 | 4 | 5 | 1 | 3.3 | 0 | 18 |
 | [Charts](#chart) | 20 | 0 | 11 | 5 | 4 | 3.0 | 1 | 19 |
 | [SmartArt](#smartart) | 4 | 0 | 1 | 1 | 2 | 3.2 | 0 | 4 |
-| [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 1 | 1 |
+| [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 2 | 1 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **11** | **183** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **10** | **184** |
 
 <a id="package"></a>
 
@@ -3237,7 +3237,7 @@ Waterfall, treemap, sunburst, histogram, Pareto, box and whisker, funnel and reg
 | Feature | Priority | Difficulty | Status | Elements | Office notes |
 |---|---|---|---|---:|---:|
 | [Equations](#math.equations) | P1 | ●●●●○ | done | 126 | 70 |
-| [Document math settings](#math.settings) | P1 | ●●●○○ | partial | 17 | 10 |
+| [Document math settings](#math.settings) | P1 | ●●●○○ | done | 17 | 10 |
 
 <a id="math.equations"></a>
 
@@ -3261,11 +3261,11 @@ Inline equations (m:oMath in a paragraph) and display equations (m:oMathPara).
 
 ### Document math settings
 
-`math.settings` · P1 · difficulty 3 · partial
+`math.settings` · P1 · difficulty 3 · done
 
 **Rendering:** Defaults for all equations of the document (math font, break rules, margins, limits placement).
 
-**Office behaviour:** m:mathFont (a font with a MATH table, else Cambria Math), m:defJc, m:wrapIndent, m:wrapRight, m:intLim and m:naryLim apply to all equations of the document; m:brkBin before (the default) where display equations break. Still open: m:brkBin after and repeat, m:brkBinSub, m:smallFrac, and the display spacing and margins that apply without m:dispDef (m:lMargin, m:rMargin, m:preSp, m:postSp, m:interSp, m:intraSp).
+**Office behaviour:** m:mathFont (a font with a MATH table, else Cambria Math), m:defJc, m:wrapIndent, m:wrapRight, m:intLim and m:naryLim apply to all equations of the document. Display equations break at the binary operators of their top level as m:brkBin says (measured with docx/local/mathset-a to -c, every line as in Word): before them (the default), after them, or both (repeat), a repeated minus shown as m:brkBinSub says ("--", "-+", "+-": the sign at the end of the line and the one at the start); an operator at a line's end keeps the space before it. m:lMargin and m:rMargin narrow the room of display equations, also without m:dispDef, which center in it (mathset-d). The equations of one m:oMathPara stand on one line one after the other. m:preSp, m:postSp, m:interSp, m:intraSp and m:smallFrac changed nothing in Word's printout (mathset-d).
 
 **Elements (17):** [`m:brkBin`](../format/namespaces/m.md#mbrkbin), [`m:brkBinSub`](../format/namespaces/m.md#mbrkbinsub), [`m:defJc`](../format/namespaces/m.md#mdefjc), [`m:dispDef`](../format/namespaces/m.md#mdispdef), [`m:intLim`](../format/namespaces/m.md#mintlim), [`m:interSp`](../format/namespaces/m.md#mintersp), [`m:intraSp`](../format/namespaces/m.md#mintrasp), [`m:lMargin`](../format/namespaces/m.md#mlmargin), [`m:mathFont`](../format/namespaces/m.md#mmathfont), [`m:mathPr`](../format/namespaces/m.md#mmathpr), [`m:naryLim`](../format/namespaces/m.md#mnarylim), [`m:postSp`](../format/namespaces/m.md#mpostsp), [`m:preSp`](../format/namespaces/m.md#mpresp), [`m:rMargin`](../format/namespaces/m.md#mrmargin), [`m:smallFrac`](../format/namespaces/m.md#msmallfrac), [`m:wrapIndent`](../format/namespaces/m.md#mwrapindent), [`m:wrapRight`](../format/namespaces/m.md#mwrapright)
 

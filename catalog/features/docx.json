@@ -22359,9 +22359,9 @@
       "title": "Document math settings",
       "priority": "P1",
       "difficulty": 3,
-      "status": "partial",
+      "status": "done",
       "strategy": "Defaults for all equations of the document (math font, break rules, margins, limits placement).",
-      "office": "m:mathFont (a font with a MATH table, else Cambria Math), m:defJc, m:wrapIndent, m:wrapRight, m:intLim and m:naryLim apply to all equations of the document; m:brkBin before (the default) where display equations break. Still open: m:brkBin after and repeat, m:brkBinSub, m:smallFrac, and the display spacing and margins that apply without m:dispDef (m:lMargin, m:rMargin, m:preSp, m:postSp, m:interSp, m:intraSp).",
+      "office": "m:mathFont (a font with a MATH table, else Cambria Math), m:defJc, m:wrapIndent, m:wrapRight, m:intLim and m:naryLim apply to all equations of the document. Display equations break at the binary operators of their top level as m:brkBin says (measured with docx/local/mathset-a to -c, every line as in Word): before them (the default), after them, or both (repeat), a repeated minus shown as m:brkBinSub says (\"--\", \"-+\", \"+-\": the sign at the end of the line and the one at the start); an operator at a line's end keeps the space before it. m:lMargin and m:rMargin narrow the room of display equations, also without m:dispDef, which center in it (mathset-d). The equations of one m:oMathPara stand on one line one after the other. m:preSp, m:postSp, m:interSp, m:intraSp and m:smallFrac changed nothing in Word's printout (mathset-d).",
       "elements": [
         "m:brkBin",
         "m:brkBinSub",
