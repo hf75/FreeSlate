@@ -1942,7 +1942,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the next page or column (LeadingBreak): its number, its space before and its text go there (measured with
         // docx/external/libreoffice/extras-ooxmlexport/wDateValueFormat: "1 Status" after a page break at the start of
         // its heading stands at the top of the next page, 12 pt down).
-        if (LeadingBreak(paragraph) is { } leading)
+        if (LeadingBreak(paragraph) is { } leading && !(leading.Type == "page" && BreakUnseen(paragraph)))
         {
             if (leading.Type == "page")
                 NewPage(section);
@@ -2246,7 +2246,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 k = unitStart - 1;
                 continue;
             }
-            if (line.EndBreak is "page")
+            if (line.EndBreak is "page" && !BreakUnseen(paragraph))
             {
                 NewPage(section);
                 breakPage = true;
@@ -2625,6 +2625,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// tdf153592_columnBreaks). The start of a content control is a mark that does take its place: the break then
     /// ends the paragraph's first line like any other (ControlStartsBefore).
     /// </summary>
+    /// <summary>
+    /// Whether a page break in the paragraph goes unseen: before Word 2013 in the paragraph that ends a section where
+    /// the next section goes on on the same page (measured with docx/local/pb14*, pb12*: "A", a page break holding a
+    /// continuous section break and "B" stand on one page, in mode 15 on two; of a page break holding one and a page
+    /// break after it only the second begins a page; docx/external/libreoffice/extras-uiwriter/tdf131963), unless
+    /// w:splitPgBreakAndParaMark moves the paragraph's mark and its section break after the page break (docx/local/
+    /// pbsp14*, pbsp12*; extras-ooxmlexport/tdf97648_relativeWidth).
+    /// </summary>
+    bool BreakUnseen(ParagraphBlock paragraph) =>
+        context.CompatibilityMode < 15 && !context.Compat("splitPgBreakAndParaMark") && paragraph.EndsSection != null && nextContinuous;
+
     BreakInline? LeadingBreak(ParagraphBlock paragraph)
     {
         var k = 0;

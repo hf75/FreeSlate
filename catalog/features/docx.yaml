@@ -1082,7 +1082,11 @@ areas:
           (docx/local/hf-restart-*). A section on a new page right after a page break begins on the page the break
           began while that holds nothing, an empty paragraph holding the break taking no line there (docx/local/pbs-*:
           no empty page between, also before a landscape section or after a break that ends a paragraph with text; of
-          two page breaks one page stays empty; docx/external/poi/bug65649). Blank pages have no header or footer,
+          two page breaks one page stays empty; docx/external/poi/bug65649). Before Word 2013 a page break in the
+          paragraph that ends a section goes unseen where the next section goes on on the same page (docx/local/pb14*,
+          pb12*: "A", a page break holding a continuous section break and "B" on one page, in mode 15 on two;
+          docx/external/libreoffice/extras-uiwriter/tdf131963), unless w:splitPgBreakAndParaMark moves the mark and
+          the section break after it (pbsp14*, pbsp12*). Blank pages have no header or footer,
           count in NUMPAGES but not in SECTIONPAGES.
           Vertical alignment centers the text from the top margin, with the space before its first paragraph, to the
           space after its last (docx/generated/page-setup, page 4). Section form protection (w:formProt) only guards
