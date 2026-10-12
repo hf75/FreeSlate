@@ -132,6 +132,17 @@ public sealed class RunStyles(DocumentContext context)
 
     bool MacSmallCaps => macSmallCaps ??= context.CompatibilityMode < 15 && context.Compat("mwSmallCaps");
 
+    bool? eastAsianDefaults;
+
+    /// <summary>
+    /// Whether the document's default East Asian font (w:docDefaults, through the theme) is an East Asian one, which
+    /// makes Word space East Asian and Latin text apart (paragraph.eastAsian; measured with docx/local/ea-auto-*: MS
+    /// Mincho, SimSun or Yu Gothic there space whatever the language, Arial or none there, or an East Asian font only
+    /// in a style or on the paragraph mark, do not).
+    /// </summary>
+    public bool EastAsianDefaults => eastAsianDefaults ??=
+        context.FontTable.Resolve(context.Fonts, Family(context.Styles.DefaultRun, WordSlot.EastAsia), false, false).Data.EastAsian;
+
     /// <summary>How the document takes line heights from fonts (w:noLeading, w:suppressTopSpacingWP; before Word 2013 only).</summary>
     public LineHeights LineHeights => lineHeights ??= context.CompatibilityMode >= 15 ? LineHeights.Word
         : context.Compat("suppressTopSpacingWP") ? LineHeights.WordPerfect

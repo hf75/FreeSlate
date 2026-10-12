@@ -116,6 +116,7 @@ public sealed class FontData : IDisposable
             StrikeoutPosition = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + 28)) / (double)UnitsPerEm;
             double Em(int offset) => BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(os2Table + offset)) / (double)UnitsPerEm;
             (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) = (Em(12), Em(16), Em(20), Em(24));
+            AverageWidth = Em(2);
         }
         if (SuperscriptSize <= 0 || SubscriptSize <= 0)
             (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) = (0.65, 0.14, 0.65, 0.48);
@@ -246,6 +247,9 @@ public sealed class FontData : IDisposable
     public double CapHeight { get; } = 0.7;
 
     /// <summary>Underline offset below the baseline and thickness (post table), in em.</summary>
+    /// <summary>The average width of the font's characters in em (OS/2 xAvgCharWidth).</summary>
+    public double AverageWidth { get; }
+
     /// <summary>Whether all the font's glyphs are equally wide (post isFixedPitch), as Courier New's.</summary>
     public bool FixedPitch { get; }
 

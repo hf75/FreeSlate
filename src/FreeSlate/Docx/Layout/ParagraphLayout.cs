@@ -77,6 +77,9 @@ public sealed class Line
     /// <summary>Whether the line ends with the hyphen of a word broken at its end (automatic or soft hyphenation).</summary>
     public bool Hyphenated { get; set; }
 
+    /// <summary>The width of punctuation that hangs past the line's end (paragraph.eastAsian), which alignment leaves out.</summary>
+    public double Hanging { get; set; }
+
     /// <summary>A copy of the line with less room above its text, its height and baseline <paramref name="by"/> less.</summary>
     public Line Trimmed(double by)
     {
@@ -281,6 +284,89 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The check box form fields of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, CheckBoxInline> boxes = [];
+
+    /// <summary>The automatic spaces between East Asian and Latin text of the paragraph being laid out, by the character they follow.</summary>
+    readonly Dictionary<int, double> autoSpaced = [];
+
+    /// <summary>
+    /// What justification adds after a piece's character at a boundary between East Asian and Latin text: the
+    /// automatic space twice, less the one the text already has (measured with docx/local/cjk-justify-lines and
+    /// cjk-justify-western: a distributed line of a document without East Asian default font has twice the space there,
+    /// one with such a font once more).
+    /// </summary>
+    double Doubled(Piece piece, int index) =>
+        piece.Start >= 0 && autoSpaced.TryGetValue(piece.Start + index, out var space) ? styles.EastAsianDefaults ? space : 2 * space : 0;
+
+    /// <summary>
+    /// Latin words breaking anywhere (w:wordWrap off; catalog: paragraph.eastAsian): a line may end between any two
+    /// characters that are not spaces, kinsoku aside (measured with docx/local/ea-opts: Latin and mixed paragraphs).
+    /// </summary>
+    static void BreakWords(string text, bool[] breaks, LineBreaker.Kinsoku rules)
+    {
+        for (var i = 0; i + 1 < text.Length; i++)
+        {
+            var (c, next) = (text[i], text[i + 1]);
+            if (!char.IsWhiteSpace(c) && !char.IsWhiteSpace(next) && c is not ('\uFFFC' or '\u00AD') && !char.IsLowSurrogate(next)
+                && !rules.NotFirst.Contains(next) && !rules.NotLast.Contains(c))
+                breaks[i] = true;
+        }
+    }
+
+    const string ClosingPunctuation = "\u3001\u3002\uFF0C\uFF0E\u300D\u300F\uFF09\u3015\uFF3D\uFF5D\u3009\u300B\u3011\u3017\u3019";
+    const string OpeningPunctuation = "\u300C\u300E\uFF08\u3014\uFF3B\uFF5B\u3008\u300A\u3010\u3016\u3018";
+
+    /// <summary>
+    /// Punctuation kerning in kerned runs (w:kern; catalog: paragraph.eastAsian): an East Asian comma, period or
+    /// closing bracket before another one or before an opening bracket loses half its width, unless the document says
+    /// w:noPunctuationKerning (measured with docx/local/ea-punctkern: 」、, 、（ and ）。 in 11 pt MS Mincho 5.5 pt
+    /// closer; runs without kerning keep their widths).
+    /// </summary>
+    static void KernPunctuation(string text, List<RunStyle> styles, double[] advances)
+    {
+        for (var i = 0; i + 1 < text.Length && i < styles.Count; i++)
+        {
+            if (ClosingPunctuation.Contains(text[i]) && (ClosingPunctuation.Contains(text[i + 1]) || OpeningPunctuation.Contains(text[i + 1]))
+                && styles[i].Features.Contains("kern"))
+                advances[i] -= styles[i].Size / 2;
+        }
+    }
+
+    /// <summary>The automatic space the text has after a character (see <see cref="AutoSpace"/>), 0 where none.</summary>
+    double EndSpace(int index) => styles.EastAsianDefaults && autoSpaced.TryGetValue(index, out var space) ? space : 0;
+
+    /// <summary>
+    /// A line that ends between East Asian and Latin text drops the automatic space at its end (measured with
+    /// docx/local/cjk-justify15: a justified line of Latin capitals and ideographs before a line beginning with a capital
+    /// fills the line without it).
+    /// </summary>
+    void DropEndSpace(Line line, string text, int end)
+    {
+        var at = end - 1;
+        while (at >= 0 && at < text.Length && char.IsWhiteSpace(text[at]))
+            at--;
+        var space = at >= 0 ? EndSpace(at) : 0;
+        if (space <= 0)
+            return;
+        foreach (var piece in line.Pieces)
+        {
+            if (piece.Start >= 0 && at >= piece.Start && at < piece.Start + piece.Advances.Length)
+            {
+                piece.Advances[at - piece.Start] -= space;
+                return;
+            }
+        }
+    }
+
+    /// <summary>The East Asian language of a paragraph's text, for its kinsoku: that of its first East Asian character.</summary>
+    static string? EastAsianLanguage(string text, List<RunStyle> charStyles)
+    {
+        for (var i = 0; i < text.Length && i < charStyles.Count; i++)
+        {
+            if (text[i] >= 0x80 && Text.Scripts.Of(text[i]) is { Slot: Text.FontSlot.EastAsian })
+                return charStyles[i].Language;
+        }
+        return null;
+    }
 
     /// <summary>Where the line being built ends with an automatic hyphen, or -1.</summary>
     int autoHyphenAt = -1;
@@ -551,7 +637,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var advances = Advances(text, charStyles, CharacterExtra);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
-        AutoSpace(text, charStyles, advances, format);
+        if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
+            KernPunctuation(text, charStyles, advances);
+        autoSpaced.Clear();
+        AutoSpace(text, charStyles, advances, format, autoSpaced, styles.EastAsianDefaults);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
         foreach (var (index, drawing) in objects)
@@ -580,7 +669,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var labelWidth = advances.Take(labelLength).Sum();
             labelShift = label.Justification == "center" ? labelWidth / 2 : labelWidth;
         }
-        var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
+        var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
+        var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
+        if (format.WordWrap == false)
+            BreakWords(text, breaks, rules);
+        // Punctuation that may not begin a line may hang past its end instead, where the paragraph lets it
+        // (w:overflowPunct, on by default): before Word 2013 always, from then on in justified paragraphs (measured with
+        // docx/local/kinsoku-chars12-*, kinsoku-chars14-ja-JP and kinsoku-chars15-*-both, distribute).
+        var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
+            && (context.CompatibilityMode < 15 || Justified(format)) ? rules.Hanging : "";
+        var hangAt = -1;
         var hyphens = Hyphenation(text, charStyles, format);
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;
         var hyphenLimit = (int)(context.Settings.Child("consecutiveHyphenLimit").Number("val") ?? 0);
@@ -606,8 +704,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var lines = new List<Line>();
         // Justified lines may squeeze the spaces between their words by a fifth to take one more word (measured with
         // Courier New, docx/local/jc-compress: ten words fit a column 12 pt narrower than they are, not 13 pt; left
-        // aligned lines take no word that does not fit, docx/local/jc-left).
-        var squeeze = Justified(format) ? 0.2 : 0;
+        // aligned lines take no word that does not fit, docx/local/jc-left); not before Word 2013 (measured with
+        // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed).
+        var squeeze = Justified(format) && context.CompatibilityMode >= 15 ? 0.2 : 0;
 
         // Characters of the current line: [start, end) and where it starts.
         var lineStart = 0;
@@ -639,6 +738,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     limit = segments[0].End;
                 }
             }
+            // Punctuation compressed at the start of a line (w:topLinePunct): an East Asian opening bracket that begins
+            // the line stands half its width further left (measured with docx/local/toplinepunct15 and toplinepunct12:
+            // 「（『【〔 at 12 pt 6 pt left in modes 15 and 12, “ not).
+            if (format.TopLinePunctuation == true && lineStart < text.Length && lineStart < charStyles.Count && OpeningPunctuation.Contains(text[lineStart]))
+                startX -= charStyles[lineStart].Size / 2;
             var segment = 0;
             var jumps = new Dictionary<int, double>();
             var x = startX;
@@ -706,7 +810,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (text[k] == ' ')
                         innerSpaces += advances[k];
                 }
-                var fits = contentX - squeeze * innerSpaces <= limit + 0.005;
+                // The automatic space after the content's last character goes where the line ends there.
+                var fits = contentX - EndSpace(contentEnd - 1) - squeeze * innerSpaces <= limit + 0.005;
                 // A word that does not fit the segment beside a floating object continues in the next segment.
                 if (!fits && segment + 1 < segments.Count)
                 {
@@ -715,6 +820,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     x = segments[segment].Start;
                     limit = segments[segment].End;
                     continue;
+                }
+                if (!fits && hanging.Length > 0 && contentEnd - 1 > i && hanging.Contains(text[contentEnd - 1])
+                    && contentX - advances[contentEnd - 1] - squeeze * innerSpaces <= limit + 0.005)
+                {
+                    // The word fits but for its last character, which hangs past the end.
+                    hangAt = contentEnd - 1;
+                    fits = true;
                 }
                 if (!fits && end > lineStart && HasContent(text, lineStart, end))
                 {
@@ -780,6 +892,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 lastFit = end;
 
             var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
+            if (hangAt >= lineStart && hangAt < end && !HasContent(text, hangAt + 1, end))
+                line.Hanging = advances[hangAt];
+            DropEndSpace(line, text, end);
+            hangAt = -1;
             hyphenatedLines = autoHyphenAt == end ? hyphenatedLines + 1 : 0;
             autoHyphenAt = -1;
             line.EndBreak = endBreak;
@@ -811,6 +927,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         lines[^1].Last = true;
 
         var expandBreaks = !context.Compat("doNotExpandShiftReturn");
+        // How justification may spread a line between characters (measured with docx/local/cjk-justify-lines,
+        // cjk-justify-western and docx/generated/paragraph-alignment): justified lines with East Asian text where the
+        // document's default East Asian font is one (elsewhere their spaces only, East Asian text not at all);
+        // distributed lines between all characters where the paragraph has East Asian text or the document such a
+        // font (elsewhere their spaces).
+        var hasEastAsian = text.Any(EastAsian);
+        var characters = format.Justification is "distribute" or "thaiDistribute"
+            ? hasEastAsian || styles.EastAsianDefaults ? Spread.All : Spread.None
+            : styles.EastAsianDefaults ? Spread.EastAsian : Spread.None;
         foreach (var line in lines)
         {
             // Lines broken around floating objects align in their room; lines in several segments stay as they are.
@@ -822,7 +947,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 displayed.X = left + displayX;
                 continue;
             }
-            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks);
+            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters);
         }
         // Right-to-left paragraphs and runs: the lines, laid out from the start edge, read in visual order.
         if (levels != null || format.Bidi == true)
@@ -874,11 +999,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var advances = Advances(text, charStyles, CharacterExtra);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
+        if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
+            KernPunctuation(text, charStyles, advances);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
-        var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true);
+        var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
+        var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
+        if (format.WordWrap == false)
+            BreakWords(text, breaks, rules);
         var left = format.Left ?? 0;
         var right = format.Right ?? 0;
         var firstLine = format.FirstLine ?? 0;
@@ -1192,11 +1322,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The advance of every character in points, shaped run by run with Word's features.</summary>
     /// <summary>
     /// The automatic space between East Asian text and Latin letters (w:autoSpaceDE) and digits (w:autoSpaceDN), both
-    /// on unless the paragraph turns them off: a quarter of the East Asian character's size at every boundary, after
-    /// the character before it (measured with docx/local/ec-none: 3 pt beside 12 pt MS Mincho, within Word's 0.12 pt
-    /// device rounding).
+    /// on unless the paragraph turns them off, where the document's default East Asian font is one: after the
+    /// character before the boundary, a quarter of the East Asian character's size after East Asian text, half the
+    /// Latin font's average character width after Latin text (measured with docx/local/ec-none, ea-autospace and
+    /// ea-autospace2: Arial, Times New Roman, Calibri, Courier New and Segoe UI beside MS Mincho, Yu Mincho, SimSun and
+    /// Meiryo at 11 to 22 pt, within 0.1 pt).
     /// </summary>
-    static void AutoSpace(string text, List<RunStyle> styles, double[] advances, ParagraphFormat format)
+    /// <param name="spaced">The boundaries and their automatic spaces, whether added or not.</param>
+    /// <param name="add">Whether the text gets the spaces (where the document's default East Asian font is one).</param>
+    static void AutoSpace(string text, List<RunStyle> styles, double[] advances, ParagraphFormat format, Dictionary<int, double> spaced, bool add)
     {
         var (letters, digits) = (format.AutoSpaceDE != false, format.AutoSpaceDN != false);
         if (!letters && !digits)
@@ -1208,9 +1342,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             var (a, b) = (text[i], text[i + 1]);
             if (Asian(a) && Western(b, letters, digits))
-                advances[i] += styles[i].Size / 4;
+                spaced[i] = styles[i].Size / 4;
             else if (Western(a, letters, digits) && Asian(b))
-                advances[i] += styles[i + 1].Size / 4;
+                spaced[i] = styles[i].Size * styles[i].Font.Data.AverageWidth / 2;
+            else
+                continue;
+            if (add)
+                advances[i] += spaced[i];
         }
     }
 
@@ -1661,6 +1799,77 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return sb.ToString();
     }
 
+    /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
+    static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
+
+    /// <summary>
+    /// Justification of lines with East Asian text and distributed lines (measured with docx/local/cjk-justify-lines,
+    /// cjk-justify15 and ea-autospace: Arial with MS Mincho at 11, 16 and 22 pt, Times New Roman with MS Gothic,
+    /// Calibri with Yu Mincho): the free width goes in equal parts after every East Asian character and before every
+    /// one, after every space (the letters of a Latin word stay together), and after every character of a distributed
+    /// line; a space gets 0.45 of its own width more, and the automatic space between East Asian and Latin text
+    /// doubles. The last character of the line and the spaces after it take none.
+    /// </summary>
+    /// <returns>Whether the line was justified so (false where nothing can take the width).</returns>
+    static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled)
+    {
+        var chars = new List<(Piece Piece, int Index)>();
+        foreach (var piece in pieces)
+        {
+            if (piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null || piece.Combined != null)
+            {
+                chars.Add((piece, -1));
+                continue;
+            }
+            for (var k = 0; k < piece.Text.Length; k++)
+            {
+                if (!char.IsLowSurrogate(piece.Text[k]))
+                    chars.Add((piece, k));
+            }
+        }
+        char At(int n) => chars[n].Index < 0 ? '\uFFFC' : chars[n].Piece.Text[chars[n].Index];
+        // The line's content ends before its trailing spaces and its hanging punctuation.
+        var count = chars.Count;
+        while (count > 0 && At(count - 1) == ' ')
+            count--;
+        if (hangs && count > 0)
+            count--;
+        var gaps = new List<(int N, double Fixed)>();
+        var fixedTotal = 0.0;
+        for (var n = 0; n + 1 < count; n++)
+        {
+            var (c, next) = (At(n), At(n + 1));
+            if (!all && !(c == ' ' || EastAsian(c) || EastAsian(next)))
+                continue;
+            var extra = 0.0;
+            if (c == ' ' && chars[n].Index >= 0)
+                extra += 0.45 * chars[n].Piece.Advances[chars[n].Index];
+            if (doubled != null && chars[n].Index >= 0)
+                extra += doubled(chars[n].Piece, chars[n].Index);
+            gaps.Add((n, extra));
+            fixedTotal += extra;
+        }
+        if (gaps.Count == 0)
+            return false;
+        if (fixedTotal > free)
+            (fixedTotal, gaps) = (0, gaps.Select(g => (g.N, 0.0)).ToList());
+        var share = (free - fixedTotal) / gaps.Count;
+        foreach (var (n, extra) in gaps)
+        {
+            var (piece, index) = chars[n];
+            var at = index < 0 ? piece.Advances.Length - 1 : index;
+            if (at >= 0)
+                piece.Advances[at] += share + extra;
+        }
+        var x = pieces[0].X;
+        foreach (var piece in pieces)
+        {
+            piece.X = x;
+            x += piece.Width;
+        }
+        return true;
+    }
+
     static bool Justified(ParagraphFormat format) =>
         format.Justification is "both" or "distribute" or "lowKashida" or "mediumKashida" or "highKashida" or "thaiDistribute";
 
@@ -1740,17 +1949,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// Whether justified lines that end with a manual line break are stretched, as Word does unless the document says
     /// w:doNotExpandShiftReturn (catalog: settings.compatibility, measured with docx/local/compat15-*).
     /// </param>
-    static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks)
+    /// <summary>How justification spreads a line: over its spaces only, also around East Asian characters, or between all characters.</summary>
+    enum Spread { None, EastAsian, All }
+
+    /// <param name="doubled">What justification adds at a boundary between East Asian and Latin text after a character.</param>
+    static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
+        Spread spread = Spread.None)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
             return;
-        // The line's end without trailing spaces.
+        // The line's end without trailing spaces and hanging punctuation.
         var last = content[^1];
         var trailing = 0.0;
         for (var k = last.Text.Length - 1; k >= 0 && last.Text[k] == ' '; k--)
             trailing += last.Advances[k];
-        var end = last.X + last.Width - trailing;
+        var end = last.X + last.Width - trailing - line.Hanging;
         var free = limit - end;
         // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
         // start align at the start, right and end at the end (measured with docx/local/bidi).
@@ -1773,7 +1987,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var justified = jc is "both" or "lowKashida" or "mediumKashida" or "highKashida" or "distribute" or "thaiDistribute";
         // The last line of a justified paragraph keeps its natural spacing, unless it took a word by squeezing.
         var justify = justified && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
+        // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
+        // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
+        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled))
+            return;
         if (!justify || Math.Abs(free) < 1e-9)
+            return;
+        var lineSpaces = movable.Sum(p => p.Text.Count(c => c == ' ')) - (last.Text.Length - last.Text.TrimEnd(' ').Length);
+        if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Any(p => p.Drawing == null && p.Text.Any(EastAsian))
+                || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0)
+            && Distribute(movable, free, spread == Spread.All || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0, line.Hanging > 0, doubled))
             return;
         // The spaces between words share the free width (trailing spaces excluded).
         var spaces = 0;

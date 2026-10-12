@@ -74,6 +74,72 @@ public sealed class DocumentContext : IDisposable
     public double Between(double after, double before, double? ownAfter = null) =>
         AddsSpacing ? after + before : after + Math.Max(0, before - (ownAfter ?? after));
 
+    /// <summary>
+    /// The kinsoku characters of an East Asian language (catalog: paragraph.eastAsian): the document's own lists for it
+    /// (w:noLineBreaksBefore, w:noLineBreaksAfter with its w:lang) where it has them, else Word's (measured with
+    /// docx/local/kinsoku-chars*: 154 candidates in Japanese, Simplified and Traditional Chinese and Korean, each
+    /// where it would begin and where it would end a line). Japanese takes the standard characters, small kana and
+    /// the prolonged sound mark too where the document says w:strictFirstAndLastChars; Korean has none; other
+    /// languages take the Japanese ones. The characters that may hang past the end were measured in compatibility
+    /// mode 12 and in justified paragraphs (kinsoku-chars12-*, kinsoku-chars15-*-both).
+    /// </summary>
+    public Text.LineBreaker.Kinsoku Kinsoku(string? language)
+    {
+        var tag = (language ?? "").ToLowerInvariant();
+        var family = tag.StartsWith("ko", StringComparison.Ordinal) ? "ko"
+            : tag is "zh-tw" or "zh-hk" or "zh-mo" || tag.StartsWith("zh-hant", StringComparison.Ordinal) ? "zh-tw"
+            : tag.StartsWith("zh", StringComparison.Ordinal) ? "zh-cn" : "ja";
+        if (kinsoku.TryGetValue(family, out var known))
+            return known;
+        var (notFirst, notLast, hanging) = family switch
+        {
+            "ko" => ("", "", ""),
+            "zh-cn" => ("!%),.:;?]}\u00A2\u00B0\u2019\u201D\u2030\u2032\u2033\u2103\u3001\u3002\u3009\u300B\u300D\u300F\u3011\u3015\uFF01\uFF05"
+                        + "\uFF09\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F\uFF3D\uFF5D\uFFE0\u2026\u3017\u203A\u00B7\uFF5E\u2016\u3003\u301E\uFE5A\uFE5C\uFF02"
+                        + "\uFF07\uFF40\uFF5C\u00A8\u02C7\u02C9\u2015\u2236\uFE36\uFE3A\uFE3E\uFE40\uFE44\uFE5E",
+                        "$([{\u00A3\u00A5\u2018\u201C\u3008\u300A\u300C\u300E\u3010\u3014\uFF04\uFF08\uFF3B\uFF5B\uFFE1\uFFE5\u3016\u301D\uFE59\uFE5B"
+                        + "\uFE5D\uFF0E\u00B7",
+                        "!%),.:;?]}\u00A2\u00B0\u2019\u201D\u2030\u2032\u2033\u2103\u3001\u3002\u3009\u300B\u300D\u300F\u3011\u3015\uFF01\uFF05"
+                        + "\uFF09\uFF0C\uFF1A\uFF1B\uFF1F\uFF3D\uFF5D\uFFE0\u3017"),
+            "zh-tw" => ("!),.:;?]}\u00A2\u2019\u201D\u2032\u3001\u3002\u3009\u300B\u300D\u300F\u3011\u3015\uFF01\uFF09\uFF0C\uFF0E\uFF1A"
+                        + "\uFF1B\uFF1F\uFF3D\uFF5D\uFF64\u2026\u2025\u00B7\u2022\u301E\uFE5A\uFE5C\uFF5C\uFE50\uFE51\uFE52\uFE54\uFE55\uFE56"
+                        + "\uFE57\uFE30\uFE31\uFE33\uFE34\uFE36\uFE38\uFE3A\uFE3C\uFE3E\uFE40\uFE42\uFE44\uFE5E\u2027",
+                        "([{\u00A3\u00A5\u2018\u201C\u3008\u300A\u300C\u300E\u3010\u3014\uFF08\uFF5B\u301D\uFE59\uFE5B\uFE5D\u2035\uFE35\uFE37"
+                        + "\uFE39\uFE3B\uFE3D\uFE3F\uFE41\uFE43",
+                        "!),.:;?]}\u2019\u201D\u2032\u3001\u3002\u3009\u300B\u300D\u300F\u3011\u3015\uFF01\uFF09\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F"
+                        + "\uFF3D\uFF5D"),
+            _ => ("!%),.:;?]}\u00A2\u00B0\u2019\u201D\u2030\u2032\u2033\u2103\u3001\u3002\u3005\u3009\u300B\u300D\u300F\u3011\u3015"
+                  + "\u309B\u309C\u309D\u309E\u30FB\u30FD\u30FE\uFF01\uFF05\uFF09\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F\uFF3D\uFF5D\uFF61\uFF63"
+                  + "\uFF64\uFF65\uFF9E\uFF9F\uFFE0"
+                  + (Settings.Child("strictFirstAndLastChars").OnOff() == true
+                      ? "\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308E\u30A1\u30A3\u30A5\u30A7\u30A9\u30C3\u30E3\u30E5\u30E7"
+                        + "\u30EE\u30F5\u30F6\u30FC\uFF67\uFF68\uFF69\uFF6A\uFF6B\uFF6C\uFF6D\uFF6E\uFF6F\uFF70"
+                      : ""),
+                  "$([\\{\u00A3\u00A5\u2018\u201C\u3008\u300A\u300C\u300E\u3010\u3014\uFF04\uFF08\uFF3B\uFF5B\uFF62\uFFE1\uFFE5",
+                  ",.\u2019\u201D\u3001\u3002\u300D\u300F\u3011\uFF09\uFF0C\uFF0E\uFF3D\uFF5D\uFF61\uFF64"),
+        };
+        // The document's own lists replace Word's for their language.
+        string? Own(string name) => Settings?.Elements(Wml.W + name).FirstOrDefault(e => Family(e.Attr("lang")) == family)?.Attr("val");
+        static string Family(string? lang)
+        {
+            var t = (lang ?? "").ToLowerInvariant();
+            return t.StartsWith("ko", StringComparison.Ordinal) ? "ko"
+                : t is "zh-tw" or "zh-hk" or "zh-mo" || t.StartsWith("zh-hant", StringComparison.Ordinal) ? "zh-tw"
+                : t.StartsWith("zh", StringComparison.Ordinal) ? "zh-cn" : t.StartsWith("ja", StringComparison.Ordinal) ? "ja" : "";
+        }
+        // A document's own lists replace both of Word's, a missing one by none (measured with docx/local/kinsoku-b and
+        // kinsoku-custom*); Word looks the characters up as if the lists were in code point order, as it writes them
+        // (lists in another order lose some characters there).
+        var (before, after) = (Own("noLineBreaksBefore"), Own("noLineBreaksAfter"));
+        if (before != null || after != null)
+            (notFirst, notLast, hanging) = (before ?? "", after ?? "", string.Concat(hanging.Where(c => (before ?? "").Contains(c))));
+        var rules = new Text.LineBreaker.Kinsoku(notFirst, notLast, hanging);
+        kinsoku[family] = rules;
+        return rules;
+    }
+
+    readonly Dictionary<string, Text.LineBreaker.Kinsoku> kinsoku = [];
+
     /// <summary>Whether paragraphs add their spaces after and before (w:doNotUseHTMLParagraphAutoSpacing) rather than overlap them.</summary>
     public bool AddsSpacing => addsSpacing ??= Compat("doNotUseHTMLParagraphAutoSpacing");
     bool? addsSpacing;

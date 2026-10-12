@@ -17,15 +17,25 @@ public static class LineBreaker
     /// </summary>
     public const string Hanging = "、。，．";
 
+    /// <summary>
+    /// The kinsoku characters of a language: those that may not begin a line, those that may not end one, and those
+    /// of the first that may hang past the line's end instead.
+    /// </summary>
+    public sealed record Kinsoku(string NotFirst, string NotLast, string Hanging = "");
+
     /// <summary>breakAfter[i] is true if a line may end after text[i].</summary>
     /// <param name="kinsoku">
     /// The East Asian line breaking rules (pPr eaLnBrk): without them a line may break between any two East Asian
     /// characters, punctuation included (measured).
     /// </param>
+    /// <param name="rules">
+    /// The kinsoku characters, PowerPoint's where not given; with them East Asian punctuation and full-width forms
+    /// break like ideographs (Word: a line may end between 。 and 「, measured with docx/local/ea-adjust).
+    /// </param>
     /// <remarks>PowerPoint ignores the presentation's own kinsoku characters (p:kinsoku, measured).</remarks>
-    public static bool[] Opportunities(string text, bool kinsoku = true)
+    public static bool[] Opportunities(string text, bool kinsoku = true, Kinsoku? rules = null)
     {
-        var (notFirst, notLast) = (NoBreakBefore, NoBreakAfter);
+        var (notFirst, notLast) = rules is { } own ? (own.NotFirst, own.NotLast) : (NoBreakBefore, NoBreakAfter);
         var result = new bool[text.Length];
         for (var i = 0; i < text.Length; i++)
         {
@@ -46,7 +56,7 @@ public static class LineBreaker
                 result[i] = true;
             else if (c == '—' || next == '—')
                 result[i] = next is not (' ' or '\t');
-            else if (IsIdeographic(c) || IsIdeographic(next))
+            else if (IsIdeographic(c) || IsIdeographic(next) || rules != null && (IsEastAsian(c) || IsEastAsian(next)))
                 result[i] = next is not (' ' or '\t');
         }
         return result;

@@ -101,7 +101,7 @@ public static class WordFonts
 {
     /// <summary>The ascent of a font's glyphs above the baseline in em, without the line gap (as <see cref="LineMetrics"/> takes it).</summary>
     public static double Ascent(FontData font) =>
-        font.EastAsian ? font.WinAscent + 0.15 * (font.WinAscent + font.WinDescent)
+        font.EastAsian ? font.WinAscent + EastAsianExtra(font)
         : font.Typo is { Use: true } typo ? typo.Ascender : font.WinAscent;
 
     /// <summary>
@@ -120,6 +120,10 @@ public static class WordFonts
     /// docx/local/c3-lines12: 13 pt for 11 pt Arial, Times New Roman, Calibri, Cambria, Segoe UI and Aptos, 22 pt for
     /// 20 pt Arial, 11 pt for 11 pt Courier New).
     /// </param>
+    /// <summary>What Word adds above and below an East Asian font's win ascent and descent, in em: 15 % of their sum, rounded to the font's units.</summary>
+    static double EastAsianExtra(FontData font) =>
+        Math.Round(0.15 * (font.WinAscent + font.WinDescent) * font.UnitsPerEm, MidpointRounding.AwayFromZero) / font.UnitsPerEm;
+
     public static (double Above, double Below) LineMetrics(FontData font, double size, LineHeights heights = LineHeights.Word)
     {
         if (heights == LineHeights.WordPerfect)
@@ -128,13 +132,14 @@ public static class WordFonts
             var line = size + (font.FixedPitch ? 0 : 2);
             return (line - descent * size, descent * size);
         }
-        // East Asian fonts are 1.3 times their win ascent and descent high, the extra shared above and below (measured
-        // with docx/local/ea-lines: MS Gothic, MS Mincho, Yu Gothic, SimSun, Malgun Gothic and Microsoft YaHei within
-        // 0.07 pt, their hhea line gaps left out).
+        // East Asian fonts are their win ascent and descent high and 15 % of that more above and below, each rounded
+        // to the font's units, their hhea line gaps left out (measured with docx/local/ea-lines and ea-pitch: 13 lines
+        // of MS Mincho, MS Gothic, SimSun, PMingLiU, Batang, Yu Mincho, Meiryo, Malgun Gothic and Microsoft YaHei at
+        // 10.5, 12 and 16 pt, within 0.003 em: MS Mincho's 256 units make lines 1.296875 em high, not 1.3).
         if (font.EastAsian)
         {
-            var height = font.WinAscent + font.WinDescent;
-            return ((font.WinAscent + 0.15 * height) * size, (font.WinDescent + 0.15 * height) * size);
+            var extra = EastAsianExtra(font);
+            return ((font.WinAscent + extra) * size, (font.WinDescent + extra) * size);
         }
         var (hheaAscent, hheaDescent, hheaGap) = font.Hhea;
         var total = hheaAscent + hheaDescent + hheaGap;
