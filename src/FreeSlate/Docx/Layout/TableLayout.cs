@@ -291,8 +291,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         CellModel? Owner(CellModel? cell) => cell != null && origin.TryGetValue(cell, out var o) ? o.Cell : cell;
 
-        var spacing = rows.Count > 0 ? rows[0].Format.CellSpacing ?? format.CellSpacing ?? 0 : format.CellSpacing ?? 0;
-        if (spacing > 0)
+        // Cell spacing, even of nothing, keeps the table's frame and the cells' borders apart (measured with
+        // docx/local/altchunk-tables: an HTML table with cellspacing="0" has its 1.5 pt frame and 0.75 pt cell borders).
+        var spacingSet = rows.Count > 0 ? rows[0].Format.CellSpacing ?? format.CellSpacing : format.CellSpacing;
+        var spacing = spacingSet ?? 0;
+        if (spacingSet != null)
             return Spaced(table, rows, columns, at, available, spacing, fields, neighbors);
 
         // Borders: for each row boundary (0 … rows) and grid column the horizontal line, for each row and grid line
@@ -550,14 +553,25 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var gap = 2 * spacing;
         BorderLine? Visible(BorderLine? b) => b is { Visible: true } ? b : null;
         var outer = (Top: Visible(format.Borders.Top), Left: Visible(format.Borders.Left), Bottom: Visible(format.Borders.Bottom), Right: Visible(format.Borders.Right));
-        var grid = Grid(table, rows, columns, available - gap * (columns + 1) - (Width(outer.Left) + Width(outer.Right)) / 2, 0, fields);
+        // A table of a width holds its gaps and half its frame within it, the cells their own borders (measured with
+        // docx/local/altchunk-tables: a 300 px HTML table is 225.75 pt wide over its frame).
+        var extras = gap * (columns + 1) + (Width(outer.Left) + Width(outer.Right)) / 2;
+        var sized = format.Width is { Type: "dxa" or "pct" } tw && tw.Value > 0;
+        var grid = Grid(table, rows, columns, available - extras, sized ? extras : 0, fields);
         // Autofit columns of cells without preferred widths hold the cells' own borders too, which every spaced cell
-        // draws on both sides (HTML tables Word imports, docx/local/altchunk).
-        if (format.Layout != "fixed" && rows.SelectMany(r => r.Cells).All(c => c.Format.Width is not { Type: "dxa" or "pct" } cw || cw.Value <= 0))
+        // draws on both sides (HTML tables Word imports, docx/local/altchunk, altchunk-tables): a cell's own, else the
+        // table's inside line or side.
+        if (!sized && format.Layout != "fixed" && rows.SelectMany(r => r.Cells).All(c => c.Format.Width is not { Type: "dxa" or "pct" } cw || cw.Value <= 0))
         {
-            var inside = Width(Visible(format.Borders.InsideV));
+            var inside = Visible(format.Borders.InsideV);
             for (var k = 0; k < grid.Length; k++)
-                grid[k] += (k == 0 ? Width(outer.Left) : inside) + (k == grid.Length - 1 ? Width(outer.Right) : inside);
+            {
+                var edges = Width(k == 0 ? outer.Left : inside) + Width(k == grid.Length - 1 ? outer.Right : inside);
+                foreach (var cell in rows.SelectMany(r => r.Cells).Where(c => c.Column == k && c.Format.GridSpan <= 1))
+                    edges = Math.Max(edges, Width(Visible(cell.CellBorders.Left) ?? (k == 0 ? outer.Left : inside))
+                                            + Width(Visible(cell.CellBorders.Right) ?? (k == grid.Length - 1 ? outer.Right : inside)));
+                grid[k] += edges;
+            }
         }
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
@@ -608,16 +622,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             {
                 if (Shading.Color(cell.Format.Shading) is { } fill)
                     rowBox.Frames.Add(new FillRect(origin0 + left, top0, right - left, height, fill));
-                foreach (var (line, rect) in new[]
+                foreach (var (line, side, rect) in new[]
                 {
-                    (borders.Top, new FillRect(origin0 + left, top0, right - left, Width(borders.Top), RgbColor.Black)),
-                    (borders.Bottom, new FillRect(origin0 + left, top0 + height - Width(borders.Bottom), right - left, Width(borders.Bottom), RgbColor.Black)),
-                    (borders.Left, new FillRect(origin0 + left, top0, Width(borders.Left), height, RgbColor.Black)),
-                    (borders.Right, new FillRect(origin0 + right - Width(borders.Right), top0, Width(borders.Right), height, RgbColor.Black)),
+                    (borders.Top, "top", new FillRect(origin0 + left, top0, right - left, Width(borders.Top), RgbColor.Black)),
+                    (borders.Bottom, "bottom", new FillRect(origin0 + left, top0 + height - Width(borders.Bottom), right - left, Width(borders.Bottom), RgbColor.Black)),
+                    (borders.Left, "left", new FillRect(origin0 + left, top0, Width(borders.Left), height, RgbColor.Black)),
+                    (borders.Right, "right", new FillRect(origin0 + right - Width(borders.Right), top0, Width(borders.Right), height, RgbColor.Black)),
                 })
                 {
                     if (line is { Visible: true })
-                        rowBox.Frames.Add(rect with { Color = line.Color });
+                        rowBox.Frames.Add(rect with { Color = line.ColorOf(side, cell: true) });
                 }
                 var part = new CellPart { ContentTop = top0 + Width(borders.Top) + margins.Top, BottomMargin = margins.Bottom };
                 foreach (var line in content.Lines)
@@ -1114,12 +1128,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var (t, l, b, r) = box.Frame;
         var x = left + box.Left;
         if (t is { Visible: true })
-            borders.Add(new FillRect(x, top, box.Width, t.Total, t.Color));
+            borders.Add(new FillRect(x, top, box.Width, t.Total, t.ColorOf("top", cell: false)));
         if (b is { Visible: true })
-            borders.Add(new FillRect(x, bottom - b.Total, box.Width, b.Total, b.Color));
+            borders.Add(new FillRect(x, bottom - b.Total, box.Width, b.Total, b.ColorOf("bottom", cell: false)));
         if (l is { Visible: true })
-            borders.Add(new FillRect(x, top, l.Total, bottom - top, l.Color));
+            borders.Add(new FillRect(x, top, l.Total, bottom - top, l.ColorOf("left", cell: false)));
         if (r is { Visible: true })
-            borders.Add(new FillRect(x + box.Width - r.Total, top, r.Total, bottom - top, r.Color));
+            borders.Add(new FillRect(x + box.Width - r.Total, top, r.Total, bottom - top, r.ColorOf("right", cell: false)));
     }
 }

@@ -176,6 +176,11 @@ public sealed class PresentationContext : IDisposable
     /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
     public string? Image(string sourcePart, string relationshipId, double? displayWidth = null)
     {
+        // Pictures of imported content (RTF chunks) come as data URIs; metafiles among them are converted.
+        if (relationshipId.StartsWith("data:", StringComparison.Ordinal))
+            return relationshipId.StartsWith("data:image/x-emf", StringComparison.Ordinal) || relationshipId.StartsWith("data:image/x-wmf", StringComparison.Ordinal)
+                ? DataBytes(relationshipId) is { } embedded && IsMetafile(embedded) ? Metafiles.MetafileConverter.ToDataUri(embedded, $"mf{images.Count}_", displayWidth) : null
+                : relationshipId;
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
             return null;
@@ -237,8 +242,26 @@ public sealed class PresentationContext : IDisposable
     /// The size of an embedded picture in pixels at 96 dpi from its own resolution (PNG pHYs, JPEG density), as
     /// PowerPoint sizes tiles; (0, 0) when unknown.
     /// </summary>
+    /// <summary>The bytes of a base64 data URI, or null.</summary>
+    static byte[]? DataBytes(string uri)
+    {
+        var at = uri.IndexOf(";base64,", StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+        try
+        {
+            return Convert.FromBase64String(uri[(at + 8)..]);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
     public (double W, double H) ImageSize(string sourcePart, string relationshipId, double dpi = 0)
     {
+        if (relationshipId.StartsWith("data:", StringComparison.Ordinal))
+            return DataBytes(relationshipId) is { } data ? Html.ImageInfo.Size(data, dpi) : default;
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
             return default;

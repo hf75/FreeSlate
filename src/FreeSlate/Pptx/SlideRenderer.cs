@@ -851,6 +851,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var package = slide.Presentation.Package;
         if (id != null && package.Relationship(part, id) is { } rel && (rel.External || package.Exists(rel.Target)))
             return "";
+        // A picture of imported content (an RTF chunk's) comes as a data URI.
+        if (id != null && id.StartsWith("data:", StringComparison.Ordinal))
+            return "";
         // Media have content of their own.
         var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");
         if (nvPr != null && (nvPr.Elements().Any(e => e.Name.LocalName is "videoFile" or "audioFile" or "wavAudioFile" or "quickTimeFile")

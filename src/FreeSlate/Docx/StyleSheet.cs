@@ -97,6 +97,28 @@ public sealed class StyleSheet
 
     public StyleDefinition? Find(string? id) => id != null && styles.TryGetValue(id, out var style) ? style : null;
 
+    /// <summary>
+    /// Adds a paragraph style of imported content (an RTF chunk's style the document lacks) with its own paragraph and
+    /// run properties; returns its id.
+    /// </summary>
+    public string AddImported(string name, XElement paragraphProperties, XElement runProperties)
+    {
+        var id = "Imported" + new string(name.Where(char.IsAsciiLetterOrDigit).ToArray());
+        for (var n = 2; styles.ContainsKey(id); n++)
+            id = "Imported" + new string(name.Where(char.IsAsciiLetterOrDigit).ToArray()) + n;
+        var element = new XElement(Wml.W + "style", new XAttribute(Wml.W + "type", "paragraph"), new XAttribute(Wml.W + "styleId", id),
+            new XElement(Wml.W + "name", new XAttribute(Wml.W + "val", name)), new XElement(paragraphProperties), new XElement(runProperties));
+        styles[id] = new StyleDefinition
+        {
+            Id = id, Type = "paragraph", Name = name, ParagraphProperties = element.Element(Wml.W + "pPr"), RunProperties = element.Element(Wml.W + "rPr"), Element = element,
+        };
+        return id;
+    }
+
+    /// <summary>The id of the style of a type with a name (w:name, ignoring case), or null.</summary>
+    public string? IdByName(string name, string type) =>
+        styles.Values.FirstOrDefault(s => s.Type == type && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))?.Id;
+
     /// <summary>A style and the styles it is based on, the root first (cycles are cut).</summary>
     public List<StyleDefinition> Chain(string? id)
     {

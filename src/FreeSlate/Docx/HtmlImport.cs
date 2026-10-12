@@ -36,14 +36,68 @@ public static class HtmlImport
         var root = Parse(html);
         var body = Find(root, "body") ?? root;
         var result = new List<XElement>();
-        ConvertBlocks(body, new Run(), result, list: null);
-        // No space after the chunk's last block.
-        if (result.LastOrDefault(e => e.Name == W + "p") is { } last && last.Element(W + "pPr")?.Element(W + "spacing") is { } spacing)
+        sheet = Sheet(root);
+        try
         {
-            spacing.SetAttributeValue(W + "after", "0");
-            spacing.Attribute(W + "afterAutospacing")?.Remove();
+            ConvertBlocks(body, new Run(), result, list: null);
+        }
+        finally
+        {
+            sheet = null;
         }
         return result;
+    }
+
+    /// <summary>
+    /// The page's own CSS rules for element names (style elements), for the conversion under way: Word's "Normal
+    /// (Web)" takes them (measured with docx/local/altchunk: p{margin:0} leaves no space around paragraphs).
+    /// </summary>
+    [ThreadStatic]
+    static Dictionary<string, Dictionary<string, string>>? sheet;
+
+    static Dictionary<string, Dictionary<string, string>> Sheet(Node root)
+    {
+        var rules = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        var css = string.Concat(Descendants(root).Where(n => n.Name == "style").SelectMany(n => n.Children.OfType<string>()));
+        css = Regex.Replace(css, @"/\*.*?\*/", "", RegexOptions.Singleline);
+        foreach (var rule in css.Split('}'))
+        {
+            var open = rule.IndexOf('{');
+            if (open < 0)
+                continue;
+            var declarations = rule[(open + 1)..].Split(';').Select(d => d.Split(':', 2)).Where(d => d.Length == 2)
+                .Select(d => (Property: d[0].Trim().ToLowerInvariant(), Value: d[1].Trim().ToLowerInvariant())).ToList();
+            foreach (var selector in rule[..open].Split(',').Select(s => s.Trim()))
+            {
+                if (!Regex.IsMatch(selector, "^[A-Za-z][A-Za-z0-9]*$"))
+                    continue;
+                if (!rules.TryGetValue(selector, out var properties))
+                    rules[selector] = properties = new Dictionary<string, string>();
+                foreach (var (property, value) in declarations)
+                    properties[property] = value;
+            }
+        }
+        return rules;
+    }
+
+    /// <summary>A block's margin on one side in points: margin-top or -bottom, else the margin shorthand.</summary>
+    static double? Margin(Node node, string side)
+    {
+        var value = Style(node, "margin-" + side);
+        if (value == null && Style(node, "margin") is { } shorthand)
+        {
+            var parts = shorthand.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            value = parts.Length switch
+            {
+                1 => parts[0],
+                2 or 3 when side == "top" => parts[0],
+                2 => parts[0],
+                3 => parts[2],
+                >= 4 => side == "top" ? parts[0] : parts[2],
+                _ => null,
+            };
+        }
+        return value != null ? Length(value, 12) : null;
     }
 
     /// <summary>Character formatting inherited from the elements around a run.</summary>
@@ -148,8 +202,18 @@ public static class HtmlImport
         }
         else
         {
-            pPr.Add(new XElement(W + "spacing", new XAttribute(W + "before", "100"), new XAttribute(W + "beforeAutospacing", "1"),
-                new XAttribute(W + "after", "100"), new XAttribute(W + "afterAutospacing", "1"), new XAttribute(W + "line", "240"), new XAttribute(W + "lineRule", "auto")));
+            var spacing = new XElement(W + "spacing", new XAttribute(W + "before", "100"), new XAttribute(W + "beforeAutospacing", "1"),
+                new XAttribute(W + "after", "100"), new XAttribute(W + "afterAutospacing", "1"), new XAttribute(W + "line", "240"), new XAttribute(W + "lineRule", "auto"));
+            // Margins the page's CSS gives take the place of the automatic spacing.
+            foreach (var (side, attribute) in new[] { ("top", "before"), ("bottom", "after") })
+            {
+                if (Margin(block, side) is { } points)
+                {
+                    spacing.SetAttributeValue(W + attribute, ((int)Math.Round(points * 20)).ToString(CultureInfo.InvariantCulture));
+                    spacing.Attribute(W + attribute + "Autospacing")?.Remove();
+                }
+            }
+            pPr.Add(spacing);
             // Paragraphs and headings are Times New Roman unless they say otherwise; list items keep the document's font.
             paragraphRun = paragraphRun with { Font = paragraphRun.Font ?? (block.Name == "pre" ? "Courier New" : "Times New Roman"), Size = paragraphRun.Size ?? (block.Name == "pre" ? 10 : 12) };
         }
@@ -272,41 +336,49 @@ public static class HtmlImport
         return run;
     }
 
-    /// <summary>A table with its rows and cells, cells keeping their inline content in the document's font.</summary>
+    /// <summary>
+    /// A table with its rows and cells as Word converts it (measured by letting Word save docx/local/altchunk-tables,
+    /// altchunk again): cells a pixel (15 twips) of cell spacing apart, 0 with cellspacing="0"; with a border an
+    /// outset frame of that many pixels and outset cells of one; the padding a pixel unless cellpadding names
+    /// another; a width in pixels; cells vertically centered and sized by their content, their paragraphs in the
+    /// document's own spacing and font; header cells bold and centered.
+    /// </summary>
     static XElement Table(Node table, Run run)
     {
         var rows = Descendants(table).Where(n => n.Name == "tr").ToList();
         var columns = Math.Max(1, rows.Select(r => r.Children.OfType<Node>().Count(c => c.Name is "td" or "th")).DefaultIfEmpty(1).Max());
-        var bordered = table.Attributes.TryGetValue("border", out var border) && border != "0";
-        var tbl = new XElement(W + "tbl", new XElement(W + "tblPr", new XElement(W + "tblW", new XAttribute(W + "w", "0"), new XAttribute(W + "type", "auto"))));
-        if (bordered)
-        {
-            // A bordered HTML table: an outset frame, inset cells 1.5 pt apart (the default cell spacing of 2 px), the
-            // cells' padding 0.75 pt (1 px).
-            var pr = tbl.Element(W + "tblPr")!;
-            pr.Add(new XElement(W + "tblCellSpacing", new XAttribute(W + "w", "30"), new XAttribute(W + "type", "dxa")));
-            pr.Add(new XElement(W + "tblBorders",
-                new[] { "top", "left", "bottom", "right" }.Select(side =>
-                    new XElement(W + side, new XAttribute(W + "val", "outset"), new XAttribute(W + "sz", "6"), new XAttribute(W + "space", "0"), new XAttribute(W + "color", "A0A0A0"))),
-                new[] { "insideH", "insideV" }.Select(side =>
-                    new XElement(W + side, new XAttribute(W + "val", "inset"), new XAttribute(W + "sz", "6"), new XAttribute(W + "space", "0"), new XAttribute(W + "color", "A0A0A0")))));
-            pr.Add(new XElement(W + "tblCellMar", new[] { "top", "left", "bottom", "right" }.Select(side =>
-                new XElement(W + side, new XAttribute(W + "w", "15"), new XAttribute(W + "type", "dxa")))));
-        }
+        static int Pixels(Node node, string attribute, int fallback) =>
+            node.Attributes.TryGetValue(attribute, out var v) && int.TryParse(v.Trim().TrimEnd('x', 'p'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n >= 0 ? n : fallback;
+        var border = Pixels(table, "border", table.Attributes.ContainsKey("border") ? 1 : 0);
+        var spacing = Pixels(table, "cellspacing", 1) * 15;
+        var padding = Pixels(table, "cellpadding", 1) * 15;
+        var width = table.Attributes.TryGetValue("width", out var w) && !w.Contains('%') ? Pixels(table, "width", 0) * 15 : 0;
+        XElement Side(string side, int eighths) =>
+            new(W + side, new XAttribute(W + "val", "outset"), new XAttribute(W + "sz", eighths.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "space", "0"), new XAttribute(W + "color", "auto"));
+        var sides = new[] { "top", "left", "bottom", "right" };
+        var tblPr = new XElement(W + "tblPr",
+            new XElement(W + "tblW", new XAttribute(W + "w", width.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", width > 0 ? "dxa" : "auto")),
+            new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa")),
+            border > 0 ? new XElement(W + "tblBorders", sides.Select(side => Side(side, border * 6))) : null,
+            new XElement(W + "tblCellMar", sides.Select(side => new XElement(W + side, new XAttribute(W + "w", padding.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa")))));
+        var tbl = new XElement(W + "tbl", tblPr);
         tbl.Add(new XElement(W + "tblGrid", Enumerable.Range(0, columns).Select(_ => new XElement(W + "gridCol"))));
         foreach (var row in rows)
         {
-            var tr = new XElement(W + "tr");
+            var tr = new XElement(W + "tr", new XElement(W + "trPr", new XElement(W + "tblCellSpacing", new XAttribute(W + "w", spacing.ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "type", "dxa"))));
             foreach (var cell in row.Children.OfType<Node>().Where(c => c.Name is "td" or "th"))
             {
-                var tc = new XElement(W + "tc", new XElement(W + "tcPr"));
+                var tc = new XElement(W + "tc", new XElement(W + "tcPr",
+                    new XElement(W + "tcW", new XAttribute(W + "w", "0"), new XAttribute(W + "type", "auto")),
+                    border > 0 ? new XElement(W + "tcBorders", sides.Select(side => Side(side, 6))) : null,
+                    new XElement(W + "vAlign", new XAttribute(W + "val", "center"))));
                 var blocks = new List<XElement>();
                 var styled = Styled(cell, run);
                 if (cell.Children.Any(c => c is Node n && Blocks.Contains(n.Name)))
                     ConvertBlocks(cell, styled, blocks, null);
                 else
                 {
-                    var p = new XElement(W + "p", new XElement(W + "pPr", new XElement(W + "spacing", new XAttribute(W + "before", "0"), new XAttribute(W + "after", "0"))));
+                    var p = new XElement(W + "p", cell.Name == "th" ? new XElement(W + "pPr", new XElement(W + "jc", new XAttribute(W + "val", "center"))) : null);
                     Inline(cell.Children, styled, p, false, true);
                     blocks.Add(p);
                 }
@@ -334,17 +406,19 @@ public static class HtmlImport
         pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", (l + left * 20).ToString(CultureInfo.InvariantCulture)), new XAttribute(W + "right", (r + right * 20).ToString(CultureInfo.InvariantCulture))));
     }
 
+    /// <summary>A CSS property of an element: its style attribute's, else the page's rule for its name.</summary>
     static string? Style(Node node, string property)
     {
-        if (!node.Attributes.TryGetValue("style", out var style))
-            return null;
-        foreach (var declaration in style.Split(';'))
+        if (node.Attributes.TryGetValue("style", out var style))
         {
-            var colon = declaration.IndexOf(':');
-            if (colon > 0 && declaration[..colon].Trim().Equals(property, StringComparison.OrdinalIgnoreCase))
-                return declaration[(colon + 1)..].Trim().ToLowerInvariant();
+            foreach (var declaration in style.Split(';'))
+            {
+                var colon = declaration.IndexOf(':');
+                if (colon > 0 && declaration[..colon].Trim().Equals(property, StringComparison.OrdinalIgnoreCase))
+                    return declaration[(colon + 1)..].Trim().ToLowerInvariant();
+            }
         }
-        return null;
+        return sheet != null && sheet.TryGetValue(node.Name, out var rules) && rules.TryGetValue(property, out var value) ? value : null;
     }
 
     /// <summary>A CSS color as six hex digits: #rgb, #rrggbb, rgb() or a basic color name.</summary>
@@ -475,8 +549,10 @@ public static class HtmlImport
                         current.Children.Add(node);
                         if (name is "script" or "style")
                         {
-                            // Raw text up to the closing tag.
+                            // Raw text up to the closing tag, kept for style sheets.
                             var close = html.IndexOf("</" + name, m.Index + m.Length, StringComparison.OrdinalIgnoreCase);
+                            if (name == "style")
+                                node.Children.Add(html[(m.Index + m.Length)..(close < 0 ? html.Length : close)]);
                             position = close < 0 ? html.Length : html.IndexOf('>', close) + 1;
                             continue;
                         }

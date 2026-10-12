@@ -414,7 +414,7 @@ public sealed partial class ModelReader(DocumentContext context)
     /// Imported content (w:altChunk, catalog: document.altChunk) as WordprocessingML, converted the way Word converts it
     /// when it opens the document (measured with docx/local/altchunk): a WordprocessingML package's body in the
     /// document's own formatting; plain text a paragraph per line in Courier New 10.5 pt without spacing; HTML through
-    /// <see cref="HtmlImport"/>; RTF its text, a paragraph per paragraph.
+    /// <see cref="HtmlImport"/>; RTF through <see cref="RtfImport"/>.
     /// </summary>
     XElement AltChunk(string part)
     {
@@ -444,10 +444,7 @@ public sealed partial class ModelReader(DocumentContext context)
             else if (type.Contains("html"))
                 container.Add(HtmlImport.Convert(Text()));
             else if (type.Contains("rtf"))
-            {
-                foreach (var line in RtfText(Text()).Split('\n'))
-                    container.Add(Paragraph(line, null, null));
-            }
+                container.Add(RtfImport.Convert(bytes, name => context.Styles.IdByName(name, "paragraph"), context.Styles.AddImported));
             else if (type.StartsWith("text/", StringComparison.Ordinal))
             {
                 var rPr = new XElement(Wml.W + "rPr",
@@ -459,83 +456,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     container.Add(Paragraph(line, rPr, pPr));
             }
         }
-        catch (Exception e) when (e is InvalidDataException or IOException or System.Xml.XmlException or InvalidOperationException)
+        catch (Exception e) when (e is InvalidDataException or IOException or System.Xml.XmlException or InvalidOperationException
+                                       or FormatException or ArgumentException or IndexOutOfRangeException or OverflowException)
         {
             // A chunk that cannot be read is left out.
         }
         return container;
-    }
-
-    /// <summary>The text of an RTF document: groups of destinations left out, paragraphs as line feeds.</summary>
-    static string RtfText(string rtf)
-    {
-        var text = new System.Text.StringBuilder();
-        var skip = new Stack<bool>();
-        var skipping = false;
-        for (var i = 0; i < rtf.Length; i++)
-        {
-            var c = rtf[i];
-            if (c == '{')
-            {
-                skip.Push(skipping);
-                // Destinations (\*, font, color and style tables, information) are not text.
-                var rest = rtf.AsSpan(i + 1);
-                if (rest.StartsWith("\\*") || rest.StartsWith("\\fonttbl") || rest.StartsWith("\\colortbl") || rest.StartsWith("\\stylesheet")
-                    || rest.StartsWith("\\info") || rest.StartsWith("\\pict") || rest.StartsWith("\\header") || rest.StartsWith("\\footer"))
-                    skipping = true;
-                continue;
-            }
-            if (c == '}')
-            {
-                skipping = skip.Count > 0 && skip.Pop();
-                continue;
-            }
-            if (c == '\\' && i + 1 < rtf.Length)
-            {
-                var next = rtf[i + 1];
-                if (next is '\\' or '{' or '}')
-                {
-                    if (!skipping) text.Append(next);
-                    i++;
-                    continue;
-                }
-                if (next == '\'' && i + 3 < rtf.Length)
-                {
-                    if (!skipping && int.TryParse(rtf.AsSpan(i + 2, 2), System.Globalization.NumberStyles.HexNumber, null, out var code))
-                        text.Append((char)code);
-                    i += 3;
-                    continue;
-                }
-                var j = i + 1;
-                while (j < rtf.Length && char.IsAsciiLetter(rtf[j])) j++;
-                var word = rtf[(i + 1)..j];
-                var k = j;
-                if (k < rtf.Length && (rtf[k] == '-' || char.IsAsciiDigit(rtf[k])))
-                {
-                    k++;
-                    while (k < rtf.Length && char.IsAsciiDigit(rtf[k])) k++;
-                }
-                var parameter = rtf[j..k];
-                if (k < rtf.Length && rtf[k] == ' ') k++;
-                i = k - 1;
-                if (skipping)
-                    continue;
-                switch (word)
-                {
-                    case "par" or "line": text.Append('\n'); break;
-                    case "tab": text.Append('\t'); break;
-                    case "u" when int.TryParse(parameter, out var unicode):
-                        text.Append((char)(unicode < 0 ? unicode + 65536 : unicode));
-                        // The fallback character after \uN is skipped.
-                        if (i + 1 < rtf.Length && rtf[i + 1] != '\\' && rtf[i + 1] != '{' && rtf[i + 1] != '}') i++;
-                        break;
-                }
-                continue;
-            }
-            if (!skipping && c is not ('\r' or '\n'))
-                text.Append(c);
-        }
-        return text.ToString().TrimEnd('\n');
     }
 
     /// <summary>

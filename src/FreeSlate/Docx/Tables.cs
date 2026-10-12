@@ -12,6 +12,23 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
     /// <summary>nil and none draw nothing; nil also suppresses the neighbour's border in a conflict.</summary>
     public bool Visible => Style is not ("nil" or "none") && Width > 0;
 
+    /// <summary>Whether the border's color is automatic (w:color auto or none).</summary>
+    public bool AutoColor { get; init; }
+
+    /// <summary>
+    /// The color of one side of the border: an automatic outset or inset border in Word's two shades of gray, light
+    /// above and left of a raised (outset) table and dark below and right of it, a cell's the other way round
+    /// (measured with HTML tables Word imports, docx/local/altchunk, altchunk-tables: F0F0F0 and A0A0A0).
+    /// </summary>
+    public RgbColor ColorOf(string side, bool cell)
+    {
+        if (!AutoColor || Style is not ("outset" or "inset"))
+            return Color;
+        var raised = (Style == "outset") != cell;
+        var light = side is "top" or "left" ? raised : !raised;
+        return RgbColor.FromHex(light ? "F0F0F0" : "A0A0A0");
+    }
+
     /// <summary>A border element, or null where it is absent; "none" and "nil" are kept (they override).</summary>
     public static BorderLine? Read(XElement? e)
     {
@@ -23,7 +40,11 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         if (style is "nil" or "none")
             width = 0;
         var color = e.Attr("color") is { Length: 6 } hex ? RgbColor.FromHex(hex) : RgbColor.Black;
-        return new BorderLine(style, width, color, e.Number("space") ?? 0) { Shadow = e.Attr("shadow") is "1" or "true" or "on" };
+        return new BorderLine(style, width, color, e.Number("space") ?? 0)
+        {
+            Shadow = e.Attr("shadow") is "1" or "true" or "on",
+            AutoColor = e.Attr("color") is not { Length: 6 },
+        };
     }
 
     /// <summary>The total width the border takes: double and triple lines are wider than one stroke.</summary>
