@@ -686,6 +686,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (properties.Vertical)
                 properties = properties.Turned();
             StartSection(properties, s == 0);
+            nextContinuous = s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous";
             // Endnotes follow the document's last paragraph, after their separator, or each section's where the
             // settings put them at the end of sections (w:endnotePr/w:pos sectEnd), unless the section has none
             // (w:noEndnote; catalog: note.endnotes): after the text of the paragraph that ends the section, an empty
@@ -720,8 +721,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
             if (emptyEnd)
                 Place(sectionBlocks, sectionBlocks.Count - 1);
-            // A continuous section break balances the columns above it.
-            if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1)
+            // A continuous section break balances the columns above it, before Word 2013 unless w:noColumnBalance
+            // (measured with docx/local/colsect-h, -i: mode 12 leaves the lines in the first column, mode 15 balances).
+            if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1
+                && !(context.CompatibilityMode < 15 && context.Compat("noColumnBalance")))
                 Balance();
             CloseColumns();
         }
@@ -760,6 +763,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>The first section whose endnotes are still to come.</summary>
     int endnotesFrom;
+
+    /// <summary>Whether the section after the one being placed begins on the same page (continuous).</summary>
+    bool nextContinuous;
 
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
@@ -1840,6 +1846,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     void Place(List<Block> blocks, int index)
     {
         var paragraph = (ParagraphBlock)blocks[index];
+        // An empty paragraph that holds a section break after other text of its section takes no room before a
+        // continuous section, no line and no space (measured with docx/local/colsect-*: sections of one or two columns,
+        // in balanced columns too, in modes 12 and 15); alone in its section, before a section on a new page (whose
+        // first paragraph its space after still shortens) or with text it is a line as any other
+        // (docx/external/libreoffice/extras-ooxmlexport/tdf64372_continuousBreaks, tdf170003_bottomSpacing).
+        if (paragraph is { EndsSection: not null, Format.Frame: null } && index > 0 && nextContinuous && paragraph.Label is not { Own.Length: > 0 }
+            && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline))
+        {
+            foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
+                page!.Bookmarks.Add((bookmark.Name, Column(column).Left, y));
+            return;
+        }
         // A page or column break that begins a paragraph comes before it where the rest of the paragraph goes on in
         // the next page or column (LeadingBreak): its number, its space before and its text go there (measured with
         // docx/external/libreoffice/extras-ooxmlexport/wDateValueFormat: "1 Status" after a page break at the start of

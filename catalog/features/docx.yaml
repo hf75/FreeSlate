@@ -300,7 +300,7 @@ areas:
           (docx/local/breakmark-*); suppressSpacingAtTopOfPage drops the extra of at-least and grid
           spacing above the first line on a page; allowSpaceOfSameStyleInTable turns contextual spacing off in table
           cells; doNotUseIndentAsNumberingTabStop lets the tab after a list number pass the hanging indent for a
-          custom stop after it, before Word 2013 only (docx/local/numtabind-*: modes 14, 12, 11). In all modes: doNotBreakWrappedTables keeps floating tables whole (table.floating). Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
+          custom stop after it, before Word 2013 only (docx/local/numtabind-*: modes 14, 12, 11). In all modes: doNotBreakWrappedTables keeps floating tables whole (table.floating). Before Word 2013 noColumnBalance leaves the columns above a continuous section break unbalanced (section.columns). Below Word's 0.12 pt device grid and not modeled: suppressBottomSpacing (exact lines one dot lower),
           truncateFontHeightsLikeWP6 (glyphs printed one dot smaller, positions within 0.5 %), useWord97LineBreakRules
           (Latin letters up to 0.15 pt, Japanese lines 0.03 pt higher). Measured and not modeled:
           useAltKinsokuLineBreakRules breaks two of 23 Japanese test paragraphs elsewhere in mode 12. Without effect
@@ -311,7 +311,7 @@ areas:
           doNotSnapToGridInCell, doNotSuppressIndentation, doNotSuppressParagraphBorders,
           doNotUseEastAsianBreakRules, doNotVertAlignCellWithSp,
           doNotVertAlignInTxbx, doNotWrapTextWithPunct, footnoteLayoutLikeWW8, forgetLastTabAlignment, growAutofit,
-          layoutRawTableWidth, layoutTableRowsApart, lineWrapLikeWord6, noColumnBalance, noTabHangInd,
+          layoutRawTableWidth, layoutTableRowsApart, lineWrapLikeWord6, noTabHangInd,
           printBodyTextBeforeHeader, printColBlack, selectFldWithFirstOrLastChar, shapeLayoutLikeWW8,
           showBreaksInFrames, spaceForUL, spacingInWholePoints, subFontBySize, suppressSpBfAfterPgBrk,
           swapBordersFacingPages, ulTrailSpace, underlineTabInNumList, useAnsiKerningPairs (kerning without w:kern),
@@ -1091,7 +1091,10 @@ areas:
         status: done
         strategy: Equal or individual column widths with separator lines; a continuous section break balances the columns above it.
         office: >-
-          A continuous section break balances the columns above it by line count, not height: as many lines in each
+          An empty paragraph holding a section break after other text of its section takes no room before a
+          continuous section (docx/local/colsect-*: no line, no space, in balanced columns too); alone in its section or
+          before a new page it is a line as any other. A continuous section break balances the columns above it (before
+          Word 2013 not with w:noColumnBalance, docx/local/colsect-h, -i) by line count, not height: as many lines in each
           column as the least count that holds them all, the first columns taking the extra lines, with widow, keep-
           with-next and keep-together rules (9 lines go 5/4, docx/local/cols-balance; a heading and 60 lines go 31/30
           although the first column is 42 pt longer, docx/generated/page-setup). The columns end below the space after
