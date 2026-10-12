@@ -79,7 +79,7 @@ public sealed class OpcPackage : IDisposable
     public XDocument ReadXml(string partName)
     {
         using var stream = entries[partName].Open();
-        return XDocument.Load(stream, LoadOptions.PreserveWhitespace);
+        return Strict.Transition(XDocument.Load(stream, LoadOptions.PreserveWhitespace));
     }
 
     public string ContentType(string partName)
