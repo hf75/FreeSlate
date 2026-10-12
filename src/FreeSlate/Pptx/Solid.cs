@@ -24,6 +24,21 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     (double X, double Y) Scene((double X, double Y) p) => (plane.A * p.X + plane.C * p.Y + plane.E, plane.B * p.X + plane.D * p.Y + plane.F);
 
     /// <summary>
+    /// Whether the outlines of a call are one figure with holes (a glyph's): contours turning against the largest are
+    /// holes, their inside lies outside them, so they are inset the other way (the counters of B, e and o).
+    /// </summary>
+    public bool Holes { get; init; }
+
+    /// <summary>On which side of an outline its inside lies: its own turn, or the largest outline's for figures with holes.</summary>
+    int SideOf(List<(double X, double Y)> outline, List<List<(double X, double Y)>> all, bool scene) =>
+        (Holes ? SignedArea(scene ? all.MaxBy(o => Math.Abs(SignedArea(o)))!.Select(Scene).ToList() : all.MaxBy(o => Math.Abs(SignedArea(o)))!)
+            : SignedArea(outline)) >= 0 ? 1 : -1;
+
+    /// <summary>The turn of a figure with holes: of its largest outline (see <see cref="Inset(List{ValueTuple{double, double}}, double, int)"/>).</summary>
+    public static int Turn(List<List<(double X, double Y)>> outlines) =>
+        outlines.Count == 0 ? 1 : SignedArea(outlines.MaxBy(o => Math.Abs(SignedArea(o)))!) >= 0 ? 1 : -1;
+
+    /// <summary>
     /// The closed outlines of the filled paths in the shape's pixels, simplified where they barely turn and grown by
     /// <paramref name="grow"/> pixels: a shape's line is part of its body, which reaches to the line's outer edge.
     /// </summary>
@@ -72,11 +87,17 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     /// The outline moved inwards by <paramref name="distance"/> pixels (outwards when negative): every vertex along its
     /// corner's bisector so that both edges keep the distance (miters limited to four times the distance).
     /// </summary>
-    public static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance)
+    public static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance) =>
+        Inset(outline, distance, SignedArea(outline) >= 0 ? 1 : -1);
+
+    /// <summary>
+    /// The outline moved by <paramref name="distance"/> pixels to the side its figure's inside lies on: the right of
+    /// travel for a positive <paramref name="sign"/> (y down), else the left; a hole moves away from its own middle.
+    /// </summary>
+    public static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance, int sign)
     {
         if (Math.Abs(distance) < 1e-9)
             return outline;
-        var sign = SignedArea(outline) >= 0 ? 1 : -1;
         var result = new List<(double X, double Y)>(outline.Count);
         for (var i = 0; i < outline.Count; i++)
         {
@@ -175,7 +196,7 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         foreach (var local in outlines)
         {
             var outline = local.Select(Scene).ToList();
-            var sign = SignedArea(outline) >= 0 ? 1 : -1;
+            var sign = SideOf(outline, outlines, scene: true);
             var count = outline.Count;
             var normals = Enumerable.Range(0, count).Select(i => Inward(outline[i], outline[(i + 1) % count], sign)).Select(n => (X: -n.X, Y: -n.Y)).ToList();
             // Corners where the outline turns by less than 25° belong to a curve: their normal is the mean of both edges.
@@ -279,8 +300,9 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         double Depth(double t) => bottom ? z - height * BevelProfiles.At(profile, t) : z - height * (1 - BevelProfiles.At(profile, t));
         foreach (var local in outlines)
         {
-            var rings = ts.Select(t => Inset(local, width * t).Select(Scene).ToList()).ToList();
-            var sign = SignedArea(rings[0]) >= 0 ? 1 : -1;
+            var localSide = SideOf(local, outlines, scene: false);
+            var rings = ts.Select(t => Inset(local, width * t, localSide).Select(Scene).ToList()).ToList();
+            var sign = Holes ? SideOf(local, outlines, scene: true) : SignedArea(rings[0]) >= 0 ? 1 : -1;
             for (var k = 0; k + 1 < ts.Count; k++)
             {
                 var (t0, t1) = (ts[k], ts[k + 1]);
@@ -356,7 +378,7 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         {
             var outline = local.Select(Scene).ToList();
             var count = outline.Count;
-            var sign = SignedArea(outline) >= 0 ? 1 : -1;
+            var sign = SideOf(outline, outlines, scene: true);
             var inward = Enumerable.Range(0, count).Select(i => Inward(outline[i], outline[(i + 1) % count], sign)).ToList();
             (double X, double Y, double Z) At(int i, double z) => (outline[i].X, outline[i].Y, z);
             (double X, double Y, double Z) Middle(int i, double z) => ((outline[i].X + outline[(i + 1) % count].X) / 2, (outline[i].Y + outline[(i + 1) % count].Y) / 2, z);

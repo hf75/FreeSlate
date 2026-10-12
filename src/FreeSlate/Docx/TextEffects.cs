@@ -36,6 +36,29 @@ public static class TextEffects
         return list.HasElements ? list : null;
     }
 
+    /// <summary>
+    /// The run's 3D format as the scene and body PowerPoint's 3D text takes (w14:scene3d as a:scene3d, w14:props3d as
+    /// a:sp3d; catalog: run.textEffects): null unless it has a body (a bevel, depth or contour). Without a scene of its
+    /// own the text faces the viewer under three lights from the top.
+    /// </summary>
+    public static (XElement Scene, XElement Shape)? Solid(RunFormat format)
+    {
+        if (format.Props3D is not { } props)
+            return null;
+        double Emu(string name) => double.TryParse((string?)props.Attribute(Wml.W14 + name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0;
+        var body = props.Element(Wml.W14 + "bevelT") != null || props.Element(Wml.W14 + "bevelB") != null || Emu("extrusionH") > 0 || Emu("contourW") > 0;
+        if (!body)
+            return null;
+        var shape = DrawingML(props);
+        shape.Name = Ns.A + "sp3d";
+        // Text faces the viewer whatever camera the scene names (measured: a perspective camera draws as the front
+        // view); the light rig stays.
+        var light = format.Scene3D?.Element(Wml.W14 + "lightRig") is { } rig ? DrawingML(rig)
+            : new XElement(Ns.A + "lightRig", new XAttribute("rig", "threePt"), new XAttribute("dir", "t"));
+        var scene = new XElement(Ns.A + "scene3d", new XElement(Ns.A + "camera", new XAttribute("prst", "orthographicFront")), light);
+        return (scene, shape);
+    }
+
     /// <summary>The run's outline (w14:textOutline) as an a:ln, or null.</summary>
     public static XElement? Outline(RunFormat format) => format.TextOutline is { } outline ? DrawingML(outline) : null;
 

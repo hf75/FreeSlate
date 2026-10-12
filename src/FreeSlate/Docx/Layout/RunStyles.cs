@@ -210,6 +210,7 @@ public sealed class RunStyles(DocumentContext context)
             Effects = TextEffects.EffectList(format),
             Outline = TextEffects.Outline(format),
             TextFill = TextEffects.Fill(format),
+            Solid = TextEffects.Solid(format),
             RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
             Override = format.Override,
             Emphasis = format.Emphasis is { } em && em != "none" ? em : null,

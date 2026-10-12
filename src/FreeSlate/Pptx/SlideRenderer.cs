@@ -718,7 +718,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var points = glyphs.SelectMany(g => g.Contours).SelectMany(c => c).ToList();
         var (cx, cy) = points.Count > 0 ? ((points.Min(p => p.X) + points.Max(p => p.X)) / 2, (points.Min(p => p.Y) + points.Max(p => p.Y)) / 2) : (pw / 2, ph / 2);
         var (sceneWidth, sceneHeight) = (2 * cx, 2 * cy);
-        var solid = new Solid(camera, lighting, sceneWidth, sceneHeight, 0, false, false);
+        var solid = new Solid(camera, lighting, sceneWidth, sceneHeight, 0, false, false) { Holes = true };
         var (topWidth, topHeight, topProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelT"), pw, ph);
         var (bottomWidth, bottomHeight, bottomProfile) = Bevel3D(shape3d?.Element(Ns.A + "bevelB"), pw, ph);
         var depth = Units.ToPx(shape3d.Long("extrusionH") ?? 0);
@@ -742,13 +742,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 solid.Extrusion(outlines, front, back, extrusionColor ?? color);
             if (bottom > 0.01)
                 solid.Bevel(outlines, bottom, bottomRise, bottomProfile, color, back, bottom: true);
+            // The counters of the glyph are holes: inset away from their middle (Solid.Holes).
+            var turn = Solid.Turn(outlines);
             if (depth > 0.01 || top > 0.01 || bottom > 0.01)
-                solid.Back(bottom > 0.01 ? outlines.Select(o => Solid.Inset(o, bottom)).ToList() : outlines, back - bottomRise, color, null, 0);
+                solid.Back(bottom > 0.01 ? outlines.Select(o => Solid.Inset(o, bottom, turn)).ToList() : outlines, back - bottomRise, color, null, 0);
             if (top > 0.01)
                 solid.Bevel(outlines, top, topRise, topProfile, color);
             if (contourWidth > 0.01)
                 solid.Contour(outlines, front, back, contourWidth, Solid.Rise(top, topRise, topProfile), Solid.Rise(bottom, bottomRise, bottomProfile));
-            face.AddRange(top > 0.01 ? outlines.Select(o => Solid.Inset(o, top)) : outlines);
+            face.AddRange(top > 0.01 ? outlines.Select(o => Solid.Inset(o, top, turn)) : outlines);
         }
         var (sw, sh) = (Units.Css(Math.Max(pw, 1)), Units.Css(Math.Max(ph, 1)));
         var result = new StringBuilder();

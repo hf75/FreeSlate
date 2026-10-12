@@ -82,6 +82,9 @@ public sealed record RunStyle(
     public XElement? Outline { get; init; }
     public XElement? TextFill { get; init; }
 
+    /// <summary>The 3D scene and body of the text (a:scene3d, a:sp3d), drawn as PowerPoint draws 3D text, or null.</summary>
+    public (XElement Scene, XElement Shape)? Solid { get; init; }
+
     /// <summary>How the document takes line heights from fonts (its compatibility options).</summary>
     public LineHeights LineHeights { get; init; }
 

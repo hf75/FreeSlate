@@ -409,6 +409,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                 shape.Add(new XElement(Ns.P + "style", Copy(style)));
             if (e.Element(Wps + "txbxWordArt") is { } art)
                 WordArt(shape, art, docPr, graphicData);
+            if (e.Element(Wps + "txbx3D") is { } solid)
+                shape.Add(new XElement(Ns.P + "txBody", solid.Elements()));
             return shape;
         }
         if (e.Name == Wpg + "wgp" || e.Name == Wpg + "grpSp")
@@ -470,6 +472,42 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// VML WordArt (v:textpath, catalog: vml.watermarks): its text stretched over the shape as PowerPoint draws a
     /// textPlain warp, filled as the shape was; the shape itself is not drawn.
     /// </summary>
+    /// <summary>
+    /// A run of 3D text (catalog: run.textEffects) as a shape without fill or line whose text body has the run's scene
+    /// and body, PowerPoint's 3D text (pptx text.threeD): its first baseline, at PowerPoint's single line's ascent
+    /// below the top, on the run's (measured with docx/local/text-3d: Word draws such runs as pictures of their lit
+    /// glyphs).
+    /// </summary>
+    public PlacedDrawing Text3D(string text, Layout.RunStyle style, double x, double baseline, double width)
+    {
+        var size = style.Size;
+        var top = baseline - 1.2 * size * style.Font.Data.AscentRatio;
+        var (w, h) = (width + size, 1.2 * size + size / 2);
+        var fill = style.TextFill is { } own ? new XElement(own) : new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", style.Color.ToHex().TrimStart('#'))));
+        var (scene, shape3d) = style.Solid!.Value;
+        var family = style.Font.Data.Family;
+        var rPr = new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", (long)Math.Round(size * 100)),
+            new XAttribute("b", style.Bold ? 1 : 0), new XAttribute("i", style.Italic ? 1 : 0), fill,
+            new XElement(Ns.A + "latin", new XAttribute("typeface", family)), new XElement(Ns.A + "ea", new XAttribute("typeface", family)),
+            new XElement(Ns.A + "cs", new XAttribute("typeface", family)));
+        var body = new XElement(Wps + "txbx3D",
+            new XElement(Ns.A + "bodyPr", new XAttribute("wrap", "none"), new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0),
+                new XAttribute("bIns", 0), new XAttribute("anchor", "t"), new XElement(scene), new XElement(shape3d)),
+            new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "l")), new XElement(Ns.A + "r", rPr, new XElement(Ns.A + "t", text))));
+        var (cx, cy) = ((long)Math.Round(w * EmuPerPoint), (long)Math.Round(h * EmuPerPoint));
+        var drawing = new XElement(Wp + "anchor",
+            new XElement(Wp + "extent", new XAttribute("cx", cx), new XAttribute("cy", cy)),
+            new XElement(Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "3D text")),
+            new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XAttribute("uri", Wps.NamespaceName),
+                new XElement(Wps + "wsp", new XElement(Wps + "cNvSpPr"),
+                    new XElement(Wps + "spPr",
+                        new XElement(Ns.A + "xfrm", new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)), new XElement(Ns.A + "ext", new XAttribute("cx", cx), new XAttribute("cy", cy))),
+                        new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                        new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
+                    body))));
+        return new PlacedDrawing(drawing, context.MainPart, x, top, w, h);
+    }
+
     static void WordArt(XElement shape, XElement art, XElement? docPr, XElement graphicData)
     {
         var spPr = shape.Element(Ns.P + "spPr")!;
