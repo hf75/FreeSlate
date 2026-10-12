@@ -180,18 +180,31 @@ areas:
         elements: [w:altChunk, w:altChunkPr, w:matchSrc]
         priority: P2
         difficulty: 4
-        status: partial
+        status: done
         strategy: >-
           DOCX chunks are merged as WordprocessingML; plain text becomes paragraphs. HTML and RTF chunks need an
           import of their own; until then their text is shown without formatting.
         office: >-
-          Chunks are converted as Word converts them when it opens the document: a WordprocessingML package's body in
-          the document's formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing (both as
-          in Word), HTML through an import of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12
-          pt with 14 pt auto spacing, none after the chunk's last block, list items with Symbol bullets or numbers in
-          the document's font, inline formatting and style attributes (all as in Word, docx/local/altchunk). Still
-          open: HTML tables (outset frame, inset cells, cell spacing) are about 3 pt lower than Word's; RTF chunks
-          show their text only.
+          Chunks are converted as Word converts them when it opens the document (compared with the WordprocessingML
+          Word writes when it saves such a document again): a WordprocessingML package's body in the document's
+          formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing, HTML through an import
+          of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12 pt with 14 pt auto spacing
+          unless the page's style sheet gives margins (p{margin:0}), list items with Symbol bullets or numbers in the
+          document's font, tables with a pixel of cell spacing (none with cellspacing="0"), outset frames and cells in
+          Word's two grays, the padding of cellpadding, widths in pixels, cells centered and in the document's own
+          spacing and font, header cells bold and centered (docx/local/altchunk, altchunk-tables). RTF through an
+          import of our own: Word reads the RTF into a document of its own and pastes it with the destination's
+          styles, so a paragraph whose style the document has (by name) takes it and keeps as direct formatting only
+          what differs from the RTF's own definition of that style, and a style the document lacks comes along with
+          all its formatting; the RTF's styles start from its defaults (\*\defchp, \*\defpap, else the default font,
+          12 pt and no spacing), without a stylesheet the paragraphs are in Word's own Normal (Aptos 12 pt, 8 pt
+          after, 1.16 lines); character formatting lasts until \plain or the end of its group, paragraph formatting
+          until \pard; fonts by their charset's code page, Unicode with its fallback; list labels from \listtext and
+          \pntext; fields with their instructions and results; PNG, JPEG, EMF and WMF pictures; tables from their
+          rows' cell boundaries, gaps, paddings, borders, shading and merges (docx/local/altchunk-rtf, altchunk-rtf2:
+          Word's own RTF among them, lines within 0.3 pt). Known deviations: an RTF chunk's nested tables are
+          flattened, its footnotes, comments and drawn shapes left out; after an HTML list Word gives the first cell
+          of a following table no space after.
 
       - id: document.subDoc
         title: Subdocuments (master documents)

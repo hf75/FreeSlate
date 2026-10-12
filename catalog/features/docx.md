@@ -16,7 +16,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | Area | Features | P0 | P1 | P2 | P3 | Ø difficulty | Partial | Done |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | [Package and compatibility](#package) | 7 | 2 | 0 | 2 | 3 | 1.3 | 0 | 7 |
-| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 1 | 4 |
+| [Document structure](#document) | 5 | 1 | 0 | 2 | 2 | 2.0 | 0 | 5 |
 | [Document settings](#settings) | 6 | 1 | 0 | 0 | 5 | 1.8 | 0 | 6 |
 | [Styles](#style) | 3 | 2 | 0 | 0 | 1 | 2.0 | 0 | 3 |
 | [Fonts](#font) | 3 | 2 | 0 | 1 | 0 | 2.3 | 0 | 3 |
@@ -44,7 +44,7 @@ Difficulty: **1** direct mapping to HTML/CSS/SVG … **5** research project.
 | [Equations (Office Math)](#math) | 2 | 0 | 2 | 0 | 0 | 3.5 | 0 | 2 |
 | [Legacy VML content](#vml) | 3 | 0 | 3 | 0 | 0 | 3.3 | 0 | 3 |
 | [Layout engine (cross-cutting)](#engine) | 7 | 7 | 0 | 0 | 0 | 4.3 | 0 | 7 |
-| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **6** | **188** |
+| **Total** | **194** | **64** | **53** | **44** | **33** | **2.8** | **5** | **189** |
 
 <a id="package"></a>
 
@@ -174,7 +174,7 @@ Properties Office keeps for older versions or for converted VML content.
 |---|---|---|---|---:|---:|
 | [Document and body](#document.body) | P0 | ●○○○○ | done | 2 | 2 |
 | [Page background](#document.background) | P2 | ●●○○○ | done | 4 | 2 |
-| [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | partial | 3 | 1 |
+| [Imported content (altChunk)](#document.altChunk) | P2 | ●●●●○ | done | 3 | 1 |
 | [Subdocuments (master documents)](#document.subDoc) | P3 | ●●○○○ | done | 1 | 1 |
 | [Building blocks (glossary document)](#document.glossary) | P3 | ●○○○○ | done | 14 | 9 |
 
@@ -214,13 +214,13 @@ Properties Office keeps for older versions or for converted VML content.
 
 ### Imported content (altChunk)
 
-`document.altChunk` · P2 · difficulty 4 · partial
+`document.altChunk` · P2 · difficulty 4 · done
 
 A part in another format (HTML, RTF, plain text, another DOCX) that Word converts when it opens the document.
 
 **Rendering:** DOCX chunks are merged as WordprocessingML; plain text becomes paragraphs. HTML and RTF chunks need an import of their own; until then their text is shown without formatting.
 
-**Office behaviour:** Chunks are converted as Word converts them when it opens the document: a WordprocessingML package's body in the document's formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing (both as in Word), HTML through an import of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12 pt with 14 pt auto spacing, none after the chunk's last block, list items with Symbol bullets or numbers in the document's font, inline formatting and style attributes (all as in Word, docx/local/altchunk). Still open: HTML tables (outset frame, inset cells, cell spacing) are about 3 pt lower than Word's; RTF chunks show their text only.
+**Office behaviour:** Chunks are converted as Word converts them when it opens the document (compared with the WordprocessingML Word writes when it saves such a document again): a WordprocessingML package's body in the document's formatting, plain text a paragraph per line in Courier New 10.5 pt without spacing, HTML through an import of our own: headings in bold Times New Roman 24 to 7.5 pt, paragraphs in 12 pt with 14 pt auto spacing unless the page's style sheet gives margins (p{margin:0}), list items with Symbol bullets or numbers in the document's font, tables with a pixel of cell spacing (none with cellspacing="0"), outset frames and cells in Word's two grays, the padding of cellpadding, widths in pixels, cells centered and in the document's own spacing and font, header cells bold and centered (docx/local/altchunk, altchunk-tables). RTF through an import of our own: Word reads the RTF into a document of its own and pastes it with the destination's styles, so a paragraph whose style the document has (by name) takes it and keeps as direct formatting only what differs from the RTF's own definition of that style, and a style the document lacks comes along with all its formatting; the RTF's styles start from its defaults (\*\defchp, \*\defpap, else the default font, 12 pt and no spacing), without a stylesheet the paragraphs are in Word's own Normal (Aptos 12 pt, 8 pt after, 1.16 lines); character formatting lasts until \plain or the end of its group, paragraph formatting until \pard; fonts by their charset's code page, Unicode with its fallback; list labels from \listtext and \pntext; fields with their instructions and results; PNG, JPEG, EMF and WMF pictures; tables from their rows' cell boundaries, gaps, paddings, borders, shading and merges (docx/local/altchunk-rtf, altchunk-rtf2: Word's own RTF among them, lines within 0.3 pt). Known deviations: an RTF chunk's nested tables are flattened, its footnotes, comments and drawn shapes left out; after an HTML list Word gives the first cell of a following table no space after.
 
 **Elements (3):** [`w:altChunk`](../format/namespaces/w.md#waltchunk), [`w:altChunkPr`](../format/namespaces/w.md#waltchunkpr), [`w:matchSrc`](../format/namespaces/w.md#wmatchsrc)
 
