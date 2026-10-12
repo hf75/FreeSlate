@@ -31,7 +31,9 @@ public sealed class NumberingLevel
     {
         var level = new NumberingLevel
         {
-            Start = (int)(lvl.Child("start").Number("val") ?? 1),
+            // A level without w:start counts from 0 (measured with docx/local/ns-*: "0.", "1.", "2." in modes 12 to 15,
+            // a level below "0.0"; docx/external/libreoffice/extras-ooxmlexport/tdf132754).
+            Start = (int)(lvl.Child("start").Number("val") ?? 0),
             Format = lvl.Child("numFmt").Val() ?? "decimal",
             Text = lvl.Child("lvlText").Val(),
             Justification = lvl.Child("lvlJc").Val() ?? "left",
@@ -218,7 +220,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             if (restart == null || restart > 0 && ilvl < restart)
                 counters.Used[d] = false;
         }
-        var own = level.Format is "none" or "bullet" ? "" : NumberText.Format(counters.Values[ilvl], level.Legal ? "decimal" : level.Format, language);
+        var own = level.Format is "none" or "bullet" ? "" : Number(counters.Values[ilvl], level.Legal ? "decimal" : level.Format, language);
         return (Text(instance, counters, ilvl, level, language), level, own);
     }
 
@@ -246,7 +248,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
                 var value = counters.Used[k] ? counters.Values[k] : referenced?.Start ?? 1;
                 var format = level.Legal ? "decimal" : referenced?.Format ?? "decimal";
                 if (format != "none")
-                    sb.Append(NumberText.Format(value, format == "bullet" ? "decimal" : format, language));
+                    sb.Append(Number(value, format == "bullet" ? "decimal" : format, language));
                 i++;
                 continue;
             }
@@ -254,4 +256,9 @@ public sealed class ListCounter(NumberingDefinitions definitions)
         }
         return sb.ToString();
     }
+
+    /// <summary>A list number in a format: letters and roman numbers have none for 0 (measured with docx/local/ns-upperLetter,
+    /// ns-lowerRoman: ".", "A.", "B." and ".", "i.", "ii." where the level counts from 0).</summary>
+    static string Number(int value, string format, string? language) =>
+        value <= 0 && format is "upperLetter" or "lowerLetter" or "upperRoman" or "lowerRoman" ? "" : NumberText.Format(value, format, language);
 }

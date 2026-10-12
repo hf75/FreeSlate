@@ -854,7 +854,8 @@ areas:
           draw a line through the line and the space after the paragraph. Decimal stops align on the settings' decimal
           symbol (with a German comma, 12.5 ends at the stop). A left stop past the right margin moves the tab to the
           next line, where it fills the line; centered, right and decimal stops past it align at the margin
-          (docx/generated/tabs, docx/local/tab-rules, tab-break). An absolute position tab (w:ptab) aligns what follows
+          (docx/generated/tabs, docx/local/tab-rules, tab-break). A tab goes to the next line together with the word
+          after it where that word does not fit after it (docx/local/lw-6 to lw-10; engine.lineLayout). An absolute position tab (w:ptab) aligns what follows
           it at the left edge, the middle or the right edge of the margins or indents, as a stop of that alignment
           there would (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt).
 
@@ -1038,8 +1039,11 @@ areas:
           style itself, the style's override the level's attribute by attribute (a style's left 1080 with a level's
           left 1620 and hanging 360 makes left 1080, hanging 360; docx/local/styleind-A … -H). The number is drawn in
           the paragraph mark's formatting with the level's run properties over it; only its ascent counts in the line
-          height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high). Picture bullets are
-          numbering.pictureBullets.
+          height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high), and beside nothing
+          but drawings the line has no descent at all (docx/local/lt-8, lt-10: a bullet beside a 40 pt shape makes the
+          line 40 pt high). A level without w:start counts from 0, where letters and roman numbers show nothing
+          (docx/local/ns-*: "0.", "1.", "2." in modes 12 to 15, ".", "A.", "B."; docx/external/libreoffice/
+          extras-ooxmlexport/tdf132754). Picture bullets are numbering.pictureBullets.
 
       - id: numbering.counting
         title: List counters
@@ -3357,7 +3361,11 @@ areas:
           spacebreak: 19 characters), after every hyphen and en dash whatever stands before it, digits, punctuation
           or a space, after the hyphen U+2010 from Word 2013 on, not after slashes, plus signs, underscores or
           non-breaking hyphens (docx/local/hyphbreak-15, -12: 19 cases), and before and after inline pictures as
-          beside ideographs (docx/local/tblpic3); a word longer than the line breaks between characters; trailing spaces hang past the end;
+          beside ideographs (docx/local/tblpic3); a word longer than the line breaks between characters, on the line
+          where it begins if nothing but a tab or a list number stands before it there, with at least one character
+          after a number, none needed after a tab (docx/local/lw-*, lx-*, ly-*, lt-*: modes 14 and 15); a tab goes to
+          the next line with the word after it where that word does not fit (lw-6 to lw-10, ly-1, ly-4; docx/external/
+          libreoffice/extras-ooxmlexport/tdf123054, tdf142404_tabOverMarginC15); trailing spaces hang past the end;
           spaces never make a line taller or lower, whatever their size or place, and a line of only spaces is the
           paragraph mark's (docx/local/ts-*, tu-*, tv-*: a 45 pt space before, between or after 9 pt words leaves the
           line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not); justified lines squeeze spaces for one more word where that

@@ -800,6 +800,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
         var labelShift = 0.0;
         var labelEnd = paragraph.Label?.Suffix == "space" ? labelLength + 1 : labelLength;
+        var labelWhole = paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength;
         if (paragraph.Label is { Justification: "right" or "end" or "center" } label && labelLength > 0)
         {
             var labelWidth = advances.Take(labelLength).Sum();
@@ -808,8 +809,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var rules = context.Kinsoku(EastAsianLanguage(text, charStyles));
         var breaks = LineBreaker.Opportunities(text, format.Kinsoku ?? true, rules);
         BreakAtSpaces(text, breaks);
-        BreakAfterHyphens(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
-        BreakAroundObjects(text, breaks, rules, paragraph.Label?.Suffix is "tab" or "space" ? labelLength + 1 : labelLength);
+        BreakAfterHyphens(text, breaks, rules, labelWhole);
+        BreakAroundObjects(text, breaks, rules, labelWhole);
         if (format.WordWrap == false)
             BreakWords(text, breaks, rules);
         // Punctuation that may not begin a line may hang past its end instead, where the paragraph lets it
@@ -983,7 +984,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     hangAt = contentEnd - 1;
                     fits = true;
                 }
-                if (!fits && end > lineStart && HasContent(text, lineStart, end))
+                // A tab goes to the next line with the word after it, the line breaking before it (measured with
+                // docx/local/lw-6 to lw-10, ly-1, ly-2, ly-4: in modes 14 and 15); one that begins the line keeps the word,
+                // which breaks inside then (lx-1, ly-6, lz-5), as after nothing but the list number and its tab or space
+                // (lw-2, lx-2, lx-4; docx/external/libreoffice/extras-ooxmlexport/tdf123054).
+                var breakAt = end == i && end > lineStart && text[end - 1] == '\t' ? end - 1 : end;
+                if (!fits && breakAt > lineStart && HasContent(text, Math.Max(lineStart, labelWhole), breakAt))
                 {
                     // Automatic hyphenation (measured with docx/local/hyph-a to -d and hyph-fit): the word that does not
                     // fit breaks at its last place where its part and a hyphen fit; justified lines may squeeze their
@@ -1003,8 +1009,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                             end = at;
                             lastFit = at;
                             autoHyphenAt = at;
+                            break;
                         }
                     }
+                    end = breakAt;
                     break;   // the word goes to the next line
                 }
                 if (!fits && hyphens != null && Hyphenate(i, contentEnd, x, limit) is { } inWord)
@@ -1017,15 +1025,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 if (!fits)
                 {
-                    // A word longer than the line: as many characters as fit, at least one.
+                    // A word longer than the line: as many characters as fit, at least one; after a tab that begins the
+                    // line none need, the word then following on the next (measured with docx/local/lt-1: a tab to 6 in,
+                    // then "WWW" at 36 pt; docx/external/libreoffice/extras-ooxmlexport/tdf142404_tabOverMarginC15), but
+                    // after the list number's tab (lt-3: a shape wider than the room beside a bullet stays beside it).
                     var k = i;
                     var kx = x;
-                    while (k < contentEnd && (k == i || kx + advances[k] <= limit + 0.005))
+                    while (k < contentEnd && (k == i && (breakAt == end || breakAt == labelTab) || kx + advances[k] <= limit + 0.005))
                     {
                         kx += advances[k];
                         k++;
                     }
-                    end = k;
+                    // Spaces after the whole of it stay on the line (lt-11: a shape wider than the room, then a space).
+                    end = k == contentEnd ? wordEnd : k;
                     lastFit = k;
                     x = kx;
                     break;
@@ -1835,6 +1847,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // further); an empty line takes its break's or the paragraph mark's.
         double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
         var any = false;
+        var texts = false;       // anything but list numbers that stands like text
         var drawings = false;
         var pictures = false;
         // Spaces between drawings do not make the line taller (measured with docx/local/vml-inline2: two 40 pt shapes
@@ -1874,7 +1887,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 raised = Math.Max(raised, boxAbove);
                 lowered = Math.Max(lowered, boxBelow);
                 largest = Math.Max(largest, boxAbove + boxBelow);
-                any = true;
+                any = texts = true;
                 continue;
             }
             // An equation stands on the baseline with its ascent and descent; the line spacing's extra comes from the
@@ -1910,7 +1923,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 raised = Math.Max(raised, Math.Max(fontAbove, middle + length / 2));
                 lowered = Math.Max(lowered, Math.Max(fontBelow, length / 2 - middle));
                 largest = Math.Max(largest, fontAbove + fontBelow);
-                any = true;
+                any = texts = true;
                 continue;
             }
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
@@ -1925,15 +1938,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // before 12 pt Arial makes the line 17.52 pt high, its ascent and the text's descent).
             if (piece.IsLabel)
                 continue;
+            texts = true;
             below = Math.Max(below, b);
             largest = Math.Max(largest, a + b);
             lowered = Math.Max(lowered, b - lift + reachBelow);
         }
-        if (drawings && !any)
+        if (drawings && !texts)
         {
             // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra; pictures
             // smaller than the mark's line still take its whole height (measured with docx/local/smallpic-single and
-            // -115: pictures of 2 to 12 pt beside an 11 pt Calibri mark stand 13.43 pt high, larger ones their own).
+            // -115: pictures of 2 to 12 pt beside an 11 pt Calibri mark stand 13.43 pt high, larger ones their own);
+            // beside nothing but a list number too (lt-8, lt-10: a bullet and a 40 pt shape make the line 40 pt high).
             var (a, b) = Metrics(mark, Vertical);
             largest = a + b;
             if (pictures)
