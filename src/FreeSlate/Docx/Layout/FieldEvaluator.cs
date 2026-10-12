@@ -346,16 +346,42 @@ public sealed class FieldEvaluator
                 groups.Add(current.ToString());
             return groups.Where(g => g.Trim().Length > 0).ToList();
         }
+        // The groups of runs in the style on a page, as its body's lines show them (a paragraph's runs on the pages
+        // they stand on).
+        List<string> OnPage(PageBox page)
+        {
+            var groups = new List<string>();
+            StringBuilder? current = null;
+            foreach (var line in page.Lines.Where(l => l.Top >= page.BodyTop - 0.5 && l.Top < page.BodyBottom))
+            {
+                foreach (var piece in line.Line.Pieces)
+                {
+                    if (piece.Style.CharacterStyle == style.Id && !piece.IsLabel)
+                        (current ??= new StringBuilder()).Append(piece.Text);
+                    else if (current != null && piece.Text.Trim().Length > 0)
+                    {
+                        groups.Add(current.ToString());
+                        current = null;
+                    }
+                }
+            }
+            if (current != null)
+                groups.Add(current.ToString());
+            return groups.Where(g => g.Trim().Length > 0).ToList();
+        }
         string? found = null;
         if (on != null)
         {
-            var here = ParagraphsOf(on).SelectMany(Groups).ToList();
+            var source = Current is { } current && !current.Contains(on) && on.Lines.Count == 0 ? pages.FirstOrDefault(p => p.Number == on.Number) : on;
+            if (source == null)
+                guessed = true;
+            var here = source != null ? OnPage(source) : [];
             found = here.Count > 0 ? last ? here[^1] : here[0] : null;
             foreach (var page in Before(on))
             {
                 if (found != null)
                     break;
-                found = page.Paragraphs.SelectMany(Groups).LastOrDefault();
+                found = OnPage(page).LastOrDefault();
             }
         }
         else if (paragraphOf.TryGetValue(field, out var paragraph))

@@ -18,6 +18,9 @@ public sealed record RunStyle(
 {
     public string? Underline { get; init; }
     public RgbColor? UnderlineColor { get; init; }
+
+    /// <summary>The character style of the run (w:rStyle), which STYLEREF looks for on a page.</summary>
+    public string? CharacterStyle { get; init; }
     public bool Strike { get; init; }
     public bool DoubleStrike { get; init; }
 
