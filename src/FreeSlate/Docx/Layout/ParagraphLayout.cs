@@ -1838,7 +1838,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // or pictures with spaces between them make the line as high as one alone); beside text they count.
         static bool Blank(Piece p) => p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Ruby == null && p.Combined == null && p.Across == null && string.IsNullOrWhiteSpace(p.Text);
         var onlyDrawings = line.Pieces.Any(p => p.Drawing != null) && line.Pieces.All(p => p.IsTab || p.Drawing != null || Blank(p));
-        foreach (var piece in line.Pieces.Where(p => !p.IsTab && !(onlyDrawings && Blank(p))))
+        // Spaces never make a line taller or lower, whatever their size, where they stand or how they are formatted;
+        // a line of nothing but spaces is the paragraph mark's (measured with docx/local/ts-*, tu-*, tv-*: a 45 pt space
+        // before, between or after 9 pt words leaves the line 9 pt, in modes 12, 14 and 15; a 45 pt "x" or no-break
+        // space does not; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw).
+        static bool Spaces(Piece p) => Blank(p) && p.Text.Length > 0 && p.Text.All(c => c == ' ') && !p.IsLabel;
+        var spacesOnly = line.Pieces.Any(Spaces) && line.Pieces.All(p => p.IsTab || Spaces(p));
+        foreach (var piece in line.Pieces.Where(p => !p.IsTab && !(onlyDrawings && Blank(p)) && !Spaces(p)))
         {
             // Ruby stands above its base, w:hpsRaise up from the base's baseline: the line makes room for it.
             if (piece.Ruby is { } rubyText && rubyText.Ruby.Count > 0)
@@ -1944,7 +1950,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         if (!any)
         {
-            var style = end > start && start < charStyles.Count ? charStyles[start] : mark;
+            var style = end > start && start < charStyles.Count && !spacesOnly ? charStyles[start] : mark;
             (above, below) = Metrics(style, Vertical);
             largest = above + below;
             (raised, lowered) = (above, below);
