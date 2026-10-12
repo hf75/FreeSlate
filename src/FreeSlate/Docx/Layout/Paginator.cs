@@ -2240,7 +2240,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 };
             }
             var own = k == index && lines != null ? lines : KeptLines(paragraph, width);
-            var last = paragraph.Format.KeepNext != true || k + 1 >= blocks.Count || blocks[k + 1] is not (ParagraphBlock or TableBlock);
+            // A paragraph that ends with a page or column break ends the chain: what follows begins anew anyway
+            // (docx/external/libreoffice/extras-ooxmlexport/testPageref: a page break kept with the next paragraph,
+            // through its style, made an empty page).
+            var last = paragraph.Format.KeepNext != true || k + 1 >= blocks.Count || blocks[k + 1] is not (ParagraphBlock or TableBlock)
+                       || own.Count > 0 && own[^1].EndBreak is "page" or "column";
             var room = Bottom - y;
             // The last paragraph needs its first lines here, all of them where it keeps them together.
             var needed = last && paragraph.Format.KeepLines != true ? FirstLines(own, paragraph.Format) : Needed(own);

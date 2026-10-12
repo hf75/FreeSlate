@@ -800,7 +800,9 @@ areas:
           next; reaching the top of the page, they stay and the chain breaks where it must. So a chain begun below
           other text moves to the next page even when it is taller than a page, and lines kept together move although
           they need more than a page (docx/local/kc1 … kc12). A first line that ends in a page or column break needs
-          no second line with it, and a line of nothing but such a break stays on its page, past the bottom too
+          no second line with it, a paragraph that ends with one ends its chain (docx/external/libreoffice/
+          extras-ooxmlexport/testPageref: a page break kept with the next paragraph through its style makes no empty
+          page), and a line of nothing but such a break stays on its page, past the bottom too
           (docx/external/libreoffice/extras-ooxmlexport/FDO77715: no empty pages before headings that begin with a
           column break). Tables take part: a paragraph kept with a table goes
           along with its first row, which does not break for it; a row whose first cell's first paragraph is kept with
