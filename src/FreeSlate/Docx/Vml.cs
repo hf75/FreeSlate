@@ -51,12 +51,13 @@ public static class Vml
             style.TryAdd("position", "absolute");
         }
         var type = (string?)shape.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
-        var content = Content(shape, type, width, height);
+        var content = shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height);
         if (content == null)
             return null;
-        var graphic = new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData",
-            new XAttribute("uri", content.Name.Namespace == Drawings.Pic ? "http://schemas.openxmlformats.org/drawingml/2006/picture" : "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"),
-            content));
+        var uri = content.Name.Namespace == Drawings.Pic ? "http://schemas.openxmlformats.org/drawingml/2006/picture"
+            : content.Name.Namespace == Drawings.Wpg ? "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+            : "http://schemas.microsoft.com/office/word/2010/wordprocessingShape";
+        var graphic = new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XAttribute("uri", uri), content));
         var id = new string(((string?)shape.Attribute("id") ?? "").Where(char.IsDigit).ToArray());
         var docPr = new XElement(Drawings.Wp + "docPr", new XAttribute("id", id.Length is > 0 and < 10 ? id : "1"), new XAttribute("name", (string?)shape.Attribute("id") ?? ""));
         var extent = new XElement(Drawings.Wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
@@ -78,6 +79,67 @@ public static class Vml
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
         return anchor;
+    }
+
+    /// <summary>
+    /// A VML group (v:group, catalog: vml.shapes) as a DrawingML group: its children's coordinates (coordorigin,
+    /// coordsize) mapped onto its box, the children's left, top, width and height (or a line's from and to) in them;
+    /// groups nest.
+    /// </summary>
+    static XElement Group(XElement group, Dictionary<string, XElement> types, double width, double height, bool top, (long X, long Y, long W, long H)? place = null)
+    {
+        static (long A, long B) Pair(string? value, (long, long) fallback)
+        {
+            var parts = (value ?? "").Split(',');
+            return parts.Length == 2 && long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var a)
+                   && long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? (a, b) : fallback;
+        }
+        static long Raw(Dictionary<string, string> style, string name) =>
+            double.TryParse(style.GetValueOrDefault(name)?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? (long)Math.Round(v) : 0;
+        var (ox, oy) = Pair((string?)group.Attribute("coordorigin"), (0, 0));
+        var (cw, ch) = Pair((string?)group.Attribute("coordsize"), (1000, 1000));
+        var (x, y, w, h) = place ?? (0, 0, Emu(width), Emu(height));
+        var xfrm = new XElement(Ns.A + "xfrm",
+            new XElement(Ns.A + "off", new XAttribute("x", x), new XAttribute("y", y)),
+            new XElement(Ns.A + "ext", new XAttribute("cx", w), new XAttribute("cy", h)),
+            new XElement(Ns.A + "chOff", new XAttribute("x", ox), new XAttribute("y", oy)),
+            new XElement(Ns.A + "chExt", new XAttribute("cx", cw), new XAttribute("cy", ch)));
+        var element = top
+            ? new XElement(Drawings.Wpg + "wgp", new XElement(Drawings.Wpg + "cNvGrpSpPr"), new XElement(Drawings.Wpg + "grpSpPr", xfrm))
+            : new XElement(Drawings.Wpg + "grpSp", new XElement(Drawings.Wpg + "cNvGrpSpPr"), new XElement(Drawings.Wpg + "grpSpPr", xfrm));
+        foreach (var child in group.Elements())
+        {
+            if (child.Name.Namespace != V || child.Name.LocalName == "shapetype")
+                continue;
+            var style = Style((string?)child.Attribute("style"));
+            if (style.GetValueOrDefault("visibility") == "hidden")
+                continue;
+            var (cx, cy, cwidth, cheight) = (Raw(style, "left"), Raw(style, "top"), Raw(style, "width"), Raw(style, "height"));
+            if (child.Name == V + "line")
+            {
+                var (from, to) = (Pair((string?)child.Attribute("from"), (0, 0)), Pair((string?)child.Attribute("to"), (0, 0)));
+                (cx, cy, cwidth, cheight) = (Math.Min(from.A, to.A), Math.Min(from.B, to.B), Math.Abs(to.A - from.A), Math.Abs(to.B - from.B));
+            }
+            if (child.Name == V + "group")
+            {
+                element.Add(Group(child, types, 0, 0, top: false, (cx, cy, cwidth, cheight)));
+                continue;
+            }
+            var type = (string?)child.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
+            // The child's size in points, for what is measured in points (insets, line widths) to stay in scale.
+            var scale = cw > 0 ? (double)w / cw / EmuPerPoint : 1;
+            if (Content(child, type, cwidth * scale, cheight * scale) is not { } content)
+                continue;
+            if (content.Descendants(Ns.A + "xfrm").FirstOrDefault() is { } own)
+            {
+                own.Element(Ns.A + "off")?.SetAttributeValue("x", cx);
+                own.Element(Ns.A + "off")?.SetAttributeValue("y", cy);
+                own.Element(Ns.A + "ext")?.SetAttributeValue("cx", cwidth);
+                own.Element(Ns.A + "ext")?.SetAttributeValue("cy", cheight);
+            }
+            element.Add(content);
+        }
+        return element;
     }
 
     static XElement Position(string name, string? relative, string? align, double offset, bool horizontal)
