@@ -514,7 +514,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
         if (properties.Attr("wrap") != "none")
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
-                properties.Attr("wrap") == "notBeside", "bothSides"));
+                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true });
         return end;
     }
 
@@ -539,6 +539,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         public double DistanceLeft { get; init; }
         public double DistanceRight { get; init; }
+
+        /// <summary>Whether the area is a text frame's (w:framePr).</summary>
+        public bool Frame { get; init; }
     }
 
     static Exclusion? ExclusionOf(PlacedDrawing drawing)
@@ -1547,6 +1550,34 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// at the top without them, and Word still counts them: what follows the table goes to the next page. A row that
     /// may not split moves on whole and splits only at the top of a page that cannot hold it.
     /// </remarks>
+    /// <summary>
+    /// A table does not stand beside the floating objects and frames placed before it: it begins below those its part
+    /// on the page would overlap, from Word 2013 on whatever their wrapping, before only those kept free above and
+    /// below (measured with docx/local/fx-1 to fx-11 and ft-1 to ft-5: below a 40 pt shape wrapped square or top and
+    /// bottom, also one beside a 70-row table's last rows on the page, and below a frame not beside text; a shape right
+    /// of the table, one without wrapping and in mode 14 one wrapped square leave it; docx/external/libreoffice/
+    /// core-ooxml-pass/fdo78904_fileHang).
+    /// </summary>
+    void BelowFloats(TableBox box, double left)
+    {
+        var (from, to) = (left + box.Left, left + box.Left + box.Width);
+        var height = box.Rows.Sum(r => r.Height);
+        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => e.Frame))
+            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
+        for (var moved = true; moved;)
+        {
+            moved = false;
+            foreach (var e in floats)
+            {
+                if (e.Top < Math.Min(y + height, Bottom) - 0.01 && e.Bottom > y + 0.01)
+                {
+                    y = e.Bottom;
+                    moved = true;
+                }
+            }
+        }
+    }
+
     void PlaceTable(List<Block> blocks, int index)
     {
         var table = (TableBlock)blocks[index];
@@ -1567,6 +1598,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NextColumn(natural: true);
             (left, width) = Column(column);
         }
+        // A table whose cells' paragraphs have frame properties stands in that frame (docx/local/lb-1 to lb-4: Word
+        // sets such a table at the margin's outside top, beside the frame before it, without them below it).
+        if (table.Table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is not ParagraphBlock { Format.Frame: not null })
+            BelowFloats(box, left);
         tableKept = RowKept(table.Table, box.Rows.Count - 1);
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);
