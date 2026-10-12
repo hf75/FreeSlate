@@ -92,6 +92,79 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// </summary>
     public string Background(double width, double height)
     {
+        // Word's VML gradients repeat over the page in tiles (see Vml.BackgroundGradient, BackgroundTile).
+        if (context.Background?.Element(Vml.V + "background") is { } vml)
+        {
+            const double Px = 96.0 / 72;
+            var (w, h) = (Units.Css(width * Px), Units.Css(height * Px));
+            string Page(string defs, string paint) =>
+                $"<div class=\"sp\" style=\"width:{w}px;height:{h}px\"><svg width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\"><defs>{defs}</defs>" +
+                $"<rect width=\"{w}\" height=\"{h}\"{paint} shape-rendering=\"crispEdges\"/></svg></div>";
+            if (Vml.BackgroundGradient(vml) is { } gradient)
+            {
+                // The gradient turned back at its ends across the whole page, written out: PDF viewers (Windows' among
+                // them) draw a mirrored SVG gradient that browsers print as nothing.
+                var (vx, vy) = (gradient.X2 - gradient.X1, gradient.Y2 - gradient.Y1);
+                var along = new[] { (0.0, 0.0), (width, 0.0), (0.0, height), (width, height) }
+                    .Select(c => ((c.Item1 - gradient.X1) * vx + (c.Item2 - gradient.Y1) * vy) / (vx * vx + vy * vy)).ToList();
+                var (first, last) = ((int)Math.Floor(along.Min()), (int)Math.Ceiling(along.Max()));
+                var count = Math.Max(1, last - first);
+                var stops = new System.Text.StringBuilder();
+                for (var k = first; k < first + count; k++)
+                {
+                    var ramp = (k & 1) == 0 ? gradient.Stops : gradient.Stops.AsEnumerable().Reverse().Select(s => (Pos: 1 - s.Pos, s.Hex, s.Alpha)).ToList();
+                    foreach (var (pos, hex, alpha) in ramp)
+                        stops.Append($"<stop offset=\"{Units.Css4((k - first + Math.Clamp(pos, 0, 1)) / count)}\" stop-color=\"#{hex.ToLowerInvariant()}\"" +
+                            (alpha < 1 ? $" stop-opacity=\"{Units.Css4(alpha)}\"" : "") + "/>");
+                }
+                var id = paint.NewId("bg");
+                var (x1, y1) = (gradient.X1 + first * vx, gradient.Y1 + first * vy);
+                var (x2, y2) = (gradient.X1 + (first + count) * vx, gradient.Y1 + (first + count) * vy);
+                return Page($"<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" x1=\"{Units.Css(x1 * Px)}\" y1=\"{Units.Css(y1 * Px)}\" " +
+                    $"x2=\"{Units.Css(x2 * Px)}\" y2=\"{Units.Css(y2 * Px)}\">{stops}</linearGradient>", $" fill=\"url(#{id})\"");
+            }
+            // A picture over the page Word prints as tiles of its pixels at its 0.12 pt dots (measured with
+            // docx/local/bgpreset-pic-stretch: 64 × 48 and 150 × 100 pixels at 96 and 300 dpi); a pattern as its
+            // bitmap, a point a bit, white in the fill color and black in color2 (bgpreset-pat-*: Word's 10 %, large
+            // checkerboard and diagonal brick patterns, 8 × 8 GIF pictures).
+            if (Vml.BackgroundPicture(vml) is { } picture)
+            {
+                if (picture.Kind == "frame" && Presentation.Image(context.MainPart, picture.Id) is { } uri
+                    && Presentation.ImageSize(context.MainPart, picture.Id, 96) is var (pixelsWide, pixelsHigh) && pixelsWide > 0 && pixelsHigh > 0)
+                {
+                    var (tw, th) = (Units.Css(pixelsWide * 0.12 * Px), Units.Css(pixelsHigh * 0.12 * Px));
+                    var id = paint.NewId("bg");
+                    return Page($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{tw}\" height=\"{th}\"><image href=\"{uri}\" width=\"{tw}\" height=\"{th}\" preserveAspectRatio=\"none\"/></pattern>",
+                        $" fill=\"url(#{id})\"");
+                }
+                if (picture.Kind == "pattern" && context.Package.Relationship(context.MainPart, picture.Id) is { External: false } rel && context.Package.Exists(rel.Target)
+                    && Html.Gif.Decode(context.Package.ReadBytes(rel.Target)) is var (bitsWide, bitsHigh, rgba) && bitsWide > 0 && bitsHigh > 0)
+                {
+                    var bits = new System.Text.StringBuilder($"<rect width=\"{Units.Css(bitsWide * Px)}\" height=\"{Units.Css(bitsHigh * Px)}\" fill=\"#{picture.Color2.ToLowerInvariant()}\"/>");
+                    for (var y = 0; y < bitsHigh; y++)
+                        for (var x = 0; x < bitsWide; x++)
+                        {
+                            var at = (y * bitsWide + x) * 4;
+                            // A run of white bits as one rectangle.
+                            if (rgba[at] + rgba[at + 1] + rgba[at + 2] < 3 * 128 || x > 0 && rgba[at - 4] + rgba[at - 3] + rgba[at - 2] >= 3 * 128)
+                                continue;
+                            var run = 1;
+                            while (x + run < bitsWide && rgba[at + 4 * run] + rgba[at + 4 * run + 1] + rgba[at + 4 * run + 2] >= 3 * 128)
+                                run++;
+                            bits.Append($"<rect x=\"{Units.Css(x * Px)}\" y=\"{Units.Css(y * Px)}\" width=\"{Units.Css(run * Px)}\" height=\"{Units.Css(Px)}\" fill=\"#{picture.Color.ToLowerInvariant()}\"/>");
+                        }
+                    var id = paint.NewId("bg");
+                    return Page($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{Units.Css(bitsWide * Px)}\" height=\"{Units.Css(bitsHigh * Px)}\" shape-rendering=\"crispEdges\">{bits}</pattern>",
+                        $" fill=\"url(#{id})\"");
+                }
+            }
+            if (Vml.BackgroundTile(vml) is { } tile && Drawing.FillReader.Read(tile.Fill, Colors) is Drawing.GradientFill tileFill)
+            {
+                var defs = new System.Text.StringBuilder();
+                var tilePaint = paint.Fill(tileFill, tile.Width * Px, tile.Height * Px, defs);
+                return Page(defs.ToString(), tilePaint);
+            }
+        }
         if (Vml.BackgroundFill(context.Background, Colors) is not { } fill)
             return "";
         var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));

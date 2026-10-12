@@ -10,6 +10,9 @@ namespace FreeSlate.Docx.Layout;
 /// </summary>
 public sealed record PlacedLine(Line Line, double Left, double Top, double Angle = 0, double PivotX = 0, double PivotY = 0)
 {
+    /// <summary>Where inline VML shapes hang from (see Vml.Hangs): a paragraph's first line's top with its space before.</summary>
+    public double? HangTop { get; init; }
+
     /// <summary>A line of the body that line numbering counts (not in tables, notes or suppressed paragraphs).</summary>
     public bool Numbered { get; init; }
 }
@@ -1641,7 +1644,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true));
-            page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y) { Numbered = format.SuppressLineNumbers != true });
+            page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y)
+            {
+                Numbered = format.SuppressLineNumbers != true,
+                HangTop = k == 0 && anchorAt?.Page == page ? Math.Min(y, anchorAt.Value.Top) : null,
+            });
             if (k == 0)
                 page.Paragraphs.Add(paragraph);
             // A chapter heading numbers its page and the pages after it (measured with docx/local/chapter: a page with

@@ -19,6 +19,14 @@ public static class Vml
 
     const double EmuPerPoint = 12700;
 
+    /// <summary>
+    /// Marks an inline shape that hangs from the top of its line instead of standing on the baseline: Word puts an
+    /// inline VML shape at the top of its line, of its paragraph's space before on the first line, pictures on the
+    /// baseline (measured with docx/local/vml-inline6, vml-inline7: 40 pt shapes beside 60 pt ones, a 6 pt shape in
+    /// text, 48 pt text, space before, exact, at least and double spacing).
+    /// </summary>
+    public static readonly XName Hangs = XNamespace.Get("urn:freeslate:vml") + "hangs";
+
     /// <summary>The drawings of a w:pict or w:object: one per top-level VML shape.</summary>
     public static IEnumerable<XElement> ToDrawings(XElement pict)
     {
@@ -54,8 +62,12 @@ public static class Vml
         var content = shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height);
         if (content == null)
             return null;
+        var room = shape.Name == V + "group" ? (0, 0) : Room(shape, type, content, width, height);
+        var picture = content.Name.Namespace == Drawings.Pic;
         if (shape.Name != V + "group" && Bordered(content, shape, width, height) is { } framed)
             (content, width, height) = framed;
+        else if (shape.Name != V + "group" && DoubleShadow(content, shape, type, width, height) is { } doubled)
+            content = doubled;
         var uri = content.Name.Namespace == Drawings.Pic ? "http://schemas.openxmlformats.org/drawingml/2006/picture"
             : content.Name.Namespace == Drawings.Wpg ? "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
             : "http://schemas.microsoft.com/office/word/2010/wordprocessingShape";
@@ -64,7 +76,9 @@ public static class Vml
         var docPr = new XElement(Drawings.Wp + "docPr", new XAttribute("id", id.Length is > 0 and < 10 ? id : "1"), new XAttribute("name", (string?)shape.Attribute("id") ?? ""));
         var extent = new XElement(Drawings.Wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         if (style.GetValueOrDefault("position") != "absolute")
-            return new XElement(Drawings.Wp + "inline", extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0)), docPr, graphic);
+            return new XElement(Drawings.Wp + "inline", picture ? null : new XAttribute(Hangs, 1),
+                extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0),
+                    new XAttribute("r", Emu(room.Right)), new XAttribute("b", Emu(room.Bottom))), docPr, graphic);
 
         var z = long.TryParse(style.GetValueOrDefault("z-index"), out var zi) ? zi : 0;
         var anchor = new XElement(Drawings.Wp + "anchor",
@@ -81,6 +95,93 @@ public static class Vml
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
         return anchor;
+    }
+
+    /// <summary>
+    /// The room an inline shape's outline and shadow take right of and below it (catalog: vml.shapes): Word lays out
+    /// an outlined shape in whole pixels of 0.75 pt, its width rounded up, the outline's half on either side and the
+    /// shadow's offset, its height rounded up, the outline and the shadow's offset, the shape at the top left of that
+    /// box (measured with docx/local/vml-inline3, vml-inline4: outlines of 0.25 to 12 pt around 60 × 40, 61 × 41 and
+    /// 60.5 × 40.5 pt; docx/local/vml-fx: shadows 4 pt, -6 pt and doubled 3 and 6 pt off); a shadow alone takes its
+    /// offset (docx/local/vml-inline5: within 0.3 pt); none without either.
+    /// </summary>
+    static (double Right, double Bottom) Room(XElement shape, XElement? type, XElement content, double width, double height)
+    {
+        var line = content.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln") ?? content.Element(Drawings.Pic + "spPr")?.Element(Ns.A + "ln");
+        var outline = line != null && line.Element(Ns.A + "noFill") == null
+            && double.TryParse((string?)line.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var emu) ? Math.Max(0, emu / EmuPerPoint) : 0;
+        var (dx, dy) = (0.0, 0.0);
+        if (ShadowOf(shape, type) is { } shadow)
+        {
+            var (x, y) = ShadowOffset((string?)shadow.Attribute("offset"), (2, 2));
+            (dx, dy) = (Math.Abs(x), Math.Abs(y));
+            if ((string?)shadow.Attribute("type") == "double")
+            {
+                var (x2, y2) = ShadowOffset((string?)shadow.Attribute("offset2"), (-2, -2));
+                (dx, dy) = (Math.Max(dx, Math.Abs(x2)), Math.Max(dy, Math.Abs(y2)));
+            }
+        }
+        if (outline <= 0)
+            return (dx, dy);
+        const double Pixel = 0.75;
+        static double Up(double v) => Math.Ceiling(v - 1e-6);
+        return ((Up(width / Pixel) + 2 * Up(outline / Pixel / 2) + Up(dx / Pixel)) * Pixel - width,
+            (Up(height / Pixel) + Up(outline / Pixel) + Up(dy / Pixel)) * Pixel - height);
+    }
+
+    /// <summary>A shape's shadow (v:shadow) when it is on, else null.</summary>
+    static XElement? ShadowOf(XElement shape, XElement? type) =>
+        (shape.Element(V + "shadow") ?? type?.Element(V + "shadow")) is { } shadow && (string?)shadow.Attribute("on") is "t" or "true" or "1" or "on" ? shadow : null;
+
+    /// <summary>A shadow's offset ("4pt,4pt", one value for both) in points.</summary>
+    static (double X, double Y) ShadowOffset(string? offset, (double, double) fallback) =>
+        offset == null ? fallback : Point(offset.Contains(',') ? offset : offset + "," + offset);
+
+    /// <summary>
+    /// A double shadow (v:shadow type="double", catalog: vml.shapes): Word draws the shape, fill and outline, in
+    /// color2 at offset2 behind the first shadow (measured with docx/local/vml-fx: #c00000 6 pt off, then the gray one 3
+    /// pt off, then the shape); a group of that copy and the shape, null for other shadows.
+    /// </summary>
+    static XElement? DoubleShadow(XElement content, XElement shape, XElement? type, double width, double height)
+    {
+        if (ShadowOf(shape, type) is not { } shadow || (string?)shadow.Attribute("type") != "double" || content.Name != Drawings.Wps + "wsp"
+            || content.Element(Drawings.Wps + "spPr") is not { } properties)
+            return null;
+        var (x, y) = ShadowOffset((string?)shadow.Attribute("offset2"), (-2, -2));
+        var color = Color((string?)shadow.Attribute("color2")) ?? "CBCBCB";
+        XElement Solid() => new(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", color)));
+        var copy = new XElement(Drawings.Wps + "spPr");
+        foreach (var child in properties.Elements())
+        {
+            var name = child.Name.LocalName;
+            if (name == "xfrm")
+            {
+                var xfrm = new XElement(child);
+                xfrm.Element(Ns.A + "off")?.ReplaceWith(new XElement(Ns.A + "off", new XAttribute("x", Emu(x)), new XAttribute("y", Emu(y))));
+                copy.Add(xfrm);
+            }
+            else if (name is "prstGeom" or "custGeom")
+                copy.Add(new XElement(child));
+            else if (name is "solidFill" or "gradFill" or "blipFill" or "pattFill")
+                copy.Add(Solid());
+            else if (name == "noFill")
+                copy.Add(new XElement(child));
+            else if (name == "ln")
+            {
+                var ln = new XElement(Ns.A + "ln", child.Attributes());
+                ln.Add(child.Element(Ns.A + "noFill") != null ? new XElement(Ns.A + "noFill") : Solid());
+                copy.Add(ln);
+            }
+        }
+        var group = new XElement(Drawings.Wpg + "wgp", new XElement(Drawings.Wpg + "cNvGrpSpPr"),
+            new XElement(Drawings.Wpg + "grpSpPr", new XElement(Ns.A + "xfrm",
+                new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)),
+                new XElement(Ns.A + "ext", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))),
+                new XElement(Ns.A + "chOff", new XAttribute("x", 0), new XAttribute("y", 0)),
+                new XElement(Ns.A + "chExt", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))))));
+        group.Add(new XElement(Drawings.Wps + "wsp", new XElement(Drawings.Wps + "cNvSpPr"), copy, new XElement(Drawings.Wps + "bodyPr")));
+        group.Add(new XElement(content));
+        return group;
     }
 
     /// <summary>
@@ -513,11 +614,13 @@ public static class Vml
     }
 
     /// <summary>
-    /// A shape's fill (measured with docx/local/vml-fx): solid; a gradient from the fill color to color2 (or along
-    /// its colors list) that runs, at the focus 0 Word writes by default, from color2 at the start of its angle (0: the
-    /// top, 90: the left) to the fill color, at focus 100 % the other way, at focus 50 % from the fill color to color2
-    /// in the middle and back, at -50 % the other way round; a radial gradient (gradientRadial) from its focus position
-    /// outwards; o:opacity2 the opacity at color2; pictures stretched or tiled.
+    /// A shape's fill (measured with docx/local/vml-fx, vml-angles): solid; a gradient from the fill color to color2
+    /// (or along its colors list) that runs, at the focus 0 Word writes by default, from color2 at the start of its
+    /// angle (0: the top, 90: the left, 45: the top left corner, the angle applying in the shape stretched to a square)
+    /// to the fill color, at focus 100 % the other way, at focus 50 % from the fill color to color2 in the middle and
+    /// back, at -50 % the other way round (negative angles turned round, see <see cref="Turned"/>); a radial gradient
+    /// (gradientRadial) from its focus position outwards; o:opacity2 the opacity at color2; pictures stretched or
+    /// tiled.
     /// </summary>
     static XElement Fill(XElement shape, XElement? type)
     {
@@ -525,38 +628,17 @@ public static class Vml
         var color = Color((string?)shape.Attribute("fillcolor") ?? (string?)type?.Attribute("fillcolor")) ?? "FFFFFF";
         var opacity = Fraction((string?)fill?.Attribute("opacity"));
         var kind = (string?)fill?.Attribute("type") ?? "solid";
-        if (kind is "gradient" or "gradientRadial" or "gradientCenter" && Color((string?)fill?.Attribute("color2")) is { } color2)
+        if (kind is "gradient" or "gradientRadial" or "gradientCenter" && GradientColors(fill, color, opacity) is { } colors)
         {
-            var opacity1 = opacity ?? 1;
-            var opacity2 = Fraction((string?)fill?.Attribute(O + "opacity2") ?? (string?)fill?.Attribute("opacity2")) ?? opacity1;
-            // The colors from the fill color's end (0) to color2's (1).
-            var colors = new List<(double At, string Hex, double Alpha)>();
-            foreach (var entry in ((string?)fill?.Attribute("colors") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var parts = entry.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length == 2 && Fraction(parts[0]) is { } at && Color(parts[1]) is { } hex)
-                    colors.Add((Math.Clamp(at, 0, 1), hex, opacity1 + (opacity2 - opacity1) * Math.Clamp(at, 0, 1)));
-            }
-            if (colors.Count < 2)
-                colors = [(0, color, opacity1), (1, color2, opacity2)];
-            var focus = Fraction((string?)fill?.Attribute("focus")) ?? 0;
-            var stops = new List<(double Pos, string Hex, double Alpha)>();
-            if (focus >= 0)
-            {
-                // From the fill color at 0 to color2 at the focus, back to the fill color at 1.
-                stops.AddRange(colors.Select(c => (c.At * focus, c.Hex, c.Alpha)));
-                stops.AddRange(colors.AsEnumerable().Reverse().Select(c => (1 - (1 - focus) * c.At, c.Hex, c.Alpha)));
-            }
-            else
-            {
-                var g = Math.Min(1, -focus);
-                stops.AddRange(colors.AsEnumerable().Reverse().Select(c => (g * (1 - c.At), c.Hex, c.Alpha)));
-                stops.AddRange(colors.Select(c => (g + (1 - g) * c.At, c.Hex, c.Alpha)));
-            }
-            var sigma = (string?)fill?.Attribute("method") is not ("none" or "linear");
-            var list = new XElement(Ns.A + "gsLst", Blend(stops.OrderBy(s => s.Pos).ToList(), sigma).Select(s =>
+            var focus = Math.Clamp(Fraction((string?)fill?.Attribute("focus")) ?? 0, -1, 1);
+            var angle = double.TryParse((string?)fill?.Attribute("angle"), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) ? degrees : 0;
+            var radial = kind is "gradientRadial" or "gradientCenter";
+            if (!radial)
+                (angle, focus) = Turned(angle, focus);
+            var stops = radial ? Blend(FocusStops(colors, focus), Sigma(fill)) : LinearStops(colors, focus, Sigma(fill));
+            var list = new XElement(Ns.A + "gsLst", stops.Select(s =>
                 new XElement(Ns.A + "gs", new XAttribute("pos", (long)Math.Round(s.Pos * 100000)), Solid(s.Hex, s.Alpha).Elements().First())));
-            if (kind is "gradientRadial" or "gradientCenter")
+            if (radial)
             {
                 var (fx, fy) = Pair((string?)fill?.Attribute("focusposition"));
                 var (fw, fh) = Pair((string?)fill?.Attribute("focussize"));
@@ -566,9 +648,18 @@ public static class Vml
                         new XElement(Ns.A + "fillToRect", new XAttribute("l", Per(fx)), new XAttribute("t", Per(fy)),
                             new XAttribute("r", Per(1 - fx - fw)), new XAttribute("b", Per(1 - fy - fh)))));
             }
-            var angle = double.TryParse((string?)fill?.Attribute("angle"), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) ? degrees : 0;
             return new XElement(Ns.A + "gradFill", list,
-                new XElement(Ns.A + "lin", new XAttribute("ang", (long)Math.Round(((90 - angle) % 360 + 360) % 360 * 60000)), new XAttribute("scaled", 0)));
+                new XElement(Ns.A + "lin", new XAttribute("ang", (long)Math.Round(((90 - angle) % 360 + 360) % 360 * 60000)), new XAttribute("scaled", 1)));
+        }
+        // A pattern (type pattern): its picture's bits, white in the fill color and black in color2, a point a bit,
+        // the tiles from the page's corner as on page backgrounds (measured with docx/local/vml-pattern: Word's 8 × 8
+        // checkerboard and brick GIFs on inline and floating rectangles).
+        if (kind == "pattern" && ((string?)fill?.Attribute(R + "id") ?? (string?)fill?.Attribute(O + "relid")) is { } bitmap)
+        {
+            return new XElement(Ns.A + "pattFill", new XAttribute("prst", "pct50"),
+                new XAttribute(FreeSlate.Drawing.FillReader.PatternPicture, bitmap), new XAttribute(FreeSlate.Drawing.FillReader.PatternCell, Units.Css4(4.0 / 3)),
+                new XElement(Ns.A + "fgClr", Solid(color, opacity).Elements().First()),
+                new XElement(Ns.A + "bgClr", Solid(Color((string?)fill?.Attribute("color2"), color) ?? "FFFFFF", opacity).Elements().First()));
         }
         if (kind is "frame" or "tile" && ((string?)fill?.Attribute(R + "id") ?? (string?)fill?.Attribute(O + "relid")) is { } picture)
         {
@@ -576,49 +667,219 @@ public static class Vml
                 kind == "tile" ? new XElement(Ns.A + "tile") : new XElement(Ns.A + "stretch", new XElement(Ns.A + "fillRect")));
         }
         return new XElement(Ns.A + "solidFill", Solid(color, opacity).Elements().First());
+    }
 
-        // Word blends a VML gradient's colors in linear light along an S-curve, or in plain RGB along a straight line
-        // where its method is none or linear, premultiplied by their opacity (measured with docx/local/vml-fx: orange to
-        // blue and red, green and blue within 3 of 255, a color fading out keeps its hue): the stops with the blend
-        // between them in steps.
-        static List<(double Pos, string Hex, double Alpha)> Blend(List<(double Pos, string Hex, double Alpha)> stops, bool sigma)
+    /// <summary>
+    /// A gradient's colors from the fill color's end (0) to color2's (1): its colors list, else the fill color and
+    /// color2, with their opacity (o:opacity2 at color2); null without color2.
+    /// </summary>
+    static List<(double At, string Hex, double Alpha)>? GradientColors(XElement? fill, string color, double? opacity)
+    {
+        if (Color((string?)fill?.Attribute("color2"), color) is not { } color2)
+            return null;
+        var opacity1 = opacity ?? 1;
+        var opacity2 = Fraction((string?)fill?.Attribute(O + "opacity2") ?? (string?)fill?.Attribute("opacity2")) ?? opacity1;
+        var colors = new List<(double At, string Hex, double Alpha)>();
+        foreach (var entry in ((string?)fill?.Attribute("colors") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
-            double Linear(int c) => c / 255.0 is var v && (!sigma || v <= 0.04045) ? sigma ? v / 12.92 : v : Math.Pow((v + 0.055) / 1.055, 2.4);
-            int Gamma(double v) => (int)Math.Round(255 * Math.Clamp(!sigma ? v : v <= 0.0031308 ? 12.92 * v : 1.055 * Math.Pow(v, 1 / 2.4) - 0.055, 0, 1));
-            (double R, double G, double B) Rgb(string hex) =>
-                (Linear(Convert.ToInt32(hex[..2], 16)), Linear(Convert.ToInt32(hex[2..4], 16)), Linear(Convert.ToInt32(hex[4..6], 16)));
-            var result = new List<(double, string, double)>();
-            for (var k = 0; k < stops.Count; k++)
+            var parts = entry.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && Fraction(parts[0]) is { } at && Color(parts[1], color) is { } hex)
+                colors.Add((Math.Clamp(at, 0, 1), hex, opacity1 + (opacity2 - opacity1) * Math.Clamp(at, 0, 1)));
+        }
+        return colors.Count >= 2 ? colors : [(0, color, opacity1), (1, color2, opacity2)];
+    }
+
+    /// <summary>
+    /// A gradient's stops by its focus, in order: at focus 0 from color2 to the fill color, at 100 % the other way, at
+    /// a focus between from the fill color to color2 at the focus and back, at a negative one from color2 to the fill
+    /// color at the focus and back.
+    /// </summary>
+    static List<(double Pos, string Hex, double Alpha)> FocusStops(List<(double At, string Hex, double Alpha)> colors, double focus)
+    {
+        var stops = new List<(double Pos, string Hex, double Alpha)>();
+        if (focus >= 0)
+        {
+            stops.AddRange(colors.Select(c => (c.At * focus, c.Hex, c.Alpha)));
+            stops.AddRange(colors.AsEnumerable().Reverse().Select(c => (1 - (1 - focus) * c.At, c.Hex, c.Alpha)));
+        }
+        else
+        {
+            var g = Math.Min(1, -focus);
+            stops.AddRange(colors.AsEnumerable().Reverse().Select(c => (g * (1 - c.At), c.Hex, c.Alpha)));
+            stops.AddRange(colors.Select(c => (g + (1 - g) * c.At, c.Hex, c.Alpha)));
+        }
+        // Only the last stop at the start and the first at the end count; the others would draw a hairline there.
+        var sorted = stops.OrderBy(s => s.Pos).ToList();
+        var first = sorted.FindLastIndex(s => s.Pos <= 1e-9);
+        var last = sorted.FindIndex(s => s.Pos >= 1 - 1e-9);
+        return first >= 0 && last >= first ? sorted.GetRange(first, last - first + 1) : sorted;
+    }
+
+    /// <summary>
+    /// A linear gradient's angle and focus as Word draws it (measured with docx/local/vml-angles and the page
+    /// backgrounds docx/local/bggrad-*): a negative angle (or one from 360 on) turns the gradient round, the angle plus
+    /// 180 with the focus ±50 % reversed and any focus other than 0 and 100 % the rest to 100 %; Word's presets write
+    /// -90, -45 and -135.
+    /// </summary>
+    static (double Angle, double Focus) Turned(double angle, double focus)
+    {
+        if (angle >= 0 && angle < 360)
+            return (angle, focus);
+        angle = ((angle + 180) % 360 + 360) % 360;
+        if (Math.Abs(focus) < 1e-6 || Math.Abs(Math.Abs(focus) - 1) < 1e-6)
+            return (angle, focus);
+        return (angle, Math.Abs(Math.Abs(focus) - 0.5) < 1e-6 ? -focus : Math.Sign(focus) * (1 - Math.Abs(focus)));
+    }
+
+    /// <summary>
+    /// A linear gradient's stops: blended between both ends at the focus 0, 100 and ±50 %, the focus applied twice
+    /// along straight lines at any other (see <see cref="TwiceFocused"/>).
+    /// </summary>
+    static List<(double Pos, string Hex, double Alpha)> LinearStops(List<(double At, string Hex, double Alpha)> colors, double focus, bool sigma) =>
+        Math.Abs(focus) < 1e-6 || Math.Abs(Math.Abs(focus) - 1) < 1e-6 || Math.Abs(Math.Abs(focus) - 0.5) < 1e-6
+            ? Blend(FocusStops(colors, focus), sigma)
+            : TwiceFocused(colors, focus);
+
+    /// <summary>Whether a gradient blends along an S-curve in linear light: unless its method is none or linear.</summary>
+    static bool Sigma(XElement? fill) => (string?)fill?.Attribute("method") is not ("none" or "linear");
+
+    /// <summary>
+    /// The page background's linear VML gradient as Word prints it (catalog: document.background), in points from the
+    /// page's top left corner, mirrored beyond its ends; null for other fills. Word lays the gradient over a tile of
+    /// 1025 × 769 of its 0.12 pt dots, starting at the page's corner (measured with docx/local/bggrad-*, its own
+    /// presets docx/local/bgpreset-*): a gradient between both colors (focus 0 or 100 %) spans one tile from the
+    /// start of its angle and turns back at its end; at the angles 0 and 180 and at negative ones that are multiples
+    /// of 45 (Word's presets write 0, -90, -45 and -135) it spans a tile of 512 × 384 dots. A gradient out and back
+    /// (focus ±50 %) spans one tile, the half tile at those diagonals. Negative angles (and from 360 on) turn the
+    /// gradient round: the angle plus 180 with the focus ±50 % reversed and any other the rest to 100 %. At any other
+    /// focus Word applies the focus twice, along straight lines between the colors.
+    /// </summary>
+    public static (double X1, double Y1, double X2, double Y2, List<(double Pos, string Hex, double Alpha)> Stops)? BackgroundGradient(XElement background)
+    {
+        var fill = background.Element(V + "fill");
+        if ((string?)fill?.Attribute("type") != "gradient")
+            return null;
+        var color = Color((string?)background.Attribute("fillcolor")) ?? "FFFFFF";
+        if (GradientColors(fill, color, Fraction((string?)fill.Attribute("opacity"))) is not { } colors)
+            return null;
+        static bool Near(double a, double b) => Math.Abs(a - b) < 1e-6;
+        static bool Multiple(double a, double m) => Near(a / m, Math.Round(a / m));
+        var angle = double.TryParse((string?)fill.Attribute("angle"), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) ? degrees : 0;
+        var turned = angle < 0 || angle >= 360;
+        var half = Multiple(angle, 180) || turned && Multiple(angle, 45);
+        var (effective, focus) = Turned(angle, Math.Clamp(Fraction((string?)fill.Attribute("focus")) ?? 0, -1, 1));
+        var ends = Near(focus, 0) || Near(Math.Abs(focus), 1);
+        var symmetric = Near(Math.Abs(focus), 0.5);
+        const double Dot = 0.12;
+        var (w, h) = ends && half || symmetric && half && !Multiple(effective, 90) ? (512 * Dot, 384 * Dot) : (1025 * Dot, 769 * Dot);
+        // The angle applies in the tile stretched to a square: its direction in the tile, from the start corner.
+        var (dy, dx) = Math.SinCos((90 - effective) * Math.PI / 180);
+        (dx, dy) = (Math.Abs(dx) < 1e-9 ? 0 : dx, Math.Abs(dy) < 1e-9 ? 0 : dy);
+        var (nx, ny) = (dx / w, dy / h);
+        var length = Math.Sqrt(nx * nx + ny * ny);
+        (nx, ny) = (nx / length, ny / length);
+        var span = Math.Abs(w * nx) + Math.Abs(h * ny);
+        var (x0, y0) = (dx < 0 ? w : 0, dy < 0 ? h : 0);
+        return (x0, y0, x0 + nx * span, y0 + ny * span, LinearStops(colors, focus, Sigma(fill)));
+    }
+
+    /// <summary>
+    /// A gradient at a focus other than 0, ±50 and 100 % as Word prints a page background with it: the focus applied
+    /// twice (fill color at 0, the focus and 1, color2 at the focus of either part; a negative focus the mirror image
+    /// with the colors exchanged), along straight lines between the colors (measured with docx/local/bggrad-*-focus30,
+    /// -focus70, -focusm30: within 0.5 pt).
+    /// </summary>
+    static List<(double Pos, string Hex, double Alpha)> TwiceFocused(List<(double At, string Hex, double Alpha)> colors, double focus)
+    {
+        var g = Math.Abs(focus);
+        (double T, double Q)[] points = [(0, 0), (g * g, 1), (g, 0), (1 - g * (1 - g), 1), (1, 0)];
+        if (focus < 0)
+            points = points.Reverse().Select(p => (1 - p.T, 1 - p.Q)).ToArray();
+        var stops = new List<(double Pos, string Hex, double Alpha)>();
+        for (var k = 0; k + 1 < points.Length; k++)
+        {
+            var (a, b) = (points[k], points[k + 1]);
+            var along = a.Q < b.Q ? colors : colors.AsEnumerable().Reverse().ToList();
+            foreach (var c in along)
+                stops.Add((a.T + (c.At - a.Q) / (b.Q - a.Q) * (b.T - a.T), c.Hex, c.Alpha));
+        }
+        return stops;
+    }
+
+    /// <summary>
+    /// The page background's picture stretched over the page (type frame) or pattern (type pattern), with the fill
+    /// color and color2 (catalog: document.background); null for other fills.
+    /// </summary>
+    public static (string Kind, string Id, string Color, string Color2)? BackgroundPicture(XElement background)
+    {
+        var fill = background.Element(V + "fill");
+        if ((string?)fill?.Attribute("type") is not ({ } kind and ("frame" or "pattern"))
+            || ((string?)fill.Attribute(R + "id") ?? (string?)fill.Attribute(O + "relid")) is not { } id)
+            return null;
+        var color = Color((string?)background.Attribute("fillcolor")) ?? "FFFFFF";
+        return (kind, id, color, Color((string?)fill.Attribute("color2"), color) ?? "FFFFFF");
+    }
+
+    /// <summary>
+    /// The page background's radial VML gradient as Word prints it (catalog: document.background): a tile of 1025 ×
+    /// 769 of Word's 0.12 pt dots, of 512 × 384 dots for its presets from a corner (o:fill gradientCenter), repeated
+    /// from the page's top left corner (measured with docx/local/bgpreset-center*, bgpreset-corner*, bggrad-a4-corner,
+    /// bggrad-a4-radial); null for other fills.
+    /// </summary>
+    public static (double Width, double Height, XElement Fill)? BackgroundTile(XElement background)
+    {
+        var fill = background.Element(V + "fill");
+        if ((string?)fill?.Attribute("type") is not ("gradientRadial" or "gradientCenter"))
+            return null;
+        // Word's "from corner" gradients (o:fill gradientCenter) take the smaller tile.
+        var corner = (string?)fill.Attribute("type") == "gradientCenter" || (string?)fill.Element(O + "fill")?.Attribute("type") == "gradientCenter";
+        const double Dot = 0.12;
+        return corner ? (512 * Dot, 384 * Dot, Fill(background, null)) : (1025 * Dot, 769 * Dot, Fill(background, null));
+    }
+
+    /// <summary>
+    /// Word blends a VML gradient's colors in linear light along an S-curve, or in plain RGB along a straight line
+    /// where its method is none or linear, premultiplied by their opacity (measured with docx/local/vml-fx: orange to
+    /// blue and red, green and blue within 3 of 255, a color fading out keeps its hue): the stops with the blend
+    /// between them in steps.
+    /// </summary>
+    static List<(double Pos, string Hex, double Alpha)> Blend(List<(double Pos, string Hex, double Alpha)> stops, bool sigma)
+    {
+        double Linear(int c) => c / 255.0 is var v && (!sigma || v <= 0.04045) ? sigma ? v / 12.92 : v : Math.Pow((v + 0.055) / 1.055, 2.4);
+        int Gamma(double v) => (int)Math.Round(255 * Math.Clamp(!sigma ? v : v <= 0.0031308 ? 12.92 * v : 1.055 * Math.Pow(v, 1 / 2.4) - 0.055, 0, 1));
+        (double R, double G, double B) Rgb(string hex) =>
+            (Linear(Convert.ToInt32(hex[..2], 16)), Linear(Convert.ToInt32(hex[2..4], 16)), Linear(Convert.ToInt32(hex[4..6], 16)));
+        var result = new List<(double, string, double)>();
+        for (var k = 0; k < stops.Count; k++)
+        {
+            result.Add(stops[k]);
+            if (k + 1 >= stops.Count || stops[k + 1].Pos - stops[k].Pos < 1e-6)
+                continue;
+            var (a, b) = (stops[k], stops[k + 1]);
+            var (ca, cb) = (Rgb(a.Hex), Rgb(b.Hex));
+            const int steps = 16;
+            for (var n = 1; n < steps; n++)
             {
-                result.Add(stops[k]);
-                if (k + 1 >= stops.Count || stops[k + 1].Pos - stops[k].Pos < 1e-6)
-                    continue;
-                var (a, b) = (stops[k], stops[k + 1]);
-                var (ca, cb) = (Rgb(a.Hex), Rgb(b.Hex));
-                const int steps = 16;
-                for (var n = 1; n < steps; n++)
-                {
-                    var t = (double)n / steps;
-                    var s = sigma ? t * t * (3 - 2 * t) : t;
-                    var alpha = a.Alpha + (b.Alpha - a.Alpha) * s;
-                    var (wa, wb) = (a.Alpha * (1 - s), b.Alpha * s);
-                    var sum = wa + wb > 1e-9 ? wa + wb : 1;
-                    if (wa + wb <= 1e-9)
-                        (wa, wb) = (1 - s, s);
-                    var hex = $"{Gamma((ca.R * wa + cb.R * wb) / sum):X2}{Gamma((ca.G * wa + cb.G * wb) / sum):X2}{Gamma((ca.B * wa + cb.B * wb) / sum):X2}";
-                    result.Add((a.Pos + (b.Pos - a.Pos) * t, hex, alpha));
-                }
+                var t = (double)n / steps;
+                var s = sigma ? t * t * (3 - 2 * t) : t;
+                var alpha = a.Alpha + (b.Alpha - a.Alpha) * s;
+                var (wa, wb) = (a.Alpha * (1 - s), b.Alpha * s);
+                var sum = wa + wb > 1e-9 ? wa + wb : 1;
+                if (wa + wb <= 1e-9)
+                    (wa, wb) = (1 - s, s);
+                var hex = $"{Gamma((ca.R * wa + cb.R * wb) / sum):X2}{Gamma((ca.G * wa + cb.G * wb) / sum):X2}{Gamma((ca.B * wa + cb.B * wb) / sum):X2}";
+                result.Add((a.Pos + (b.Pos - a.Pos) * t, hex, alpha));
             }
-            return result;
         }
+        return result;
+    }
 
-        static XElement Solid(string hex, double? alpha)
-        {
-            var srgb = new XElement(Ns.A + "srgbClr", new XAttribute("val", hex));
-            if (alpha is { } a && a < 1)
-                srgb.Add(new XElement(Ns.A + "alpha", new XAttribute("val", (long)Math.Round(a * 100000))));
-            return new XElement(Ns.A + "x", srgb);
-        }
+    static XElement Solid(string hex, double? alpha)
+    {
+        var srgb = new XElement(Ns.A + "srgbClr", new XAttribute("val", hex));
+        if (alpha is { } a && a < 1)
+            srgb.Add(new XElement(Ns.A + "alpha", new XAttribute("val", (long)Math.Round(a * 100000))));
+        return new XElement(Ns.A + "x", srgb);
     }
 
     /// <summary>
@@ -670,12 +931,10 @@ public static class Vml
     /// </summary>
     static XElement? Shadow(XElement shape, XElement? type)
     {
-        var shadow = shape.Element(V + "shadow") ?? type?.Element(V + "shadow");
-        if (shadow == null || !((string?)shadow.Attribute("on") is "t" or "true" or "1" or "on"))
+        if (ShadowOf(shape, type) is not { } shadow)
             return null;
         var color = Color((string?)shadow.Attribute("color")) ?? "808080";
-        var offset = (string?)shadow.Attribute("offset");
-        var (x, y) = offset == null ? (2.0, 2.0) : Point(offset.Contains(',') ? offset : offset + "," + offset);
+        var (x, y) = ShadowOffset((string?)shadow.Attribute("offset"), (2, 2));
         var srgb = new XElement(Ns.A + "srgbClr", new XAttribute("val", color));
         if (Fraction((string?)shadow.Attribute("opacity")) is { } alpha && alpha < 1)
             srgb.Add(new XElement(Ns.A + "alpha", new XAttribute("val", (long)Math.Round(alpha * 100000))));
@@ -707,12 +966,37 @@ public static class Vml
         return value == null ? fallback : value is "t" or "true" or "1" or "on";
     }
 
-    /// <summary>A VML color: #rgb, #rrggbb, a name, or "name [index]" as Word writes theme colors; null for none.</summary>
-    static string? Color(string? value)
+    /// <summary>
+    /// A VML color: #rgb, #rrggbb or a name; "fill" for the fill color (<paramref name="fill"/>), darken(n) and
+    /// lighten(n) after it scale it by n/255 towards black and white (Word's one-color gradients, measured with
+    /// docx/local/bgpreset-one-*).
+    /// </summary>
+    static string? Color(string? value, string? fill = null)
     {
         if (string.IsNullOrWhiteSpace(value) || value == "none")
             return null;
-        value = value.Trim().Split(' ')[0];
+        var tokens = value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var hex = tokens[0].Equals("fill", StringComparison.OrdinalIgnoreCase) ? fill : Named(tokens[0]);
+        foreach (var token in tokens.Skip(1))
+        {
+            var open = token.IndexOf('(');
+            if (hex == null || !token.EndsWith(')') || open < 0
+                || !double.TryParse(token[(open + 1)..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var n))
+                continue;
+            Func<double, double>? scale = token[..open].ToLowerInvariant() switch
+            {
+                "darken" => c => c * n / 255,
+                "lighten" => c => 255 - (255 - c) * n / 255,
+                _ => null,
+            };
+            if (scale != null)
+                hex = string.Concat(Enumerable.Range(0, 3).Select(k => ((int)Math.Round(Math.Clamp(scale(Convert.ToInt32(hex.Substring(2 * k, 2), 16)), 0, 255))).ToString("X2")));
+        }
+        return hex;
+    }
+
+    static string? Named(string value)
+    {
         if (value.StartsWith('#'))
         {
             var hex = value[1..];

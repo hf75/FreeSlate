@@ -1570,7 +1570,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
         var any = false;
         var drawings = false;
-        foreach (var piece in line.Pieces.Where(p => !p.IsTab))
+        // Spaces between drawings do not make the line taller (measured with docx/local/vml-inline2: two 40 pt shapes
+        // or pictures with spaces between them make the line as high as one alone); beside text they count.
+        static bool Blank(Piece p) => p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Ruby == null && p.Combined == null && string.IsNullOrWhiteSpace(p.Text);
+        var onlyDrawings = line.Pieces.Any(p => p.Drawing != null) && line.Pieces.All(p => p.IsTab || p.Drawing != null || Blank(p));
+        foreach (var piece in line.Pieces.Where(p => !p.IsTab && !(onlyDrawings && Blank(p))))
         {
             // Ruby stands above its base, w:hpsRaise up from the base's baseline: the line makes room for it.
             if (piece.Ruby is { } rubyText && rubyText.Ruby.Count > 0)

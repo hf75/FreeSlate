@@ -41,7 +41,17 @@ public sealed record GradientFill(
     public bool Bell { get; init; }
 }
 
-public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill;
+public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill
+{
+    /// <summary>
+    /// The pattern's own 8 × 8 bitmap instead of the preset's, a byte a row, the leftmost bit highest (a VML pattern
+    /// fill's picture, catalog: vml.shapes); null for the preset.
+    /// </summary>
+    public byte[]? Bits { get; init; }
+
+    /// <summary>The size of a bit in pixels: 1 for the presets, 4/3 (a point) for Word's VML patterns.</summary>
+    public double Cell { get; init; } = 1;
+}
 
 /// <summary>
 /// The slide's background fill on a shape (p:sp/@useBgFill): painted over the whole slide (width × height pixels) and
@@ -70,6 +80,37 @@ public sealed record GroupFill : Fill;
 
 public static class FillReader
 {
+    /// <summary>
+    /// A pattern fill's own picture (a relationship id) and the size of its bits in pixels, as the VML conversion
+    /// writes them on a:pattFill (catalog: vml.shapes).
+    /// </summary>
+    public static readonly XName PatternPicture = XNamespace.Get("urn:freeslate:vml") + "picture", PatternCell = XNamespace.Get("urn:freeslate:vml") + "cell";
+
+    /// <summary>An 8 × 8 picture (a data URI) as pattern bits: its light pixels set; null for other pictures.</summary>
+    static byte[]? PatternBits(string? uri)
+    {
+        var at = uri?.IndexOf(";base64,", StringComparison.Ordinal) ?? -1;
+        if (uri == null || at < 0)
+            return null;
+        byte[] data;
+        try
+        {
+            data = Convert.FromBase64String(uri[(at + 8)..]);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+        if (Html.Gif.Decode(data) is not var (width, height, rgba) || width != 8 || height != 8)
+            return null;
+        var bits = new byte[8];
+        for (var y = 0; y < 8; y++)
+            for (var x = 0; x < 8; x++)
+                if (rgba[(y * 8 + x) * 4] + rgba[(y * 8 + x) * 4 + 1] + rgba[(y * 8 + x) * 4 + 2] >= 3 * 128)
+                    bits[y] |= (byte)(0x80 >> x);
+        return bits;
+    }
+
     static readonly HashSet<string> FillElements = ["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"];
 
     /// <summary>The fill element among the children of a property container (spPr, bgPr, ln, rPr, tcPr …).</summary>
@@ -110,7 +151,11 @@ public static class FillReader
                 return new PatternFill(
                     fill.Str("prst") ?? "pct5",
                     colors.ResolveChild(fill.Element(Ns.A + "fgClr")) ?? RgbColor.Black,
-                    colors.ResolveChild(fill.Element(Ns.A + "bgClr")) ?? RgbColor.White);
+                    colors.ResolveChild(fill.Element(Ns.A + "bgClr")) ?? RgbColor.White)
+                {
+                    Bits = (string?)fill.Attribute(PatternPicture) is { } picture ? PatternBits(images?.Invoke(picture)) : null,
+                    Cell = double.TryParse((string?)fill.Attribute(PatternCell), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var cell) && cell > 0 ? cell : 1,
+                };
             case "blipFill":
                 var blip = fill.Element(Ns.A + "blip");
                 // SVG pictures keep the SVG in an extension and may have no bitmap fallback at all.

@@ -46,7 +46,7 @@ public sealed class SvgPaint
     string Pattern(PatternFill p, StringBuilder defs, (double X, double Y) origin)
     {
         var id = NewId("t");
-        var tile = PatternPresets.Tiles.GetValueOrDefault(p.Preset) ?? PatternPresets.Tiles["pct50"];
+        var tile = p.Bits ?? PatternPresets.Tiles.GetValueOrDefault(p.Preset) ?? PatternPresets.Tiles["pct50"];
         var bits = new StringBuilder();
         for (var row = 0; row < 8; row++)
         {
@@ -56,8 +56,11 @@ public sealed class SvgPaint
                     bits.Append($"M{column} {row}h1v1h-1z");
             }
         }
-        double Phase(double v) => ((-v % 8) + 8) % 8;
-        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"translate({Units.Css(Phase(origin.X))} {Units.Css(Phase(origin.Y))})\">" +
+        // A pattern of its own may have bits larger than a pixel (Word's VML patterns: a point).
+        var period = 8 * p.Cell;
+        double Phase(double v) => ((-v % period) + period) % period;
+        var scale = Math.Abs(p.Cell - 1) < 1e-9 ? "" : $" scale({Units.Css4(p.Cell)})";
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"translate({Units.Css(Phase(origin.X))} {Units.Css(Phase(origin.Y))}){scale}\">" +
                     $"<rect width=\"8\" height=\"8\"{Color("fill", p.Background)} shape-rendering=\"crispEdges\"/>" +
                     (bits.Length > 0 ? $"<path d=\"{bits}\"{Color("fill", p.Foreground)} shape-rendering=\"crispEdges\"/>" : "") +
                     "</pattern>");

@@ -320,12 +320,14 @@ public sealed class PageRenderer(DocumentContext context, Drawings? drawings = n
                         selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise - piece.Shift)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
                     continue;
                 }
-                // An inline drawing's box stands on the baseline; its extent lies inside the effect extents.
+                // An inline drawing's box stands on the baseline, an inline VML shape's hangs from the line's top; its
+                // extent lies inside the effect extents.
                 if (piece.Drawing is { } inline)
                 {
                     var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
                     var (w, h) = Drawings.Extent(inline.Drawing);
-                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, baseline - inline.Box.Height + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
+                    var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height;
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, top + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;
                 }
                 var browser = piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor;
