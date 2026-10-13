@@ -924,7 +924,9 @@ areas:
           left of the column (docx/local/frames: every line as in Word). Frames in headers and footers stand alike,
           taking no room in their story (docx/external/libreoffice/extras-ooxmlexport/tdf168017: a page number framed
           centered 1 twip below the next paragraph's top stands on that paragraph's line). A paragraph's w:framePr
-          overrides its style's attribute by attribute (special_styles), one without any w: attribute makes no frame
+          overrides its style's attribute by attribute (special_styles), w:x and w:xAlign as one position and w:y and
+          w:yAlign as another (docx/local/framepos: a paragraph's w:x of the page, 0 too, over its style's xAlign right
+          of the margin; tdf112446_frameStyle), one without any w: attribute makes no frame
           (docx/local/fe-5, fg-7; tdf133457). w:y and w:yAlign count from the margin without w:vAnchor (fd-1, fd-3,
           fd-5); a frame without a vertical position (w:y 0, no w:yAlign or inline) stands at its paragraph before mode
           15 whatever its anchor and on its anchor's top from mode 15 (ff-*, fg-*, fh-*; core-ooxml-pass/fdo81491). The

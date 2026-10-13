@@ -428,9 +428,19 @@ public sealed class ParagraphFormat
         // Frame properties override those below them attribute by attribute (measured with docx/external/libreoffice/
         // extras-ooxmlexport/special_styles: a paragraph's w:framePr saying only w:wrap keeps its style's width, height
         // and centering on the page).
+        // w:x and w:xAlign are one position, w:y and w:yAlign another: either replaces both (docx/local/framepos: a
+        // paragraph's w:x of the page, 0 too, over its style's xAlign right of the margin, its w:y over yAlign bottom;
+        // tdf112446_frameStyle).
         var frame = Frame != null && top.Frame != null ? new XElement(Frame) : null;
         foreach (var attribute in top.Frame?.Attributes() ?? [])
-            frame?.SetAttributeValue(attribute.Name, attribute.Value);
+        {
+            if (frame == null)
+                break;
+            var other = attribute.Name.LocalName switch { "x" => "xAlign", "xAlign" => "x", "y" => "yAlign", "yAlign" => "y", _ => null };
+            if (other != null && attribute.Name.Namespace == Wml.W)
+                frame.Attribute(Wml.W + other)?.Remove();
+            frame.SetAttributeValue(attribute.Name, attribute.Value);
+        }
         foreach (var field in typeof(ParagraphFormat).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             if (field.Name is nameof(Tabs) or nameof(ClearedTabs))
