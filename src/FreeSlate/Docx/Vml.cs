@@ -27,6 +27,9 @@ public static class Vml
     /// </summary>
     public static readonly XName Hangs = XNamespace.Get("urn:freeslate:vml") + "hangs";
 
+    /// <summary>Marks an inline drawing converted from VML, whose effect extents are the engine's own.</summary>
+    public static readonly XName Converted = XNamespace.Get("urn:freeslate:vml") + "converted";
+
     /// <summary>The drawings of a w:pict or w:object: one per top-level VML shape.</summary>
     public static IEnumerable<XElement> ToDrawings(XElement pict)
     {
@@ -77,7 +80,7 @@ public static class Vml
         var docPr = new XElement(Drawings.Wp + "docPr", new XAttribute("id", id.Length is > 0 and < 10 ? id : "1"), new XAttribute("name", (string?)shape.Attribute("id") ?? ""));
         var extent = new XElement(Drawings.Wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         if (style.GetValueOrDefault("position") != "absolute")
-            return new XElement(Drawings.Wp + "inline", picture ? null : new XAttribute(Hangs, 1),
+            return new XElement(Drawings.Wp + "inline", picture ? null : new XAttribute(Hangs, 1), new XAttribute(Converted, 1),
                 extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0),
                     new XAttribute("r", Emu(room.Right)), new XAttribute("b", Emu(room.Bottom))), docPr, graphic);
 

@@ -481,13 +481,22 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     continue;
                 }
                 // An inline drawing's box stands on the baseline, an inline VML shape's hangs from the line's top; its
-                // extent lies inside the effect extents.
+                // extent lies inside the effect extents. Word 2007 and older (compatibility modes 11 and 12, and
+                // documents without a mode) draw a shape's or a group's extent as far again right and down, the line
+                // keeping its room (measured with docx/local/effx-l12, effx-t12, effx-l11, effx-grp12, pe-wpsnone: 9 pt
+                // of effect extent on the left or on top put a shape 18 pt in, in mode 14 and later 9 pt; pe-12: a
+                // picture 9 pt). A frame in an older mode draws them at its corner (PlacedLine.InlineOrigin).
                 if (piece.Drawing is { } inline)
                 {
                     var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
+                    var kind = inline.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Name;
+                    var shape = kind == Drawings.Wps + "wsp" || kind == Drawings.Wpg + "wgp";
+                    if (context.CompatibilityMode <= 12 && shape && inline.Drawing.Attribute(Vml.Converted) == null)
+                        (dx, dy) = (2 * dx, 2 * dy);
                     var (w, h) = Drawings.Extent(inline.Drawing);
                     var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height;
-                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, x + dx, top + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
+                    var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;
                 }
                 // Text set across the line: a little line of its own, turned a quarter against the line.

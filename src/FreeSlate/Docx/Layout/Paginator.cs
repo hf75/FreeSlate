@@ -13,6 +13,13 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>Where inline VML shapes hang from (see Vml.Hangs): a paragraph's first line's top with its space before.</summary>
     public double? HangTop { get; init; }
 
+    /// <summary>
+    /// Where the line's inline shapes and groups are drawn instead of their place in it: in a frame of a document in
+    /// an older compatibility mode, the frame's left edge, as far below the page's top as the frame stands below its
+    /// paragraph's place in the text (see Paginator.PlaceFrame); pictures stay where they stand.
+    /// </summary>
+    public (double X, double Y)? InlineOrigin { get; init; }
+
     /// <summary>A line of the body that line numbering counts (not in tables, notes or suppressed paragraphs).</summary>
     public bool Numbered { get; init; }
 
@@ -561,7 +568,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var withText = VerticalAnchor(properties) == "text";
         if (withText && properties.Attr("wrap") == "notBeside" && dropCap is null or "none")
             Lower(top - vSpace, top + height + vSpace, left, width);
-        // The frame's lines, its paragraphs' borders around the whole frame.
+        // The frame's lines, its paragraphs' borders around the whole frame. In compatibility modes before 15 Word
+        // draws the inline shapes of a frame at its left edge and as far down from the page's top as the frame stands
+        // below where its paragraph would stand in the text, wherever they stand in its lines, the text where it
+        // belongs (see PlacedLine.InlineOrigin; measured with docx/local/framepg-*, frin-*, frio-*: in modes 11, 12 and
+        // 14 a rectangle after "Framed " in a frame at page y 49.8 pt, the first paragraph below a top margin of 27 pt,
+        // is drawn at the frame's left edge and 22.75 pt, after a line of 13.8 pt at 8.95 pt, with a top margin of
+        // 72 pt at -22.25 pt, two rectangles both there, in a frame 49.8 pt below its paragraph at 49.8 pt, in a frame
+        // without a position at the page's top; pictures where they stand; docx/external/libreoffice/
+        // extras-ooxmlexport/FDO78590, Tdf147485; fdo78904: a picture).
+        (double, double)? origin = context.CompatibilityMode < 15 && dropCap is null or "none" ? (x, top - textTop) : null;
         var lineTop = top + spaceTop + borderTop;
         for (var k = 0; k < group.Count; k++)
         {
@@ -569,7 +585,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += Between(group[k - 1], group[k]);
             foreach (var line in laid[k])
             {
-                var placed = new PlacedLine(line, x, lineTop);
+                var placed = new PlacedLine(line, x, lineTop) { InlineOrigin = origin };
                 page.Lines.Add(placed);
                 frameLines.Add(placed);
                 lineTop += line.Height;

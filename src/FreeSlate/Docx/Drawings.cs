@@ -252,11 +252,32 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             Emu(own?.Element(Ns.A + "ext"), "cx", 0) * sx, Emu(own?.Element(Ns.A + "ext"), "cy", 0) * sy, rotation);
     }
 
+    /// <summary>
+    /// The effect extents Word goes by. Those of a group holding a text box that does not wrap (wrap none, as
+    /// WordArt's) Word works out anew, whatever the document says: none left and above, on the right and below its
+    /// shapes' widest outline and 0.05 pt, at least 0.49 pt (measured with docx/local/ge-*, gh-*: a group with 9 pt
+    /// stored on every side stands at the line's start, the text after it 0.49 pt after its extent, with a 2 pt
+    /// outline 2.05 pt, 0 stored the same; with a text box that wraps the stored extents hold;
+    /// docx/external/libreoffice/extras-ooxmlexport/Tdf147485, tdf149546).
+    /// </summary>
+    static XElement? EffectExtent(XElement drawing)
+    {
+        var stored = drawing.Element(Wp + "effectExtent");
+        if (drawing.Attribute(Vml.Converted) != null || drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wpg + "wgp") is not { } group
+            || !group.Descendants(Wps + "wsp").Any(s => s.Element(Wps + "txbx") != null && (string?)s.Element(Wps + "bodyPr")?.Attribute("wrap") == "none"))
+            return stored;
+        var outline = group.Descendants(Wps + "spPr").Select(p => p.Element(Ns.A + "ln")).Where(l => l != null && l.Element(Ns.A + "noFill") == null)
+            .Select(l => double.TryParse((string?)l!.Attribute("w"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0)
+            .DefaultIfEmpty(0).Max();
+        var side = Math.Max(6223, outline + 635);
+        return new XElement(Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", side), new XAttribute("b", side));
+    }
+
     /// <summary>A drawing's extent with its effect extents, in points.</summary>
     public static (double Width, double Height) Box(XElement drawing)
     {
         var extent = drawing.Element(Wp + "extent");
-        var effect = drawing.Element(Wp + "effectExtent");
+        var effect = EffectExtent(drawing);
         double E(XElement? e, string name) => double.TryParse((string?)e?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / EmuPerPoint : 0;
         return (E(extent, "cx") + E(effect, "l") + E(effect, "r"), E(extent, "cy") + E(effect, "t") + E(effect, "b"));
     }
@@ -264,7 +285,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// <summary>The effect extents left and above the drawing's extent, in points.</summary>
     public static (double Left, double Top) EffectOffset(XElement drawing)
     {
-        var effect = drawing.Element(Wp + "effectExtent");
+        var effect = EffectExtent(drawing);
         double E(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / EmuPerPoint : 0;
         return (E("l"), E("t"));
     }
