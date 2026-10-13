@@ -598,6 +598,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         y += shift;
     }
 
+    /// <summary>
+    /// The top of the first line of the current column that an object's area overlaps (which the object pushes below
+    /// it), or null where it overlaps none.
+    /// </summary>
+    double? Pushed(Exclusion e)
+    {
+        var (left, width) = Column(column);
+        var tops = page!.Lines.Where(l => l.Top >= columnTop - 0.01 && l.Left > left - width / 2 && l.Left < left + width
+            && l.Top < e.Bottom - 0.01 && l.Top + l.Line.Height > e.Top + 0.01).Select(l => l.Top).ToList();
+        return tops.Count > 0 ? tops.Min() : null;
+    }
+
     /// <summary>The lines of text frames placed in the body, which the text below them does not move (see Lower).</summary>
     readonly HashSet<PlacedLine> frameLines = new(ReferenceEqualityComparer.Instance);
 
@@ -741,7 +753,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (beside, tight) = (false, true);
         foreach (var e in exclusions)
         {
-            if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01)
+            // Objects beside the column leave it alone, also those kept free above and below (measured with
+            // docx/external/libreoffice/extras-layout/fdo43573-2-min: an image wrapped top and bottom in the left column
+            // of a page, the right column's text beside it); an empty frame at its edge does not
+            // (extras-ooxmlexport/fdo78904).
+            if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01 || e.Right < columnLeft - 0.01 || e.Left > columnLeft + columnWidth + 0.01)
                 continue;
             nextBottom = Math.Min(nextBottom, e.Polygon != null ? slot.Offset + slot.Height : e.Bottom - paragraphTop);
             var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
@@ -2319,11 +2335,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 y += 2 * between.Space + between.Total;
             }
         }
-        // An object kept free above and below that would push lines already on the page takes its anchor paragraph to
-        // the next page, where the object then stands (measured with docx/generated/wrapping: the rest of the page stays
-        // empty).
+        // An object kept free above and below that reaches down to its paragraph's place pushes the lines already in
+        // the column that it overlaps below it, the page laid out again with it; where the paragraph would then no
+        // longer begin in the column, and where the object ends above the paragraph, it takes the paragraph to the
+        // next, where the object then stands (measured with docx/local/uc-1 to uc-5, ud-*: lines before an anchor
+        // paragraph go below a rectangle at the top margin of 100 or 650 pt, before one of 690 pt they stay and the
+        // anchor goes to the next page with it; docx/generated/wrapping, docx/local/compat11-wrapping: a rectangle
+        // ending above the anchor, the rest of the page stays empty; docx/external/libreoffice/extras-layout/
+        // fdo43573-2-min).
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
-                ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop))
+                ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
+                && Pushed(e) is { } top && (e.Bottom <= y + 0.01 || e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01)))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -2354,12 +2376,27 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The rest of a paragraph that goes on in a column of another width (w:cols with w:equalWidth 0) breaks its
         // lines anew there (measured with docx/local/uc-7, uc-8: 400 words from a 132 pt column on in a 264 pt one).
         var laidWidth = width;
-        void Relayout(int k)
+        // In another column or page the rest goes on beside the floating objects there (measured with docx/external/
+        // libreoffice/extras-layout/fdo43573-2-min: the last line of a paragraph begun on the page before goes below an
+        // image at the top of the column); true where the lines are laid out again so.
+        var laidAt = (Page: page!, Column: column);
+        bool Relayout(int k)
         {
-            if (Math.Abs(width - laidWidth) < 0.01 || k >= lines.Count)
-                return;
-            lines = [.. lines.Take(k), .. layout.Layout(paragraph, width, from: lines[k].TextStart)];
+            if (k >= lines.Count)
+                return false;
+            var fresh = !ReferenceEquals(laidAt.Page, page) || laidAt.Column != column;
+            laidAt = (page!, column);
+            var (columnLeft, columnWidth, linesTop) = (left, width, y);
+            var around = fresh
+                ? PageExclusions().Where(e => e.Left < columnLeft + columnWidth - 0.01 && e.Right > columnLeft + 0.01 && e.Bottom > linesTop + 0.01).ToList()
+                : [];
+            if (Math.Abs(width - laidWidth) < 0.01 && around.Count == 0)
+                return false;
+            lines = [.. lines.Take(k), .. around.Count > 0
+                ? layout.Layout(paragraph, width, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart)
+                : layout.Layout(paragraph, width, from: lines[k].TextStart)];
             laidWidth = width;
+            return around.Count > 0;
         }
         // Lines no page break may come before (Bound) or after (Binds), which form units with their neighbours
         // (keptNotes), on pages of one column: a paragraph's lines where it keeps them together, its second and last
@@ -2387,7 +2424,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var moved = false;
         for (var k = 0; k < lines.Count; k++)
         {
-            Relayout(k);
+            if (Relayout(k))
+                moved = false;
             var line = lines[k];
             // A line with footnote references needs room for their notes too; a note too long for the rest of the page
             // continues on the next. A kept line needs room only for the notes before its keep unit.
@@ -2454,12 +2492,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 NextColumn(natural: true);
                 (left, width) = Column(column);
-                Relayout(k);
+                var relaid = Relayout(k);
                 line = lines[k];
                 here = 0;
                 hereAtTop = true;
-                moved = true;
-                skip = 0;
+                moved = !relaid;
+                skip = relaid ? line.Skip : 0;
                 // The unit goes on below the notes the new page begins with.
                 keptNotes = Bound(k) || Binds(k) ? (page!, notesHeight) : null;
                 unitNotes.Clear();
