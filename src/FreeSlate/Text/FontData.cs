@@ -413,13 +413,14 @@ public sealed class FontData : IDisposable
         foreach (var piece in pieces)
         {
             using var buffer = new Buffer();
-            buffer.AddUtf16(piece);
+            var own = FontFeaturesAlways(piece);
+            buffer.AddUtf16(own ? NonJoining(piece) : piece);
             buffer.GuessSegmentProperties();
             if (rightToLeft)
                 buffer.Direction = Direction.RightToLeft;
             if (language != null)
                 buffer.Language = new Language(language);
-            font.Shape(buffer, KernsAlways(piece) ? [.. parsed.Where(f => f.Tag != KernFeature.Tag), KernFeature] : parsed);
+            font.Shape(buffer, own ? [.. parsed.Where(f => !OwnFeatures.Contains(f.Tag)), KernFeature] : parsed);
             var infos = buffer.GlyphInfos;
             var positions = buffer.GlyphPositions;
             for (var i = 0; i < infos.Length; i++)
@@ -435,12 +436,16 @@ public sealed class FontData : IDisposable
 
     static readonly Feature KernFeature = Feature.TryParse("kern", out var kern) ? kern : throw new InvalidOperationException();
 
+    /// <summary>The features Word leaves to the font in Arabic script (see <see cref="FontFeaturesAlways"/>).</summary>
+    static readonly HashSet<Tag> OwnFeatures = new[] { "kern", "liga", "clig", "calt" }.Select(Tag.Parse).ToHashSet();
+
     /// <summary>
-    /// Whether Word kerns the text whatever its run's w:kern: Arabic script (measured with docx/local/csfeat-a and -b:
-    /// Persian in Traditional Arabic as wide as shaped with the font's kern feature, with w:kern and without; the Latin
-    /// letters of a w:rtl run stay unkerned, csfeat-d). Its pieces are shaped with kerning on.
+    /// Whether Word shapes the text with the font's own kerning, ligatures and contextual forms whatever its run's
+    /// w:kern and w14:ligatures: Arabic script (measured with docx/local/csfeat-a and -b: Persian in Traditional Arabic
+    /// as wide as shaped with the font's kern and liga features, with w:kern and without, "تم" in its ligature; the
+    /// Latin letters of a w:rtl run stay unkerned, csfeat-d).
     /// </summary>
-    public static bool KernsAlways(string text)
+    public static bool FontFeaturesAlways(string text)
     {
         foreach (var rune in text.EnumerateRunes())
         {
@@ -448,6 +453,28 @@ public sealed class FontData : IDisposable
                 return true;
         }
         return false;
+    }
+
+    /// <summary>Whether a character is a bidirectional control (marks, embeddings, overrides, isolates).</summary>
+    public static bool IsBidiControl(char c) => c is '\u200E' or '\u200F' or >= '\u202A' and <= '\u202E' or >= '\u2066' and <= '\u2069';
+
+    /// <summary>
+    /// Arabic text as Word shapes it: its letters do not join across a bidirectional control, which ends Word's shaping
+    /// run (measured with docx/external/libreoffice/extras-uiwriter/tdf104649: Persian words with a right-to-left mark
+    /// after their prefix, 29 of 30 as wide as shaped apart, "حيرت\u200Fزده" 35.08 pt against 27.35 joined); each control
+    /// becomes a zero width non-joiner, so that the text keeps its length.
+    /// </summary>
+    public static string NonJoining(string text)
+    {
+        if (!text.Any(IsBidiControl))
+            return text;
+        var chars = text.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            if (IsBidiControl(chars[i]))
+                chars[i] = '\u200C';
+        }
+        return new string(chars);
     }
 
     /// <summary>The kerning of a glyph pair in the legacy 'kern' table in em, 0 when there is none.</summary>

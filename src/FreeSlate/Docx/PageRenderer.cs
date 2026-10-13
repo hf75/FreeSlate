@@ -909,17 +909,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         // Our positions already hold the kerning; the browser must not add its own. The features the run turns on are
-        // the browser's to apply too. Right-to-left text the browser shapes itself: Arabic with its kerning, as Word
-        // sets it (FontData.KernsAlways).
-        sb.Append(piece.RightToLeft && FreeSlate.Text.FontData.KernsAlways(text) ? " style=\"font-kerning:normal" : " style=\"font-kerning:none");
+        // the browser's to apply too. Right-to-left text the browser shapes itself: Arabic with its kerning and
+        // ligatures, as Word sets it (FontData.FontFeaturesAlways).
+        sb.Append(piece.RightToLeft && FreeSlate.Text.FontData.FontFeaturesAlways(text)
+            ? " style=\"font-kerning:normal;font-variant-ligatures:normal" : " style=\"font-kerning:none");
         if (on.Count > 0)
             sb.Append(";font-feature-settings:").Append(string.Join(',', on.Select(f => $"'{f}' 1")));
         sb.Append('"');
         if (Math.Abs(style.Scale - 1) > 1e-6)
             sb.Append($" transform=\"translate({Units.Css(x * PxPerPt)} 0) scale({Units.Css4(style.Scale)} 1) translate({Units.Css(-x * PxPerPt)} 0)\"");
         sb.Append('>');
+        // The browser joins Arabic letters across bidirectional controls, Word does not (FontData.NonJoining); the
+        // piece is drawn with its direction overridden, so they have nothing else to do there.
         if (words.Count == 0)
-            sb.Append(WebUtility.HtmlEncode(text));
+            sb.Append(WebUtility.HtmlEncode(piece.RightToLeft && FreeSlate.Text.FontData.FontFeaturesAlways(text) ? FreeSlate.Text.FontData.NonJoining(text) : text));
         else
         {
             var at = 0;
