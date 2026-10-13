@@ -1503,7 +1503,9 @@ areas:
           place across, its rows split at a line of each cell as in the text (in Word 2013 and before alike), header
           rows repeated, the line below the last row of a page closing each part; the paragraph after it begins at the
           top of its last page (docx/local/floatsplit-*: anchored to the text exactly as in Word; docx/external/
-          libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages). Before Word 2013 a
+          libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages); one anchored to the
+          text whose first row does not fit goes to the next page with its paragraph and stands where it would at it,
+          also above the top margin (docx/local/fn-1, fn-2, fn-4; core-layout/floattable-next-leaf-in-section). Before Word 2013 a
           table anchored to the page or the margin breaks on its first page where it would at the paragraph after it,
           as many lines down, so past the bottom margin or above it (floatsplit-14p-*, floattable-compat14, docx/
           external/libreoffice/core-doc/floating-table-dummy-text); w:doNotBreakWrappedTables keeps tables whole

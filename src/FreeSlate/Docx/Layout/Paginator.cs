@@ -433,10 +433,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01))
                     break;
+                // A table anchored to the text that begins on the next page goes there with its paragraph and stands
+                // where it would at it (measured with docx/local/fn-1, fn-2, fn-4: tblpY -289 and 289 twips put it as
+                // far above and below the next page's top margin, in modes 14 and 15; docx/external/libreoffice/
+                // core-layout/floattable-next-leaf-in-section).
+                var withText = last == null && anchor == "text";
                 if (last != null)
                     Close(last);
                 NewPage(section);
-                rowTop = partTop = page!.BodyTop;
+                rowTop = partTop = page!.BodyTop + (withText ? top - textTop : 0);
                 onPage = 0;
                 split = true;
                 if (!row.Header)
