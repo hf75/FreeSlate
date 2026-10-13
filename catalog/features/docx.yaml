@@ -1537,7 +1537,10 @@ areas:
           inside line of a table with 0.5 pt outside lines is centered 0.25 pt right of its grid line; docx/local/tbl-
           geom). Where two cells meet each side brings its own border, else the table's, nothing where it is nil or
           none, so the other side's line shows and takes its room (docx/local/nilborder-*, rowborder-*: 21 cases within
-          0.1 pt); the two are resolved by MS-OI29500 17.4.66: weight (eighths of a point times the style number,
+          0.1 pt); a line between rows that only the cells above bring with their bottom borders lies in the row's top
+          margin and takes room only as far as it is wider (docx/local/cellhlines, cellhlines2: 0.5 pt over margins of
+          2.75 pt none, 3 pt 0.25 pt, 0.5 pt over none 0.5 pt; docx/external/libreoffice/core-layout/rtl-table); the
+          two are resolved by MS-OI29500 17.4.66: weight (eighths of a point times the style number,
           dotted and dashed 1), style, darker color, a table's thick inside line over a cell's thin own one too; at the
           table's edge a cell's own border wins over the table's. Double lines take three times
           their width, triple five; thin-and-thick lines lie top to bottom and left to right on every side, small gaps

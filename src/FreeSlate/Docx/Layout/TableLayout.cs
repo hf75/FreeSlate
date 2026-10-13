@@ -624,6 +624,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // Borders: for each row boundary (0 … rows) and grid column the horizontal line, for each row and grid line
         // the vertical one; a cell's own border wins over the table's, two cells' borders are resolved by weight.
         var horizontal = new BorderLine?[rows.Count + 1, columns];
+        // Where the line at a row's top lies in the row's top margin, taking room only as far as it is wider: where
+        // only the cell above brings it with its bottom border, the row's own cells and the table bringing none
+        // (measured with docx/local/cellhlines, cellhlines2: rows of cells with bottom borders alone are their content
+        // and margins high, with top borders or the table's inside lines a line higher; a 3 pt line above margins of
+        // 2.75 pt takes 0.25 pt, a 0.5 pt one above none 0.5 pt; docx/external/libreoffice/core-layout/rtl-table).
+        var inMargin = new bool[rows.Count + 1, columns];
         var vertical = new BorderLine?[rows.Count, columns + 1];
         for (var r = 0; r <= rows.Count; r++)
         {
@@ -642,6 +648,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // them above and below it; docx/external/powertools/RP/RP033-Table-Prop-Ex-Change).
                 var aboveLine = above != null && below != null ? TableBorder(rows[r - 1], format, b => b.InsideH) : tableLine;
                 horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null, aboveLine);
+                inMargin[r, k] = above != null && below != null && below.CellBorders.Top == null && tableLine is not { Visible: true };
             }
         }
         for (var r = 0; r < rows.Count; r++)
@@ -740,7 +747,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         for (var r = 0; r <= rows.Count; r++)
         {
             for (var k = 0; k < columns; k++)
-                topWidths[r] = Math.Max(topWidths[r], Width(horizontal[r, k]));
+            {
+                var width = Width(horizontal[r, k]);
+                topWidths[r] = Math.Max(topWidths[r], inMargin[r, k] ? Math.Max(0, width - rowEdges[r].Top) : width);
+            }
         }
         var laid = new Dictionary<CellModel, CellContent>();
         var contentHeights = new double[rows.Count];
