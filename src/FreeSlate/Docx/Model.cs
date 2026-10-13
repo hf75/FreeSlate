@@ -604,7 +604,12 @@ public sealed partial class ModelReader(DocumentContext context)
             // and deleted table between paragraphs whose marks were deleted too).
             if (e.Name.LocalName == "tbl" && Gone(e, context.Markup))
                 continue;
-            if (pending != null && e.Name.LocalName != "p")
+            // Marks of ranges between paragraphs (moves, bookmarks, comments, permissions) leave a paragraph whose mark
+            // is gone waiting for the next (docx/external/powertools/RP/RP015-MoveFrom-MoveTo: a moveFromRangeEnd
+            // after the paragraph a move left).
+            if (pending != null && e.Name.LocalName != "p" && !e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal)
+                && !e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal)
+                && e.Name.LocalName is not ("bookmarkStart" or "bookmarkEnd" or "permStart" or "permEnd" or "proofErr"))
             {
                 blocks.Add(pending);
                 pending = null;
@@ -624,7 +629,9 @@ public sealed partial class ModelReader(DocumentContext context)
                 }
                 case "p":
                 {
-                    var markDeleted = e.Child("pPr")?.Child("rPr")?.Child("del") != null;
+                    // A mark moved away (w:moveFrom) is gone as a deleted one is (docx/external/powertools/RP/
+                    // RP015-MoveFrom-MoveTo: the paragraph a move left joins the next).
+                    var markDeleted = e.Child("pPr")?.Child("rPr") is { } markRun && (markRun.Child("del") ?? markRun.Child("moveFrom")) != null;
                     var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
                     if (pending != null)
                     {

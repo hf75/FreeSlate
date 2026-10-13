@@ -1907,9 +1907,11 @@ areas:
         office: >-
           Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
           from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows with
-          them, a paragraph whose mark is deleted joins the next, also across such a table, which keeps its own
+          them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a table
+          and across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments), and keeps its own
           formatting and number (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the
-          lines); formatting changes show the new formatting
+          lines; RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 %
+          of the pixels); formatting changes show the new formatting
           (docx/generated/revisions 91.8 %). With markup (the converter's markup option, Word's "All Markup" with
           comments and formatting in balloons; docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions
           are underlined and deletions struck through in their author's color, moved text dark green (2C6234), struck
