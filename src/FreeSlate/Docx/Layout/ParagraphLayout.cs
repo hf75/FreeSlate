@@ -2002,7 +2002,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // before, between or after 9 pt words leaves the line 9 pt, in modes 12, 14 and 15; a 45 pt "x" or no-break
         // space does not; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw).
         static bool Spaces(Piece p) => Blank(p) && p.Text.Length > 0 && p.Text.All(c => c == ' ') && !p.IsLabel;
-        var spacesOnly = line.Pieces.Any(Spaces) && line.Pieces.All(p => p.IsTab || Spaces(p));
+        // Tabs neither: a paragraph's last line of nothing but tabs is the mark's too (measured with docx/local/
+        // tabheight: a 24 pt tab, alone, twice or between 8 pt letters, leaves an 8 pt mark's line 8 pt, an 8 pt tab
+        // alone a 24 pt mark's 24 pt; docx/external/powertools/RA001-Tracked-Revisions-01), a line before it of a tab
+        // alone the tab's (tovc-10: a 10 pt tab wrapped past the right indent, the mark 12 pt).
+        var spacesOnly = line.Pieces.Count > 0 && line.Pieces.All(p => p.IsTab || Spaces(p)) && (line.Pieces.Any(Spaces) || end >= text.Length);
         foreach (var piece in line.Pieces.Where(p => !p.IsTab && !(onlyDrawings && Blank(p)) && !Spaces(p)))
         {
             // Ruby stands above its base, w:hpsRaise up from the base's baseline: the line makes room for it.

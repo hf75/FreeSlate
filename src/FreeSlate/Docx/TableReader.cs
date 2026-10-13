@@ -191,6 +191,12 @@ public sealed partial class ModelReader
     /// Word prints the document without markup (catalog: review.revisions; measured with docx/generated/revisions),
     /// and stay in the markup view.
     /// </summary>
+    /// <summary>
+    /// Whether a table is gone from the document without markup: every row of it deleted as a tracked change, so
+    /// that a paragraph before it whose mark was deleted joins the one after it.
+    /// </summary>
+    static bool Gone(XElement tbl, bool markup) => !markup && !Rows(tbl, markup).Any();
+
     static IEnumerable<XElement> Rows(XElement tbl, bool markup)
     {
         foreach (var e in tbl.Elements())

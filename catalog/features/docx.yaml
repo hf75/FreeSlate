@@ -1884,8 +1884,10 @@ areas:
           struck deletions and change bars follows Word's simple and all markup views.
         office: >-
           Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
-          from text are left out, deleted table rows (w:trPr/w:del) disappear, a paragraph whose mark is deleted joins
-          the next, which keeps its own formatting and number; formatting changes show the new formatting
+          from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows with
+          them, a paragraph whose mark is deleted joins the next, also across such a table, which keeps its own
+          formatting and number (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the
+          lines); formatting changes show the new formatting
           (docx/generated/revisions 91.8 %). With markup (the converter's markup option, Word's "All Markup" with
           comments and formatting in balloons; docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions
           are underlined and deletions struck through in their author's color, moved text dark green (2C6234), struck
@@ -3572,7 +3574,10 @@ areas:
           libreoffice/extras-ooxmlexport/tdf123054, tdf142404_tabOverMarginC15); trailing spaces hang past the end;
           spaces never make a line taller or lower, whatever their size or place, and a line of only spaces is the
           paragraph mark's (docx/local/ts-*, tu-*, tv-*: a 45 pt space before, between or after 9 pt words leaves the
-          line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not); justified lines squeeze spaces for one more word where that
+          line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not); tabs neither, a paragraph's last line
+          of only tabs is the mark's, a line before it of a tab alone the tab's (docx/local/tabheight: a 24 pt tab
+          alone, twice or between 8 pt letters leaves an 8 pt mark's line 8 pt, an 8 pt tab alone a 24 pt mark's 24 pt;
+          tovc-10: a 10 pt tab wrapped past the right indent before 12 pt text keeps its line 10 pt); justified lines squeeze spaces for one more word where that
           changes them less than stretching would (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids
           snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
           Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same

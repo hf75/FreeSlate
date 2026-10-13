@@ -600,6 +600,10 @@ public sealed partial class ModelReader(DocumentContext context)
                 currentSection = section;
             if (e.Name.Namespace != Wml.W)
                 continue;
+            // A table whose rows were all deleted is gone (docx/external/powertools/RA001-Tracked-Revisions-01: a moved
+            // and deleted table between paragraphs whose marks were deleted too).
+            if (e.Name.LocalName == "tbl" && Gone(e, context.Markup))
+                continue;
             if (pending != null && e.Name.LocalName != "p")
             {
                 blocks.Add(pending);
