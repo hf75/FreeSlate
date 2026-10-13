@@ -209,7 +209,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
-                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList());
+                // Text frames too push aside the lines above them (measured with docx/external/libreoffice/
+                // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
+                // bottom stand beside it).
+                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(p.FloatingTables.Where(e => e.Frame)).ToList());
                 // Footnotes of later columns of a page take room from its earlier columns too: the page is laid out
                 // again with the room they took.
                 var foundBands = result.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
@@ -477,7 +480,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "margin" or "page" => (page!.TextLeft, page.TextWidth),
             _ => (left, width),
         };
-        var (frameTop, frameHeight) = properties.Attr("vAnchor") switch
+        var (frameTop, frameHeight) = VerticalAnchor(properties) switch
         {
             "page" => (0.0, page!.Height),
             "margin" => (page!.BodyTop, page.BodyBottom - page.BodyTop),
@@ -501,7 +504,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "top" or "inside" => frameTop,
             "bottom" or "outside" => frameTop + frameHeight - height,
             "center" => frameTop + (frameHeight - height) / 2,
-            "inline" => textTop,
             _ => frameTop + Twips("y"),
         };
         // The frame's lines, its paragraphs' borders around the whole frame.
@@ -526,6 +528,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true });
         return end;
     }
+
+    /// <summary>
+    /// What a text frame's w:y and w:yAlign count from: w:vAnchor, the margin without it; a frame without a vertical
+    /// position (w:y 0 and no w:yAlign or inline) stands at its paragraph before mode 15 whatever its anchor (measured
+    /// with docx/local/fd-1, fd-3, fd-5: w:y 144 pt below the top margin, yAlign bottom on the bottom margin; ff-*, fg-*:
+    /// without w:y on the top margin or the page's top in mode 15, at its paragraph in modes 12 and 14 also with
+    /// vAnchor margin or page and y 0, yAlign inline as no position; fh-*: the same in headers;
+    /// docx/external/libreoffice/extras-ooxmlexport/special_styles, core-ooxml-pass/fdo81491).
+    /// </summary>
+    string VerticalAnchor(XElement properties) =>
+        context.CompatibilityMode < 15 && (properties.Twips("y") ?? 0) == 0 && properties.Attr("yAlign") is null or "inline"
+            ? "text"
+            : properties.Attr("vAnchor") ?? "margin";
 
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
@@ -1070,8 +1085,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "center" => spanLeft + (span - frameWidth) / 2,
                     _ => spanLeft + Twips("x"),
                 };
-                var onPage = properties.Attr("vAnchor") is "page" or "margin";
-                var (areaTop, areaHeight) = properties.Attr("vAnchor") switch
+                var onPage = VerticalAnchor(properties) is "page" or "margin";
+                var (areaTop, areaHeight) = VerticalAnchor(properties) switch
                 {
                     "page" => (0.0, s.PageHeight),
                     "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
@@ -1082,7 +1097,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "top" or "inside" => areaTop,
                     "bottom" or "outside" => areaTop + areaHeight - frameHeight,
                     "center" => areaTop + (areaHeight - frameHeight) / 2,
-                    "inline" => textTop,
                     _ => areaTop + Twips("y"),
                 };
                 var lineTop = frameTop;
@@ -1096,6 +1110,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         lineTop += line.Height;
                     }
                 }
+                // The body's text goes around a frame standing on the page, as around a floating table there (measured
+                // with docx/local/fh-1: a header's frame on the top margin in mode 15 puts the body's first line beside it).
+                if (onPage && properties.Attr("wrap") != "none")
+                    floats.Add((new Exclusion(x - Twips("hSpace"), frameTop - Twips("vSpace"), x + frameWidth + Twips("hSpace"),
+                        frameTop + frameHeight + Twips("vSpace"), properties.Attr("wrap") == "notBeside", "bothSides") { Story = true }, false, -1));
                 b = end - 1;
                 continue;
             }

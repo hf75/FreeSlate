@@ -412,7 +412,9 @@ public sealed class ParagraphFormat
                     break;
                 case "pBdr": Borders = e; break;
                 case "shd": Shading = e; break;
-                case "framePr": Frame = e; break;
+                // A w:framePr without any attribute Word knows makes no frame (measured with docx/local/fe-5, fg-7: one of
+                // only fillcolor stands as a paragraph; docx/external/libreoffice/core-ooxml-pass/tdf133457).
+                case "framePr" when e.Attributes().Any(a => a.Name.Namespace == Wml.W): Frame = e; break;
                 case "outlineLvl": OutlineLevel = e.Number("val") is { } outline ? (int)outline : OutlineLevel; break;
                 case "rPr": MarkProperties = e; break;
             }
@@ -423,6 +425,12 @@ public sealed class ParagraphFormat
     public void Overlay(ParagraphFormat top)
     {
         var tabs = Tabs?.ToList() ?? [];
+        // Frame properties override those below them attribute by attribute (measured with docx/external/libreoffice/
+        // extras-ooxmlexport/special_styles: a paragraph's w:framePr saying only w:wrap keeps its style's width, height
+        // and centering on the page).
+        var frame = Frame != null && top.Frame != null ? new XElement(Frame) : null;
+        foreach (var attribute in top.Frame?.Attributes() ?? [])
+            frame?.SetAttributeValue(attribute.Name, attribute.Value);
         foreach (var field in typeof(ParagraphFormat).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             if (field.Name is nameof(Tabs) or nameof(ClearedTabs))
@@ -430,6 +438,8 @@ public sealed class ParagraphFormat
             if (field.GetValue(top) is { } value)
                 field.SetValue(this, value);
         }
+        if (frame != null)
+            Frame = frame;
         foreach (var cleared in top.ClearedTabs ?? [])
             tabs.RemoveAll(t => Math.Abs(t.Position - cleared) < 0.01);
         foreach (var tab in top.Tabs ?? [])
