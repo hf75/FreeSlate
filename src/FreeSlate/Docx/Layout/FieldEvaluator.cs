@@ -76,11 +76,12 @@ public sealed class FieldEvaluator
     readonly Dictionary<ParagraphBlock, PageBox> paragraphPages = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>The time the fields' dates and times show: when the document is printed.</summary>
-    readonly DateTime now = DateTime.Now;
+    readonly DateTime now;
 
     public FieldEvaluator(DocumentContext context, List<Block> blocks)
     {
         this.context = context;
+        now = context.Printed ?? DateTime.Now;
         german = context.Culture.TwoLetterISOLanguageName == "de";
         var counters = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var section = 0;
@@ -445,6 +446,8 @@ public sealed class FieldEvaluator
         ["zh"] = ("上午", "下午", "H时mm分", null),
         ["ko"] = ("오전", "오후", "tt h시 mm분", "yyyy-MM-dd"),
         ["ar"] = ("ص", "م", "h:mm  tt", "dd/MM/yyyy"),
+        // With a plain quotation mark, not the gershayim; its AM by its PM.
+        ["he"] = ("לפנה\"צ", "אחה\"צ", "h:mm tt", "dd/MM/yyyy"),
     };
 
     static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CultureInfo?> languageCultures = new(StringComparer.OrdinalIgnoreCase);

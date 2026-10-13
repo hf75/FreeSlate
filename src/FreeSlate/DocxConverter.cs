@@ -55,10 +55,11 @@ public static class DocxConverter
     /// review.comments): tracked changes in their authors' colors, comments and formatting changes in balloons beside
     /// the page; else as it reads with all changes accepted, as Word prints by default.
     /// </param>
+    /// <param name="printed">The time the document prints at, which date and time fields show; now when null.</param>
     public static string ToHtml(string docxPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
-        CultureInfo? culture = null, bool markup = false)
+        CultureInfo? culture = null, bool markup = false, DateTime? printed = null)
     {
-        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture, Markup = markup };
+        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture, Markup = markup, Printed = printed };
         var reader = new ModelReader(context);
         var blocks = reader.Body();
         var styles = new RunStyles(context);
@@ -118,9 +119,9 @@ public static class DocxConverter
     }
 
     public static void ToFile(string docxPath, string htmlPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
-        CultureInfo? culture = null, bool markup = false)
+        CultureInfo? culture = null, bool markup = false, DateTime? printed = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra, culture, markup));
+        File.WriteAllText(htmlPath, ToHtml(docxPath, fonts, password, paperExtra, culture, markup, printed));
     }
 }

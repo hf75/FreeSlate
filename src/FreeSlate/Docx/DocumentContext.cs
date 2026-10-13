@@ -204,6 +204,9 @@ public sealed class DocumentContext : IDisposable
     /// <summary>The regional format for dates the document shows (date blocks, fields), the system's by default.</summary>
     public System.Globalization.CultureInfo Culture { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
 
+    /// <summary>The time the document prints at, which DATE, TIME and PRINTDATE fields show; now where null.</summary>
+    public DateTime? Printed { get; set; }
+
     /// <summary>The interval of the default tab stops in points (w:defaultTabStop, 720 twips when absent).</summary>
     public double DefaultTabStop { get; }
 
