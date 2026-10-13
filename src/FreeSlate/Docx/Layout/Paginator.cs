@@ -23,6 +23,12 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     public bool Widow { get; init; }
 
     /// <summary>
+    /// The room above a nested table's cell content the line stands in (the row's line and the cell's top margin, of
+    /// every table it is nested in), which the cell's continuation keeps where its row is cut at the line (RowBox.Split).
+    /// </summary>
+    public double Carry { get; init; }
+
+    /// <summary>
     /// How far below the line's top the part of a nested table it stands in reaches that has to go with it where a row
     /// splits: its row's at-least height, the whole row where it may not split (RowBox.Split).
     /// </summary>
