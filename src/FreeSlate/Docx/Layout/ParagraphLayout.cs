@@ -1239,7 +1239,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 displayed.X = left + displayX;
                 continue;
             }
-            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters);
+            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, width - right);
         }
         // Right-to-left paragraphs and runs: the lines, laid out from the start edge, read in visual order.
         if (levels != null || format.Bidi == true)
@@ -2476,8 +2476,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     enum Spread { None, EastAsian, All }
 
     /// <param name="doubled">What justification adds at a boundary between East Asian and Latin text after a character.</param>
+    /// <param name="edge">The paragraph's own right edge, which centered and right aligned lines a tab stop took past it align by.</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None)
+        Spread spread = Spread.None, double? edge = null)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -2492,18 +2493,25 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
         // start align at the start, right and end at the end (measured with docx/local/bidi).
         var jc = format.Justification ?? "left";
-        // Tabs fix what comes after them; alignment moves only the text after the last tab.
+        // Centered and right aligned lines are laid out as left aligned, tabs and list numbers with them, and move as
+        // a whole (measured with docx/local/numcenter: "a", a tab and "b" centered with the tab to the first default
+        // stop after the line's start; a number, its tab to the indent and the text, its following lines from the
+        // indent; docx/external/libreoffice/extras-ooxmlexport/tdf135774_numberingShading), by the paragraph's own
+        // right edge also where a stop took the line past it (docx/external/powertools/DA034-HeaderFooter: a centered
+        // footer, a tab to a right stop at the margin and text reaching past it stays where the tab put it).
+        // Justified lines spread only the text after their last tab.
         var lastTab = line.Pieces.FindLastIndex(p => p.IsTab);
         var movable = line.Pieces.Skip(lastTab + 1).ToList();
+        var room = Math.Min(limit, edge ?? limit) - end;
         double shift = jc switch
         {
-            "center" => free / 2,
-            "right" or "end" => free,
+            "center" => room / 2,
+            "right" or "end" => room,
             _ => 0,
         };
-        if (shift > 0 && lastTab < 0)
+        if (shift > 0)
         {
-            foreach (var piece in movable)
+            foreach (var piece in line.Pieces)
                 piece.X += shift;
             return;
         }
