@@ -36,6 +36,9 @@ public sealed class FontResolver(FontLocator locator)
     public ResolvedFont? TryResolveTypeface(string typeface, bool bold, bool italic) =>
         Find(typeface, bold, italic) ?? Named(typeface, bold, italic);
 
+    /// <summary>A typeface by its family's own name only, or null.</summary>
+    public ResolvedFont? TryResolveFamily(string family, bool bold, bool italic) => Find(family, bold, italic);
+
     /// <summary>The first of these families that is there, else the fallback.</summary>
     public ResolvedFont ResolveFirst(IEnumerable<string> families, bool bold, bool italic) =>
         families.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null) ?? Resolve(families.FirstOrDefault() ?? "", bold, italic);

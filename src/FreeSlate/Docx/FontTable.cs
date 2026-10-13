@@ -8,11 +8,14 @@ namespace FreeSlate.Docx;
 /// The font table (w:fonts, catalog: font.table) and the font Word draws for a family the machine lacks, measured
 /// with docx/local/font-sub and font-sub2 (Word 16 on Windows 11), in this order:
 /// <list type="number">
-/// <item>An installed family, or a family known by the name: PostScript names and other platforms' names as
+/// <item>An installed family, or a family known by the name: Word's own (any Futura Century Gothic, any Baskerville
+/// Baskerville Old Face, Myriad Pro Segoe UI, New York Times New Roman, Gill Sans Light and Helvetica Light the Nova
+/// families where Office has them: docx/local/fontnames-plain), PostScript names and other platforms' names as
 /// PowerPoint knows them (ArialMT, Arial-BoldMT, TimesNewRomanPSMT, CourierNewPSMT, Calibri-Bold, Helvetica,
 /// Helvetica Neue, Times, Courier, Palatino; the style in a name is dropped), Geneva (Arial), Lucida Grande (Segoe UI)
 /// and Windows' font substitutes (MS Shell Dlg, Tahoma Armenian, Arial CE …).</item>
-/// <item>The table's alternate name (w:altName).</item>
+/// <item>The table's alternate name (w:altName) where a family of that very name is installed (docx/local/
+/// fontnames-alt: an altName of Courier counts for nothing; docx/external/powertools/RP/RP052-Deleted-Para-Mark).</item>
 /// <item>The table's character set: symbol fonts become Symbol, Shift JIS Yu Gothic, Hangul Malgun Gothic, GB 2312
 /// Microsoft YaHei, Big5 PMingLiU, Thai Browallia New; Arabic and Hebrew by the table's family, serif (roman) Sakkal
 /// Majalla and Times New Roman, monospaced (modern) Tahoma, all others Arial, whatever the PANOSE and the signature
@@ -21,7 +24,9 @@ namespace FreeSlate.Docx;
 /// Calibri, sans serif, monospaced (even with a fixed pitch and Courier's PANOSE), script and decorative alike. The
 /// PANOSE numbers and the document's theme fonts do not matter.</item>
 /// </list>
-/// Where Cambria and Calibri are missing too, their metric twins Caladea and Carlito stand in.
+/// Where Cambria and Calibri are missing too, their metric twins Caladea and Carlito stand in. Of a family's entries
+/// the table's last one counts (docx/local/fontdup; docx/external/libreoffice/extras-ooxmlexport/
+/// tdf153526_commentInNumbering: OpenSymbol, first roman, then auto, prints in Calibri).
 /// </summary>
 public sealed class FontTable
 {
@@ -36,7 +41,7 @@ public sealed class FontTable
             if (font.Attr("name") is not { Length: > 0 } name)
                 continue;
             var charset = font.Child("charset").Val() is { } hex && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var c) ? c : (int?)null;
-            entries.TryAdd(name, new Entry(font.Child("altName").Val(), charset, font.Child("family").Val()));
+            entries[name] = new Entry(font.Child("altName").Val(), charset, font.Child("family").Val());
         }
     }
 
@@ -48,6 +53,16 @@ public sealed class FontTable
         ["Arabic Transparent Bold"] = "Arial", ["FangSong_GB2312"] = "FangSong", ["KaiTi_GB2312"] = "KaiTi",
     };
 
+    /// <summary>Names Word itself replaces by an installed family (docx/local/fontnames-plain), before PowerPoint's.</summary>
+    static readonly Dictionary<string, string> WordNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Myriad Pro"] = "Segoe UI", ["New York"] = "Times New Roman", ["Gill Sans Light"] = "Gill Sans Nova Light",
+        ["Helvetica Light"] = "Arial Nova Light",
+    };
+
+    /// <summary>Beginnings of names Word replaces by an installed family, whatever follows them (Futura Medium, Futura Md BT).</summary>
+    static readonly (string Prefix, string Family)[] WordPrefixes = [("Futura", "Century Gothic"), ("Baskerville", "Baskerville Old Face")];
+
     static readonly string[] Serif = ["Cambria", "Caladea", "Times New Roman", "Liberation Serif", "DejaVu Serif"];
     static readonly string[] Sans = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
 
@@ -57,13 +72,19 @@ public sealed class FontTable
 
     /// <summary>The family itself where the machine has it, or the font Windows or Word puts for its name, else null.</summary>
     public static ResolvedFont? Available(FontResolver fonts, string family, bool bold, bool italic) =>
-        fonts.TryResolveTypeface(family, bold, italic)
+        fonts.TryResolveFamily(family, bold, italic)
+        ?? (WordName(family) is { } named ? fonts.TryResolveFamily(named, bold, italic) : null)
+        ?? fonts.TryResolveTypeface(family, bold, italic)
         ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null);
+
+    static string? WordName(string family) =>
+        WordNames.TryGetValue(family, out var named) ? named
+        : WordPrefixes.FirstOrDefault(p => family.StartsWith(p.Prefix, StringComparison.OrdinalIgnoreCase)).Family;
 
     ResolvedFont Substitute(FontResolver fonts, string family, bool bold, bool italic)
     {
         entries.TryGetValue(family, out var entry);
-        if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveTypeface(alternate, bold, italic) is { } named)
+        if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveFamily(alternate, bold, italic) is { } named)
             return named;
         var byCharset = entry?.Charset switch
         {

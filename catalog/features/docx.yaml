@@ -479,16 +479,22 @@ areas:
           Fonts a document names but the machine lacks are replaced the way Word does it, using the font table's
           alternate name, PANOSE, family, pitch and character set; shared with pptx `engine.fonts`.
         office: >-
-          A family the machine lacks is replaced as Word replaces it: a family known by the name (PostScript and other
+          A family the machine lacks is replaced as Word replaces it: a family known by the name (Word's own: any
+          Futura Century Gothic, any Baskerville Baskerville Old Face, Myriad Pro Segoe UI, New York Times New Roman,
+          Gill Sans Light and Helvetica Light the Nova families, docx/local/fontnames-plain; PostScript and other
           platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
-          Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName, then a font for
+          Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family of
+          that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
+          docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for
           the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft
           YaHei, Big5: PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla
           and Times New Roman, modern Tahoma, all others Arial, docx/local/font-sub3), else Cambria for serif fonts
           (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their PANOSE,
           signature, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt).
-          Caladea and Carlito stand in where Cambria and Calibri are missing too. A list number's missing complex
-          script font becomes Times New Roman instead (see run.complexScript).
+          Caladea and Carlito stand in where Cambria and Calibri are missing too. Of a family's entries the table's
+          last one counts, and a character set of 01 means nothing (docx/local/fontdup: OpenSymbol, first roman, then
+          auto, prints in Calibri, as in tdf153526_commentInNumbering). A list number's missing complex script font
+          becomes Times New Roman instead (see run.complexScript).
 
       - id: font.embedded
         title: Embedded fonts
