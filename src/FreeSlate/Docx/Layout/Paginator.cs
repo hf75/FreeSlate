@@ -2206,6 +2206,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
             var fitHeight = line.Hyphenated && k + 1 < lines.Count ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
+            // Above footnotes a paragraph's last line needs its whole height and the paragraph's space after, from Word
+            // 2013 on (measured with docx/local/fbn-*, fbm-*, fbo-*: a line of 24.15 pt with 10 pt after fits where
+            // 34.15 pt are left above the notes, not 33 pt, without notes where 16.1 pt are; mode 14 as without;
+            // docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
+            if (context.CompatibilityMode >= 15 && k == lines.Count - 1 && (notesHeight > 0.01 || notesNeeded > 0.01))
+                fitHeight = Math.Max(fitHeight, line.Height + SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null));
             // A line a floating object pushes down has to fit below it, else it goes to the next column or page, with
             // the paragraph's own objects (measured with docx/local/anchorpush-*: a paragraph whose full-width object
             // leaves it no room on the page moves to the next with it, and the lines above keep their places).

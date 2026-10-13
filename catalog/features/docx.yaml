@@ -1286,7 +1286,10 @@ areas:
           width, each column taking notes until it holds its share of their height, under one separator at the left,
           every column of text ending above them (docx/local/fnpages-h). Notes of table cells need room with their
           row. Measured with docx/generated/notes and docx/local/fnpages-a to -h: all lines within 0.2 pt but the note
-          marks, whose superscripts stand within half a point (run.decoration).
+          marks, whose superscripts stand within half a point (run.decoration). Above notes a paragraph's last line
+          needs its whole height and the paragraph's space after, from Word 2013 on (docx/local/fbn-*, fbm-*, fbo-*: a
+          line of 24.15 pt with 10 pt after fits where 34.15 pt are left above the notes, not 33 pt; without notes 16.1
+          pt do, as before Word 2013 with them; docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
 
       - id: note.endnotes
         title: Endnotes
