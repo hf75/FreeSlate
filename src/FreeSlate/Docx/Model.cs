@@ -291,6 +291,22 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The hyperlink (w:hyperlink) whose runs are being read, or null.</summary>
     string? link;
 
+    /// <summary>
+    /// Whether the runs being read are a hyperlink's in a table of contents, which do not show the Hyperlink style:
+    /// Word prints TOC entries in w:hyperlink as if their runs had no character style where it is the Hyperlink
+    /// style, their direct formatting and other character styles kept, with or without TOC \h (measured with
+    /// docx/local/toclink, toclink-2: a Hyperlink style of blue, underlined, bold 16 pt shows none of it there,
+    /// outside w:hyperlink, outside the field and in a HYPERLINK field it does; docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf126994_lostPageBreak).
+    /// </summary>
+    bool tocLink;
+
+    /// <summary>
+    /// The complex fields open at the runs being read, across paragraphs (a FieldState is a paragraph's): their
+    /// instructions and whether their results are being read; a table of contents spans its entries' paragraphs.
+    /// </summary>
+    readonly List<(System.Text.StringBuilder Instruction, bool InResult)> openFields = [];
+
     /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
     string? bidiOverride, bidiEmbedding;
 
@@ -946,10 +962,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     var target = e.Attr(Wml.R + "id") is { } rid && context.Package.Relationship(currentPart, rid) is { External: true } rel ? rel.Target : null;
                     if (e.Attr("anchor") is { } bookmark)
                         target = (target ?? "") + "#" + bookmark;
-                    var saved = link;
+                    var saved = (link, tocLink);
                     link = target ?? link;
+                    tocLink |= openFields.Any(f => f.InResult && FieldInline.TypeOf(f.Instruction.ToString()) == "TOC");
                     ReadInlines(e, paragraphStyle, content, field);
-                    link = saved;
+                    (link, tocLink) = saved;
                     break;
                 }
                 case "permStart" or "permEnd":
@@ -1052,7 +1069,11 @@ public sealed partial class ModelReader(DocumentContext context)
     {
         var direct = new RunFormat();
         direct.Apply(r.Child("rPr"));
-        var format = context.Styles.Run(paragraphStyle, direct.Style, direct, tableRun);
+        var characterStyle = direct.Style;
+        if (tocLink && context.Styles.Find(characterStyle) is { } linkStyle
+            && (string.Equals(linkStyle.Name, "Hyperlink", StringComparison.OrdinalIgnoreCase) || string.Equals(linkStyle.Id, "Hyperlink", StringComparison.OrdinalIgnoreCase)))
+            characterStyle = null;
+        var format = context.Styles.Run(paragraphStyle, characterStyle, direct, tableRun);
         (format.Override, format.Embedding) = (bidiOverride, bidiEmbedding);
         if (context.Markup)
         {
@@ -1067,6 +1088,18 @@ public sealed partial class ModelReader(DocumentContext context)
             switch (e.Name.LocalName)
             {
                 case "fldChar":
+                    switch (e.Attr("fldCharType"))
+                    {
+                        case "begin":
+                            openFields.Add((new(), false));
+                            break;
+                        case "separate" when openFields.Count > 0:
+                            openFields[^1] = (openFields[^1].Instruction, true);
+                            break;
+                        case "end" when openFields.Count > 0:
+                            openFields.RemoveAt(openFields.Count - 1);
+                            break;
+                    }
                     switch (e.Attr("fldCharType"))
                     {
                         case "begin":
@@ -1110,6 +1143,8 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "instrText":
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
                         field.Frames.Peek().Instruction.Append(e.Value);
+                    if (openFields.Count > 0 && !openFields[^1].InResult)
+                        openFields[^1].Instruction.Append(e.Value);
                     break;
                 case "t":
                 case "delText" when context.Markup:

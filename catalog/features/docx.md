@@ -1316,7 +1316,7 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 **Rendering:** HTML links on the text and on drawings (as pptx `interactivity.hyperlinks`, done); bookmarks become anchors.
 
-**Office behaviour:** w:hyperlink (external targets through the relationship, bookmarks through w:anchor) and HYPERLINK fields (with \l) make the text a link in the HTML.
+**Office behaviour:** w:hyperlink (external targets through the relationship, bookmarks through w:anchor) and HYPERLINK fields (with \l) make the text a link in the HTML. A table of contents' w:hyperlink entries print as if their runs had no character style where it is the Hyperlink style, with or without TOC \h: their direct formatting and other character styles show, the style's color, underline, bold and size do not; outside w:hyperlink, outside the TOC field and in a HYPERLINK field's result the style shows (docx/local/toclink, toclink-2; 38 documents better, among them docx/external/libreoffice/extras-ooxmlexport/fdo78654 52.7 → 92.2 %, powertools/ HC022-Table-Of-Contents 66.8 → 90.4 %).
 
 **Elements (6):** [`a:hlinkClick`](../format/namespaces/a.md#ahlinkclick), [`a:hlinkHover`](../format/namespaces/a.md#ahlinkhover), [`a:hlinkMouseOver`](../format/namespaces/a.md#ahlinkmouseover), [`a:snd`](../format/namespaces/a.md#asnd), [`ahyp:hlinkClr`](../format/namespaces/ahyp.md#ahyphlinkclr), [`w:hyperlink`](../format/namespaces/w.md#whyperlink)
 
