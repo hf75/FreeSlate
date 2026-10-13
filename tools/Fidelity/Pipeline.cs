@@ -154,16 +154,27 @@ public static class Pipeline
                 Console.WriteLine($"  no reference for {deck}; run `reference` on Windows first");
                 continue;
             }
+            // A document that did not convert scores 0 on every page of Word's.
             if (Repo.IsDocument(deck) && !File.Exists(Path.Combine(OutputDir(deck), References.ImageName(deck, 1))))
             {
                 Console.WriteLine($"  no rendering of {deck}");
+                results.Add(new DeckResult(deck, Enumerable.Range(1, reference.Count).Select(i => new SlideResult(i, new SlideScore(0, 0, 0))).ToList()));
                 continue;
             }
             var slides = new ConcurrentBag<SlideResult>();
-            Parallel.For(1, reference.Count + 1, i =>
+            // A document's page that one side has and the other not scores 0: a rendering with one of Word's three
+            // pages, or with pages beyond Word's, would otherwise be measured by the pages they share alone.
+            var document = Repo.IsDocument(deck);
+            var count = document ? Math.Max(reference.Count, Directory.GetFiles(OutputDir(deck), "page-*.png").Length) : reference.Count;
+            Parallel.For(1, count + 1, i =>
             {
                 var name = References.ImageName(deck, i);
                 var ours = Path.Combine(OutputDir(deck), name);
+                if (document && (i > reference.Count || !File.Exists(ours)))
+                {
+                    slides.Add(new SlideResult(i, new SlideScore(0, 0, 0)));
+                    return;
+                }
                 if (!File.Exists(ours))
                     return;
                 var score = ImageCompare.Compare(
