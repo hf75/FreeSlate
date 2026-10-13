@@ -640,7 +640,9 @@ areas:
           or w:splitPgBreakAndParaMark says so, which Word 2013 and later ignore (docx/local/breakmark-*, breakmark3-*,
           breakmark4-* in modes 11, 14 and 15; tdf153613_anchoredAfterPgBreak, -2, -3; tdf153592_columnBreaks). Where a
           content control starts before the break, as around a table of contents, the break ends the first line like
-          any other and the space before stays behind (leadbreak-j, -m … -q; tdf154478). Text wrapping breaks (and
+          any other and the space before stays behind (leadbreak-j, -m … -q; tdf154478). In table cells page and column
+          breaks break nothing at all, the text going on in its line, in text boxes they end the line (docx/local/cb-1
+          to cb-5 in modes 14 and 15; fdo68607, table-pagebreak, tdf163178_columnbreakInTable). Text wrapping breaks (and
           w:cr) end the line; with w:clear the next line moves below the floating objects of the side it clears (an
           object on the left half of the column is on the left; docx/local/br-clear 99.8 %). Tabs go to the tab stops; w:sym characters are drawn from their
           symbol font. A line breaking at a soft hyphen shows a hyphen, which has to fit; a no-break hyphen prints the

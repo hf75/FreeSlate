@@ -1123,7 +1123,10 @@ public sealed partial class ModelReader(DocumentContext context)
                         field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none") });
                     break;
                 case "br":
-                    if (!field.Hidden)
+                    // Page and column breaks in table cells break nothing at all, the text going on in its line
+                    // (measured with docx/local/cb-1, cb-2, cb-4 in modes 14 and 15; in a text box a line break, cb-5;
+                    // docx/external/libreoffice/extras-ooxmlexport/fdo68607).
+                    if (!field.Hidden && !(tableParagraph != null && e.Attr("type") is "page" or "column"))
                         field.Target(content).Add(new BreakInline(e.Attr("type") ?? "textWrapping", e.Attr("clear"), format));
                     break;
                 case "cr":
