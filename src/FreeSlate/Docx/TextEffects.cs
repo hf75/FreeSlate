@@ -11,7 +11,9 @@ public static class TextEffects
 {
     /// <summary>
     /// A w14 element as DrawingML: the same names in the a namespace (w14:shadow is a:outerShdw, w14:textOutline a:ln),
-    /// the attributes without namespace.
+    /// the attributes without namespace; a color's w14:alpha is its transparency, a:alpha its opacity (measured with
+    /// docx/local/w14alpha: fills of w14:alpha 20000, 50000 and 80000 print at 80, 50 and 20 % opacity;
+    /// docx/external/libreoffice/tdf152896_WordArt_color_darken).
     /// </summary>
     public static XElement DrawingML(XElement w14)
     {
@@ -19,6 +21,8 @@ public static class TextEffects
         var result = new XElement(Ns.A + name);
         foreach (var attribute in w14.Attributes().Where(a => a.Name.Namespace == Wml.W14))
             result.SetAttributeValue(attribute.Name.LocalName, attribute.Value);
+        if (name == "alpha" && double.TryParse((string?)result.Attribute("val"), NumberStyles.Float, CultureInfo.InvariantCulture, out var transparency))
+            result.SetAttributeValue("val", (100000 - transparency).ToString(CultureInfo.InvariantCulture));
         foreach (var child in w14.Elements().Where(e => e.Name.Namespace == Wml.W14))
             result.Add(DrawingML(child));
         return result;

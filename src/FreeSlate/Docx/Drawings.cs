@@ -520,6 +520,34 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         return new PlacedDrawing(drawing, context.MainPart, x, top, w, h);
     }
 
+    /// <summary>
+    /// The bent text of a WordArt text box (catalog: drawing.textBoxes) as a shape without fill or line over it: the
+    /// box less its insets, turned and flipped as the box, its text body (wps:txbx3D) without insets of its own.
+    /// </summary>
+    public PlacedDrawing WordArtText(XElement body, PlacedDrawing box, double left, double top, double right, double bottom)
+    {
+        var (w, h) = (Math.Max(1, box.Width - left - right), Math.Max(1, box.Height - top - bottom));
+        var text = new XElement(body);
+        if (text.Element(Ns.A + "bodyPr") is { } bodyPr)
+        {
+            foreach (var inset in new[] { "lIns", "tIns", "rIns", "bIns" })
+                bodyPr.SetAttributeValue(inset, 0);
+        }
+        var turn = box.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "spPr")?.Element(Ns.A + "xfrm");
+        var (cx, cy) = ((long)Math.Round(w * EmuPerPoint), (long)Math.Round(h * EmuPerPoint));
+        var xfrm = new XElement(Ns.A + "xfrm", turn?.Attributes().Where(a => a.Name.LocalName is "rot" or "flipH" or "flipV"),
+            new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)), new XElement(Ns.A + "ext", new XAttribute("cx", cx), new XAttribute("cy", cy)));
+        var drawing = new XElement(Wp + "anchor",
+            new XElement(Wp + "extent", new XAttribute("cx", cx), new XAttribute("cy", cy)),
+            new XElement(Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "WordArt")),
+            new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XAttribute("uri", Wps.NamespaceName),
+                new XElement(Wps + "wsp", new XElement(Wps + "cNvSpPr"),
+                    new XElement(Wps + "spPr", xfrm, new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
+                        new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
+                    text))));
+        return new PlacedDrawing(drawing, box.Part, box.X + left, box.Y + top, w, h) { Behind = box.Behind, Order = box.Order };
+    }
+
     static void WordArt(XElement shape, XElement art, XElement? docPr, XElement graphicData)
     {
         var spPr = shape.Element(Ns.P + "spPr")!;

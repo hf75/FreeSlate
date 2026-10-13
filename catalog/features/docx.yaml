@@ -735,7 +735,10 @@ areas:
         office: >-
           w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with
           the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient
-          or no fill. The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow
+          or no fill. A color's w14:alpha is its transparency, not its opacity as a:alpha (docx/local/w14alpha,
+          w14shadow: fills, outlines and shadows of w14:alpha 20000, 50000 and 80000 print at 80, 50 and 20 % opacity;
+          docx/external/libreoffice/writerfilter-dmapper/tdf152884_Char_Transparency 11.3 → 100 %,
+          semi-transparent-text 73.3 → 100 %). The line makes room for the effects outside its spacing: a glow 0.778 of its radius, a shadow
           1.046 of its blur plus or minus its vertical offset, both at (size / 78)^0.695, a reflection size × (0.944
           end − 0.21) and 0.0566 size per point of its distance (docx/local/text-effects*, Arial 12 to 96 pt, lines
           within 0.3 pt; docx/generated/shapes-effects 99.1 %). 3D text (w14:props3d with a bevel, depth or contour,
@@ -2013,8 +2016,13 @@ areas:
           upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6). Linked text boxes (wps:txbx id,
           wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that
           resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps
-          its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %). Known
-          deviation: linked boxes of different widths keep the first box's line breaks.
+          its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %). WordArt, a
+          text box whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does
+          (pptx text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
+          whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6 or
+          20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
+          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). Known deviation: linked
+          boxes of different widths keep the first box's line breaks.
 
       - id: drawing.groups
         title: Groups
