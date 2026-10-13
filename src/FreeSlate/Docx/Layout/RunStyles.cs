@@ -14,31 +14,87 @@ public enum WordSlot { Ascii, HAnsi, EastAsia, ComplexScript }
 /// </summary>
 public sealed class RunStyles(DocumentContext context)
 {
-    readonly ConditionalWeakTable<RunFormat, Dictionary<(WordSlot, bool), RunStyle>> cache = new();
+    readonly ConditionalWeakTable<RunFormat, Dictionary<(WordSlot, bool, bool), RunStyle>> cache = new();
 
-    /// <summary>The slot a character's font comes from: ASCII, East Asian, complex script or high ANSI.</summary>
-    public static WordSlot SlotOf(int c, RunFormat format)
+    /// <summary>
+    /// The slot a character's font comes from, in ECMA-376's two steps (17.3.2.26) as Word takes them (measured with
+    /// docx/local/rtlslot-a to -m): by its block, Basic Latin and the right-to-left scripts (Hebrew, Arabic, Syriac,
+    /// Thaana, the Arabic presentation forms) are ASCII, East Asian blocks East Asian (with the hint eastAsia also
+    /// General Punctuation to Dingbats), all else high ANSI, Thai and the Indic scripts too (they fall back from the high
+    /// ANSI font, never take the w:cs font); then w:cs and w:rtl make every character complex script but East Asian ones
+    /// under the hint eastAsia, and in a w:rtl run (not w:cs) numbers keep their font, with complex script formatting
+    /// (see <see cref="Character"/>): Arabic-Indic digits (bidirectional type AN) always, digits and number signs (EN,
+    /// ET: % $) unless the run's complex script language is Hebrew (w:lang w:bidi he-IL: Aharoni, none or ar-SA: Times
+    /// New Roman; rtlslot-m, -o, -p; docx/external/powertools/HC002-Hebrew-01). w:hint="cs" changes nothing (rtlslot-c, -n).
+    /// </summary>
+    public static WordSlot SlotOf(int c, RunFormat format) => SlotOf(c, format, format.RightToLeft == true);
+
+    /// <param name="rightToLeft">Whether the character takes the rules of a w:rtl run.</param>
+    static WordSlot SlotOf(int c, RunFormat format, bool rightToLeft)
     {
-        if (c < 0x80)
-            return WordSlot.Ascii;
-        if (format.UseComplexScript == true || format.RightToLeft == true)
+        var slot = c < 0x80 || c is >= 0x0590 and <= 0x07BF or >= 0xFB50 and <= 0xFDFF or >= 0xFE70 and <= 0xFEFE ? WordSlot.Ascii
+            : Scripts.Of(c) is { Slot: FontSlot.EastAsian } || format.Hint == "eastAsia" && c is >= 0x2000 and <= 0x2BFF ? WordSlot.EastAsia
+            : WordSlot.HAnsi;
+        if (slot == WordSlot.EastAsia && format.Hint == "eastAsia")
+            return slot;
+        if (format.UseComplexScript == true || rightToLeft && !KeepsFont(c, format))
             return WordSlot.ComplexScript;
-        return Scripts.Of(c) switch
-        {
-            { Slot: FontSlot.EastAsian } => WordSlot.EastAsia,
-            { Slot: FontSlot.Complex } => WordSlot.ComplexScript,
-            _ => format.Hint == "eastAsia" && c is >= 0x2000 and <= 0x2BFF ? WordSlot.EastAsia : WordSlot.HAnsi,
-        };
+        return slot;
     }
 
-    /// <param name="smallCapital">A lowercase letter of small caps text, drawn as a capital at the small caps size.</param>
-    public RunStyle Style(RunFormat format, WordSlot slot, bool smallCapital = false)
+    /// <summary>Whether a character of a w:rtl run keeps the font of its block (see <see cref="SlotOf"/>).</summary>
+    static bool KeepsFont(int c, RunFormat format) => Bidi.Classify(c) switch
     {
+        Bidi.Type.AN => true,
+        Bidi.Type.EN or Bidi.Type.ET => format.LanguageBidi?.Split('-')[0].ToLowerInvariant() is not ("he" or "iw"),
+        _ => false,
+    };
+
+    /// <summary>
+    /// The style of a character of a run: the font of its slot (<see cref="SlotOf"/>), with complex script size, bold
+    /// and italic where the slot is complex script and where a right-to-left run's number keeps its own font (Word sets
+    /// the digits of a w:rtl run with w:szCs 20 pt in its ASCII font at 20 pt, bold by w:bCs: docx/local/rtlslot-e, -f).
+    /// </summary>
+    /// <param name="smallCapital">A lowercase letter of small caps text, drawn as a capital at the small caps size.</param>
+    /// <param name="numberRightToLeft">
+    /// For a character of a list number, whether its paragraph is right to left (w:bidi), which alone gives the number
+    /// its direction: then all but its left-to-right letters take the rules of a w:rtl run (Word sets "1." beside Hebrew
+    /// in the w:cs font, beside Arabic or without a language "1" in the ASCII font and "." in the w:cs font, "a." with
+    /// "a" in the ASCII font; a left-to-right paragraph's number all in the ASCII font, though its mark is w:rtl:
+    /// docx/local/rtlnum-a to -f). Null for the characters of runs, whose w:rtl counts.
+    /// </param>
+    public RunStyle Character(RunFormat format, int c, bool smallCapital = false, bool? numberRightToLeft = null)
+    {
+        var rightToLeft = numberRightToLeft is { } paragraph ? paragraph && Bidi.Classify(c) != Bidi.Type.L : format.RightToLeft == true;
+        var slot = SlotOf(c, format, rightToLeft);
+        var style = Style(format, slot, smallCapital, slot == WordSlot.ComplexScript || rightToLeft && slot != WordSlot.EastAsia);
+        // A list number's complex script font that the machine lacks becomes Times New Roman, not what the font table
+        // puts for it (Word draws the "-" of a level whose w:cs font is missing in Times New Roman, whether the table
+        // gives it an altName, a character set or nothing, whatever the level's ASCII font: docx/local/rtlnum-k, -m to -o).
+        if (numberRightToLeft != null && slot == WordSlot.ComplexScript && FontTable.Available(context.Fonts, Family(format, slot), style.Bold, style.Italic) == null)
+            style = numberFonts.GetOrAdd(style, s => context.Fonts.TryResolveTypeface("Times New Roman", s.Bold, s.Italic) is { } times ? s with { Font = times } : s);
+        return style;
+    }
+
+    readonly System.Collections.Concurrent.ConcurrentDictionary<RunStyle, RunStyle> numberFonts = new();
+
+    /// <summary>
+    /// The style of a paragraph mark: complex script where the mark is right to left or complex script (Word measures
+    /// the last line of a w:rtl paragraph in Aharoni 12 pt with the mark's w:cs font: docx/local/rtlslot-a), else ASCII.
+    /// </summary>
+    public RunStyle Mark(RunFormat format) =>
+        Style(format, format.UseComplexScript == true || format.RightToLeft == true ? WordSlot.ComplexScript : WordSlot.Ascii);
+
+    /// <param name="smallCapital">A lowercase letter of small caps text, drawn as a capital at the small caps size.</param>
+    /// <param name="complex">Complex script size, bold and italic; by default where the slot is complex script.</param>
+    public RunStyle Style(RunFormat format, WordSlot slot, bool smallCapital = false, bool? complex = null)
+    {
+        var key = (slot, smallCapital, complex ?? slot == WordSlot.ComplexScript);
         var bySlot = cache.GetOrCreateValue(format);
         lock (bySlot)
         {
-            if (!bySlot.TryGetValue((slot, smallCapital), out var style))
-                bySlot[(slot, smallCapital)] = style = Create(format, slot, smallCapital);
+            if (!bySlot.TryGetValue(key, out var style))
+                bySlot[key] = style = Create(format, slot, smallCapital, key.Item3);
             return style;
         }
     }
@@ -148,9 +204,8 @@ public sealed class RunStyles(DocumentContext context)
         : context.Compat("suppressTopSpacingWP") ? LineHeights.WordPerfect
         : context.Compat("noLeading") ? LineHeights.NoLeading : LineHeights.Word;
 
-    RunStyle Create(RunFormat format, WordSlot slot, bool smallCapital)
+    RunStyle Create(RunFormat format, WordSlot slot, bool smallCapital, bool complex)
     {
-        var complex = slot == WordSlot.ComplexScript;
         var bold = (complex ? format.BoldComplex : format.Bold) == true;
         var italic = (complex ? format.ItalicComplex : format.Italic) == true;
         var size = (complex ? format.SizeComplex ?? format.Size : format.Size) ?? 10;

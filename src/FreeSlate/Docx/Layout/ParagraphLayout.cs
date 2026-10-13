@@ -327,7 +327,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     public (RunStyle Style, double Length, double Slot, double Ascent, double Middle) Across(TextInline run, bool verticalLine)
     {
-        var style = styles.Style(run.Format, RunStyles.SlotOf(char.ConvertToUtf32(run.Text, 0), run.Format));
+        var style = styles.Character(run.Format, char.ConvertToUtf32(run.Text, 0));
         var (above, below) = Metrics(style, !verticalLine);
         return (style, Measure(run.Text, style).Sum(), above + below, above, (style.Font.Data.WinAscent - style.Font.Data.WinDescent) / 2 * style.Size);
     }
@@ -868,7 +868,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             return best;
         }
-        var mark = styles.Style(paragraph.MarkFormat, WordSlot.Ascii);
+        var mark = styles.Mark(paragraph.MarkFormat);
 
         var left = format.Left ?? 0;
         var right = format.Right ?? 0;
@@ -1419,7 +1419,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         separators.Clear();
         clears.Clear();
 
-        void AddText(string value, RunFormat format, string? link = null)
+        void AddText(string value, RunFormat format, string? link = null, bool number = false)
         {
             // Medium and high kashida justification lengthen every Arabic word by two or three kashidas.
             if (paragraph.Format.Justification is "mediumKashida" or "highKashida")
@@ -1445,7 +1445,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 across[text.Length] = new TextInline(value, format);
                 text.Append('\uFFFC');
-                list.Add(styles.Style(format, RunStyles.SlotOf(char.ConvertToUtf32(value, 0), format)));
+                list.Add(styles.Character(format, char.ConvertToUtf32(value, 0)));
                 return;
             }
             if (format.CombineLines == true && value.Length > 1)
@@ -1466,7 +1466,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var rune = runes[r];
                 var lower = small && (Rune.IsLower(rune) || rune.Value == ' ');
                 var shown = format.Caps == true || lower && rune.Value != 0x17F ? rune.Value == 0x131 ? new Rune('I') : Rune.ToUpperInvariant(rune) : rune;
-                var style = styles.Style(format, RunStyles.SlotOf(shown.Value, format), lower);
+                var style = styles.Character(format, shown.Value, lower, number ? paragraph.Format.Bidi == true : null);
                 if (shown.Value == '\\' && YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
                     && !style.Font.Data.EastAsian)
                     shown = new Rune('\u00A5');
@@ -1624,7 +1624,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 list.Add(styles.Style(label.Format, WordSlot.Ascii));
             }
             else
-                AddText(label.Text, label.Format);
+                AddText(label.Text, label.Format, number: true);
             labelLength = text.Length;
             if (label.Suffix == "tab")
             {
@@ -1632,7 +1632,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 list.Add(styles.Style(label.Format, WordSlot.Ascii));
             }
             else if (label.Suffix == "space")
-                AddText(" ", label.Format);
+                AddText(" ", label.Format, number: true);
         }
         foreach (var inline in paragraph.Content)
             Add(inline);

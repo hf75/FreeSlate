@@ -475,10 +475,12 @@ areas:
           platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
           Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName, then a font for
           the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft
-          YaHei, Big5: PMingLiU, Arabic: Sakkal Majalla, Hebrew: Arial, Thai: Browallia New), else Cambria for serif
-          fonts (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their
-          PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt). Caladea
-          and Carlito stand in where Cambria and Calibri are missing too.
+          YaHei, Big5: PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla
+          and Times New Roman, modern Tahoma, all others Arial, docx/local/font-sub3), else Cambria for serif fonts
+          (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their PANOSE,
+          signature, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt).
+          Caladea and Carlito stand in where Cambria and Calibri are missing too. A list number's missing complex
+          script font becomes Times New Roman instead (see run.complexScript).
 
       - id: font.embedded
         title: Embedded fonts
@@ -617,7 +619,20 @@ areas:
           from their right end (shaped, mirrored brackets) and justification widens their spaces. Clusters of several
           characters (marks, conjuncts, emoji sequences) are drawn whole. In a left-to-right paragraph a right-to-left
           run is an embedding of its own, reversed as a whole with its neutrals ("abc def!" shows "!abc def";
-          docx/local/bidi 94.1 %, every line as in Word; fallback-marks 93.3 %).
+          docx/local/bidi 94.1 %, every line as in Word; fallback-marks 93.3 %). Which characters are complex script
+          follows ECMA-376's two steps as Word takes them: by its block a character is ASCII (Basic Latin and the
+          right-to-left scripts: Hebrew, Arabic, Syriac, Thaana, the Arabic presentation forms), East Asian or high
+          ANSI (all else, Thai and the Indic scripts too, which fall back from the high ANSI font and never take the
+          w:cs font); w:cs and w:rtl then make every character complex script in font, size, bold and italic, Latin
+          letters and punctuation too, but in a w:rtl run (not w:cs) numbers keep the font of their block with
+          complex script size and bold, Arabic-Indic digits always, digits and % $ unless the run's w:lang w:bidi is
+          Hebrew; w:hint="cs" changes nothing (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs
+          paragraph mark measures its empty line in its w:cs font. A right-to-left paragraph's list number takes the
+          rules of a w:rtl run but for its left-to-right letters ("1." beside Arabic: "1" Times New Roman, "."
+          Aharoni; "a." "a" in the ASCII font), a left-to-right paragraph's none, whatever the w:rtl of its mark or
+          level, and a number's missing w:cs font becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text
+          set in Times New Roman beside Aharoni lines had made every line taller (docx/external/powertools/
+          HC002-Hebrew-01, HC003-Hebrew-02, HC012-Test-07, HC014-RTL-Table-01 from 2–26 % to 100 % of their lines).
 
       - id: run.content
         title: Breaks, symbols and special characters

@@ -14,7 +14,9 @@ namespace FreeSlate.Docx;
 /// and Windows' font substitutes (MS Shell Dlg, Tahoma Armenian, Arial CE …).</item>
 /// <item>The table's alternate name (w:altName).</item>
 /// <item>The table's character set: symbol fonts become Symbol, Shift JIS Yu Gothic, Hangul Malgun Gothic, GB 2312
-/// Microsoft YaHei, Big5 PMingLiU, Arabic Sakkal Majalla, Hebrew Arial, Thai Browallia New.</item>
+/// Microsoft YaHei, Big5 PMingLiU, Thai Browallia New; Arabic and Hebrew by the table's family, serif (roman) Sakkal
+/// Majalla and Times New Roman, monospaced (modern) Tahoma, all others Arial, whatever the PANOSE and the signature
+/// (docx/local/font-sub3; docx/external/libreoffice/extras-odfexport/tdf163575: B Mitra, auto, in Arial).</item>
 /// <item>The table's family: serif fonts (roman), and fonts the table does not describe, become Cambria; all others
 /// Calibri, sans serif, monospaced (even with a fixed pitch and Courier's PANOSE), script and decorative alike. The
 /// PANOSE numbers and the document's theme fonts do not matter.</item>
@@ -50,12 +52,16 @@ public sealed class FontTable
     static readonly string[] Sans = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
 
     /// <summary>The font Word draws for a family in this style.</summary>
-    public ResolvedFont Resolve(FontResolver fonts, string family, bool bold, bool italic)
+    public ResolvedFont Resolve(FontResolver fonts, string family, bool bold, bool italic) =>
+        Available(fonts, family, bold, italic) ?? Substitute(fonts, family, bold, italic);
+
+    /// <summary>The family itself where the machine has it, or the font Windows or Word puts for its name, else null.</summary>
+    public static ResolvedFont? Available(FontResolver fonts, string family, bool bold, bool italic) =>
+        fonts.TryResolveTypeface(family, bold, italic)
+        ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null);
+
+    ResolvedFont Substitute(FontResolver fonts, string family, bool bold, bool italic)
     {
-        if (fonts.TryResolveTypeface(family, bold, italic) is { } found)
-            return found;
-        if (Aliases.TryGetValue(family, out var alias) && fonts.TryResolveTypeface(alias, bold, italic) is { } aliased)
-            return aliased;
         entries.TryGetValue(family, out var entry);
         if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveTypeface(alternate, bold, italic) is { } named)
             return named;
@@ -66,8 +72,8 @@ public sealed class FontTable
             129 => "Malgun Gothic",
             134 => "Microsoft YaHei",
             136 => "PMingLiU",
-            177 => "Arial",
-            178 => "Sakkal Majalla",
+            177 => entry.Family switch { "roman" => "Times New Roman", "modern" => "Tahoma", _ => "Arial" },
+            178 => entry.Family switch { "roman" => "Sakkal Majalla", "modern" => "Tahoma", _ => "Arial" },
             222 => "Browallia New",
             _ => null,
         };
