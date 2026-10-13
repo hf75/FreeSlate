@@ -2194,7 +2194,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 default:
                     line.Height = natural + line.LargestNatural * (value / 240 - 1);
-                    line.Baseline = line.Above;
+                    // Below single spacing the line loses its share above the baseline and below it alike (measured
+                    // with docx/local/linemult-120, -156, -192: Arial 10 pt, Times New Roman and Traditional Arabic
+                    // 20 pt at 0.5, 0.65 and 0.8 put their baselines at that share of their single ones, the line
+                    // after them as far below); from single spacing on the extra goes below the text.
+                    line.Baseline = value is > 0 and < 240 && natural > 0 ? line.Above * line.Height / natural : line.Above;
                     line.Overhang = Math.Max(0, line.Height - natural);
                     break;
             }
