@@ -529,7 +529,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var spacingSet = rows.Count > 0 ? rows[0].Format.CellSpacing ?? format.CellSpacing : format.CellSpacing;
         var spacing = spacingSet ?? 0;
         if (spacingSet != null)
-            return Spaced(table, rows, columns, at, available, spacing, fields, neighbors);
+            return Spaced(table, rows, columns, at, available, spacing, fields, neighbors, origin, span);
 
         // Borders: for each row boundary (0 … rows) and grid column the horizontal line, for each row and grid line
         // the vertical one; a cell's own border wins over the table's, two cells' borders are resolved by weight.
@@ -807,7 +807,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// whole border and its margin.
     /// </summary>
     TableBox Spaced(TableModel table, List<RowModel> rows, int columns, CellModel?[,] at, double available, double spacing, PageFields? fields,
-        Dictionary<CellModel, (string? Before, string? After)> neighbors)
+        Dictionary<CellModel, (string? Before, string? After)> neighbors, Dictionary<CellModel, (int Row, CellModel Cell)> origin,
+        Dictionary<CellModel, int> span)
     {
         var format = table.Format;
         var gap = 2 * spacing;
@@ -855,21 +856,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         };
         var frameTop = Width(outer.Top) + gap;
         var box = new TableBox { Left = origin0, Width = tableWidth, Frame = outer, ContinuationTop = Width(outer.Top) + spacing };
+        // The cells laid out row by row and the rows' heights; a cell merged down (w:vMerge) counts in the last of its
+        // rows, which grows where they are lower together, and the cells it continues in draw nothing (measured with
+        // docx/external/poi/bug57031: a SAS table's two-line heading merged over two header rows of one line).
+        var allParts = new List<List<(CellModel Cell, CellContent Content, double Left, double Right, BorderSet Borders, (double Top, double Left, double Bottom, double Right) Margins)>>();
+        var heights = new double[rows.Count];
+        var cellHeights = new Dictionary<CellModel, double>();
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
-            // Rows split where they may, as other tables' rows, unless their cells' frames (borders, shading) would
-            // have to (docx/external/poi/drawing: a borderless table with cell spacing 0 holding a whole column).
-            var specified = row.Format.Height is { } rh && rh > 0 ? rh : 0;
-            var rowBox = new RowBox
-            {
-                Header = row.Format.Header, CantSplit = row.Format.CantSplit,
-                Exact = specified > 0 && row.Format.HeightRule == "exact", Least = row.Format.HeightRule == "exact" ? 0 : specified,
-            };
             var height = 0.0;
             var parts = new List<(CellModel Cell, CellContent Content, double Left, double Right, BorderSet Borders, (double Top, double Left, double Bottom, double Right) Margins)>();
             foreach (var cell in row.Cells)
             {
+                if (origin.ContainsKey(cell))
+                    continue;
                 var c0 = Math.Min(cell.Column, columns);
                 var c1 = Math.Min(cell.Column + cell.Format.GridSpan, columns);
                 var left = CellX(c0);
@@ -887,14 +888,48 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var textRight = right - Width(borders.Right) - margins.Right;
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left);
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
-                height = Math.Max(height, Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom));
+                cellHeights[cell] = Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom);
+                if (!span.ContainsKey(cell))
+                    height = Math.Max(height, cellHeights[cell]);
             }
             if (row.Format.Height is { } h && h > 0)
                 height = row.Format.HeightRule == "exact" ? h : Math.Max(height, h);
-            rowBox.Height = (r == 0 ? frameTop : 0) + height + gap;
-            var top0 = r == 0 ? frameTop : 0;
-            foreach (var (cell, content, left, right, borders, margins) in parts)
+            heights[r] = height;
+            allParts.Add(parts);
+        }
+        foreach (var (cell, rowsSpanned) in span)
+        {
+            var r0 = rows.FindIndex(row => row.Cells.Contains(cell));
+            if (r0 < 0 || !cellHeights.TryGetValue(cell, out var needed))
+                continue;
+            var last = Math.Min(rows.Count - 1, r0 + rowsSpanned - 1);
+            var have = 0.0;
+            for (var k = r0; k <= last; k++)
+                have += heights[k] + (k > r0 ? gap : 0);
+            if (needed > have && rows[last].Format.HeightRule != "exact")
+                heights[last] += needed - have;
+        }
+        for (var r = 0; r < rows.Count; r++)
+        {
+            var row = rows[r];
+            // Rows split where they may, as other tables' rows, unless their cells' frames (borders, shading) would
+            // have to (docx/external/poi/drawing: a borderless table with cell spacing 0 holding a whole column).
+            var specified = row.Format.Height is { } rh && rh > 0 ? rh : 0;
+            var rowBox = new RowBox
             {
+                Header = row.Format.Header, CantSplit = row.Format.CantSplit,
+                Exact = specified > 0 && row.Format.HeightRule == "exact", Least = row.Format.HeightRule == "exact" ? 0 : specified,
+            };
+            var rowHeight = heights[r];
+            rowBox.Height = (r == 0 ? frameTop : 0) + rowHeight + gap;
+            var top0 = r == 0 ? frameTop : 0;
+            foreach (var (cell, content, left, right, borders, margins) in allParts[r])
+            {
+                // A cell merged down reaches over its rows and the gaps between them.
+                var rowsSpanned = span.GetValueOrDefault(cell, 1);
+                var height = rowHeight;
+                for (var k = r + 1; k < Math.Min(rows.Count, r + rowsSpanned); k++)
+                    height += gap + heights[k];
                 if (Shading.Color(cell.Format.Shading) is { } fill)
                     rowBox.Frames.Add(new FillRect(origin0 + left, top0, right - left, height, fill));
                 foreach (var (line, side, rect) in new[]
@@ -908,7 +943,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     if (line is { Visible: true })
                         rowBox.Frames.Add(rect with { Color = line.ColorOf(side, cell: true) });
                 }
-                var part = new CellPart { ContentTop = top0 + Width(borders.Top) + margins.Top, BottomMargin = margins.Bottom };
+                var part = new CellPart { ContentTop = top0 + Width(borders.Top) + margins.Top, BottomMargin = margins.Bottom, Span = rowsSpanned };
                 // Vertical alignment in the cell, as in tables without spacing (docx/external/poi/
                 // bib-chernigovka.netdo.ru_download_docs_17459: dates centered beside two lines of text).
                 var free = height - Width(borders.Top) - margins.Top - content.Height - margins.Bottom - Width(borders.Bottom);
