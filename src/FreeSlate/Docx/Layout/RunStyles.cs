@@ -134,7 +134,9 @@ public sealed class RunStyles(DocumentContext context)
     /// Cherokee Gadugi; Syriac Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun
     /// Gothic, Batang beside serif and East Asian fonts (Yu Mincho, DengXian, PMingLiU: docx/local/tf-*); Chinese
     /// characters and kana MS Mincho, then PMingLiU beside serif fonts and Microsoft JhengHei beside others, whatever
-    /// the run's language (w:lang w:eastAsia="zh-CN" keeps MS Mincho: docx/local/tf-de).
+    /// the run's language (w:lang w:eastAsia="zh-CN" keeps MS Mincho: docx/local/tf-de); Hebrew and Arabic outside
+    /// right-to-left runs Arial, Times New Roman beside serif fonts (docx/local/thd2-a: beside Aptos, thd2-b: beside
+    /// Georgia).
     /// </summary>
     static IEnumerable<string> Fallbacks(int c, bool serif, bool eastAsian)
     {
@@ -154,6 +156,8 @@ public sealed class RunStyles(DocumentContext context)
             >= 0x1200 and <= 0x139F => ["Ebrima", "Nyala", "Noto Sans Ethiopic"],
             >= 0x13A0 and <= 0x13FF => ["Gadugi", "Plantagenet Cherokee", "Noto Sans Cherokee"],
             >= 0x0700 and <= 0x074F => ["Segoe UI Historic", "Estrangelo Edessa", "Noto Sans Syriac"],
+            >= 0x0590 and <= 0x06FF or >= 0x0750 and <= 0x077F or >= 0x08A0 and <= 0x08FF or >= 0xFB1D and <= 0xFDFF or >= 0xFE70 and <= 0xFEFF
+                => serif ? ["Times New Roman", "Arial", "Segoe UI"] : ["Arial", "Times New Roman", "Segoe UI"],
             >= 0x0F00 and <= 0x0FFF => ["Microsoft Himalaya", "Noto Serif Tibetan"],
             >= 0x1000 and <= 0x109F => ["Myanmar Text", "Noto Sans Myanmar"],
             >= 0x1100 and <= 0x11FF or >= 0x3130 and <= 0x318F or >= 0xAC00 and <= 0xD7AF
@@ -291,11 +295,13 @@ public sealed class RunStyles(DocumentContext context)
 
     /// <summary>
     /// The family of a slot: the theme font it names (major or minor, by script), else its own name (catalog:
-    /// font.theme). Where the theme's East Asian or complex script font is empty, Word takes the theme's font for the
-    /// script of the language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, ko-KR: Hang, ar-SA: Arab …); without
-    /// one East Asian text keeps the run's Latin font and complex scripts take Times New Roman, both falling back by
-    /// glyph from there; the run's own languages do not matter (measured with docx/local/tf-de, tf-ja, tf-zh, tf-ko,
-    /// tf-he and tf-none).
+    /// font.theme). Where the theme's East Asian font is empty, Word takes the theme's font for the script of the
+    /// language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, ko-KR: Hang, ar-SA: Arab …), for complex scripts
+    /// always, the theme's complex script font not counting; without one East Asian text keeps the run's Latin font
+    /// and complex scripts take Times New Roman, both falling back by glyph from there; the run's own languages do
+    /// not matter (measured with docx/local/tf-de, tf-ja, tf-zh, tf-ko, tf-he and tf-none; thd2-c, thd2-d: a theme
+    /// whose minor complex script font is Tahoma prints right-to-left text in Times New Roman, with w:themeFontLang
+    /// ar-SA in the Arabic script's Arial, Hebrew too).
     /// </summary>
     string Family(RunFormat format, WordSlot slot)
     {
@@ -313,7 +319,7 @@ public sealed class RunStyles(DocumentContext context)
             var east = theme.EndsWith("EastAsia", StringComparison.Ordinal);
             var bidi = theme.EndsWith("Bidi", StringComparison.Ordinal);
             var themed = east ? major ? t.MajorEastAsian : t.MinorEastAsian
-                : bidi ? major ? t.MajorComplex : t.MinorComplex
+                : bidi ? null
                 : major ? t.MajorLatin : t.MinorLatin;
             if (string.IsNullOrEmpty(themed) && (east || bidi)
                 && Script(context.Settings.Child("themeFontLang").Attr(east ? "eastAsia" : "bidi")) is { } script

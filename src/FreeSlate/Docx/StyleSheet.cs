@@ -39,26 +39,21 @@ public sealed class StyleSheet
     /// <summary>The default character style ("Default Paragraph Font").</summary>
     public string? DefaultCharacterStyle { get; }
 
-    /// <summary>
-    /// The document defaults Word gives a document without a styles part: those of its own Normal template, Aptos
-    /// 12 pt (East Asian text falling back from it) with complex scripts in Arial, kerning and standard and contextual
-    /// ligatures, 8 pt after paragraphs and 1.16 lines (measured with docx/local/defaults-none). So it does for each
-    /// of w:rPrDefault and w:pPrDefault a styles part leaves out (also in an empty w:docDefaults); where they are,
-    /// empty ones too, Times New Roman 10 pt and single spacing are the base (docx/local/defaults-empty,
-    /// nodefaults-none, -empty, -run, -para).
-    /// </summary>
-    static readonly XElement TemplateRun = new(Wml.W + "rPr",
-        new XElement(Wml.W + "rFonts", new XAttribute(Wml.W + "ascii", "Aptos"), new XAttribute(Wml.W + "hAnsi", "Aptos"),
-            new XAttribute(Wml.W + "eastAsia", "Aptos"), new XAttribute(Wml.W + "cs", "Arial")),
-        new XElement(Wml.W + "kern", new XAttribute(Wml.W + "val", "2")),
-        new XElement(Wml.W + "sz", new XAttribute(Wml.W + "val", "24")),
-        new XElement(Wml.W + "szCs", new XAttribute(Wml.W + "val", "24")),
-        new XElement(Wml.W14 + "ligatures", new XAttribute(Wml.W14 + "val", "standardContextual")));
-
     static readonly XElement TemplateParagraph = new(Wml.W + "pPr",
         new XElement(Wml.W + "spacing", new XAttribute(Wml.W + "after", "160"), new XAttribute(Wml.W + "line", "278"), new XAttribute(Wml.W + "lineRule", "auto")));
 
-    /// <summary>The Normal template's document defaults as its styles part states them: the theme's minor fonts.</summary>
+    /// <summary>
+    /// The document defaults Word gives a document without a styles part: those of its own Normal template as its
+    /// styles part states them, the document theme's minor fonts at 12 pt, kerning and standard and contextual
+    /// ligatures, 8 pt after paragraphs and 1.16 lines (measured with docx/local/defaults-none: without a theme part
+    /// Aptos, East Asian text falling back from it, Arabic without w:rtl in Arial; thd-nostyles-georgia,
+    /// thd-nodef-calibri: with a theme of Georgia or Calibri those, right-to-left text in Times New Roman;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf108496). So it does for each of w:rPrDefault and w:pPrDefault
+    /// a styles part leaves out (also in an empty w:docDefaults, in every mode: thd-emptydef-georgia, thd-ppr-georgia,
+    /// thd-nodef-georgia-12, -14; thd2-b prints as thd2-c, which names these theme fonts); where they are, empty ones
+    /// too, Times New Roman 10 pt and single spacing are the base (docx/local/defaults-empty, nodefaults-none, -empty,
+    /// -run, -para).
+    /// </summary>
     static readonly XElement TemplateThemeRun = new(Wml.W + "rPr",
         new XElement(Wml.W + "rFonts", new XAttribute(Wml.W + "asciiTheme", "minorHAnsi"), new XAttribute(Wml.W + "eastAsiaTheme", "minorHAnsi"),
             new XAttribute(Wml.W + "hAnsiTheme", "minorHAnsi"), new XAttribute(Wml.W + "cstheme", "minorBidi")),
@@ -79,7 +74,7 @@ public sealed class StyleSheet
         var root = document?.Root;
         if (root == null)
         {
-            DefaultRun.Apply(TemplateRun);
+            DefaultRun.Apply(TemplateThemeRun);
             DefaultParagraph.Apply(TemplateParagraph);
             return;
         }
@@ -91,7 +86,7 @@ public sealed class StyleSheet
         }
         else
         {
-            DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateRun);
+            DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateThemeRun);
             DefaultParagraph.Apply(defaults.Child("pPrDefault") is { } paragraphDefault ? paragraphDefault.Child("pPr") : TemplateParagraph);
         }
         foreach (var e in root.Elements(Wml.W + "style"))

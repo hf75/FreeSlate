@@ -441,10 +441,15 @@ areas:
         office: >-
           w:rPrDefault and w:pPrDefault are the base of every chain; where they leave a property out Word's own
           defaults hold: Times New Roman 10 pt, single spacing, no space between paragraphs (docx/local/defaults-
-          empty, 94.3 %). A document without a styles part gets the defaults of Word's Normal template: Aptos 12 pt,
-          complex scripts in Arial, kerning, standard and contextual ligatures, 8 pt after paragraphs, 1.16 lines
-          (docx/local/defaults-none, 91.7 %); so does each of w:rPrDefault and w:pPrDefault a styles part leaves out,
-          also in an empty w:docDefaults (docx/local/nodefaults-none, -empty, -run, -para). A document whose styles
+          empty, 94.3 %). A document without a styles part gets the defaults of Word's Normal template: the theme's
+          minor fonts (asciiTheme, hAnsiTheme and eastAsiaTheme minorHAnsi, cstheme minorBidi) at 12 pt, kerning,
+          standard and contextual ligatures, 8 pt after paragraphs, 1.16 lines: without a theme part Aptos, Arabic
+          outside right-to-left runs falling back to Arial (docx/local/defaults-none, 91.7 %), with a theme its minor
+          Latin font, Calibri or Georgia, right-to-left text in Times New Roman (docx/local/thd-nostyles-georgia,
+          thd-nodef-calibri; docx/external/libreoffice/extras-ooxmlexport/tdf108496 82 → 96.9 %, tdf104167 84.8 →
+          100 %); so does each of w:rPrDefault and w:pPrDefault a styles part leaves out, also in an empty
+          w:docDefaults, in every mode (docx/local/nodefaults-none, -empty, -run, -para, thd-emptydef-georgia,
+          thd-ppr-georgia, thd-nodef-georgia-12, -14; thd2-b prints as thd2-c, which names the theme fonts). A document whose styles
           update from the template (w:linkStyles) without one attached takes the template's defaults in the theme's
           minor fonts and its Normal style, which states nothing; its other styles stay, based on them (docx/local/
           lsk-1: Arial 10 pt single in Normal turns to 12 pt at 1.16 lines, a heading keeps 16 pt bold;
@@ -514,11 +519,13 @@ areas:
           entries of the theme for East Asian and complex-script text.
         office: >-
           rFonts asciiTheme, hAnsiTheme, eastAsiaTheme and cstheme take the theme's major or minor font of their
-          script. Where the theme's East Asian or complex script font is empty, the theme's a:font for the script of
-          the language w:themeFontLang names (ja-JP: Jpan, zh-CN: Hans, zh-TW: Hant, ko-KR: Hang, ar-SA: Arab, he-IL:
-          Hebr …) is taken; without one, East Asian text keeps the run's Latin font and complex scripts take Times New
-          Roman, both then falling back by glyph; the runs' own languages do not matter (docx/local/tf-de, tf-ja, tf-
-          zh, tf-ko, tf-he, tf-none: the East Asian lines within 0.1 pt).
+          script. Where the theme's East Asian font is empty, and for complex scripts always (the theme's complex
+          script font does not count: docx/local/thd2-c, a minor complex script font of Tahoma prints right-to-left
+          text in Times New Roman), the theme's a:font for the script of the language w:themeFontLang names (ja-JP:
+          Jpan, zh-CN: Hans, zh-TW: Hant, ko-KR: Hang, ar-SA: Arab, he-IL: Hebr …) is taken, for all complex scripts
+          alike (thd2-d: ar-SA's Arial for Hebrew too); without one, East Asian text keeps the run's Latin font and
+          complex scripts take Times New Roman, both then falling back by glyph; the runs' own languages do not matter
+          (docx/local/tf-de, tf-ja, tf-zh, tf-ko, tf-he, tf-none: the East Asian lines within 0.1 pt).
 
   - id: run
     title: Runs and character formatting
@@ -3615,7 +3622,9 @@ areas:
           numbers Cambria Math (enclosed letters then MS Gothic or MS Mincho); geometric shapes Arial; Thai, Lao and
           Khmer Leelawadee UI; Indic scripts Nirmala UI; Georgian Sylfaen; Ethiopic Ebrima; Cherokee Gadugi; Syriac
           Segoe UI Historic; Tibetan Microsoft Himalaya; Myanmar Myanmar Text; Hangul Malgun Gothic or Batang beside
-          serif and East Asian fonts; Chinese characters and kana MS Mincho, then PMingLiU or Microsoft JhengHei.
+          serif and East Asian fonts; Chinese characters and kana MS Mincho, then PMingLiU or Microsoft JhengHei;
+          Hebrew and Arabic outside right-to-left runs Arial, Times New Roman beside serif fonts (docx/local/thd2-a,
+          thd2-b; docx/external/poi/rtl 62.9 → 91.9 %).
           Lines grow with the fallback's metrics as in Word; spaces and format characters stay in the run's font,
           marks with their base (docx/local/fallback-arial 96.1 %, fallback-calibri 95.7 %, fallback-times 97 %, every
           line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat.
