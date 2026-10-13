@@ -582,7 +582,9 @@ areas:
           offset or as far as the line's top allows, lowered by its subscript offset or as far as its bottom allows,
           in half-points, and make no line higher (within half a point where the line decides). Small caps are 80 % of
           the size rounded to half points; highlight and shading (patterns mixed over the fill) cover the line's
-          natural box. Known deviations: double and thick underlines of Arial and Courier New below 12 pt stand up to
+          natural box as far as its content goes: tabs too, not the spaces that end the line (docx/local/hlspace: a
+          paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a tab after it
+          all of it). Known deviations: double and thick underlines of Arial and Courier New below 12 pt stand up to
           3 dots higher; Garamond from 12 pt takes other super- and subscript sizes.
 
       - id: run.spacing

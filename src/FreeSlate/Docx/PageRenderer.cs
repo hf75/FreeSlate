@@ -408,9 +408,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
-                // Highlight and shading lie behind the text over the line's natural height.
-                if (!piece.IsTab && (piece.Style.Highlight ?? piece.Style.Shading) is { } back)
-                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above)}\" width=\"{Px(piece.Width)}\" height=\"{Px(placed.Line.Above + placed.Line.Below)}\" fill=\"{back.ToHex()}\"/>");
+                // Highlight and shading lie behind the text over the line's natural height, as far as the line's
+                // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
+                // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
+                // tab after it all of it; docx/external/powertools/RA001-Tracked-Revisions-01).
+                if ((piece.Style.Highlight ?? piece.Style.Shading) is { } back && Math.Min(x + piece.Width, contentEnd) - x is var shown && shown > 0)
+                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above)}\" width=\"{Px(shown)}\" height=\"{Px(placed.Line.Above + placed.Line.Below)}\" fill=\"{back.ToHex()}\"/>");
                 if (piece.IsTab)
                 {
                     if (piece.Leader != null)
