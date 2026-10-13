@@ -3594,7 +3594,11 @@ areas:
           around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
         office: >-
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
-          stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a
+          stable (at most four runs); from Word 2013 an object that wraps text and moves with its paragraph takes the
+          paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text at
+          least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front of
+          the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
+          tdf123243, tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); lines are broken into the segments beside the objects, words that do not fit a
           segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping,
           wrap-types), below the first of the objects beside them to end (td-1), beside objects wrapped along their
           polygons a line at a time, so on the paragraph's line pitch (ub-*), and to the next page where they do not

@@ -1457,6 +1457,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Where the body text ends: above the footnotes the page holds, or where a note continued past it filled it.</summary>
     double Bottom => Math.Min(page!.BodyBottom - notesHeight, bodyEnd ?? double.MaxValue);
 
+    /// <summary>
+    /// The height a floating text box takes that resizes to fit its text (a:spAutoFit): at least the extent Word saved
+    /// with it, which is the text's, whatever relative height it states (docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf123243: a box of 20 % of the margin's height, 144 pt, saved 313.7 pt high around a
+    /// paragraph 300 pt down).
+    /// </summary>
+    static double FittedHeight(AnchorInline anchor, double height)
+    {
+        var shape = anchor.Anchor.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
+        if (shape?.Element(Drawings.Wps + "bodyPr")?.Element(Ns.A + "spAutoFit") == null)
+            return height;
+        var saved = double.TryParse((string?)anchor.Anchor.Element(Drawings.Wp + "extent")?.Attribute("cy"), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var cy) ? cy / 12700 : 0;
+        return Math.Max(height, saved);
+    }
+
     Dictionary<string, List<Block>>? footnotes;
 
     /// <summary>The footnotes referenced on the current page and the height they take (with the separator).</summary>
@@ -2397,6 +2413,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
                 ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
                 && Pushed(e) is { } top && (e.Bottom <= y + 0.01 || e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01)))
+        {
+            NextColumn(natural: true);
+            (left, width) = Column(column);
+        }
+        // An object that wraps text and moves with its paragraph takes the paragraph to the next page where it would
+        // reach past the bottom margin, from Word 2013 (measured with docx/local/af-over, af-over-tb, af-huge: a text
+        // box 330 or 700 pt high, square or top and bottom, at the top of a paragraph 500 pt down a Letter page goes to
+        // the next page with it; af-fit, 180 pt, stays; af-over-none in front of the text, af-over-page and
+        // af-over-margin placed from the page or the margin stay; af-over-14 in Word 2010 stays; docx/external/
+        // libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
+        else if (!columnEmpty && context.CompatibilityMode >= 15 && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
+                     (string?)anchor.Anchor.Element(Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph" or "line"
+                     && Anchored(anchor, page!, paragraphTop.Top, y, left, width) is var placed && ExclusionOf(placed) != null
+                     && placed.Y + FittedHeight(anchor, placed.Height) > Bottom + 0.01))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
