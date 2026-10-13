@@ -19,6 +19,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>The space after the line's paragraph where the line ends it, in table cells (RowBox.Split).</summary>
     public double After { get; init; }
 
+    /// <summary>Whether the line is an empty paragraph's that only ends its section (w:sectPr), which aligning the page's text leaves out.</summary>
+    public bool SectionMark { get; init; }
+
     /// <summary>Whether the line's paragraph has widow control, in table cells (RowBox.Split).</summary>
     public bool Widow { get; init; }
 
@@ -2552,6 +2555,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 Numbered = format.SuppressLineNumbers != true,
                 HangTop = k == 0 && anchorAt?.Page == page ? Math.Min(y, anchorAt.Value.Top) : null,
+                SectionMark = paragraph.EndsSection != null && !paragraph.Shows,
             });
             if (k == 0)
                 page.Paragraphs.Add(paragraph);
@@ -3304,25 +3308,44 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>
     /// Vertical alignment of the page's text (w:vAlign): centered or at the bottom, the text counted from the top
     /// margin (with the space before its first paragraph) to the space after its last paragraph (measured with
-    /// page-setup, page 4).
+    /// page-setup, page 4; docx/local/va-1 to va-5 in modes 12 to 15); justified (both), the room left spread evenly
+    /// between the paragraphs (va-6: three paragraphs at the top, in the middle and at the bottom;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf36117_verticalAdjustment).
     /// </summary>
     static void AlignVertically(PageBox page)
     {
         var align = page.Section.VerticalAlign;
-        if (align is not ("center" or "bottom") || page.Lines.Count == 0)
+        if (align is not ("center" or "bottom" or "both") || page.Lines.Count == 0)
             return;
         var top = page.BodyTop;
         var bottom = page.BodyBottom;
-        var used = page.Lines.Max(l => l.Top + l.Line.Height) + page.TrailingSpace - top;
-        var shift = align == "center" ? (bottom - top - used) / 2 : bottom - top - used;
+        // An empty paragraph that only ends the section counts nothing (measured with docx/local/vb-1 to vb-3: one
+        // after a centered line moves it 5.8 pt down, at the bottom 11.6 pt; an empty paragraph of the text counts).
+        if (!page.Lines.Any(l => !l.SectionMark))
+            return;
+        var text = page.Lines.Where(l => !l.SectionMark).ToList();
+        var marked = text.Count < page.Lines.Count && page.Lines[^1].SectionMark;
+        var used = text.Max(l => l.Top + l.Line.Height) + (marked ? 0 : page.TrailingSpace) - top;
+        var room = bottom - top - used;
+        // Where each paragraph of the text begins (not those of tables or notes) and how far it moves down.
+        var starts = align == "both" ? page.Lines.Where(l => l.Numbered && l.Line.First && !l.SectionMark).Select(l => l.Top).Distinct().Order().ToList() : [];
+        if (align == "both" && starts.Count < 2)
+            return;
+        double Shift(double y)
+        {
+            if (align != "both")
+                return align == "center" ? room / 2 : room;
+            var k = starts.FindLastIndex(s => s <= y + 0.01);
+            return Math.Max(0, k) * room / (starts.Count - 1);
+        }
         for (var i = 0; i < page.Lines.Count; i++)
-            page.Lines[i] = page.Lines[i] with { Top = page.Lines[i].Top + shift };
+            page.Lines[i] = page.Lines[i] with { Top = page.Lines[i].Top + Shift(page.Lines[i].Top) };
         foreach (var fills in new[] { page.Shading, page.Borders })
         {
             for (var i = 0; i < fills.Count; i++)
-                fills[i] = fills[i] with { Y = fills[i].Y + shift };
+                fills[i] = fills[i] with { Y = fills[i].Y + Shift(fills[i].Y) };
         }
         for (var i = 0; i < page.Strokes.Count; i++)
-            page.Strokes[i] = page.Strokes[i].Offset(0, shift);
+            page.Strokes[i] = page.Strokes[i].Offset(0, Shift(Math.Min(page.Strokes[i].Y1, page.Strokes[i].Y2)));
     }
 }
