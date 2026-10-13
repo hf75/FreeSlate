@@ -1407,6 +1407,10 @@ areas:
           cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does
           not show) and takes the right border of the last (docx/local/hmerge, 99.8 %). A cell's empty last paragraph
           after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15).
+          What a cell holds is cut at its inside, between its side lines and from below the row's top line to its
+          bottom: paragraph borders past the lines or below a row of exact height do not show (docx/external/
+          libreoffice/core-layout/para-border-in-cell-clip: Word's clip from the left line's inner edge to the right
+          one's; the cut of text is not modeled).
 
       - id: table.width
         title: Table and column widths (autofit)

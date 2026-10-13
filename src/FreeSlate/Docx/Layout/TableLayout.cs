@@ -867,8 +867,17 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     foreach (var line in content.Lines)
                         part.Lines.Add(line with { Left = textFrom + line.Left, Top = top + lowered + line.Top });
                 }
+                // What the cell holds is cut at its inside: between its side lines, from below the row's top line
+                // to its bottom (measured with docx/external/libreoffice/core-layout/para-border-in-cell-clip: Word
+                // clips a paragraph's borders past its lines and below a row of exact height away).
+                var (insideLeft, insideRight) = (cellFrom + Width(vertical[r, rtl ? c1 : c0]) / 2, cellFrom + cellWidth - Width(vertical[r, rtl ? c0 : c1]) / 2);
                 foreach (var fill in content.Fills)
-                    part.Fills.Add(fill with { X = textFrom + fill.X, Y = top + lowered + fill.Y });
+                {
+                    var (fx, fy) = (textFrom + fill.X, top + lowered + fill.Y);
+                    var (l, t, rgt, b) = (Math.Max(fx, insideLeft), Math.Max(fy, topWidths[r]), Math.Min(fx + fill.Width, insideRight), Math.Min(fy + fill.Height, topWidths[r] + total));
+                    if (rgt > l + 0.001 && b > t + 0.001)
+                        part.Fills.Add(fill with { X = l, Y = t, Width = rgt - l, Height = b - t });
+                }
                 foreach (var stroke in content.Strokes)
                     part.Strokes.Add(stroke.Offset(textFrom, top + lowered));
                 if (!Rotated(cell))
