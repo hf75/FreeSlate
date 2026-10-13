@@ -1464,9 +1464,16 @@ areas:
         status: done
         strategy: Exact and minimum row heights; rows split across pages unless w:cantSplit; header rows repeat on every page.
         office: >-
-          A row is its top line and its content; at-least heights count without the line, exact ones with it. A row
+          A row is its top line and its content; at-least heights count without the line, exact ones with it. A row's
+          cells all take its largest top and bottom margins; an at-least height lies between them, an exact one holds
+          the top line and margin and the bottom margin comes below it, in every mode (docx/local/rowmar-11 to -15,
+          -12c, -15c: rows of 30 pt at least with margins of 5 and 3 pt and 0.25 pt lines are 38.25 pt apart, rows of
+          exactly 30 pt 33 pt; beside a cell with 5 pt at the top and one with 10 pt at the bottom a cell without
+          margins puts its text 5 pt down; docx/external/poi/60329). A row
           fits where it and the line that closes the table below it fit (docx/local/tblbottom-*). Rows that do not
-          fit split at a line of each cell, a paragraph's last line fitting with its space after; header rows, rows of
+          fit split at a line of each cell, a paragraph's last line fitting with its space after, before Word 2013 with
+          its cell's bottom margin too (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes
+          on); header rows, rows of
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,

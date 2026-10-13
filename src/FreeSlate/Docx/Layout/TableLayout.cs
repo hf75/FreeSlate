@@ -118,8 +118,16 @@ public sealed class RowBox
     /// <summary>Whether the row has an exact height (w:hRule="exact").</summary>
     public bool Exact { get; init; }
 
-    /// <summary>The row's at-least height without its top line (w:trHeight), 0 without one.</summary>
+    /// <summary>The row's at-least height without its top line (w:trHeight and the row's top and bottom margins), 0
+    /// without one.</summary>
     public double Least { get; init; }
+
+    /// <summary>
+    /// Whether a line above a cut needs room for its cell's bottom margin too, as before Word 2013 (measured with
+    /// docx/local/rowmar-11, -12, -14: a line ending 5 pt above the cut in a row with a 10 pt bottom margin goes on to
+    /// the next page; in mode 15 it stays).
+    /// </summary>
+    public bool MarginBelowCut { get; init; }
 
     /// <summary>The height of the lines at the row's top, above its content.</summary>
     public double TopWidth { get; init; }
@@ -146,7 +154,7 @@ public sealed class RowBox
         var delta = PageTopWidth - TopWidth;
         var copy = new RowBox
         {
-            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -205,7 +213,8 @@ public sealed class RowBox
             // A row of a nested table goes on whole where its at-least height does not fit (measured with docx/external/
             // libreoffice/writerfilter-dmapper/floattable-nested: an inner row of 85 pt with a line of text moves to the
             // next page, as rows of the table itself do).
-            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) > available + 0.01).MinBy(l => l.Top);
+            var margin = MarginBelowCut ? cell.BottomMargin : 0;
+            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin > available + 0.01).MinBy(l => l.Top);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
             // from Word 2013 on (measured with docx/local/rs3-*: three lines with two above the cut, or one, go on, four
             // split two and two; before, rows split at any line).
@@ -409,7 +418,7 @@ public sealed class RowBox
     {
         var copy = new RowBox
         {
-            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -710,7 +719,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
         }
 
-        // Cell content and row heights.
+        // Cell content and row heights. A row's cells all take its largest top and bottom margins (measured with
+        // docx/local/rowmar-15, -12: beside a cell 5 pt from its top and one 10 pt from its bottom a cell without
+        // margins of its own puts its text 5 pt down, and the row is 15 pt higher than its content).
+        var rowEdges = rows.Select(row => row.Cells.Count == 0 ? (Top: 0.0, Bottom: 0.0)
+            : (Top: row.Cells.Max(c => Margins(row, c, format).Top), Bottom: row.Cells.Max(c => Margins(row, c, format).Bottom))).ToArray();
+        (double Top, double Left, double Bottom, double Right) CellMargins(int r, CellModel cell, int last = -1)
+        {
+            var own = Margins(rows[r], cell, format);
+            return (rowEdges[r].Top, own.Left, rowEdges[last < 0 ? r : last].Bottom, own.Right);
+        }
         var topWidths = new double[rows.Count + 1];
         for (var r = 0; r <= rows.Count; r++)
         {
@@ -727,7 +745,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     continue;
                 var c0 = Math.Min(cell.Column, columns);
                 var c1 = Math.Min(cell.Column + cell.Format.GridSpan, columns);
-                var margins = Margins(rows[r], cell, format);
+                var margins = CellMargins(r, cell);
                 var leftLine = Width(vertical[r, c0]);
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
@@ -743,8 +761,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         {
             var f = rows[r].Format;
             heights[r] = contentHeights[r];
+            // An at-least height lies between the row's top and bottom margins; an exact one holds the top line and
+            // margin, the bottom margin comes below it (rowmar-15: rows of 30 pt at least with margins of 5 and 3 pt
+            // are 38 pt high, rows of exactly 30 pt 33 pt).
             if (f.Height is { } h && h > 0)
-                heights[r] = f.HeightRule == "exact" ? Math.Max(0, h - topWidths[r]) : Math.Max(heights[r], h);
+                heights[r] = f.HeightRule == "exact" ? Math.Max(0, h - topWidths[r]) + rowEdges[r].Bottom : Math.Max(heights[r], rowEdges[r].Top + h + rowEdges[r].Bottom);
         }
         // A vertically merged cell taller than its rows makes its last row higher.
         foreach (var (cell, rowsSpanned) in span)
@@ -752,12 +773,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             var r0 = rows.FindIndex(row => row.Cells.Contains(cell));
             if (r0 < 0)
                 continue;
-            var margins = Margins(rows[r0], cell, format);
+            var last = Math.Min(rows.Count - 1, r0 + rowsSpanned - 1);
+            var margins = CellMargins(r0, cell, last);
             var needed = margins.Top + laid[cell].Height + margins.Bottom;
             var have = 0.0;
             for (var r = r0; r < r0 + rowsSpanned && r < rows.Count; r++)
                 have += heights[r] + (r > r0 ? topWidths[r] : 0);
-            var last = Math.Min(rows.Count - 1, r0 + rowsSpanned - 1);
             if (needed > have && rows[last].Format.HeightRule != "exact")
                 heights[last] += needed - have;
         }
@@ -770,7 +791,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             var rowBox = new RowBox
             {
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
-                Exact = specified > 0 && row.Format.HeightRule == "exact", Least = row.Format.HeightRule == "exact" ? 0 : specified,
+                Exact = specified > 0 && row.Format.HeightRule == "exact",
+                Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
+                MarginBelowCut = !Modern,
             };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)
@@ -796,7 +819,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 for (var k = r; k < Math.Min(rows.Count, r + rowsSpanned); k++)
                     total += heights[k] + (k > r ? topWidths[k] : 0);
                 var content = laid[cell];
-                var margins = Margins(row, cell, format);
+                var margins = CellMargins(r, cell, Math.Min(rows.Count, r + rowsSpanned) - 1);
                 var free = total - margins.Top - content.Height - margins.Bottom;
                 var lowered = cell.Format.VerticalAlign switch
                 {
