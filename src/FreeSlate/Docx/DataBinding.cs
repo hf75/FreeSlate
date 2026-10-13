@@ -11,6 +11,9 @@ namespace FreeSlate.Docx;
 /// from the bound custom XML part when it opens a document, so the printed text is the node's value, not the text the
 /// document stored (measured with docx/local/binding: a plain text control, a date control formatted by its
 /// w:dateFormat and w:lid, a control bound to the core properties; a node that does not exist keeps the stored text).
+/// A picture control (w:picture) binds its picture, not text: it keeps the picture it stores
+/// (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding: a node of base64 data, the stored picture
+/// the same).
 /// </summary>
 public sealed class DataBinding(DocumentContext context)
 {
@@ -23,7 +26,7 @@ public sealed class DataBinding(DocumentContext context)
     public string? Text(XElement sdtPr)
     {
         var binding = sdtPr.Child("dataBinding");
-        if (binding?.Attr("xpath") is not { Length: > 0 } xpath)
+        if (binding?.Attr("xpath") is not { Length: > 0 } xpath || sdtPr.Child("picture") != null)
             return null;
         var store = binding.Attr("storeItemID") ?? "";
         if (Items().GetValueOrDefault(store.Trim().ToUpperInvariant()) is not { } document)

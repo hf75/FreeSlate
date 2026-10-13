@@ -1835,7 +1835,9 @@ areas:
           w:dataBinding (with its prefix mappings) selects a node of the custom XML part with the store item id, or of
           the core or extended properties; text controls show its value, date controls its date in their w:dateFormat
           and w:lid, list controls the matching entry's display text; a missing node keeps the stored text
-          (docx/local/binding 98.8 %, every line as in Word).
+          (docx/local/binding 98.8 %, every line as in Word). A picture control (w:picture) binds its picture and
+          keeps the one it stores (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding 75.5 to
+          100 %: a node of base64 data printed as text before).
 
       - id: sdt.customXml
         title: Custom XML markup and smart tags

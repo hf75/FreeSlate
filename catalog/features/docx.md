@@ -1423,7 +1423,7 @@ The 72 field codes of the format catalog (field-codes.md): page and section numb
 
 **Rendering:** Bound content controls take their text from the custom XML part (XPath); whether Word refreshes the document's text from the part when it opens is measured.
 
-**Office behaviour:** Word refreshes bound controls from their data when it opens a document, and so do we: the XPath of w:dataBinding (with its prefix mappings) selects a node of the custom XML part with the store item id, or of the core or extended properties; text controls show its value, date controls its date in their w:dateFormat and w:lid, list controls the matching entry's display text; a missing node keeps the stored text (docx/local/binding 98.8 %, every line as in Word).
+**Office behaviour:** Word refreshes bound controls from their data when it opens a document, and so do we: the XPath of w:dataBinding (with its prefix mappings) selects a node of the custom XML part with the store item id, or of the core or extended properties; text controls show its value, date controls its date in their w:dateFormat and w:lid, list controls the matching entry's display text; a missing node keeps the stored text (docx/local/binding 98.8 %, every line as in Word). A picture control (w:picture) binds its picture and keeps the one it stores (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding 75.5 to 100 %: a node of base64 data printed as text before).
 
 **Elements (2):** [`w15:dataBinding`](../format/namespaces/w15.md#w15databinding), [`w:dataBinding`](../format/namespaces/w.md#wdatabinding)
 
