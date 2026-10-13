@@ -344,6 +344,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "center" => frameTop + (frameHeight - height) / 2,
             _ => frameTop + Twips("tblpY"),
         };
+        // A table that may not overlap others (w:tblOverlap never) moves with its distances off a floating table before
+        // it on the page that it would overlap: right of it where it fits in its horizontal anchor's span, else below
+        // it, its distance left then counting from its place (measured with docx/local/tc-5: beside a table at the
+        // margin; td-*: below a right-aligned one, as far right as its own leftFromText; docx/external/libreoffice/
+        // core-objectpositioning/floattable-tbl-overlap).
+        if (((TableBlock)blocks[index]).Table.Format.NoOverlap)
+        {
+            var below = false;
+            for (var tries = 0; tries < 8; tries++)
+            {
+                var (l, t, r, b) = (x - Twips("leftFromText"), top - Twips("topFromText"), x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"));
+                if (page.FloatingTables.FirstOrDefault(e => !e.Frame && !e.Story && e.Left < r - 0.01 && e.Right > l + 0.01 && e.Top < b - 0.01 && e.Bottom > t + 0.01)
+                    is not { } other)
+                    break;
+                if (other.Right + (r - l) <= frameLeft + frameWidth + 0.01)
+                    x = other.Right + Twips("leftFromText");
+                else
+                {
+                    top = other.Bottom + Twips("topFromText");
+                    if (!below)
+                        x += Twips("leftFromText");
+                    below = true;
+                }
+            }
+        }
         // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
         // that does not fit below the rows before it on the page goes on at the top of the next page's body, where
         // the table stands at the same place across, its header rows repeated; the line below the last row of a page
@@ -707,10 +732,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var height = slot.Height;
         var segments = new List<(double Start, double End)> { (0, columnWidth) };
         var skipTo = 0.0;
+        // A line beside objects without room left tries again below the first of them to end (measured with
+        // docx/local/td-1: a paragraph below a table on the right and beside one moved below it stands right of the
+        // second as soon as the first ends).
+        var nextBottom = double.MaxValue;
+        var (beside, tight) = (false, true);
         foreach (var e in exclusions)
         {
             if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01)
                 continue;
+            nextBottom = Math.Min(nextBottom, e.Bottom - paragraphTop);
             var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
             // A wrap polygon keeps free what of it lies beside the line's text.
             if (e.Polygon != null)
@@ -719,6 +750,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     continue;
                 (l, r) = (span.Min - e.DistanceLeft - columnLeft, span.Max + e.DistanceRight - columnLeft);
             }
+            beside = true;
+            tight &= e.Polygon != null;
             // Objects kept free above and below, and after a break with w:clear those of the side it clears (an
             // object on the left half of the column is on the left), take the whole line: it moves below them.
             var center = (e.Left + e.Right) / 2 - columnLeft;
@@ -756,10 +789,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (keepAfter) next.Add(after);
             }
             segments = next;
-            if (segments.Count == 0)
-                skipTo = Math.Max(skipTo, e.Bottom - paragraphTop);
         }
-        return new LineRoom(segments, skipTo);
+        // Where the line tries again when its room is too narrow: below the first object beside it to end.
+        if (skipTo == 0 && nextBottom < double.MaxValue)
+            skipTo = nextBottom;
+        return new LineRoom(segments, skipTo) { Tight = beside && tight };
     }
 
     List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,

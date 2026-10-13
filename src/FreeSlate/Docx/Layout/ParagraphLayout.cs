@@ -189,10 +189,14 @@ public sealed class Line
 }
 
 /// <summary>
-/// The room a line has between floating objects (catalog: engine.floats): its segments from the column's left edge, or
-/// none and how far down (from the paragraph's first line) the line must move to find room.
+/// The room a line has between floating objects (catalog: engine.floats): its segments from the column's left edge, and
+/// how far down (from the paragraph's first line) the line moves where they cannot take it.
 /// </summary>
-public sealed record LineRoom(List<(double Start, double End)> Segments, double SkipTo = 0);
+public sealed record LineRoom(List<(double Start, double End)> Segments, double SkipTo = 0)
+{
+    /// <summary>Whether only objects wrapped tightly or through (along their wrap polygons) stand beside the line.</summary>
+    public bool Tight { get; init; }
+}
 
 /// <summary>
 /// Where a line would stand, for the room floating objects leave it: its top below the paragraph's first line top, its
@@ -347,8 +351,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return end;
     }
 
-    /// <summary>Segments beside floating objects narrower than this take no text.</summary>
-    const double MinimumSegment = 18;
+    /// <summary>
+    /// Segments beside floating objects narrower than this take no text, also none of an empty line, and the first of
+    /// a line only where its first word fits, the line going down otherwise (measured with docx/local/tf-*, tk-*: 17.3
+    /// pt beside a table or a shape stay empty, 19.3 pt take "a an"; tq-*: empty lines go below a shape leaving 16 pt;
+    /// te-*, tg-*, th-*, tl-*: a word of 40.6 pt goes below a table or a shape leaving 39.3 pt, beside one leaving
+    /// 43.3, one of 27.8 pt beside a shape leaving 27.8; within 0.5 pt beside tables, ti-*, tj-*). Before Word 2013
+    /// segments beside objects wrapped along their polygons take text from 9 pt (tv-*, tw-*: 10 pt take empty lines
+    /// and 12.75 "a", 8 pt none, not so in mode 15, tr-3; docx/external/libreoffice/core-text/fly-minimal-wrap).
+    /// </summary>
+    const double MinimumSegment = 18, MinimumTightSegment = 9;
 
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
@@ -858,6 +870,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // aligned lines take no word that does not fit (docx/local/jc-left); not before Word 2013 (measured with
         // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed).
         var squeezing = Justified(format) && context.CompatibilityMode >= 15;
+        // The width of the content from a place to its next break opportunity, without the spaces there.
+        double FirstWord(int from)
+        {
+            var k = from;
+            var w = 0.0;
+            while (k < text.Length && text[k] is not ('\t' or '\n' or '\f' or '\v'))
+            {
+                w += advances[k];
+                k++;
+                if (breaks[k - 1])
+                    break;
+            }
+            while (k > from && text[k - 1] == ' ')
+                w -= advances[--k];
+            return w;
+        }
 
         // Characters of the current line: [start, end) and where it starts.
         var lineStart = Math.Clamp(from, 0, text.Length);
@@ -866,20 +894,45 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var estimate = (mark.Metrics.Above + mark.Metrics.Below) * (format.LineRule is null or "auto" ? (format.Line ?? 240) / 240 : 1);
         var textBand = (Top: 0.0, Bottom: mark.Metrics.Above + mark.Metrics.Below);
         string? clear = null;     // the w:clear of the break that ended the line before
+        var remeasured = false;   // whether the line is laid out again with its own height (see below)
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
             var limit = width - right;
-            // Floating objects beside the line: its segments within the indents; none moves the line down.
+            // Floating objects beside the line: its segments within the indents, or it moves down where they leave it
+            // none (see MinimumSegment). Before Word 2013 a line beside objects wrapped square stays where the column
+            // has room enough beside them, also only outside its indents, and takes what of it they leave, a character
+            // a line where they leave none, a word breaking where it does not fit (measured with docx/local/tx-*, ty-1,
+            // ty-3 in modes 12 and 14: empty and text lines indented past 26.8 pt left of a floating table or a shape
+            // stand at their place, one character a line, in mode 15 below it, ty-2; tz-1, ua-1, ua-3: "Parag" and
+            // "raph" beside 23.3 pt, beside a shape wrapped through the line goes below, ua-2; docx/external/
+            // powertools/RP/RP001-Tracked-Revisions-01-Accepted).
             var segments = new List<(double Start, double End)>();
             var skip = 0.0;
+            var none = false;
             if (room != null)
             {
                 for (var attempt = 0; attempt < 20; attempt++)
                 {
                     var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
-                    segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= MinimumSegment).ToList();
-                    if (segments.Count > 0 || r.SkipTo <= offset + skip + 0.01)
+                    var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;
+                    if (context.CompatibilityMode < 15 && !r.Tight)
+                    {
+                        var enough = r.Segments.Where(s => s.End - s.Start >= minimum).ToList();
+                        segments = enough.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
+                        none = segments.Count == 0 && enough.Count > 0;
+                    }
+                    else
+                    {
+                        segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= minimum).ToList();
+                        if (r.Segments.Count != 1 || r.Segments[0].End - r.Segments[0].Start < width - 0.01)
+                        {
+                            var word = FirstWord(lineStart);
+                            while (segments.Count > 0 && segments[0].End - segments[0].Start < word - 0.005)
+                                segments.RemoveAt(0);
+                        }
+                    }
+                    if (segments.Count > 0 || none || r.SkipTo <= offset + skip + 0.01)
                         break;
                     skip = r.SkipTo - offset;
                 }
@@ -888,6 +941,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     startX = segments[0].Start;
                     limit = segments[0].End;
                 }
+                else if (none)
+                    limit = startX;
             }
             // Punctuation compressed at the start of a line (w:topLinePunct): an East Asian opening bracket that begins
             // the line stands half its width further left (measured with docx/local/toplinepunct15 and toplinepunct12:
@@ -902,6 +957,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var lastFit = -1;          // end of the text that fits, at a break opportunity
             var endBreak = (string?)null;
             var i = lineStart;
+            if (none && lineStart < text.Length)
+            {
+                end = lineStart + (char.IsHighSurrogate(text[lineStart]) && lineStart + 1 < text.Length ? 2 : 1);
+                lastFit = end;
+                i = text.Length;
+            }
             while (i < text.Length)
             {
                 var c = text[i];
@@ -1071,6 +1132,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 line.Hanging = advances[hangAt];
             DropEndSpace(line, text, end);
             hangAt = -1;
+            var hyphenatedBefore = hyphenatedLines;
             hyphenatedLines = autoHyphenAt == end ? hyphenatedLines + 1 : 0;
             autoHyphenAt = -1;
             line.EndBreak = endBreak;
@@ -1081,6 +1143,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 // The line's height decides where the next one stands beside the objects.
                 Space([line], format, Pitch(format), ExactFromTop);
+                // A line moved below objects for the height its paragraph mark gives stands where it fits with its own
+                // (docx/external/libreoffice/uitest/tdf124675: a line just above a floating table, its mark taller).
+                if (skip > 0.01 && !remeasured && line.Height < estimate - 0.01
+                    && room(new LineSlot(offset, line.Height, line.Baseline - line.Above, line.Baseline + line.Below, clear)) is { } own
+                    && own.Segments.Count == 1 && own.Segments[0].Start <= 0.01 && own.Segments[0].End >= width - 0.01)
+                {
+                    estimate = line.Height;
+                    textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
+                    hyphenatedLines = hyphenatedBefore;
+                    remeasured = true;
+                    continue;
+                }
+                remeasured = false;
                 offset += skip + line.Height;
                 estimate = line.Height;
                 textBand = (line.Baseline - line.Above, line.Baseline + line.Below);

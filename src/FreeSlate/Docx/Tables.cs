@@ -258,6 +258,9 @@ public sealed class TableFormat
     public bool FirstRow = true, LastRow, FirstColumn = true, LastColumn, NoHorizontalBand, NoVerticalBand = true;
     public bool BidiVisual;
     public XElement? Floating;
+
+    /// <summary>Whether a floating table may not overlap other floating tables (w:tblOverlap never).</summary>
+    public bool NoOverlap;
     public string? Caption, Description;
 
     public void Apply(XElement? tblPr)
@@ -279,6 +282,7 @@ public sealed class TableFormat
         ColumnBandSize = (int?)tblPr.Child("tblStyleColBandSize").Number("val") ?? ColumnBandSize;
         BidiVisual = tblPr.Child("bidiVisual").OnOff() ?? BidiVisual;
         Floating = tblPr.Child("tblpPr") ?? Floating;
+        NoOverlap = tblPr.Child("tblOverlap").Val() is { } overlap ? overlap == "never" : NoOverlap;
         Caption = tblPr.Child("tblCaption").Val() ?? Caption;
         Description = tblPr.Child("tblDescription").Val() ?? Description;
         if (tblPr.Child("tblLook") is { } look)
