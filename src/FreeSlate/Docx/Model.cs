@@ -341,6 +341,19 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>
+    /// The text of a w:t: without xml:space="preserve" on the element itself or on its part's root Word drops the
+    /// spaces, tabs and line ends at its ends and shows tabs inside as spaces, keeping the spaces inside (measured with
+    /// docx/local/ws-1 to ws-5: "a", " " and "b" show "ab", "a " and "b" too, "a  b" keeps both spaces, a no-break
+    /// space stays, "a\tb" shows "a b"; xml:space on w:body, the paragraph or the run does not count, on w:document it
+    /// does; docx/external/libreoffice/extras-ooxmlimport/xml_space, tdf124670).
+    /// </summary>
+    static string Text(XElement t)
+    {
+        var space = t.Attribute(XNamespace.Xml + "space")?.Value ?? t.Document?.Root?.Attribute(XNamespace.Xml + "space")?.Value;
+        return space == "preserve" ? t.Value : t.Value.Trim(' ', '\t', '\r', '\n').Replace('\t', ' ');
+    }
+
+    /// <summary>
     /// Paragraphs whose mark is hidden (w:vanish on the mark, catalog: run.hidden) as Word prints them (measured with
     /// docx/local/hiddenmark): such a paragraph runs into the next one, the joined paragraph in its own formatting
     /// (the first's alignment and space before); one whose text is all hidden too is gone; before a table it stays,
@@ -1103,7 +1116,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (!field.Hidden)
                         // Line feeds and carriage returns in the text show as spaces, CR LF as one (measured with
                         // docx/local/wtcontrol: Word breaks no line there; tabs stay tabs).
-                        field.Target(content).Add(new TextInline(e.Value.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format) { Link = field.Link ?? link });
+                        field.Target(content).Add(new TextInline(Text(e).Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format) { Link = field.Link ?? link });
                     break;
                 case "delInstrText" when context.Markup:
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
@@ -1143,7 +1156,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             var own = new RunFormat();
                             own.Apply(r.Child("rPr"));
                             var runFormat = context.Styles.Run(paragraphStyle, own.Style, own, tableRun);
-                            var value = string.Concat(r.Elements(Wml.W + "t").Select(t => t.Value));
+                            var value = string.Concat(r.Elements(Wml.W + "t").Select(Text));
                             if (value.Length > 0)
                                 texts.Add(new TextInline(value, runFormat));
                         }

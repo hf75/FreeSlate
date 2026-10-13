@@ -651,6 +651,10 @@ areas:
           and w16se:symEx (its fallback character is taken) draw nothing of their own. Line feeds and carriage returns
           kept in w:t show as spaces (CR LF as one), tabs as tabs (docx/local/wtcontrol;
           docx/external/libreoffice/extras-uiwriter/tdf134021: table cells ending in a line feed stay one line high).
+          Without xml:space="preserve" on the w:t itself or on w:document the spaces, tabs and line ends at the ends
+          of its text are dropped and tabs inside show as spaces, the spaces inside and no-break spaces kept;
+          xml:space on w:body, the paragraph or the run does not count (docx/local/ws-1 to ws-5;
+          docx/external/libreoffice/extras-ooxmlimport/xml_space, tdf124670).
 
       - id: run.ruby
         title: Ruby (phonetic guides)
