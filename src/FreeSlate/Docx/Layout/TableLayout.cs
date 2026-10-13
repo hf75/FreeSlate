@@ -637,7 +637,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var tableLine = r == 0 || above == null ? TableBorder(rows[Math.Min(r, rows.Count - 1)], format, b => b.Top)
                     : r == rows.Count || below == null ? TableBorder(rows[r - 1], format, b => b.Bottom)
                     : TableBorder(rows[r], format, b => b.InsideH);
-                horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null);
+                // Between rows each cell brings its own row's inside line, the row's exceptions over the table's
+                // (measured with docx/local/rowex: a row whose w:tblPrEx makes the inside lines red and double has
+                // them above and below it; docx/external/powertools/RP/RP033-Table-Prop-Ex-Change).
+                var aboveLine = above != null && below != null ? TableBorder(rows[r - 1], format, b => b.InsideH) : tableLine;
+                horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null, aboveLine);
             }
         }
         for (var r = 0; r < rows.Count; r++)
@@ -1240,12 +1244,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// color (MS-OI29500 17.4.66), a table's thick inside line over a cell's own thin one too. At the table's edge,
     /// where one cell meets none, its own border wins over the table's.
     /// </summary>
-    static BorderLine? Edge(BorderLine? a, BorderLine? b, BorderLine? table, bool inside)
+    static BorderLine? Edge(BorderLine? a, BorderLine? b, BorderLine? table, bool inside, BorderLine? tableOfA = null)
     {
         if (!inside)
             return a != null || b != null ? BorderLine.Resolve(a, b) : table;
         static BorderLine? Side(BorderLine? own, BorderLine? table) => (own ?? table) is { Visible: true } line ? line : null;
-        return BorderLine.Resolve(Side(a, table), Side(b, table));
+        return BorderLine.Resolve(Side(a, tableOfA ?? table), Side(b, table));
     }
 
     /// <summary>A table border of a row: the row's exceptions over the table's.</summary>

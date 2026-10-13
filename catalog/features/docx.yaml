@@ -1397,7 +1397,10 @@ areas:
           with one line between, an inside line: the first's last row's cell bottoms or inside line against the
           second's first row's cell tops or inside line, neither table's own bottom and top lines (docx/local/tbl-geom,
           tbl-features, tjn-a … tjn-i; docx/external/libreoffice/extras-ooxmlexport/tdf104061_tableSectionColumns).
-          Horizontal merges of old documents (w:hMerge): a
+          Rows with exceptions (w:tblPrEx) have their own table borders, side by side over the table's; between two
+          rows each cell brings its own row's inside line, resolved by weight with the other's (docx/local/rowex: a
+          row whose inside lines are red and double has them above and below it; docx/external/powertools/RP/
+          RP033-Table-Prop-Ex-Change). Horizontal merges of old documents (w:hMerge): a
           cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does
           not show) and takes the right border of the last (docx/local/hmerge, 99.8 %). A cell's empty last paragraph
           after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15).
