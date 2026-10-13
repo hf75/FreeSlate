@@ -2027,7 +2027,9 @@ areas:
         office: >-
           Groups (wpg:wgp) map their children's space (a:chOff, a:chExt) onto their box, nested groups (wpg:grpSp)
           again; the text boxes of grouped shapes are laid out in their shapes' places and turn with them
-          (docx/local/groups: a stretched group, a nested group with a turned star and a text box, 100 %).
+          (docx/local/groups: a stretched group, a nested group with a turned star and a text box, 100 %). A group
+          without a:chOff and a:chExt maps its children 1:1 from 0 0, so that the offsets of nested groups add up
+          (docx/external/libreoffice/extras-ooxmlexport/dml-groupshape-childposition 80.8 → 100 %).
 
       - id: drawing.canvas
         title: Drawing canvas
@@ -3437,7 +3439,12 @@ areas:
           shapes by o:spt, paths as custom geometries, groups (v:group: the children in its coordorigin and coordsize,
           nested), pictures (v:imagedata with crop), text boxes (v:textbox with its insets), WordArt (v:textpath),
           placed by the style attribute (position, margins, mso-position-*, rotation, flip, z-index) and w10:wrap
-          (docx/local/vml-shapes, vml-group). A rounded rectangle's text stands inside its corners, as the DrawingML
+          (docx/local/vml-shapes, vml-group). A shape turns first and flips after, unlike DrawingML (docx/local/
+          vmlflip: triangles and connectors turned 30° and 90° with flip:x, flip:y and both; docx/external/libreoffice/
+          extras-ooxmlexport/n751117 79.1 → 88.4 %), a turn in fixed point (fd) counting 65536ths of a degree
+          (docx/external/libreoffice/tdf137314_vml_rotation_unit_fd 61.8 → 99.7 %). A path's parameter left out
+          before, between or after commas is 0 (m,128588; tdf105875_VmlShapeRotationWithFlip 1.8 → 99.3 %,
+          core-ooxml-pass/vml-path 0.1 → 95.8 %, extras-ooxmlimport/tdf105143 3.5 → 100 %). A rounded rectangle's text stands inside its corners, as the DrawingML
           text rectangle says. An inline shape hangs from the top of its line (of its paragraph's space before on the
           first line), pictures stand on the baseline; an outlined shape takes the room of its box in whole 0.75 pt
           pixels, its outline and its shadow's offset right of and below it; spaces between drawings do not make their

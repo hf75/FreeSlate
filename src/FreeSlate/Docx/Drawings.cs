@@ -237,7 +237,10 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             var xfrm = group.Element(Wpg + "grpSpPr")?.Element(Ns.A + "xfrm");
             var (gx, gy) = (Emu(xfrm?.Element(Ns.A + "off"), "x", 0), Emu(xfrm?.Element(Ns.A + "off"), "y", 0));
             var (gw, gh) = (Emu(xfrm?.Element(Ns.A + "ext"), "cx", 0), Emu(xfrm?.Element(Ns.A + "ext"), "cy", 0));
-            var (ox, oy) = (Emu(xfrm?.Element(Ns.A + "chOff"), "x", gx), Emu(xfrm?.Element(Ns.A + "chOff"), "y", gy));
+            // Without a:chOff the children's space begins at 0 0, so that the group's offset adds to theirs, nested
+            // groups' too (docx/external/libreoffice/extras-ooxmlexport/dml-groupshape-childposition: shapes in a group
+            // in a group, all without a:chOff and a:chExt, stand where the three offsets add up, within 0.1 pt).
+            var (ox, oy) = (Emu(xfrm?.Element(Ns.A + "chOff"), "x", 0), Emu(xfrm?.Element(Ns.A + "chOff"), "y", 0));
             var (cw, ch) = (Emu(xfrm?.Element(Ns.A + "chExt"), "cx", gw), Emu(xfrm?.Element(Ns.A + "chExt"), "cy", gh));
             var (kx, ky) = (cw > 0 ? gw / cw : 1, ch > 0 ? gh / ch : 1);
             (tx, ty) = (tx + (gx - ox * kx) * sx, ty + (gy - oy * ky) * sy);
@@ -418,6 +421,15 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             var group = new XElement(Ns.P + "grpSp",
                 new XElement(Ns.P + "nvGrpSpPr", CNvPr(e.Element(Wpg + "cNvPr"), docPr), new XElement(Ns.P + "cNvGrpSpPr"), new XElement(Ns.P + "nvPr")),
                 new XElement(Ns.P + "grpSpPr", e.Element(Wpg + "grpSpPr")?.Attributes(), Copy(e.Element(Wpg + "grpSpPr"))));
+            // A group without a child space maps its children 1:1 from 0 0 (see ChildRect), the slide renderer's
+            // default being the group's own offset.
+            if (group.Element(Ns.P + "grpSpPr")?.Element(Ns.A + "xfrm") is { } groupXfrm && groupXfrm.Element(Ns.A + "ext") is { } groupExt)
+            {
+                if (groupXfrm.Element(Ns.A + "chOff") == null)
+                    groupXfrm.Add(new XElement(Ns.A + "chOff", new XAttribute("x", 0), new XAttribute("y", 0)));
+                if (groupXfrm.Element(Ns.A + "chExt") == null)
+                    groupXfrm.Add(new XElement(Ns.A + "chExt", new XAttribute("cx", (string?)groupExt.Attribute("cx") ?? "0"), new XAttribute("cy", (string?)groupExt.Attribute("cy") ?? "0")));
+            }
             foreach (var child in e.Elements())
             {
                 if (child.Name.LocalName is "cNvPr" or "cNvGrpSpPr" or "grpSpPr")

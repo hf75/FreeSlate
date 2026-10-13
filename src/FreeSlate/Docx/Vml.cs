@@ -501,13 +501,23 @@ public static class Vml
         var xfrm = new XElement(Ns.A + "xfrm",
             new XElement(Ns.A + "off", new XAttribute("x", 0), new XAttribute("y", 0)),
             new XElement(Ns.A + "ext", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))));
-        if (double.TryParse(style.GetValueOrDefault("rotation")?.TrimEnd('f', 'd', 'e', 'g'), NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) && rotation != 0)
-            xfrm.SetAttributeValue("rot", (long)Math.Round(rotation * 60000));
-        if (style.GetValueOrDefault("flip") is { } flip)
+        var flip = style.GetValueOrDefault("flip") ?? "";
+        var (flipH, flipV) = (flip.Contains('x'), flip.Contains('y'));
+        // VML turns a shape first and flips it after, DrawingML flips first: under one flip the turn goes the other
+        // way (measured with docx/local/vmlflip: right triangles and connectors turned 30° and 90° with flip:x, flip:y
+        // and both; docx/external/libreoffice/extras-ooxmlexport/n751117, an arrow pointing right).
+        // A turn in fixed point (fd) counts 65536ths of a degree (docx/external/libreoffice/
+        // tdf137314_vml_rotation_unit_fd: rotation:1966080fd turns 30°).
+        var turn = style.GetValueOrDefault("rotation")?.Trim();
+        var fixedPoint = turn?.EndsWith("fd", StringComparison.OrdinalIgnoreCase) == true;
+        if (double.TryParse(turn?.TrimEnd('f', 'd', 'e', 'g'), NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) && rotation != 0)
         {
-            if (flip.Contains('x')) xfrm.SetAttributeValue("flipH", 1);
-            if (flip.Contains('y')) xfrm.SetAttributeValue("flipV", 1);
+            if (fixedPoint)
+                rotation /= 65536;
+            xfrm.SetAttributeValue("rot", (long)Math.Round((flipH != flipV ? -rotation : rotation) * 60000));
         }
+        if (flipH) xfrm.SetAttributeValue("flipH", 1);
+        if (flipV) xfrm.SetAttributeValue("flipV", 1);
         return xfrm;
     }
 
@@ -564,35 +574,57 @@ public static class Vml
     {
         var size = (coordsize ?? "21600,21600").Split(',');
         long cw = size.Length > 0 && long.TryParse(size[0], out var a) ? a : 21600, ch = size.Length > 1 && long.TryParse(size[1], out var b) ? b : 21600;
+        // Commands and their parameters, a parameter left out before, between or after commas being 0 (m,128588 moves
+        // to 0 128588, r469741, draws 469741 to the right; docx/external/libreoffice/extras-ooxmlexport/
+        // tdf105875_VmlShapeRotationWithFlip, whose shapes were lost without their starting point).
         var tokens = new List<string>();
         var current = new System.Text.StringBuilder();
+        var pending = false;  // a comma's parameter not seen yet
+        void Number()
+        {
+            if (current.Length > 0)
+            {
+                tokens.Add(current.ToString());
+                current.Clear();
+                pending = false;
+            }
+        }
         foreach (var c in path)
         {
             if (char.IsLetter(c))
             {
-                if (current.Length > 0) { tokens.Add(current.ToString()); current.Clear(); }
-                current.Append(c);
+                Number();
+                if (pending)
+                    tokens.Add("0");
+                pending = false;
                 // Commands of two letters (nf, ns, qx …).
                 if (tokens.Count > 0 && tokens[^1].Length == 1 && char.IsLetter(tokens[^1][0]) && "nq".Contains(tokens[^1][0]))
-                {
                     tokens[^1] += c;
-                    current.Clear();
-                }
+                else
+                    tokens.Add(c.ToString());
                 continue;
             }
-            if (c is ',' or ' ')
+            if (c == ',')
             {
-                if (current.Length > 0) { tokens.Add(current.ToString()); current.Clear(); }
+                // An empty parameter: right after a command or another comma.
+                if (current.Length == 0 && (pending || tokens.Count > 0 && char.IsLetter(tokens[^1][0])))
+                    tokens.Add("0");
+                Number();
+                pending = true;
                 continue;
             }
-            if (current.Length > 0 && char.IsLetter(current[0]))
+            if (char.IsWhiteSpace(c))
             {
-                tokens.Add(current.ToString());
-                current.Clear();
+                Number();
+                continue;
             }
+            if (c == '-' && current.Length > 0)
+                Number();
             current.Append(c);
         }
-        if (current.Length > 0) tokens.Add(current.ToString());
+        Number();
+        if (pending)
+            tokens.Add("0");
 
         var pathElement = new XElement(Ns.A + "path", new XAttribute("w", cw), new XAttribute("h", ch));
         string? command = null;
