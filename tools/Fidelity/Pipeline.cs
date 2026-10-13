@@ -93,8 +93,9 @@ public static class Pipeline
         {
             // Printed on paper larger than the pages (browsers round paper sizes); the rasterizer cuts Word's page sizes out.
             // Documents named markup-* are shown with their markup, as Word prints them with markup.
+            // Date and time fields show when Word printed the reference, so that both sides show the same.
             DocxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), paperExtra: 12, culture: Repo.Regional,
-                markup: Repo.Markup(deck));
+                markup: Repo.Markup(deck), printed: References.DocumentPrinted(deck));
         }
         catch (Exception e) when (e is not OutOfMemoryException)
         {

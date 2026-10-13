@@ -43,6 +43,23 @@ public static class References
     /// <summary>Word's PDF export of a document, kept for measuring (not committed: it embeds font subsets).</summary>
     public static string DocumentPdf(string deck) => Path.Combine(Repo.Artifacts, deck, "reference.pdf");
 
+    /// <summary>
+    /// When Word printed a document's reference (the PDF's /CreationDate, the time on Word's clock), which the
+    /// document's date and time fields show there; null without a reference.
+    /// </summary>
+    public static DateTime? DocumentPrinted(string deck) => PrintedAt(DocumentPdf(deck));
+
+    /// <summary>The /CreationDate of a PDF as the time on its writer's clock, or null.</summary>
+    public static DateTime? PrintedAt(string pdf)
+    {
+        if (!File.Exists(pdf))
+            return null;
+        var text = System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(pdf));
+        var m = System.Text.RegularExpressions.Regex.Match(text, @"/CreationDate\s*\(D:(\d{14})");
+        return m.Success && DateTime.TryParseExact(m.Groups[1].Value, "yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var time) ? time : null;
+    }
+
     public static ReferenceInfo? Load(string deck)
     {
         var file = Path.Combine(Dir(deck), "meta.json");
