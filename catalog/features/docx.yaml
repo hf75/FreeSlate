@@ -1438,7 +1438,11 @@ areas:
           proportion to max - min; where preferred widths do not fit, columns whose contents need more keep their
           minimum and the others give up what is missing in proportion to how much they prefer over their contents'
           minimum (docx/local/tblpic table B, tblpic2, overpref-O1 to -O4 within 0.2 pt: cells preferring 221 pt each
-          on 451 pt beside words of 12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
+          on 451 pt beside words of 12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where cells prefer percentages
+          that fit and only columns whose contents need more make the table too wide, the others give up what is
+          missing in equal shares (docx/local/t65649-table: four columns of 18 to 38 % give up 1.6 pt each to one of
+          6.5 % whose word needs 6.4 pt more; poi/bug65649); a paragraph's negative left indent shrinks its column's
+          minimum, a negative right one does not (docx/local/negind); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
           aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt; docx/external/powertools/WC/
           WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a picture wider than a third);
           a table narrower than its contents' minima grows to them, up to the width available, before they shrink;

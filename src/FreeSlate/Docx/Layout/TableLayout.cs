@@ -1400,7 +1400,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // they are.
         var own = preferred.All(p => p != null);
         if (own && natural.Sum() <= space + 0.01)
-            return Yielding(min, natural, space);
+        {
+            var percentages = rows.All(r => r.Cells.All(c => c.MergedAbove || c.Format.Width is { Type: "pct" }));
+            return Yielding(min, natural, preferred, space, percentages);
+        }
         // Not even the contents' minima fit: they shrink in proportion, the margins stay.
         var shrinking = own ? natural : min;
         var content = Enumerable.Range(0, columns).Sum(k => Math.Max(0, shrinking[k] - margins[k]));
@@ -1460,12 +1463,48 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// keep their contents' minimum, the others give up what is missing in proportion to how much they prefer over
     /// their contents' minimum (measured with docx/local/overpref-O1 to -O4 within 0.4 pt: three cells preferring
     /// 221 pt on 451 pt take 143.6, 157.1 and 150.3 pt beside words of 12, 48 and 30 pt;
-    /// docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
+    /// docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang; docx/external/powertools/HW002-Table07). Where the
+    /// cells prefer percentages that fit and only columns whose contents need more than they prefer make the table too
+    /// wide, the others give up what is missing in equal shares, none below its contents' minimum (measured with
+    /// docx/local/t65649-table: four columns of 18 to 38 % give up 1.6 pt each to one of 6.5 % whose word needs 6.4 pt
+    /// more; docx/external/poi/bug65649).
     /// </summary>
-    static double[] Yielding(double[] min, double[] natural, double space)
+    static double[] Yielding(double[] min, double[] natural, double?[] prefers, double space, bool percentages)
     {
         var columns = min.Length;
         var widths = new double[columns];
+        if (percentages && prefers.Sum(p => p ?? 0) <= space + 0.01)
+        {
+            // Those that need more than they prefer take it; the others share what that takes from the table equally.
+            var giving = new List<int>();
+            var taken = 0.0;
+            for (var k = 0; k < columns; k++)
+            {
+                widths[k] = Math.Max(prefers[k] ?? 0, natural[k]);
+                if (natural[k] < (prefers[k] ?? 0) - 0.01)
+                    giving.Add(k);
+                taken += widths[k];
+            }
+            var excess = taken - space;
+            while (excess > 0.01 && giving.Count > 0)
+            {
+                var share = excess / giving.Count;
+                var limited = giving.Where(k => widths[k] - share < natural[k]).ToList();
+                if (limited.Count == 0)
+                {
+                    foreach (var k in giving)
+                        widths[k] -= share;
+                    break;
+                }
+                foreach (var k in limited)
+                {
+                    excess -= widths[k] - natural[k];
+                    widths[k] = natural[k];
+                    giving.Remove(k);
+                }
+            }
+            return widths;
+        }
         var rest = space;
         var preferred = 0.0;
         var slack = 0.0;

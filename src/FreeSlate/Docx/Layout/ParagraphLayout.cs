@@ -1381,7 +1381,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         max = Math.Max(max, line - trailing);
         min = Math.Max(min, word);
-        return (min + left + Math.Max(0, firstLine) + right, max + right);
+        // A negative right indent does not shrink the minimum, a negative left one does (measured with docx/local/negind:
+        // a word of 49.3 pt with indents of -5.65 pt on both sides or on the left only makes a column 5.65 pt narrower
+        // than without; docx/external/poi/bug65649).
+        return (min + left + Math.Max(0, firstLine) + Math.Max(0, right), max + right);
     }
 
     static bool HasContent(string text, int start, int end)
