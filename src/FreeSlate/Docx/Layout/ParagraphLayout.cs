@@ -912,7 +912,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var none = false;
             if (room != null)
             {
-                for (var attempt = 0; attempt < 20; attempt++)
+                for (var attempt = 0; attempt < 400; attempt++)
                 {
                     var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
                     var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;

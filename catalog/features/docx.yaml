@@ -3447,7 +3447,8 @@ areas:
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
           stable (at most four runs); lines are broken into the segments beside the objects, words that do not fit a
           segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping,
-          wrap-types), below the first of the objects beside them to end (td-1), and to the next page where they do not
+          wrap-types), below the first of the objects beside them to end (td-1), beside objects wrapped along their
+          polygons a line at a time, so on the paragraph's line pitch (ub-*), and to the next page where they do not
           fit below it. A segment takes text from 18 pt, also an empty line's, the first of a line only where the line's
           first word fits (docx/local/tf-*, tk-*, tq-*, te-*, tg-*, th-*, tl-*: 17.3 pt stay empty, 19.3 take "a an", a
           word of 40.6 pt goes below an object leaving 39.3 pt); before Word 2013 a line beside objects wrapped square
@@ -3465,8 +3466,8 @@ areas:
           beside text, anchored to the text or the page; a shape right of the table and one without wrapping leave it;
           docx/external/tika/testWORD_tableInRunInsideParagraph, docx/external/libreoffice/core-ooxml-pass/
           fdo78904_fileHang). A floating table that may not overlap others (w:tblOverlap never) moves right of the one
-          before it that it would overlap where it fits, else below it (table.floating). Known deviations: below
-          objects wrapped along their polygons Word's lines stand 3.5 pt lower (tv-*); in mode 14 Word sets a table beside a shape wrapped square, indented and
+          before it that it would overlap where it fits, else below it (table.floating). Known deviations: in mode 14
+          Word sets a table beside a shape wrapped square, indented and
           narrower (fx-5), ours stays over it; a table whose cells' paragraphs have frame properties stands in that
           frame at its position (lb-1 to lb-4, tdf104394_lostTextbox), ours in the text.
 

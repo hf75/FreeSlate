@@ -734,14 +734,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var skipTo = 0.0;
         // A line beside objects without room left tries again below the first of them to end (measured with
         // docx/local/td-1: a paragraph below a table on the right and beside one moved below it stands right of the
-        // second as soon as the first ends).
+        // second as soon as the first ends), beside one wrapped along its polygon a line further down (ub-1 to ub-5,
+        // ub-7: below a shape wrapped through or tight the first line stands on the paragraph's line pitch, square
+        // right at its bottom, ub-6).
         var nextBottom = double.MaxValue;
         var (beside, tight) = (false, true);
         foreach (var e in exclusions)
         {
             if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01)
                 continue;
-            nextBottom = Math.Min(nextBottom, e.Bottom - paragraphTop);
+            nextBottom = Math.Min(nextBottom, e.Polygon != null ? slot.Offset + slot.Height : e.Bottom - paragraphTop);
             var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);
             // A wrap polygon keeps free what of it lies beside the line's text.
             if (e.Polygon != null)
