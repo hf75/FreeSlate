@@ -2076,7 +2076,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
             var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : Metrics(piece.Style, Vertical);
             var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
-            above = Math.Max(above, a);
+            // Lowered text takes as much less of the ascent, raised text of the descent (measured with
+            // docx/local/lowr-*: "Base" in 12 pt Arial with 48 pt lowered 12 pt has its baseline 33 pt below the line's
+            // top, 45 pt less 12, lowered 60 pt the 12 pt text's own; 48 pt raised 12 pt leaves the 12 pt text's
+            // descent; docx/external/libreoffice/extras-ooxmlexport/tdf99602_charStyleSubscript); where characters
+            // align their tops, centers or bottoms (w:textAlignment) they keep their whole ascent and descent
+            // (lowr-18, lowr-19: 12 pt lowered 6 pt aligned top make the line about 19.4 pt high; tdf140668).
+            var shifts = format.TextAlignment is not ("top" or "center" or "bottom");
+            above = Math.Max(above, a + (shifts ? Math.Min(0, lift) : 0));
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
             var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
             raised = Math.Max(raised, a + lift + reachAbove);
@@ -2086,7 +2093,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (piece.IsLabel)
                 continue;
             texts = true;
-            below = Math.Max(below, b);
+            below = Math.Max(below, b - (shifts ? Math.Max(0, lift) : 0));
             largest = Math.Max(largest, a + b);
             lowered = Math.Max(lowered, b - lift + reachBelow);
         }
