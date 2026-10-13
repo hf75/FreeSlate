@@ -423,12 +423,67 @@ public sealed class FieldEvaluator
     }
 
     /// <summary>
+    /// Where Word's own date data differ from .NET's for a language: its AM and PM (none in most European languages,
+    /// upper case in all English ones), its short time and its short date (measured with docx/local/datelang); the
+    /// calendar is the Gregorian in all of them (ar-SA too).
+    /// </summary>
+    static readonly Dictionary<string, (string Am, string Pm, string? Time, string? Date)> WordDates = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["en"] = ("AM", "PM", "h:mm tt", null),
+        ["de"] = ("", "", null, null),
+        ["fr"] = ("", "", null, null),
+        ["es"] = ("", "", null, null),
+        ["it"] = ("", "", null, null),
+        ["nl"] = ("", "", null, null),
+        ["ru"] = ("", "", null, null),
+        ["pt"] = ("", "", null, null),
+        ["sv"] = ("", "", "HH.mm", null),
+        ["pl"] = ("AM", "PM", "h:mm tt", null),
+        ["tr"] = ("ÖÖ", "ÖS", "h:mm tt", null),
+        ["el"] = ("πμ", "μμ", "h:mm tt", null),
+        ["ja"] = ("午前", "午後", "tth時mm分", null),
+        ["zh"] = ("上午", "下午", "H时mm分", null),
+        ["ko"] = ("오전", "오후", "tt h시 mm분", "yyyy-MM-dd"),
+        ["ar"] = ("ص", "م", "h:mm  tt", "dd/MM/yyyy"),
+    };
+
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CultureInfo?> languageCultures = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The culture a w:lang value ("en-US") formats dates in, as Word does, or null where .NET knows none.</summary>
+    static CultureInfo? LanguageCulture(string? language) => string.IsNullOrEmpty(language) ? null : languageCultures.GetOrAdd(language, name =>
+    {
+        try
+        {
+            var culture = (CultureInfo)CultureInfo.GetCultureInfo(name).Clone();
+            var format = culture.DateTimeFormat;
+            if (format.Calendar is not GregorianCalendar)
+                format.Calendar = new GregorianCalendar();
+            if (WordDates.TryGetValue(culture.TwoLetterISOLanguageName, out var word))
+            {
+                (format.AMDesignator, format.PMDesignator) = (word.Am, word.Pm);
+                if (word.Time != null)
+                    format.ShortTimePattern = word.Time;
+                if (word.Date != null)
+                    format.ShortDatePattern = word.Date;
+            }
+            return CultureInfo.ReadOnly(culture);
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    });
+
+    /// <summary>
     /// DATE, TIME, PRINTDATE and SAVEDATE show the time of printing in the picture of their \@ switch, else in the
-    /// document's language's short date (or short time); Word's AM/PM is .NET's tt.
+    /// short date (or short time) of the field's language, whose names and AM/PM they take too, whatever the
+    /// computer's regional settings (measured with docx/local/datelang on a German Windows: en-US "Tuesday, October
+    /// 13, 2026", "10/13/2026" and "12:22 PM", de-DE "Dienstag", "13.10.2026" and no AM/PM, fr-FR "mardi",
+    /// "13/10/2026" and "oct."); Word's AM/PM is .NET's tt.
     /// </summary>
     string Date(FieldInline field, List<string> words)
     {
-        var culture = context.Culture;
+        var culture = LanguageCulture(field.Format.Language) ?? context.Culture;
         // SAVEDATE shows when the document was last saved, where its properties say (measured: without them Word
         // shows the time of printing).
         var time = now;

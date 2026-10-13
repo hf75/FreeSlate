@@ -1678,7 +1678,10 @@ areas:
           dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
           before), SEQ (\c, , \h, \s), SECTION, IF
           (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
-          language's short date and time) and SAVEDATE (when the document was saved); the page-dependent ones come
+          language's short date and time) and SAVEDATE (when the document was saved), all in the field's language
+          (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word has them, none in
+          most European languages, upper case in English, the Gregorian calendar in all (docx/local/datelang: 18
+          languages on a German Windows); the page-dependent ones come
           from a layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format
           switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and
           about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved
