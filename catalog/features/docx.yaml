@@ -821,10 +821,13 @@ areas:
           extras-ooxmlexport/testPageref: a page break kept with the next paragraph through its style makes no empty
           page), and a line of nothing but such a break stays on its page, past the bottom too
           (docx/external/libreoffice/extras-ooxmlexport/FDO77715: no empty pages before headings that begin with a
-          column break). Tables take part: a paragraph kept with a table goes
-          along with its first row, which does not break for it; a row whose first cell's first paragraph is kept with
-          the next one carries the chain on to the next row or block, its other cells and paragraphs do not count
-          (docx/local/tk1 … tk13).
+          column break). Tables take part: a row whose first cell's first paragraph is kept with the next one carries
+          the chain on to the next row or block and does not break for it, its other cells and paragraphs do not count;
+          the first row of the chain that is not kept needs only to begin on the page, all of it where it may not
+          split (or has a height at least that does not fit), so a paragraph kept with a table goes along with a first
+          row that cannot begin below it. A chain that begins at a row inside a table moves to the next column or page
+          the same way (docx/local/tk1 … tk13, tkr-a … tkr-h; docx/external/libreoffice/extras-ooxmlexport/
+          tdf104061_tableSectionColumns: a heading row goes on with a row of 173 pt at least).
 
       - id: paragraph.borders
         title: Paragraph borders and shading

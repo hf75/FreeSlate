@@ -1907,12 +1907,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 mergedDown.Clear();
             }
             var broke = false;
-            while (!Fits(row, y))
+            // A row kept with the next one that begins a keep chain inside the table goes to the next column with it
+            // where the chain does not fit here (measured with docx/local/tkr-e, tkr-g; docx/external/libreoffice/
+            // extras-ooxmlexport/tdf104061_tableSectionColumns: a heading row before a row of 173 pt at least).
+            var moves = r > 0 && last != null && !columnEmpty && RowKept(table.Table, r) && !RowKept(table.Table, r - 1)
+                        && ChainBreaks(blocks, index, null, width, y, fromRow: r);
+            while (moves || !Fits(row, y))
             {
                 // A row that does not fit splits at a line of each cell (unless it may not split, measured with
                 // docx/local/tbl-autofit), else moves on; one that may not split splits at the top of a column it
                 // does not fit either, and one that cannot split at all overflows.
-                if (Split(row, y, force: columnEmpty) is { } parts)
+                if (!moves && Split(row, y, force: columnEmpty) is { } parts)
                 {
                     PlaceRow(parts.Head, left);
                     AddNotes(NotesOf(parts.Head));
@@ -1934,6 +1939,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 if (row.Header || omitted || headers.Count == 0)
                     row = row.AtPageTop();
+                moves = false;
             }
             if (broke)
                 row = row.Continued();
@@ -3007,9 +3013,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// the paragraphs kept with it go along back to this one unless one of them can break and give its last lines (as
     /// Word pushes paragraphs back, measured with docx/local/kc2 … kc12: chains taller than a column move too, a
     /// paragraph that can break keeps its start here). Lays out no more than a column of paragraphs, so long chains
-    /// (docx/external/powertools/LIR*: 3500 list items kept with each other) cost little.
+    /// (docx/external/powertools/LIR*: 3500 list items kept with each other) cost little. A chain that begins inside
+    /// the table at <paramref name="index"/> begins at its row <paramref name="fromRow"/>.
     /// </summary>
-    bool ChainBreaks(List<Block> blocks, int index, List<Line>? lines, double width, double top)
+    bool ChainBreaks(List<Block> blocks, int index, List<Line>? lines, double width, double top, int fromRow = 0)
     {
         var y = top;
         // Whether a paragraph of the chain placed so far could break and give its last lines to the next column.
@@ -3024,16 +3031,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     return false;
                 if (k > index && blocks[k - 1] is ParagraphBlock before)
                     y += SpaceAfter(before, table);
-                // Rows do not break for a chain: each must fit; one kept with the next carries the chain on, through
-                // the table to the block after it where all are (docx/local/tk10, tk11, tk13: a heading goes along with
-                // a first row that does not fit below it).
+                // Rows kept with the next one do not break for a chain: each must fit, and carries the chain on,
+                // through the table to the block after it where all are; the first row that is not kept needs only to
+                // begin here, all of it where it may not split (docx/local/tk10, tk11, tk13: a heading goes along with
+                // a first row that does not fit below it; tkr-a, tkr-e, tkr-g, tkr-h: a kept row stays above the start
+                // of a row that splits, goes on with one that may not split or is kept itself).
                 var box = LaidTable(table, width, k > index ? blocks[k - 1] as ParagraphBlock ?? LastParagraph(blocks, k - 1) : stylePrevious, keep: true);
-                for (var r = 0; r < box.Rows.Count; r++)
+                for (var r = k == index ? fromRow : 0; r < box.Rows.Count; r++)
                 {
-                    if (y + box.Rows[r].Height + box.Rows[r].BottomBorderWidth > Bottom + 0.01)
-                        return !gives;
-                    y += box.Rows[r].Height;
-                    if (!RowKept(table.Table, r))
+                    var row = box.Rows[r];
+                    var kept = RowKept(table.Table, r);
+                    if (y + row.Height + row.BottomBorderWidth > Bottom + 0.01)
+                        return kept || Bottom - y <= row.TopWidth + 1 || row.Split(Bottom - y - row.BottomBorderWidth) == null ? !gives : false;
+                    y += row.Height;
+                    if (!kept)
                         return false;
                 }
                 continue;
