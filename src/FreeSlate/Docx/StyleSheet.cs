@@ -96,7 +96,10 @@ public sealed class StyleSheet
         }
         foreach (var e in root.Elements(Wml.W + "style"))
         {
-            var id = e.Attr("styleId");
+            // A style without an id has its name for one, as it is (measured with docx/local/styleid: a paragraph naming
+            // it applies it, one naming it without its spaces or in another case not, nor one naming a style that has
+            // an id by its name; docx/external/poi/60329, written by SQL Server Reporting Services).
+            var id = e.Attr("styleId") ?? e.Child("name").Val();
             if (id == null)
                 continue;
             var style = new StyleDefinition

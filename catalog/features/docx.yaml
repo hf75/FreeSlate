@@ -425,7 +425,10 @@ areas:
           none is named. The default paragraph and table style is the last one marked w:default; without one marked,
           paragraphs take the paragraph style named Normal (in any case, whatever its id), tables none
           (docx/local/nodefault-*, tdef-*). Word keeps its own Normal Table: a table style of that name shows no
-          borders, indent or formatting of its own, its cells 5.4 pt margins left and right (docx/local/tn-*). The
+          borders, indent or formatting of its own, its cells 5.4 pt margins left and right (docx/local/tn-*). A
+          style without w:styleId has its name for an id, as it is, without w:type it is a paragraph style; styles
+          are named by id only (docx/local/styleid: neither the name without its spaces or in another case nor a
+          name of a style with an id applies; docx/external/poi/60329, by SQL Server Reporting Services). The
           other elements are for editing and change nothing printed.
 
       - id: style.defaults
