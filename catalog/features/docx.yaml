@@ -1847,7 +1847,9 @@ areas:
           at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight
           (docx/generated/drawings). The paragraph's top lies above its own space before (below the space after the
           paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules, within 0.05
-          pt); relative to the character counts from the start of the character before the anchor (docx/local/anchor-
+          pt); an anchor in a part of the paragraph in a later column or page counts from that part and its column
+          (extras-layout/shape-anchored-in-follow: a rectangle anchored at the end of a paragraph that goes on in the
+          next page's second column stands there; extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6); relative to the character counts from the start of the character before the anchor (docx/local/anchor-
           char, within 0.01 pt). In table cells the column and margin across are the cell's text area, the page and
           its margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is
           set or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH,

@@ -2443,6 +2443,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var hereAtTop = columnEmpty;
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
         var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top, double X)>(ReferenceEqualityComparer.Instance);
+        // The part of the paragraph in each column or page (its first line's top there, the column), and the part each
+        // anchor's line stands in.
+        (PageBox Page, double Top, double Left, double Width)? partAt = null;
+        var lineParts = new Dictionary<AnchorInline, (PageBox Page, double Top, double Left, double Width)>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
         // Whether the paragraph went on in another column or page, where the objects that pushed its lines down here
         // are not in their way.
@@ -2533,8 +2537,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // it begins with the line.
             anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - skip - firstLineTop.Top) < 0.01
                 ? paragraphTop.Top : y, left, width);
+            if (partAt is not { } part || !ReferenceEquals(part.Page, page) || Math.Abs(part.Left - left) > 0.01)
+                partAt = ReferenceEquals(anchorAt.Value.Page, page) && Math.Abs(anchorAt.Value.Left - left) < 0.01 ? anchorAt : (page!, y, left, width);
             foreach (var anchor in line.Anchors ?? [])
+            {
                 lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
+                lineParts[anchor] = partAt!.Value;
+            }
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
                 line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
@@ -2634,7 +2643,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Floating drawings anchored in the paragraph, placed relative to its page, column, paragraph or line.
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
         {
-            var (anchorPage, anchorTop, columnLeft, columnWidth) = anchorAt ?? (page!, y, left, width);
+            // An object anchored in a part of the paragraph in a later column or page stands relative to that part
+            // (measured with docx/external/libreoffice/extras-layout/shape-anchored-in-follow: a rectangle anchored at
+            // the end of a paragraph going on in the second column of the next page stands 92 pt right of that column
+            // and 81 pt below the paragraph's top there).
+            var (anchorPage, anchorTop, columnLeft, columnWidth) = lineParts.TryGetValue(anchor, out var own) ? own : anchorAt ?? (page!, y, left, width);
             var inLine = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage;
             anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
                 character: inLine ? at.X : columnLeft));
