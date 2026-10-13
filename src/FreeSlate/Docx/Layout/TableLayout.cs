@@ -1429,18 +1429,19 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
                 case TableBlock nested:
                 {
+                    // A nested table needs its content and the width it prefers itself, not what its cells prefer or
+                    // its grid fixes: wider ones it gives up in a cell narrower (measured with docx/local/np-1 to np-7: a
+                    // nested cell of 400 pt, of three of 150 pt or of a fixed table in an outer cell preferring 200 pt
+                    // leaves the outer columns theirs, a nested table preferring 400 pt widens it; docx/external/
+                    // libreoffice/core-layout/floattable-nested-rowspan, tika/testWORD).
                     var rows = nested.Table.Rows.Where(r => !r.Format.Hidden).ToList();
                     var columns = Math.Max(nested.Table.Grid.Count, rows.Count == 0 ? 0 : rows.Max(r => r.Cells.Count == 0 ? 0 : r.Cells.Max(c => c.Column + c.Format.GridSpan)));
-                    if (nested.Table.Format.Layout == "fixed" && nested.Table.Grid.Count > 0)
+                    if (columns > 0)
                     {
-                        min = Math.Max(min, nested.Table.Grid.Sum());
-                        max = Math.Max(max, nested.Table.Grid.Sum());
-                    }
-                    else if (columns > 0)
-                    {
-                        var (nmin, nmax, _, _, _, _) = Ranges(nested.Table, rows, columns, 100000, fields);
-                        min = Math.Max(min, nmin.Sum());
-                        max = Math.Max(max, nmax.Sum());
+                        var (_, nmax, _, _, natural, _) = Ranges(nested.Table, rows, columns, 100000, fields);
+                        var own = nested.Table.Format.Width is { Type: "dxa", Value: > 0 } preferred ? preferred.Value : 0;
+                        min = Math.Max(min, Math.Max(natural.Sum(), own));
+                        max = Math.Max(max, nested.Table.Format.Layout == "fixed" && nested.Table.Grid.Count > 0 ? nested.Table.Grid.Sum() : nmax.Sum());
                     }
                     break;
                 }
