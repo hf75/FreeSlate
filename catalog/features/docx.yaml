@@ -1488,7 +1488,10 @@ areas:
           margin or the page (or aligns by w:tblpXSpec; before Word 2013 their first cell's text stands there, as at an
           indent: docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in modes
           14 and 12, extras-ooxmlexport/fdo68607), their top w:tblpY below the next paragraph's top above its
-          space before (docx/local/floatanchor-*), the margin or the page (or aligns by w:tblpYSpec); text wraps
+          space before (docx/local/floatanchor-*), the margin or the page (or aligns by w:tblpYSpec), the margin
+          without w:vertAnchor; one without a vertical position (tblpY 0, no tblpYSpec or inline) stands at its
+          paragraph before Word 2013 whatever its anchor, at its anchor's top from then on (docx/local/ta-*, tb-*;
+          core-layout/floattable-deleted-anchor, writerfilter-dmapper/floattable-header); text wraps
           around them on both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table
           exactly as in Word). The paragraph after the table adds all its space before to the space after the one
           before it. A table taller than the rest of the page goes on at the top of the next page's body at the same
@@ -1505,7 +1508,9 @@ areas:
           cell's left edge, tblpXSpec right at its right), tblpY below the next paragraph's top or the content's top,
           not above the cell, and the cell's text after it wraps around it; the cell is as high as it reaches (docx/
           local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15; core-layout/floattable-del-empty, extras-layout/
-          tdf170477, writerfilter-dmapper/floattable-nested-layout); in notes it stays in the text
+          tdf170477, writerfilter-dmapper/floattable-nested-layout); without vertAnchor tblpY counts from the content's
+          top, and one without a vertical position not anchored to the text stands in the text as other tables there,
+          the text below it (docx/local/nh-*, ni-* in modes 14 and 15); in notes it stays in the text
           (writerfilter-dmapper/floattable-footnote-redline). Known deviations: a
           table centered on the margin stands about 5 pt further right in Word; of two floating tables after each other
           in a cell Word sets the second below the first before Word 2013, beside it from then on (docx/local/ng-3 to

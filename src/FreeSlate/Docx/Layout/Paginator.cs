@@ -317,7 +317,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // table at tblpY 0 stands right below the space after the paragraph before it, whatever the next one has
         // before; docx/external/libreoffice/core-text/floattable-heading-split-hyphen).
         var textTop = y + (columnEmpty ? 0 : pendingAfter);
-        var (frameTop, frameHeight) = position.Attr("vertAnchor") switch
+        var anchor = VerticalAnchor(position, "vertAnchor");
+        var (frameTop, frameHeight) = anchor switch
         {
             "page" => (0.0, page!.Height),
             "margin" => (page!.BodyTop, page.BodyBottom - page.BodyTop),
@@ -341,7 +342,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "top" or "inside" => frameTop,
             "bottom" or "outside" => frameTop + frameHeight - height,
             "center" => frameTop + (frameHeight - height) / 2,
-            "inline" => textTop,
             _ => frameTop + Twips("tblpY"),
         };
         // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
@@ -380,7 +380,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // with docx/local/floatsplit-14p-*: as many lines as anchored to the text; dummyv0, -v2, -v4: variants of
         // docx/external/libreoffice/core-doc/floating-table-dummy-text; floattable-compat14); Word 2013 breaks it at
         // the bottom margin (floattable-2cols, floattable-footer).
-        var shift = position.Attr("vertAnchor") is "page" or "margin" && context.CompatibilityMode < 15 ? textTop - top : 0;
+        var shift = anchor is "page" or "margin" && context.CompatibilityMode < 15 ? textTop - top : 0;
         double Limit() => Bottom - (split ? 0 : shift);
         // w:doNotBreakWrappedTables keeps the table whole where it stands (docx/external/libreoffice/
         // writerfilter-dmapper/do-not-break-wrapped-tables).
@@ -577,17 +577,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     readonly HashSet<PlacedLine> frameLines = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
-    /// What a text frame's w:y and w:yAlign count from: w:vAnchor, the margin without it; a frame without a vertical
-    /// position (w:y 0 and no w:yAlign or inline) stands at its paragraph before mode 15 whatever its anchor (measured
-    /// with docx/local/fd-1, fd-3, fd-5: w:y 144 pt below the top margin, yAlign bottom on the bottom margin; ff-*, fg-*:
+    /// What a text frame's w:y and w:yAlign count from (a floating table's w:tblpY and w:tblpYSpec with
+    /// <paramref name="anchor"/> vertAnchor): w:vAnchor, the margin without it; a frame without a vertical position
+    /// (w:y 0 and no w:yAlign or inline) stands at its paragraph before mode 15 whatever its anchor (measured with
+    /// docx/local/fd-1, fd-3, fd-5: w:y 144 pt below the top margin, yAlign bottom on the bottom margin; ff-*, fg-*:
     /// without w:y on the top margin or the page's top in mode 15, at its paragraph in modes 12 and 14 also with
-    /// vAnchor margin or page and y 0, yAlign inline as no position; fh-*: the same in headers;
-    /// docx/external/libreoffice/extras-ooxmlexport/special_styles, core-ooxml-pass/fdo81491).
+    /// vAnchor margin or page and y 0, yAlign inline as no position; fh-*: the same in headers; ta-*, tb-*: a table
+    /// alike; docx/external/libreoffice/extras-ooxmlexport/special_styles, core-ooxml-pass/fdo81491,
+    /// core-layout/floattable-deleted-anchor).
     /// </summary>
-    string VerticalAnchor(XElement properties) =>
-        context.CompatibilityMode < 15 && (properties.Twips("y") ?? 0) == 0 && properties.Attr("yAlign") is null or "inline"
+    string VerticalAnchor(XElement properties, string anchor = "vAnchor") =>
+        context.CompatibilityMode < 15 && (properties.Twips(anchor == "vAnchor" ? "y" : "tblpY") ?? 0) == 0
+            && properties.Attr(anchor == "vAnchor" ? "yAlign" : "tblpYSpec") is null or "inline"
             ? "text"
-            : properties.Attr("vAnchor") ?? "margin";
+            : properties.Attr(anchor) ?? "margin";
 
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
@@ -1189,8 +1192,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "center" => spanLeft + (span - laid.Width) / 2,
                     _ => spanLeft + Twips("tblpX") - (context.CompatibilityMode < 15 ? laid.Inset : 0),
                 };
-                var onPage = position.Attr("vertAnchor") is "page" or "margin";
-                var (areaTop, areaHeight) = position.Attr("vertAnchor") switch
+                var onPage = VerticalAnchor(position, "vertAnchor") is "page" or "margin";
+                var (areaTop, areaHeight) = VerticalAnchor(position, "vertAnchor") switch
                 {
                     "page" => (0.0, s.PageHeight),
                     "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),

@@ -1601,8 +1601,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // after it or of the cell's content, and the text after it goes around it (measured with
                 // docx/local/nf-1 to nf-7: tblpX and tblpY from the text's left and the next paragraph's top, the margin
                 // as the text, the page from the cell's left edge, tblpXSpec right at the text's right; docx/external/
-                // libreoffice/core-layout/floattable-del-empty).
-                case TableBlock floating when floats && floating.Table.Format.Floating is { } position:
+                // libreoffice/core-layout/floattable-del-empty). One without a vertical position (tblpY 0, no tblpYSpec
+                // or inline) not anchored to the text stands in the text as other tables there, the text below it, and
+                // with a position the cell's top counts without vertAnchor (measured with docx/local/nh-*, ni-* in modes
+                // 14 and 15: without vertAnchor or with margin, after the cell's first paragraph or at its top; with
+                // vertAnchor text the text goes beside it, nf-7, ni-1).
+                case TableBlock floating when floats && floating.Table.Format.Floating is { } position
+                    && !((position.Twips("tblpY") ?? 0) == 0 && position.Attr("tblpYSpec") is null or "inline" && position.Attr("vertAnchor") != "text"):
                 {
                     var box = Layout(floating.Table, width, fields, previous);
                     double Twips(string name) => position.Twips(name) ?? 0;
@@ -1613,7 +1618,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         "center" => (width - box.Width) / 2,
                         _ => Twips("tblpX") - (position.Attr("horzAnchor") == "page" ? edge : 0) - (context.CompatibilityMode < 15 ? box.Inset : 0),
                     };
-                    var top = Math.Max(0, (position.Attr("vertAnchor") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
+                    var top = Math.Max(0, ((position.Attr("vertAnchor") ?? "margin") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
                     var tableTop = top;
                     foreach (var row in box.Rows)
                     {
