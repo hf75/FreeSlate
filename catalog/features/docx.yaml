@@ -1280,7 +1280,9 @@ areas:
           known deviation: a chain going on at the top of a page that begins with notes from the page before, which
           Word leaves to those notes alone). Notes left after the last page of text fill pages of their own. The
           notes stand at the bottom of the page, ending at
-          the bottom margin, under the separator (0.6 pt thick, 144 pt long, through the middle of its line); a
+          the bottom margin, under the separator (144 pt long, its font's strikeout stroke on whole device dots: Aptos
+          12 pt 4.3 pt above the baseline and 0.6 pt thick, Times New Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and
+          0.8 pt; docx/generated/notes, docx/local/fbn-*, docx/external/libreoffice/extras-ooxmlexport/tdf90810short); a
           section whose own w:footnotePr puts them beneath the text has them follow its last line (the settings' alone
           do not; docx/local/fnpages-f, -g); pages of several columns spread whole notes into columns of their own
           width, each column taking notes until it holds its share of their height, under one separator at the left,

@@ -340,11 +340,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                         svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise - piece.Shift));
                     continue;
                 }
-                // A note separator: a line 0.6 pt thick through the middle of its line, 144 pt long (measured with
-                // docx/generated/notes).
+                // A note separator: its font's strikeout stroke, 144 pt long, on whole device dots as strikethrough
+                // (measured with docx/generated/notes in Aptos 12 pt, docx/local/fbn-* in Times New Roman 10 pt and
+                // docx/external/libreoffice/extras-ooxmlexport/tdf90810short in Calibri 11 pt: its top 4.3, 2.5 and
+                // 2.8 pt above the baseline, 0.6, 0.5 and 0.8 pt thick).
                 if (piece.Separator)
                 {
-                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(placed.Top + placed.Line.Height / 2 - 0.3)}\" width=\"{Px(piece.Width)}\" height=\"{Px(0.6)}\" fill=\"#000\"/>");
+                    var data = piece.Style.Font.Data;
+                    var strikeTop = Dots(data.StrikeoutPosition * piece.Style.Size);
+                    var strikeThickness = Math.Max(1, Dots(data.StrikeoutThickness * piece.Style.Size));
+                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - strikeTop * Dot)}\" width=\"{Px(piece.Width)}\" height=\"{Px(strikeThickness * Dot)}\" fill=\"#000\"/>");
                     continue;
                 }
                 // Ruby: the base text and above it the phonetic text (catalog: run.ruby).
