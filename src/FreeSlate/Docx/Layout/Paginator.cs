@@ -403,7 +403,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 page!.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
             page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), partTop - Twips("topFromText"),
-                x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides"));
+                x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides")
+                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText") });
         }
         var split = false;
         // Before Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
@@ -450,6 +451,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         Draw(header);
                     onPage = 0;
                 }
+                if (row.Header || headers.Count == 0)
+                    row = row.AtPageTop();
             }
             Draw(row);
         }
@@ -457,7 +460,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             Close(last);
         else
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
-                x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides"));
+                x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
+                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText") });
         if (split)
         {
             y = page!.BodyTop;
@@ -1798,7 +1802,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var (from, to) = (left + box.Left, left + box.Left + box.Width);
         var height = box.Rows.Sum(r => r.Height);
-        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => e.Frame || e.Story))
+        var (columnLeft, columnWidth) = Column(column);
+        // A floating table of the text the table fits beside, or whose own box it does not reach, leaves it there
+        // (measured with docx/local/ib-1 to ib-7: a table of 90 pt beside one of 350 pt, of 468 pt below it;
+        // docx/external/libreoffice/writerfilter-dmapper/floattable-then-table, extras-layout/tdf167526,
+        // floattable-center-inline-overlap; extras-ooxmlexport/tdf92157: a table into the distance of a floating table
+        // in the right margin stays).
+        bool Beside(Exclusion e) => !e.Frame && !e.Story && (Math.Max(e.Left - columnLeft, columnLeft + columnWidth - e.Right) >= box.Width - 0.01
+            || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01);
+        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => !Beside(e)))
             .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom || Math.Max(e.Left - from, to - e.Right) < box.Width / 2) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
         for (var moved = true; moved;)
         {
@@ -1917,6 +1929,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         last = header;
                     }
                 }
+                if (row.Header || omitted || headers.Count == 0)
+                    row = row.AtPageTop();
             }
             if (broke)
                 row = row.Continued();

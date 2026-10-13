@@ -81,6 +81,17 @@ public sealed class CellPart
         return settled;
     }
 
+    /// <summary>The part with its content <paramref name="dy"/> points further down, below a thicker top line.</summary>
+    public CellPart Lower(double dy)
+    {
+        var moved = new CellPart { ContentTop = ContentTop + dy, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered, Carried = Carried, Span = Span };
+        moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
+        moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
+        moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
+        moved.Anchors.AddRange(Anchors.Select(a => a.Offset(0, dy)));
+        return moved;
+    }
+
     /// <summary>The part moved down by <paramref name="dy"/> points.</summary>
     public CellPart Shifted(double dy)
     {
@@ -112,6 +123,43 @@ public sealed class RowBox
 
     /// <summary>The height of the lines at the row's top, above its content.</summary>
     public double TopWidth { get; init; }
+
+    /// <summary>
+    /// The lines at the row's top where it begins a part of its table on a page or in a column (the table's top line
+    /// instead of the one it shares with the row above), and their height; null where they are the row's own.
+    /// </summary>
+    public List<FillRect>? PageTopBorders { get; set; }
+    public List<Stroke>? PageTopStrokes { get; set; }
+    public double PageTopWidth { get; set; }
+
+    /// <summary>
+    /// The row where it begins a part of its table on a page or in a column, no header rows above it: the table's top
+    /// line above it, its content as much lower as that is thicker (measured with docx/local/cb-1 to cb-7: a 3 pt outer
+    /// top line over the continued row of a table whose inside lines are 1 pt or none, after a cut in a row and
+    /// between rows, of floating tables too, in modes 14 and 15; docx/external/libreoffice/core-unocore/
+    /// floattable-split).
+    /// </summary>
+    public RowBox AtPageTop()
+    {
+        if (PageTopBorders == null || Math.Abs(TopWidth - PageTopWidth) < 0.001 && TopBorders.SequenceEqual(PageTopBorders))
+            return this;
+        var delta = PageTopWidth - TopWidth;
+        var copy = new RowBox
+        {
+            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
+            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
+        };
+        copy.Shading.AddRange(Shading);
+        copy.Verticals.AddRange(Verticals);
+        copy.Frames.AddRange(Frames);
+        copy.TopBorders.AddRange(PageTopBorders);
+        copy.TopStrokes.AddRange(PageTopStrokes ?? []);
+        copy.BottomBorders.AddRange(BottomBorders);
+        copy.BottomStrokes.AddRange(BottomStrokes);
+        foreach (var cell in Cells)
+            copy.Cells.Add(Math.Abs(delta) < 0.001 ? cell : cell.Lower(delta));
+        return copy;
+    }
 
     public List<CellPart> Cells { get; } = [];
 
@@ -362,6 +410,7 @@ public sealed class RowBox
         var copy = new RowBox
         {
             Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
+            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
@@ -780,7 +829,25 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
                 rowBox.Cells.Add(part);
             }
-            // Lines at the row's top, from the outer edge of the vertical line at their start to that at their end.
+            // Lines at the row's top, from the outer edge of the vertical line at their start to that at their end; where
+            // the row begins a part of the table on a page, the table's top line (RowBox.AtPageTop).
+            if (r > 0)
+            {
+                (rowBox.PageTopBorders, rowBox.PageTopStrokes) = ([], []);
+                for (var k = 0; k < columns; k++)
+                {
+                    var below = Owner(at[r, k]);
+                    if (below == null || k > 0 && Owner(at[r, k - 1]) == below)
+                        continue;
+                    if (Edge(null, below.CellBorders.Top, TableBorder(row, format, b => b.Top), false) is { Visible: true } line)
+                    {
+                        var (from, to) = Span(k, r);
+                        var (left, width) = Range(from, to);
+                        Horizontal(line, left, width, 0, rowBox.PageTopBorders, rowBox.PageTopStrokes);
+                        rowBox.PageTopWidth = Math.Max(rowBox.PageTopWidth, Width(line));
+                    }
+                }
+            }
             for (var k = 0; k < columns; k++)
             {
                 if (horizontal[r, k] is { Visible: true } line)
