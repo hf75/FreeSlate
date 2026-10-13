@@ -886,7 +886,10 @@ areas:
           fd-5); a frame without a vertical position (w:y 0, no w:yAlign or inline) stands at its paragraph before mode
           15 whatever its anchor and on its anchor's top from mode 15 (ff-*, fg-*, fh-*; core-ooxml-pass/fdo81491). The
           body's text goes around frames standing on the page, also lines above them and around those of headers
-          (special_styles: an envelope address at the page's bottom; fh-1).
+          (special_styles: an envelope address at the page's bottom; fh-1). Lines above a frame standing with the text
+          that it reaches with its w:vSpace go below it (notBeside), the frame keeping its place, and a next frame
+          follows them (fi-2, fi-3, fj-2; tdf105035_framePrB: a title and an author line framed with vSpace 187;
+          tdf164500_framePrBeforeTable); the last paragraph's space after stands in the frame (fk-*).
 
       - id: paragraph.eastAsian
         title: East Asian line breaking and character grid

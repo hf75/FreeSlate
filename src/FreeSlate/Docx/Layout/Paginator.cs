@@ -209,10 +209,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
-                // Text frames too push aside the lines above them (measured with docx/external/libreoffice/
+                // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
-                // bottom stand beside it).
-                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(p.FloatingTables.Where(e => e.Frame)).ToList());
+                // bottom stand beside it); those standing with the text move the lines they reach themselves (Lower).
+                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(p.FloatingTables.Where(e => e.Frame && !e.WithText)).ToList());
                 // Footnotes of later columns of a page take room from its earlier columns too: the page is laid out
                 // again with the room they took.
                 var foundBands = result.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
@@ -469,7 +469,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // docx/local/fb-*: 6 and 12 pt before put the frame's text and the text below it as much lower, after 12 pt
         // after the paragraph above too; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
         var spaceTop = dropCap is "drop" or "margin" ? 0 : SpaceBefore(first, null, false);
-        content += spaceTop;
+        // The last paragraph's space after stands in the frame too, below its lines and borders (measured with
+        // docx/local/fk-*: 16 pt after a line framed notBeside take the text below as much lower, the text beside a
+        // frame wrapped around goes on as far; docx/external/libreoffice/extras-ooxmlexport/tdf105035_framePrB).
+        var spaceBottom = dropCap is "drop" or "margin" ? 0 : OwnAfter(group[^1]);
+        content += spaceTop + spaceBottom;
         var height = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
         // The paragraph the frame belongs to: the first after it.
         var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
@@ -506,6 +510,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "center" => frameTop + (frameHeight - height) / 2,
             _ => frameTop + Twips("y"),
         };
+        // Lines above a frame standing with the text that reach into it or its w:vSpace go below it, the frame keeping
+        // its place, and the text goes on below them (measured with docx/local/fi-2, fi-3, fj-2: the paragraph before
+        // two frames centered with vSpace 187 and notBeside goes below both, the second standing below the first after
+        // that paragraph; docx/external/libreoffice/extras-ooxmlexport/tdf105035_framePrB).
+        var vSpace = Twips("vSpace");
+        var withText = VerticalAnchor(properties) == "text";
+        if (withText && properties.Attr("wrap") == "notBeside" && dropCap is null or "none")
+            Lower(top - vSpace, top + height + vSpace, left, width);
         // The frame's lines, its paragraphs' borders around the whole frame.
         var lineTop = top + spaceTop + borderTop;
         for (var k = 0; k < group.Count; k++)
@@ -514,20 +526,55 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += Between(group[k - 1], group[k]);
             foreach (var line in laid[k])
             {
-                page.Lines.Add(new PlacedLine(line, x, lineTop));
+                var placed = new PlacedLine(line, x, lineTop);
+                page.Lines.Add(placed);
+                frameLines.Add(placed);
                 lineTop += line.Height;
             }
         }
-        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + height, top: true, bottom: true, between: null);
+        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + height - spaceBottom, top: true, bottom: true, between: null);
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
-        var vSpace = Twips("vSpace");
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
         if (properties.Attr("wrap") != "none")
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
-                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true });
+                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText });
         return end;
     }
+
+    /// <summary>
+    /// Moves the last lines of the column that reach below <paramref name="from"/> down to <paramref name="to"/>, and
+    /// the text after them, where nothing but their lines stands among them and they still fit in the column.
+    /// </summary>
+    void Lower(double from, double to, double left, double width)
+    {
+        var moving = new List<int>();
+        for (var k = page!.Lines.Count - 1; k >= 0; k--)
+        {
+            var line = page.Lines[k];
+            if (frameLines.Contains(line))
+                continue;
+            if (line.Top + line.Line.Height <= from + 0.01 || line.Top < columnTop - 0.01 || line.Left <= left - width / 2 || line.Left >= left + width)
+                break;
+            moving.Add(k);
+        }
+        if (moving.Count == 0)
+            return;
+        var first = moving.Min(k => page.Lines[k].Top);
+        var shift = to - first;
+        bool Among(double top, double bottom) => bottom > first + 0.01 && top < y - 0.01;
+        if (shift <= 0 || y + shift > Bottom + 0.01
+            || page.Shading.Concat(page.Borders).Any(f => Among(f.Y, f.Y + f.Height))
+            || page.Strokes.Any(s => Among(Math.Min(s.Y1, s.Y2), Math.Max(s.Y1, s.Y2)))
+            || page.Drawings.Any(d => Among(d.Y, d.Y + d.Height)))
+            return;
+        foreach (var k in moving)
+            page.Lines[k] = page.Lines[k] with { Top = page.Lines[k].Top + shift };
+        y += shift;
+    }
+
+    /// <summary>The lines of text frames placed in the body, which the text below them does not move (see Lower).</summary>
+    readonly HashSet<PlacedLine> frameLines = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     /// What a text frame's w:y and w:yAlign count from: w:vAnchor, the margin without it; a frame without a vertical
@@ -569,6 +616,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a floating table's of the header or footer.</summary>
         public bool Story { get; init; }
+
+        /// <summary>Whether the area is a text frame's standing with the text (w:vAnchor text), not on the page.</summary>
+        public bool WithText { get; init; }
     }
 
     static Exclusion? ExclusionOf(PlacedDrawing drawing)
