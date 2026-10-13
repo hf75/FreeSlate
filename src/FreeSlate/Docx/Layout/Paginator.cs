@@ -575,7 +575,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += line.Height;
             }
         }
-        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + height - spaceBottom, top: true, bottom: true, between: null);
+        // A frame higher than its content by w:h has its borders all the way down, the last paragraph's space after
+        // inside them (docx/external/libreoffice/extras-ooxmlexport/tdf131420, tdf133702: frames of 91.25 and
+        // 104.45 pt framed from their top to their bottom).
+        var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
+        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + Math.Max(given, height - spaceBottom), top: true, bottom: true, between: null);
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
