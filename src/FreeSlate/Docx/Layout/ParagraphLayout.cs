@@ -134,6 +134,12 @@ public sealed class Line
     public double? Start { get; set; }
     public double? Limit { get; set; }
 
+    /// <summary>
+    /// Whether justification leaves the line's spacing as it is: a line a tab stop past the right indent took further
+    /// that ends in a line break (catalog: paragraph.tabs).
+    /// </summary>
+    public bool Natural { get; set; }
+
     /// <summary>Whether the line continues past a floating object in a second segment.</summary>
     public bool Jumped { get; set; }
 
@@ -361,6 +367,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// and 12.75 "a", 8 pt none, not so in mode 15, tr-3; docx/external/libreoffice/core-text/fly-minimal-wrap).
     /// </summary>
     const double MinimumSegment = 18, MinimumTightSegment = 9;
+
+    /// <summary>How far into the column a line taken past the right indent by a tab reaches before Word 2013 (22 in).</summary>
+    const double MaximumLine = 1584;
 
     /// <summary>The inline drawings of the paragraph being laid out, by their place in its text.</summary>
     readonly Dictionary<int, DrawingInline> objects = [];
@@ -957,6 +966,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var lastFit = -1;          // end of the text that fits, at a break opportunity
             var endBreak = (string?)null;
             var i = lineStart;
+            var extended = false;      // whether a tab stop past the right indent took the line further (see below)
+            HashSet<int>? overTabs = null;    // tabs to stops past the right indent, where the line does not break
+            var wordEnds = new List<int>();   // where the line's words end, its break opportunities
             if (none && lineStart < text.Length)
             {
                 end = lineStart + (char.IsHighSurrogate(text[lineStart]) && lineStart + 1 < text.Length ? 2 : 1);
@@ -975,7 +987,27 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 if (c == '\t')
                 {
-                    var to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out _);
+                    var to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out var stop);
+                    // A custom stop at or past the right indent holds: from Word 2013 on where it is not past the
+                    // column's edge, the line then reaching up to that edge; before where it is past it too, the line
+                    // then reaching 22 in (measured with docx/local/tov-a to tov-i, tovc-1 to tovc-12: left, right,
+                    // centered and decimal stops past the indent of paragraphs and cells, in modes 15, 14 and 12; Word's
+                    // line ends 1582 pt into the column in mode 14; tv-a to tv-d: stops at the indent, text after them
+                    // reaching past it; docx/external/libreoffice/extras-ooxmlexport/tdf77417). A default stop past it
+                    // does not, a line taken further keeps them up to its new end; from Word 2013 on the line does not
+                    // break next to tabs past the indent, a word that does not fit after them breaking inside where it
+                    // has no other place ("Left\taf", "ter"); justification fills the line to its new end.
+                    var ownLimit = width - right;
+                    if (!extended && stop != null && !positional.ContainsKey(i) && stop.Position >= limit - 0.005
+                        && segments.Count <= 1 && Math.Abs(limit - ownLimit) < 0.01
+                        && (context.CompatibilityMode < 15 || stop.Position <= Math.Max(width, ownLimit) + 0.005))
+                    {
+                        limit = context.CompatibilityMode < 15 ? MaximumLine : Math.Max(width, ownLimit);
+                        extended = true;
+                        to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out stop);
+                    }
+                    if (extended && context.CompatibilityMode >= 15 && (stop?.Position ?? to) > ownLimit + 0.005)
+                        (overTabs ??= []).Add(i);
                     if (to > limit + 0.005)
                     {
                         // A tab whose stop lies past the right margin starts the next line; at a line's start it fills
@@ -1054,6 +1086,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // which breaks inside then (lx-1, ly-6, lz-5), as after nothing but the list number and its tab or space
                 // (lw-2, lx-2, lx-4; docx/external/libreoffice/extras-ooxmlexport/tdf123054).
                 var breakAt = end == i && end > lineStart && text[end - 1] == '\t' ? end - 1 : end;
+                if (!fits && overTabs != null && (overTabs.Contains(breakAt) || overTabs.Contains(breakAt - 1)))
+                    breakAt = wordEnds.LastOrDefault(e => e <= breakAt && !overTabs.Contains(e) && !overTabs.Contains(e - 1), -1);
                 if (!fits && breakAt > lineStart && HasContent(text, Math.Max(lineStart, labelWhole), breakAt))
                 {
                     // Automatic hyphenation (measured with docx/local/hyph-a to -d and hyph-fit): the word that does not
@@ -1116,6 +1150,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 end = wordEnd;
                 lastFit = wordEnd;
+                wordEnds.Add(wordEnd);
                 i = wordEnd;
             }
             if (end == lineStart && i >= text.Length)
@@ -1128,6 +1163,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 lastFit = end;
 
             var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
+            // A line a stop past the indent took further is justified up to its new end where it wraps, not where it
+            // ends in a line break (measured with docx/local/tov-g, jz-a to jz-d: "a b c" after a left stop past the
+            // indent keeps its spaces before a line break in modes 14 and 15, after a stop inside the indents it fills
+            // the line).
+            if (extended)
+                (line.Limit, line.Natural) = (limit, endBreak == "line");
             if (hangAt >= lineStart && hangAt < end && !HasContent(text, hangAt + 1, end))
                 line.Hanging = advances[hangAt];
             DropEndSpace(line, text, end);
@@ -1759,7 +1800,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// it, aligned left, centered, right or on the decimal point; a hanging first line stops at the left indent; past
     /// the custom stops the default stops continue (multiples of w:defaultTabStop from the margin).
     /// </summary>
-    /// <param name="limit">The right indent: centered, right and decimal stops past it align at it (measured with docx/local/tab-break).</param>
+    /// <param name="limit">
+    /// Where the line ends: the right indent, or the edge a stop past it took the line to; centered, right and decimal
+    /// stops past it align at it (measured with docx/local/tab-break).
+    /// </param>
     double TabStop(ParagraphFormat format, double x, string text, int tab, List<RunStyle> charStyles, double[] advances, double left, double firstLine, double limit, out TabStop? stop)
     {
         stop = null;
@@ -1805,12 +1849,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var width = 0.0;
             for (var k = tab + 1; k < end; k++)
                 width += advances[k];
+            // Centered and decimal text that would reach past the line's end ends there (measured with docx/local/tv-c,
+            // tv-d: a word of 200 pt centered 20.8 pt short of the indent, "12," and 40 zeros at a decimal stop at the
+            // indent, in modes 14 and 15).
             var start = t.Align switch
             {
                 "center" or "right" or "end" or "decimal" when t.Position > limit + 0.005 => limit - width,
-                "center" => t.Position - width / 2,
+                "center" => Math.Min(t.Position - width / 2, limit - width),
                 "right" or "end" => t.Position - width,
-                "decimal" => DecimalStart(text, tab + 1, end, advances, t.Position, width, context.DecimalSymbol),
+                "decimal" => Math.Min(DecimalStart(text, tab + 1, end, advances, t.Position, width, context.DecimalSymbol), limit - width),
                 _ => t.Position,
             };
             return Math.Max(x, start);
@@ -2437,7 +2484,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         var justified = jc is "both" or "lowKashida" or "mediumKashida" or "highKashida" or "distribute" or "thaiDistribute";
         // The last line of a justified paragraph keeps its natural spacing, unless it took a word by squeezing.
-        var justify = justified && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
+        var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
         if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled))

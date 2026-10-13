@@ -856,9 +856,18 @@ areas:
           Leaders repeat their character at its advance rounded to Word's 600 dpi device (dots of Aptos 12 pt every
           3.48 pt), on a grid from the page's left edge, every one that fits between the tab's start and end. Bar tabs
           draw a line through the line and the space after the paragraph. Decimal stops align on the settings' decimal
-          symbol (with a German comma, 12.5 ends at the stop). A left stop past the right margin moves the tab to the
-          next line, where it fills the line; centered, right and decimal stops past it align at the margin
-          (docx/generated/tabs, docx/local/tab-rules, tab-break). A tab goes to the next line together with the word
+          symbol (with a German comma, 12.5 ends at the stop). A custom stop at or past the right indent holds: from
+          Word 2013 on where it is not past the column's or the cell's edge, the rest of the line then reaching up to
+          that edge and justified to it where it wraps (not where it ends in a line break, docx/local/jz-a to jz-d),
+          the line not breaking next to such tabs (a word that does not fit after them breaks inside where it has no
+          other place); before Word 2013 also past the edge, the line then reaching
+          22 in into the column (docx/local/tov-a to tov-i, tovc-1 to tovc-12, tv-a to tv-d in modes 15, 14 and 12;
+          docx/external/libreoffice/extras-ooxmlexport/tdf77417, extras-ooxmlimport/
+          tdf156078_rightTabOutsideParaRightIndent). Default stops past the indent do not hold, except on a line an
+          earlier stop took further. From Word 2013 on a left stop past the column's edge moves the tab to the next
+          line, where it fills the line; centered, right and decimal stops past it align at the indent, or at the edge
+          where an earlier stop took the line there (docx/generated/tabs, docx/local/tab-rules, tab-break). Centered
+          and decimal text that would reach past the line's end ends there (tv-c, tv-d). A tab goes to the next line together with the word
           after it where that word does not fit after it (docx/local/lw-6 to lw-10; engine.lineLayout). An absolute position tab (w:ptab) aligns what follows
           it at the left edge, the middle or the right edge of the margins or indents, as a stop of that alignment
           there would (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt).
