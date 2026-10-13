@@ -847,7 +847,9 @@ areas:
           (docx/local/kcs-2-*, kcs-3-*). A first line that ends in a page or column break needs
           no second line with it, a paragraph that ends with one ends its chain (docx/external/libreoffice/
           extras-ooxmlexport/testPageref: a page break kept with the next paragraph through its style makes no empty
-          page), and a line of nothing but such a break stays on its page, past the bottom too
+          page); an empty paragraph that holds a continuous section break and takes no room ends a chain too, as one
+          that always fits (docx/local/keepsect-k1 to -k4: a heading kept with it stays at the bottom of the page, with
+          "x" in the paragraph or without the break it goes on), and a line of nothing but such a break stays on its page, past the bottom too
           (docx/external/libreoffice/extras-ooxmlexport/FDO77715: no empty pages before headings that begin with a
           column break). Tables take part: a row whose first cell's first paragraph is kept with the next one carries
           the chain on to the next row or block and does not break for it, its other cells and paragraphs do not count;

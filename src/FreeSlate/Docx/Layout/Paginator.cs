@@ -954,6 +954,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether the section after the one being placed begins on the same page (continuous).</summary>
     bool nextContinuous;
 
+    /// <summary>
+    /// Whether a paragraph at <paramref name="index"/> of its section is an empty one holding the section break after
+    /// other text of its section, which takes no room before a continuous section (see Place).
+    /// </summary>
+    bool TakesNoRoom(ParagraphBlock paragraph, int index) =>
+        paragraph is { EndsSection: not null, Format.Frame: null } && index > 0 && nextContinuous && paragraph.Label is not { Own.Length: > 0 }
+        && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline);
+
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
 
@@ -3064,6 +3072,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 if (paragraph.Format.PageBreakBefore == true)
                     return false;
+                // The chain ends at an empty paragraph that holds a continuous section break and takes no room
+                // (measured with docx/local/keepsect-k1: a heading kept with it stays at the bottom of the page, the
+                // next section's text goes to the next one; with "x" in it or without the break the heading goes too).
+                if (TakesNoRoom(paragraph, k))
+                    return !gives && section.Columns == 1 && !NotesShow(y, notesHeight, notes);
                 y += blocks[k - 1] switch
                 {
                     ParagraphBlock before => Between(before, paragraph),
