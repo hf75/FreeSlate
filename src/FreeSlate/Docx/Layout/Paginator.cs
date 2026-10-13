@@ -2092,7 +2092,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>A paragraph's borders and shading (w:pBdr, w:shd).</summary>
-    sealed class Frame
+    internal sealed class Frame
     {
         public BorderLine? Top, Left, Bottom, Right, Between;
         public RgbColor? Fill;

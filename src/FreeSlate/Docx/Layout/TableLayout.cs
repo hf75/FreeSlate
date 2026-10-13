@@ -1646,6 +1646,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // Floating tables in the cell, which the text after them goes around, and how far down they reach.
         var around = new List<Paginator.Exclusion>();
         var floatBottom = 0.0;
+        // The border box of the paragraphs that share their borders, from the first one's top.
+        Paginator.Frame? previousFrame = null;
+        var boxTop = 0.0;
         contextual ??= !(context.CompatibilityMode < 15 && context.Compat("allowSpaceOfSameStyleInTable"));
         for (var b = 0; b < blocks.Count; b++)
         {
@@ -1677,6 +1680,24 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // Drawings count from the paragraph's top above its own space before, as in the body.
                     var paragraphTop = y + (first ? 0 : after);
                     y += first ? before : context.Between(after, before, ownAfter);
+                    // Paragraph borders and shading as in the body: their top and bottom lines with their space take room
+                    // (measured with docx/external/libreoffice/extras-layout/fdo48718-1: bordered paragraphs in a cell 3 pt
+                    // taller each, their lines drawn).
+                    var frame = Paginator.Frame.Read(paragraph.Format);
+                    var continues = frame != null && frame.Same(previousFrame);
+                    var nextContinues = frame != null && b + 1 < blocks.Count && blocks[b + 1] is ParagraphBlock followingParagraph
+                        && frame.Same(Paginator.Frame.Read(followingParagraph.Format));
+                    double? betweenAt = null;
+                    if (frame != null && !continues)
+                    {
+                        boxTop = y;
+                        y += frame.Top is { Visible: true } frameTop ? frameTop.Space + frameTop.Total : 0;
+                    }
+                    else if (frame?.Between is { Visible: true } between)
+                    {
+                        betweenAt = y + between.Space;
+                        y += 2 * between.Space + between.Total;
+                    }
                     var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                     var firstLine = lines.Count;
                     var linesTop = y;
@@ -1692,6 +1713,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         lines.Add(new PlacedLine(line, 0, y) { Widow = (paragraph.Format.WidowControl ?? true) && context.CompatibilityMode >= 15 });
                         y += line.Height;
                     }
+                    if (frame != null)
+                    {
+                        if (!nextContinues)
+                            y += frame.Bottom is { Visible: true } bottomLine ? bottomLine.Space + bottomLine.Total : 0;
+                        frame.Draw(fills, fills, 0, width, boxTop, y, top: !continues, bottom: !nextContinues, between: betweenAt);
+                    }
+                    previousFrame = frame;
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                     {
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
@@ -1752,6 +1780,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
                 case TableBlock nested:
                 {
+                    previousFrame = null;
                     y += first ? 0 : after;
                     var wasInCell = inCell;
                     inCell = cellBlocks;
