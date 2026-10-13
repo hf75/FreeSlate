@@ -1419,6 +1419,12 @@ areas:
           on 451 pt beside words of 12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
           aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt; docx/external/powertools/WC/
           WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a picture wider than a third);
+          a table narrower than its contents' minima grows to them, up to the width available, before they shrink;
+          one that prefers more than is available keeps them whole, however wide it becomes, in modes 14 and 15 alike
+          (docx/local/tblover-14, -15: pictures of 200 and 250 pt make a table preferring 400 pt 450 pt wide, of 300
+          and 250 pt 468 pt, the width between the margins; 700 pt of pictures in one preferring 500 pt; docx/external/
+          poi/bug59058: 553.5 pt of spacer pictures in a centered table preferring 552.75 pt); cells preferring more
+          than the table give way to its width (tblover T13 to T15);
           widths before and after rows do not widen columns. Cells over several columns widen them where they are too
           narrow together, the narrower spans first: what is missing goes to the columns nothing has given a width yet
           (in proportion to the grid's widths), else to those without a preferred width of their own in proportion to

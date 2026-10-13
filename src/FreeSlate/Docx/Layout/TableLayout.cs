@@ -1317,7 +1317,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// minimum, the others share the rest in proportion to their preferred widths, none below its contents' minimum
     /// (measured with docx/local/tblpic, table B: beside a 250 pt picture two cells preferring 150 pt take 100 pt
     /// each; tblpic2 V1), and where the contents' minima do not fit either, those shrink (docx/local/tblpic3, table G:
-    /// pictures 200, 200 and 100 pt wide in cells preferring 150 pt take 180, 180 and 91 pt).
+    /// pictures 200, 200 and 100 pt wide in cells preferring 150 pt take 180, 180 and 91 pt). A table narrower than
+    /// its contents' minima grows to them, up to the width available (docx/local/tblover-14, -15: pictures of 200 and
+    /// 250 pt make a table preferring 400 pt 450 pt wide, of 300 and 250 pt 468 pt, the width between the margins); one
+    /// that prefers more than is available keeps its contents' minima, however wide it becomes (700 pt of pictures in
+    /// a table preferring 500 pt; docx/external/poi/bug59058). Preferred cell widths give way to the table's width.
     /// </summary>
     double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target,
         BorderLine?[,]? lines = null)
@@ -1325,6 +1329,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var format = table.Format;
         var space = (target ?? available - allowance);
         var (min, max, margins, preferred, natural, spans) = Ranges(table, rows, columns, space, fields, lines);
+        if (target is { } wanted && Needed(natural, spans) is var needed && needed > wanted + 0.01)
+            space = wanted > available - allowance + 0.01 ? needed : Math.Min(needed, available - allowance);
         var sumMin = min.Sum();
         var sumMax = max.Sum();
         var widths = new double[columns];
@@ -1390,6 +1396,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
         }
         return widths;
+    }
+
+    /// <summary>How wide the columns' contents need the table at least: their own cells' minima, widened where a
+    /// cell over several columns needs more, without preferred widths.</summary>
+    static double Needed(double[] natural, List<(int From, int To, double Min)> spans)
+    {
+        var contents = (double[])natural.Clone();
+        foreach (var (from, to, need) in spans.OrderBy(s => s.To - s.From))
+        {
+            var have = 0.0;
+            for (var k = from; k < to; k++)
+                have += contents[k];
+            if (to > from && need > have)
+                contents[to - 1] += need - have;
+        }
+        return contents.Sum();
     }
 
     /// <summary>
