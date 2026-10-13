@@ -1128,7 +1128,10 @@ areas:
           Paragraph, whose style says 720, at 360; docx/generated/lists); where the numbering comes from the paragraph
           style itself, the style's override the level's attribute by attribute (a style's left 1080 with a level's
           left 1620 and hanging 360 makes left 1080, hanging 360; docx/local/styleind-A … -H). The number is drawn in
-          the paragraph mark's formatting with the level's run properties over it; only its ascent counts in the line
+          the paragraph mark's formatting with the level's run properties over it, but for the mark's shading: a mark
+          shaded directly, through its style or in a pattern leaves the number and its tab or space white, only the
+          level's own w:shd shades them, while the mark's highlight is theirs (docx/local/labelshd; docx/external/
+          libreoffice/extras-tiledrendering/tdf114799_shd, tdf114799_highlight); only its ascent counts in the line
           height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high), and beside nothing
           but drawings the line has no descent at all (docx/local/lt-8, lt-10: a bullet beside a 40 pt shape makes the
           line 40 pt high). A level without w:start counts from 0, where letters and roman numbers show nothing

@@ -801,7 +801,13 @@ public sealed partial class ModelReader(DocumentContext context)
             format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph, numberingUnderStyle: direct.NumberingId == null);
             var levelRun = new RunFormat();
             levelRun.Apply(next.Level.RunProperties);
+            // The number takes the mark's highlight but not its shading, the paragraph style's neither: only the
+            // level's own w:shd shades it (measured with docx/local/labelshd: a mark shaded yellow, directly, through
+            // its style or in a pattern, leaves the number and its tab or space white, a mark highlighted yellow
+            // highlights them, a level's shading or highlight is theirs; docx/external/libreoffice/
+            // extras-tiledrendering/tdf114799_shd, tdf114799_highlight).
             var numberFormat = mark.Clone();
+            (numberFormat.ShadingPattern, numberFormat.ShadingColor, numberFormat.ShadingFill) = (null, null, null);
             numberFormat.Overlay(levelRun);
             label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level) { Own = next.Own };
         }
