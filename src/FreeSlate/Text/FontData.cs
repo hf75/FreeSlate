@@ -419,7 +419,7 @@ public sealed class FontData : IDisposable
                 buffer.Direction = Direction.RightToLeft;
             if (language != null)
                 buffer.Language = new Language(language);
-            font.Shape(buffer, parsed);
+            font.Shape(buffer, KernsAlways(piece) ? [.. parsed.Where(f => f.Tag != KernFeature.Tag), KernFeature] : parsed);
             var infos = buffer.GlyphInfos;
             var positions = buffer.GlyphPositions;
             for (var i = 0; i < infos.Length; i++)
@@ -431,6 +431,23 @@ public sealed class FontData : IDisposable
             offset += piece.Length;
         }
         return result.ToArray();
+    }
+
+    static readonly Feature KernFeature = Feature.TryParse("kern", out var kern) ? kern : throw new InvalidOperationException();
+
+    /// <summary>
+    /// Whether Word kerns the text whatever its run's w:kern: Arabic script (measured with docx/local/csfeat-a and -b:
+    /// Persian in Traditional Arabic as wide as shaped with the font's kern feature, with w:kern and without; the Latin
+    /// letters of a w:rtl run stay unkerned, csfeat-d). Its pieces are shaped with kerning on.
+    /// </summary>
+    public static bool KernsAlways(string text)
+    {
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (Scripts.Of(rune.Value) is { Script: "Arab" })
+                return true;
+        }
+        return false;
     }
 
     /// <summary>The kerning of a glyph pair in the legacy 'kern' table in em, 0 when there is none.</summary>

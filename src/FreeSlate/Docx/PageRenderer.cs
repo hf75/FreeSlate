@@ -909,8 +909,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         // Our positions already hold the kerning; the browser must not add its own. The features the run turns on are
-        // the browser's to apply too.
-        sb.Append(" style=\"font-kerning:none");
+        // the browser's to apply too. Right-to-left text the browser shapes itself: Arabic with its kerning, as Word
+        // sets it (FontData.KernsAlways).
+        sb.Append(piece.RightToLeft && FreeSlate.Text.FontData.KernsAlways(text) ? " style=\"font-kerning:normal" : " style=\"font-kerning:none");
         if (on.Count > 0)
             sb.Append(";font-feature-settings:").Append(string.Join(',', on.Select(f => $"'{f}' 1")));
         sb.Append('"');

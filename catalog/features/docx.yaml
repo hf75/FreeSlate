@@ -749,7 +749,11 @@ areas:
           tnum by w14:numSpacing, ss01 to ss20 by w14:stylisticSets (docx/local/opentype: all 63 lines within 0.1 pt,
           every glyph Word's, Gabriola's contextual swashes included). The browser shapes every character that has a
           position of its own alone, so words with ligatures or contextual glyphs reach it whole with dx shifts, the
-          other words keep the position of every character.
+          other words keep the position of every character. Arabic script is kerned whatever w:kern says (Persian in
+          Traditional Arabic is as wide as shaped with its kern feature, with w:kern and without, 445 against 465 pt
+          over 34 words; the Latin letters of a w:rtl run stay unkerned: docx/local/csfeat-a, -b, -d; the browser,
+          which shapes right-to-left text whole, kerns it too; docx/external/libreoffice/extras-uiwriter/tdf104649
+          from 23 to 45 % of its lines).
 
       - id: run.animated
         title: Animated text
