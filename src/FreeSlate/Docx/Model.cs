@@ -866,6 +866,8 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             public readonly System.Text.StringBuilder Instruction = new();
             public readonly RunFormat Format = format;
+            /// <summary>The format of the instruction's first run with text.</summary>
+            public RunFormat? InstructionFormat;
             public bool InResult;
             public List<Inline>? Cached;
         }
@@ -1065,6 +1067,23 @@ public sealed partial class ModelReader(DocumentContext context)
         }
     }
 
+    /// <summary>
+    /// The format of a field result the layout computes: a page field Word computes as it prints takes the format of
+    /// its instruction's first run, not its saved result's, which it keeps only with \* MERGEFORMAT (measured with
+    /// docx/local/fldfmt: PAGE, NUMPAGES and PAGEREF of a bold begin, an italic instruction, a red 16 pt saved result
+    /// and a 9 pt end print italic 12 pt, an instruction beginning in a plain run plain, with MERGEFORMAT red 16 pt,
+    /// without a saved result italic; toclink-2: a PAGEREF in a table of contents); the other computed fields keep
+    /// the saved result's format.
+    /// </summary>
+    static RunFormat ResultFormat(FieldState.Frame field, string instruction)
+    {
+        var saved = field.Cached?.FirstOrDefault()?.Format;
+        if (FieldInline.TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF" && field.InstructionFormat is { } code
+            && !(saved != null && instruction.Contains("MERGEFORMAT", StringComparison.OrdinalIgnoreCase)))
+            return code;
+        return saved ?? field.Format;
+    }
+
     void Run(XElement r, string? paragraphStyle, List<Inline> content, FieldState field)
     {
         var direct = new RunFormat();
@@ -1136,13 +1155,18 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (ended.Cached == null && !ended.InResult && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             if (ended.Cached != null)
-                                field.Target(content).Add(new FieldInline(instruction, ended.Cached.FirstOrDefault()?.Format ?? ended.Format, ended.Cached));
+                                field.Target(content).Add(new FieldInline(instruction, ResultFormat(ended, instruction), ended.Cached));
                             break;
                     }
                     break;
                 case "instrText":
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
-                        field.Frames.Peek().Instruction.Append(e.Value);
+                    {
+                        var open = field.Frames.Peek();
+                        open.Instruction.Append(e.Value);
+                        if (open.InstructionFormat == null && e.Value.Trim().Length > 0)
+                            open.InstructionFormat = format;
+                    }
                     if (openFields.Count > 0 && !openFields[^1].InResult)
                         openFields[^1].Instruction.Append(e.Value);
                     break;

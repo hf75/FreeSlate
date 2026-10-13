@@ -1711,8 +1711,11 @@ areas:
           without a name, \p "oben", "unten", "Seite n"), else English; Word sets error texts in bold before Word
           2013 (fielderrors-14, -12); a field without an instruction shows nothing. A field Word computes shows its
           result also where the document saved none (no separate character; tdf154478: a PAGEREF of a missing
-          bookmark inside a table of contents shows the error text). Known deviation: LISTNUM keeps its saved
-          result.
+          bookmark inside a table of contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of
+          their instruction's first run, not of the saved result, which they keep only with \* MERGEFORMAT
+          (docx/local/fldfmt: of a bold begin, an italic instruction, a red 16 pt saved result and a 9 pt end Word
+          prints the number italic 12 pt; docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %).
+          Known deviation: LISTNUM keeps its saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks
