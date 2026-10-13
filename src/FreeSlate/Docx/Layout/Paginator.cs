@@ -1833,7 +1833,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var table = (TableBlock)blocks[index];
         var (left, width) = Column(column);
-        var box = LaidTable(table, width, stylePrevious, keep: false);
+        // A table right after another one continues it (TableLayout.Layout's joined).
+        var joined = index > 0 && blocks[index - 1] is TableBlock { Table.Format.Floating: null } prior && table.Table.Format.Floating == null
+                     && previousTable is { } p && ReferenceEquals(p.Block, prior) ? p.Box.BottomEdges : null;
+        var box = LaidTable(table, width, stylePrevious, keep: false, joined);
+        if (table.Table.Format.Floating == null)
+            previousTable = (table, box);
         if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0)
         {
             PlaceFloatingTable(blocks, index, floating, box, left, width);
@@ -3111,20 +3116,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// A table laid out at a width below a paragraph (whose style counts for its spacing); one the keep chain
     /// look-ahead laid out (<paramref name="keep"/>) is kept for the placement, which takes it.
     /// </summary>
-    TableBox LaidTable(TableBlock table, double width, ParagraphBlock? prior, bool keep)
+    TableBox LaidTable(TableBlock table, double width, ParagraphBlock? prior, bool keep, IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         var before = prior != null ? context.Styles.ParagraphStyleOf(prior.Format.Style) : TableLayout.NoParagraph;
-        if (laidTables.Remove(table, out var laid) && laid.Width == width && laid.Before == before)
+        if (laidTables.Remove(table, out var laid) && joined == null && laid.Width == width && laid.Before == before)
         {
             if (keep)
                 laidTables[table] = laid;
             return laid.Box;
         }
-        var box = tables.Layout(table.Table, width, before: before);
-        if (keep)
+        var box = tables.Layout(table.Table, width, before: before, joined: joined);
+        if (keep && joined == null)
             laidTables[table] = (width, before, box);
         return box;
     }
+
+    /// <summary>The last table of the flow placed and its layout, which a table right after it continues.</summary>
+    (TableBlock Block, TableBox Box)? previousTable;
 
     /// <summary>Tables the keep chain look-ahead laid out, with the width and the paragraph style before them.</summary>
     readonly Dictionary<TableBlock, (double Width, string? Before, TableBox Box)> laidTables = new(ReferenceEqualityComparer.Instance);

@@ -1365,7 +1365,10 @@ areas:
           known deviation: Word aligns what stays on the first page within its rows there), rows that skip grid
           columns (no lines where no cell is), nested tables, right-to-left tables (the
           first column at the right, the table at the right margin); tables that follow each other directly are joined
-          with one line between (docx/local/tbl-geom, tbl-features). Horizontal merges of old documents (w:hMerge): a
+          with one line between, an inside line: the first's last row's cell bottoms or inside line against the
+          second's first row's cell tops or inside line, neither table's own bottom and top lines (docx/local/tbl-geom,
+          tbl-features, tjn-a … tjn-i; docx/external/libreoffice/extras-ooxmlexport/tdf104061_tableSectionColumns).
+          Horizontal merges of old documents (w:hMerge): a
           cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does
           not show) and takes the right border of the last (docx/local/hmerge, 99.8 %). A cell's empty last paragraph
           after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15).

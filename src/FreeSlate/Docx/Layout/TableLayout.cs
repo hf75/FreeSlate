@@ -447,6 +447,13 @@ public sealed class TableBox
     /// 2.9 pt, 0.75 pt lines and spacing 1.5 pt; docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459).
     /// </summary>
     public double ContinuationTop { get; init; }
+
+    /// <summary>
+    /// The lines below the last row's cells as a table right after this one meets them (TableLayout.Layout's joined):
+    /// each cell's own bottom line or the table's inside line, from and to where in the column (none for tables with
+    /// cell spacing).
+    /// </summary>
+    public List<(double From, double To, BorderLine? Line)> BottomEdges { get; } = [];
 }
 
 /// <summary>
@@ -543,9 +550,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <param name="before">The style of the paragraph before the table (<see cref="NoParagraph"/> for none), which contextual spacing compares its first paragraph with.</param>
-    public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph)
+    /// <param name="joined">The bottom lines of a table right before this one (<see cref="TableBox.BottomEdges"/>), which it continues.</param>
+    public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph,
+        IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
-        var box = Laid(table, available, fields, before);
+        var box = Laid(table, available, fields, before, joined);
         // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
         if (table.Change is { } change)
         {
@@ -558,7 +567,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return box;
     }
 
-    TableBox Laid(TableModel table, double available, PageFields? fields, string? before)
+    TableBox Laid(TableModel table, double available, PageFields? fields, string? before,
+        IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         var format = table.Format;
         var rows = table.Rows.Where(r => !r.Format.Hidden).ToList();
@@ -680,6 +690,25 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var box = new TableBox { Left = origin0, Width = tableWidth, Inset = justification is "center" or "right" or "end" ? 0 : indent - origin0 };
         double X(double position) => origin0 + (rtl ? tableWidth - position : position);
         (double From, double Width) Range(double from, double to) => rtl ? (origin0 + tableWidth - to, to - from) : (origin0 + from, to - from);
+
+        // A table right after another one continues it: the line between them is an inside line, the cell bottoms
+        // or the inside line of the first's last row against the cell tops or the inside line of this one's first
+        // row, neither table's own bottom or top line (measured with docx/local/tjn-a to tjn-i: a 3 pt cell bottom
+        // or inside line of either table shows and takes its room, a 3 pt bottom or top line of either table not;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf104061_tableSectionColumns). A first row that begins a page
+        // has the table's own top line (RowBox.AtPageTop).
+        if (joined is { Count: > 0 } && rows.Count > 0)
+        {
+            for (var k = 0; k < columns; k++)
+            {
+                if (Owner(at[0, k]) is not { } below)
+                    continue;
+                var middle = X((x[k] + x[k + 1]) / 2 + shift);
+                var above = joined.FirstOrDefault(e => e.From <= middle + 0.01 && middle <= e.To + 0.01).Line;
+                var own = (below.CellBorders.Top ?? TableBorder(rows[0], format, b => b.InsideH)) is { Visible: true } top ? top : null;
+                horizontal[0, k] = BorderLine.Resolve(above, own);
+            }
+        }
 
         // Cell content and row heights.
         var topWidths = new double[rows.Count + 1];
@@ -831,7 +860,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
             // Lines at the row's top, from the outer edge of the vertical line at their start to that at their end; where
             // the row begins a part of the table on a page, the table's top line (RowBox.AtPageTop).
-            if (r > 0)
+            if (r > 0 || joined is { Count: > 0 })
             {
                 (rowBox.PageTopBorders, rowBox.PageTopStrokes) = ([], []);
                 for (var k = 0; k < columns; k++)
@@ -875,6 +904,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
             }
             box.Rows.Add(rowBox);
+        }
+        // What a table right after this one meets below its last row.
+        if (rows.Count > 0)
+        {
+            var last = rows.Count - 1;
+            for (var k = 0; k < columns; k++)
+            {
+                if (Owner(at[last, k]) is not { } cell || k > 0 && Owner(at[last, k - 1]) == cell)
+                    continue;
+                var end = k;
+                while (end + 1 < columns && Owner(at[last, end + 1]) == cell)
+                    end++;
+                var (from, width) = Range(x[k] + shift, x[end + 1] + shift);
+                var line = (cell.CellBorders.Bottom ?? TableBorder(rows[last], format, b => b.InsideH)) is { Visible: true } bottom ? bottom : null;
+                box.BottomEdges.Add((from, from + width, line));
+            }
         }
         return box;
 
