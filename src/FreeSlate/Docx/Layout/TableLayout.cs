@@ -757,7 +757,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift);
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift,
+                    Shading.Color(cell.Format.Shading) ?? Shading.Color(rows[r].ShadingException) ?? Shading.Color(format.Shading));
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
                 if (!span.ContainsKey(cell))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -1047,7 +1048,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var margins = Margins(row, cell, format);
                 var textLeft = left + Width(borders.Left) + margins.Left;
                 var textRight = right - Width(borders.Right) - margins.Right;
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left);
+                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left,
+                    Shading.Color(cell.Format.Shading));
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
                 cellHeights[cell] = Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom);
                 if (!span.ContainsKey(cell))
@@ -1646,10 +1648,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// line, its lines are turned when the row is built.
     /// </remarks>
     /// <param name="edge">How far the cell's text begins right of its left edge.</param>
-    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0)
+    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0,
+        RgbColor? shading = null)
     {
         var was = cellBlocks;
+        var behind = paragraphs.Background;
         cellBlocks = true;
+        // The cell's shading is behind its text, else what is behind the table (catalog: run.basic, automatic color).
+        paragraphs.Background = shading ?? behind;
         try
         {
             return CellBlocks(cell, width, fields, neighbors, edge);
@@ -1657,6 +1663,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         finally
         {
             cellBlocks = was;
+            paragraphs.Background = behind;
         }
     }
 

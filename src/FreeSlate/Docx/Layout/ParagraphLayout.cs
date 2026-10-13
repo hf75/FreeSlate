@@ -1636,8 +1636,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         foreach (var inline in paragraph.Content)
             Add(inline);
+        // Text of automatic color is white on dark shading, its own, its paragraph's or its cell's (measured with
+        // docx/local/autocolor: where 0.30 red + 0.59 green + 0.11 blue of the shading is below 60 of 255, C00000 and
+        // 006400 white, C80000, 006600 and 3C3C3C black; highlights change nothing).
+        var behind = Shading.Color(paragraph.Format.Shading) ?? Background;
+        for (var k = 0; k < list.Count; k++)
+        {
+            if (list[k].AutoColor && (list[k].Shading ?? behind) is { } shade && (0.30 * shade.R + 0.59 * shade.G + 0.11 * shade.B) * 255 < 60)
+                list[k] = whitened.GetOrAdd(list[k], s => s with { Color = FreeSlate.Drawing.RgbColor.White });
+        }
         return (text.ToString(), list, labelLength);
     }
+
+    readonly System.Collections.Concurrent.ConcurrentDictionary<RunStyle, RunStyle> whitened = new();
+
+    /// <summary>The shading behind the paragraphs being laid out where they have none of their own: their cell's.</summary>
+    public FreeSlate.Drawing.RgbColor? Background { get; set; }
 
     /// <summary>
     /// Whether a justified line takes a word that overflows it by squeezing its spaces: where they shrink less than half

@@ -244,6 +244,7 @@ public sealed class RunStyles(DocumentContext context)
             color = revision.Kind is "moveFrom" or "moveTo" ? Review.Moved : Review.Color(revision.Author);
         return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
         {
+            AutoColor = revision == null && Automatic(format),
             Revision = revision,
             Change = format.Change,
             CharacterStyle = format.Style,
@@ -386,6 +387,10 @@ public sealed class RunStyles(DocumentContext context)
             return color;
         return RgbColor.Black;
     }
+
+    /// <summary>Whether a run's color is automatic: neither w:val nor a theme color gives it one.</summary>
+    bool Automatic(RunFormat format) =>
+        !(format.Color is { Length: 6 } hex && hex != "auto") && !(format.ThemeColor is { } themeColor && ThemeColor(themeColor) is not null);
 
     RgbColor? ThemeColor(string name)
     {
