@@ -1,0 +1,522 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Reflection;
+using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Platform;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using FreeSlate.Opc;
+
+namespace FreeSlate.Viewer;
+
+/// <summary>
+/// Opens a Word document and shows it as FreeSlate's HTML document in the platform's web view, its pages as Word prints
+/// them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or against them.
+/// </summary>
+public partial class MainWindow : Window
+{
+    static readonly string PageScript = Resource("viewer.js");
+    static readonly string[] Extensions = [".docx", ".docm", ".dotx", ".dotm"];
+    // The zoom box's entries as the page script takes them: a fit or a factor.
+    static readonly string[] Zooms = ["'auto'", "'width'", "'page'", "0.5", "0.75", "1", "1.25", "1.5", "2"];
+    // The compare box's entries.
+    static readonly string[] Comparisons = ["off", "side", "blend", "diff"];
+    /// <summary>Pixels of Word's page pictures per CSS pixel: sharp up to a zoom of 200 % on a normal screen.</summary>
+    const double WordScale = 2;
+
+    readonly DocumentServer server = new();
+    readonly Settings settings = Settings.Load();
+    // This run's files: the documents' HTML, copies of documents another program holds open, Word's renderings.
+    readonly string work = Path.Combine(Path.GetTempPath(), "FreeSlate.Viewer", Guid.NewGuid().ToString("N"));
+    readonly bool wordInstalled = OperatingSystem.IsWindows() && WordPages.Installed;
+    readonly Dictionary<string, WordRendering> renderings = [];
+    readonly Dictionary<WordRendering, Uri> published = [];
+    readonly SemaphoreSlim wordGate = new(1, 1);
+    readonly DispatcherTimer reloadTimer = new() { Interval = TimeSpan.FromMilliseconds(600) };
+
+    View? view;                // the document shown
+    string? locked;            // a document waiting for its password
+    string? failed;            // a document that could not be shown, which F5 tries again
+    string? position;          // where the window was in the document before it was loaded again
+    bool scripted;             // whether the web view shows the document with the page script
+    int pageCount;
+    double seconds;            // how long FreeSlate took for the document
+    string? rendering;         // the view Word renders now
+    int renders;
+    int retries;
+    FileSystemWatcher? watcher;
+
+    /// <summary>A document as shown: the file, the file FreeSlate and Word read (a copy when another program holds
+    /// the document open), its password, whether with markup, and its version, which Word's renderings belong to.</summary>
+    sealed record View(string Path, string Source, string? Password, bool Markup, string Html, string Key);
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        Web.EnvironmentRequested += (_, e) =>
+        {
+            e.EnableDevTools = true;
+            // WebView2 keeps its profile next to the executable unless told otherwise.
+            if (e is WindowsWebView2EnvironmentRequestedEventArgs webView2 && string.IsNullOrEmpty(webView2.UserDataFolder))
+                webView2.UserDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FreeSlate", "Viewer", "WebView2");
+        };
+        Web.NavigationStarted += OnNavigationStarted;
+        Web.NewWindowRequested += (_, e) =>
+        {
+            e.Handled = true;
+            if (e.Request is { Scheme: "http" or "https" or "mailto" } uri)
+                _ = Launcher.LaunchUriAsync(uri);
+        };
+        Web.NavigationCompleted += async (_, e) =>
+        {
+            if (!e.IsSuccess)
+                return;
+            await Web.InvokeScript(PageScript);
+            scripted = true;
+            await ApplyZoom();
+            if (position != null)
+                await Web.InvokeScript($"freeSlateViewer.restore({position})");
+            position = null;
+            await ApplyComparison();
+        };
+        Web.WebMessageReceived += (_, e) => Dispatcher.UIThread.Post(() => OnPageMessage(e.Body));
+
+        // Files dropped on the window outside the web view (the web view gets its own, see OnNavigationStarted).
+        DragDrop.SetAllowDrop(this, true);
+        DragDrop.AddDragOverHandler(this, (_, e) => e.DragEffects = Dropped(e) != null ? DragDropEffects.Copy : DragDropEffects.None);
+        DragDrop.AddDropHandler(this, async (_, e) =>
+        {
+            if (Dropped(e) is { } file)
+                await LoadAsync(file);
+        });
+        AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
+        reloadTimer.Tick += async (_, _) =>
+        {
+            reloadTimer.Stop();
+            await ReloadAsync();
+        };
+
+        ZoomBox.SelectedIndex = Math.Clamp(settings.Zoom, 0, Zooms.Length - 1);
+        CompareBox.SelectedIndex = wordInstalled ? Math.Clamp(settings.Compare, 0, Comparisons.Length - 1) : 0;
+        if (!wordInstalled)
+        {
+            CompareBox.IsEnabled = false;
+            ToolTip.SetTip(CompareBox, "Der Vergleich braucht ein installiertes Word (Windows).");
+        }
+        BlendSlider.Value = Math.Clamp(settings.Blend, 0, 100);
+        MarkupToggle.IsChecked = settings.Markup;
+        WatchBox.IsChecked = settings.Watch;
+
+        Closing += (_, _) => settings.Save();
+        Closed += (_, _) =>
+        {
+            watcher?.Dispose();
+            server.Dispose();
+            if (OperatingSystem.IsWindows())
+                WordPages.Abort();
+            try { Directory.Delete(work, recursive: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        };
+    }
+
+    static string Resource(string name)
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(name)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    static bool IsWordFile(string path) => Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    static string? Dropped(DragEventArgs e) =>
+        e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).FirstOrDefault(p => p != null && IsWordFile(p));
+
+    static string Pages(int n) => n == 1 ? "1 Seite" : $"{n} Seiten";
+
+    /// <summary>
+    /// The web view goes nowhere but to this viewer's documents: a Word file dropped on it is opened, links to the web
+    /// open in the browser.
+    /// </summary>
+    void OnNavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
+    {
+        if (e.Request is not { } uri || server.Serves(uri) || uri.Scheme is "about" or "data")
+            return;
+        e.Cancel = true;
+        if (uri.IsFile && IsWordFile(uri.LocalPath))
+        {
+            var file = uri.LocalPath;
+            Dispatcher.UIThread.Post(async () => await LoadAsync(file));
+        }
+        else if (uri.Scheme is "http" or "https" or "mailto")
+            _ = Launcher.LaunchUriAsync(uri);
+    }
+
+    async void OnKey(object? sender, KeyEventArgs e)
+    {
+        var control = e.KeyModifiers == KeyModifiers.Control;
+        if (e.Key == Key.F5 || (control && e.Key == Key.R))
+        {
+            e.Handled = true;
+            await ReloadAsync();
+        }
+        else if (control && e.Key == Key.O)
+        {
+            e.Handled = true;
+            await OpenAsync();
+        }
+        else if (control && e.Key == Key.P && PrintButton.IsEnabled)
+        {
+            e.Handled = true;
+            Web.ShowPrintUI();
+        }
+    }
+
+    void OnPageMessage(string? message)
+    {
+        switch (message?.Split(' ', 2))
+        {
+            case ["pages", var n]:
+                pageCount = int.Parse(n, CultureInfo.InvariantCulture);
+                PageCount.Text = $"von {pageCount}";
+                if (view != null)
+                    StatusText.Text = $"{Path.GetFileName(view.Path)} · {Pages(pageCount)} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt";
+                ShowWordState();
+                break;
+            case ["page", var n]:
+                if (!PageBox.IsFocused)
+                    PageBox.Text = n;
+                break;
+            case ["reload"]:
+                _ = ReloadAsync();
+                break;
+            case ["open"]:
+                _ = OpenAsync();
+                break;
+        }
+    }
+
+    async void OnOpenClick(object? sender, RoutedEventArgs e) => await OpenAsync();
+
+    async Task OpenAsync()
+    {
+        var start = settings.Folder is { } folder && Directory.Exists(folder) ? await StorageProvider.TryGetFolderFromPathAsync(folder) : null;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Word-Dokument öffnen",
+            AllowMultiple = false,
+            SuggestedStartLocation = start,
+            FileTypeFilter = [new FilePickerFileType("Word-Dokumente") { Patterns = Extensions.Select(x => "*" + x).ToArray() }],
+        });
+        if (files is [var file] && file.TryGetLocalPath() is { } path)
+            await LoadAsync(path);
+    }
+
+    async void OnReloadClick(object? sender, RoutedEventArgs e) => await ReloadAsync();
+
+    async void OnUnlockClick(object? sender, RoutedEventArgs e)
+    {
+        if (locked != null)
+            await LoadAsync(locked, PasswordBox.Text);
+    }
+
+    async void OnMarkupChanged(object? sender, RoutedEventArgs e)
+    {
+        settings.Markup = MarkupToggle.IsChecked == true;
+        await ReloadAsync();
+    }
+
+    async void OnZoomChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        settings.Zoom = Math.Max(0, ZoomBox.SelectedIndex);
+        await ApplyZoom();
+    }
+
+    async void OnCompareChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        settings.Compare = Math.Max(0, CompareBox.SelectedIndex);
+        BlendSlider.IsVisible = Comparisons[settings.Compare] == "blend";
+        await ApplyComparison();
+    }
+
+    async void OnBlendChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        settings.Blend = BlendSlider.Value;
+        if (scripted)
+            await Web.InvokeScript($"freeSlateViewer.blend({(BlendSlider.Value / 100).ToString(CultureInfo.InvariantCulture)})");
+    }
+
+    void OnWatchChanged(object? sender, RoutedEventArgs e)
+    {
+        settings.Watch = WatchBox.IsChecked == true;
+        Watch(view?.Path);
+    }
+
+    void OnPrintClick(object? sender, RoutedEventArgs e) => Web.ShowPrintUI();
+
+    async void OnSaveClick(object? sender, RoutedEventArgs e)
+    {
+        if (view == null)
+            return;
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Als HTML speichern",
+            SuggestedFileName = Path.GetFileNameWithoutExtension(view.Path) + ".html",
+            DefaultExtension = "html",
+            FileTypeChoices = [new FilePickerFileType("HTML-Dokument") { Patterns = ["*.html"] }],
+        });
+        if (file?.TryGetLocalPath() is not { } target)
+            return;
+        try
+        {
+            await File.WriteAllTextAsync(target, view.Html);
+            StatusText.Text = $"Gespeichert: {target}";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            StatusText.Text = $"{Path.GetFileName(target)} lässt sich nicht speichern: {error.Message}";
+        }
+    }
+
+    async void OnWordPdfClick(object? sender, RoutedEventArgs e)
+    {
+        if (view != null && renderings.TryGetValue(view.Key, out var word))
+            await Launcher.LaunchFileInfoAsync(new FileInfo(word.Pdf));
+    }
+
+    async void OnPageKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || !scripted)
+            return;
+        e.Handled = true;
+        if (int.TryParse(PageBox.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var n))
+            await Web.InvokeScript($"freeSlateViewer.goTo({n})");
+        Dispatcher.UIThread.Post(() => Web.Focus(), DispatcherPriority.Background);
+    }
+
+    async Task ReloadAsync()
+    {
+        if (view != null)
+            await LoadAsync(view.Path, view.Password, again: true);
+        else if (failed != null)
+            await LoadAsync(failed);
+    }
+
+    /// <summary>Converts the document with FreeSlate and shows it; loaded again, at the place the window was.</summary>
+    public async Task LoadAsync(string path, string? password = null, bool again = false)
+    {
+        path = Path.GetFullPath(path);
+        var name = Path.GetFileName(path);
+        StatusText.Text = again ? $"{name} wird neu geladen …" : $"{name} wird geladen …";
+        // The page script answers with the position as JSON, which goes back into it as it is.
+        position = again && scripted ? await Web.InvokeScript("freeSlateViewer.position()") : null;
+        if (string.IsNullOrWhiteSpace(position) || position == "null")
+            position = null;
+        OpenButton.IsEnabled = ReloadButton.IsEnabled = false;
+        var markup = MarkupToggle.IsChecked == true;
+        try
+        {
+            var clock = Stopwatch.StartNew();
+            var (source, key) = await Task.Run(() => Readable(path, markup));
+            var html = await Task.Run(() => DocxConverter.ToHtml(source, password: password, markup: markup));
+            seconds = clock.Elapsed.TotalSeconds;
+            // A file, not NavigateToString: the document carries its pictures and fonts and is often large.
+            Directory.CreateDirectory(work);
+            var document = Path.Combine(work, Path.GetFileNameWithoutExtension(path) + ".html");
+            await File.WriteAllTextAsync(document, html);
+            view = new View(path, source, password, markup, html, key);
+            locked = failed = null;
+            retries = 0;
+            scripted = false;
+            pageCount = 0;
+            PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = false;
+            Web.IsVisible = true;
+            Web.Navigate(server.Publish(document));
+            Title = $"{name} – FreeSlate Viewer";
+            StatusText.Text = name;
+            PrintButton.IsEnabled = SaveButton.IsEnabled = true;
+            settings.Folder = Path.GetDirectoryName(path);
+            Watch(path);
+        }
+        catch (PasswordException error)
+        {
+            locked = path;
+            PasswordBox.Text = "";
+            PasswordPanel.IsVisible = true;
+            PasswordBox.Focus();
+            StatusText.Text = error.WrongPassword ? "Das Passwort stimmt nicht." : $"{name} ist passwortgeschützt.";
+        }
+        catch (IOException) when (again && retries++ < 5)
+        {
+            // Still being written: try again in a moment.
+            StatusText.Text = $"{name} wird gerade gespeichert …";
+            reloadTimer.Start();
+        }
+        catch (Exception error)
+        {
+            Fail(path, error);
+        }
+        finally
+        {
+            OpenButton.IsEnabled = true;
+            ReloadButton.IsEnabled = view != null || failed != null;
+        }
+    }
+
+    /// <summary>
+    /// The file to read and the document's version: the document itself, or a copy when another program (Word) holds
+    /// it open for writing; the copy keeps the name, which fields show.
+    /// </summary>
+    (string Source, string Key) Readable(string path, bool markup)
+    {
+        var info = new FileInfo(path);
+        var key = string.Create(CultureInfo.InvariantCulture, $"{path}|{info.LastWriteTimeUtc.Ticks}|{info.Length}|{markup}");
+        try
+        {
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)) { }
+            return (path, key);
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            var folder = Path.Combine(work, "copy-" + Guid.NewGuid().ToString("N")[..8]);
+            Directory.CreateDirectory(folder);
+            var copy = Path.Combine(folder, Path.GetFileName(path));
+            using (var from = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var to = File.Create(copy))
+                from.CopyTo(to);
+            return (copy, key);
+        }
+    }
+
+    /// <summary>Shows why a document could not be shown, with the whole exception for a bug report.</summary>
+    void Fail(string path, Exception error)
+    {
+        var name = Path.GetFileName(path);
+        view = null;
+        locked = null;
+        failed = path;
+        scripted = false;
+        Web.IsVisible = Placeholder.IsVisible = PasswordPanel.IsVisible = false;
+        PrintButton.IsEnabled = SaveButton.IsEnabled = WordPdfButton.IsVisible = false;
+        ErrorText.Text = error.ToString();
+        ErrorPanel.IsVisible = true;
+        StatusText.Text = $"{name} lässt sich nicht öffnen: {error.Message}";
+        WordText.Text = PageBox.Text = "";
+        PageCount.Text = "von 0";
+        Title = $"{name} – FreeSlate Viewer";
+    }
+
+    /// <summary>Loads the document again when it is saved (Word saves into a new file that takes the document's name).</summary>
+    void Watch(string? path)
+    {
+        var wanted = WatchBox.IsChecked == true ? path : null;
+        if (watcher != null && wanted != null && string.Equals(Path.Combine(watcher.Path, watcher.Filter), wanted, StringComparison.OrdinalIgnoreCase))
+            return;
+        watcher?.Dispose();
+        watcher = null;
+        if (wanted == null || Path.GetDirectoryName(wanted) is not { } folder)
+            return;
+        watcher = new FileSystemWatcher(folder, Path.GetFileName(wanted))
+        {
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+        };
+        void Changed() => Dispatcher.UIThread.Post(() =>
+        {
+            retries = 0;
+            reloadTimer.Stop();
+            reloadTimer.Start();
+        });
+        watcher.Changed += (_, _) => Changed();
+        watcher.Created += (_, _) => Changed();
+        watcher.Renamed += (_, e) =>
+        {
+            if (string.Equals(e.FullPath, wanted, StringComparison.OrdinalIgnoreCase))
+                Changed();
+        };
+        watcher.EnableRaisingEvents = true;
+    }
+
+    async Task ApplyZoom()
+    {
+        if (scripted)
+            await Web.InvokeScript($"freeSlateViewer.zoom({Zooms[Math.Max(0, ZoomBox.SelectedIndex)]})");
+    }
+
+    /// <summary>Shows Word's pages as the compare box says, Word rendering them first when they are not there yet.</summary>
+    async Task ApplyComparison()
+    {
+        if (!scripted || view == null)
+            return;
+        var mode = Comparisons[Math.Max(0, CompareBox.SelectedIndex)];
+        if (mode == "off" || !wordInstalled)
+        {
+            await Web.InvokeScript("freeSlateViewer.compare('off', [])");
+            WordPdfButton.IsVisible = false;
+            ShowWordState();
+            return;
+        }
+        if (!renderings.TryGetValue(view.Key, out var word))
+        {
+            await RenderWordAsync(view);
+            return;
+        }
+        if (!published.TryGetValue(word, out var root))
+            published[word] = root = server.PublishFolder(word.Folder);
+        var pages = word.Pages.Select(p => new { src = new Uri(root, Uri.EscapeDataString(p.File)).AbsoluteUri, w = p.Width, h = p.Height });
+        await Web.InvokeScript($"freeSlateViewer.blend({(BlendSlider.Value / 100).ToString(CultureInfo.InvariantCulture)})");
+        await Web.InvokeScript($"freeSlateViewer.compare({JsonSerializer.Serialize(mode)}, {JsonSerializer.Serialize(pages)})");
+        WordPdfButton.IsVisible = true;
+        ShowWordState();
+    }
+
+    /// <summary>Word renders the document of a view, one document at a time; the result shows if it is still the one shown.</summary>
+    async Task RenderWordAsync(View wanted)
+    {
+        if (!OperatingSystem.IsWindows() || rendering == wanted.Key)
+            return;
+        await wordGate.WaitAsync();
+        try
+        {
+            if (view?.Key != wanted.Key || renderings.ContainsKey(wanted.Key))
+                return;
+            rendering = wanted.Key;
+            WordProgress.IsVisible = true;
+            WordText.Text = "Word druckt das Dokument …";
+            WordPdfButton.IsVisible = false;
+            var folder = Path.Combine(work, $"word-{++renders}");
+            renderings[wanted.Key] = await Task.Run(() => OperatingSystem.IsWindows()
+                ? WordPages.Render(wanted.Source, wanted.Password, wanted.Markup, folder, WordScale)
+                : throw new PlatformNotSupportedException());
+        }
+        catch (Exception error)
+        {
+            if (view?.Key == wanted.Key)
+                WordText.Text = $"Word: {error.Message}";
+            return;
+        }
+        finally
+        {
+            rendering = null;
+            WordProgress.IsVisible = false;
+            wordGate.Release();
+        }
+        if (view?.Key == wanted.Key)
+            await ApplyComparison();
+    }
+
+    void ShowWordState()
+    {
+        if (rendering != null && rendering == view?.Key)
+            return;
+        if (view == null || Comparisons[Math.Max(0, CompareBox.SelectedIndex)] == "off" || !renderings.TryGetValue(view.Key, out var word))
+        {
+            WordText.Text = "";
+            return;
+        }
+        var count = word.Pages.Count;
+        WordText.Text = pageCount == 0 || count == pageCount ? $"Word {word.Version}: {Pages(count)}" : $"Word {word.Version}: {Pages(count)} (FreeSlate {pageCount})";
+    }
+}

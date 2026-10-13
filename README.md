@@ -76,8 +76,8 @@ with the Office behavior that was measured for it.
 
 ## Quick start
 
-Requirements: the [.NET 10 SDK](https://dotnet.microsoft.com/download). The presenter app additionally needs a web view
-(WebView2 on Windows).
+Requirements: the [.NET 10 SDK](https://dotnet.microsoft.com/download). The presenter and the viewer additionally need a
+web view (WebView2 on Windows).
 
 ```sh
 git clone https://github.com/hf75/FreeSlate.git
@@ -153,6 +153,20 @@ platform's web view; *Präsentation starten* runs the slide show full screen (th
 for now). In Visual Studio, open `FreeSlate.slnx` rather than the presenter's project file, so that the presenter
 always runs against the current engine.
 
+### Viewing Word documents
+
+```sh
+dotnet run --project src/FreeSlate.Viewer -- report.docx
+```
+
+The viewer is the presenter's counterpart for Word documents (its interface is German too): it converts a document
+and shows its pages in the platform's web view, zooms (automatic, page width, whole page, 50 to 200 %), jumps to a
+page, shows the document with its markup, prints it, saves its HTML, and loads it again when it is saved (F5 does
+too). A document that cannot be converted shows the whole exception. On Windows with Word installed, *Word daneben*
+puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with a slider between the
+two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM, as the fidelity tool
+renders its references, and Windows rasterizes the pages.
+
 ## How it works
 
 FreeSlate reads the package (ZIP, encryption, markup compatibility), resolves the inheritance of every shape through
@@ -184,9 +198,10 @@ More in [docs/fidelity.md](docs/fidelity.md).
 
 | Path | Content |
 |---|---|
-| `FreeSlate.slnx` | the solution: engine and presenter |
+| `FreeSlate.slnx` | the solution: engine, presenter and viewer |
 | `src/FreeSlate/` | the rendering engine |
 | `src/FreeSlate.Presenter/` | the presenter app (Avalonia) |
+| `src/FreeSlate.Viewer/` | the viewer app for Word documents (Avalonia) |
 | `tools/Fidelity/` | builds the test decks through PowerPoint, renders references, measures fidelity |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog, checks the feature catalog |
 | `tools/SmartArtDecks/` | scripts that build SmartArt probe decks through PowerPoint |
@@ -213,7 +228,7 @@ demand and stay out of git.
 - A few rare cases still differ visibly, among them pies whose outside labels make PowerPoint shrink them, the axis
   intervals of some radar charts, text on circular WordArt paths, ActiveX controls, and modern oblique 3D cameras
   with a rotation of their own. The feature catalog lists the known deviations per feature.
-- The presenter is a viewer, not an editor.
+- The presenter and the viewer show documents; they do not edit them.
 
 ## Contributing
 

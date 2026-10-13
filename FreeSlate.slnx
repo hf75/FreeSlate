@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="src/FreeSlate.Presenter/FreeSlate.Presenter.csproj" />
+  <Project Path="src/FreeSlate.Viewer/FreeSlate.Viewer.csproj" />
   <Project Path="src/FreeSlate/FreeSlate.csproj" />
 </Solution>
