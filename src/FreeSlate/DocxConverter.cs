@@ -37,7 +37,7 @@ public static class DocxConverter
         .page .sp text{white-space:pre;font-variant-ligatures:none}
         .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;overflow:hidden;padding:5px 6px;font:11px/13px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;pointer-events:none}
         .fs-nopic svg{vertical-align:top;margin-right:5px}
-        @media print{body{background:none}.page{margin:0;break-after:page}.page.markup{width:var(--pw)!important}.page.markup>.sheet{transform:translateY(var(--oy)) scale(var(--s));transform-origin:0 0}}
+        @media print{body{background:none}.page{margin:0;break-after:page}.page.markup{width:var(--pw)!important}.page.markup>.sheet{transform:translateY(var(--oy)) scale(var(--s));transform-origin:0 0}.page [shape-rendering][stroke]:not([stroke=none]){shape-rendering:auto}}
         """;
 
     /// <summary>The HTML document of a Word document; a password-protected one needs its password.</summary>

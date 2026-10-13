@@ -23376,7 +23376,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "One self-contained HTML file: fixed-size page boxes with absolutely positioned glyph runs, SVG for drawings, embedded fonts and pictures; print CSS keeps one page per sheet.",
-      "office": "One self-contained HTML file: a fixed-size section per page with a named @page per paper size (printed, every page keeps its size), text as SVG text at our positions in the fonts we measured with (fonts the browser cannot find by name, such as Office cloud fonts, embedded), drawings, charts, SmartArt and equations as SVG, pictures embedded, bookmarks as anchors and hyperlinks as links.",
+      "office": "One self-contained HTML file: a fixed-size section per page with a named @page per paper size (printed, every page keeps its size), text as SVG text at our positions in the fonts we measured with (fonts the browser cannot find by name, such as Office cloud fonts, embedded), drawings, charts, SmartArt and equations as SVG, pictures embedded, bookmarks as anchors and hyperlinks as links. Printed, outlines keep their width: the crisp edges that shapes have on screen (as PowerPoint draws axis-aligned lines) would make Chrome print their strokes as hairlines of width 0, which PDF renderers and printers draw thinner and lighter than Word's 0.75 pt (docx/external/powertools/WC/WC065-Textbox 70 → 88.6 %; of 306 documents with such outlines 83 better, 40 more over 90 %).",
       "elements": [],
       "spec": [],
       "officeNotes": []
