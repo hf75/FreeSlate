@@ -551,6 +551,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a text frame's (w:framePr).</summary>
         public bool Frame { get; init; }
+
+        /// <summary>Whether the area is a floating table's of the header or footer.</summary>
+        public bool Story { get; init; }
     }
 
     static Exclusion? ExclusionOf(PlacedDrawing drawing)
@@ -924,12 +927,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // The header's fields that look at the page's paragraphs (STYLEREF) see this page.
                 if (layout.Evaluator != null)
                     layout.Evaluator.Laying = page;
-                page.BodyTop = Math.Max(page.BodyTop, Story(page.Header, page, null, header: true).Bottom);
+                var headerBox = Story(page.Header, page, null, header: true);
+                page.BodyTop = Math.Max(page.BodyTop, headerBox.Bottom);
+                page.FloatingTables.AddRange(headerBox.Floats);
                 if (layout.Evaluator != null)
                     layout.Evaluator.Laying = null;
             }
             if (page.Footer != null && !properties.BottomFixed)
-                page.BodyBottom = Math.Min(page.BodyBottom, Story(page.Footer, page, null, header: false).Top);
+            {
+                var footerBox = Story(page.Footer, page, null, header: false);
+                page.BodyBottom = Math.Min(page.BodyBottom, footerBox.Top);
+                page.FloatingTables.AddRange(footerBox.Floats);
+            }
         }
         page.Border = PageBorders.Layout(page.Upright ?? page, context.Settings);
         pages.Add(page);
@@ -1020,6 +1029,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         Frame? previousFrame = null;
         // Lines of text frames placed on the page itself (vAnchor margin or page), not moving with the story.
         var placed = new List<PlacedLine>();
+        // Floating tables placed on the page itself, and those that move with the story, with the room they keep free.
+        var fixedBox = new StoryBox();
+        var floats = new List<(Exclusion Area, bool Moves, int Anchor)>();
         for (var b = 0; b < blocks.Count; b++)
         {
             var block = blocks[b];
@@ -1087,6 +1099,59 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 b = end - 1;
                 continue;
             }
+            // A floating table stands as in the body (see PlaceFloatingTable), taking no room in the story; the body text
+            // goes around it (measured with docx/external/libreoffice/extras-ooxmlexport/tdf162746: a header's table of
+            // the text's width 62.4 pt below the page's top edge pushes the body below it).
+            if (block is TableBlock { Table.Format.Floating: { } position } floating)
+            {
+                double Twips(string name) => position.Twips(name) ?? 0;
+                var laid = tables.Layout(floating.Table, width, fields);
+                var height = laid.Rows.Sum(r => r.Height) + (laid.Rows.Count > 0 ? laid.Rows[^1].BottomBorderWidth : 0);
+                var (spanLeft, span) = position.Attr("horzAnchor") switch
+                {
+                    "page" => (0.0, on.Width),
+                    "margin" => (on.TextLeft, on.TextWidth),
+                    _ => (left, width),
+                };
+                var x = position.Attr("tblpXSpec") switch
+                {
+                    "left" or "inside" => spanLeft,
+                    "right" or "outside" => spanLeft + span - laid.Width,
+                    "center" => spanLeft + (span - laid.Width) / 2,
+                    _ => spanLeft + Twips("tblpX") - (context.CompatibilityMode < 15 ? laid.Inset : 0),
+                };
+                var onPage = position.Attr("vertAnchor") is "page" or "margin";
+                var (areaTop, areaHeight) = position.Attr("vertAnchor") switch
+                {
+                    "page" => (0.0, s.PageHeight),
+                    "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
+                    _ => (y + (first ? 0 : after), 0.0),
+                };
+                var tableTop = position.Attr("tblpYSpec") switch
+                {
+                    "top" or "inside" => areaTop,
+                    "bottom" or "outside" => areaTop + areaHeight - height,
+                    "center" => areaTop + (areaHeight - height) / 2,
+                    _ => areaTop + Twips("tblpY"),
+                };
+                var target = onPage ? fixedBox : box;
+                var rowTop = tableTop;
+                foreach (var row in laid.Rows)
+                {
+                    TableLayout.Draw(row, row.Height, x - laid.Left, rowTop, target.Lines, target.Shading, target.Borders, target.Strokes, anchors);
+                    rowTop += row.Height;
+                }
+                if (laid.Rows.Count > 0)
+                {
+                    var last = laid.Rows[^1];
+                    target.Borders.AddRange(last.BottomBorders.Select(f => f with { X = x - laid.Left + f.X, Y = rowTop + f.Y }));
+                    target.Strokes.AddRange(last.BottomStrokes.Select(st => st.Offset(x - laid.Left, rowTop)));
+                }
+                TableLayout.Frame(laid, x - laid.Left, tableTop, tableTop + height, target.Borders);
+                floats.Add((new Exclusion(x - Twips("leftFromText"), tableTop - Twips("topFromText"), x + laid.Width + Twips("rightFromText"),
+                    tableTop + height + Twips("bottomFromText"), false, "bothSides") { Story = true }, !onPage, b + 1));
+                continue;
+            }
             if (block is ParagraphBlock paragraph)
             {
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
@@ -1107,8 +1172,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     y += 2 * between.Space + between.Total;
                 }
                 var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
-                foreach (var line in layout.Layout(paragraph, width, fields))
+                // The paragraph a floating table is anchored to goes below it where the table begins above it, the
+                // story's other text over it (measured with docx/external/libreoffice/extras-ooxmlexport/tdf149089: a
+                // header's bordered paragraph below a table 1.35 pt above it; poi/PageSpecificHeadFoot: a footer's
+                // text over a table 1 twip below its top; core-header_footer/tdf79639).
+                var linesTop = y;
+                var around = floats.Where(f => f.Moves && f.Anchor == b && f.Area.Bottom > linesTop && f.Area.Top < paragraphTop - 0.01).Select(f => f.Area).ToList();
+                var laid = around.Count > 0
+                    ? layout.Layout(paragraph, width, fields, room: slot => Room(around, linesTop, slot, left, width))
+                    : layout.Layout(paragraph, width, fields);
+                foreach (var line in laid)
                 {
+                    y += line.Skip;
                     foreach (var anchor in line.Anchors ?? [])
                         lineTops[anchor] = (y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
                     box.Lines.Add(new PlacedLine(line, left, y));
@@ -1155,8 +1230,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var top = header ? s.Header : s.PageHeight - s.Footer - y;
         box.Move(top);
         box.Lines.AddRange(placed);
+        box.Lines.AddRange(fixedBox.Lines);
+        box.Shading.AddRange(fixedBox.Shading);
+        box.Borders.AddRange(fixedBox.Borders);
+        box.Strokes.AddRange(fixedBox.Strokes);
+        box.Floats.AddRange(floats.Select(f => f.Moves ? f.Area with { Top = f.Area.Top + top, Bottom = f.Area.Bottom + top } : f.Area));
         box.Top = top;
         box.Bottom = top + y;
+        // Floating tables anchored to the story's text reach as far as the story does (measured with docx/external/
+        // libreoffice/extras-ooxmlexport/tdf149089: the body begins below a header's floating table 1.35 pt above its
+        // paragraph).
+        foreach (var (area, _, _) in floats.Where(f => f.Moves))
+        {
+            box.Top = Math.Min(box.Top, area.Top + top);
+            box.Bottom = Math.Max(box.Bottom, area.Bottom + top);
+        }
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
         foreach (var anchor in anchors.Select(a => a.Offset(0, top)))
             box.Drawings.Add(Anchored(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX));
@@ -1171,6 +1259,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         public List<FillRect> Borders { get; } = [];
         public List<Stroke> Strokes { get; } = [];
         public List<PlacedDrawing> Drawings { get; } = [];
+
+        /// <summary>What the story's floating tables keep free of the body's text, on the page.</summary>
+        public List<Exclusion> Floats { get; } = [];
         public double Top, Bottom;
 
         public void Move(double dy)
@@ -1562,17 +1653,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>
     /// A table does not stand beside the floating objects and frames placed before it: it begins below those its part
     /// on the page would overlap, from Word 2013 on whatever their wrapping, before only those kept free above and
-    /// below (measured with docx/local/fx-1 to fx-11 and ft-1 to ft-5: below a 40 pt shape wrapped square or top and
-    /// bottom, also one beside a 70-row table's last rows on the page, and below a frame not beside text; a shape right
-    /// of the table, one without wrapping and in mode 14 one wrapped square leave it; docx/external/libreoffice/
-    /// core-ooxml-pass/fdo78904_fileHang).
+    /// below and those that leave it less than half its width beside them (measured with docx/local/fx-1 to fx-11 and ft-1 to ft-5: below a
+    /// 40 pt shape wrapped square or top and bottom, also one beside a 70-row table's last rows on the page, and below a
+    /// frame not beside text; a shape right of the table, one without wrapping and in mode 14 one wrapped square leave
+    /// it, 340 pt beside it; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang; extras-ooxmlexport/tdf162746:
+    /// in mode 12 below a header's floating table that leaves 5 pt).
     /// </summary>
     void BelowFloats(TableBox box, double left)
     {
         var (from, to) = (left + box.Left, left + box.Left + box.Width);
         var height = box.Rows.Sum(r => r.Height);
-        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => e.Frame))
-            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
+        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => e.Frame || e.Story))
+            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom || Math.Max(e.Left - from, to - e.Right) < box.Width / 2) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
         for (var moved = true; moved;)
         {
             moved = false;
