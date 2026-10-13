@@ -162,12 +162,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // draws it, in its runs' fonts, fills, outlines and effects, instead of the text box's layout; the warp fills
         // the shape less the body's insets (measured with docx/local/wordartbox: an H in textPlain fills a shape with
         // insets of 0, 7.2 and 3.6 pt or 20 pt exactly to them, whatever its outline; PowerPoint's warp ignores them).
-        if (blocks != null && shape != null && drawing.Text is { Count: > 0 } words && drawing.Body is { } warped
-            && (string?)warped.Element(Ns.A + "prstTxWarp")?.Attribute("prst") is { } warp && warp != "textNoShape"
+        if (blocks != null && shape != null && drawing.Text is { Count: > 0 } words && Warped(drawing.Body) is { } warped
             && WordArt(words, warped) is { } art)
         {
-            double Inset(string name, double fallback) => double.TryParse((string?)warped.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
-            var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
+            var (l, t, r, b) = WarpInsets(warped);
             return drawings!.Render(drawing with { Text = null }) + drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b));
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
@@ -180,8 +178,18 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         foreach (var (child, childText) in drawing.ChildText ?? [])
         {
-            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is { } rect && childText.Count > 0)
-                html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
+            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect || childText.Count == 0)
+                continue;
+            // WordArt in a group bends its text in its shape's place.
+            if (Warped(child.Element(Drawings.Wps + "bodyPr")) is { } childWarp && WordArt(childText, childWarp) is { } childArt)
+            {
+                var (l, t, r, b) = WarpInsets(childWarp);
+                var box = new PlacedDrawing(new XElement(Drawings.Wp + "anchor", new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XElement(child)))),
+                    drawing.Part, rect.X, rect.Y, rect.W, rect.H) { Behind = drawing.Behind, Order = drawing.Order };
+                html += drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b));
+                continue;
+            }
+            html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
         }
         return html;
     }
@@ -192,6 +200,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// aligned as it is, a run per run in its font, size, bold and italic, underline, fill, outline and effects.
     /// Null where there is no text.
     /// </summary>
+    /// <summary>A text box's body if it has a text warp (WordArt), else null.</summary>
+    static XElement? Warped(XElement? body) =>
+        (string?)body?.Element(Ns.A + "prstTxWarp")?.Attribute("prst") is { } warp && warp != "textNoShape" ? body : null;
+
+    /// <summary>The insets of a WordArt text box's body, in points (Word's defaults 7.2 and 3.6 pt).</summary>
+    static (double L, double T, double R, double B) WarpInsets(XElement body)
+    {
+        double Inset(string name, double fallback) => double.TryParse((string?)body.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
+        return (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
+    }
+
     XElement? WordArt(List<Block> text, XElement body)
     {
         var paragraphs = new List<XElement>();
