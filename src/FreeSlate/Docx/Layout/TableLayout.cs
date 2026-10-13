@@ -423,6 +423,9 @@ public sealed class RowBox
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
+        // The cells' own frames of a table with cell spacing (docx/external/libreoffice/extras-ooxmlexport/tdf123104:
+        // shaded cells merged down, whose rows go on without them).
+        copy.Frames.AddRange(Frames);
         copy.TopBorders.AddRange(TopBorders);
         copy.TopStrokes.AddRange(TopStrokes);
         copy.BottomBorders.AddRange(BottomBorders);
