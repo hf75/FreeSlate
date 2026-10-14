@@ -315,7 +315,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return drawing;
         var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
-        var (lines, _, _, height) = blocks.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields);
+        // Lines measured where they begin: a right aligned line's length is its text's, not its place in the unwrapped
+        // width (docx/external/libreoffice/extras-ooxmlexport/testWordArtWithinDraingtool: WordArt right aligned in a
+        // box that does not wrap stood 100,000 pt to the right).
+        var (lines, _, _, height) = blocks.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields, unaligned: unwrapped);
         if (unwrapped)
         {
             var longest = lines.Select(p => p.Line.Pieces.Count > 0 ? p.Left + p.Line.Pieces[^1].X + p.Line.Pieces[^1].Width : 0).DefaultIfEmpty(0).Max();
@@ -354,15 +357,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
             // upright (measured with docx/local/vertical6).
-            var (vertical, turn) = (layout!.Vertical, layout.TurnEastAsian);
+            var (vertical, turn, alignIn) = (layout!.Vertical, layout.TurnEastAsian, layout.AlignIn);
             (layout.Vertical, layout.TurnEastAsian) = (vert != null, vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl");
+            // Text that does not wrap aligns in the box all the same (docx/external/libreoffice/extras-ooxmlexport/
+            // testWordArtWithinDraingtool: WordArt right aligned in its box, not 100,000 pt to the right).
+            var unwrapped = (string?)body?.Attribute("wrap") == "none" && vert == null;
+            if (unwrapped)
+                layout.AlignIn = (1e5, Math.Max(1, areaWidth));
             try
             {
-                (lines, fills, strokes, height) = blocks!.Blocks(text, Math.Max(1, (string?)body?.Attribute("wrap") == "none" && vert == null ? 1e5 : areaWidth), fields);
+                (lines, fills, strokes, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, areaWidth), fields);
             }
             finally
             {
-                (layout.Vertical, layout.TurnEastAsian) = (vertical, turn);
+                (layout.Vertical, layout.TurnEastAsian, layout.AlignIn) = (vertical, turn, alignIn);
             }
         }
         else if (story != null && continued.Remove((story, seq), out var rest))

@@ -311,6 +311,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>Whether lines are left where they begin, unaligned: for measuring their natural lengths (rotated cells).</summary>
     public bool Unaligned { get; set; }
 
+    /// <summary>
+    /// Lines laid out <c>Laid</c> wide so as not to wrap (text boxes that do not wrap) align in the width
+    /// <c>Area</c> instead; those of other widths (table cells in the box) in their own.
+    /// </summary>
+    public (double Laid, double Area)? AlignIn { get; set; }
+
     /// <summary>The width of the column the text stands in, of which horizontal rules take a share (Vml.Rule).</summary>
     public Func<double>? ColumnWidth { get; set; }
 
@@ -1288,7 +1294,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 displayed.X = left + displayX;
                 continue;
             }
-            Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, width - right);
+            var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
+            Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {

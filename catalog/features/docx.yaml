@@ -2133,7 +2133,10 @@ areas:
           upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6). Linked text boxes (wps:txbx id,
           wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that
           resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps
-          its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %). WordArt, a
+          its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %), measured
+          where it begins, and aligns them in its own width (docx/external/libreoffice/extras-ooxmlexport/
+          testWordArtWithinDraingtool: WordArt right aligned in such a box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 →
+          93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %). WordArt, a
           text box whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does
           (pptx text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
           whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6 or

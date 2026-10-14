@@ -1701,12 +1701,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     /// <summary>
     /// Blocks laid out in a width as in a table cell or a text box: lines, fills and strokes relative to their top
-    /// left, and their height.
+    /// left, and their height; <paramref name="unaligned"/> leaves the lines where they begin, for measuring them.
     /// </summary>
-    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields)
+    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields, bool unaligned = false)
     {
-        var (wasCell, wasInCell) = (cellBlocks, inCell);
+        var (wasCell, wasInCell, wasUnaligned) = (cellBlocks, inCell, paragraphs.Unaligned);
         (cellBlocks, inCell) = (false, false);
+        paragraphs.Unaligned |= unaligned;
         try
         {
             var content = Content(blocks, width, fields);
@@ -1714,7 +1715,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            (cellBlocks, inCell) = (wasCell, wasInCell);
+            (cellBlocks, inCell, paragraphs.Unaligned) = (wasCell, wasInCell, wasUnaligned);
         }
     }
 
