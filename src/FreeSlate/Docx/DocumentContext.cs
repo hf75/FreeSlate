@@ -129,6 +129,10 @@ public sealed class DocumentContext : IDisposable
     /// <summary>Whether one of the layout options of the compatibility settings (w:compat) is on.</summary>
     public bool Compat(string option) => Settings.Child("compat").Child(option).OnOff() == true;
 
+    /// <summary>The value of a named setting of w:compat (w:compatSetting), or null.</summary>
+    public string? CompatSetting(string name) =>
+        Settings.Child("compat")?.Elements(Wml.W + "compatSetting").FirstOrDefault(e => e.Attr("name") == name)?.Attr("val");
+
     /// <summary>
     /// The space between two paragraphs (catalog: paragraph.spacing): the space after the first and what the space
     /// before the second has more than the first's own space after, as HTML collapses margins (where contextual

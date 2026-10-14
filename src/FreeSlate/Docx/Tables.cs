@@ -67,8 +67,42 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         "thinThickThinSmallGap" => Width + 3,
         "thinThickThinMediumGap" => Width * 3,
         "thinThickThinLargeGap" => Width * 2 + 3,
+        // The thin lines take half the width each, 0.75 pt at least, though they print on whole dots (Thin; measured
+        // with docx/local/b3d-emb: 6 pt of room for a line of 3 pt, its strokes 5.88 pt).
+        "threeDEmboss" or "threeDEngrave" => Width + 2 * Math.Max(0.75, Width / 2),
         _ => Width,
     };
+
+    /// <summary>
+    /// The thin lines beside an embossed or engraved line at the width: half of it, 0.75 pt at least, on Word's
+    /// 0.12 pt dots (measured with docx/local/b3d-emb, b3d-thin: 1.44 pt beside 3 pt, 0.72 pt beside 1 pt).
+    /// </summary>
+    public double Thin => Math.Floor(Math.Max(0.75, Width / 2) / 0.12 + 1e-6) * 0.12;
+
+    /// <summary>
+    /// The shades of an embossed or engraved line top to bottom and left to right, on every side: embossed light, the
+    /// line, dark; engraved the other way round (docx/local/b3d-emb, b3d-eng: light outside at the top and left, inside
+    /// at the bottom and right). Black and automatic lines are C0C0C0, 606060 and black; others keep their color outside and
+    /// take 70 and 80 of Word's 240 steps of lightness off it for the others, towards white less (measured with
+    /// docx/local/b3d-emb, b3d-eng, b3d-mix, b3d-red, b3d-colors: 33CCCC 165555 114444, FF0000 6B0000 550000, C0C0C0
+    /// 757575 6B6B6B, FFFFFF A0A0A0 808080; known deviation: 804020 lightens to C46131 first).
+    /// </summary>
+    public RgbColor[] Shades()
+    {
+        RgbColor[] shades;
+        if (AutoColor || Color.R + Color.G + Color.B < 0.01)
+            shades = [RgbColor.FromHex("C0C0C0"), RgbColor.FromHex("606060"), RgbColor.Black];
+        else
+        {
+            var (h, s, l) = Color.ToHsl();
+            var steps = l * 240;
+            // Down by 70 and 80 steps up to a lightness of 180.7 (C0C0C0), then towards white's 150.6 and 120.5.
+            double Off(double by, double atWhite) => steps <= 180.7 ? Math.Max(0, steps - by)
+                : 180.7 - by + (steps - 180.7) / (240 - 180.7) * (atWhite - (180.7 - by));
+            shades = [Color, RgbColor.FromHsl(h, s, Off(70, 150.6) / 240), RgbColor.FromHsl(h, s, Off(80, 120.5) / 240)];
+        }
+        return Style == "threeDEngrave" ? [shades[2], shades[1], shades[0]] : shades;
+    }
 
     /// <summary>
     /// Word's weight in border conflicts (MS-OI29500 17.4.66): eighths of a point times the style's number, dotted

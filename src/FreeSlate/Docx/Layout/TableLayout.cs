@@ -650,9 +650,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // Inside a vertical merge there is no line, nor where no cell is (rows that skip grid columns).
                 if (above == below)
                     continue;
-                var tableLine = r == 0 || above == null ? TableBorder(rows[Math.Min(r, rows.Count - 1)], format, b => b.Top)
-                    : r == rows.Count || below == null ? TableBorder(rows[r - 1], format, b => b.Bottom)
-                    : TableBorder(rows[r], format, b => b.InsideH);
+                // The table's top and bottom lines at its first row's top and its last row's bottom only; between rows the
+                // inside line, also where a cell has none above or below it (w:gridBefore, w:gridAfter; measured with
+                // docx/local/gaf-1: 0.5 pt inside lines below and above the cells a row leaves out, 3 pt outer lines;
+                // docx/external/libreoffice/extras-ooxmlexport/tdf134609_gridAfter).
+                var tableLine = r == 0 ? TableBorder(rows[0], format, b => b.Top)
+                    : r == rows.Count ? TableBorder(rows[r - 1], format, b => b.Bottom)
+                    : TableBorder(rows[below != null ? r : r - 1], format, b => b.InsideH);
                 // Between rows each cell brings its own row's inside line, the row's exceptions over the table's
                 // (measured with docx/local/rowex: a row whose w:tblPrEx makes the inside lines red and double has
                 // them above and below it; docx/external/powertools/RP/RP033-Table-Prop-Ex-Change).
@@ -964,8 +968,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (vertical[r, k] is { Visible: true } line)
                 {
                     var center = X(x[k] + shift);
-                    foreach (var (offset, thickness) in Stripes(line))
-                        rowBox.Verticals.Add(new Stripe(center - line.Total / 2 + offset, thickness, line.Color, Dash(line)));
+                    foreach (var (offset, thickness, color) in Painted(line))
+                        rowBox.Verticals.Add(new Stripe(center - line.Total / 2 + offset, thickness, color, Dash(line)));
                 }
             }
             box.Rows.Add(rowBox);
@@ -1185,11 +1189,35 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// three for triple; thin and thick lines with 0.75 pt for thin lines and small gaps (measured with
     /// docx/local/tbl-features).
     /// </summary>
+    /// <summary>
+    /// The strokes of a line with their colors: embossed and engraved lines in their shades top to bottom and left to
+    /// right on every side (see BorderLine.Shades); others all in the line's color.
+    /// </summary>
+    internal static IEnumerable<(double Offset, double Width, RgbColor Color)> Painted(BorderLine line)
+    {
+        if (line.Style is "threeDEmboss" or "threeDEngrave")
+        {
+            var shades = line.Shades();
+            var k = 0;
+            foreach (var (offset, width) in Stripes(line))
+                yield return (offset, width, shades[Math.Min(k++, 2)]);
+            yield break;
+        }
+        foreach (var (offset, width) in Stripes(line))
+            yield return (offset, width, line.Color);
+    }
+
     internal static IEnumerable<(double Offset, double Width)> Stripes(BorderLine line)
     {
         var w = line.Width;
         switch (line.Style)
         {
+            // Embossed and engraved lines: a thin line, the line at the width and a thin line (BorderLine.Thin).
+            case "threeDEmboss" or "threeDEngrave":
+                yield return (0, line.Thin);
+                yield return (line.Thin, w);
+                yield return (line.Thin + w, line.Thin);
+                break;
             case "double":
                 yield return (0, w);
                 yield return (2 * w, w);
@@ -1264,12 +1292,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>A horizontal border as rectangles (solid lines) or strokes (dotted and dashed lines).</summary>
     static void Horizontal(BorderLine line, double left, double width, double y, List<FillRect> rects, List<Stroke> strokes)
     {
-        foreach (var (offset, thickness) in Stripes(line))
+        foreach (var (offset, thickness, color) in Painted(line))
         {
             if (Dash(line) is { } dash)
-                strokes.Add(new Stroke(left, y + offset + thickness / 2, left + width, y + offset + thickness / 2, thickness, line.Color, dash));
+                strokes.Add(new Stroke(left, y + offset + thickness / 2, left + width, y + offset + thickness / 2, thickness, color, dash));
             else
-                rects.Add(new FillRect(left, y + offset, width, thickness, line.Color));
+                rects.Add(new FillRect(left, y + offset, width, thickness, color));
         }
     }
 
@@ -2074,7 +2102,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 case TableBlock floating when floats && floating.Table.Format.Floating is { } position
                     && !((position.Twips("tblpY") ?? 0) == 0 && position.Attr("tblpYSpec") is null or "inline" && position.Attr("vertAnchor") != "text"):
                 {
+                    // Laid out as a table nested in the cell, as the tables of the text there are (docx/external/
+                    // libreoffice/writerfilter-dmapper/floattable-hidemark: a floating table in a cell in mode 12 keeps
+                    // its cell's own margins, no shift or widening of the text's tables before Word 2013).
+                    var floatInCell = inCell;
+                    inCell = cellBlocks;
                     var box = Layout(floating.Table, width, fields, previous);
+                    inCell = floatInCell;
                     double Twips(string name) => position.Twips(name) ?? 0;
                     var x = position.Attr("tblpXSpec") switch
                     {

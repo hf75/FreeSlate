@@ -756,10 +756,15 @@ public static class Vml
             // text flowing bottom to top reads upwards, not upside down).
             var turned = Style((string?)shape.Attribute("style")).GetValueOrDefault("rotation") is { } rotation
                 && double.TryParse(rotation.TrimEnd('f', 'd'), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) && degrees != 0;
-            var vertical = turned ? null : textStyle.GetValueOrDefault("layout-flow") switch
+            // mso-layout-flow-alt alone turns the text too, whatever layout-flow says but an ideographic flow (measured
+            // with docx/local/vlf-alt, vlf-althor, vlf-alttop: bottom-to-top reads upwards, also beside layout-flow
+            // horizontal; top-to-bottom downwards, its first line at the left; extras-ooxmlexport/layout-flow-alt-alone).
+            var vertical = turned ? null : (textStyle.GetValueOrDefault("layout-flow"), textStyle.GetValueOrDefault("mso-layout-flow-alt")) switch
             {
-                "vertical" => textStyle.GetValueOrDefault("mso-layout-flow-alt") == "bottom-to-top" ? "vert270" : "vert",
-                "vertical-ideographic" => "eaVert",
+                ("vertical-ideographic", _) => "eaVert",
+                (_, "bottom-to-top") => "vert270",
+                ("vertical", _) => "vert",
+                (_, "top-to-bottom") => "mongolianVert",
                 _ => null,
             };
             wsp.Add(new XElement(Drawings.Wps + "bodyPr",

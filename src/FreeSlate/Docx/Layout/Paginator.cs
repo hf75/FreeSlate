@@ -551,6 +551,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             group.Add(p);
             end++;
         }
+        // A frame whose first paragraph breaks the page before it (w:pageBreakBefore, its own or its style's) stands on
+        // the next page, unless this one is still empty, as the text does (docx/external/libreoffice/writerfilter-dmapper/
+        // framepr-pagebreak-style: a framed heading of a style with a page break before on page 2).
+        if (first.Format.PageBreakBefore == true && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
+        {
+            NewPage(section);
+            this.top = Top.Break;
+        }
         var (left, width) = Column(column);
         double Twips(string name) => properties.Twips(name) ?? 0;
         // A frame without a width of its own (w:w) is as wide as its paragraph, an empty one as its mark; one of several
@@ -1065,6 +1073,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     static bool MarkLine(ParagraphBlock paragraph, List<Line> lines, int k) =>
         paragraph is { EndsSection: not null, Format.Frame: null } && k > 0 && k == lines.Count - 1
         && lines[k].Pieces.All(p => p.Drawing == null && !p.IsLabel && string.IsNullOrWhiteSpace(p.Text));
+
+    /// <summary>
+    /// Whether a line that ends with a hyphen goes on with the line after it rather than end a column (measured with
+    /// docx/local/hyph-d): from Word 2013 on, unless the document allows hyphens at the bottom
+    /// (w:compatSetting allowHyphenationAtTrackBottom; docx/external/libreoffice/extras-ooxmlexport/
+    /// tdf160518_allowHyphenationAtTrackBottom: "at-" ends page 1; tdf160518_useWord2013TrackBottomHyphenation moves
+    /// the line, as without the setting; powertools/HC048-Excerpt: in mode 14 "termi-" ends a page). Known deviation:
+    /// with useWord2013TrackBottomHyphenation 0 Word breaks that line anew without its hyphen (tdf165354), here it
+    /// keeps the hyphen.
+    /// </summary>
+    bool HyphenMoves => hyphenMoves ??= context.CompatibilityMode >= 15 && context.CompatSetting("allowHyphenationAtTrackBottom") is not ("1" or "true")
+        && context.CompatSetting("useWord2013TrackBottomHyphenation") is not ("0" or "false");
+
+    bool? hyphenMoves;
 
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
@@ -2162,6 +2184,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         CellAnchor? cell = null, double? character = null)
     {
         var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        // From Word 2013 on a drawing of the text that text goes around, placed from its paragraph or line, stays below
+        // the top margin (measured with docx/local/wrm-15, wrm-behind: 20 pt above the first paragraph at the margin,
+        // wrapped square or behind the text tight; wrm-14 above it in mode 14, wrm-none unwrapped above it;
+        // docx/external/libreoffice/extras-ooxmlimport/tdf60351).
+        if (context.CompatibilityMode >= 15 && cell == null && anchor.Part == context.MainPart && placed.Y < page.Section.Top
+            && (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is "paragraph" or "line"
+            && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { } wrapping
+            && wrapping.Name.LocalName != "wrapNone")
+            placed = placed with { Y = page.Section.Top };
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return placed;
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
@@ -2392,15 +2423,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 shadings.Add(new FillRect(innerLeft, boxTop, innerRight - innerLeft, boxBottom - boxTop, fill));
             // Double and thin-and-thick lines in their strokes, as tables draw them (docx/external/poi/FancyFoot: a
             // thin-thick top line, 3 pt above 0.75 pt).
+            // Embossed and engraved lines in their shades (docx/local/b3d-*).
             void Across(BorderLine line, double y)
             {
-                foreach (var (offset, thickness) in TableLayout.Stripes(line))
-                    lines.Add(new FillRect(left, y + offset, right - left, thickness, line.Color));
+                foreach (var (offset, thickness, color) in TableLayout.Painted(line))
+                    lines.Add(new FillRect(left, y + offset, right - left, thickness, color));
             }
             void Down(BorderLine line, double x)
             {
-                foreach (var (offset, thickness) in TableLayout.Stripes(line))
-                    lines.Add(new FillRect(x + offset, boxTop, thickness, boxBottom - boxTop, line.Color));
+                foreach (var (offset, thickness, color) in TableLayout.Painted(line))
+                    lines.Add(new FillRect(x + offset, boxTop, thickness, boxBottom - boxTop, color));
             }
             // Shadows under the lines, black bands of a line's width as page borders have them: right of a shadowed
             // right line from below the top line down through the bottom line's width, below a shadowed bottom line from
@@ -2481,6 +2513,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
                 page!.Bookmarks.Add((bookmark.Name, Column(column).Left, y));
+            // At the top of a page its space after is the section's last, which the next paragraph's space before
+            // has to exceed (measured with docx/local/sbb-a, sbb-b, sbb-c: after a page break, 200 pt after leave
+            // nothing of 150 pt before, none all of it, in modes 14 and 15; docx/external/libreoffice/
+            // extras-ooxmlexport/tdf170119_bottomSpacing).
+            if (columnEmpty && nextContinuous)
+            {
+                pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
+                pendingOwnAfter = OwnAfter(paragraph);
+            }
             return;
         }
         // A page or column break that begins a paragraph comes before it where the rest of the paragraph goes on in
@@ -2756,7 +2797,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var split = false;
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
-            var fitHeight = line.Hyphenated && k + 1 < lines.Count ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
+            var fitHeight = line.Hyphenated && k + 1 < lines.Count && HyphenMoves ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
             // Above footnotes a paragraph's last line needs its whole height and the paragraph's space after, from Word
             // 2013 on (measured with docx/local/fbn-*, fbm-*, fbo-*: a line of 24.15 pt with 10 pt after fits where
             // 34.15 pt are left above the notes, not 33 pt, without notes where 16.1 pt are; mode 14 as without;

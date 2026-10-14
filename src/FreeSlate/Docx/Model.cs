@@ -396,17 +396,20 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             if (blocks[k] is not ParagraphBlock { MarkFormat.Vanish: true, EndsSection: null } paragraph)
                 continue;
+            // One with nothing to show is gone, the next keeping its own formatting (measured with docx/local/hmp-1,
+            // hmp-2: an empty paragraph with a hidden mark, centered and shaded yellow, leaves "B" its 24 pt before and
+            // no shading, after text or a table; docx/external/libreoffice/extras-ooxmlexport/cell-grid-span). Before a
+            // table it is gone as well (docx/external/poi/bug59058: an HTML form's hidden "Top of Form").
+            if (k + 1 < blocks.Count && !paragraph.Shows)
+            {
+                blocks.RemoveAt(k);
+                k--;
+                continue;
+            }
             if (k + 1 < blocks.Count && blocks[k + 1] is ParagraphBlock next)
             {
                 blocks[k] = paragraph with { Content = [.. paragraph.Content, .. next.Content], MarkFormat = next.MarkFormat, EndsSection = next.EndsSection };
                 blocks.RemoveAt(k + 1);
-                k--;
-            }
-            else if (k + 1 < blocks.Count && !paragraph.Shows)
-            {
-                // Before a table one with nothing to show is gone as well (docx/external/poi/bug59058: an HTML form's
-                // hidden "Top of Form").
-                blocks.RemoveAt(k);
                 k--;
             }
             else if (k + 1 < blocks.Count)

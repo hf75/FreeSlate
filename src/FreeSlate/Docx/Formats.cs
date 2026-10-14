@@ -375,6 +375,12 @@ public sealed class ParagraphFormat
                     AfterAuto = e.Attr("afterAutospacing") is { } aa ? aa is "1" or "true" or "on" : AfterAuto;
                     Line = e.Number("line") ?? Line;
                     LineRule = e.Attr("lineRule") ?? (e.Attr("line") != null ? "auto" : LineRule);
+                    // A negative line is its size: exactly under auto, at least or no rule, at least under exact
+                    // (measured with docx/local/nls-auto, -none, -least, -exact: -360 lines 18 pt apart, exact ones with
+                    // their baseline at 0.8 of the line; docx/external/libreoffice/extras-ooxmlexport/
+                    // tdf125469_singleSpacing, extras-ooxmlimport/tdf108682).
+                    if (Line < 0 && e.Number("line") != null)
+                        (Line, LineRule) = (-Line, LineRule == "exact" ? "atLeast" : "exact");
                     break;
                 case "contextualSpacing": ContextualSpacing = e.OnOff(); break;
                 case "keepNext": KeepNext = e.OnOff(); break;

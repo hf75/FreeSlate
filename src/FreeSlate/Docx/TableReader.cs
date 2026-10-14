@@ -216,17 +216,41 @@ public sealed partial class ModelReader
         }
     }
 
-    static IEnumerable<XElement> Cells(XElement tr)
+    IEnumerable<XElement> Cells(XElement tr)
     {
         foreach (var e in tr.Elements())
         {
             if (e.Name == Wml.W + "tc")
                 yield return e;
             else if (e.Name == Wml.W + "sdt" && e.Child("sdtContent") is { } content)
-                foreach (var cell in Cells(content)) yield return cell;
+            {
+                // A bound control around cells shows its node's value in its first cell's first paragraph, in the
+                // formatting of its first run, as one around paragraphs does (docx/external/libreoffice/
+                // extras-ooxmlexport/paragraph-sdt: the document's title from its core properties).
+                var bound = e.Child("sdtPr") is { } sdtPr ? Binding.Text(sdtPr) : null;
+                foreach (var cell in Cells(content))
+                {
+                    yield return bound != null ? Bound(cell, bound) : cell;
+                    bound = null;
+                }
+            }
             else if (e.Name == Wml.W + "customXml")
                 foreach (var cell in Cells(e)) yield return cell;
         }
+    }
+
+    /// <summary>A copy of a cell whose first paragraph holds a text instead of its runs (see Cells).</summary>
+    static XElement Bound(XElement tc, string text)
+    {
+        var copy = new XElement(tc);
+        if (copy.Elements(Wml.W + "p").FirstOrDefault() is { } p)
+        {
+            var rPr = p.Descendants(Wml.W + "r").FirstOrDefault()?.Element(Wml.W + "rPr");
+            p.Elements().Where(x => x.Name != Wml.W + "pPr").Remove();
+            p.Add(new XElement(Wml.W + "r", rPr != null ? new XElement(rPr) : null,
+                new XElement(Wml.W + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text)));
+        }
+        return copy;
     }
 
     /// <summary>

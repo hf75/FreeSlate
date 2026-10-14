@@ -1544,7 +1544,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     changeMarks.Add((text.Length, hiddenChange));
                 return;
             }
-            if (BalanceSpaces && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
+            // A list number's spaces keep their width (docx/external/libreoffice/extras-ooxmlexport/chtoutline: "第 1 章"
+            // in Cambria's spaces).
+            if (BalanceSpaces && !number && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
             {
                 for (var k = 0; k < value.Length; k++)
                 {
@@ -2351,8 +2353,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <param name="pitch">
     /// The document grid's line pitch (measured with docx/local/docgrid: 18 and 15 pt grids, Arial 10 to 30 pt): a
-    /// line of auto spacing takes as many whole pitches as its natural height needs, times its spacing factor, the
-    /// extra half above and half below the text; exact spacing keeps its height. What ruby and raised or lowered text
+    /// line of auto spacing takes as many whole pitches as its natural height needs, times its spacing factor up to
+    /// single spacing and the larger of that and the factor's pitches above, the extra half above and half below the
+    /// text; exact spacing keeps its height. What ruby and raised or lowered text
     /// reach beyond the line counts in its natural height there (measured with docx/local/rg-*: 11 pt MS Mincho with
     /// ruby 10 pt up, 18.7 pt high, takes two pitches of 18 pt and stands in their middle, its baseline 24.26 pt
     /// down; ruby 5 pt up one pitch; docx/external/poi/61470).
@@ -2382,7 +2385,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 {
                     var whole = natural + line.RaisedAbove + line.LoweredBelow;
                     var units = Math.Max(1, Math.Ceiling(whole / grid - 1e-6));
-                    line.Height = units * grid * value / 240;
+                    // Above single spacing the larger of the factor's pitches and the whole pitches the text needs
+                    // (measured with docx/local/lgr-20, lgr-40: Arial 20 pt at 1.5, 2 and 3 times an 18 pt grid 36, 36
+                    // and 54 pt high, 40 pt 54 pt at all three; docx/external/libreoffice/extras-ooxmlexport/chtoutline).
+                    line.Height = value > 240 ? Math.Max(grid * value / 240, units * grid) : units * grid * value / 240;
                     var extra = line.Height - whole;
                     line.Baseline = line.Above + line.RaisedAbove + extra / 2;
                     line.Overhang = Math.Max(0, extra / 2);
@@ -2679,8 +2685,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var last = content[^1];
         var trailing = 0.0;
         var tabbed = line.Pieces.Skip(line.Pieces.IndexOf(last) + 1).Any(p => p.IsTab);
-        for (var k = last.Text.Length - 1; !tabbed && k >= 0 && last.Text[k] == ' '; k--)
-            trailing += last.Advances[k];
+        // Trailing spaces run back over the pieces of nothing but spaces before the last, runs of other formatting
+        // (measured with docx/external/libreoffice/extras-uiwriter/MsWordCompTrailingBlanks: "TEST" centered and right
+        // aligned before spaces in runs of several shadings).
+        var trailingSpaces = new Dictionary<Piece, int>(ReferenceEqualityComparer.Instance);
+        for (var p = line.Pieces.Count - 1; !tabbed && p >= 0; p--)
+        {
+            var piece = line.Pieces[p];
+            if (piece.IsTab || piece.Drawing != null)
+                break;
+            var count = 0;
+            for (var k = piece.Text.Length - 1; k >= 0 && piece.Text[k] == ' '; k--, count++)
+                trailing += piece.Advances[k];
+            if (count > 0)
+                trailingSpaces[piece] = count;
+            if (count < piece.Text.Length || piece.Text.Length == 0)
+                break;
+        }
         var end = last.X + last.Width - trailing - line.Hanging;
         var free = limit - end;
         // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
@@ -2717,7 +2738,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             return;
         if (!justify || Math.Abs(free) < 1e-9)
             return;
-        var lineSpaces = movable.Sum(p => p.Text.Count(c => c == ' ')) - (last.Text.Length - last.Text.TrimEnd(' ').Length);
+        var lineSpaces = movable.Sum(p => p.Text.Count(c => c == ' ')) - trailingSpaces.Values.Sum();
         // Lines spread around East Asian text from two such characters on, with one only their spaces as Latin lines
         // (measured with docx/local/cjkr-*: Latin words with one ideograph stretch their spaces alike, with two or four
         // every gap beside them; cjky-*, cjkz-*: ideographs with spaces between them or Latin words spread every gap;
@@ -2730,7 +2751,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var spaces = 0;
         foreach (var piece in movable)
             spaces += piece.Text.Count(c => c == ' ');
-        spaces -= last.Text.Length - last.Text.TrimEnd(' ').Length;
+        spaces -= trailingSpaces.Values.Sum();
         if (spaces <= 0)
             return;
         var extra = free / spaces;
@@ -2740,8 +2761,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             piece.X = x;
             var own = piece.Text.Count(c => c == ' ');
-            if (ReferenceEquals(piece, last))
-                own -= last.Text.Length - last.Text.TrimEnd(' ').Length;
+            own -= trailingSpaces.GetValueOrDefault(piece);
             own = Math.Min(Math.Max(0, own), remaining);
             remaining -= own;
             piece.SpaceExtra = extra;
