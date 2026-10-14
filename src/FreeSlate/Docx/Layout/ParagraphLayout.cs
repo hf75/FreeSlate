@@ -282,6 +282,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     bool NoSpaceRaiseLower => noSpaceRaiseLower ??= context.CompatibilityMode < 15 && context.Compat("noSpaceRaiseLower");
 
     /// <summary>
+    /// Whether ideographic spaces (U+3000) at a line's end trail it as spaces do, hanging past the edge: before Word 2013
+    /// (measured with docx/local/isp-both-12: "tttest（" justified to the margin, twelve ideographic spaces past it,
+    /// "）" on the next line; docx/external/libreoffice/extras-uiwriter/tdf128375).
+    /// </summary>
+    bool IdeographicTrails => context.CompatibilityMode < 15;
+
+    /// <summary>Whether a character trails a line's content at its end.</summary>
+    bool Trails(char c) => c == ' ' || IdeographicTrails && c == (char)0x3000;
+
+    /// <summary>
     /// Whether the paragraph mark after a page break that ends its paragraph goes to the next page, an empty line
     /// there: w:splitPgBreakAndParaMark, before Word 2013 only (measured with docx/local/compat12-* and c2-legacy*).
     /// </summary>
@@ -942,7 +952,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 if (breaks[k - 1])
                     break;
             }
-            while (k > from && text[k - 1] == ' ')
+            while (k > from && Trails(text[k - 1]))
                 w -= advances[--k];
             return w;
         }
@@ -1117,7 +1127,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 var contentEnd = wordEnd;
                 var contentX = w;
-                while (contentEnd > i && text[contentEnd - 1] == ' ')
+                while (contentEnd > i && Trails(text[contentEnd - 1]))
                 {
                     contentEnd--;
                     contentX -= advances[contentEnd];
@@ -1133,7 +1143,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 // Where the line would end without the word, and its spaces then, which justification stretches.
                 var (shortEnd, shortSpaces) = (x, spaces);
-                for (var k = i; k > lineStart && text[k - 1] == ' '; k--)
+                for (var k = i; k > lineStart && Trails(text[k - 1]); k--)
                 {
                     shortEnd -= advances[k - 1];
                     shortSpaces -= balanced.Contains(k - 1) ? 0 : advances[k - 1];
@@ -1338,7 +1348,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
-            Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd);
+            Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
+                IdeographicTrails);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -2559,7 +2570,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// doubles. The last character of the line and the spaces after it take none.
     /// </summary>
     /// <returns>Whether the line was justified so (false where nothing can take the width).</returns>
-    static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled)
+    static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled, bool ideographicTrails = false)
     {
         var chars = new List<(Piece Piece, int Index)>();
         foreach (var piece in pieces)
@@ -2578,7 +2589,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         char At(int n) => chars[n].Index < 0 ? '\uFFFC' : chars[n].Piece.Text[chars[n].Index];
         // The line's content ends before its trailing spaces and its hanging punctuation.
         var count = chars.Count;
-        while (count > 0 && At(count - 1) == ' ')
+        while (count > 0 && (At(count - 1) == ' ' || ideographicTrails && At(count - 1) == (char)0x3000))
             count--;
         if (hangs && count > 0)
             count--;
@@ -2703,7 +2714,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="doubled">What justification adds at a boundary between East Asian and Latin text after a character.</param>
     /// <param name="edge">The paragraph's own right edge, which centered and right aligned lines a tab stop took past it align by.</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None, double? edge = null)
+        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -2723,11 +2734,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var piece = line.Pieces[p];
             if (piece.IsTab || piece.Drawing != null)
                 break;
-            var count = 0;
-            for (var k = piece.Text.Length - 1; k >= 0 && piece.Text[k] == ' '; k--, count++)
+            var (count, plain) = (0, 0);
+            for (var k = piece.Text.Length - 1; k >= 0 && (piece.Text[k] == ' ' || ideographicTrails && piece.Text[k] == (char)0x3000); k--, count++)
+            {
                 trailing += piece.Advances[k];
-            if (count > 0)
-                trailingSpaces[piece] = count;
+                plain += piece.Text[k] == ' ' ? 1 : 0;
+            }
+            if (plain > 0)
+                trailingSpaces[piece] = plain;
             if (count < piece.Text.Length || piece.Text.Length == 0)
                 break;
         }
@@ -2763,7 +2777,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
-        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled))
+        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled, ideographicTrails))
             return;
         if (!justify || Math.Abs(free) < 1e-9)
             return;
@@ -2774,7 +2788,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // pandoc/nested_instrText, instrText_hyperlink, empty_field).
         if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
                 || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0)
-            && Distribute(movable, free, spread == Spread.All || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0, line.Hanging > 0, doubled))
+            && Distribute(movable, free, spread == Spread.All || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0, line.Hanging > 0, doubled, ideographicTrails))
             return;
         // The spaces between words share the free width (trailing spaces excluded).
         var spaces = 0;

@@ -87,9 +87,17 @@ public sealed class FontTable
     static readonly string[] Serif = ["Cambria", "Caladea", "Times New Roman", "Liberation Serif", "DejaVu Serif"];
     static readonly string[] Sans = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
 
-    /// <summary>The font Word draws for a family in this style.</summary>
+    /// <summary>
+    /// The font Word draws for a family in this style. A missing family that the font table gives an East Asian
+    /// character set takes that script's font before what its name begins with (measured with docx/local/fsy-*:
+    /// "Arial Unicode MS" and "Arial Zz" of charset 80 in Yu Gothic, Latin and kana alike, of charset 00 or not described
+    /// in Arial; docx/external/libreoffice/extras-ooxmlexport/tdf107969).
+    /// </summary>
     public ResolvedFont Resolve(FontResolver fonts, string family, bool bold, bool italic) =>
-        Available(fonts, family, bold, italic) ?? Substitute(fonts, family, bold, italic);
+        (entries.TryGetValue(family, out var entry) && entry.Charset is 128 or 129 or 134 or 136
+            ? fonts.TryResolveFamily(family, bold, italic)
+            : Available(fonts, family, bold, italic))
+        ?? Substitute(fonts, family, bold, italic);
 
     /// <summary>The family itself where the machine has it, or the font Windows or Word puts for its name, else null.</summary>
     public static ResolvedFont? Available(FontResolver fonts, string family, bool bold, bool italic) =>
@@ -130,6 +138,12 @@ public sealed class FontTable
             return paged;
         if (MacNames.TryGetValue(family, out var mac) && fonts.TryResolveFamily(mac, bold, italic) is { } macFont)
             return macFont;
+        // A name in East Asian characters, of no font here, is Yu Gothic's (measured with docx/local/fsy-list, fsy-mzz:
+        // "ＭＳ 明朝;MS Mincho" and "明朝Zz" in Yu Gothic, Latin and kana alike; fsy-list2: "Zz;MS Mincho" in Cambria;
+        // docx/external/libreoffice/extras-uiwriter/tdf128375).
+        if (family.Any(c => c is >= '　' and <= '鿿' or >= '＀' and <= '￯' or >= '가' and <= '힯')
+            && fonts.TryResolveTypeface("Yu Gothic", bold, italic) is { } gothic)
+            return gothic;
         return fonts.ResolveFirst(entry == null || entry.Family == "roman" ? Serif : Sans, bold, italic);
     }
 }

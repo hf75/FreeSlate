@@ -326,7 +326,7 @@ areas:
           subFontBySize, suppressSpBfAfterPgBrk, swapBordersFacingPages, underlineTabInNumList, useAnsiKerningPairs
           (kerning without w:kern), useFELayout, useNormalStyleForList, usePrinterMetrics,
           useSingleBorderforContiguousCells, useWord2002TableStyleRules, wpJustification, wpSpaceWidth,
-          wrapTrailSpaces, adjustLineHeightInTable, applyBreakingRules, cachedColBalance, and the compatSettings
+          wrapTrailSpaces, applyBreakingRules, cachedColBalance, and the compatSettings
           enableOpenTypeFeatures, overrideTableStyleFontSizeAndJustification and doNotFlipMirrorIndents set to 0 in
           mode 15. Measured along the way and fixed in the base layout: a paragraph after a table gets HTML auto
           spacing; contextual spacing compares a table's first paragraph with the paragraph before it and the
@@ -495,24 +495,30 @@ areas:
           Futura Century Gothic, any Baskerville Baskerville Old Face, Myriad Pro Segoe UI, New York Times New Roman,
           Gill Sans Light and Helvetica Light the Nova families, docx/local/fontnames-plain; names beginning with Open
           Sans or Lato Segoe UI, with Roboto or Arial Arial, as web font lists from HTML have them, other lists
-          ("Calibri;Zz") not, docx/local/font-list, font-list2, tika/testWORD_features 20 → 100 %; PostScript and other
-          platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
-          Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family of
-          that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
-          docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for
-          the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft
-          YaHei, Big5: PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla
-          and Times New Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature
-          with the Hebrew or Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/
-          font-sig: Cyrillic or Greek code pages, Unicode ranges and PANOSE alone change nothing; pandoc/normalize:
-          Apple Chancery, Apple Symbols, Big Caslon), then Courier New for American Typewriter and Apple Chancery,
-          else Cambria for serif fonts (w:family roman) and fonts the table does not describe and Calibri for all
-          others, whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line
-          within 0.1 pt; known deviation: Word draws fonts with the Bengali Unicode range in Mangal or Nirmala UI).
-          Caladea and Carlito stand in where Cambria and Calibri are missing too. Of a family's entries the table's
-          last one counts, and a character set of 01 means nothing (docx/local/fontdup: OpenSymbol, first roman, then
-          auto, prints in Calibri, as in tdf153526_commentInNumbering). A list number's missing complex script font
-          becomes Times New Roman instead (see run.complexScript).
+          ("Calibri;Zz") not, docx/local/font-list, font-list2, tika/testWORD_features 20 → 100 %; PostScript and
+          other platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
+          Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family
+          of that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
+          docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for the table's
+          character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
+          PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla and Times New
+          Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature with the Hebrew or
+          Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/ font-sig:
+          Cyrillic or Greek code pages, Unicode ranges and PANOSE alone change nothing; pandoc/normalize: Apple
+          Chancery, Apple Symbols, Big Caslon), then Courier New for American Typewriter and Apple Chancery, else
+          Cambria for serif fonts (w:family roman) and fonts the table does not describe and Calibri for all others,
+          whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1
+          pt; known deviation: Word draws fonts with the Bengali Unicode range in Mangal or Nirmala UI). Caladea and
+          Carlito stand in where Cambria and Calibri are missing too. Of a family's entries the table's last one
+          counts, and a character set of 01 means nothing (docx/local/fontdup: OpenSymbol, first roman, then auto,
+          prints in Calibri, as in tdf153526_commentInNumbering). A list number's missing complex script font becomes
+          Times New Roman instead (see run.complexScript). A missing family that the table gives an East Asian
+          character set takes that script's font before what its name begins with, and a missing name in East Asian
+          characters Yu Gothic, Latin and kana alike (docx/local/fsy-*, measured one Word instance a document since
+          Word keeps a family's substitute for its session: "Arial Unicode MS" and "Arial Zz" of charset 80 in Yu
+          Gothic, of charset 00 or undescribed in Arial; "ＭＳ 明朝;MS Mincho" and "明朝Zz" in Yu Gothic, "Zz;MS Mincho" in
+          Cambria; docx/external/libreoffice/extras-ooxmlexport/tdf107969 66.6 → 92.6 %, extras-uiwriter/tdf128375
+          66.3 → 93.4 %).
 
       - id: font.embedded
         title: Embedded fonts
@@ -901,7 +907,14 @@ areas:
           between a cell's blocks, after a nested table too, none at the cell's top or bottom
           (docx/local/autospace-cells-15, -14). A negative w:line is its size: exactly under auto, at least or without
           a rule, at least under exact (docx/local/nls-auto, -none, -least, -exact: -360 lines 18 pt apart;
-          docx/external/libreoffice/extras-ooxmlexport/tdf125469_singleSpacing 41.1 → 91.4 %, tdf108682 100 %).
+          docx/external/libreoffice/extras-ooxmlexport/tdf125469_singleSpacing 41.1 → 91.4 %, tdf108682 100 %). HTML
+          auto spacing keeps the last list item's space after above a table, whatever the table's first paragraph is,
+          and at a cell's end a list item keeps it where other paragraphs have none (docx/local/acl-list, acl-other,
+          acl-mixed, acl-14: numbered items 14 pt above the table and above the cell's bottom line;
+          docx/external/libreoffice/extras-ooxmlexport/tdf132802 64.7 → 95.7 %, tdf106690-cell 63.8 → 100 %,
+          tdf119188_list_margin_in_cell 79.0 → 99.6 %); items of one abstract numbering definition count as one list
+          whatever instance numbers them, items of two definitions not (acl2-two, acl2-direct, acl2-bullet; tdf133052,
+          tdf133363 70.5 → 96.3 %).
 
       - id: paragraph.pagination
         title: Keep with next, keep lines together, widow control, page break before
@@ -1114,11 +1127,11 @@ areas:
           Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width. Only paragraphs
           with East Asian text or an East Asian language for it hang punctuation: a comma after Latin words goes down
           with its word (hangcomma-*; docx/external/poi/bug65649), before Word 2013 with ja-JP as the East Asian
-          language it hangs (c3-lines12-*; docx/external/libreoffice/core-ooxml-pass/fdo63164-1), from Word 2013 on the
-          language alone does not do (hangcomma-h4, -h7; extras-ooxmlexport/tdf163894). w:wordWrap off
-          breaks Latin words anywhere (ea-opts). w:topLinePunct sets an East Asian opening bracket that begins a line
-          half its width further left (toplinepunct15/12). In kerned runs (w:kern) an East Asian comma, period or
-          closing bracket before another one or an opening bracket loses half its width unless w:noPunctuationKerning
+          language it hangs (c3-lines12-*; docx/external/libreoffice/core-ooxml-pass/fdo63164-1), from Word 2013 on
+          the language alone does not do (hangcomma-h4, -h7; extras-ooxmlexport/tdf163894). w:wordWrap off breaks
+          Latin words anywhere (ea-opts). w:topLinePunct sets an East Asian opening bracket that begins a line half
+          its width further left (toplinepunct15/12). In kerned runs (w:kern) an East Asian comma, period or closing
+          bracket before another one or an opening bracket loses half its width unless w:noPunctuationKerning
           (ea-punctkern). The automatic space between East Asian and Latin text (w:autoSpaceDE, w:autoSpaceDN, on by
           default) exists only where the document's default East Asian font (w:docDefaults, through the theme) is an
           East Asian one (ea-auto-*: MS Mincho, SimSun, Yu Gothic yes whatever the language; Arial, none, a style's or
@@ -1126,17 +1139,21 @@ areas:
           font's average character width (OS/2) after Latin text (ea-autospace2: Arial, Times New Roman, Calibri,
           Courier New, Segoe UI beside four East Asian fonts within 0.1 pt), none at a line's end. Justified lines
           with two East Asian characters or more (where that default font is one; with one Latin lines' spaces only:
-          docx/local/cjkr-*, cjky-*, cjkz-*, cjkx-*, every character within 0.22 pt) share their free width equally among the gaps after
-          and before every East Asian character and after every space, a space 0.45 of its width more and the
-          automatic space at an East Asian/Latin boundary once more; distributed lines among all characters where the
-          paragraph has East Asian text or the document such a font, else among their spaces (cjk-justify-lines, cjk-
-          justify15/12, cjk-justify-western, docx/generated/paragraph-alignment). Before Word 2013 justified lines do
-          not squeeze their spaces for one more word. East Asian fonts are their win ascent and descent high and 15 %
-          of that more above and below, each rounded to the font's units (ea-pitch: nine fonts at 10.5, 12 and 16 pt
-          within 0.003 em). w:textAlignment top, center and bottom align a line's characters by their fonts' win
-          ascents and descents (ec-none); punctuation compression (w:characterSpacingControl) and w:adjustRightInd
-          changed nothing in Word's printout (ec-*, ea-adjust). Known deviation: custom kinsoku lists not in code
-          point order lose different characters in Word than here.
+          docx/local/cjkr-*, cjky-*, cjkz-*, cjkx-*, every character within 0.22 pt) share their free width equally
+          among the gaps after and before every East Asian character and after every space, a space 0.45 of its width
+          more and the automatic space at an East Asian/Latin boundary once more; distributed lines among all
+          characters where the paragraph has East Asian text or the document such a font, else among their spaces
+          (cjk-justify-lines, cjk- justify15/12, cjk-justify-western, docx/generated/paragraph-alignment). Before Word
+          2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent
+          and descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine
+          fonts at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's
+          characters by their fonts' win ascents and descents (ec-none); punctuation compression
+          (w:characterSpacingControl) and w:adjustRightInd changed nothing in Word's printout (ec-*, ea-adjust).
+          Before Word 2013 ideographic spaces (U+3000) at a line's end trail it as spaces do, hanging past the edge
+          (docx/local/isp-both-12: "tttest（" justified to the margin, the twelve ideographic spaces after it past it;
+          tdf128375). Known deviation: from Word 2013 on an opening bracket followed by ideographic spaces goes to the
+          next line with them (isp-both), here it ends the line with the first of them. Known deviation: custom
+          kinsoku lists not in code point order lose different characters in Word than here.
 
       - id: paragraph.bidi
         title: Right-to-left paragraphs and text direction
@@ -1479,9 +1496,12 @@ areas:
           the column holds, aligned and justified there; Word 2013 and later use the whole column (docx/local/cgw14-*,
           cgw12-dist: a 415.6 pt column holds 17 pitches of 24 pt, a distributed line spreads over 408 pt, right
           aligned text ends there, centered text is centered in it, with 10.5 pt runs too; cgw-*, cgw15c-dist;
-          docx/external/libreoffice/extras-ooxmlexport/tdf107359-char-pitch 70.4 → 100 %). Known deviation: Word
-          centers each character in its grid cell where the grid snaps characters, 6 pt in for 12 pt characters in 24
-          pt cells (cgr-chars, cgw-snap, cgw14-snap); ours begin at the margin.
+          docx/external/libreoffice/extras-ooxmlexport/tdf107359-char-pitch 70.4 → 100 %). Lines in table cells snap
+          to the line grid only where the document says w:adjustLineHeightInTable (docx/local/ygc-12, -15: 11 pt Yu
+          Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches in the body; ygc-12-adj, -15-adj: two
+          pitches in the cell too; tdf128375). Known deviation: Word centers each character in its grid cell where the
+          grid snaps characters, 6 pt in for 12 pt characters in 24 pt cells (cgr-chars, cgw-snap, cgw14-snap); ours
+          begin at the margin.
 
       - id: section.printing
         title: Printer and book fold settings

@@ -64,6 +64,9 @@ public sealed record ListLabel(string Text, RunFormat Format, string Suffix, str
 {
     /// <summary>The number of the label's own level in its format, without the text around it (a chapter's number).</summary>
     public string Own { get; init; } = "";
+
+    /// <summary>The abstract numbering definition the label counts in, whatever numbering instance names it.</summary>
+    public string? List { get; init; }
 }
 
 /// <summary>

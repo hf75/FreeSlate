@@ -572,7 +572,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph,
         IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
-        var box = Laid(table, available, fields, before, joined);
+        // Lines in table cells snap to the line grid only where the document says w:adjustLineHeightInTable (measured
+        // with docx/local/ygc-12, -15: 11 pt Yu Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches
+        // in the body; ygc-12-adj, -15-adj: two pitches in the cell too; docx/external/libreoffice/extras-uiwriter/
+        // tdf128375).
+        var pitch = paragraphs.LinePitch;
+        if (!context.Compat("adjustLineHeightInTable"))
+            paragraphs.LinePitch = null;
+        TableBox box;
+        try
+        {
+            box = Laid(table, available, fields, before, joined);
+        }
+        finally
+        {
+            paragraphs.LinePitch = pitch;
+        }
         // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
         if (table.Change is { } change)
         {
@@ -1953,10 +1968,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>
     /// Whether two paragraphs that follow each other are items of the same list, between which HTML auto spacing leaves no
     /// space (docx/external/poi/delins as Word prints it: list items 13.8 pt apart in 12 pt Times New Roman, 14 pt
-    /// before the first and after the last).
+    /// before the first and after the last): the same abstract definition, whatever instance numbers them (measured
+    /// with docx/local/acl2-two, acl2-direct, acl2-bullet: 14 pt between items of two definitions;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf133052: none between items of instances 2 and 1 of one).
     /// </summary>
     public static bool ListPair(ParagraphBlock first, ParagraphBlock second) =>
-        first.Label != null && second.Label != null && first.Format.NumberingId == second.Format.NumberingId;
+        first.Label != null && second.Label != null
+        && (first.Label.List ?? first.Format.NumberingId) == (second.Label.List ?? second.Format.NumberingId);
 
     /// <summary>The width rotated text is laid out in: wide enough not to wrap.</summary>
     const double Unwrapped = 1584;
@@ -2108,8 +2126,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                                 floatBottom = Math.Max(floatBottom, reach.Bottom);
                         }
                     }
+                    // At the cell's end a list item keeps its auto space after, other paragraphs none (measured with
+                    // docx/local/acl-list, acl-mixed, acl-14: numbered items 14 pt above the cell's bottom line, plain
+                    // paragraphs on it; docx/external/libreoffice/extras-ooxmlexport/tdf132802).
                     ownAfter = paragraph.Format.AfterAuto == true && autoSpacing
-                        ? (b == blocks.Count - 1 || blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
+                        ? (b == blocks.Count - 1 ? (paragraph.Label != null ? 14 : 0)
+                            : blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
                         : paragraph.Format.After ?? 0;
                     after = !spaced && following == style ? 0 : ownAfter;
                     if (lines.Count > firstLine)

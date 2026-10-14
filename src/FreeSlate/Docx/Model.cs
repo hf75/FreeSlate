@@ -953,7 +953,10 @@ public sealed partial class ModelReader(DocumentContext context)
             var numberFormat = mark.Clone();
             (numberFormat.ShadingPattern, numberFormat.ShadingColor, numberFormat.ShadingFill) = (null, null, null);
             numberFormat.Overlay(levelRun);
-            label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level) { Own = next.Own };
+            label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level)
+            {
+                Own = next.Own, List = context.Numbering.Find(format.NumberingId)?.AbstractId,
+            };
             counter.CurrentList = format.NumberingId;
         }
         // The margins of the HTML divisions around the paragraph add to its indents (catalog: paragraph.htmlDivs).

@@ -3889,9 +3889,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         : paragraph.Format.AfterAuto == true && !context.AddsSpacing && next != null && TableLayout.ListPair(paragraph, next) ? 0
         : OwnAfter(paragraph);
 
-    /// <summary>The space after a paragraph before the block that follows it: a table's first paragraph counts for contextual spacing (measured with docx/local/c5-cells).</summary>
-    double SpaceAfter(ParagraphBlock paragraph, Block? next) =>
-        SpaceAfter(paragraph, next switch { ParagraphBlock p => p, TableBlock t => TableLayout.FirstParagraph(t.Table), _ => null });
+    /// <summary>
+    /// The space after a paragraph before the block that follows it: a table's first paragraph counts for contextual
+    /// spacing (measured with docx/local/c5-cells), not as an item of the same list, the last item before a table
+    /// keeping its auto space after (docx/local/acl-list, acl-other: 14 pt above the table whatever its cells hold).
+    /// </summary>
+    double SpaceAfter(ParagraphBlock paragraph, Block? next) => next is TableBlock t
+        ? paragraph.Format.ContextualSpacing == true && TableLayout.FirstParagraph(t.Table) is { } cellFirst && SameStyle(paragraph, cellFirst) ? 0 : OwnAfter(paragraph)
+        : SpaceAfter(paragraph, next as ParagraphBlock);
 
     /// <summary>A paragraph's space after, contextual spacing aside: HTML auto spacing (w:afterAutospacing) 14 pt.</summary>
     double OwnAfter(ParagraphBlock paragraph) =>
