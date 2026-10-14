@@ -869,7 +869,17 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         var content = new List<Inline>();
         var field = new FieldState();
-        ReadInlines(p, styleId, content, field);
+        // A paragraph of nothing but equations shows them as a display equation, as in an m:oMathPara, whatever the
+        // paragraph's justification (measured with docx/local/dmath-*: one or two m:oMath alone or after a bookmark
+        // centered with limits above and below as in an m:oMathPara, in left and right aligned paragraphs too, m:defJc
+        // left at the left; after text or a space inline; pandoc/golden/mark_math).
+        if (LoneMath(p) is { Count: > 0 } maths)
+        {
+            ReadInlines(new XElement(p.Name, p.Elements().Where(e => e.Name.Namespace != Equations.MathLayout.M)), styleId, content, field);
+            ReadMath(new XElement(Equations.MathLayout.M + "oMathPara", maths.Select(o => new XElement(o))), styleId, content);
+        }
+        else
+            ReadInlines(p, styleId, content, field);
         return new ParagraphBlock(p, format, content, mark)
         {
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
@@ -1103,6 +1113,27 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// The m:oMath of a paragraph that holds nothing else: no text, no math paragraph, only marks of ranges, proofing
+    /// marks and empty runs beside them; else none.
+    /// </summary>
+    static List<XElement> LoneMath(XElement p)
+    {
+        var maths = new List<XElement>();
+        foreach (var e in p.Elements())
+        {
+            if (e.Name == Equations.MathLayout.M + "oMath")
+                maths.Add(e);
+            else if (e.Name.Namespace != Wml.W || e.Name.LocalName == "pPr" || e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal)
+                     || e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal)
+                     || e.Name.LocalName is "bookmarkStart" or "bookmarkEnd" or "proofErr" or "permStart" or "permEnd")
+                continue;
+            else if (e.Name.LocalName != "r" || e.Elements().Any(c => c.Name.LocalName is not ("rPr" or "lastRenderedPageBreak")))
+                return [];
+        }
+        return maths;
     }
 
     /// <summary>Equations (catalog: math): an m:oMath in the text, the display equations of an m:oMathPara.</summary>
