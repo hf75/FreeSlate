@@ -11,6 +11,14 @@ public sealed class SvgPaint
     /// <summary>A document-unique id for defs (gradients, patterns, clip paths).</summary>
     public string NewId(string prefix) => $"{prefix}{++nextId}";
 
+    /// <summary>
+    /// Whether stretched pictures are drawn as clipped images (PictureImage) rather than pattern fills: for pages that
+    /// are printed (Word documents), where browsers turn picture patterns into bitmaps of 72 dpi. Slides keep the
+    /// pattern, whose repeated edge pixels follow PowerPoint's picture edges on screen a little closer
+    /// (tests/corpus/pptx/generated/pictures 99.6 % with it, 99.4 % with images).
+    /// </summary>
+    public bool PrintedPictures { get; init; }
+
     /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
     /// <param name="outline">The shape's outline as path data in the box, for gradients that follow it (path="shape").</param>
     /// <param name="offset">Where the w × h box lies in the shape's coordinates: a gradient spans the bounds of the path
@@ -348,6 +356,36 @@ public sealed class SvgPaint
         static double ToSrgb(double c) => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.Pow(Math.Max(c, 0), 1 / 2.4) - 0.055;
         double M(double x, double y) => ToSrgb(ToLinear(x) + (ToLinear(y) - ToLinear(x)) * t);
         return new RgbColor(M(a.R, b.R), M(a.G, b.G), M(a.B, b.B), a.A + (b.A - a.A) * t);
+    }
+
+    /// <summary>
+    /// A stretched picture fill as an image clipped to the path it fills, or null for other fills and tiled pictures.
+    /// Browsers print a pattern of a picture as a bitmap at 72 dpi of the whole page, an image at its own resolution
+    /// (measured with tools/Fidelity on docx/external/powertools/WC/WC067-Textbox-Image and pandoc/image: Word's PDF
+    /// holds the picture, the browser's a 596 × 843 bitmap of the page); on screen both look alike.
+    /// </summary>
+    public string? PictureImage(Fill fill, double w, double h, string clipData, StringBuilder defs, string crisp = "")
+    {
+        if (!PrintedPictures || fill is not PictureFill p || p.Tiling is not null && p.NaturalSize.W > 0 && p.NaturalSize.H > 0)
+            return null;
+        var filter = "";
+        if (p.Filter != null)
+        {
+            var filterId = NewId("bf");
+            defs.Append($"<filter id=\"{filterId}\" x=\"0\" y=\"0\" width=\"1\" height=\"1\" color-interpolation-filters=\"sRGB\">{p.Filter}</filter>");
+            filter = $" filter=\"url(#{filterId})\"";
+        }
+        var (fl, ft, fr, fb) = p.FillRect;
+        var (sl, st, sr, sb) = p.SourceRect;
+        var innerW = w * (1 - fl - fr);
+        var innerH = h * (1 - ft - fb);
+        var fullW = innerW / Math.Max(1e-6, 1 - sl - sr);
+        var fullH = innerH / Math.Max(1e-6, 1 - st - sb);
+        var (x, y) = (w * fl - sl * fullW, h * ft - st * fullH);
+        var clip = NewId("pc");
+        defs.Append($"<clipPath id=\"{clip}\"><path d=\"{clipData}\"{crisp}/></clipPath>");
+        return $"<g clip-path=\"url(#{clip})\"><image href=\"{p.Image}\" x=\"{Units.Css(x)}\" y=\"{Units.Css(y)}\" " +
+               $"width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"{filter}/></g>";
     }
 
     string Picture(PictureFill p, double w, double h, StringBuilder defs)

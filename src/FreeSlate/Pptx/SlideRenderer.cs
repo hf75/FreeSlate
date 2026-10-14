@@ -293,10 +293,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
             else if (strokesLast)
             {
-                if (pathFill is not NoFill)
+                if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
+                    paths.Append(image);
+                else if (pathFill is not NoFill)
                     paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
                 if (stroke != " stroke=\"none\"")
                     strokes.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
+            }
+            else if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
+            {
+                // A picture prints at its own resolution as an image clipped to the path, the outline over it.
+                paths.Append(image);
+                if (stroke != " stroke=\"none\"")
+                    paths.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
             }
             else
             {
