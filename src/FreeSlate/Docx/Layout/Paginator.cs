@@ -224,9 +224,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var known = new Dictionary<int, List<Exclusion>>();
             var bands = new Dictionary<int, double>();
             List<PageBox> result = [];
-            for (var run = 0; run < 4; run++)
+            // The pages each object stood on run by run, and the paragraphs that begin a page for it.
+            var history = new Dictionary<XElement, List<int>>(ReferenceEqualityComparer.Instance);
+            var forced = new HashSet<Block>(ReferenceEqualityComparer.Instance);
+            for (var run = 0; run < 5; run++)
             {
-                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands };
+                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands, forcedBreaks = forced };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
@@ -238,6 +241,28 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var bandsKept = foundBands.Count == bands.Count && foundBands.All(b => bands.TryGetValue(b.Key, out var old) && Math.Abs(old - b.Value) < 0.01);
                 if ((found.Values.All(e => e.Count == 0) || Same(known, found)) && bandsKept)
                     break;
+                // An object that goes back and forth between two pages pushes its own paragraph off the first of them
+                // when it wraps text there: Word puts the paragraph on the second and leaves the first without the object
+                // (docx/external/openxml-sdk/Document: a cover page's text box placed from the page, anchored after a
+                // chart, on the page after the chart; Complex01, Strict01 page 4).
+                foreach (var (page, exclusions) in found)
+                {
+                    foreach (var source in exclusions.Select(e => e.Source).OfType<XElement>())
+                    {
+                        if (!history.TryGetValue(source, out var pages))
+                            history[source] = pages = [];
+                        pages.Add(page);
+                    }
+                }
+                foreach (var (source, pages) in history)
+                {
+                    if (pages.Count < 3 || pages[^1] != pages[^3] || Math.Abs(pages[^1] - pages[^2]) != 1
+                        || AnchorParagraph(blocks, source) is not { } anchorParagraph || !forced.Add(anchorParagraph))
+                        continue;
+                    var earlier = Math.Min(pages[^1], pages[^2]);
+                    if (found.TryGetValue(earlier, out var stale))
+                        stale.RemoveAll(e => ReferenceEquals(e.Source, source));
+                }
                 known = found;
                 bands = foundBands;
             }
@@ -271,6 +296,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         NumberLines(pages);
         return pages;
+
+        // The body paragraph an object is anchored in, or null.
+        static ParagraphBlock? AnchorParagraph(List<Block> blocks, XElement source) =>
+            blocks.OfType<ParagraphBlock>().FirstOrDefault(p => p.Content.OfType<AnchorInline>().Any(a => ReferenceEquals(a.Anchor, source)));
 
         static bool Same(Dictionary<int, List<Exclusion>> a, Dictionary<int, List<Exclusion>> b) =>
             a.Count == b.Count && a.All(kv => b.TryGetValue(kv.Key, out var other) && other.Count == kv.Value.Count
@@ -679,6 +708,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>The height the footnotes of each page with columns took in the run before.</summary>
     Dictionary<int, double> seededBands = [];
+
+    /// <summary>
+    /// Paragraphs that begin a new page: the anchors of objects that push their own paragraph off the page they wrap
+    /// text on (Paginate), which Word leaves on the next page, the page before without them.
+    /// </summary>
+    HashSet<Block> forcedBreaks = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
@@ -2353,6 +2388,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NewPage(section);
             top = Top.Break;
             brokeBefore = true;
+            (left, width) = Column(column);
+        }
+        else if (forcedBreaks.Contains(blocks[index]) && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
+        {
+            NewPage(section);
+            top = Top.Break;
             (left, width) = Column(column);
         }
 
