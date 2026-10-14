@@ -72,8 +72,17 @@ public sealed class FontTable
         ["Helvetica Light"] = "Arial Nova Light",
     };
 
-    /// <summary>Beginnings of names Word replaces by an installed family, whatever follows them (Futura Medium, Futura Md BT).</summary>
-    static readonly (string Prefix, string Family)[] WordPrefixes = [("Futura", "Century Gothic"), ("Baskerville", "Baskerville Old Face")];
+    /// <summary>
+    /// Beginnings of names Word replaces by an installed family, whatever follows them (Futura Medium, Futura Md BT; web
+    /// font lists as HTML leaves them: docx/local/font-list, font-list2: "Open Sans;Arial;sans-serif", "Open Sans Zz"
+    /// and "Lato;Arial" in Segoe UI, "Roboto;Arial" and "Arial;Helvetica" in Arial, but "Calibri;Zz", "Verdana;Arial"
+    /// and "Zz;Arial" in Cambria; tika/testWORD_features).
+    /// </summary>
+    static readonly (string Prefix, string Family)[] WordPrefixes =
+    [
+        ("Futura", "Century Gothic"), ("Baskerville", "Baskerville Old Face"), ("Open Sans", "Segoe UI"), ("Lato", "Segoe UI"),
+        ("Roboto", "Arial"), ("Arial", "Arial"),
+    ];
 
     static readonly string[] Serif = ["Cambria", "Caladea", "Times New Roman", "Liberation Serif", "DejaVu Serif"];
     static readonly string[] Sans = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];

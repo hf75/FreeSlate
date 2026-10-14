@@ -484,7 +484,9 @@ areas:
         office: >-
           A family the machine lacks is replaced as Word replaces it: a family known by the name (Word's own: any
           Futura Century Gothic, any Baskerville Baskerville Old Face, Myriad Pro Segoe UI, New York Times New Roman,
-          Gill Sans Light and Helvetica Light the Nova families, docx/local/fontnames-plain; PostScript and other
+          Gill Sans Light and Helvetica Light the Nova families, docx/local/fontnames-plain; names beginning with Open
+          Sans or Lato Segoe UI, with Roboto or Arial Arial, as web font lists from HTML have them, other lists
+          ("Calibri;Zz") not, docx/local/font-list, font-list2, tika/testWORD_features 20 → 100 %; PostScript and other
           platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
           Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family of
           that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
