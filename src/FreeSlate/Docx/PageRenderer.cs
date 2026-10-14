@@ -66,6 +66,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
                 svg.Append(Drawing(drawing, page));
         }
+        var textStart = svg.Length;
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
         var selection = new StringBuilder();
         // A page border behind the text, table shading and borders below the text, a page border in front of it.
@@ -79,7 +80,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
         var commentAnchors = CommentRanges(page, svg);
         var inline = new List<PlacedDrawing>();
-        Lines(page.Lines, svg, selection, inline);
+        // The inline drawings of headers and footers lie behind the body's text, as Word draws their layer first
+        // (scratch/triage/2026-10-14_agents/misc: docx/external/openxml-sdk/complex0, 2010: a header's picture
+        // 546.75 pt wide over the body's lines).
+        var storyInline = new List<PlacedDrawing>();
+        Lines(page.Lines.Where(l => l.Story), svg, selection, storyInline);
+        Lines(page.Lines.Where(l => !l.Story), svg, selection, inline);
+        if (drawings != null && storyInline.Count > 0)
+            svg.Insert(textStart, string.Concat((turn == null ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page))));
         front.AddRange(turn == null ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
         // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
         foreach (var (number, style, right, baseline) in page.LineNumbers)

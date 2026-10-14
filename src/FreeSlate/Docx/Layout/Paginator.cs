@@ -23,6 +23,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>A line of the body that line numbering counts (not in tables, notes or suppressed paragraphs).</summary>
     public bool Numbered { get; init; }
 
+    /// <summary>A line of a header or footer, whose inline drawings lie behind the body's text (PageRenderer).</summary>
+    public bool Story { get; init; }
+
     /// <summary>The space after the line's paragraph where the line ends it, in table cells (RowBox.Split).</summary>
     public double After { get; init; }
 
@@ -1453,7 +1456,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         public void AddTo(PageBox page)
         {
-            page.Lines.AddRange(Lines);
+            page.Lines.AddRange(Lines.Select(l => l with { Story = true }));
             page.Shading.AddRange(Shading);
             page.Borders.AddRange(Borders);
             page.Strokes.AddRange(Strokes);
