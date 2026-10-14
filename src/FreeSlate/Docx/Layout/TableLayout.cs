@@ -866,7 +866,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var fromLeft = cell.Format.TextDirection == "tbLrV";
                     var pivotX = down ? textFrom + content.Width : textFrom;
                     var pivotY = down ? top : topWidths[r] + total - margins.Bottom;
-                    foreach (var line in content.Lines)
+                    foreach (var line in RotatedLines(cell, content, total - margins.Top - margins.Bottom, fields))
                     {
                         var lineTop = fromLeft ? content.Width - line.Top - line.Line.Height : line.Top;
                         part.Lines.Add(line with { Line = fromLeft ? line.Line.Flipped() : line.Line, Left = pivotX + line.Left, Top = pivotY + lineTop, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -lineTop });
@@ -1732,10 +1732,28 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return new CellContent([], [], [], 0);
         if (!Rotated(cell))
             return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
-        var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
-        var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
-        return content with { Height = length, Thickness = content.Height };
+        // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
+        // with docx/external/powertools/HC008-Test-03: "notes" centered in a btLr cell of a row 72 pt high keeps the
+        // row 72 pt high, not 810).
+        var unaligned = paragraphs.Unaligned;
+        paragraphs.Unaligned = true;
+        try
+        {
+            var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
+            var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
+            return content with { Height = length, Thickness = content.Height };
+        }
+        finally
+        {
+            paragraphs.Unaligned = unaligned;
+        }
     }
+
+    /// <summary>A rotated cell's lines aligned along the length its row gives them, where a paragraph is not left aligned.</summary>
+    List<PlacedLine> RotatedLines(CellModel cell, CellContent content, double length, PageFields? fields) =>
+        cell.Blocks.OfType<ParagraphBlock>().Any(p => p.Format.Justification is not (null or "left" or "start"))
+            ? Directed(cell, () => Content(cell.Blocks, Math.Max(1, length), fields)).Lines
+            : content.Lines;
 
     /// <summary>
     /// Laid out with the cell's text direction (measured with docx/local/vertical2 and vertical5): its lines vertical

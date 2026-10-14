@@ -302,6 +302,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>Whether the lines' East Asian characters are turned a quarter against them (see <see cref="Line.TurnEastAsian"/>).</summary>
     public bool TurnEastAsian { get; set; }
 
+    /// <summary>Whether lines are left where they begin, unaligned: for measuring their natural lengths (rotated cells).</summary>
+    public bool Unaligned { get; set; }
+
     /// <summary>
     /// A style's parts of a line above and below the baseline: in vertical lines 1/32 of the size more (1.3 times that
     /// for East Asian fonts, as their lines are), half above and half below (measured with docx/local/vertical3,
@@ -1231,7 +1234,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         foreach (var line in lines)
         {
             // Lines broken around floating objects align in their room; lines in several segments stay as they are.
-            if (line.Jumped)
+            if (line.Jumped || Unaligned)
                 continue;
             // A display equation's line stands where its justification puts it, from the left indent.
             if (line.Pieces.FirstOrDefault(p => p.DisplayX != null) is { DisplayX: { } displayX } displayed)
