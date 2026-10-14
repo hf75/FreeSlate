@@ -2156,19 +2156,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // align their tops, centers or bottoms (w:textAlignment) they keep their whole ascent and descent
             // (lowr-18, lowr-19: 12 pt lowered 6 pt aligned top make the line about 19.4 pt high; tdf140668).
             var shifts = format.TextAlignment is not ("top" or "center" or "bottom");
-            above = Math.Max(above, a + (shifts ? Math.Min(0, lift) : 0));
+            // A run's border and its space take room above and below its text, outside the spacing (measured with
+            // docx/local/rbd-*: borders of 0.5 to 3 pt with 0 and 4 pt of space make the line taller by twice both,
+            // the box reaching from the line's top; docx/external/powertools/HC033).
+            var boxed = piece.Style.Border is { } runBorder ? PageBorders.Room(runBorder) : 0;
+            above = Math.Max(above, a + boxed + (shifts ? Math.Min(0, lift) : 0));
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
             var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
-            raised = Math.Max(raised, a + lift + reachAbove);
+            raised = Math.Max(raised, a + boxed + lift + reachAbove);
             any = true;
             // A list number's ascent counts, its descent not (measured with docx/local/num-rules: a 16 pt number
             // before 12 pt Arial makes the line 17.52 pt high, its ascent and the text's descent).
             if (piece.IsLabel)
                 continue;
             texts = true;
-            below = Math.Max(below, b - (shifts ? Math.Max(0, lift) : 0));
+            below = Math.Max(below, b + boxed - (shifts ? Math.Max(0, lift) : 0));
             largest = Math.Max(largest, a + b);
-            lowered = Math.Max(lowered, b - lift + reachBelow);
+            lowered = Math.Max(lowered, b + boxed - lift + reachBelow);
         }
         if (drawings && !texts)
         {

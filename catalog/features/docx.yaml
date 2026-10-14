@@ -586,7 +586,9 @@ areas:
           Emboss: gray (#999999) copy in place, black copy 1.92 pt up-left, the text 0.96 pt up-left; imprint the same
           down-right; shadow a #C0C0C0 copy a 24th of the size down-right; outline hollow letters stroked 0.14 pt
           (white over a shadow). Run borders take their lines and space (floored to dots) beside the text in the line,
-          neighbouring runs with one border sharing a frame over the font's height. Super- and subscripts take the
+          and above and below it, the line taller by twice both outside its spacing (docx/local/rbd-*: 0.5 to 3 pt with
+          0 and 4 pt of space, Calibri 11 and Arial 12; powertools/HC033 66.7 → 100 % of the lines), neighbouring runs
+          with one border sharing a frame over the font's height. Super- and subscripts take the
           font's OS/2 sizes in whole half-points (Calibri 11 pt: 7 pt; Aptos 12 pt: 7 pt), raised by its superscript
           offset or as far as the line's top allows, lowered by its subscript offset or as far as its bottom allows,
           in half-points, and make no line higher (within half a point where the line decides). Small caps are 80 % of
