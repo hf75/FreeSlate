@@ -533,6 +533,23 @@ public sealed partial class ModelReader(DocumentContext context)
             var blocks = new List<Block>();
             ReadBlocks(note, blocks);
             JoinHidden(blocks, cell: false);
+            // A note without paragraphs takes the room of an empty one (measured with docx/local/fnempty-*: the
+            // separator of an empty note stands where a note of one line puts it, 0, 8 and 20 pt of space after
+            // included; docx/external/powertools/WC/WC064-Footnote).
+            if (blocks.Count == 0 && type == "normal")
+                blocks.Add(Paragraph(new XElement(Wml.W + "p")));
+            // The paragraph of a separator's line stands at single spacing without space before or after, whatever it
+            // and the defaults say (measured with docx/local/fsep-*: before 12, after 0, 10 and 20 pt, double spacing
+            // all put the separator 16.2 pt above the note's baseline; docx/external/pandoc/golden/notes); text
+            // paragraphs of a separator keep theirs (libreoffice/extras-ooxmlexport/tdf123262_textFootnoteSeparators).
+            if (type is "separator" or "continuationSeparator")
+            {
+                foreach (var paragraph in blocks.OfType<ParagraphBlock>().Where(p => p.Element.Descendants().Any(e => e.Name.LocalName is "separator" or "continuationSeparator")))
+                {
+                    var f = paragraph.Format;
+                    (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
+                }
+            }
             notes[type == "normal" ? id : type] = blocks;
         }
         noteMark = null;
