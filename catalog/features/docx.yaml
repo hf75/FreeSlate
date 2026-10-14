@@ -1744,7 +1744,9 @@ areas:
           field; a heading level or a built-in heading's name in Word's languages; of a character style the text of
           the first or last runs in it, docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a
           dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
-          before), SEQ (\c, , \h, \s), SECTION, IF
+          before), NOTEREF (the mark of the note in the bookmark, with \f raised as that mark; to a missing bookmark
+          Word's error in the instruction's format, bold in every mode, whatever MERGEFORMAT says: docx/local/nref-*,
+          powertools/RP043, RP044-Rejected 50 → 100 % of the lines), SEQ (\c, , \h, \s), SECTION, IF
           (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
           language's short date and time) and SAVEDATE (when the document was saved), all in the field's language
           (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word has them, none in

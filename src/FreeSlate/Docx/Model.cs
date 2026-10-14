@@ -100,7 +100,7 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
 
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
-        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "";
+        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "";
 }
 
 /// <summary>A block of the body: a paragraph or a table.</summary>
@@ -1120,6 +1120,9 @@ public sealed partial class ModelReader(DocumentContext context)
     static RunFormat ResultFormat(FieldState.Frame field, string instruction)
     {
         var saved = field.Cached?.FirstOrDefault()?.Format;
+        // NOTEREF computes only its error, in the instruction's format whatever the switches (docx/local/nref-miss-*).
+        if (FieldInline.TypeOf(instruction) == "NOTEREF" && field.InstructionFormat is { } instructed)
+            return instructed;
         if (FieldInline.TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF" && field.InstructionFormat is { } code
             && !(saved != null && instruction.Contains("MERGEFORMAT", StringComparison.OrdinalIgnoreCase)))
             return code;

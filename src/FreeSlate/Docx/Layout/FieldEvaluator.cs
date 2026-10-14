@@ -30,6 +30,9 @@ public sealed class FieldEvaluator
     /// <summary>The text of every bookmark and the paragraph it begins in (REF).</summary>
     readonly Dictionary<string, (StringBuilder Text, ParagraphBlock Paragraph)> bookmarks = new(StringComparer.Ordinal);
 
+    /// <summary>The first note reference in every bookmark (NOTEREF).</summary>
+    readonly Dictionary<string, NoteReferenceInline> noteMarks = new(StringComparer.Ordinal);
+
     /// <summary>The body's paragraphs in their order, and the place of each.</summary>
     readonly List<ParagraphBlock> paragraphs = [];
     readonly Dictionary<ParagraphBlock, int> order = new(ReferenceEqualityComparer.Instance);
@@ -103,6 +106,10 @@ public sealed class FieldEvaluator
                     case TextInline text:
                         foreach (var name in open.Values)
                             bookmarks[name].Text.Append(text.Text);
+                        continue;
+                    case NoteReferenceInline note when !note.Own:
+                        foreach (var name in open.Values)
+                            noteMarks.TryAdd(name, note);
                         continue;
                 }
                 if (inline is not FieldInline field)
@@ -211,6 +218,13 @@ public sealed class FieldEvaluator
             }
             case "PAGEREF" when words.Count > 1 && !bookmarks.ContainsKey(words[1]):
                 return T("Error! Bookmark not defined.", "Fehler! Textmarke nicht definiert.");
+            // NOTEREF: the mark of the note in the bookmark, Word's error where the bookmark is missing (measured with
+            // docx/local/nref-*: a saved "9" printed as the note's 1; the error in bold in modes 14 and 15, with and
+            // without MERGEFORMAT; powertools/RP043, RP044).
+            case "NOTEREF" when words.Count > 1 && !words[1].StartsWith('\\') && !bookmarks.ContainsKey(words[1]):
+                return T("Error! Bookmark not defined.", "Fehler! Textmarke nicht definiert.");
+            case "NOTEREF" when words.Count > 1 && noteMarks.TryGetValue(words[1], out var note) && note.Mark.Length > 0:
+                return note.Mark;
             case "":
                 return "";
             case "STYLEREF" when words.Count > 1:
@@ -235,6 +249,17 @@ public sealed class FieldEvaluator
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// The vertical alignment a NOTEREF with \f gives its number, its note mark's (measured with docx/local/nref-ok-f-14,
+    /// -15: superscript as the mark), or null.
+    /// </summary>
+    public string? NoteAlignment(FieldInline field)
+    {
+        var words = Words(field.Instruction);
+        return field.Type == "NOTEREF" && words.Count > 1 && words.Contains("\\f") && noteMarks.TryGetValue(words[1], out var note)
+            ? note.Format.VerticalAlign : null;
     }
 
     /// <summary>Whether a bookmark stands in a paragraph before another.</summary>

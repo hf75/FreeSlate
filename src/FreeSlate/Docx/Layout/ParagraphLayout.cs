@@ -1595,12 +1595,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case FieldInline field when (fields?.Value(field) ?? Evaluator?.Value(field, fields?.On)) is { } value:
                 {
-                    // Word sets its error texts in bold before Word 2013 (measured with docx/local/fielderrors-14, -12).
+                    // Word sets its error texts in bold before Word 2013 (measured with docx/local/fielderrors-14, -12),
+                    // NOTEREF's always (nref-miss-15).
                     var shown = format;
-                    if (FieldEvaluator.IsError(value) && context.CompatibilityMode < 15 && format.Bold != true)
+                    if (FieldEvaluator.IsError(value) && (context.CompatibilityMode < 15 || field.Type == "NOTEREF") && format.Bold != true)
                     {
                         shown = format.Clone();
                         shown.Bold = true;
+                    }
+                    else if (Evaluator?.NoteAlignment(field) is { } alignment)
+                    {
+                        shown = format.Clone();
+                        shown.VerticalAlign = alignment;
                     }
                     AddText(value, shown, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
