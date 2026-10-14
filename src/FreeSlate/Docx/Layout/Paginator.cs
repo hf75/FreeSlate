@@ -2410,17 +2410,42 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// between line and the bottom line. The shading reaches 1.4 pt left and 1.55 pt right of the text, the side
         /// lines stand their space outside it (measured with docx/local/pbdr).
         /// </summary>
-        public void Draw(PageBox page, double columnLeft, double columnWidth, ParagraphFormat format, double boxTop, double boxBottom, bool top, bool bottom, double? between) =>
-            Draw(page.Shading, page.Borders, columnLeft, columnWidth, boxTop, boxBottom, top, bottom, between);
+        public void Draw(PageBox page, double columnLeft, double columnWidth, ParagraphFormat format, double boxTop, double boxBottom, bool top, bool bottom, double? between,
+            IReadOnlyList<(double Top, double Bottom, List<(double Start, double End)> Segments)>? cuts = null) =>
+            Draw(page.Shading, page.Borders, columnLeft, columnWidth, boxTop, boxBottom, top, bottom, between, cuts);
 
-        public void Draw(List<FillRect> shadings, List<FillRect> lines, double columnLeft, double columnWidth, double boxTop, double boxBottom, bool top, bool bottom, double? between)
+        /// <param name="cuts">
+        /// The lines that floating objects cut, top to bottom, whose shading covers only their segments, from 1.4 pt
+        /// before a cut start to 1.55 pt after a cut end (measured with docx/local/psl-square, psl-behind: a yellow
+        /// paragraph beside a rectangle wrapped square, or behind the text tight, shaded left and right of it line by
+        /// line; docx/external/libreoffice/extras-ooxmlimport/tdf60351).
+        /// </param>
+        public void Draw(List<FillRect> shadings, List<FillRect> lines, double columnLeft, double columnWidth, double boxTop, double boxBottom, bool top, bool bottom, double? between,
+            IReadOnlyList<(double Top, double Bottom, List<(double Start, double End)> Segments)>? cuts = null)
         {
             var innerLeft = columnLeft + indentLeft - 1.4 - (Left is { Visible: true } il ? il.Space : 0);
             var innerRight = columnLeft + columnWidth - indentRight + 1.55 + (Right is { Visible: true } ir ? ir.Space : 0);
             var left = innerLeft - (Left is { Visible: true } l ? l.Total : 0);
             var right = innerRight + (Right is { Visible: true } r ? r.Total : 0);
             if (Fill is { } fill)
-                shadings.Add(new FillRect(innerLeft, boxTop, innerRight - innerLeft, boxBottom - boxTop, fill));
+            {
+                var from = boxTop;
+                foreach (var (cutTop, cutBottom, segments) in cuts ?? [])
+                {
+                    if (cutTop > from + 0.01)
+                        shadings.Add(new FillRect(innerLeft, from, innerRight - innerLeft, cutTop - from, fill));
+                    foreach (var (start, end) in segments)
+                    {
+                        var segmentLeft = start <= indentLeft + 0.01 ? innerLeft : columnLeft + start - 1.4;
+                        var segmentRight = end >= columnWidth - indentRight - 0.01 ? innerRight : columnLeft + end + 1.55;
+                        if (segmentRight > segmentLeft)
+                            shadings.Add(new FillRect(segmentLeft, cutTop, segmentRight - segmentLeft, cutBottom - cutTop, fill));
+                    }
+                    from = Math.Max(from, cutBottom);
+                }
+                if (boxBottom > from + 0.01)
+                    shadings.Add(new FillRect(innerLeft, from, innerRight - innerLeft, boxBottom - from, fill));
+            }
             // Double and thin-and-thick lines in their strokes, as tables draw them (docx/external/poi/FancyFoot: a
             // thin-thick top line, 3 pt above 0.75 pt).
             // Embossed and engraved lines in their shades (docx/local/b3d-*).
@@ -2773,6 +2798,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         (PageBox Page, double Top, double Left, double Width)? partAt = null;
         var lineParts = new Dictionary<AnchorInline, (PageBox Page, double Top, double Left, double Width)>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
+        // The lines on this page that floating objects cut, for the paragraph's shading (Frame.Draw).
+        var cuts = new List<(double Top, double Bottom, List<(double Start, double End)> Segments)>();
+        var cutsPage = page!;
         // Whether the paragraph went on in another column or page, where the objects that pushed its lines down here
         // are not in their way.
         var moved = false;
@@ -2880,6 +2908,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true) { Block = paragraph });
+            if (cutsPage != page)
+                (cuts, cutsPage) = ([], page!);
+            if (line.Cut is { } cut)
+                cuts.Add((y, y + line.Height, cut));
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y)
             {
                 Numbered = format.SuppressLineNumbers != true,
@@ -2956,7 +2988,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (boxPage != page)
                 boxTop = page!.BodyTop;
             frame.Draw(page!, left + Mirror(format), width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
-                between: continues && boxPage == page ? betweenAt : null);
+                between: continues && boxPage == page ? betweenAt : null, cuts: cutsPage == page ? cuts : null);
             if (!nextContinues)
                 y += frame.BottomShadow;
         }

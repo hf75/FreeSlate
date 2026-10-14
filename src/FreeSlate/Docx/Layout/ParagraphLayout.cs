@@ -141,6 +141,13 @@ public sealed class Line
     public double? Limit { get; set; }
 
     /// <summary>
+    /// The segments of a line that floating objects cut (from the column's left edge), where its paragraph's shading
+    /// stands; a segment that begins at the line's natural start begins at the paragraph's indent. Null for lines of
+    /// their whole width.
+    /// </summary>
+    public List<(double Start, double End)>? Cut { get; set; }
+
+    /// <summary>
     /// Whether justification leaves the line's spacing as it is: a line a tab stop past the right indent took further
     /// that ends in a line break (catalog: paragraph.tabs).
     /// </summary>
@@ -934,6 +941,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
             var limit = width - right;
+            var (naturalStart, naturalLimit) = (startX, limit);
             // Floating objects beside the line: its segments within the indents, or it moves down where they leave it
             // none (see MinimumSegment). Before Word 2013 a line beside objects wrapped square stays where the column
             // has room enough beside them, also only outside its indents, and takes what of it they leave, a character
@@ -1270,6 +1278,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 estimate = line.Height;
                 textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
                 (line.Start, line.Limit) = (startX, segments.Count > 1 ? segments[^1].End : limit);
+                if (segments.Count > 1 || segments.Count == 1 && (segments[0].Start > naturalStart + 0.01 || segments[0].End < naturalLimit - 0.01))
+                    line.Cut = segments.Select(s => (Math.Abs(s.Start - naturalStart) < 0.01 ? Math.Min(left, naturalStart) : s.Start, s.End)).ToList();
             }
             lines.Add(line);
             first = false;

@@ -967,7 +967,10 @@ areas:
           left line to the right band's edge; a shadowed top line keeps its width free above the box, a shadowed
           bottom line's band takes room below it, the left and right ones none (docx/local/psh-*: 3 and 1 pt lines on
           all sides, the top, bottom or right alone, around one or two paragraphs, all 100 %;
-          docx/external/libreoffice/extras-ooxmlexport/para-shadow 31.7 → 100 %).
+          docx/external/libreoffice/extras-ooxmlexport/para-shadow 31.7 → 100 %). Beside floating objects a line's
+          shading covers only its segments, from 1.4 pt before a start the object cuts to 1.55 pt after a cut end,
+          behind the text wrapped tight as well (docx/local/psl-square, psl-behind;
+          docx/external/libreoffice/extras-ooxmlimport/tdf60351 51.3 → 99.2 %).
 
       - id: paragraph.tabs
         title: Tab stops
@@ -2230,8 +2233,7 @@ areas:
           on a drawing that text goes around, placed from its paragraph or line, stays below the top margin, behind
           the text too; before, and unwrapped, it stands above it (docx/local/wrm-15, wrm-behind, wrm-14, wrm-none,
           wrm-mid: 20 pt above the first paragraph; docx/external/libreoffice/extras-ooxmlimport/tdf60351 40.5 → 51.3
-          %). Known deviation: the shading of a paragraph covers each line only as far as its segments beside such
-          drawings reach in Word (docx/local/psl-square, psl-behind), here it covers the paragraph.
+          %).
 
       - id: drawing.wrap
         title: Text wrapping around objects
