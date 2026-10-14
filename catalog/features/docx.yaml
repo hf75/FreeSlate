@@ -3139,7 +3139,8 @@ areas:
           chart the plot and the legend keep below the automatic title's box, where PowerPoint lets them up
           (libreoffice/extras-layout/tdf134235 21.4 → 100 % of the lines, powertools/CU007, CU012 20 → 60 %). Walls
           and the floor of 3D charts without a fill of their own take the plot area's of the style (powertools/CU001,
-          CU009 at style 47: tx1 tinted 95 %).
+          CU009 at style 47: tx1 tinted 95 %). Word prints a chart's grid, axis and series lines as strokes at their
+          exact places, where PowerPoint's screen snaps them to whole pixels (powertools/CU005: 0.5 pt gridlines).
 
       - id: chart.data
         title: Series and data caches

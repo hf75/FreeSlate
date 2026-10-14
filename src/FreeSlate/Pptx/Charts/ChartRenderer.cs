@@ -377,6 +377,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// </summary>
     (double X, double Y) SnapPoint((double X, double Y) p, Outline? outline)
     {
+        // Word prints its charts' lines at their exact places (GridLine).
+        if (slide.Presentation.Word)
+            return p;
         var odd = (int)Math.Max(1, Math.Round(Units.ToPx(outline?.WidthEmu ?? 9525))) % 2 == 1;
         double Snap(double v, double origin)
         {
@@ -465,9 +468,15 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return Rect(box, fill, outline, snap, radius);
     }
 
-    /// <summary>A horizontal or vertical line of the plot area, snapped like PowerPoint draws thin lines.</summary>
+    /// <summary>
+    /// A horizontal or vertical line of the plot area, snapped like PowerPoint draws thin lines; Word's are strokes at
+    /// their exact places, which its PDF keeps (scratch/triage/2026-10-14_agents/charts: powertools/CU005's 0.5 pt
+    /// gridlines, two antialiased rows where ours were one crisp one).
+    /// </summary>
     string GridLine(Outline? outline, double x1, double y1, double x2, double y2)
     {
+        if (slide.Presentation.Word)
+            return outline is { Visible: true } ? $"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>" : "";
         if (outline is not { Visible: true } || outline.Fill is not SolidFill solid)
             return outline is { Visible: true } ? $"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(outline, 0, 0, defs)}/>" : "";
         var thickness = Math.Max(1, Math.Round(Units.ToPx(outline.WidthEmu)));
