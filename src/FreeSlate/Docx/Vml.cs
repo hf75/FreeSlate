@@ -504,6 +504,10 @@ public static class Vml
             new XElement(Ns.A + "ext", new XAttribute("cx", w), new XAttribute("cy", h)),
             new XElement(Ns.A + "chOff", new XAttribute("x", ox), new XAttribute("y", oy)),
             new XElement(Ns.A + "chExt", new XAttribute("cx", cw), new XAttribute("cy", ch)));
+        // A group turns and flips as a whole about its box's middle, as shapes do (docx/external/libreoffice/
+        // extras-ooxmlexport/groupshape-rotation: a group turned 45°, its triangle's corners within 0.1 pt).
+        foreach (var turn in Xfrm(0, 0, Style((string?)group.Attribute("style"))).Attributes())
+            xfrm.SetAttributeValue(turn.Name, turn.Value);
         var element = top
             ? new XElement(Drawings.Wpg + "wgp", new XElement(Drawings.Wpg + "cNvGrpSpPr"), new XElement(Drawings.Wpg + "grpSpPr", xfrm))
             : new XElement(Drawings.Wpg + "grpSp", new XElement(Drawings.Wpg + "cNvGrpSpPr"), new XElement(Drawings.Wpg + "grpSpPr", xfrm));

@@ -1928,7 +1928,15 @@ areas:
         office: >-
           Field instructions are hidden, results between the separate and end characters show, nested fields included
           (a field inside another's instruction is part of the instruction). The results of PAGE, NUMPAGES and
-          SECTIONPAGES are computed after pagination (field.evaluation); others keep their saved result.
+          SECTIONPAGES are computed after pagination (field.evaluation); others keep their saved result. A computed
+          field whose saved result runs across paragraphs (REF, IF, NOTEREF, PAGEREF, STYLEREF) joins them into one:
+          the text before the field, its result and the text after its end in one paragraph of the last one's
+          properties, tables in the saved result gone; fields whose saved results Word keeps, as tables of contents,
+          keep their paragraphs (docx/local/fsp-ref, fsp-miss, fsp-align: "A", the REF's "Target" or its error and "
+          B" on one line, right aligned as the field's last paragraph;
+          docx/external/libreoffice/extras-ooxmlexport/line-break-in-ref 53.7 → 100 %, tdf171299_tableInField 62.2 →
+          100 %, tdf171383_refFieldInCell, tdf125038_conditionalText_DOCPROPERTY; extras-ooxmlimport/tdf125038b 53.8 →
+          100 %; writerfilter-dmapper/if-field 33.3 → 100 %).
 
       - id: field.evaluation
         title: Field evaluation
@@ -3905,9 +3913,12 @@ areas:
           libreoffice/extras-ooxmlexport/n705956-2). mso-layout-flow-alt on the text box turns its text alone too,
           beside layout-flow horizontal as well: bottom-to-top upwards, top-to-bottom downwards with its first line at
           the left (docx/local/vlf-alt, vlf-althor, vlf-alttop;
-          docx/external/libreoffice/extras-ooxmlexport/layout-flow-alt-alone 48.2 → 90.0 %). Known deviations: a
-          perspective shadow's matrix is left out; the text wraps the stated height of a box fitted to its text; a
-          rule in a text box takes its share of the last column laid out.
+          docx/external/libreoffice/extras-ooxmlexport/layout-flow-alt-alone 48.2 → 90.0 %). A group turns and flips
+          as a whole about its box's middle, as shapes do
+          (docx/external/libreoffice/extras-ooxmlexport/groupshape-rotation: a group turned 45°, its triangle's
+          corners within 0.1 pt, 56.2 → 93.2 %). Known deviations: a perspective shadow's matrix is left out; the text
+          wraps the stated height of a box fitted to its text; a rule in a text box takes its share of the last column
+          laid out.
 
       - id: vml.ole
         title: Embedded objects and controls
@@ -4045,58 +4056,60 @@ areas:
         office: >-
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
           stable (at most five runs); an object that goes back and forth between two pages, its own exclusion pushing
-          its paragraph off the first, leaves its paragraph at the top of the second and the first without itself
-          and without the paragraph's other objects (openxml-sdk/Complex01, Strict01 page 4: no stale exclusion;
-          Strict01 65.5 → 76.0 % of the lines; Document: a cover's two text boxes, one over a chart, one over the
-          table above it; Complex01 84.5 → 89.0 %); from Word 2013 an object that wraps text and moves with its paragraph takes the
-          paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text at
-          least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front of
-          the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
-          tdf123243, tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); lines are broken into the segments beside the objects, words that do not fit a
-          segment continue in the next one, lines with no room move down below the object (docx/generated/wrapping,
-          wrap-types), below the first of the objects beside them to end (td-1), beside objects wrapped along their
-          polygons a line at a time, so on the paragraph's line pitch (ub-*), and to the next page where they do not
-          fit below it. A segment takes text from 18 pt, also an empty line's, the first of a line only where the line's
-          first word fits (docx/local/tf-*, tk-*, tq-*, te-*, tg-*, th-*, tl-*: 17.3 pt stay empty, 19.3 take "a an", a
-          word of 40.6 pt goes below an object leaving 39.3 pt); before Word 2013 a line beside objects wrapped square
-          stays where the column has 18 pt beside them, also only outside its indents, takes what of it they leave, a
-          character a line where none, a word breaking where it does not fit (tx-*, ty-*, tz-*, ua-*;
-          powertools/RP/RP001-Tracked-Revisions-01-Accepted), and beside objects wrapped along their polygons a segment
-          takes text from 9 pt (tv-*, tw-*; core-text/fly-minimal-wrap). A line moved down for the height of its
-          paragraph mark stands where it fits with its own (uitest/tdf124675); from Word 2013 a line taller than the
-          height it was placed for keeps clear of the objects beside the rest of it too (docx/local/tall-*: a 200 pt
-          inline picture whose line top is clear goes below a shape over its lower or upper part, wrapped square or top
-          and bottom, anchored before or after it; beside one leaving it room enough it stays; in mode 14 it stays over
-          the shape; openxml-sdk/Document: a cover page's text box over a chart's lower half, the cover then on the
-          next page, 68.3 → 95.8 % of the lines). A paragraph whose own object leaves it no
-          room on the page moves on with the object, and the page it left is laid out without it
-          (docx/local/anchorpush-*). An object kept free above and below that reaches down to its paragraph's place
-          pushes the lines already in the column that it overlaps below it; where its paragraph would then no longer
-          begin in the column it takes the paragraph to the next (uc-1 to uc-5, ud-*; generated/wrapping,
-          local/compat11-wrapping; extras-layout/fdo43573-2-min), not where the object only ends above the paragraph
-          (tall-t: a picture line before the anchor goes below the object, the anchor stays). Objects beside the
-          column leave its lines alone, also those kept free above and below, and a paragraph going on in another column
-          or page goes on beside the objects there (fdo43573-2-min: an image at the top of a page's left column, the
-          right column's text and the last line of a paragraph from the page before). Text frames and drop caps
-          (paragraph.frames) and floating tables (table.floating)
-          take part in the same exclusions. A table does not stand beside the floating objects and frames before it:
-          it begins below every one its part on the page would overlap, from Word 2013 on whatever their wrapping and
-          also below those anchored after it on the page (tbo-*: a shape anchored after a table over its last or first
-          row, wrapped square or top and bottom; openxml-sdk/Document), before only those kept free above and below
-          (docx/local/fx-1 to fx-13, ft-1 to ft-8: below a 40 pt shape
-          wrapped square or top and bottom, also one beside a 70-row table's last rows on the page, and below frames not
-          beside text, anchored to the text or the page; a shape right of the table and one without wrapping leave it;
+          its paragraph off the first, leaves its paragraph at the top of the second and the first without itself and
+          without the paragraph's other objects (openxml-sdk/Complex01, Strict01 page 4: no stale exclusion; Strict01
+          65.5 → 76.0 % of the lines; Document: a cover's two text boxes, one over a chart, one over the table above
+          it; Complex01 84.5 → 89.0 %); from Word 2013 an object that wraps text and moves with its paragraph takes
+          the paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text
+          at least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front
+          of the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
+          tdf123243, tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); lines are broken into the segments
+          beside the objects, words that do not fit a segment continue in the next one, lines with no room move down
+          below the object (docx/generated/wrapping, wrap-types), below the first of the objects beside them to end
+          (td-1), beside objects wrapped along their polygons a line at a time, so on the paragraph's line pitch
+          (ub-*), and to the next page where they do not fit below it. A segment takes text from 18 pt, also an empty
+          line's, the first of a line only where the line's first word fits (docx/local/tf-*, tk-*, tq-*, te-*, tg-*,
+          th-*, tl-*: 17.3 pt stay empty, 19.3 take "a an", a word of 40.6 pt goes below an object leaving 39.3 pt);
+          before Word 2013 a line beside objects wrapped square stays where the column has 18 pt beside them, also
+          only outside its indents, takes what of it they leave, a character a line where none, a word breaking where
+          it does not fit (tx-*, ty-*, tz-*, ua-*; powertools/RP/RP001-Tracked-Revisions-01-Accepted), and beside
+          objects wrapped along their polygons a segment takes text from 9 pt (tv-*, tw-*;
+          core-text/fly-minimal-wrap). A line moved down for the height of its paragraph mark stands where it fits
+          with its own (uitest/tdf124675); from Word 2013 a line taller than the height it was placed for keeps clear
+          of the objects beside the rest of it too (docx/local/tall-*: a 200 pt inline picture whose line top is clear
+          goes below a shape over its lower or upper part, wrapped square or top and bottom, anchored before or after
+          it; beside one leaving it room enough it stays; in mode 14 it stays over the shape; openxml-sdk/Document: a
+          cover page's text box over a chart's lower half, the cover then on the next page, 68.3 → 95.8 % of the
+          lines). A paragraph whose own object leaves it no room on the page moves on with the object, and the page it
+          left is laid out without it (docx/local/anchorpush-*). An object kept free above and below that reaches down
+          to its paragraph's place pushes the lines already in the column that it overlaps below it; where its
+          paragraph would then no longer begin in the column it takes the paragraph to the next (uc-1 to uc-5, ud-*;
+          generated/wrapping, local/compat11-wrapping; extras-layout/fdo43573-2-min), not where the object only ends
+          above the paragraph (tall-t: a picture line before the anchor goes below the object, the anchor stays).
+          Objects beside the column leave its lines alone, also those kept free above and below, and a paragraph going
+          on in another column or page goes on beside the objects there (fdo43573-2-min: an image at the top of a
+          page's left column, the right column's text and the last line of a paragraph from the page before). Text
+          frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in the same
+          exclusions. A table does not stand beside the floating objects and frames before it: it begins below every
+          one its part on the page would overlap, from Word 2013 on whatever their wrapping and also below those
+          anchored after it on the page (tbo-*: a shape anchored after a table over its last or first row, wrapped
+          square or top and bottom; openxml-sdk/Document), before only those kept free above and below
+          (docx/local/fx-1 to fx-13, ft-1 to ft-8: below a 40 pt shape wrapped square or top and bottom, also one
+          beside a 70-row table's last rows on the page, and below frames not beside text, anchored to the text or the
+          page; a shape right of the table and one without wrapping leave it;
           docx/external/tika/testWORD_tableInRunInsideParagraph, docx/external/libreoffice/core-ooxml-pass/
           fdo78904_fileHang); below a floating table of the text only where it does not fit beside it and reaches its
           box, its distances aside (ib-1 to ib-7: a table of 90 pt beside one of 350 pt, of 468 pt below it;
           writerfilter-dmapper/floattable-then-table, extras-layout/tdf167526; extras-ooxmlexport/tdf92157: a table
-          into the distance of a floating table in the right margin stays). A floating table that may not overlap others (w:tblOverlap never) moves right of the one
-          before it that it would overlap where it fits, else below it (table.floating). Known deviations: a table
-          that fits beside a floating table Word moves beside it (ib-1, ib-2), ours stays at its place across it; in
-          mode 14 Word sets a table beside a shape wrapped square, indented and narrower (fx-5), ours stays over it;
-          in mode 14 Word moves only the row of a table that a shape anchored after it overlaps (tbo-14), ours leaves
-          the table; a table whose cells' paragraphs have frame properties stands in that
-          frame at its position (lb-1 to lb-4, tdf104394_lostTextbox), ours in the text.
+          into the distance of a floating table in the right margin stays). A floating table that may not overlap
+          others (w:tblOverlap never) moves right of the one before it that it would overlap where it fits, else below
+          it (table.floating). A table that fits beside a floating table it would stand across moves into the room
+          beside it, aligned there as in its column (ib-1: a 90 pt table at the 350 pt one's right distance; ib-2
+          centered in that room; docx/external/libreoffice/extras-uiwriter/tdf134227 60.3 → 100 %). Known deviations:
+          in mode 14 Word sets a table beside a shape wrapped square, indented and narrower (fx-5), ours stays over
+          it; in mode 14 Word moves only the row of a table that a shape anchored after it overlaps (tbo-14), ours
+          leaves the table; a table whose cells' paragraphs have frame properties stands in that frame at its position
+          (lb-1 to lb-4, tdf104394_lostTextbox), ours in the text.
 
       - id: engine.tableLayout
         title: Table layout

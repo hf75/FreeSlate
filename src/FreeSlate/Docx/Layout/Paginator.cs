@@ -2004,7 +2004,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// then on the next page). Known deviation: in mode 14 Word moves only the row such an object overlaps (tbo-14),
     /// ours leaves the table.
     /// </summary>
-    void BelowFloats(TableBox box, double left, XElement element)
+    /// <returns>
+    /// How far the table moves across into the room beside a floating table of the text that it fits beside and would
+    /// stand across, aligned there as in its column (measured with docx/local/ib-1, ib-2: a 90 pt table beside a
+    /// 350 pt one at its right distance, centered in the room beside it; docx/external/libreoffice/extras-uiwriter/
+    /// tdf134227).
+    /// </returns>
+    double BelowFloats(TableBox box, double left, XElement element, string? justification)
     {
         var (from, to) = (left + box.Left, left + box.Left + box.Width);
         var height = box.Rows.Sum(r => r.Height);
@@ -2035,6 +2041,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
             }
         }
+        foreach (var e in page.FloatingTables.Where(Beside))
+        {
+            if (e.Frame || e.Story || e.Top >= Math.Min(y + height, Bottom) - 0.01 || e.Bottom <= y + 0.01
+                || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01)
+                continue;
+            var (roomLeft, roomRight) = e.Left - columnLeft >= columnLeft + columnWidth - e.Right
+                ? (columnLeft, e.Left) : (e.Right, columnLeft + columnWidth);
+            if (roomRight - roomLeft < box.Width - 0.01)
+                continue;
+            var target = justification switch
+            {
+                "center" => roomLeft + (roomRight - roomLeft - box.Width) / 2,
+                "right" or "end" => roomRight - box.Width,
+                _ => roomLeft,
+            };
+            return target - from;
+        }
+        return 0;
     }
 
     void PlaceTable(List<Block> blocks, int index)
@@ -2075,7 +2099,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A table whose cells' paragraphs have frame properties stands in that frame (docx/local/lb-1 to lb-4: Word
         // sets such a table at the margin's outside top, beside the frame before it, without them below it).
         if (table.Table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is not ParagraphBlock { Format.Frame: not null })
-            BelowFloats(box, left, table.Element);
+            left += BelowFloats(box, left, table.Element, table.Table.Format.Justification);
         tableKept = RowKept(table.Table, box.Rows.Count - 1);
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);

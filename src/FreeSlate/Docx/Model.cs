@@ -623,6 +623,81 @@ public sealed partial class ModelReader(DocumentContext context)
         return marked;
     }
 
+    /// <summary>
+    /// The blocks of a container with the paragraphs a computed field runs across joined into one, as Word prints them:
+    /// the text before the field, its result and the text after its end in one paragraph of the last one's properties,
+    /// tables in its saved result gone (measured with docx/local/fsp-ref, fsp-miss, fsp-align: "A", the REF's
+    /// "Target" or its error and " B" on one line, right aligned as the field's last paragraph; docx/external/
+    /// libreoffice/extras-ooxmlexport/line-break-in-ref, tdf171299_tableInField, extras-ooxmlimport/tdf125038b,
+    /// writerfilter-dmapper/if-field). Fields Word keeps the saved results of, as tables of contents, keep their
+    /// paragraphs.
+    /// </summary>
+    IEnumerable<XElement> JoinedFields(IEnumerable<XElement> elements)
+    {
+        var list = elements as IList<XElement> ?? elements.ToList();
+        for (var i = 0; i < list.Count; i++)
+        {
+            var e = list[i];
+            if (e.Name != Wml.W + "p" || !OpensComputedField(e))
+            {
+                yield return e;
+                continue;
+            }
+            var depth = FieldDepth(e);
+            var j = i + 1;
+            while (j < list.Count && depth > 0)
+                depth += FieldDepth(list[j++]);
+            if (depth > 0 || list[j - 1].Name != Wml.W + "p")
+            {
+                yield return e;
+                continue;
+            }
+            var last = list[j - 1];
+            var parts = new List<object>();
+            if (last.Child("pPr") is { } lastPr)
+                parts.Add(new XElement(lastPr));
+            for (var k = i; k < j; k++)
+            {
+                if (list[k].Name == Wml.W + "p")
+                    parts.AddRange(list[k].Elements().Where(x => x.Name != Wml.W + "pPr").Select(x => new XElement(x)));
+            }
+            var joined = new XElement(Wml.W + "p", last.Attributes(), parts);
+            if (sectionOf.TryGetValue(last, out var lastSection))
+                sectionOf[joined] = lastSection;
+            yield return joined;
+            i = j - 1;
+        }
+
+        // Fields begun and not ended in an element (fldChar begin less end, nested ones too).
+        static int FieldDepth(XElement element) =>
+            element.Descendants(Wml.W + "fldChar").Sum(f => f.Attr("fldCharType") switch { "begin" => 1, "end" => -1, _ => 0 });
+
+        // Whether the outermost field still open at a paragraph's end is one whose result Word computes.
+        static bool OpensComputedField(XElement p)
+        {
+            var open = new List<System.Text.StringBuilder>();
+            foreach (var node in p.Descendants())
+            {
+                if (node.Name == Wml.W + "fldChar")
+                {
+                    switch (node.Attr("fldCharType"))
+                    {
+                        case "begin":
+                            open.Add(new System.Text.StringBuilder());
+                            break;
+                        case "end" when open.Count > 0:
+                            open.RemoveAt(open.Count - 1);
+                            break;
+                    }
+                }
+                else if (node.Name == Wml.W + "instrText" && open.Count > 0)
+                    open[^1].Append(node.Value);
+            }
+            return open.Count > 0 && open[0].ToString().TrimStart().Split(' ', 2)[0].ToUpperInvariant()
+                is "REF" or "IF" or "NOTEREF" or "PAGEREF" or "STYLEREF";
+        }
+    }
+
     void ReadBlocks(XElement container, List<Block> blocks)
     {
         // A paragraph whose mark was deleted as a tracked change runs into the next one, which keeps its own
@@ -642,7 +717,7 @@ public sealed partial class ModelReader(DocumentContext context)
     /// </summary>
     void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending)
     {
-        foreach (var e in container.Elements())
+        foreach (var e in JoinedFields(container.Elements()))
         {
             if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
                 currentSection = section;
