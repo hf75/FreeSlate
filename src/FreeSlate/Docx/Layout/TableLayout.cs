@@ -1081,7 +1081,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         for (var k = 0; k < grid.Length; k++)
             x[k + 1] = x[k] + grid[k];
         var left0 = Width(outer.Left) / 2 + gap;
-        double CellX(int k) => left0 + x[k] + k * gap;
+        // A fixed table's grid columns hold the gaps between its cells (docx/external/libreoffice/extras-ooxmlexport/
+        // tdf123104: cells 1.5 pt narrower than their grid columns, the table as wide as its grid).
+        var gridHoldsGaps = format.Layout == "fixed";
+        double CellX(int k) => left0 + x[k] + (gridHoldsGaps ? 0 : k * gap);
         var tableWidth = CellX(columns) - gap + gap + Width(outer.Right) / 2;
         var origin0 = format.Justification switch
         {
@@ -1128,8 +1131,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (!span.ContainsKey(cell))
                     height = Math.Max(height, cellHeights[cell]);
             }
+            // An at-least height lies between the row's largest top and bottom margins, as in tables without spacing
+            // (tdf123104: a row of 49.5 pt at least with margins of 3.75 pt 57 pt high).
             if (row.Format.Height is { } h && h > 0)
-                height = row.Format.HeightRule == "exact" ? h : Math.Max(height, h);
+                height = row.Format.HeightRule == "exact" ? h
+                    : Math.Max(height, h + (row.Cells.Count == 0 ? 0 : row.Cells.Max(c => Margins(row, c, format).Top) + row.Cells.Max(c => Margins(row, c, format).Bottom)));
             heights[r] = height;
             allParts.Add(parts);
         }
@@ -1928,9 +1934,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     CellContent CellBlocks(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge)
     {
-        // An empty cell whose end mark is hidden (w:hideMark) takes no height.
+        // An empty cell whose end mark is hidden (w:hideMark) takes no height for it, its last paragraph; its other
+        // empty paragraphs keep their lines (docx/external/libreoffice/extras-ooxmlexport/tdf123104: four empty 9 pt
+        // paragraphs three lines high, five centered as four).
         if (cell.Format.HideMark && cell.Blocks.All(b => b is ParagraphBlock { Content.Count: 0 }))
-            return new CellContent([], [], [], 0);
+        {
+            if (cell.Blocks.Count <= 1)
+                return new CellContent([], [], [], 0);
+            var kept = cell.Blocks.Take(cell.Blocks.Count - 1).ToList();
+            return Directed(cell, () => Content(kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+        }
         if (!Rotated(cell))
             return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
         // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
