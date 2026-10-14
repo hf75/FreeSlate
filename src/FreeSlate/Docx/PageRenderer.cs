@@ -318,6 +318,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         var autofit = body.Element(Ns.A + "spAutoFit") != null;
         var unwrapped = (string?)body.Attribute("wrap") == "none";
+        // Vertical text that fits its shape makes it as wide as its lines are thick, its insets and outline beside them,
+        // its height and left edge kept (docx/external/libreoffice/extras-ooxmlimport/tdf124754: two lines down a box
+        // 40 % of the margin wide, 38.8 pt wide in Word).
+        if (Vertical(body) && autofit)
+        {
+            var (vl, vt, vr, vb) = Insets(body, shape, drawing.Width, drawing.Height, theme);
+            var verticalFields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
+            var (_, _, _, thickness) = blocks.Blocks(text, Math.Max(1, drawing.Height - vt - vb), verticalFields);
+            return drawing with { Width = thickness + vl + vr };
+        }
         if (!autofit && !unwrapped || Vertical(body))
             return drawing;
         var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height, theme);

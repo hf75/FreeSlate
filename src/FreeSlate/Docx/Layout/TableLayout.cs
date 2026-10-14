@@ -917,6 +917,17 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     foreach (var anchor in content.Anchors)
                     {
                         var moved = anchor.Offset(textFrom, top + lowered);
+                        // Before Word 2013 a drawing of layoutInCell 0 placed by offsets is placed as one of the text
+                        // from its paragraph or line in the cell, the page and the column for the rest (measured with
+                        // docx/local/cig-noin14, cig-noin12: 150 pt right of the column's left edge, the paragraph's top;
+                        // docx/external/libreoffice/extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, tdf129888dml:
+                        // a page-relative line in mode 14); one aligned across stays in the cell (tdf162551: aligned left
+                        // of the page at the cell's text).
+                        if (!InCell(anchor.Anchor.Anchor) && anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null)
+                        {
+                            part.Anchors.Add(moved);
+                            continue;
+                        }
                         part.Anchors.Add(moved with
                         {
                             Text = moved.Text ?? (textFrom, content.Width),
@@ -1164,6 +1175,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 foreach (var anchor in content.Anchors)
                 {
                     var moved = anchor.Offset(origin0 + content.Left, contentTop);
+                    if (!InCell(anchor.Anchor.Anchor) && anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null)
+                    {
+                        part.Anchors.Add(moved);
+                        continue;
+                    }
                     part.Anchors.Add(moved with
                     {
                         Text = moved.Text ?? (origin0 + content.Left, content.Width),

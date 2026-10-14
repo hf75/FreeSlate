@@ -653,6 +653,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             if (k > 0)
                 lineTop += Between(group[k - 1], group[k]);
+            // The paragraph's floating drawings, placed from it in the frame as in the text (docx/external/libreoffice/
+            // extras-ooxmlexport/tdf90789: a page-relative VML rectangle in a framed paragraph).
+            if (turn == null)
+            {
+                foreach (var anchor in group[k].Content.OfType<AnchorInline>())
+                    page.Drawings.Add(PlaceAnchor(anchor, page, lineTop, lineTop, x, frameWidth));
+            }
             foreach (var line in laid[k])
             {
                 var placed = turn switch
@@ -1453,7 +1460,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 // The paragraph begins below the space after the one before; its own space before lies inside it.
                 var paragraphTop = y + (first ? 0 : after);
-                y += first ? paragraph.Format.Before ?? 0 : context.Between(after, paragraph.Format.Before ?? 0);
+                // HTML auto spacing counts here as in the body: 14 pt, none before the first paragraph (docx/external/
+                // libreoffice/extras-ooxmlexport/fdo80997: a header of auto spacing 14 pt above the body, a footer's
+                // text 14 pt above the page's bottom).
+                var storyBefore = paragraph.Format.BeforeAuto == true && !context.AddsSpacing ? first ? 0 : 14 : paragraph.Format.Before ?? 0;
+                y += first ? storyBefore : context.Between(after, storyBefore);
                 var frame = Frame.Read(paragraph.Format);
                 var continues = frame != null && frame.Same(previousFrame);
                 var nextContinues = frame != null && b + 1 < blocks.Count && blocks[b + 1] is ParagraphBlock following && frame.Same(Frame.Read(following.Format));
@@ -1511,7 +1522,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, left));
                     anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
                 }
-                after = paragraph.Format.After ?? 0;
+                after = OwnAfter(paragraph);
             }
             else if (block is TableBlock table)
             {
@@ -2909,9 +2920,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 ? paragraphTop.Top : y, left, width);
             if (partAt is not { } part || !ReferenceEquals(part.Page, page) || Math.Abs(part.Left - left) > 0.01)
                 partAt = ReferenceEquals(anchorAt.Value.Page, page) && Math.Abs(anchorAt.Value.Left - left) < 0.01 ? anchorAt : (page!, y, left, width);
+            // A drawing placed from its line stands where the line stood before floating objects pushed it down, as the
+            // room around it was measured (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top,
+            // textbox-textline: text boxes wider than the column at their line's top, the text below them).
             foreach (var anchor in line.Anchors ?? [])
             {
-                lineTops[anchor] = (page!, y, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
+                lineTops[anchor] = (page!, y - skip, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
                 lineParts[anchor] = partAt!.Value;
             }
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)

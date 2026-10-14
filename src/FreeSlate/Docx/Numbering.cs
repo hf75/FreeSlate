@@ -229,7 +229,10 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     {
         if (definitions.Find(numId) is not { } instance)
             return null;
-        ilvl = Math.Clamp(ilvl, 0, 8);
+        // A level outside the nine a list has takes no number and no level's indents (docx/external/libreoffice/
+        // extras-ooxmlexport/tdf61309: ilvl 12 at the margin, no "1.").
+        if (ilvl is < 0 or > 8)
+            return null;
         if (instance.Levels[ilvl] is not { } level)
             return null;
         if (!lists.TryGetValue(instance.AbstractId, out var counters))

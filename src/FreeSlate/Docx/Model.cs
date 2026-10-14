@@ -965,12 +965,29 @@ public sealed partial class ModelReader(DocumentContext context)
             public readonly List<(string Text, RunFormat Format)> InstructionRuns = [];
             public bool InResult;
             public List<Inline>? Cached;
+
+            /// <summary>Whether the field prints no result (SET, ASK), once its instruction is read.</summary>
+            public bool Silent => silent ??= Instruction.ToString().TrimStart().Split(' ', 2)[0].ToUpperInvariant() is "SET" or "ASK";
+            bool? silent;
         }
 
         public readonly Stack<Frame> Frames = new();
 
         /// <summary>Inside a field's instruction, also that of an outer field (a nested field is part of it).</summary>
+        /// <summary>
+        /// Whether what is read now does not print: a field's instruction, and the result of a field that sets a
+        /// bookmark or asks for one (SET, ASK; docx/external/libreoffice/extras-ooxmlexport/fdo76163: "Praun et al. 2001"
+        /// saved as a SET's result is not printed).
+        /// </summary>
         public bool Hidden => Frames.Any(f => !f.InResult);
+
+        /// <summary>
+        /// Whether what is read now is the result of a field that sets a bookmark or asks for one (SET, ASK), which
+        /// prints nothing, its text kept hidden for the bookmarks in it (docx/external/libreoffice/extras-ooxmlexport/
+        /// fdo76163: "Praun et al. 2001" saved as a SET's result is not printed; extras-ooxmlimport/n751017: a REF to
+        /// the bookmark inside an ASK's result shows "bar", the ASK nothing).
+        /// </summary>
+        public bool Silent => Frames.Any(f => f.InResult && f.Silent);
 
         /// <summary>The target of a HYPERLINK field whose result is being read: its URL and \l bookmark (catalog: field.hyperlinks).</summary>
         public string? Link
@@ -1283,6 +1300,8 @@ public sealed partial class ModelReader(DocumentContext context)
             characterStyle = null;
         var format = context.Styles.Run(paragraphStyle, characterStyle, direct, tableRun);
         (format.Override, format.Embedding) = (bidiOverride, bidiEmbedding);
+        if (field.Silent)
+            format.Vanish = true;
         if (context.Markup)
         {
             format.Revision = revision;
@@ -1382,8 +1401,10 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
                         field.Frames.Peek().Instruction.Append(e.Value);
                     break;
+                // Hidden runs print none of their tabs, breaks and drawings either (docx/external/libreoffice/core-undo/
+                // anchor-type-change-position: a hidden flowchart and line break before a caption in a frame).
                 case "tab":
-                    if (!field.Hidden)
+                    if (!field.Hidden && format.Vanish != true)
                         field.Target(content).Add(new TabInline(format));
                     break;
                 case "pgNum":
@@ -1392,7 +1413,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         field.Target(content).Add(new FieldInline("PAGE", format, []));
                     break;
                 case "ptab":
-                    if (!field.Hidden)
+                    if (!field.Hidden && format.Vanish != true)
                         field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none") });
                     break;
                 case "br":
@@ -1400,12 +1421,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     // (measured with docx/local/cb-1, cb-2, cb-4 in modes 14 and 15; in a text box a line break, cb-5;
                     // docx/external/libreoffice/extras-ooxmlexport/fdo68607); in notes they break the line only
                     // (docx/external/libreoffice/extras-ooxmlimport/tdf129659: an endnote's address on its next line).
-                    if (!field.Hidden && !(tableParagraph != null && e.Attr("type") is "page" or "column"))
+                    if (!field.Hidden && format.Vanish != true && !(tableParagraph != null && e.Attr("type") is "page" or "column"))
                         field.Target(content).Add(new BreakInline(noteMark != null && e.Attr("type") is "page" or "column" ? "textWrapping" : e.Attr("type") ?? "textWrapping",
                             e.Attr("clear"), format));
                     break;
                 case "cr":
-                    if (!field.Hidden)
+                    if (!field.Hidden && format.Vanish != true)
                         field.Target(content).Add(new BreakInline("textWrapping", null, format));
                     break;
                 case "ruby" when !field.Hidden:
@@ -1465,7 +1486,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         field.Target(content).Add(new TextInline("­", format));
                     break;
                 case "drawing":
-                    if (!field.Hidden)
+                    if (!field.Hidden && format.Vanish != true)
                     {
                         foreach (var d in e.Elements())
                         {
@@ -1478,7 +1499,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         }
                     }
                     break;
-                case "pict" or "object" when !field.Hidden:
+                case "pict" or "object" when !field.Hidden && format.Vanish != true:
                     // Legacy VML drawings, converted to Word drawings (catalog: vml.shapes, vml.ole, vml.watermarks).
                     foreach (var d in Vml.ToDrawings(e))
                     {

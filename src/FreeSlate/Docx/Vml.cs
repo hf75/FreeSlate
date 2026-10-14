@@ -173,7 +173,10 @@ public static class Vml
             new XAttribute("distT", Distance("top", 0)), new XAttribute("distB", Distance("bottom", 0)),
             new XAttribute("distL", Distance("left", 114300)), new XAttribute("distR", Distance("right", 114300)),
             new XAttribute("simplePos", 0), new XAttribute("relativeHeight", Math.Abs(z)), new XAttribute("behindDoc", z < 0 ? 1 : 0),
-            new XAttribute("locked", 0), new XAttribute("layoutInCell", 1), new XAttribute("allowOverlap", 1),
+            // o:allowincell f lays the shape out outside its cell, as layoutInCell 0 (docx/external/libreoffice/
+            // extras-ooxmlexport/tdf129888vml: a page-relative line in a cell in mode 12).
+            new XAttribute("locked", 0), new XAttribute("layoutInCell", (string?)shape.Attribute(O + "allowincell") is "f" or "false" ? 0 : 1),
+            new XAttribute("allowOverlap", 1),
             new XElement(Drawings.Wp + "simplePos", new XAttribute("x", 0), new XAttribute("y", 0)),
             Position("positionH", style.GetValueOrDefault("mso-position-horizontal-relative"), style.GetValueOrDefault("mso-position-horizontal"),
                 Length(style.GetValueOrDefault("margin-left")) ?? Length(style.GetValueOrDefault("left")) ?? 0, horizontal: true),
