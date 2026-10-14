@@ -3132,7 +3132,10 @@ areas:
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx chart.part (done). Chart parts with their embedded workbooks and the
           regional format of the system (DocxConverter culture); Verified against Word with docx/generated/charts,
-          charts-more, charts-more2 and charts-more3 (88 to 98 %).
+          charts-more, charts-more2 and charts-more3 (88 to 98 %). Without a c:spPr of its own a chart's area is white
+          (bg1) with a border of the theme's line style 1 in tx1 tinted 75 % at every Office 2007 style up to 40, where
+          PowerPoint draws none below 33, and black from 41 on as in PowerPoint (docx/local/ca-s2, -s18, -s34, -s42;
+          powertools/CU005, CU010).
 
       - id: chart.data
         title: Series and data caches

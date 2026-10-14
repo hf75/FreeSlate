@@ -75,6 +75,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     {
         Glyphs = context.Glyphs,
         Culture = culture ?? System.Globalization.CultureInfo.CurrentCulture,
+        Word = true,
     };
 
     /// <summary>The paint of drawings and text effects: one counter for the ids of their gradients and patterns.</summary>

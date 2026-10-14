@@ -91,6 +91,9 @@ public sealed class PresentationContext : IDisposable
     /// </summary>
     public System.Globalization.CultureInfo Culture { get; init; } = System.Globalization.CultureInfo.CurrentCulture;
 
+    /// <summary>Whether the drawings are a Word document's, whose charts take Word's defaults (catalog: chart.formatting).</summary>
+    public bool Word { get; init; }
+
     /// <summary>
     /// The major version of the application that saved the presentation (docProps/app.xml AppVersion: 12 Office 2007,
     /// 14 Office 2010 …), null where the package does not say; charts without style part look by it (catalog: chart.formatting).

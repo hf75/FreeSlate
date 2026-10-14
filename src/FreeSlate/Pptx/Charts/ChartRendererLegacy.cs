@@ -152,18 +152,21 @@ public sealed partial class ChartRenderer
 
     /// <summary>
     /// The chart area in a legacy style: none up to level 3, bg1 with a border of line style 1 in tx1 tinted 75 % at level
-    /// 4, tx1 at level 5 (measured on a yellow slide).
+    /// 4, tx1 at level 5 (measured on a yellow slide). Word gives the lower levels level 4's (measured with
+    /// docx/local/ca-s2, -s18, -s34, -s42: white with a 1 pt #898989 border at styles 2, 18 and 34, black at 42;
+    /// powertools/CU005, CU010).
     /// </summary>
     (Fill Fill, List<(XElement Line, ColorContext Colors)> Line) LegacyChartArea()
     {
         var style = legacy!;
-        var fill = style.Level switch
+        var level = slide.Presentation.Word && style.Level < 4 ? 4 : style.Level;
+        var fill = level switch
         {
             4 => new SolidFill(colors.Resolve(Scheme("bg1"))),
             5 => new SolidFill(colors.Resolve(Scheme("tx1"))),
             _ => Fill.None,
         };
-        return (fill, style.Level == 4 ? [ThemeLine(Scheme("tx1", ("tint", 75000)))] : []);
+        return (fill, level == 4 ? [ThemeLine(Scheme("tx1", ("tint", 75000)))] : []);
     }
 
     /// <summary>
