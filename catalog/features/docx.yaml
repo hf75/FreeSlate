@@ -1891,13 +1891,20 @@ areas:
           it fits in its horizontal anchor's span, both distances kept, else below it, its distance left then counting
           from its place (docx/local/tc-5, td-*; core-objectpositioning/floattable-tbl-overlap). A floating table in a
           cell is laid out as the tables nested there, keeping its cells' margins in older modes as well
-          (docx/external/libreoffice/writerfilter-dmapper/floattable-hidemark, mode 12: 43.8 → 71.4 %). Known
-          deviations: a table centered on the margin stands about 5 pt further right in Word; of two floating tables
-          after each other in a cell Word sets the second below the first before Word 2013, beside it from then on
-          (docx/local/ng-3 to ng-5), ours at its paragraph; a line centered beside a floating table centers in its
-          segment in Word (nf-4); tables anchored to the page that do not fit, which Word 2013 begins on the next page
-          (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after the
-          table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
+          (docx/external/libreoffice/writerfilter-dmapper/floattable-hidemark, mode 12: 43.8 → 71.4 %). Before Word
+          2013 the first cell's text stands at the position whether the table has an indent of 0 or none, and the
+          table's own indent (w:tblInd) moves it further right, from the margin, the page and the text alike; Word
+          2013 and later ignore the indent (docx/local/fti-12-*, fti-14-*: 108 and 720 twips 5.4 and 36 pt; fti-15-*;
+          docx/external/libreoffice/extras-ooxmlimport/tdf97038 71.3 → 97.5 %,
+          core-layout/floattable-next-row-invalidate-pos 89.8 → 99.5 %). A floating table in a cell keeps its place
+          there without the indent (writerfilter-dmapper/floattable-hidemark,
+          core-layout/floattable-wrapped-by-table-nested). Known deviations: a table centered on the margin stands
+          about 5 pt further right in Word; of two floating tables after each other in a cell Word sets the second
+          below the first before Word 2013, beside it from then on (docx/local/ng-3 to ng-5), ours at its paragraph; a
+          line centered beside a floating table centers in its segment in Word (nf-4); tables anchored to the page
+          that do not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the compatibility
+          setting allowTextAfterFloatingTableBreak (text after the table beside its first part;
+          docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
 
       - id: table.cells
         title: Cell alignment, text direction and header cells
@@ -2182,26 +2189,33 @@ areas:
           struck deletions and change bars follows Word's simple and all markup views.
         office: >-
           Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
-          from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows with
-          them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a table,
-          across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments) and across the edges of
-          content controls not bound to data (RP018-MoveFrom-MoveTo-CC 20 → 100 % of the lines, libreoffice/
-          core-docnode/tdf150086 and extras-ooxmlexport/tdf150166 0 → 100 %), and keeps its own
-          formatting and number (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the
-          lines; RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 %
-          of the pixels); formatting changes show the new formatting
-          (docx/generated/revisions 91.8 %). With markup (the converter's markup option, Word's "All Markup" with
-          comments and formatting in balloons; docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions
-          are underlined and deletions struck through in their author's color, moved text dark green (2C6234), struck
-          through twice where it was and underlined twice where it is; deleted rows and paragraph marks stay; a change
-          bar 0.75 pt wide stands half an inch left of the text beside every line with a change, over neighboring
-          changed lines and the space between them; formatting changes of runs, paragraphs and tables get balloons
-          ("Formatted:" with what the properties now have that they did not: font, size, bold, italic, underline,
-          strikethrough, color, caps, position, highlight, hidden, spacing; alignment, indents, spacing, line spacing,
-          keep options; 37 cases word for word as Word's German user interface says them), joined by a dotted line
-          from a small triangle at the run's start or at the text's right edge. Without balloons the page keeps its
-          size. Known deviation: only the all markup view with Word's default balloons; English balloon texts follow
-          Word's terms but were not measured.
+          from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows
+          with them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a
+          table, across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments) and across the edges
+          of content controls not bound to data (RP018-MoveFrom-MoveTo-CC 20 → 100 % of the lines, libreoffice/
+          core-docnode/tdf150086 and extras-ooxmlexport/tdf150166 0 → 100 %), and keeps its own formatting and number
+          (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the lines;
+          RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 % of the
+          pixels); formatting changes show the new formatting (docx/generated/revisions 91.8 %). With markup (the
+          converter's markup option, Word's "All Markup" with comments and formatting in balloons;
+          docx/local/markup-a, markup-b, markup-c, markup-revisions) insertions are underlined and deletions struck
+          through in their author's color, moved text dark green (2C6234), struck through twice where it was and
+          underlined twice where it is; deleted rows and paragraph marks stay; a change bar 0.75 pt wide stands half
+          an inch left of the text beside every line with a change, over neighboring changed lines and the space
+          between them; formatting changes of runs, paragraphs and tables get balloons ("Formatted:" with what the
+          properties now have that they did not: font, size, bold, italic, underline, strikethrough, color, caps,
+          position, highlight, hidden, spacing; alignment, indents, spacing, line spacing, keep options; 37 cases word
+          for word as Word's German user interface says them), joined by a dotted line from a small triangle at the
+          run's start or at the text's right edge. Without balloons the page keeps its size. Printed without markup, a
+          table cell's last paragraph whose mark is gone joins the cell's end, which has the document defaults' and
+          the table style's paragraph properties, not the paragraph's style or its own; in a row's last cell it joins
+          the row's end, which has the document defaults' alone; the mark's own run properties stay (docx/local/cmv-*:
+          the row 22.9 pt high, 8 pt after and lines of 259 from the defaults, not the table style's single lines, the
+          Normal style's 20 pt after or the paragraph's 30 pt; a lost mark in the first cell alone 13.9 pt;
+          docx/external/libreoffice/extras-ooxmlexport/TC-table-Separate-Move 71.1 → 100 %, TC-table-DnD-move twice
+          56.0 → 100 %, TC-table-rowDND 58.7 → 100 %, TC-table-rowDND-front 86.7 → 100 %). Known deviation: only the
+          all markup view with Word's default balloons; English balloon texts follow Word's terms but were not
+          measured.
 
       - id: review.permissions
         title: Editing permissions

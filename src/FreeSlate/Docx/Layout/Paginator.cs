@@ -390,8 +390,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "outside" => odd ? frameLeft + frameWidth - tableWidth + rightInset : frameLeft - inset,
             // Older modes put the first cell's text at the position, as they do at an indent (measured with
             // docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in modes 14
-            // and 12, extras-ooxmlexport/fdo68607: the text at the margin, the table 5.4 pt left of it).
-            _ => frameLeft + Twips("tblpX") - (context.CompatibilityMode < 15 ? box.Inset : 0),
+            // and 12, extras-ooxmlexport/fdo68607: the text at the margin, the table 5.4 pt left of it), and the
+            // table's own indent further right, which Word 2013 and later ignore (docx/local/fti-12-*, fti-14-*: tblInd
+            // 108 and 720 move it 5.4 and 36 pt, from the margin, the page and the text alike, none or 0 not at all;
+            // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038).
+            _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset : 0),
         };
         var top = position.Attr("tblpYSpec") switch
         {
@@ -1440,7 +1443,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "left" or "inside" => spanLeft,
                     "right" or "outside" => spanLeft + span - laid.Width,
                     "center" => spanLeft + (span - laid.Width) / 2,
-                    _ => spanLeft + Twips("tblpX") - (context.CompatibilityMode < 15 ? laid.Inset : 0),
+                    _ => spanLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (floating.Table.Format.Indent ?? 0) - laid.TextInsets.Left : 0),
                 };
                 var onPage = VerticalAnchor(position, "vertAnchor") is "page" or "margin";
                 var (areaTop, areaHeight) = VerticalAnchor(position, "vertAnchor") switch

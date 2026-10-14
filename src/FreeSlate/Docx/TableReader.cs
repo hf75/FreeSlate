@@ -126,6 +126,30 @@ public sealed partial class ModelReader
                     revision = new RevisionMark(rowChange.Name.LocalName, context.Author(rowChange.Attr("author")));
                 ReadBlocks(cellElements[c], cell.Blocks);
                 JoinHidden(cell.Blocks, cell: true);
+                // A cell's last paragraph whose mark is gone, deleted or moved away, joins the cell's end, which has the
+                // document defaults' and the table style's paragraph properties, not the paragraph's style or its own;
+                // in the row's last cell it joins the row's end, which has the document defaults' alone; the mark's own
+                // run properties stay (measured with docx/local/cmv-*: a row whose last cell lost its mark 22.9 pt high,
+                // the defaults' 8 pt after and lines of 259, not the table style's single lines, the Normal style's
+                // 20 pt after or the paragraph's own 30 pt; with a 20 pt mark 34.8 pt; a first cell's lost mark single
+                // lines without space after, 13.9 pt; a lost mark before another paragraph as any other;
+                // docx/external/libreoffice/extras-ooxmlexport/TC-table-Separate-Move, TC-table-DnD-move: 56.0 → 100 %).
+                if (!context.Markup && cellElements[c].Elements().LastOrDefault(e => e.Name.LocalName is "p" or "tbl" or "sdt" or "customXml") is { } lastElement
+                    && lastElement.Name == Wml.W + "p" && lastElement.Child("pPr")?.Child("rPr") is { } lostMark
+                    && (lostMark.Child("del") ?? lostMark.Child("moveFrom")) != null && cell.Blocks.LastOrDefault() is ParagraphBlock joined)
+                {
+                    var rowEnd = c == row.Cells.Count - 1;
+                    var ending = context.Styles.DefaultParagraph.Clone();
+                    if (!rowEnd)
+                        ending.Overlay(paragraph);
+                    var markDirect = new RunFormat();
+                    markDirect.Apply(lostMark);
+                    cell.Blocks[^1] = joined with
+                    {
+                        Format = ending,
+                        MarkFormat = RunFormat.Combine(context.Styles.DefaultRun, rowEnd ? [] : [run], markDirect),
+                    };
+                }
                 (tableParagraph, tableRun, revision) = (savedParagraph, savedRun, savedRevision);
             }
         }
