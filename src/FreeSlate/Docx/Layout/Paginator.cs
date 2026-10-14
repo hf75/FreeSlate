@@ -2470,7 +2470,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (!moves)
                 break;
             NextColumn(natural: true);
+            var laid = width;
             (left, width) = Column(column);
+            // In a column of another width (w:cols with w:equalWidth 0) the paragraph breaks its lines anew before it
+            // is measured there (measured with docx/local/cc-*: openxml-sdk/complex0's heading, two lines in a 264 pt
+            // column, needs four in the 132 pt one beside it and goes to the next page; in one 216 pt wide, cc-equal,
+            // or shortened to a word, cc-short, it stays in that column).
+            if (Math.Abs(width - laid) > 0.01)
+                lines = layout.Layout(paragraph, width);
             gap = 0;
         }
 

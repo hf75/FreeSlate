@@ -1268,7 +1268,10 @@ areas:
           Columns of different widths (w:equalWidth 0): a paragraph that goes on in another column breaks its rest anew
           at that column's width, in balanced columns too, the balance trying each height with the text flowing anew
           (docx/local/uc-1 to uc-8: 90 and 400 words in columns of 132 and 264 pt, either first; docx/external/
-          libreoffice/extras-ooxmlexport/fdo77812, tdf166553_paraStyleAfterBreak, docx/external/openxml-sdk/complex0).
+          libreoffice/extras-ooxmlexport/fdo77812, tdf166553_paraStyleAfterBreak, docx/external/openxml-sdk/complex0);
+          one that moves to such a column whole is measured there broken anew (docx/local/cc-*: complex0's heading,
+          two lines in a 264 pt column and four in the 132 pt one beside it, goes to the next page, in a 216 pt
+          column or shortened to a word it stays beside).
 
       - id: section.pageBorders
         title: Page borders
