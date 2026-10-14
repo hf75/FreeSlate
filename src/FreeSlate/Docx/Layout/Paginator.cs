@@ -1515,6 +1515,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // text over a table 1 twip below its top; core-header_footer/tdf79639).
                 var linesTop = y;
                 var around = floats.Where(f => f.Moves && f.Anchor == b && f.Area.Bottom > linesTop && f.Area.Top < paragraphTop - 0.01).Select(f => f.Area).ToList();
+                // A header's text goes around its floating tables placed from the page or the margin, which stand on
+                // the page as its own text does, from the header's top (measured with docx/external/libreoffice/
+                // writerfilter-dmapper/floattable-header-overlap: the ninth empty paragraph below a table 343 pt down,
+                // the body below the header then).
+                if (header)
+                    around.AddRange(floats.Where(f => !f.Moves && f.Area.Bottom - s.Header > linesTop)
+                        .Select(f => f.Area with { Top = f.Area.Top - s.Header, Bottom = f.Area.Bottom - s.Header }));
                 // The paragraph's own floating drawings placed from it push its lines as in the body (docx/external/
                 // libreoffice/extras-layout/footer-nowrap-object: a footer's line below its own picture top and bottom,
                 // which reaches 7.5 pt into the paragraph, the footer as much higher; Cool15691_headerTextWrapsAroundImage:

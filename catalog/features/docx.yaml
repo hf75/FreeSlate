@@ -1953,12 +1953,16 @@ areas:
           docx/external/libreoffice/extras-ooxmlimport/tdf97038 71.3 → 97.5 %,
           core-layout/floattable-next-row-invalidate-pos 89.8 → 99.5 %). A floating table in a cell keeps its place
           there without the indent (writerfilter-dmapper/floattable-hidemark,
-          core-layout/floattable-wrapped-by-table-nested). Known deviations: a table centered on the margin stands
-          about 5 pt further right in Word; of two floating tables after each other in a cell Word sets the second
-          below the first before Word 2013, beside it from then on (docx/local/ng-3 to ng-5), ours at its paragraph; a
-          line centered beside a floating table centers in its segment in Word (nf-4); tables anchored to the page
-          that do not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the compatibility
-          setting allowTextAfterFloatingTableBreak (text after the table beside its first part;
+          core-layout/floattable-wrapped-by-table-nested). A header's text goes around its floating tables placed from
+          the page or the margin as body text does
+          (docx/external/libreoffice/writerfilter-dmapper/floattable-header-overlap: the ninth empty paragraph below a
+          header's table 343 pt down, the body below the header then, 65.7 → 88.1 %;
+          extras-layout/testHeaderImageAlignment 90.6 → 100 %). Known deviations: a table centered on the margin
+          stands about 5 pt further right in Word; of two floating tables after each other in a cell Word sets the
+          second below the first before Word 2013, beside it from then on (docx/local/ng-3 to ng-5), ours at its
+          paragraph; a line centered beside a floating table centers in its segment in Word (nf-4); tables anchored to
+          the page that do not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the
+          compatibility setting allowTextAfterFloatingTableBreak (text after the table beside its first part;
           docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
 
       - id: table.cells
