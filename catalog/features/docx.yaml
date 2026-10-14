@@ -3350,7 +3350,8 @@ areas:
         office: >-
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
-          w:clrSchemeMapping; drawn as pptx chart.dataTable (done). Data tables below the plot area.
+          w:clrSchemeMapping; drawn as pptx chart.dataTable (done). Data tables below the plot area, also of 3D
+          columns (powertools/CU008, CU013: 58.6 and 62.0 → 91.5 and 92.3 %).
 
       - id: chart.formatting
         title: Chart formatting, chart styles and colors

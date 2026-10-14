@@ -297,8 +297,13 @@ public sealed partial class ChartRenderer
         var axisRight = behind;
         // The labels along the floor's near edges: under an edge within 34° of the horizontal, else beside it.
         (bool Under, bool Right)? floorAt = null, seriesAt = null;
+        // A data table below the box shows the category labels and takes its room below and left of the plot area as
+        // on flat charts, its columns along the floor's front edge (powertools/CU008, CU013: 3D columns with a data
+        // table with keys; docx/local/d3t-notitle: the same place without the value axis title).
+        var table = columns && !categoryAxis.Deleted ? BuildDataTable(category, series.Select(s => (group, s)).ToList()) : null;
         // Axis titles take their room from the outer plot area at the edge of their axis, as on flat charts
-        // (scratch/triage/2026-10-14_agents/charts: powertools/CU001's "Vehicles" left of a 3D bar chart).
+        // (scratch/triage/2026-10-14_agents/charts: powertools/CU001's "Vehicles" left of a 3D bar chart), one on
+        // the left sharing it with a data table's name column.
         var axisTitles = new List<(ChartAxis Axis, AxisTitle Title)>();
         foreach (var axis in new[] { categoryAxis, valueAxis })
         {
@@ -307,6 +312,7 @@ public sealed partial class ChartRenderer
             var b = axisTitle.Box;
             switch (axis.Position)
             {
+                case "l" when table != null: axisTitle.Box = b with { X = outer.X }; break;
                 case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + b.W, W = Math.Max(1, outer.W - b.W) }; break;
                 case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - b.W) }; break;
                 case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + b.H, H = Math.Max(1, outer.H - b.H) }; break;
@@ -314,6 +320,13 @@ public sealed partial class ChartRenderer
             }
             axisTitles.Add((axis, axisTitle));
         }
+        if (table != null)
+            outer = outer with
+            {
+                X = outer.X + DataTableBleed + table.NameWidth,
+                W = Math.Max(1, outer.W - DataTableBleed - table.NameWidth),
+                H = Math.Max(1, outer.H + DataTableBleed - table.Height),
+            };
         var plot = outer;
         for (var pass = 0; pass < 3; pass++)
         {
@@ -483,6 +496,14 @@ public sealed partial class ChartRenderer
                     svg.Append(GridLine(seriesLine, x, y, x, y + TickLength));
                 }
             }
+        }
+
+        if (table != null)
+        {
+            var (first, last) = (projection.Map(frame.CategoryPos(0), floorOuter, frontZ), projection.Map(frame.CategoryPos(1), floorOuter, frontZ));
+            (category.Start, category.End) = (first.X, last.X);
+            var (left, right) = (Math.Min(first.X, last.X), Math.Max(first.X, last.X));
+            svg.Append(DrawDataTable(table, new Box(left, Math.Max(first.Y, last.Y) - 1, Math.Max(1, right - left), 1)));
         }
 
         // Labels next to the front edges: values beside the side wall (columns) or under the floor (bars),

@@ -1080,7 +1080,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     AxisTitle? BuildAxisTitle(ChartAxis axis)
     {
-        if (axis.Deleted || axis.Title is not { } element)
+        // A deleted axis keeps its title (powertools/CU008, CU013: "Achsentitel" beside a 3D bar chart whose value
+        // axis is deleted).
+        if (axis.Title is not { } element)
             return null;
         // Bold 10 pt, white in the black chart area of a legacy style's level 5 (powertools/CU001: "Vehicles").
         var fallback = new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1"));
@@ -1594,7 +1596,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (ManualOuterPlot() is { } placed)
             outer = placed;
 
-        // Axis titles take their room from the outer plot area, at the edge of their axis.
+        // Axis titles take their room from the outer plot area, at the edge of their axis; one on the left shares it
+        // with a data table's name column (powertools/CU008 as flat columns, docx/local/d3t-flat: the table and the
+        // plot stand where they stand without the title).
+        var table = BuildDataTable(groups, axes);
         var titles = new List<(AxisLayout Axis, AxisTitle Title)>();
         foreach (var layout in axes)
         {
@@ -1604,6 +1609,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var b = axisTitle.Box;
             switch (layout.Axis.Position)
             {
+                case "l" when table != null: axisTitle.Box = b with { X = outer.X }; break;
                 case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + b.W, W = Math.Max(1, outer.W - b.W) }; break;
                 case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - b.W) }; break;
                 case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + b.H, H = Math.Max(1, outer.H - b.H) }; break;
@@ -1612,7 +1618,6 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             titles.Add((layout, axisTitle));
         }
 
-        var table = BuildDataTable(groups, axes);
         var inner = ManualPlot();
         var plot = inner ?? outer;
         // Measured: the largest bubble is 0.2307 m + 2.65 pt wide, m being the smaller side of the plot area
@@ -1757,15 +1762,21 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// </summary>
     DataTableLayout? BuildDataTable(List<ChartGroup> groups, List<AxisLayout> axes)
     {
-        if (model.PlotArea?.Element(Ns.C + "dTable") is not { } element
-            || axes.FirstOrDefault(a => !a.Axis.IsValue && a.Axis.Position == "b" && a.Visible) is not { } category)
+        if (axes.FirstOrDefault(a => !a.Axis.IsValue && a.Axis.Position == "b" && a.Visible) is not { } category)
+            return null;
+        return BuildDataTable(category, groups.Where(g => g.AxisIds.Contains(category.Axis.Id) && !g.IsScatter).SelectMany(g => g.Series.Select(s => (g, s))).ToList());
+    }
+
+    /// <summary>The data table of c:dTable for the given category axis and its series, or null without one.</summary>
+    DataTableLayout? BuildDataTable(AxisLayout category, List<(ChartGroup Group, ChartSeries Series)> rows)
+    {
+        if (model.PlotArea?.Element(Ns.C + "dTable") is not { } element)
             return null;
         var style = Style(element.Element(Ns.C + "txPr"), "dataTable");
-        var rows = groups.Where(g => g.AxisIds.Contains(category.Axis.Id) && !g.IsScatter).SelectMany(g => g.Series.Select(s => (g, s))).ToList();
         var keys = ChartModel.Flag(element, "showKeys", false);
         var lineHeight = LineHeight(style);
         var padding = keys ? 1.0975 * style.Size + 2.89 : DataTablePadding;
-        var names = rows.Select(r => WrapWords(r.s.Name, style, width / 3 - padding)).ToList();
+        var names = rows.Select(r => WrapWords(r.Series.Name, style, width / 3 - padding)).ToList();
         var widest = names.Count == 0 ? 0 : names.Max(lines => lines.Max(l => Width(l, style)));
         category.InTable = true;
         return new DataTableLayout
