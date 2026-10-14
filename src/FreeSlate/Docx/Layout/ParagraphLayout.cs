@@ -952,12 +952,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (context.CompatibilityMode < 15 && !r.Tight)
                     {
                         var enough = r.Segments.Where(s => s.End - s.Start >= minimum).ToList();
-                        segments = enough.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
+                        segments = enough.Select(s => Indented(s, startX, limit, width)).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
                         none = segments.Count == 0 && enough.Count > 0;
                     }
                     else
                     {
-                        segments = r.Segments.Select(s => (Math.Max(s.Start, startX), Math.Min(s.End, limit))).Where(s => s.Item2 - s.Item1 >= minimum).ToList();
+                        segments = r.Segments.Select(s => Indented(s, startX, limit, width)).Where(s => s.Item2 - s.Item1 >= minimum).ToList();
                         if (r.Segments.Count != 1 || r.Segments[0].End - r.Segments[0].Start < width - 0.01)
                         {
                             var word = FirstWord(lineStart);
@@ -1414,7 +1414,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var firstLine = format.FirstLine ?? 0;
         double min = 0, max = 0, word = 0, trailing = 0;
         var line = left + firstLine;
-        var interval = context.DefaultTabStop > 0 ? context.DefaultTabStop : 36;
+        var interval = context.DefaultTabStop;
         for (var i = 0; i < text.Length; i++)
         {
             var c = text[i];
@@ -1429,7 +1429,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 // The next custom stop, else the next default stop.
                 var stop = format.Tabs?.FirstOrDefault(t => t.Position > line + 0.005 && t.Align is not ("bar" or "clear"));
-                line = stop?.Position ?? (Math.Floor(line / interval + 1e-6) + 1) * interval;
+                line = stop?.Position ?? (interval > 0 ? (Math.Floor(line / interval + 1e-6) + 1) * interval : line);
                 min = Math.Max(min, word);
                 (word, trailing) = (0, 0);
                 continue;
@@ -1464,6 +1464,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         (string?)drawing.Drawing.Attribute(Vml.Rule) is { } share && double.TryParse(share, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     /// <summary>Whether two rooms give a line the same segments.</summary>
+    /// <summary>
+    /// A segment of a line's room within its indents; one that reaches the column's edge goes on to an indent beyond
+    /// it (docx/external/libreoffice/extras-ooxmlimport/tdf117843: a header's line indented 7.1 pt into the margin
+    /// beside text boxes wrapped square starts there).
+    /// </summary>
+    static (double, double) Indented((double Start, double End) segment, double startX, double limit, double width) =>
+        (segment.Start <= 0.01 ? startX : Math.Max(segment.Start, startX), segment.End >= width - 0.01 ? limit : Math.Min(segment.End, limit));
+
     static bool SameRoom(LineRoom a, LineRoom b) =>
         a.Tight == b.Tight && a.Segments.Count == b.Segments.Count
         && a.Segments.Zip(b.Segments).All(p => Math.Abs(p.First.Start - p.Second.Start) < 0.01 && Math.Abs(p.First.End - p.Second.End) < 0.01);
@@ -1977,8 +1985,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             };
             return Math.Max(x, start);
         }
-        var interval = context.DefaultTabStop > 0 ? context.DefaultTabStop : 36;
-        return (Math.Floor(x / interval + 1e-6) + 1) * interval;
+        // Without default stops a tab goes nowhere (docx/local/dts-0, dts-65536).
+        var interval = context.DefaultTabStop;
+        return interval > 0 ? (Math.Floor(x / interval + 1e-6) + 1) * interval : x;
     }
 
     /// <summary>
@@ -2622,10 +2631,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
             return;
-        // The line's end without trailing spaces and hanging punctuation.
+        // The line's end without trailing spaces and hanging punctuation; spaces a tab follows do not trail
+        // (docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero: "10", a space and tabs of no width
+        // centered with the space).
         var last = content[^1];
         var trailing = 0.0;
-        for (var k = last.Text.Length - 1; k >= 0 && last.Text[k] == ' '; k--)
+        var tabbed = line.Pieces.Skip(line.Pieces.IndexOf(last) + 1).Any(p => p.IsTab);
+        for (var k = last.Text.Length - 1; !tabbed && k >= 0 && last.Text[k] == ' '; k--)
             trailing += last.Advances[k];
         var end = last.X + last.Width - trailing - line.Hanging;
         var free = limit - end;

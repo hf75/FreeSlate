@@ -57,7 +57,10 @@ public sealed class DocumentContext : IDisposable
         Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
-        DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
+        // Word keeps the default tab stop in 16 bits: 65536 twips are none, 66256 half an inch (measured with
+        // docx/local/dts-*; docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero: 65536, tabs of no width).
+        DefaultTabStop = long.TryParse(Settings.Child("defaultTabStop").Val(), out var stop) ? (stop % 65536 + 65536) % 65536 / 20.0
+            : Settings.Child("defaultTabStop").Twips("val") ?? 36;
         Numbering = new NumberingDefinitions(Related("numbering"), Styles) { Part = Package.FirstRelationship(MainPart, "numbering")?.Target };
         FontTable = new FontTable(Related("fontTable"));
         Divs = new HtmlDivs(Related("webSettings"));
@@ -94,8 +97,13 @@ public sealed class DocumentContext : IDisposable
         return index;
     }
 
-    /// <summary>The document's page background (w:background), or null.</summary>
-    public XElement? Background => Document?.Root?.Element(Wml.W + "background");
+    /// <summary>
+    /// The document's page background (w:background), or null; one without a color Word ignores, its VML fill too
+    /// (docx/external/libreoffice/extras-ooxmlexport/tdf126533_noPageBitmap: a picture of the page not printed, as
+    /// tdf126533_pageBitmap's with w:color is).
+    /// </summary>
+    public XElement? Background => Document?.Root?.Element(Wml.W + "background") is { } background
+        && (background.Attr("color") != null || background.Attr("themeColor") != null) ? background : null;
     public XDocument Document { get; }
     public StyleSheet Styles { get; }
     public XElement? Settings { get; }

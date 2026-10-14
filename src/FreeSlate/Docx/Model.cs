@@ -663,6 +663,9 @@ public sealed partial class ModelReader(DocumentContext context)
             }
             switch (e.Name.LocalName)
             {
+                case "br":
+                    strayBreaks.Add(e);
+                    break;
                 case "p" when context.Markup:
                 {
                     // In the markup view a paragraph whose mark was deleted stays apart, its mark marked.
@@ -832,6 +835,13 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <param name="number">Whether a numbered paragraph takes its number (not where it runs into the next one).</param>
+    /// <summary>
+    /// Breaks (w:br) between paragraphs, in the body or a cell: they break at the start of the next paragraph, in the
+    /// next table too (docx/external/libreoffice/extras-ooxmlimport/tdf108714: page breaks between paragraphs and
+    /// after a table, line breaks before one and in its cells).
+    /// </summary>
+    readonly List<XElement> strayBreaks = [];
+
     ParagraphBlock Paragraph(XElement p, bool number = true)
     {
         var pPr = p.Child("pPr");
@@ -880,6 +890,9 @@ public sealed partial class ModelReader(DocumentContext context)
         // paragraph's justification (measured with docx/local/dmath-*: one or two m:oMath alone or after a bookmark
         // centered with limits above and below as in an m:oMathPara, in left and right aligned paragraphs too, m:defJc
         // left at the left; after text or a space inline; pandoc/golden/mark_math).
+        foreach (var stray in strayBreaks)
+            Run(new XElement(Wml.W + "r", new XElement(stray)), styleId, content, field);
+        strayBreaks.Clear();
         if (LoneMath(p) is { Count: > 0 } maths)
         {
             ReadInlines(new XElement(p.Name, p.Elements().Where(e => e.Name.Namespace != Equations.MathLayout.M)), styleId, content, field);
@@ -1036,6 +1049,10 @@ public sealed partial class ModelReader(DocumentContext context)
             {
                 case "r":
                     Run(e, paragraphStyle, content, field);
+                    break;
+                // A break straight in a paragraph breaks as a run's (tdf108714).
+                case "br":
+                    Run(new XElement(Wml.W + "r", new XElement(e)), paragraphStyle, content, field);
                     break;
                 case "hyperlink":
                 {
@@ -1378,9 +1395,11 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "br":
                     // Page and column breaks in table cells break nothing at all, the text going on in its line
                     // (measured with docx/local/cb-1, cb-2, cb-4 in modes 14 and 15; in a text box a line break, cb-5;
-                    // docx/external/libreoffice/extras-ooxmlexport/fdo68607).
+                    // docx/external/libreoffice/extras-ooxmlexport/fdo68607); in notes they break the line only
+                    // (docx/external/libreoffice/extras-ooxmlimport/tdf129659: an endnote's address on its next line).
                     if (!field.Hidden && !(tableParagraph != null && e.Attr("type") is "page" or "column"))
-                        field.Target(content).Add(new BreakInline(e.Attr("type") ?? "textWrapping", e.Attr("clear"), format));
+                        field.Target(content).Add(new BreakInline(noteMark != null && e.Attr("type") is "page" or "column" ? "textWrapping" : e.Attr("type") ?? "textWrapping",
+                            e.Attr("clear"), format));
                     break;
                 case "cr":
                     if (!field.Hidden)
@@ -1497,6 +1516,11 @@ public sealed partial class ModelReader(DocumentContext context)
                         symbol.AsciiTheme = symbol.HAnsiTheme = null;
                         field.Target(content).Add(new TextInline(char.ConvertFromUtf32(value), symbol));
                     }
+                    break;
+                // A run in a run counts as a run of its own (docx/external/libreoffice/writerfilter-ooxml/nested-runs:
+                // "Test text box" in a text box's nested run).
+                case "r":
+                    Run(e, paragraphStyle, content, field);
                     break;
             }
         }

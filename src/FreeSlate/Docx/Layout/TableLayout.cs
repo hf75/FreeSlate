@@ -589,6 +589,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         var format = table.Format;
+        // A cell's own shading replaces its row's and its table's, even where it paints nothing (docx/external/
+        // libreoffice/extras-ooxmlexport/table-black_fill: cells of fill auto in a table shaded black stay white).
+        RgbColor? CellShading(CellModel cell, RowModel row) => cell.Format.OwnShading ? Shading.Color(cell.Format.Shading)
+            : Shading.Color(cell.Format.Shading) ?? Shading.Color(row.ShadingException) ?? Shading.Color(format.Shading);
         var rows = table.Rows.Where(r => !r.Format.Hidden).ToList();
         var neighbors = Neighbors(rows, before);
         var columns = Math.Max(table.Grid.Count, rows.Count == 0 ? 0 : rows.Max(r => r.Cells.Count == 0 ? 0 : r.Cells.Max(c => c.Column + c.Format.GridSpan) + r.Format.GridAfter));
@@ -779,7 +783,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift,
-                    Shading.Color(cell.Format.Shading) ?? Shading.Color(rows[r].ShadingException) ?? Shading.Color(format.Shading));
+                    CellShading(cell, rows[r]));
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
                 if (!span.ContainsKey(cell))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -830,7 +834,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (at[r, k] is not { } here || k > 0 && at[r, k - 1] == here)
                     continue;
                 var owner = Owner(here)!;
-                if ((Shading.Color(owner.Format.Shading) ?? Shading.Color(row.ShadingException) ?? Shading.Color(format.Shading)) is { } fill)
+                if (CellShading(owner, row) is { } fill)
                 {
                     var c1 = Math.Min(columns, here.Column + here.Format.GridSpan);
                     var (from, width) = Range(x[k] + shift, x[c1] + shift);

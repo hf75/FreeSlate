@@ -861,7 +861,21 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                  ?? blip?.Attribute(Ns.R + "embed")?.Value ?? blip?.Attribute(Ns.R + "link")?.Value;
         var package = slide.Presentation.Package;
         if (id != null && package.Relationship(part, id) is { } rel && (rel.External || package.Exists(rel.Target)))
+        {
+            // Word's sign for a linked picture it does not find, a path on a disk of another machine: on white in a
+            // 0.14 pt black frame its icon and the message in 1.2 pt Tahoma, in Office's language (docx/external/
+            // libreoffice/extras-ooxmlexport/FileWithInvalidImageLink: a GIF linked on F:, the message in three lines).
+            if (slide.Presentation.Word && rel.External && blip?.Attribute(Ns.R + "embed") == null
+                && !(Uri.TryCreate(rel.Target, UriKind.Absolute, out var linked) && linked.Scheme is "http" or "https"))
+                return "<div class=\"fs-nolink\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;background:#fff;overflow:hidden;padding:.79pt 3.5pt 0 3.44pt;font:1.2pt/1.45pt Tahoma,'Segoe UI',sans-serif;color:#000;pointer-events:none\"><svg style=\"position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible\"><rect width=\"100%\" height=\"100%\" fill=\"none\" stroke=\"#000\" stroke-width=\".28pt\"/>" +
+                       "<svg x=\".84pt\" y=\".84pt\" width=\"1.68pt\" height=\"1.92pt\" viewBox=\"0 0 4 5\"><rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/>" +
+                       "<rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg>" +
+                       (System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de"
+                           ? "Das verknüpfte Bild kann nicht angezeigt werden. Möglicherweise wurde die Datei verschoben, umbenannt oder gelöscht. Stellen Sie sicher, dass die Verknüpfung auf die korrekte Datei und den korrekten Speicherort zeigt."
+                           : "The linked image cannot be displayed. The file may have been moved, renamed, or deleted. Verify that the link points to the correct file and location.") +
+                       "</div>";
             return "";
+        }
         // A picture of imported content (an RTF chunk's) comes as a data URI.
         if (id != null && id.StartsWith("data:", StringComparison.Ordinal))
             return "";

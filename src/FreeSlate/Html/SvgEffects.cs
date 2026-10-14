@@ -123,7 +123,9 @@ public static class SvgEffects
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
             steps.Append("<feComposite in2=\"so\" operator=\"in\" result=\"shadow\"/>");
             merge.Insert(0, "shadow");
-            extent = Math.Max(extent, distance + blur * 2);
+            // The outline's outer half casts its shadow too (docx/external/libreoffice/extras-ooxmlexport/n705956-2: a
+            // 3 pt outline's shadow 1 pt off was cut at the box).
+            extent = Math.Max(extent, distance + blur * 2 + stroke / 2);
         }
         if (own)
             merge.Add(source);

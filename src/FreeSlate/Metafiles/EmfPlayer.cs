@@ -13,6 +13,8 @@ public sealed class EmfPlayer
     readonly byte[] data;
     readonly SvgWriter svg;
     GdiContext gdi = null!;
+    /// <summary>The reference device's size in pixels and millimeters (header szlDevice, szlMillimeters).</summary>
+    (int X, int Y) devicePx, deviceMm;
     EmfPlusPlayer? plus;
 
     /// <summary>
@@ -20,6 +22,13 @@ public sealed class EmfPlayer
     /// followed by the image ANDed at the same place (SRCAND); the pair becomes one image with transparency.
     /// </summary>
     (Bitmap Mask, double X, double Y, double W, double H, (int X, int Y, int W, int H) Source)? pendingMask;
+
+    /// <summary>
+    /// An icon's monochrome mask ANDed onto the picture (SRCAND), black where the icon is opaque, waiting for the
+    /// icon's image XORed at the same place (SRCINVERT); the pair becomes one image with transparency (docx/external/
+    /// libreoffice/extras-ooxmlexport/tdf135653: an embedded object's icon on its red ground).
+    /// </summary>
+    (Bitmap Mask, double X, double Y, double W, double H, (int X, int Y, int W, int H) Source)? pendingAnd;
 
     public (double X, double Y, double W, double H) ViewBox { get; private set; }
 
@@ -57,8 +66,8 @@ public sealed class EmfPlayer
     {
         // Header: bounds (device units), frame (0.01 mm), reference device size in pixels and millimeters.
         var frame = (L: I32(24), T: I32(28), R: I32(32), B: I32(36));
-        var devicePx = (X: I32(72), Y: I32(76));
-        var deviceMm = (X: I32(80), Y: I32(84));
+        devicePx = (I32(72), I32(76));
+        deviceMm = (I32(80), I32(84));
         // The reference device's millimeters give the ratio, not the header's micrometers where they disagree (Word
         // maps by szlMillimeters: docx/external/tika/testWORD_embedded_pdf, 474 × 296 mm against 592666 × 370416 µm,
         // prints the picture at 80 % of its shape, as the millimeters say).
@@ -99,6 +108,7 @@ public sealed class EmfPlayer
             }
             offset += size;
         }
+        FlushAnd();
     }
 
     static readonly HashSet<uint> DrawingRecords =
@@ -118,6 +128,8 @@ public sealed class EmfPlayer
             return;   // duplicate GDI rendering of an EMF+ drawing record
         if (pendingMask != null && !IsMaskPartner(type, o))
             FlushMask();
+        if (pendingAnd != null && !IsIconPartner(type, o))
+            FlushAnd();
 
         var s = gdi.State;
         switch (type)
@@ -144,7 +156,21 @@ public sealed class EmfPlayer
                 svg.Add($"<rect x=\"{SvgWriter.Num(px)}\" y=\"{SvgWriter.Num(py)}\" width=\"1\" height=\"1\" fill=\"{SvgWriter.Color(gdi.Resolve(U32(o + 16)))}\"/>", s.Clip);
                 break;
             }
-            case 17: s.MapMode = I32(o + 8); break;
+            case 17:   // SETMAPMODE
+            {
+                // A new mode sets the extents as GDI does, MM_ISOTROPIC's as MM_LOMETRIC's: the reference device's
+                // tenths of a millimeter onto its pixels, upwards (docx/external/libreoffice/extras-ooxmlimport/
+                // tdf133448: an isotropic window of 12471 units and no viewport, an NMR chart over the 1024 × 768 px).
+                var mode = I32(o + 8);
+                if (mode != s.MapMode && (mode is >= 1 and <= 7))
+                {
+                    var units = mode switch { 3 => 100.0, 4 => 1000 / 25.4, 5 => 10000 / 25.4, 6 => 14400 / 25.4, _ => 10.0 };
+                    (s.WindowExt, s.ViewportExt) = mode == 1 ? ((1, 1), (1, 1))
+                        : ((deviceMm.X * units, deviceMm.Y * units), (devicePx.X, -devicePx.Y));
+                }
+                s.MapMode = mode;
+                break;
+            }
             case 18: s.BkMode = I32(o + 8); break;
             case 19: s.PolyFillMode = I32(o + 8); break;
             case 20: s.Rop2 = I32(o + 8); break;
@@ -646,6 +672,15 @@ public sealed class EmfPlayer
             case 0x00EE0086 when monochrome:   // SRCPAINT with a mask: wait for the image
                 pendingMask = (bitmap, x, y, w, h, source);
                 return;
+            case 0x008800C6 when monochrome && pendingMask == null:   // SRCAND of an icon's mask: wait for its image
+                FlushAnd();
+                pendingAnd = (bitmap, x, y, w, h, source);
+                return;
+            case 0x00660046 when pendingAnd is { } and && Math.Abs(and.X - x) < 1 && Math.Abs(and.Y - y) < 1 && Math.Abs(and.W - w) < 1 && Math.Abs(and.H - h) < 1:
+                // SRCINVERT: the icon's image over its mask, opaque where the mask is black.
+                pendingAnd = null;
+                gdi.Image(Masked(bitmap, and.Mask, blackOpaque: true), x, y, w, h, source);
+                return;
             case 0x008800C6:   // SRCAND: the image of a mask pair; alone, white is transparent
                 if (pendingMask is { } mask && Math.Abs(mask.X - x) < 1 && Math.Abs(mask.Y - y) < 1 && Math.Abs(mask.W - w) < 1 && Math.Abs(mask.H - h) < 1)
                 {
@@ -668,8 +703,8 @@ public sealed class EmfPlayer
         }
     }
 
-    /// <summary>The image with alpha from a mask whose white pixels mark the opaque part.</summary>
-    static Bitmap Masked(Bitmap image, Bitmap mask)
+    /// <summary>The image with alpha from a mask whose white pixels (or black ones) mark the opaque part.</summary>
+    static Bitmap Masked(Bitmap image, Bitmap mask, bool blackOpaque = false)
     {
         if (image.Rgba == null || mask.Rgba == null)
             return image;
@@ -681,7 +716,7 @@ public sealed class EmfPlayer
             {
                 var mx = x * mask.Width / Math.Max(1, image.Width);
                 var m = (my * mask.Width + mx) * 4;
-                if (mask.Rgba[m] < 128)
+                if (mask.Rgba[m] < 128 != blackOpaque)
                     rgba[(y * image.Width + x) * 4 + 3] = 0;
             }
         }
@@ -695,6 +730,23 @@ public sealed class EmfPlayer
         19 or 21 or 70 => true,   // fill mode, stretch mode and comments may sit between the pair
         _ => false,
     };
+
+    bool IsIconPartner(uint type, int o) => type switch
+    {
+        81 => U32(o + 68) == 0x00660046,
+        76 or 77 => U32(o + 40) == 0x00660046,
+        19 or 21 or 70 => true,
+        _ => false,
+    };
+
+    /// <summary>An icon's mask without its image: drawn alone, its white transparent.</summary>
+    void FlushAnd()
+    {
+        if (pendingAnd is not { } and)
+            return;
+        pendingAnd = null;
+        gdi.Image(and.Mask.WithTransparentColor(0xFFFFFF), and.X, and.Y, and.W, and.H, and.Source);
+    }
 
     void FlushMask()
     {

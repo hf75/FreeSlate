@@ -50,6 +50,26 @@ public static class Wml
         };
     }
 
+    /// <summary>
+    /// A w: attribute in half-points (ST_HpsMeasure, ST_SignedHpsMeasure) as points, a unit taken as it says
+    /// (docx/external/libreoffice/extras-ooxmlimport/tdf108408: w:sz "20pt" is 20 pt, not 200).
+    /// </summary>
+    public static double? HalfPoints(this XElement? element, string name)
+    {
+        var value = element.Attr(name);
+        if (value == null)
+            return null;
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? number / 2 : Universal(value);
+    }
+
+    /// <summary>
+    /// A color value as Word reads it: six hex digits after a "#" as without one, any other "#" value no color
+    /// (docx/external/libreoffice/extras-ooxmlexport/tdf57589_hashColor: #004080 text, #e6e6e6 shading; "#f00ff"
+    /// of five digits fills nothing); other values as they are.
+    /// </summary>
+    public static string? HexColor(string? value) =>
+        value is ['#', .. var hex] ? hex.Length == 6 && hex.All(Uri.IsHexDigit) ? hex : "none" : value;
+
     /// <summary>A w: attribute in twips (or with a unit) as points.</summary>
     public static double? Twips(this XElement? element, string name) => element.Number(name) is { } twips ? twips / 20 : null;
 

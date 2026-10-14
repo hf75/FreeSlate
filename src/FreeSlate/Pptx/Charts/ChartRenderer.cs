@@ -123,6 +123,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         /// <summary>The legend of an Office 2016 chart, laid out and drawn with its own metrics (see ExLegend).</summary>
         public bool Ex { get; init; }
+
+        /// <summary>The box the plot keeps away from where it is not the legend's own: Word's automatic one.</summary>
+        public Box? Room { get; set; }
+
+        /// <summary>Where the room the legend takes lies.</summary>
+        public Box Space => Room ?? Box;
     }
 
     sealed class AxisLayout
@@ -255,14 +261,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             switch (legend.Position)
             {
-                case "b": bottom = legend.Box.Y; break;
-                case "t": top = legend.Box.Bottom; break;
-                case "l": left = legend.Box.Right; break;
-                case "r": right = legend.Box.X; break;
+                case "b": bottom = legend.Space.Y; break;
+                case "t": top = legend.Space.Bottom; break;
+                case "l": left = legend.Space.Right; break;
+                case "r": right = legend.Space.X; break;
                 case "tr":
                     // Next to a corner legend the plot area starts 5 pt below it and ends 17 pt above the bottom.
-                    right = legend.Box.X;
-                    top = legend.Box.Bottom - 6;
+                    right = legend.Space.X;
+                    top = legend.Space.Bottom - 6;
                     bottom = height - 6;
                     break;
             }
@@ -1177,7 +1183,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 }
                 continue;
             }
-            if (group.VaryColors && group.Series.Count == 1 && (group.IsPie || group.IsBar))
+            // Pies list their first series' points whatever series follow it (docx/external/libreoffice/
+            // writerfilter-dmapper/layout-in-cell-2: a 3D pie of two series, the second empty, lists its categories).
+            if (group.VaryColors && (group.Series.Count == 1 || group.IsPie) && (group.IsPie || group.IsBar) && group.Series.Count > 0)
             {
                 var series = group.Series[0];
                 for (var i = 0; i < series.Values.Count; i++, index++)
@@ -1288,9 +1296,31 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var y = position == "tr" ? areaTop : areaTop + (areaBottom - areaTop - h) / 2;
             box = new Box(x, y, w, h);
         }
-        layout.Box = ManualPosition(element, box.W, box.H) ?? box;
-        if (position is not ("t" or "b") && element.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } sized
-            && (ChartModel.Number(sized, "w") != null || ChartModel.Number(sized, "h") != null))
+        var manual = ManualPosition(element, box.W, box.H);
+        layout.Box = manual ?? box;
+        // Word lays the plot out beside the automatic legend and draws the legend where its layout says, as it does
+        // titles (libreoffice/extras-layout/tdf132956: the plot 433.8 pt wide beside a legend placed across the
+        // chart; legend-itemorder-min: below the plot an automatic row's height, the legend at the right).
+        var word = manual != null && slide.Presentation.Word;
+        if (word)
+            layout.Room = box;
+        var sized = element.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } sizedLayout
+            && (ChartModel.Number(sizedLayout, "w") != null || ChartModel.Number(sizedLayout, "h") != null);
+        if (sized && word && widths.Sum() <= layout.Box.W - 4)
+        {
+            // In Word entries that fit side by side in a legend of its own size stand in a row, in equal gaps across
+            // it and centered down it (tdf132956: three entries of 46 pt in 432 pt, their keys at 147.6, 267.1 and
+            // 386.6 pt); others one below another (legend-itemorder-min, a legend 67.5 pt wide: FitLegend).
+            var gap = (layout.Box.W - widths.Sum()) / (entries.Count + 1);
+            layout.Placed.Clear();
+            var x = gap;
+            for (var i = 0; i < entries.Count; i++)
+            {
+                layout.Placed.Add((entries[i], x, layout.Box.H / 2));
+                x += widths[i] + gap;
+            }
+        }
+        else if (sized && (position is not ("t" or "b") || word))
             FitLegend(layout, lineHeight, Key);
         return layout;
     }
@@ -1424,7 +1454,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <summary>The automatic color of a data point (−1: of the series): by point where the group varies colors, else the series'.</summary>
     RgbColor AutoPointColor(ChartGroup group, ChartSeries series, int point) =>
-        point >= 0 && group.VaryColors && group.Series.Count == 1 ? AutoColor(point, series.Values.Count) : AutoColor(series.Index);
+        point >= 0 && group.VaryColors && (group.Series.Count == 1 || group.IsPie) ? AutoColor(point, series.Values.Count) : AutoColor(series.Index);
 
     /// <summary>
     /// How a picture fills a point (c:pictureOptions of the point, else of the series): stretched (the default),

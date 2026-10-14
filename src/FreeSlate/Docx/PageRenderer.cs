@@ -584,7 +584,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 if (piece.Link != null)
                     svg.Append("</a>");
             }
-            svg.Append(Underlines(placed.Line, placed.Left, baseline, contentEnd));
+            // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
+            // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
+            svg.Append(Underlines(placed.Line, placed.Left, baseline, context.Compat("ulTrailSpace") ? double.MaxValue : contentEnd));
             if (placed.Angle != 0)
                 svg.Append("</g>");
         }

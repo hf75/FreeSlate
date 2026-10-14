@@ -553,7 +553,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var (left, width) = Column(column);
         double Twips(string name) => properties.Twips(name) ?? 0;
-        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p, pictures: true).Max);
+        // A frame without a width of its own (w:w) is as wide as its paragraph, an empty one as its mark; one of several
+        // paragraphs is as wide as its column (docx/external/libreoffice/extras-layout/tdf124423: two empty paragraphs
+        // framed across the column, an empty paragraph 6.4 pt wide, Calibri 11's ¶; tdf135035: 127.6 pt in a column of
+        // three; poi/checkboxes).
+        double OwnWidth(ParagraphBlock p) => layout.Widths(p, pictures: true).Max is var max && max > 0 ? max
+            : layout.Styles.Mark(p.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
+        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width : OwnWidth(first);
         var laid = group.Select(p => layout.Layout(p, frameWidth)).ToList();
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
@@ -639,11 +645,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += line.Height;
             }
         }
-        // A frame higher than its content by w:h has its borders all the way down, the last paragraph's space after
-        // inside them (docx/external/libreoffice/extras-ooxmlexport/tdf131420, tdf133702: frames of 91.25 and
-        // 104.45 pt framed from their top to their bottom).
+        // A frame's borders go all the way down, the last paragraph's space after inside them, to its height where it is
+        // higher than its content (docx/external/libreoffice/extras-ooxmlexport/tdf131420, tdf133702: frames of 91.25
+        // and 104.45 pt framed from their top to their bottom; extras-layout/tdf124423: two empty paragraphs and their
+        // 8 pt after each framed 48.4 pt high; frame-wrap-auto).
         var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
-        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + Math.Max(given, height - spaceBottom), top: true, bottom: true, between: null);
+        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + Math.Max(given, height), top: true, bottom: true, between: null);
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
@@ -1032,6 +1039,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         paragraph is { EndsSection: not null, Format.Frame: null } && index > 0 && nextContinuous && paragraph.Label is not { Own.Length: > 0 }
         && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline);
 
+    /// <summary>
+    /// Whether a paragraph is an empty one holding the break before a section on a new page, which stays where it is
+    /// at a page's end, no page of its own (see Place).
+    /// </summary>
+    bool MarkBeforePage(ParagraphBlock paragraph) =>
+        paragraph is { EndsSection: not null, Format.Frame: null } && !nextContinuous && paragraph.Label is not { Own.Length: > 0 }
+        && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline);
+
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
 
@@ -1096,8 +1111,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         breakPage = false;
         CloseColumns();
         PlaceNotes();
+        // A document whose first section begins on an even page begins at page 2, an even page, with no blank page
+        // before it (docx/external/libreoffice/core-header_footer/tdf135216_evenOddFooter: four pages numbered 2 to 5,
+        // the first with the even footer; extras-ooxmlexport/A019_min: margins mirrored for an even page).
         var number = firstOfSection && properties.PageNumberStart is { } restart ? restart
-            : pages.Count == 0 ? 1 : pages[^1].DisplayNumber + 1;
+            : pages.Count == 0 ? properties.Start == "evenPage" ? 2 : 1 : pages[^1].DisplayNumber + 1;
         // The first page of a section with a title page has the first header, also the page a continuous section
         // begins at the top of (measured with docx/local/hfc-0t: not where lines of the section stand on the page
         // before, hfc-2t); with different odd and even pages (w:evenAndOddHeaders) even pages have the even one; a
@@ -1270,7 +1288,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     end++;
                 }
                 double Twips(string name) => properties.Twips(name) ?? 0;
-                var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Max(p => layout.Widths(p, fields, pictures: true).Max);
+                // As wide as its paragraph, an empty one as its mark, or as its column with several (see PlaceFrame).
+                var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width
+                    : layout.Widths(framed, fields, pictures: true).Max is var max && max > 0 ? max
+                    : layout.Styles.Mark(framed.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
                 var laid = group.Select(p => layout.Layout(p, frameWidth, fields)).ToList();
                 var content = 0.0;
                 for (var k = 0; k < group.Count; k++)
@@ -1403,6 +1424,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // text over a table 1 twip below its top; core-header_footer/tdf79639).
                 var linesTop = y;
                 var around = floats.Where(f => f.Moves && f.Anchor == b && f.Area.Bottom > linesTop && f.Area.Top < paragraphTop - 0.01).Select(f => f.Area).ToList();
+                // The paragraph's own floating drawings placed from it push its lines as in the body (docx/external/
+                // libreoffice/extras-layout/footer-nowrap-object: a footer's line below its own picture top and bottom,
+                // which reaches 7.5 pt into the paragraph, the footer as much higher; Cool15691_headerTextWrapsAroundImage:
+                // a header's text beside its picture wrapped square).
+                foreach (var own in paragraph.Content.OfType<AnchorInline>())
+                {
+                    if ((string?)own.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") == "paragraph"
+                        && ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width)) is { } area && area.Bottom > linesTop + 0.01)
+                        around.Add(area);
+                }
                 var laid = around.Count > 0
                     ? layout.Layout(paragraph, width, fields, room: slot => Room(around, linesTop, slot, left, width))
                     : layout.Layout(paragraph, width, fields);
@@ -1940,6 +1971,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (!columnEmpty)
             y += pendingAfter;
+        // A table whose first cell's first paragraph breaks the page before it (w:pageBreakBefore, its own or its
+        // style's) begins on a new page, unless the page is still empty (docx/external/libreoffice/extras-ooxmlexport/
+        // tdf89377_tableWithBreakBeforeParaStyle: two tables on pages of their own).
+        if (table.Table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.PageBreakBefore: true }
+            && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
+        {
+            NewPage(section);
+            top = Top.Break;
+            (left, width) = Column(column);
+        }
         // A table whose first row is kept with the next one begins a keep chain, unless it continues one (measured
         // with docx/local/tk1, tk4, tk7, tk9: such rows go to the next page with the paragraphs kept with them).
         var chained = previous != null ? previous.Format.KeepNext == true : tableKept;
@@ -1992,7 +2033,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         (RowBox Head, RowBox Tail)? Split(RowBox row, double top, bool force = false) =>
             Bottom - top > row.TopWidth + 1 ? row.Split(Bottom - top - row.BottomBorderWidth, force) : null;
         bool Takes(RowBox row, double top) => Fits(row, top) || Split(row, top) != null;
-        if (headers.Count > 0 && headers.Count < box.Rows.Count && !columnEmpty && !Takes(box.Rows[headers.Count], y + headersHeight))
+        // A table of header rows only moves where they do not all fit, whether or not they fit a page (docx/external/
+        // libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader: eight rows after a line go to the next page and
+        // break there).
+        if (headers.Count > 0 && !columnEmpty
+            && (headers.Count < box.Rows.Count ? !Takes(box.Rows[headers.Count], y + headersHeight) : !Fits(headers[^1], y + headersHeight - headers[^1].Height)))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -2105,7 +2150,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var element = anchor.Anchor;
         var (w, h) = Docx.Drawings.Extent(element);
         var s = page.Section;
-        double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        // EMU, or a universal measure (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: a simple
+        // position of 10cm 5cm).
+        double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700
+            : value != null && Wml.Universal(value.Trim()) is { } measure ? measure : 0;
         // Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV; 0 % keeps the extent): shapes take
         // them as they are, pictures only both together, scaled evenly to fit them (measured with
         // docx/local/size-rel-shape and docx/local/size-rel), each less the effect extents across it (measured with
@@ -2472,7 +2520,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var needed = gap + FirstLines(lines, format);
                 moves = y + needed > bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
             }
-            if (!moves)
+            if (!moves || MarkBeforePage(paragraph))
                 break;
             NextColumn(natural: true);
             var laid = width;
@@ -2678,8 +2726,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 split = true;
             // A line of nothing but a page or column break stays where it is, past the bottom too: it moves nothing on
             // (measured with docx/external/libreoffice/extras-ooxmlexport/FDO77715: headings that begin with a column
-            // break, after a full page, stand at the top of the next page, no empty page between).
-            else if (y + skip + fitHeight > limit + 0.01 && !columnEmpty && !BreakOnly(line))
+            // break, after a full page, stand at the top of the next page, no empty page between). A line that a
+            // floating table on the page pushes past the bottom moves on, though no text stands above it
+            // (docx/external/libreoffice/extras-layout/floattable-footer-object-nofit: "After the table." below the
+            // last part of a table that fills its page). An empty paragraph that holds the break before a section on a
+            // new page stays too, no page of its own (measured with docx/local/sbe-15, sbe-14, sbe-after: after a full
+            // page, in modes 14 and 15, also below space after; sbe-text: one with text moves; docx/external/
+            // libreoffice/extras-ooxmlexport/section_break_after_table, tdf136589_paraHadField).
+            else if (y + skip + fitHeight > limit + 0.01 && (!columnEmpty || skip > 0.01 && page!.FloatingTables.Count > 0) && !BreakOnly(line)
+                     && !MarkBeforePage(paragraph))
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).

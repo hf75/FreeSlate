@@ -123,7 +123,9 @@ public static class Vml
             style["margin-top"] = $"{Math.Min(y1, y2).ToString(CultureInfo.InvariantCulture)}pt";
             style.TryAdd("position", "absolute");
         }
-        var type = (string?)shape.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
+        // Only v:shape takes a type (AG_Type); other elements' type attributes count for nothing (docx/external/
+        // libreoffice/extras-ooxmlexport/n705956-2: a v:rect of a type with a red fill prints white).
+        var type = shape.Name == V + "shape" && (string?)shape.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
         var signature = SignatureLine(shape, width, height);
         var content = signature ?? (shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height));
         if (content == null)
@@ -417,9 +419,12 @@ public static class Vml
     static XElement? ShadowOf(XElement shape, XElement? type) =>
         (shape.Element(V + "shadow") ?? type?.Element(V + "shadow")) is { } shadow && (string?)shadow.Attribute("on") is "t" or "true" or "1" or "on" ? shadow : null;
 
-    /// <summary>A shadow's offset ("4pt,4pt", one value for both) in points.</summary>
-    static (double X, double Y) ShadowOffset(string? offset, (double, double) fallback) =>
-        offset == null ? fallback : Point(offset.Contains(',') ? offset : offset + "," + offset);
+    /// <summary>
+    /// A shadow's offset ("4pt,4pt") in points, one value across only, down the fallback's (docx/local/vsh-one: "4pt"
+    /// 4 pt right and 2 pt down; docx/external/libreoffice/extras-ooxmlexport/n705956-2).
+    /// </summary>
+    static (double X, double Y) ShadowOffset(string? offset, (double X, double Y) fallback) =>
+        offset == null ? fallback : offset.Contains(',') ? Point(offset) : (Point(offset + ",0").X, fallback.Y);
 
     /// <summary>
     /// A double shadow (v:shadow type="double", catalog: vml.shapes): Word draws the shape, fill and outline, in
@@ -517,7 +522,7 @@ public static class Vml
                 element.Add(Group(child, types, 0, 0, top: false, (cx, cy, cwidth, cheight)));
                 continue;
             }
-            var type = (string?)child.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
+            var type = child.Name == V + "shape" && (string?)child.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
             // The child's size in points, for what is measured in points (insets, line widths) to stay in scale.
             var scale = cw > 0 ? (double)w / cw / EmuPerPoint : 1;
             if (Content(child, type, cwidth * scale, cheight * scale) is not { } content)
@@ -700,6 +705,10 @@ public static class Vml
                 blipFill.Add(crop);
             blipFill.Add(new XElement(Ns.A + "stretch", new XElement(Ns.A + "fillRect")));
             var spPr = new XElement(Drawings.Pic + "spPr", xfrm, new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")));
+            // A picture filled on purpose (filled="t", its own or its type's) has its fill behind it (docx/external/
+            // libreoffice/extras-ooxmlexport/tdf135653: an icon on red, its frame type unfilled).
+            if (Flag(shape, "filled", type, false))
+                spPr.Add(Fill(shape, type));
             if (stroked && (shape.Attribute("strokecolor") != null || shape.Element(V + "stroke") != null))
                 spPr.Add(Line(shape, type));
             return new XElement(Drawings.Pic + "pic",

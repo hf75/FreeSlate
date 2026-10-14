@@ -275,7 +275,12 @@ public sealed class StyleSheet
             levels.Add(extraLevel);
         levels.Add(Level(Chain(ParagraphStyleOf(paragraphStyleId)), s => s.RunProperties));
         var character = Find(characterStyleId) is { Type: "character" } ? characterStyleId : null;
-        levels.Add(Level(Chain(character), s => s.RunProperties));
+        // Word ignores a character style's highlighting, a color as none (docx/external/libreoffice/extras-ooxmlexport/
+        // tdf138345_charStyleHighlight: no yellow behind the style's text; tdf137683_charHighlightTests: a paragraph
+        // style's cyan under a character style's none).
+        var characterLevel = Level(Chain(character), s => s.RunProperties);
+        characterLevel.Highlight = null;
+        levels.Add(characterLevel);
         return RunFormat.Combine(DefaultRun, levels, direct);
     }
 

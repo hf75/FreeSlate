@@ -739,7 +739,8 @@ areas:
           with [sx, tan kx; tan ky, sy], the skew not scaled, then moved by dist along dir and blurred (σ =
           0.35 blurRad). With rotWithShape 0, as PowerPoint writes its shadows, the offset and the transform
           stay on the slide, about the box around the turned shape (measured with generated/effects). Verified
-          with generated/effects and probe/shadow, probe/rotshadow.
+          with generated/effects and probe/shadow, probe/rotshadow. The outline's outer half casts its shadow too
+          (docx/external/libreoffice/extras-ooxmlexport/n705956-2: a 3 pt outline's shadow was cut at the box).
 
       - id: effect.innerShadow
         title: Inner shadow

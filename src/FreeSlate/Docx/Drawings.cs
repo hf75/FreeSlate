@@ -417,6 +417,18 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// <summary>A Word drawing element in PresentationML names, or null for content the slide renderer cannot draw.</summary>
     static XElement? Convert(XElement e, XElement? docPr, XElement graphicData)
     {
+        // A graphic frame in a group or canvas (charts): a frame in its group's coordinates (docx/external/libreoffice/
+        // extras-ooxmlimport/tdf124398: a bar chart under a text box in a group).
+        if (e.Name == Wpg + "graphicFrame" || e.Name == Wpc + "graphicFrame")
+        {
+            if (e.Element(Ns.A + "graphic") is not { } frameGraphic)
+                return null;
+            var frameXfrm = e.Element(e.Name.Namespace + "xfrm");
+            return new XElement(Ns.P + "graphicFrame",
+                new XElement(Ns.P + "nvGraphicFramePr", CNvPr(e.Element(e.Name.Namespace + "cNvPr"), docPr), new XElement(Ns.P + "cNvGraphicFramePr"), new XElement(Ns.P + "nvPr")),
+                new XElement(Ns.P + "xfrm", frameXfrm?.Attributes(), frameXfrm?.Elements().Select(x => new XElement(x))),
+                new XElement(frameGraphic));
+        }
         if (e.Name == Pic + "pic")
         {
             return new XElement(Ns.P + "pic",

@@ -59,6 +59,7 @@ public sealed partial class ModelReader
 
         // Conditional formats and the formatting they bring, then the cells' content in their light.
         var leading = LeadingRows(model);
+        model.Format.FirstColumnStyled = chain.Any(s => s.Element.Elements(Wml.W + "tblStylePr").Any(e => e.Attr("type") == "firstCol"));
         // The row properties of the conditional formats of whole rows, under the row's own (measured with
         // docx/local/hc-1, hc-0: a first-row format's w:tblHeader repeats the first row where w:tblLook asks for
         // first-row formatting, not where it does not; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
@@ -114,6 +115,7 @@ public sealed partial class ModelReader
                 }
                 var direct = cellElements[c].Child("tcPr");
                 format.Apply(direct);
+                format.OwnShading = direct.Child("shd") != null;
                 CopyFormat(format, cell.Format);
                 cell.CellBorders = borders.Overlay(BorderSet.Read(direct.Child("tcBorders")));
 
@@ -184,6 +186,7 @@ public sealed partial class ModelReader
         to.NoWrap = from.NoWrap;
         to.FitText = from.FitText;
         to.HideMark = from.HideMark;
+        to.OwnShading = from.OwnShading;
     }
 
     /// <summary>
@@ -257,22 +260,26 @@ public sealed partial class ModelReader
         var lastRow = f.LastRow && r == rows - 1 && !firstRow;
         var firstColumn = f.FirstColumn && c == 0;
         var lastColumn = f.LastColumn && c == cells - 1 && !firstColumn;
+        // Word applies row bands, column bands, the first and last column, then the first and last row, each over the
+        // ones before, not in the specification's order (docx/external/libreoffice/extras-ooxmlexport/
+        // conditionalstyles-tbllook: body cells in the column bands' colors and size, the first row's size over the
+        // first column's, the last row's over the first and the last column's).
         yield return "wholeTable";
         // Bands skip the first and last column and row where those have formats of their own.
-        if (!f.NoVerticalBand && !firstColumn && !lastColumn)
-        {
-            var band = (c - (f.FirstColumn ? 1 : 0)) / Math.Max(1, f.ColumnBandSize);
-            yield return band % 2 == 0 ? "band1Vert" : "band2Vert";
-        }
         if (!f.NoHorizontalBand && r >= leading && !lastRow)
         {
             var band = (r - leading) / Math.Max(1, f.RowBandSize);
             yield return band % 2 == 0 ? "band1Horz" : "band2Horz";
         }
-        if (firstRow) yield return "firstRow";
-        if (lastRow) yield return "lastRow";
+        if (!f.NoVerticalBand && !(firstColumn && f.FirstColumnStyled) && !lastColumn)
+        {
+            var band = (c - (f.FirstColumn && f.FirstColumnStyled ? 1 : 0)) / Math.Max(1, f.ColumnBandSize);
+            yield return band % 2 == 0 ? "band1Vert" : "band2Vert";
+        }
         if (firstColumn) yield return "firstCol";
         if (lastColumn) yield return "lastCol";
+        if (firstRow) yield return "firstRow";
+        if (lastRow) yield return "lastRow";
         if (firstRow && firstColumn) yield return "nwCell";
         if (firstRow && lastColumn) yield return "neCell";
         if (lastRow && firstColumn) yield return "swCell";
@@ -322,7 +329,7 @@ public sealed partial class ModelReader
         if (condition is "band1Vert" or "band2Vert")
         {
             var size = Math.Max(1, f.ColumnBandSize);
-            var offset = c - (f.FirstColumn ? 1 : 0);
+            var offset = c - (f.FirstColumn && f.FirstColumnStyled ? 1 : 0);
             leftEdge = offset % size == 0;
             rightEdge = offset % size == size - 1 || c == cells - 1;
         }

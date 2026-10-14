@@ -139,8 +139,8 @@ public sealed class RunFormat
                     ComplexScriptTheme = e.Attr("cstheme") ?? (e.Attr("cs") != null ? null : ComplexScriptTheme);
                     Hint = e.Attr("hint") ?? Hint;
                     break;
-                case "sz": Size = e.Number("val") is { } sz ? sz / 2 : Size; break;
-                case "szCs": SizeComplex = e.Number("val") is { } szCs ? szCs / 2 : SizeComplex; break;
+                case "sz": Size = e.HalfPoints("val") ?? Size; break;
+                case "szCs": SizeComplex = e.HalfPoints("val") ?? SizeComplex; break;
                 case "b": Bold = e.OnOff(); break;
                 case "bCs": BoldComplex = e.OnOff(); break;
                 case "i": Italic = e.OnOff(); break;
@@ -160,21 +160,21 @@ public sealed class RunFormat
                 case "cs": UseComplexScript = e.OnOff(); break;
                 case "noProof": NoProof = e.OnOff(); break;
                 case "color":
-                    Color = e.Val() ?? Color;
+                    Color = Wml.HexColor(e.Val()) ?? Color;
                     ThemeColor = e.Attr("themeColor");
                     ThemeTint = e.Attr("themeTint");
                     ThemeShade = e.Attr("themeShade");
                     break;
                 case "u":
                     Underline = e.Val() ?? Underline;
-                    UnderlineColor = e.Attr("color") ?? UnderlineColor;
+                    UnderlineColor = Wml.HexColor(e.Attr("color")) ?? UnderlineColor;
                     break;
                 case "highlight": Highlight = e.Val(); break;
                 case "bdr": Border = BorderLine.Read(e); break;
                 case "shd":
                     ShadingPattern = e.Val();
-                    ShadingColor = e.Attr("color");
-                    ShadingFill = e.Attr("fill");
+                    ShadingColor = Wml.HexColor(e.Attr("color"));
+                    ShadingFill = Wml.HexColor(e.Attr("fill"));
                     break;
                 case "vertAlign": VerticalAlign = e.Val(); break;
                 case "em": Emphasis = e.Val(); break;
@@ -183,10 +183,12 @@ public sealed class RunFormat
                     CombineBrackets = e.Attr("combineBrackets") ?? CombineBrackets;
                     AcrossLine = e.Attr("vert") is { } across ? across is "1" or "true" or "on" : AcrossLine;
                     break;
-                case "position": Position = e.Number("val") is { } position ? position / 2 : Position; break;
+                case "position": Position = e.HalfPoints("val") ?? Position; break;
                 case "spacing": Spacing = e.Twips("val") ?? Spacing; break;
-                case "kern": Kern = e.Number("val") is { } kern ? kern / 2 : Kern; break;
-                case "w": Scale = e.Number("val") ?? Scale; break;
+                case "kern": Kern = e.HalfPoints("val") ?? Kern; break;
+                // A scale of none or less Word ignores (docx/external/libreoffice/extras-ooxmlexport/tdf106001:
+                // w:w 0 prints at 100 %).
+                case "w": Scale = e.Number("val") is > 0 and var scale ? scale : Scale; break;
                 case "fitText":
                     FitText = e.Twips("val") ?? FitText;
                     FitTextId = e.Attr("id") ?? FitTextId;

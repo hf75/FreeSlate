@@ -35,15 +35,20 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         if (e == null)
             return null;
         var style = e.Val() ?? "none";
-        // w:sz is in eighths of a point (2 … 96); art borders measure in points, not used by tables.
-        var width = (e.Number("sz") ?? 4) / 8;
+        // w:sz is in eighths of a point (2 … 96), 0 as thin as 1 (docx/local/bsz-para, bsz-cell: paragraph and cell
+        // lines of sizes 0 and 1 both 0.12 pt; docx/external/libreoffice/extras-ooxmlexport/tdf57589_hashColor); art
+        // borders measure in points, not used by tables.
+        var width = Math.Max(1, e.Number("sz") ?? 4) / 8;
         if (style is "nil" or "none")
             width = 0;
-        var color = e.Attr("color") is { Length: 6 } hex ? RgbColor.FromHex(hex) : RgbColor.Black;
+        var given = Wml.HexColor(e.Attr("color"));
+        // Named colors as for shading (docx/external/libreoffice/extras-ooxmlexport/tdf132898_extraBorder: darkblue).
+        var named = Shading.Value(given);
+        var color = named ?? RgbColor.Black;
         return new BorderLine(style, width, color, e.Number("space") ?? 0)
         {
             Shadow = e.Attr("shadow") is "1" or "true" or "on",
-            AutoColor = e.Attr("color") is not { Length: 6 },
+            AutoColor = named == null,
         };
     }
 
@@ -218,10 +223,12 @@ public static class Shading
     public static RgbColor? Color(XElement? shd) => shd == null ? null : Color(shd.Val(), shd.Attr("color"), shd.Attr("fill"));
 
     /// <summary>
-    /// A color of a w:shd: six hex digits, or a color's name, which Word reads too (docx/external/powertools/
-    /// HC032-Named-Color: w:fill="orange" fills FFA500); anything else (auto, "#e6e6e6") is none.
+    /// A color of a w:shd: six hex digits, also after a "#" (Wml.HexColor), or a color's name, which Word reads too
+    /// (docx/external/powertools/HC032-Named-Color: w:fill="orange" fills FFA500); anything else (auto) is none.
     /// </summary>
-    public static RgbColor? Value(string? value) =>
+    public static RgbColor? Value(string? value) => Hex(Wml.HexColor(value));
+
+    static RgbColor? Hex(string? value) =>
         value is { Length: 6 } && int.TryParse(value, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out _)
             ? RgbColor.FromHex(value)
             : value is { Length: > 0 } and not "auto" ? FreeSlate.Drawing.PresetColors.Find(value) : null;
@@ -238,8 +245,18 @@ public static class Shading
             return fill;
         if (pattern is "solid")
             return color;
-        // Percentage patterns mix the pattern color over the fill; stripes and crosses cover about half.
-        var share = pattern.StartsWith("pct", StringComparison.Ordinal) && double.TryParse(pattern[3..], out var pct) ? pct / 100 : 0.5;
+        // Percentage patterns mix the pattern color over the fill; stripes and crosses as much as their 8 × 8 tiles cover
+        // (measured with docx/local/shp-patterns: stripes and the horizontal cross 32 of 64 pixels, the diagonal cross
+        // 48, thin stripes 16, thin crosses 28; docx/external/libreoffice/extras-ooxmlexport/style-pane-format-filter,
+        // theme-preservation: thinHorzStripe a quarter).
+        var share = pattern.StartsWith("pct", StringComparison.Ordinal) && double.TryParse(pattern[3..], out var pct) ? pct / 100
+            : pattern switch
+            {
+                "diagCross" => 0.75,
+                "thinHorzCross" or "thinDiagCross" => 28 / 64.0,
+                "thinHorzStripe" or "thinVertStripe" or "thinReverseDiagStripe" or "thinDiagStripe" => 0.25,
+                _ => 0.5,
+            };
         return RgbColor.Mix(fill ?? RgbColor.White, color, share);
     }
 }
@@ -265,6 +282,13 @@ public sealed class TableFormat
     public XElement? Shading;
     public int RowBandSize = 1, ColumnBandSize = 1;
     public bool FirstRow = true, LastRow, FirstColumn = true, LastColumn, NoHorizontalBand, NoVerticalBand = true;
+
+    /// <summary>
+    /// Whether the table's style has a first-column format, without which column bands count the first column too
+    /// (docx/external/libreoffice/extras-ooxmlexport/tdf138020_undefined_firstCol: columns 1 and 3 in the first
+    /// band's green; powertools/HC007-Test-02).
+    /// </summary>
+    public bool FirstColumnStyled = true;
     public bool BidiVisual;
     public XElement? Floating;
 
@@ -296,9 +320,13 @@ public sealed class TableFormat
         Description = tblPr.Child("tblDescription").Val() ?? Description;
         if (tblPr.Child("tblLook") is { } look)
         {
-            // Word 2010 writes the flags as attributes; Word 2007 as a hexadecimal bit mask in w:val.
+            // Word 2010 writes the flags as attributes; Word 2007 as a hexadecimal bit mask in w:val. Where any flag is an
+            // attribute, the mask counts for nothing and the flags left out are on (docx/external/libreoffice/
+            // extras-ooxmlexport/tdf167843_tblLook_firstRow_tblHeader: val 04A0 and firstRow 0 shade the first and
+            // last column and the last row, without bands).
             var mask = look.Attr("val") is { } hex && int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var m) ? m : (int?)null;
-            bool Flag(string name, int bit) => look.Attr(name) is { } v ? v is "1" or "true" or "on" : mask is { } b && (b & bit) != 0;
+            var named = new[] { "firstRow", "lastRow", "firstColumn", "lastColumn", "noHBand", "noVBand" }.Any(n => look.Attr(n) != null);
+            bool Flag(string name, int bit) => look.Attr(name) is { } v ? v is "1" or "true" or "on" : named || mask is { } b && (b & bit) != 0;
             FirstRow = Flag("firstRow", 0x20);
             LastRow = Flag("lastRow", 0x40);
             FirstColumn = Flag("firstColumn", 0x80);
@@ -355,6 +383,9 @@ public sealed class CellFormat
     public string VerticalAlign = "top";
     public string? TextDirection;
     public bool NoWrap, FitText, HideMark;
+
+    /// <summary>Whether the cell's own w:tcPr shades it, which then replaces its row's and its table's shading.</summary>
+    public bool OwnShading;
 
     public void Apply(XElement? tcPr)
     {
