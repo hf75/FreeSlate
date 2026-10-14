@@ -406,9 +406,11 @@ public sealed class RowBox
             copy.Cells.Add(Raise(cell) is { } dy ? cell.Shifted(dy).Settled() : cell);
         // The last row of the merge grows to hold what goes on in it (docx/local/vmbw1-*: three lines of a merged cell
         // the row below it on the page before was to share take a row of two lines' height and a third).
+        // A row of exact height keeps it (docx/external/libreoffice/extras-layout/tdf128959: a merged cell going on in a
+        // 17 pt row on the next page, its line cut off).
         foreach (var cell in copy.Cells)
         {
-            if (cell.Carried && cell.Span <= 1 && cell.Lines.Count > 0)
+            if (!Exact && cell.Carried && cell.Span <= 1 && cell.Lines.Count > 0)
                 copy.Height = Math.Max(copy.Height, cell.Lines.Max(l => l.Top + l.Line.Height + l.After) + cell.BottomMargin);
         }
         return copy;
@@ -804,7 +806,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift,
                     CellShading(cell, rows[r]));
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
-                if (!span.ContainsKey(cell))
+                if (!span.ContainsKey(cell) && !(Rotated(cell) && TurnsInRow(rows[r])))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
             }
         }
@@ -823,7 +825,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         foreach (var (cell, rowsSpanned) in span)
         {
             var r0 = rows.FindIndex(row => row.Cells.Contains(cell));
-            if (r0 < 0)
+            if (r0 < 0 || Rotated(cell) && TurnsInRow(rows[r0]))
                 continue;
             var last = Math.Min(rows.Count - 1, r0 + rowsSpanned - 1);
             var margins = CellMargins(r0, cell, last);
@@ -1937,11 +1939,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
     }
 
-    /// <summary>A rotated cell's lines aligned along the length its row gives them, where a paragraph is not left aligned.</summary>
+    /// <summary>
+    /// A rotated cell's lines broken and aligned along the length its row gives them: its height from the row's other
+    /// cells or its own height, which the rotated text does not change, its words broken where they are longer (measured
+    /// with docx/local/rcw-*: "this is rotated by 270 degrees" in btLr and tbRl cells of rows at least or exactly
+    /// 56.7 pt high in four lines, in rows of 20 pt at least or of one line beside a plain cell in pieces like "rota"
+    /// and "ted"; docx/external/libreoffice/extras-ooxmlexport/cell-btlr, tblr-height).
+    /// </summary>
     List<PlacedLine> RotatedLines(CellModel cell, CellContent content, double length, PageFields? fields) =>
-        cell.Blocks.OfType<ParagraphBlock>().Any(p => p.Format.Justification is not (null or "left" or "start"))
-            ? Directed(cell, () => Content(cell.Blocks, Math.Max(1, length), fields)).Lines
-            : content.Lines;
+        Directed(cell, () => Content(cell.Blocks, Math.Max(1, length), fields)).Lines;
+
+    /// <summary>
+    /// Whether the rotated cells of a row take its height as given, by its own height or its other cells, not the
+    /// length of their text (which they take where nothing else gives the row a height).
+    /// </summary>
+    static bool TurnsInRow(RowModel row) => row.Format.Height is > 0 || row.Cells.Any(c => !Rotated(c));
 
     /// <summary>
     /// Laid out with the cell's text direction (measured with docx/local/vertical2 and vertical5): its lines vertical

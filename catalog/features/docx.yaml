@@ -914,7 +914,9 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/tdf132802 64.7 → 95.7 %, tdf106690-cell 63.8 → 100 %,
           tdf119188_list_margin_in_cell 79.0 → 99.6 %); items of one abstract numbering definition count as one list
           whatever instance numbers them, items of two definitions not (acl2-two, acl2-direct, acl2-bullet; tdf133052,
-          tdf133363 70.5 → 96.3 %).
+          tdf133363 70.5 → 96.3 %). An empty paragraph's raised or lowered mark (w:vertAlign) takes the line of its
+          unscaled size (docx/external/libreoffice/core-text/empty-superscript: a superscript 10 pt mark 12.2 pt high,
+          65.8 → 97.9 %).
 
       - id: paragraph.pagination
         title: Keep with next, keep lines together, widow control, page break before
@@ -1784,9 +1786,11 @@ areas:
           paragraph or line in the cell and from the page and the column for the rest, and the table goes below them
           (cig-noin, -noin14, -noin12; docx/external/libreoffice/extras-ooxmlexport/tdf129888dml, tdf129888vml: a
           page-relative line in a cell, VML o:allowincell f as layoutInCell 0, 55.0 → 100 %), aligned across they stay
-          in the cell (tdf162551). Known deviations: Word cuts drawings at the bottom of a row of exact height
-          (cig-exact); drawings sized relative to the page or its margins take no part in the cell's layout here;
-          before Word 2013 a drawing of layoutInCell 0 does not move the table aside (cig-noin14).
+          in the cell (tdf162551). A row of exact height keeps it where a cell merged down goes on in it on the next
+          page, the lines past it cut off (docx/external/libreoffice/extras-layout/tdf128959: a 17 pt row, 64.9 → 97.4
+          %). Known deviations: Word cuts drawings at the bottom of a row of exact height (cig-exact); drawings sized
+          relative to the page or its margins take no part in the cell's layout here; before Word 2013 a drawing of
+          layoutInCell 0 does not move the table aside (cig-noin14).
 
       - id: table.borders
         title: Table and cell borders and shading
@@ -1947,13 +1951,19 @@ areas:
           and runs up; rotated columns are as wide as their lines; docx/local/tbl-features); tbRlV and tbLrV run down
           like tbRl with East Asian characters upright, tbLrV's lines from the left, lrTbV keeps lines across with
           East Asian characters on their side; vertical lines are thicker (paragraph.bidi; docx/local/vertical2,
-          vertical5); rotated lines take their text's length from the row, centered or right aligned along the length
-          the row gives them (powertools/HC008-Test-03: "notes" centered in a btLr cell keeps its row 72 pt high,
-          73.3 → 100 % of the lines); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell take no height. Fit
-          text of cells (w:tcFitText) changes nothing in Word's printout: text too long for its cell wraps as in any
-          other cell (docx/local/fittext). A cell's own shading (w:tcPr/w:shd) replaces its row's and its table's,
-          even where it paints nothing (docx/external/libreoffice/extras-ooxmlexport/table-black_fill: cells of fill
-          auto in a table shaded black stay white, 8.2 → 100 %).
+          vertical5); rotated lines break along the length the row gives them, its height from its other cells or its
+          own height, which the rotated text does not change, words longer broken (docx/local/rcw-*: "this is rotated
+          by 270 degrees" in btLr and tbRl cells of rows at least or exactly 56.7 pt high in four lines, in a row of
+          20 pt or one line beside a plain cell in pieces like "rota" and "ted"; docx/external/libreoffice/
+          extras-ooxmlexport/cell-btlr 65.3 → 97.3 %, tblr-height 70.4 → 93.3 %, table-btlr-center 78.2 → 97.7 %), a
+          row of nothing but rotated cells and without a height as long as their text; centered or right aligned along
+          the length the row gives them (powertools/HC008-Test-03: "notes" centered in a btLr cell keeps its row 72 pt
+          high, 73.3 → 100 % of the lines); w:noWrap keeps a cell unwrapped in autofit; w:hideMark lets an empty cell
+          take no height. Fit text of cells (w:tcFitText) changes nothing in Word's printout: text too long for its
+          cell wraps as in any other cell (docx/local/fittext). A cell's own shading (w:tcPr/w:shd) replaces its row's
+          and its table's, even where it paints nothing
+          (docx/external/libreoffice/extras-ooxmlexport/table-black_fill: cells of fill auto in a table shaded black
+          stay white, 8.2 → 100 %).
 
       - id: table.accessibility
         title: Table title and description

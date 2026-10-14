@@ -2343,7 +2343,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!any)
         {
             var style = end > start && start < charStyles.Count && !spacesOnly ? charStyles[start] : mark;
-            (above, below) = Metrics(style, Vertical);
+            // A raised or lowered mark of its own takes its unscaled size's line (docx/external/libreoffice/core-text/
+            // empty-superscript: an empty paragraph with a superscript 10 pt mark 12.2 pt high).
+            (above, below) = style.ScriptBase is { } markBase ? WordFonts.LineMetrics(style.Font.Data, markBase, style.LineHeights) : Metrics(style, Vertical);
             largest = above + below;
             (raised, lowered) = (above, below);
         }
