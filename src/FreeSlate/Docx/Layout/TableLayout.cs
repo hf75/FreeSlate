@@ -259,16 +259,20 @@ public sealed class RowBox
                     continues = true;
                 }
             }
+            // The lines and fills of a nested row that goes on in the continuation go with it, from its top (measured
+            // with docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of 306 and 363 pt each at the
+            // top of the next part, their lines with them; core-layout/floattable-in-inlinetable).
+            var cutTop = rest != null ? rest.Top - rest.Carry : 0;
             foreach (var fill in cell.Fills)
             {
-                if (rest == null || fill.Y < rest.Top)
+                if (rest == null || fill.Y < cutTop - 0.01)
                     headPart.Fills.Add(fill);
                 else
                     tailPart.Fills.Add(fill with { Y = fill.Y - offset });
             }
             foreach (var stroke in cell.Strokes)
             {
-                if (rest == null || stroke.Y1 < rest.Top)
+                if (rest == null || Math.Min(stroke.Y1, stroke.Y2) < cutTop - 0.01)
                     headPart.Strokes.Add(stroke);
                 else
                     tailPart.Strokes.Add(stroke.Offset(0, -offset));
@@ -280,8 +284,11 @@ public sealed class RowBox
                 else
                     tailPart.Anchors.Add(anchor.Offset(0, -offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
             }
+            // The continuation holds its nested rows whole, as high as their fills reach, so that it splits again where
+            // its page cannot hold them (floattable-bad-fly-pos: four pages).
             if (tailPart.Lines.Count > 0)
-                tailHeight = Math.Max(tailHeight, tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After) + cell.BottomMargin);
+                tailHeight = Math.Max(tailHeight, Math.Max(tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After),
+                    tailPart.Fills.Count > 0 ? tailPart.Fills.Max(f => f.Y + f.Height) : 0) + cell.BottomMargin);
             head.Cells.Add(headPart);
             tail.Cells.Add(tailPart);
         }

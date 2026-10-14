@@ -1802,9 +1802,14 @@ areas:
           page-relative line in a cell, VML o:allowincell f as layoutInCell 0, 55.0 → 100 %), aligned across they stay
           in the cell (tdf162551). A row of exact height keeps it where a cell merged down goes on in it on the next
           page, the lines past it cut off (docx/external/libreoffice/extras-layout/tdf128959: a 17 pt row, 64.9 → 97.4
-          %). Known deviations: Word cuts drawings at the bottom of a row of exact height (cig-exact); drawings sized
-          relative to the page or its margins take no part in the cell's layout here; before Word 2013 a drawing of
-          layoutInCell 0 does not move the table aside (cig-noin14).
+          %). Where a row is cut in a cell holding a nested table, the nested rows that go on take their lines,
+          borders and shading to the top of the next part, and that part is as high as they reach, splitting again
+          where its page cannot hold it (docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of
+          306, 363 and 170 pt on four pages, 61.7 → 88.3 %; core-layout/floattable-in-inlinetable,
+          floattable-in-inltbl-in-sect 59.7 → 90.6 %; extras-uiwriter/tdf133982 94.0 → 96.8 %). Known deviations: Word
+          cuts drawings at the bottom of a row of exact height (cig-exact); drawings sized relative to the page or its
+          margins take no part in the cell's layout here; before Word 2013 a drawing of layoutInCell 0 does not move
+          the table aside (cig-noin14).
 
       - id: table.borders
         title: Table and cell borders and shading
