@@ -1390,7 +1390,10 @@ areas:
           section before, on a new page after its last column and where it has another number of columns
           (docx/local/ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its second column;
           ncs-22-15: two after two in the second column, then page 2;
-          docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2 57.1 → 94.7 %).
+          docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2 57.1 → 94.7 %). A continuous
+          section that begins on a page has its own left and right margins there (docx/local/csm-1, csm-cols: its text
+          144 pt from the page's left edge below a section's at 72 pt, its two columns out to its 36 pt right margin;
+          docx/external/libreoffice/extras-ooxmlexport/fdo52208 70.7 → 92.6 %, endingSectionProps 94.5 → 98.3 %).
 
       - id: section.pageBorders
         title: Page borders
@@ -2314,7 +2317,16 @@ areas:
           127.6 and 72 pt, the inside 72 pt wide at the left of odd pages, 127.6 pt at the right of even ones, the
           outside the other way round;
           docx/external/libreoffice/extras-ooxmlexport/tdf133861_RelativeAnchorWidthFromInsideOutsideMargin, mirrored,
-          56.0 → 100 %).
+          56.0 → 100 %). A drawing that text wraps around (square, tight, through, top and bottom) and that stands
+          down from its paragraph or line stays on the page across: past the right edge it ends there, past the left
+          edge it begins there, one wider than the page at its left edge, in modes 14 and 15; without wrapping or
+          placed down from the margin or the page it stays past the edge (docx/local/clp-*: a 200 pt rectangle 450 pt
+          right of the column or 500 pt right of the page;
+          docx/external/libreoffice/extras-ooxmlexport/tdf170908_delText 73.3 → 94.9 %,
+          tdf153613_anchoredAfterPgBreak, -2, -3 91.2 → 100 %). Percentages (wp14:pctPosHOffset, pctPosVOffset) place
+          the extent with its effect extent before it, sized relative or not (docx/local/pcp-*: 10 pt of effect extent
+          left and top 10 pt right and down, from the page and the margin; extras-ooxmlexport/content-control-shape
+          68.3 → 99.7 %).
 
       - id: drawing.wrap
         title: Text wrapping around objects
@@ -2607,7 +2619,9 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx shape.accessibility (done). Hidden drawings (wp:docPr hidden) are not
-          drawn; names, descriptions and decorative flags draw nothing.
+          drawn, floating ones gone, the text not wrapping around them either (docx/external/libreoffice/
+          extras-ooxmlexport/tdf162527_hidden_image 65.0 → 95.3 %, tdf169802_hidden_shape 65.9 → 94.7 %); names,
+          descriptions and decorative flags draw nothing.
 
       - id: shape.transform
         title: Position, size, rotation and flip

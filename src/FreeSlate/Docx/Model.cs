@@ -1569,7 +1569,10 @@ public sealed partial class ModelReader(DocumentContext context)
                             var children = ChildTextBoxes(d);
                             if (d.Name == Drawings.Wp + "inline")
                                 field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
-                            else if (d.Name == Drawings.Wp + "anchor")
+                            // A hidden floating drawing (wp:docPr hidden) is gone, the text not wrapping around it either
+                            // (docx/external/libreoffice/extras-ooxmlexport/tdf162527_hidden_image, tdf169802_hidden_shape:
+                            // a picture and a rectangle wrapped tight, eleven full lines).
+                            else if (d.Name == Drawings.Wp + "anchor" && d.Element(Drawings.Wp + "docPr")?.Attribute("hidden")?.Value is not ("1" or "true"))
                                 field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
                         }
                     }

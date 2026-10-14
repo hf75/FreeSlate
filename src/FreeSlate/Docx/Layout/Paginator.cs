@@ -1631,14 +1631,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     (double Left, double Width) Column(int index)
     {
         var s = section;
-        var left = page!.TextLeft;
+        // A continuous section that begins on the page has its own left and right margins (measured with
+        // docx/local/csm-1, csm-cols: its text 144 pt from the page's left edge below a section's at 72 pt, its two
+        // columns to its 36 pt right margin; docx/external/libreoffice/extras-ooxmlexport/fdo52208).
+        var (left, textWidth) = ReferenceEquals(s, page!.Section) || s.Vertical ? (page.TextLeft, page.TextWidth) : TextArea(s, page.DisplayNumber);
         if (s.ColumnWidths is { Count: > 0 } widths)
         {
             for (var k = 0; k < index && k < widths.Count; k++)
                 left += widths[k].Width + widths[k].Space;
             return (left, widths[Math.Min(index, widths.Count - 1)].Width);
         }
-        var width = (page.TextWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
+        var width = (textWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
         return (left + index * (width + s.ColumnSpace), width);
     }
 
@@ -2377,6 +2380,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
             };
             y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t"), (turned?.B ?? 0) + Effect("b"));
+            // A drawing that the text wraps around and that stands down from its paragraph or line stays on the page
+            // across: past the right edge it ends there, past the left edge it begins there, wider than the page at its
+            // left edge (measured with docx/local/clp-*: a 200 pt rectangle 450 pt right of the column or 500 pt right of
+            // the page, wrapped square or top and bottom, ends at the page's edge, in modes 14 and 15; one 150 pt left of
+            // the column begins at the page's edge, one of 700 pt there too; without wrapping or placed down from the
+            // margin or the page it stays past the edge; docx/external/libreoffice/extras-ooxmlexport/tdf170908_delText).
+            if (cell == null && (string?)positionV?.Attribute("relativeFrom") is null or "paragraph" or "line"
+                && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
+                x = Math.Max(0, Math.Min(x, s.PageWidth - w));
         }
         return new PlacedDrawing(element, anchor.Part, x, y, w, h)
         {
@@ -2394,8 +2406,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // own size stands at the offset).
             if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
                 return origin + Emu(offset) + ((horizontal ? relativeWidth : relativeHeight) != null ? before : 0);
+            // A percentage places the extent with its effect extent before it, sized relative or not (measured with
+            // docx/local/pcp-*: 20 % of the page across and 10 % down with 10 pt of effect extent left and top, from the
+            // page and the margin, 10 pt right and down; docx/external/libreoffice/extras-ooxmlexport/
+            // content-control-shape).
             if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
-                return origin + size * Emu(percent) * 12700 / 100000;
+                return origin + size * Emu(percent) * 12700 / 100000 + before;
             var whole = before + extent + after;
             // Inside is the left or the top of the area on odd pages, the right or the bottom on even ones, whichever
             // margin the area is (measured with docx/local/vio-*: relative to the top and the bottom margin, the
