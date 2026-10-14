@@ -1154,11 +1154,9 @@ public sealed partial class ChartRenderer
         }
         if (double.IsInfinity(min)) (min, max) = (0, 1);
         var style = layout.Style;
-        // Horizontal value axes keep a label and three font sizes per interval as on flat charts (measured: a 3D bar
-        // chart's axis up to 5 steps by 1).
-        var extent = layout.Axis.Horizontal
-            ? Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size
-            : LineHeight(style) * 1.1;
+        // Horizontal value axes keep four font sizes per interval as on flat charts, however wide the labels are
+        // (measured: a 3D bar chart's axis up to 5 steps by 1; powertools/CU012: 0 to 5 by 0.5 on a 350 pt axis).
+        var extent = layout.Axis.Horizontal ? 4 * style.Size : LineHeight(style) * 1.1;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: false);
         layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v, Format(layout), culture)).ToList();

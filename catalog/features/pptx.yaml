@@ -2018,7 +2018,8 @@ areas:
           0.639, sloped area and line tops in between; cylinders and cones get measured gradients (1.07 − 0.47
           t², 1.13 − 0.48 t²), pyramids flat faces, cones and pyramids taper to the bar's end, the stack's end
           or the axis maximum (…ToMax). Areas are slabs, lines ribbons, surfaces meshes cut into the value
-          bands (wireframes as band-colored grid and contour lines); 3D value axes get no headroom. 3D pies
+          bands (wireframes as band-colored grid and contour lines); 3D value axes get no headroom, horizontal ones
+          keep four font sizes per interval as on flat charts (docx/external/powertools/CU012: 0 to 5 by 0.5). 3D pies
           are disks 0.24 of their radius thick, slices clockwise from the back at rotY, lit by a view light
           (tops 0.4 + 0.43 (cos rotX + sin rotX) with a small highlight, sides a gradient from the front's
           light, cut faces of exploded slices lit from the right); exploded pies fit as a disk as wide as
