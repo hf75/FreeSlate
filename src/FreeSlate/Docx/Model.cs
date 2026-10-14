@@ -928,6 +928,8 @@ public sealed partial class ModelReader(DocumentContext context)
             public readonly RunFormat Format = format;
             /// <summary>The format of the instruction's first run with text.</summary>
             public RunFormat? InstructionFormat;
+            /// <summary>The instruction's pieces in the formats of their runs (MACROBUTTON's display text).</summary>
+            public readonly List<(string Text, RunFormat Format)> InstructionRuns = [];
             public bool InResult;
             public List<Inline>? Cached;
         }
@@ -1135,6 +1137,35 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>
+    /// What a MACROBUTTON field without a result shows: its display text, the instruction after the macro's name, in
+    /// the formats of its runs (docx/external/powertools/DB-HeadersFooters-Dest/Fax: "[Name - jump to next field with
+    /// F11]" in 6.5 pt where the instruction's runs are).
+    /// </summary>
+    static IEnumerable<Inline> MacroButton(List<(string Text, RunFormat Format)> runs)
+    {
+        // The display text begins after the field's name, the macro's name and the spaces around them.
+        var whole = string.Concat(runs.Select(r => r.Text));
+        var at = 0;
+        for (var word = 0; word < 2; word++)
+        {
+            while (at < whole.Length && char.IsWhiteSpace(whole[at]))
+                at++;
+            while (at < whole.Length && !char.IsWhiteSpace(whole[at]))
+                at++;
+        }
+        while (at < whole.Length && char.IsWhiteSpace(whole[at]))
+            at++;
+        var offset = 0;
+        foreach (var (text, format) in runs)
+        {
+            var from = Math.Max(0, at - offset);
+            if (from < text.Length)
+                yield return new TextInline(text[from..], format);
+            offset += text.Length;
+        }
+    }
+
+    /// <summary>
     /// A LISTNUM field's number (catalog: field.evaluation): in the list of its name (an abstract definition's w:name,
     /// else Word's default list of that name), without one in the list of the story's last numbered paragraph or the
     /// default list; at the level \l gives, else one deeper than a LISTNUM before it in its paragraph, else at the last
@@ -1252,6 +1283,11 @@ public sealed partial class ModelReader(DocumentContext context)
                             // docx/external/libreoffice/extras-ooxmlexport/tdf154478: a PAGEREF of a missing bookmark
                             // shows Word's error text on a line of its own).
                             var instruction = ended.Instruction.ToString();
+                            if (FieldInline.TypeOf(instruction) == "MACROBUTTON" && !ended.InResult && !field.Hidden)
+                            {
+                                field.Target(content).AddRange(MacroButton(ended.InstructionRuns));
+                                break;
+                            }
                             if (FieldInline.TypeOf(instruction) == "LISTNUM")
                             {
                                 if (!field.Hidden && ListNumber(instruction, e) is { } listed)
@@ -1270,6 +1306,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     {
                         var open = field.Frames.Peek();
                         open.Instruction.Append(e.Value);
+                        open.InstructionRuns.Add((e.Value, format));
                         if (open.InstructionFormat == null && e.Value.Trim().Length > 0)
                             open.InstructionFormat = format;
                     }
