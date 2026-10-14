@@ -873,9 +873,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     : "The linked image cannot be displayed. The file may have been moved, renamed, or deleted. Verify that the link points to the correct file and location.");
             return "";
         }
-        // Word's sign for an embedded picture whose part the package lacks: the same frame and icon, its own message
-        // (docx/external/libreoffice/extras-ooxmlimport/tdf115883: media/image1.png missing).
-        if (slide.Presentation.Word && id != null && package.Relationship(part, id) is { External: false })
+        // Word's sign for an embedded picture whose part the package lacks, or whose a:blip names none: the same frame
+        // and icon, its own message (docx/external/libreoffice/extras-ooxmlimport/tdf115883: media/image1.png missing;
+        // extras-ooxmlexport/fdo83057, tdf148671: an empty a:blip).
+        if (slide.Presentation.Word && (id != null && package.Relationship(part, id) is { External: false } || id == null && blip != null))
             return WordMissingPicture(german
                 ? "Das Bild kann nicht angezeigt werden. Dieser Computer verfügt möglicherweise über zu wenig Arbeitsspeicher, um das Bild zu öffnen, oder das Bild ist beschädigt. Starten Sie den Computer neu, und öffnen Sie dann erneut die Datei. Wenn weiterhin das rote x angezeigt wird, müssen Sie das Bild möglicherweise löschen und dann erneut einfügen."
                 : "The image cannot be displayed. Your computer may not have enough memory to open the image, or the image may have been corrupted. Restart your computer, and then open the file again. If the red x still appears, you may have to delete the image and then insert it again.");

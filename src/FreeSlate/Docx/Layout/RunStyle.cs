@@ -84,6 +84,9 @@ public sealed record RunStyle(
     /// </summary>
     public bool LegacyKerning { get; init; }
 
+    /// <summary>The size kerning begins at (w:kern), null where the run is not kerned.</summary>
+    public double? KernFrom { get; init; }
+
     /// <summary>The East Asian emphasis mark of every character (w:em: dot, comma, circle, underDot), or null.</summary>
     public string? Emphasis { get; init; }
 

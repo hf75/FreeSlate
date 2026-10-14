@@ -1642,7 +1642,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             var format = inline.Format;
             // Display equations take lines of their own.
-            if (breakAfterDisplay && inline is not (BookmarkInline or AnchorInline or MathInline { Display: true }))
+            // A bookmark's end after the equation stays on its line (docx/external/libreoffice/extras-ooxmlexport/tdf130907:
+            // _GoBack's end after the last display equation, no empty line).
+            if (breakAfterDisplay && inline is not (BookmarkInline or BookmarkEndInline or AnchorInline or MathInline { Display: true }))
             {
                 text.Append('\n');
                 list.Add(styles.Style(format, WordSlot.Ascii));

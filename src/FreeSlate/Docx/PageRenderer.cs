@@ -262,8 +262,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     static XElement WordArtRun(RunStyle style)
     {
+        // Kerned only from the run's own w:kern size on (docx/external/libreoffice/extras-ooxmlexport/fdo80897: WordArt
+        // in Calibri Bold set without kerning pairs).
         var rPr = new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", (long)Math.Round(style.Size * 100)),
-            new XAttribute("b", style.Bold ? 1 : 0), new XAttribute("i", style.Italic ? 1 : 0));
+            new XAttribute("b", style.Bold ? 1 : 0), new XAttribute("i", style.Italic ? 1 : 0),
+            new XAttribute("kern", style.KernFrom is { } from ? (long)Math.Round(from * 100) : 400000));
         if (style.Underline is { } underline && underline != "none")
             rPr.Add(new XAttribute("u", underline == "double" ? "dbl" : "sng"));
         if (style.Strike || style.DoubleStrike)
@@ -325,7 +328,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             var (vl, vt, vr, vb) = Insets(body, shape, drawing.Width, drawing.Height, theme);
             var verticalFields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
-            var (_, _, _, thickness) = blocks.Blocks(text, Math.Max(1, drawing.Height - vt - vb), verticalFields);
+            // Laid out with vertical lines, as the box draws them (docx/external/libreoffice/core-layout/
+            // textbox-autogrow-vertical: twelve lines of the vertical pitch).
+            var vert = (string?)body.Attribute("vert");
+            var (_, _, _, thickness) = blocks.Blocks(text, Math.Max(1, drawing.Height - vt - vb), verticalFields,
+                direction: (true, vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl"));
             return drawing with { Width = thickness + vl + vr };
         }
         if (!autofit && !unwrapped || Vertical(body))
@@ -407,7 +414,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             fills = fills.Where(f => f.Y < shift).ToList();
             strokes = strokes.Where(s => s.Y1 < shift).ToList();
         }
-        var free = areaHeight - height;
+        // Text taller than its box begins at its top, whatever its anchor (docx/external/libreoffice/extras-ooxmlexport/
+        // tdf131922_LanguageInGroupShape: five lines centered in a box for four, from the top inset; fdo83057).
+        var free = Math.Max(0, areaHeight - height);
         var offset = (string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 };
         var width = page.PaperWidth * PxPerPt;
         var heightPx = page.PaperHeight * PxPerPt;

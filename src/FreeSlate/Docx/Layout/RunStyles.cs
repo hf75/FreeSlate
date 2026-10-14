@@ -284,6 +284,7 @@ public sealed class RunStyles(DocumentContext context)
             Override = format.Override,
             Emphasis = format.Emphasis is { } em && em != "none" ? em : null,
             LegacyKerning = context.CompatibilityMode < 14 && format.Kern is { } kern && kern > 0 && size >= kern,
+            KernFrom = format.Kern is { } kernFrom && kernFrom > 0 ? kernFrom : null,
             Language = slot switch
             {
                 WordSlot.EastAsia => format.LanguageEastAsia ?? format.Language,

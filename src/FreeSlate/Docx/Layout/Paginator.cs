@@ -571,7 +571,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // three; poi/checkboxes).
         double OwnWidth(ParagraphBlock p) => layout.Widths(p, pictures: true).Max is var max && max > 0 ? max
             : layout.Styles.Mark(p.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
-        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width : OwnWidth(first);
+        // A frame of one paragraph without a width is as wide as its text, at most its column (docx/external/
+        // libreoffice/extras-layout/tdf135035: a frame in a column 127.6 pt wide in four lines).
+        var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width : Math.Min(OwnWidth(first), width);
         // A frame of a given height whose paragraph runs its text down (tbRl) or up (btLr) lays it out along that
         // height, turned a quarter: its first line at the right and running down from the top, or at the left and
         // running up from the bottom, as text boxes turn theirs (docx/external/libreoffice/writerfilter-dmapper/
@@ -1376,7 +1378,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 double Twips(string name) => properties.Twips(name) ?? 0;
                 // As wide as its paragraph, an empty one as its mark, or as its column with several (see PlaceFrame).
                 var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width
-                    : layout.Widths(framed, fields, pictures: true).Max is var max && max > 0 ? max
+                    : layout.Widths(framed, fields, pictures: true).Max is var max && max > 0 ? Math.Min(max, width)
                     : layout.Styles.Mark(framed.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
                 var laid = group.Select(p => layout.Layout(p, frameWidth, fields)).ToList();
                 var content = 0.0;

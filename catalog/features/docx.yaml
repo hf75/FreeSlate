@@ -1109,8 +1109,10 @@ areas:
           → 72.8 %; extras-ooxmlexport/tdf154703_framePrTextDirection 57.4 → 70.7 %). A framed paragraph's floating
           drawings are placed from it in the frame as in the text
           (docx/external/libreoffice/extras-ooxmlexport/tdf90789, tdf90789-2: a page-relative VML rectangle in a
-          framed paragraph, 52.7 → 97.1 % and 65.0 → 98.4 %). Known deviation: Word draws frame-direction's
-          KingsBureauGrot ThreeSeven, a font this machine lacks, in Franklin Gothic Medium, here in Calibri.
+          framed paragraph, 52.7 → 97.1 % and 65.0 → 98.4 %). A frame of one paragraph without a width is as wide as
+          its text, at most its column (docx/external/libreoffice/extras-layout/tdf135035: a frame in a column 127.6
+          pt wide in four lines, 71.1 → 99.3 %). Known deviation: Word draws frame-direction's KingsBureauGrot
+          ThreeSeven, a font this machine lacks, in Franklin Gothic Medium, here in Calibri.
 
       - id: paragraph.eastAsian
         title: East Asian line breaking and character grid
@@ -2494,8 +2496,13 @@ areas:
           35.8 → 100 % with its table's widths). Vertical text that fits its shape (a:spAutoFit) makes the shape as
           wide as its lines are thick, insets and outline beside them, its height and left edge kept
           (docx/external/libreoffice/extras-ooxmlimport/tdf124754: two lines down a box 40 % of the margin wide, 38.8
-          pt wide in Word, 59.7 → 92.1 %). Known deviation: linked boxes of different widths keep the first box's line
-          breaks.
+          pt wide in Word, 59.7 → 92.1 %). Text taller than its box begins at its top, whatever its anchor
+          (docx/external/libreoffice/extras-ooxmlexport/tdf131922_LanguageInGroupShape: five lines centered in a box
+          for four, 74.4 → 96.0 %; tdf113258 87.0 → 99.9 %, fdo83057 70.7 → 99.7 %). Vertical text that fits its box
+          is laid out with vertical lines for its width (core-layout/textbox-autogrow-vertical: twelve lines of the
+          vertical pitch, 73.0 → 97.3 %; extras-ooxmlimport/tdf124754 92.1 → 96.0 %). WordArt of text boxes is kerned
+          only from its runs' w:kern size on (extras-ooxmlexport/fdo80897 73.0 → 89.9 %). Known deviation: linked
+          boxes of different widths keep the first box's line breaks.
 
       - id: drawing.groups
         title: Groups
@@ -3151,7 +3158,8 @@ areas:
           prints Word's sign: on white its broken-picture icon and the message in 1.2 pt Tahoma inside four 0.14 pt
           black lines 0.06 pt in from the edge, thin strokes that print a pixel wide
           (docx/external/libreoffice/extras-ooxmlexport/FileWithInvalidImageLink 36.7 → 92.1 %,
-          extras-ooxmlimport/linked-picture 62.6 → 87.8 %, tdf115883 66.8 → 74.4 %).
+          extras-ooxmlimport/linked-picture 62.6 → 87.8 %, tdf115883 66.8 → 74.4 %). A picture whose a:blip names no
+          part prints the same sign (fdo83057, tdf148671 88.1 → 90.5 %).
 
       - id: picture.formats
         title: Raster image formats
@@ -3946,7 +3954,9 @@ areas:
           under an n-ary operator, a root or an accent, after a function's name and before scripts, which it takes as
           a letter would (docx/local/mph-11-*, mph-24-*;
           docx/external/libreoffice/extras-ooxmlexport/2120112713_OpenBrace 67.2 → 94.2 %, math-placeholders 57.4 →
-          94.1 %, tdf158023_export 63.4 → 78.2 %).
+          94.1 %, tdf158023_export 63.4 → 78.2 %). A bookmark's end after a display equation stays on its line
+          (docx/external/libreoffice/extras-ooxmlexport/tdf130907: _GoBack after the last equation, no empty line,
+          71.3 → 76.0 %).
 
       - id: math.settings
         title: Document math settings

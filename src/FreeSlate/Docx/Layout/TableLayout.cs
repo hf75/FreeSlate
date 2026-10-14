@@ -1812,11 +1812,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Blocks laid out in a width as in a table cell or a text box: lines, fills and strokes relative to their top
     /// left, and their height; <paramref name="unaligned"/> leaves the lines where they begin, for measuring them.
     /// </summary>
-    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields, bool unaligned = false)
+    /// <param name="direction">Vertical lines and upright East Asian characters, as a text box of such text has them.</param>
+    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields, bool unaligned = false,
+        (bool Vertical, bool Turn)? direction = null)
     {
-        var (wasCell, wasInCell, wasUnaligned) = (cellBlocks, inCell, paragraphs.Unaligned);
+        var (wasCell, wasInCell, wasUnaligned, wasVertical, wasTurn) = (cellBlocks, inCell, paragraphs.Unaligned, paragraphs.Vertical, paragraphs.TurnEastAsian);
         (cellBlocks, inCell) = (false, false);
         paragraphs.Unaligned |= unaligned;
+        if (direction is { } turned)
+            (paragraphs.Vertical, paragraphs.TurnEastAsian) = (turned.Vertical, turned.Turn);
         try
         {
             var content = Content(blocks, width, fields);
@@ -1824,7 +1828,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            (cellBlocks, inCell, paragraphs.Unaligned) = (wasCell, wasInCell, wasUnaligned);
+            (cellBlocks, inCell, paragraphs.Unaligned, paragraphs.Vertical, paragraphs.TurnEastAsian) = (wasCell, wasInCell, wasUnaligned, wasVertical, wasTurn);
         }
     }
 
