@@ -1141,20 +1141,20 @@ public sealed partial class ChartRenderer
 
     static string XY((double X, double Y) p) => $"{Px(p.X)} {Px(p.Y)}";
 
-    /// <summary>A thick wall or floor: a box in its c:spPr fill and line, none by default.</summary>
+    /// <summary>A thick wall or floor: a box in its c:spPr fill and line, none by default (Word: WallFill).</summary>
     string WallSlab(XElement? wall, Projection3D projection, (double X, double Y, double Z) from, (double X, double Y, double Z) to)
     {
         var spPr = wall?.Element(Ns.C + "spPr");
-        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : Fill.None;
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : WallFill();
         var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
         return fill is NoFill && outline is not { Visible: true } ? "" : Box3D(projection, from.X, from.Y, from.Z, to.X, to.Y, to.Z, fill, outline);
     }
 
-    /// <summary>A wall or the floor: its c:spPr fill (shaded) and line, none by default.</summary>
+    /// <summary>A wall or the floor: its c:spPr fill (shaded) and line, none by default (Word: WallFill).</summary>
     string Wall(XElement? wall, string path, double shade)
     {
         var spPr = wall?.Element(Ns.C + "spPr");
-        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : Fill.None;
+        var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : WallFill();
         var outline = spPr?.Element(Ns.A + "ln") is { } ln ? OutlineReader.Merge([(ln, colors)]) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
@@ -1163,6 +1163,12 @@ public sealed partial class ChartRenderer
             svg += $"<path d=\"{path}\" fill=\"#000\" fill-opacity=\"{Units.Css4(1 - shade)}\"/>";
         return svg;
     }
+
+    /// <summary>
+    /// The fill of walls and the floor without one of their own: none, in a Word document's legacy style the plot
+    /// area's (scratch/triage/2026-10-14_agents/charts: powertools/CU001, CU009 at style 47 tx1 tinted 95 %).
+    /// </summary>
+    Fill WallFill() => legacy != null && slide.Presentation.Word ? LegacyPlotArea() : Fill.None;
 
     /// <summary>A solid fill darkened by a shade factor (in sRGB, measured); other fills stay as they are.</summary>
     static Fill Shaded(Fill fill, double shade) =>
