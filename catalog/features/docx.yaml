@@ -1875,7 +1875,10 @@ areas:
           libreoffice/extras-ooxmlexport/all_gaps_word, tdf82177_tblBorders). Inset and outset paragraph lines are
           plain (b3d-in, b3d-out). Between rows the inside line stands also where a cell has none above or below it
           (w:gridBefore, w:gridAfter), the top and bottom lines at the table's first and last row only
-          (docx/local/gaf-1; extras-ooxmlexport/tdf134609_gridAfter 43.2 → 99.8 %).
+          (docx/local/gaf-1; extras-ooxmlexport/tdf134609_gridAfter 43.2 → 99.8 %). Each row of a vertical merge takes
+          its side lines from its own cell, the merge's bottom line its last row's cell's
+          (docx/external/libreoffice/extras-ooxmlexport/tdf132898_extraBorder: a 5 pt right border of the continuing
+          cells beside them, 75.3 → 100 %; tdf132898_missingBorder 93.9 → 100 %; tdf129452_excessBorder 95.4 → 100 %).
 
       - id: table.styles
         title: Table styles and conditional formatting

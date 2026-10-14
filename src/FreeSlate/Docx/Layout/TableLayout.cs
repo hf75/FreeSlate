@@ -685,7 +685,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // (measured with docx/local/rowex: a row whose w:tblPrEx makes the inside lines red and double has
                 // them above and below it; docx/external/powertools/RP/RP033-Table-Prop-Ex-Change).
                 var aboveLine = above != null && below != null ? TableBorder(rows[r - 1], format, b => b.InsideH) : tableLine;
-                horizontal[r, k] = Edge(above?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null, aboveLine);
+                // A merge's bottom line is its last row's cell's (docx/external/libreoffice/extras-ooxmlexport/
+                // tdf132898_missingBorder: a bottom border set on the last cell of a vertical merge alone).
+                var last = r > 0 ? at[r - 1, k] ?? above : above;
+                horizontal[r, k] = Edge(last?.CellBorders.Bottom, below?.CellBorders.Top, tableLine, above != null && below != null, aboveLine);
                 inMargin[r, k] = above != null && below != null && below.CellBorders.Top == null && tableLine is not { Visible: true };
             }
         }
@@ -700,7 +703,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var tableLine = k == 0 || left == null ? TableBorder(rows[r], format, b => b.Left)
                     : k == columns || right == null ? TableBorder(rows[r], format, b => b.Right)
                     : TableBorder(rows[r], format, b => b.InsideV);
-                vertical[r, k] = Edge(Owner(left)?.CellBorders.Right, Owner(right)?.CellBorders.Left, tableLine, left != null && right != null);
+                // Each row of a vertical merge takes its side lines from its own cell (tdf132898_extraBorder: a 5 pt right
+                // border set on the merge's continuing cells drawn beside them).
+                vertical[r, k] = Edge(left?.CellBorders.Right, right?.CellBorders.Left, tableLine, left != null && right != null);
             }
         }
 
