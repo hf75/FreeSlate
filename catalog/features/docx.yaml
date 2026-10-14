@@ -2277,7 +2277,9 @@ areas:
           docx/generated/pictures (99.6 %). A run's w:themeColor wins over its w:val, which Word may have written for
           another theme; w:themeShade multiplies the color's HSL lightness by its share of 255, w:themeTint takes it to
           L·t + 1 − t (docx/local/thc-plain: 14 cases exact to one step; pandoc/golden/links: Hyperlink 4F81BD with
-          accent1 156082 prints 156082). Shading colors may be named (w:fill="orange" fills FFA500), anything else
+          accent1 156082 prints 156082). A w:color replaces the one of the level below whole, its theme tint and
+          shade too (powertools/HW010-SpanWithSingleSpace: a style's accent1 shaded 7F over defaults of text1 tinted
+          A6 prints 234824, 51.8 → 99.1 %). Shading colors may be named (w:fill="orange" fills FFA500), anything else
           not six hex digits is none (powertools/HC032-Named-Color).
 
       - id: color.transforms

@@ -275,6 +275,10 @@ public sealed class RunFormat
             if (field.GetValue(top) is { } value)
                 field.SetValue(this, value);
         }
+        // A color replaces the one below whole, its theme color, tint and shade (docx/external/powertools/HW010-*:
+        // accent1 shaded 7F over defaults of text1 tinted A6 prints 234824, not tinted too).
+        if (top.Color != null || top.ThemeColor != null)
+            (ThemeColor, ThemeTint, ThemeShade) = (top.ThemeColor, top.ThemeTint, top.ThemeShade);
         // Theme fonts and named fonts of one slot replace each other.
         if (top.Ascii != null && top.AsciiTheme == null) AsciiTheme = null;
         if (top.HAnsi != null && top.HAnsiTheme == null) HAnsiTheme = null;
