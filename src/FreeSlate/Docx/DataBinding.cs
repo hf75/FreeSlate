@@ -49,7 +49,9 @@ public sealed class DataBinding(DocumentContext context)
         {
             return null;
         }
-        if (value == null)
+        // An empty node leaves a control showing its placeholder as it is (measured with docx/local/bindempty: the
+        // placeholder text stays, without w:showingPlcHdr the control is empty; docx/external/poi/60316).
+        if (value == null || value.Length == 0 && sdtPr.Child("showingPlcHdr") != null)
             return null;
         // A date shows in the control's format and language; list controls their entry's display text.
         if (sdtPr.Child("date") is { } date)
