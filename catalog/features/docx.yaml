@@ -736,7 +736,10 @@ areas:
           its own (docx/external/libreoffice/writerfilter-ooxml/nested-runs: a text box's text, 8.3 → 100 %). A break
           (w:br) between paragraphs, in the body or a cell, breaks at the start of the next paragraph, in the next
           table too; one straight in a paragraph as a run's (docx/external/libreoffice/extras-ooxmlimport/tdf108714:
-          four pages, 24.8 → 97.6 %).
+          four pages, 24.8 → 97.6 %). A page break that ends the document begins no page: one after the last
+          paragraph's text, a last paragraph of only a page break, the second of two (docx/local/trail-text-15, -14,
+          trail-only-*, trail-two-15; docx/external/libreoffice/extras-ooxmlexport/tdf153964_topMarginAfterBreak14:
+          six pages).
 
       - id: run.ruby
         title: Ruby (phonetic guides)
@@ -972,7 +975,21 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/para-shadow 31.7 → 100 %). Beside floating objects a line's
           shading covers only its segments, from 1.4 pt before a start the object cuts to 1.55 pt after a cut end,
           behind the text wrapped tight as well (docx/local/psl-square, psl-behind;
-          docx/external/libreoffice/extras-ooxmlimport/tdf60351 51.3 → 99.2 %).
+          docx/external/libreoffice/extras-ooxmlimport/tdf60351 51.3 → 99.2 %). A box that goes on in the next column
+          or page is drawn in both parts, without the bottom line in the first and without the top line in the next,
+          whether the page's end, a column's or a page or column break breaks it (docx/local/bsp-nat-15, -14,
+          bsp-col-15, bsp-pbr-*, bsp-cbr-*: 3 pt lines, 30 pt before and 8 pt after, 98.2 to 100 %). In a box of
+          several paragraphs each one's shading reaches its space after and the next one's begins below it (bsp2-gap:
+          8 pt of yellow below "A", the 22 pt more before "B" blue); a paragraph that goes on with the box at the top
+          of another column or page has no top line there, its shading reaching the space before it dropped above the
+          column (bsp-end-*, bsp2-flow, bsp2-flowc: "B" at the top margin, shaded from 22 pt above it). A paragraph's
+          first line that holds only a page or column break is shaded as a paragraph without borders is, below the box
+          before, which closes there, and its space after, without a space before of its own; the rest of the
+          paragraph opens a box of its own (bsp-lead-*, bsp-only-*;
+          docx/external/libreoffice/extras-ooxmlexport/tdf153964_firstIndentAfterBreak14 81.6 → 99.5 %,
+          tdf153964_numberingAfterBreak14 78.7 → 99.3 %, tdf153964_topMarginAfterBreak14, -15 48.3 → 99.0 %;
+          extras-ooxmlimport/n820504 44.8 → 89.7 %). The shading lies between the top and the bottom line, the gap of
+          a double line white (bsp2-other).
 
       - id: paragraph.tabs
         title: Tab stops

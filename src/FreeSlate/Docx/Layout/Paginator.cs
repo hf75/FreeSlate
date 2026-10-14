@@ -198,6 +198,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     Top top = Top.Document;
     double pendingAfter;      // space after the previous paragraph
+    Block? documentEnd;       // the body's last block, where no endnotes follow it
     double pendingOwnAfter;   // the same before contextual spacing dropped it
     ParagraphBlock? previous;
 
@@ -987,6 +988,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var due = endnotes?.Where(n => n.Section >= endnotesFrom && (s == sections.Count - 1 || atSectionEnds && n.Section <= s)).ToList();
             var emptyEnd = due is { Count: > 0 } && sectionBlocks.Count > 0 && sectionBlocks[^1] is ParagraphBlock { EndsSection: not null } end
                 && end.Content.All(c => c is BookmarkInline or PermissionInline);
+            documentEnd = s == sections.Count - 1 && due is not { Count: > 0 } && sectionBlocks.Count > 0 ? sectionBlocks[^1] : null;
             for (var i = 0; i < sectionBlocks.Count - (emptyEnd ? 1 : 0); i++)
             {
                 if (sectionBlocks[i] is TableBlock)
@@ -2479,6 +2481,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             IReadOnlyList<(double Top, double Bottom, List<(double Start, double End)> Segments)>? cuts = null) =>
             Draw(page.Shading, page.Borders, columnLeft, columnWidth, boxTop, boxBottom, top, bottom, between, cuts);
 
+        /// <summary>The shading alone, as a paragraph without borders has it: 1.4 pt left and 1.55 pt right of the text.</summary>
+        public void DrawBare(PageBox page, double columnLeft, double columnWidth, double top, double bottom)
+        {
+            if (Fill is { } fill && bottom > top + 0.01)
+                page.Shading.Add(new FillRect(columnLeft + indentLeft - 1.4, top, columnWidth - indentLeft - indentRight + 2.95, bottom - top, fill));
+        }
+
         /// <param name="cuts">
         /// The lines that floating objects cut, top to bottom, whose shading covers only their segments, from 1.4 pt
         /// before a cut start to 1.55 pt after a cut end (measured with docx/local/psl-square, psl-behind: a yellow
@@ -2494,7 +2503,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var right = innerRight + (Right is { Visible: true } r ? r.Total : 0);
             if (Fill is { } fill)
             {
-                var from = boxTop;
+                // Between the top and the bottom line, which leave their strokes' gaps unshaded (measured with
+                // docx/local/bsp2-other: a double line's 3 pt between its strokes white).
+                var from = boxTop + (top && Top is { Visible: true } shadedTop ? shadedTop.Total : 0);
+                var to = boxBottom - (bottom && Bottom is { Visible: true } shadedBottom ? shadedBottom.Total : 0);
                 foreach (var (cutTop, cutBottom, segments) in cuts ?? [])
                 {
                     if (cutTop > from + 0.01)
@@ -2508,8 +2520,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     }
                     from = Math.Max(from, cutBottom);
                 }
-                if (boxBottom > from + 0.01)
-                    shadings.Add(new FillRect(innerLeft, from, innerRight - innerLeft, boxBottom - from, fill));
+                if (to > from + 0.01)
+                    shadings.Add(new FillRect(innerLeft, from, innerRight - innerLeft, to - from, fill));
             }
             // Double and thin-and-thick lines in their strokes, as tables draw them (docx/external/poi/FancyFoot: a
             // thin-thick top line, 3 pt above 0.75 pt).
@@ -2618,8 +2630,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the next page or column (LeadingBreak): its number, its space before and its text go there (measured with
         // docx/external/libreoffice/extras-ooxmlexport/wDateValueFormat: "1 Status" after a page break at the start of
         // its heading stands at the top of the next page, 12 pt down).
+        var led = false;
         if (LeadingBreak(paragraph) is { } leading && !(leading.Type == "page" && BreakUnseen(paragraph)))
         {
+            // The line of the break keeps the paragraph's shading where it stands, without its borders, below the space
+            // after the paragraph before and without its own space before (measured with docx/local/bsp-lead-15, -14:
+            // 12.7 pt of shading 8 pt below the box before, which closes; docx/external/libreoffice/extras-ooxmlexport/
+            // tdf153964_topMarginAfterBreak14, -15).
+            if (Frame.Read(paragraph.Format) is { Fill: not null } bareFrame)
+            {
+                var (bareLeft, bareWidth) = Column(column);
+                var bareTop = y + (columnEmpty ? 0 : pendingAfter);
+                bareFrame.DrawBare(page!, bareLeft + Mirror(paragraph.Format), bareWidth, bareTop, bareTop + layout.Layout(paragraph, bareWidth)[0].Height);
+            }
+            led = true;
             if (leading.Type == "page")
                 NewPage(section);
             else
@@ -2647,8 +2671,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             (left, width) = Column(column);
         }
 
+        // A boxed or shaded paragraph whose first line holds only a page or column break draws that line's shading
+        // alone, without its borders and its space before (measured with docx/local/bsp-only-15, -14: 20.7 pt of
+        // shading, the line and the space after, 8 pt below the box before, which closes).
+        var bare = lines.Count > 0 && BreakOnly(lines[0]) && Frame.Read(format) != null;
+
         // Space between this paragraph and the previous one.
-        var before = SpaceBefore(paragraph);
+        var before = bare ? 0 : SpaceBefore(paragraph);
         var gap = !columnEmpty ? Gap(before) : top switch
         {
             Top.Document => before,
@@ -2713,10 +2742,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Paragraph borders and shading (catalog: paragraph.borders): paragraphs with the same borders form one box,
         // the top line above the first, the bottom line below the last, the between line between them; a line and
         // its space take room in the paragraph.
+        // A paragraph goes on with the box of the one before it in another column or page too, without a top line
+        // there; one that begins with a page or column break opens a box of its own after it, and the box before it
+        // closes (measured with docx/local/bsp-end-15, -14, bsp-lead-*, bsp-only-*, bsp2-flow, bsp2-flowc).
         var frame = Frame.Read(format);
-        var continues = frame != null && previous != null && frame.Same(Frame.Read(previous.Format)) && !columnEmpty;
-        var nextContinues = frame != null && next != null && frame.Same(Frame.Read(next.Format));
-        var boxTop = y;
+        var continues = frame != null && !led && previous != null && (!columnEmpty || top == Top.Break) && frame.Same(Frame.Read(previous.Format));
+        var nextContinues = frame != null && next != null && !StartsWithBreak(next) && frame.Same(Frame.Read(next.Format));
+        // The box of a paragraph that goes on with the one before begins below that one's space after, which lies in
+        // the box before (bsp2-gap: 8 pt after "A" in its shading, the 22 pt more before "B" in B's); at the top of a
+        // column the space before it dropped lies above the column (bsp-end, bsp2-flow: "B" at the top margin, its
+        // shading 22 pt above it).
+        var boxTop = !continues ? y : columnEmpty ? y - Math.Max(0, Gap(before) - pendingAfter - gap) : y + pendingAfter;
         // The paragraph's top for drawings placed relative to it: its own space before lies inside it.
         var ownBefore = columnEmpty ? gap : Math.Max(0, gap - pendingAfter);
         // HTML divisions with borders frame their paragraphs like paragraph borders, at the division's indents; a
@@ -2738,18 +2774,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var paragraphTop = (Page: page!, Top: y - ownBefore);
         var betweenAt = y;
+        double? betweenLine = null;
         if (frame != null)
         {
-            if (!continues)
+            if (bare)
+                boxTop = y;
+            else if (!continues)
             {
                 y += frame.TopShadow;
                 boxTop = y;
                 y += frame.Top is { Visible: true } t ? t.Space + t.Total : 0;
             }
-            else if (frame.Between is { Visible: true } between)
+            else if (frame.Between is { Visible: true } between && !columnEmpty)
             {
                 // The between line has its space above and below it (measured with docx/local/pbdr).
                 betweenAt = y + between.Space;
+                betweenLine = betweenAt;
                 y += 2 * between.Space + between.Total;
             }
         }
@@ -2761,6 +2801,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // wrapping, docx/local/compat11-wrapping: a rectangle ending above the anchor, the rest of the page stays
         // empty; tall-t: one ending above the anchor, which stays, a picture line before it going below it;
         // docx/external/libreoffice/extras-layout/fdo43573-2-min).
+        var wasEmpty = columnEmpty;
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
                 ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
                 && Pushed(e) is { } top && e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01))
@@ -2781,6 +2822,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
+        }
+        // Moved on before its first line, the paragraph's box begins at the top of the new column.
+        if (frame != null && !bare && !wasEmpty && columnEmpty)
+        {
+            boxTop = continues ? y - Math.Max(0, Gap(before) - pendingAfter) : y + frame.TopShadow;
+            if (!continues)
+                y = boxTop + (frame.Top is { Visible: true } opening ? opening.Space + opening.Total : 0);
+            betweenLine = null;
         }
         // Lines beside floating objects of the page are laid out again in the room the objects leave; the paragraph's
         // own objects, placed after its lines, count where they will stand (not where the run before put them).
@@ -2866,6 +2915,59 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The lines on this page that floating objects cut, for the paragraph's shading (Frame.Draw).
         var cuts = new List<(double Top, double Bottom, List<(double Start, double End)> Segments)>();
         var cutsPage = page!;
+        // The box's part in each column or page: from the box's top in the first, the column's top in the others, to
+        // the bottom of the part's last line; the parts before the last have no bottom line, those after the first no
+        // top line (measured with docx/local/bsp-nat-15, -14, bsp-col-15, bsp-pbr-*, bsp-cbr-*: a paragraph broken by
+        // the page's end, a column's or a page or column break, its shading and side lines in both parts).
+        var (partTop, partFirst, partPage, partLeft, partWidth) = (boxTop, true, page!, left, width);
+        var partBottoms = new List<double>();
+        var boxDone = false;
+        void ClosePart()
+        {
+            if (frame != null && !bare && partBottoms.Count > 0)
+            {
+                frame.Draw(partPage, partLeft + Mirror(format), partWidth, format, partTop, partBottoms[^1], top: partFirst && !continues, bottom: false,
+                    between: partFirst ? betweenLine : null, cuts: cutsPage == partPage ? cuts : null);
+                partFirst = false;
+            }
+            partBottoms.Clear();
+        }
+        // After a part with no line the box begins in the new column as it would have in the first.
+        void OpenPart()
+        {
+            (partTop, partPage, partLeft, partWidth) = (y, page!, left, width);
+            (cuts, cutsPage) = ([], page!);
+            if (frame == null || bare || !partFirst)
+                return;
+            betweenLine = null;
+            if (continues)
+                partTop = y - Math.Max(0, Gap(before) - pendingAfter);
+            else
+            {
+                partTop = y + frame.TopShadow;
+                y = partTop + (frame.Top is { Visible: true } opening ? opening.Space + opening.Total : 0);
+            }
+        }
+        // The last part, with the bottom line where the box closes; where the next paragraph goes on with the box, it
+        // reaches the paragraph's space after (bsp2-gap, bsp2-flow: 8 pt below the last line, past the bottom margin).
+        void FinishBox()
+        {
+            boxDone = true;
+            if (frame == null)
+                return;
+            var reach = nextContinues ? SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) : 0;
+            if (bare)
+            {
+                frame.DrawBare(page!, left + Mirror(format), width, partTop, y + reach);
+                return;
+            }
+            if (!nextContinues)
+                y += frame.Bottom is { Visible: true } b ? b.Space + b.Total : 0;
+            frame.Draw(page!, left + Mirror(format), width, format, partTop, y + reach, top: partFirst && !continues, bottom: !nextContinues,
+                between: partFirst ? betweenLine : null, cuts: cutsPage == page ? cuts : null);
+            if (!nextContinues)
+                y += frame.BottomShadow;
+        }
         // Whether the paragraph went on in another column or page, where the objects that pushed its lines down here
         // are not in their way.
         var moved = false;
@@ -2942,10 +3044,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         RecountNotes();
                         k -= back;
                         line = lines[k];
+                        partBottoms.RemoveRange(Math.Max(0, partBottoms.Count - back), Math.Min(back, partBottoms.Count));
                     }
                 }
+                ClosePart();
                 NextColumn(natural: true);
                 (left, width) = Column(column);
+                OpenPart();
                 var relaid = Relayout(k);
                 line = lines[k];
                 here = 0;
@@ -2994,6 +3099,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 page.Chapter = chapter = chapterLabel.Own;
             here++;
             y += line.Height;
+            partBottoms.Add(y);
             columnEmpty = false;
             sectionShown = true;
             breakPage = false;
@@ -3022,8 +3128,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 notesYield = false;
                 if (unitStart == 0)
                     page.Paragraphs.Remove(paragraph);
+                partBottoms.RemoveRange(Math.Max(0, partBottoms.Count - count), Math.Min(count, partBottoms.Count));
+                ClosePart();
                 NextColumn(natural: true);
                 (left, width) = Column(column);
+                OpenPart();
                 here = 0;
                 hereAtTop = true;
                 moved = true;
@@ -3032,7 +3141,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 k = unitStart - 1;
                 continue;
             }
-            if (line.EndBreak is "page" && !BreakUnseen(paragraph))
+            // A break that ends the paragraph's last line ends its box there: nothing of it goes on in the next column
+            // or page (bsp-end-15, -14, bsp2-other: the box before the page break with the space after "A" in it, the
+            // next paragraph at the top of the next page).
+            // A page break that ends the document begins no page (measured with docx/local/trail-text-15, -14,
+            // trail-only-*: "A" and a page break in the last paragraph, or a last paragraph of only a page break, one
+            // page; trail-two-15: of two page breaks after "A" the second begins none; docx/external/libreoffice/
+            // extras-ooxmlexport/tdf153964_topMarginAfterBreak14).
+            var paged = line.EndBreak is "page" && !BreakUnseen(paragraph) && !(k == lines.Count - 1 && ReferenceEquals(blocks[index], documentEnd));
+            var breaks = paged || line.EndBreak is "column";
+            if (breaks && k == lines.Count - 1)
+                FinishBox();
+            else if (breaks)
+                ClosePart();
+            if (paged)
             {
                 NewPage(section);
                 breakPage = true;
@@ -3048,18 +3170,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 here = 0;
                 hereAtTop = true;
             }
+            if (breaks && !boxDone)
+                OpenPart();
         }
-        if (frame != null)
-        {
-            if (!nextContinues)
-                y += frame.Bottom is { Visible: true } b ? b.Space + b.Total : 0;
-            if (boxPage != page)
-                boxTop = page!.BodyTop;
-            frame.Draw(page!, left + Mirror(format), width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
-                between: continues && boxPage == page ? betweenAt : null, cuts: cutsPage == page ? cuts : null);
-            if (!nextContinues)
-                y += frame.BottomShadow;
-        }
+        if (!boxDone)
+            FinishBox();
         for (var d = divisions.Count - 1; d >= 0; d--)
         {
             var (div, divisionFrame) = divisions[d];
@@ -3642,6 +3757,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return false;
         return first.Ancestors(w + "sdt").Any(c => c.Ancestors().Contains(element))
                || element.Descendants(w + "sdt").Any(c => c.IsBefore(first));
+    }
+
+    /// <summary>Whether a paragraph's first line ends with a page or column break before anything that takes room.</summary>
+    static bool StartsWithBreak(ParagraphBlock paragraph)
+    {
+        var first = paragraph.Content.FirstOrDefault(i => i is not (BookmarkInline or BookmarkEndInline or PermissionInline or CommentInline
+            or TextInline { Text.Length: 0 } or AnchorInline));
+        return first is BreakInline { Type: "page" or "column" } && !ControlStartsBefore(paragraph.Element);
     }
 
     /// <summary>Whether a line holds nothing but a page or column break (and marks that take no room).</summary>
