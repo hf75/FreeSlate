@@ -1826,7 +1826,13 @@ areas:
           days, months or years from the first date to the last (c:baseTimeUnit, else by the closest dates),
           every point in the slot of its date, empty units keeping their place, labels every major unit
           (c:majorUnit in c:majorTimeUnit) or as many as fit (generated/charts-data: 1, 4, 5, 12 January on a
-          day axis, 1 and 15 January sharing January). Lines and areas run on through the dates
+          day axis, 1 and 15 January sharing January). Days without a major unit whose dates do not fit label
+          every day, every second or every seventh, the first that fits, flat, turned by 45° (slots of 1.73 line
+          heights) or, for days and second days, by 90° (1.18 line heights), else the first of every month, the
+          slots taken on the plot area's width for flat labels (local/da-*: 20 to 200 days on 181 to 829 pt axes,
+          the same in Word; docx/external/powertools/CU004 57.7 → 87.8 %, libreoffice/extras-ooxmlimport/tdf82824
+          49.8 → 90.0 %). Known deviation: below labels turned by 45° PowerPoint's plot area is up to 5 pt narrower
+          on each side than ours. Lines and areas run on through the dates
           without data between their points (dispBlanksAs only concerns blank cells). A plot area placed with its
           labels (layoutTarget outer) holds them all: half a value label at the top, the first turned category
           label at the left edge. Category labels stand (1 + lblOffset / 100) / 2 default gaps below the axis

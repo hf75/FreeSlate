@@ -155,6 +155,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         /// <summary>A date axis's labels wrapped to fit their slots, all of them shown (see FitLabels).</summary>
         public bool DatesWrapped { get; set; }
 
+        /// <summary>Every how many days a date axis of days without a major unit labels (see FitDays), else null.</summary>
+        public int? DateSkip { get; set; }
+
+        /// <summary>The plot area's width without the reach of labels turned upwards, from the pass before (InnerPlot).</summary>
+        public double? FlatLength { get; set; }
+
         /// <summary>The most lines a label has.</summary>
         public int LabelLines => Labels.Count == 0 ? 1 : Labels.Max(l => l.Count(ch => ch == '\n') + 1);
         public bool Between { get; set; } = true;
@@ -1980,7 +1986,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
         }
 
-        // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge.
+        // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge. Date
+        // axes choose their labels for the width without that reach (see FitDays).
+        foreach (var layout in axes.Where(a => a.Axis.Horizontal && !a.Axis.IsValue))
+            layout.FlatLength = right - left;
         foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation < 0 && a.Axis.Horizontal && a.Labels.Count > 0))
         {
             var angle = -layout.Rotation * Math.PI / 180;
@@ -2034,6 +2043,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         layout.MaxLabelWidth = layout.Names.Max(l => l.Split('\n').Max(line => Width(line, style)));
         layout.Rotation = Rotation(layout, length);
         layout.DatesWrapped = false;
+        layout.DateSkip = null;
         if (layout.DateStep == 0 && layout.Levels.Count == 0 && layout.MaxLabelWidth > length / Math.Max(1, layout.Categories))
         {
             // A date axis that labels as many dates as fit shows them all where their words fit their slots, wrapped
@@ -2046,6 +2056,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 layout.MaxLabelWidth = dates.Max(lines => lines.Max(line => Width(line, style)));
                 layout.DatesWrapped = true;
             }
+            else if (layout.Groups.Select(g => g.TimeUnit).FirstOrDefault(u => u != null) == "days"
+                     && layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot") is null or -60000000)
+                FitDays(layout, (layout.FlatLength ?? length) / Math.Max(1, layout.Categories));
             return;
         }
         if (layout.Rotation != -45 || layout.DateStep != null || layout.Levels.Count > 0
@@ -2057,6 +2070,34 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return;
         layout.Labels = wrapped.Select(lines => string.Join("\n", lines)).ToList();
         layout.MaxLabelWidth = wrapped.Max(lines => lines.Max(line => Width(line, style)));
+        layout.Rotation = 0;
+    }
+
+    /// <summary>
+    /// The labels of a date axis of days without a major unit whose dates do not fit their slots: every day, every
+    /// second or every seventh, the first of them that fits, flat, turned by 45° or (days and second days) by 90°, else
+    /// the first of every month. On the plot area's width for flat labels a slot holds a label flat as wide as the
+    /// label and a font size, turned by 45° 1.73 line heights wide, by 90° 1.18 (measured in PowerPoint and Word with
+    /// local/da-* and powertools/CU004, 9 pt labels: on a 397 pt axis 20 days label every day at −45°, 25 days at −90°,
+    /// 32 and 40 every second day at −45°, 50 and 60 at −90°, 70 to 120 every seventh at −45°, 150 to 200 the months;
+    /// 40 days on an 829 pt axis every day at −45°, 20 on a 181 pt one every second at −90°: −45° from 18.5 to 19.8 pt,
+    /// −90° from 12.4 to 13.2 pt).
+    /// </summary>
+    void FitDays(AxisLayout layout, double day)
+    {
+        var flat = layout.MaxLabelWidth + layout.Style.Size;
+        var (half, quarter) = (1.73 * LineHeight(layout.Style), 1.18 * LineHeight(layout.Style));
+        foreach (var (step, upright) in new[] { (1, true), (2, true), (7, false) })
+        {
+            var slot = day * step;
+            if (slot >= flat || slot >= half || upright && slot >= quarter)
+            {
+                layout.DateSkip = step;
+                layout.Rotation = slot >= flat ? 0 : slot >= half ? -45 : -90;
+                return;
+            }
+        }
+        layout.DateSkip = Math.Max(30, (int)Math.Ceiling(flat / Math.Max(1e-9, day) / 30) * 30);
         layout.Rotation = 0;
     }
 
@@ -2492,7 +2533,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             // Date axes without a major unit label as many dates as fit, a label and a font size apart.
             var slot = Math.Abs(layout.End - layout.Start) / Math.Max(1, layout.Categories);
-            skip = step > 0 ? step : layout.DatesWrapped ? 1 : Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
+            skip = step > 0 ? step : layout.DatesWrapped ? 1 : layout.DateSkip ?? Math.Max(1, (int)Math.Ceiling((layout.MaxLabelWidth + style.Size) / Math.Max(1e-9, slot)));
         }
         var gapScale = AxisLabelOffset(layout);
         for (var i = 0; i < layout.Labels.Count && i < positions.Count; i++)
