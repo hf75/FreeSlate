@@ -50,6 +50,14 @@ static class Strict
     };
 
     const string DrawingMain = "http://schemas.openxmlformats.org/drawingml/2006/main";
+
+    static readonly XName WordTextDirection = XName.Get("textDirection", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+
+    /// <summary>Strict's text directions (ST_TextDirection) as the transitional ones.</summary>
+    static readonly Dictionary<string, string> StrictDirections = new(StringComparer.Ordinal)
+    {
+        ["tb"] = "lrTb", ["rl"] = "tbRl", ["lr"] = "btLr", ["tbV"] = "lrTbV", ["rlV"] = "tbRlV", ["lrV"] = "tbLrV",
+    };
     const string Wps = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape";
     const string Wpg = "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup";
 
@@ -66,6 +74,11 @@ static class Strict
                 element.Name = XNamespace.Get(shapeNs) + element.Name.LocalName;
             else if (Transitional.TryGetValue(element.Name.NamespaceName, out var ns))
                 element.Name = XNamespace.Get(ns) + element.Name.LocalName;
+            // Text directions have names of their own in Strict (docx/external/libreoffice/extras-ooxmlexport/
+            // tdf79272_strictDxa: a cell of "lr" reads upward, tdf150822: a section of "rl" runs down).
+            if (element.Name == WordTextDirection && element.Attributes().FirstOrDefault(a => a.Name.LocalName == "val") is { } direction
+                && StrictDirections.TryGetValue(direction.Value, out var transitional))
+                direction.Value = transitional;
             // DrawingML's percentages are "15%" in Strict, thousandths of a percent in transitional markup (Strict01:
             // chart lines tx1 lumMod 15 % drawn black).
             if (element.Name.NamespaceName == DrawingMain)

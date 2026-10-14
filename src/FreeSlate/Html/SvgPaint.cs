@@ -79,7 +79,9 @@ public sealed class SvgPaint
     /// The paint attributes of an outline; <paramref name="closed"/> tells whether the stroked path consists of closed
     /// figures only, where round-capped dashes start where the pattern does (see <see cref="Dashes"/>).
     /// </summary>
-    public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default, bool closed = false)
+    /// <param name="offset">Where the w × h box lies in the stroked path's coordinates, as for <see cref="Fill"/>.</param>
+    public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default, bool closed = false,
+        (double X, double Y) offset = default)
     {
         if (outline is not { Visible: true })
             return " stroke=\"none\"";
@@ -88,7 +90,7 @@ public sealed class SvgPaint
         var sb = new StringBuilder(outline.Fill switch
         {
             SolidFill s => Color("stroke", s.Color),
-            GradientFill g => $" stroke=\"url(#{Gradient(g, w, h, defs, 0)})\"",
+            GradientFill g => $" stroke=\"url(#{Gradient(g, w, h, defs, 0, offset: offset)})\"",
             // Pattern outlines show the pattern itself, aligned to the slide like pattern fills (catalog: line.fill).
             PatternFill p => $" stroke=\"url(#{Pattern(p, defs, origin)})\"",
             _ => " stroke=\"#000\"",

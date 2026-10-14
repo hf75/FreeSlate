@@ -471,9 +471,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
                 // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
                 // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
-                // tab after it all of it; docx/external/powertools/RA001-Tracked-Revisions-01).
+                // tab after it all of it; docx/external/powertools/RA001-Tracked-Revisions-01), with what raised and
+                // lowered text adds to it (docx/external/libreoffice/extras-ooxmlexport/tdf140572_docDefault_superscript:
+                // text raised 9 pt shaded from 9 pt above the ascent).
                 if ((piece.Style.Highlight ?? piece.Style.Shading) is { } back && Math.Min(x + piece.Width, contentEnd) - x is var shown && shown > 0)
-                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above)}\" width=\"{Px(shown)}\" height=\"{Px(placed.Line.Above + placed.Line.Below)}\" fill=\"{back.ToHex()}\"/>");
+                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above - placed.Line.RaisedAbove)}\" width=\"{Px(shown)}\" height=\"{Px(placed.Line.Above + placed.Line.Below + placed.Line.RaisedAbove + placed.Line.LoweredBelow)}\" fill=\"{back.ToHex()}\"/>");
                 if (piece.IsTab)
                 {
                     if (piece.Leader != null)
@@ -1219,7 +1221,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var fill = style.TextFill is { } own ? FreeSlate.Drawing.FillReader.Read(own, drawings.Colors) : new FreeSlate.Drawing.SolidFill(style.Color);
         var paint = drawings.Paint.Fill(fill, w, h, defs, origin: origin, offset: origin);
         if (style.Outline is { } line && FreeSlate.Drawing.OutlineReader.Merge([(line, drawings.Colors)]) is { Visible: true } outline)
-            paint += drawings.Paint.Stroke(outline, w, h, defs, origin);
+            // A gradient outline spans the piece as its fill does (docx/external/libreoffice/extras-ooxmlexport/
+            // TextEffects_TextOutline: not from the page's corner).
+            paint += drawings.Paint.Stroke(outline, w, h, defs, origin, offset: origin);
         return paint;
     }
 

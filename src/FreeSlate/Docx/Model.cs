@@ -858,6 +858,16 @@ public sealed partial class ModelReader(DocumentContext context)
                     var document = package.ReadXml(main);
                     Opc.MarkupCompatibility.Process(document);
                     container.Add(document.Root.Child("body")?.Elements().Where(x => x.Name != Wml.W + "sectPr").Select(x => new XElement(x)));
+                    // Its section breaks keep their kind, but their pages are the section's the chunk stands in
+                    // (docx/external/libreoffice/writerfilter-dmapper/alt-chunk: a chunk of square pages of 283 pt in an
+                    // A4 section, its first section on a new A4 page, the rest after it on that page).
+                    foreach (var breakProperties in container.Descendants(Wml.W + "sectPr").ToList())
+                    {
+                        foreach (var page in breakProperties.Elements().Where(x => x.Name.LocalName is "pgSz" or "pgMar" or "cols" or "docGrid").ToList())
+                            page.Remove();
+                        foreach (var page in currentSection.Properties?.Elements().Where(x => x.Name.LocalName is "pgSz" or "pgMar" or "cols" or "docGrid") ?? [])
+                            breakProperties.Add(new XElement(page));
+                    }
                 }
             }
             else if (type.Contains("rfc822") || type.Contains("mhtml") || type.StartsWith("multipart/", StringComparison.Ordinal))

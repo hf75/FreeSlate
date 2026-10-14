@@ -1124,6 +1124,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2).
         if (start == "nextColumn" && page != null && page.Section.Columns != properties.Columns)
             start = "nextPage";
+        // So does a continuous section on paper of another size (docx/external/libreoffice/core-doc/
+        // header-footer-delete: a Letter section after an A4 one on page 3).
+        if (start is "continuous" or "nextColumn" && page != null
+            && (Math.Abs(page.Section.PageWidth - properties.PageWidth) > 0.5 || Math.Abs(page.Section.PageHeight - properties.PageHeight) > 0.5))
+            start = "nextPage";
         section = properties;
         layout.Vertical = properties.Upright != null;
         layout.TurnEastAsian = properties.TurnEastAsian;
@@ -1591,7 +1596,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
         foreach (var anchor in anchors.Select(a => a.Offset(0, top)))
-            box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX));
+            box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings));
         return box;
     }
 
@@ -2252,7 +2257,38 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// stands 3.6 pt below its 30.4 pt).
     /// </summary>
     PlacedDrawing PlaceAnchor(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell = null, double? character = null)
+        CellAnchor? cell = null, double? character = null, IReadOnlyList<PlacedDrawing>? before = null) =>
+        Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character), before ?? page.Drawings, page.Section.PageWidth);
+
+    /// <summary>
+    /// A floating drawing that may not overlap the drawings placed before it, or that one of them may not overlap
+    /// (wp:anchor allowOverlap 0), moves right of the one it overlaps where it fits across the page, else below it
+    /// (measured with docx/local/aov-*: a 200 pt rectangle over half of one before it right of that one, wrapped or not,
+    /// placed from the page or its paragraph, whichever of the two forbids it, in either order; aov2-wide: of 400 pt
+    /// below it; aov2-marg: right of it past the margin up to the page's edge; docx/external/libreoffice/extras-layout/
+    /// tdf124600, extras-ooxmlexport/tdf124600b: a header's second text box below the first, one behind the text and
+    /// wrapped square). Drawings behind the text without wrapping take no part (tdf120760_ZOrderInHeader: a page's
+    /// background picture behind a header's band stays).
+    /// </summary>
+    static PlacedDrawing Clear(PlacedDrawing drawing, IReadOnlyList<PlacedDrawing> before, double pageWidth)
+    {
+        static bool Forbids(PlacedDrawing d) => (string?)d.Drawing.Attribute("allowOverlap") is "0" or "false";
+        static bool Background(PlacedDrawing d) => d.Behind && d.Drawing.Element(Docx.Drawings.Wp + "wrapNone") != null;
+        if (Background(drawing))
+            return drawing;
+        for (var round = 0; round < 8; round++)
+        {
+            var hit = before.FirstOrDefault(p => !ReferenceEquals(p.Drawing, drawing.Drawing) && !Background(p) && (Forbids(p) || Forbids(drawing))
+                && p.X < drawing.X + drawing.Width - 0.01 && drawing.X < p.X + p.Width - 0.01 && p.Y < drawing.Y + drawing.Height - 0.01 && drawing.Y < p.Y + p.Height - 0.01);
+            if (hit == null)
+                break;
+            drawing = hit.X + hit.Width + drawing.Width <= pageWidth + 0.01 ? drawing with { X = hit.X + hit.Width } : drawing with { Y = hit.Y + hit.Height };
+        }
+        return drawing;
+    }
+
+    PlacedDrawing Placed(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
+        CellAnchor? cell, double? character)
     {
         var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
         // From Word 2013 on a drawing of the text that text goes around, placed from its paragraph or line, stays below

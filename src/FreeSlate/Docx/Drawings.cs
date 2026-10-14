@@ -623,7 +623,11 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             lines.Select(line => new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr"), pitch),
                 line.Length == 0
                     ? new XElement(Ns.A + "endParaRPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600))
+                    // Kerned only where its text path says v-text-kern (docx/external/libreoffice/extras-ooxmlexport/
+                    // watermark-font: "TestFont" in Arial without the T-e pair; docx/local/vwa-f-arial); kern is the size
+                    // kerning begins at, in hundredths of a point.
                     : new XElement(Ns.A + "r", new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600), new XAttribute("b", bold ? 1 : 0),
+                        new XAttribute("kern", Kerned((string?)art.Attribute("style")) ? 0 : 400000),
                         new XAttribute("i", italic ? 1 : 0), outline != null ? new XElement(outline) : null, new XElement(fill),
                         effects != null ? new XElement(effects) : null, new XElement(Ns.A + "latin", new XAttribute("typeface", family))),
                         new XElement(Ns.A + "t", line))))));
@@ -636,6 +640,10 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// </summary>
     static FreeSlate.Text.ResolvedFont WordArtTypeface(string family, bool bold, bool italic) =>
         FreeSlate.Text.FontResolver.Default.TryResolveFamily(family, bold, italic) ?? FreeSlate.Text.FontResolver.Default.Resolve("Arial", bold, italic);
+
+    /// <summary>Whether VML WordArt's text path style kerns its text (v-text-kern:t).</summary>
+    static bool Kerned(string? style) => (style ?? "").Split(';').Any(part => part.Split(':') is [var name, var value]
+        && name.Trim().Equals("v-text-kern", StringComparison.OrdinalIgnoreCase) && value.Trim() is "t" or "true");
 
     /// <summary>The font of VML WordArt's text path style (font-family, font-weight, font-style), Calibri by default.</summary>
     static (string Family, bool Bold, bool Italic) WordArtFont(string? style)

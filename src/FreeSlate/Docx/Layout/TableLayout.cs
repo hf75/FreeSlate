@@ -1781,7 +1781,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     {
                         var (_, nmax, _, _, natural, _) = Ranges(nested.Table, rows, columns, 100000, fields);
                         var own = nested.Table.Format.Width is { Type: "dxa", Value: > 0 } preferred ? preferred.Value : 0;
-                        min = Math.Max(min, Math.Max(natural.Sum(), own));
+                        // Its outer lines take their halves beside the columns, as where it is laid out (docx/external/
+                        // libreoffice/filter-ascii/tdf162180: nested columns of 24.23, 43.23 and 54.58 pt between 0.5 pt
+                        // lines keep "Approved" and "Central" whole).
+                        var lineRoom = (Width(nested.Table.Format.Borders.Left) + Width(nested.Table.Format.Borders.Right)) / 2;
+                        min = Math.Max(min, Math.Max(natural.Sum() + lineRoom, own));
                         max = Math.Max(max, nested.Table.Format.Layout == "fixed" && nested.Table.Grid.Count > 0 ? nested.Table.Grid.Sum() : nmax.Sum());
                     }
                     break;
