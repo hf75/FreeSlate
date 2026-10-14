@@ -1675,9 +1675,24 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             {
                 case ParagraphBlock paragraph:
                 {
-                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true);
+                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true, empty: false);
                     min = Math.Max(min, pmin);
                     max = Math.Max(max, pmax);
+                    // Floating drawings that text goes around count with their width and effect extents, not their
+                    // distances (measured with docx/local/agr-anchor, -anchor14: shapes of 72 and 43.2 pt wrapped square
+                    // alone in two cells share a table in proportion to them and the margins; docx/external/libreoffice/
+                    // core-exportdata-ooxml-pass/textframe-in-shape).
+                    foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+                    {
+                        if (anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is not { } wrap
+                            || wrap.Name.LocalName == "wrapNone" || (string?)anchor.Anchor.Attribute("layoutInCell") is "0" or "false")
+                            continue;
+                        var effect = anchor.Anchor.Element(Docx.Drawings.Wp + "effectExtent");
+                        double Emu(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+                        var wide = Docx.Drawings.Extent(anchor.Anchor).Width + Emu("l") + Emu("r");
+                        min = Math.Max(min, wide);
+                        max = Math.Max(max, wide);
+                    }
                     break;
                 }
                 case TableBlock nested:

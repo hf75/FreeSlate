@@ -282,16 +282,22 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// The insets of a text box from its shape's edges: wps:bodyPr's (from the geometry's text rectangle: rounded
-    /// corners, ellipses) and half its outline, Word measuring them from the outline's inner edge (measured with
-    /// docx/local/textboxes: a 6 pt outline moves the text 3 pt in).
+    /// corners, ellipses) and half its outline's width, Word measuring them from the outline's inner edge, drawn or
+    /// not: the width of a:ln, else of the theme's line its style refers to (measured with docx/local/textboxes: a 6 pt
+    /// outline moves the text 3 pt in; fref-inset: theme lines of 1, 1.5 and 2 pt half as far, also unfilled, a:ln's
+    /// own 0.5 pt over the theme's, 2 pt lines unfilled or without a fill 1 pt; docx/external/libreoffice/
+    /// extras-ooxmlexport/textframe-in-shape).
     /// </summary>
-    static (double L, double T, double R, double B) Insets(XElement? body, XElement? shape, double w, double h)
+    static (double L, double T, double R, double B) Insets(XElement? body, XElement? shape, double w, double h, Drawing.Theme? theme)
     {
         double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
+        static double? Width(XElement? ln) =>
+            double.TryParse((string?)ln?.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var lw) ? lw / 12700 : null;
         var (l, t, r, b) = (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
         var (gl, gt, gr, gb) = shape != null ? Drawings.ShapeTextRect(shape, w, h) : default;
-        var outline = shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln") is { } ln && ln.Element(Ns.A + "noFill") == null
-            && double.TryParse((string?)ln.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var lw) ? lw / 12700 / 2 : 0;
+        var themed = shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "lnRef") is { } lnRef
+            && int.TryParse((string?)lnRef.Attribute("idx"), out var idx) && idx > 0 ? theme?.LineStyle(idx) : null;
+        var outline = (Width(shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln")) ?? Width(themed) ?? 0) / 2;
         return (l + gl + outline, t + gt + outline, r + gr + outline, b + gb + outline);
     }
 
@@ -304,16 +310,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// longest line.
     /// </summary>
     PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page) =>
-        FitToText(drawing, text, body, shape, page, blocks!);
+        FitToText(drawing, text, body, shape, page, blocks!, context.Theme);
 
     /// <summary>The fitting of <see cref="Fitted"/>, which the paginator applies too before text wraps around the box.</summary>
-    internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks)
+    internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks,
+        Drawing.Theme? theme)
     {
         var autofit = body.Element(Ns.A + "spAutoFit") != null;
         var unwrapped = (string?)body.Attribute("wrap") == "none";
         if (!autofit && !unwrapped || Vertical(body))
             return drawing;
-        var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height);
+        var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height, theme);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
         // Lines measured where they begin: a right aligned line's length is its text's, not its place in the unwrapped
         // width (docx/external/libreoffice/extras-ooxmlexport/testWordArtWithinDraingtool: WordArt right aligned in a
@@ -342,7 +349,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// </summary>
     string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page)
     {
-        var (l, t, r, b) = Insets(body, shape, w, h);
+        var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
         var (areaWidth, areaHeight) = vert != null ? (h - t - b, w - l - r) : (w - l - r, h - t - b);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
@@ -357,8 +364,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
             // upright (measured with docx/local/vertical6).
-            var (vertical, turn, alignIn) = (layout!.Vertical, layout.TurnEastAsian, layout.AlignIn);
+            var (vertical, turn, alignIn, textColor) = (layout!.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor);
             (layout.Vertical, layout.TurnEastAsian) = (vert != null, vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl");
+            // Automatic text takes the color of the shape's style (fontRef; see ParagraphLayout.TextColor).
+            layout.TextColor = drawings?.Colors.ResolveChild(shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "fontRef"));
             // Text that does not wrap aligns in the box all the same (docx/external/libreoffice/extras-ooxmlexport/
             // testWordArtWithinDraingtool: WordArt right aligned in its box, not 100,000 pt to the right).
             var unwrapped = (string?)body?.Attribute("wrap") == "none" && vert == null;
@@ -370,7 +379,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             finally
             {
-                (layout.Vertical, layout.TurnEastAsian, layout.AlignIn) = (vertical, turn, alignIn);
+                (layout.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor) = (vertical, turn, alignIn, textColor);
             }
         }
         else if (story != null && continued.Remove((story, seq), out var rest))

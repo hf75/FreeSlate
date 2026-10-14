@@ -21,7 +21,7 @@ public sealed class FieldEvaluator
 
     string T(string english, string germanText) => german ? germanText : english;
 
-    /// <summary>Whether a result is one of Word's error texts (which Word sets in bold before Word 2013).</summary>
+    /// <summary>Whether a result is one of Word's error texts (which Word sets in bold).</summary>
     public static bool IsError(string value) => value.StartsWith("Error! ", StringComparison.Ordinal) || value.StartsWith("Fehler! ", StringComparison.Ordinal);
     readonly Dictionary<FieldInline, string> sequences = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<FieldInline, int> sections = new(ReferenceEqualityComparer.Instance);
@@ -332,9 +332,14 @@ public sealed class FieldEvaluator
             var id = p.Format.Style ?? context.Styles.DefaultParagraphStyle;
             if (int.TryParse(name, out var level))
                 return p.Format.OutlineLevel == level - 1 && id != null && context.Styles.Find(id)?.Name is { } heading && heading.StartsWith("heading", StringComparison.OrdinalIgnoreCase);
+            // A built-in heading goes by the name Word's user interface gives it, in its language (docx/external/
+            // libreoffice/extras-ooxmlexport/suppress-non-numerical, core-fields/styleref-flags, tdf86790: "Heading 1"
+            // finds no "heading 1" in German Word; tdf149089: nor does "标题 1"; StyleRef-DE, tdf166850: "Überschrift
+            // 1" finds it).
             var own = id != null ? context.Styles.Find(id)?.Name : null;
-            return string.Equals(id, name, StringComparison.OrdinalIgnoreCase) || string.Equals(own, name, StringComparison.OrdinalIgnoreCase)
-                   || own != null && Heading(own) is { } ownLevel && Heading(name) == ownLevel;
+            if (own != null && Heading(own) is { } ownLevel)
+                own = T($"Heading {ownLevel}", $"Überschrift {ownLevel}");
+            return string.Equals(id, name, StringComparison.OrdinalIgnoreCase) || string.Equals(own, name, StringComparison.OrdinalIgnoreCase);
         }
         ParagraphBlock? found = null;
         var last = words.Contains("\\l");
@@ -357,6 +362,10 @@ public sealed class FieldEvaluator
             var at = order.GetValueOrDefault(paragraph);
             found = paragraphs.Take(at + 1).LastOrDefault(Matches) ?? paragraphs.Skip(at + 1).FirstOrDefault(Matches);
         }
+        // A heading level that no paragraph has gives an error of its own (docx/external/libreoffice/
+        // extras-ooxmlexport/tdf146248).
+        if (found == null && int.TryParse(name, out _))
+            return T("Error! No text of specified style in document.", "Fehler! Kein Text mit angegebener Formatvorlage im Dokument.");
         if (found == null)
             return T($"Error! Use the Home tab to apply {name} to the text that you want to appear here.",
                 $"Fehler! Verwenden Sie die Registerkarte 'Start', um {name} dem Text zuzuweisen, der hier angezeigt werden soll.");

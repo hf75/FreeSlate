@@ -607,7 +607,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outside" => odd ? frameLeft + frameSpan - frameWidth : frameLeft,
                 _ => frameLeft + Twips("x"),
             };
-        var top = dropCap is "drop" or "margin" ? textTop : properties.Attr("yAlign") switch
+        // A frame standing with the text is placed by w:y alone, its w:yAlign unseen (docx/external/libreoffice/
+        // extras-ooxmlexport/tdf157572_insidiousCombination: a frame of yAlign bottom and vAnchor text below its
+        // paragraph's top, not above it).
+        var top = dropCap is "drop" or "margin" ? textTop : (VerticalAnchor(properties) == "text" ? null : properties.Attr("yAlign")) switch
         {
             "top" or "inside" => frameTop,
             "bottom" or "outside" => frameTop + frameHeight - height,
@@ -971,6 +974,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (due is { Count: > 0 })
             {
                 endnotesFrom = s + 1;
+                // Footnotes beneath the text come right after it, before the endnotes, which follow below them
+                // (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes' separator).
+                if (page?.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText" && (pageNotes.Count > 0 || carriedHere != null))
+                    y = PlaceNotes();
                 var trailing = new List<Block>();
                 trailing.AddRange(endnoteSeparator ?? []);
                 foreach (var note in due)
@@ -1046,6 +1053,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     bool MarkBeforePage(ParagraphBlock paragraph) =>
         paragraph is { EndsSection: not null, Format.Frame: null } && !nextContinuous && paragraph.Label is not { Own.Length: > 0 }
         && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline);
+
+    /// <summary>
+    /// Whether line <paramref name="k"/> of a paragraph that ends a section is its last and holds nothing but the
+    /// paragraph's mark, after a line break: it stays at a page's end, past the bottom too, and the lines before it need
+    /// no room for it (measured with docx/local/sbe-br, sbe-brc: "Line 29" and a line break end a full page whether
+    /// the next section begins on a new page or goes on; sbe-brp: a paragraph without the break goes on whole with
+    /// widow control; sbe-brt: one with "tail" after the break too; docx/external/libreoffice/extras-ooxmlexport/
+    /// tdf126287).
+    /// </summary>
+    static bool MarkLine(ParagraphBlock paragraph, List<Line> lines, int k) =>
+        paragraph is { EndsSection: not null, Format.Frame: null } && k > 0 && k == lines.Count - 1
+        && lines[k].Pieces.All(p => p.Drawing == null && !p.IsLabel && string.IsNullOrWhiteSpace(p.Text));
 
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
@@ -1319,7 +1338,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
                     _ => (textTop, 0.0),
                 };
-                var frameTop = properties.Attr("yAlign") switch
+                var frameTop = (onPage || VerticalAnchor(properties) != "text" ? properties.Attr("yAlign") : null) switch
                 {
                     "top" or "inside" => areaTop,
                     "bottom" or "outside" => areaTop + areaHeight - frameHeight,
@@ -1751,7 +1770,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>The current page's footnotes at its bottom, above the bottom margin, under their separator.</summary>
-    void PlaceNotes()
+    /// <returns>Where the notes end on the page.</returns>
+    double PlaceNotes()
     {
         if (notesYield)
             YieldNotes();
@@ -1761,7 +1781,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             pageNotes.Clear();
             notesHeight = 0;
             (splitNote, carriedHere, bodyEnd) = (null, null, null);
-            return;
+            return y;
         }
         // A section that puts its footnotes beneath the text (its own w:footnotePr/w:pos; the settings' alone leave
         // them at the page's bottom) has them follow its last line (measured with docx/local/fnpages-f and -g).
@@ -1803,6 +1823,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         pageNotes.Clear();
         notesHeight = 0;
         (splitNote, carriedHere, bodyEnd) = (null, null, null);
+        return at;
     }
 
     /// <summary>
@@ -2141,7 +2162,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return placed;
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
-        return PageRenderer.FitToText(placed, text, body, shape, page, tables);
+        return PageRenderer.FitToText(placed, text, body, shape, page, tables, context.Theme);
     }
 
     static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
@@ -2511,13 +2532,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A paragraph that goes on with a unit of kept lines needs room only for the notes before the unit.
             var bottom = chained && keptNotes is { } open && open.Page == page ? Math.Min(page!.BodyBottom - open.Height, bodyEnd ?? double.MaxValue) : Bottom;
             bool moves;
+            var counted = MarkLine(paragraph, lines, lines.Count - 1) ? lines.Take(lines.Count - 1).ToList() : lines;
             if (format.KeepNext == true && index + 1 < blocks.Count && blocks[index + 1] is ParagraphBlock or TableBlock && !chained)
                 moves = ChainBreaks(blocks, index, lines, width, y + gap);
             else if (format.KeepLines == true)
-                moves = y + gap + Needed(lines) > bottom + 0.01;
+                moves = y + gap + Needed(counted) > bottom + 0.01;
             else
             {
-                var needed = gap + FirstLines(lines, format);
+                var needed = gap + FirstLines(counted, format);
                 moves = y + needed > bottom + 0.01 && needed - gap <= Bottom - page!.BodyTop + 0.01;
             }
             if (!moves || MarkBeforePage(paragraph))
@@ -2734,7 +2756,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // page, in modes 14 and 15, also below space after; sbe-text: one with text moves; docx/external/
             // libreoffice/extras-ooxmlexport/section_break_after_table, tdf136589_paraHadField).
             else if (y + skip + fitHeight > limit + 0.01 && (!columnEmpty || skip > 0.01 && page!.FloatingTables.Count > 0) && !BreakOnly(line)
-                     && !MarkBeforePage(paragraph))
+                     && !MarkBeforePage(paragraph) && !MarkLine(paragraph, lines, k))
             {
                 // Widow and orphan control: no single first line at the bottom, no single last line at the top
                 // (a paragraph that began the column stays, there is no better place for it).

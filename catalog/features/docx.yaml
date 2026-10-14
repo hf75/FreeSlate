@@ -1030,7 +1030,10 @@ areas:
           within 0.05 pt). A frame without w:w is as wide as its paragraph, an empty one as its mark (Calibri 11's 6.4
           pt ¶), one of several paragraphs as its column; its borders go down past the last paragraph's space after
           (docx/external/libreoffice/extras-layout/tdf124423: two empty paragraphs framed across the column 48.4 pt
-          high with their 8 pt after each; tdf135035: a column of three; poi/checkboxes; frame-wrap-auto).
+          high with their 8 pt after each; tdf135035: a column of three; poi/checkboxes; frame-wrap-auto). A frame
+          standing with the text (w:vAnchor text) is placed by w:y alone, its w:yAlign unseen
+          (docx/external/libreoffice/extras-ooxmlexport/tdf157572_insidiousCombination: a frame of yAlign bottom below
+          its paragraph's top, 37.3 → 100 %; tdf157572_noVAlignAsText 58.2 → 100 %).
 
       - id: paragraph.eastAsian
         title: East Asian line breaking and character grid
@@ -1267,8 +1270,12 @@ areas:
           the end of a full page, past the bottom too, and makes no page of its own; one with text moves
           (docx/local/sbe-15, sbe-14, sbe-after: after 29 lines of 24 pt, in modes 15 and 14, also below 30 pt after;
           sbe-text; docx/external/libreoffice/extras-ooxmlexport/section_break_after_table 35.0 → 100 %,
-          tdf136589_paraHadField 35.1 → 97.4 %, tdf166510_sectPr_bottomSpacing 52.8 → 100 %). Vertical alignment
-          centers the text from the top margin, with the space before its first paragraph, to the space after its last
+          tdf136589_paraHadField 35.1 → 97.4 %, tdf166510_sectPr_bottomSpacing 52.8 → 100 %). So does the last line of
+          such a paragraph where it holds nothing but the mark after a line break, whether the next section begins on
+          a new page or goes on (docx/local/sbe-br, sbe-brc; sbe-brp: a paragraph without the section break goes on
+          whole with widow control; sbe-brt: one with text after the line break;
+          docx/external/libreoffice/extras-ooxmlexport/tdf126287 35.8 → 99.1 %). Vertical alignment centers the text
+          from the top margin, with the space before its first paragraph, to the space after its last
           (docx/generated/page-setup, page 4; docx/local/va-1 to va-5 in modes 12 to 15), an empty paragraph that only
           ends the section left out (vb-1 to vb-3); justified (both) it spreads the room left evenly between the
           paragraphs (va-6; extras-ooxmlexport/tdf36117_verticalAdjustment). Known deviation: with a frame on the page
@@ -1457,31 +1464,33 @@ areas:
           the last note does not fit but shows a line, it stays and the note continues on the next page under the
           separator, before that page's own notes, the page taking no more text (Word prints its continuation
           separator as the separator; docx/local/fnpages-a, -d). Lines no page break may come between (those of a
-          paragraph keeping its lines together, the first two and the last two under widow control, the last line of
-          a paragraph kept with the next and that one's first) make room only for the notes before them: a keep chain
+          paragraph keeping its lines together, the first two and the last two under widow control, the last line of a
+          paragraph kept with the next and that one's first) make room only for the notes before them: a keep chain
           fills the page as without its own notes, which show what fits below the text, the first that does not fit
           with the lines that do, and go on to the next page, whole notes before its own; such lines whose notes do
           not show (all but the last whole, the last with a line) go to the next page with them unless they begin
           their page, as a chain that cannot break (docx/local/fnkeep-*: 31 cases with Word's pages and note lines;
           known deviation: a chain going on at the top of a page that begins with notes from the page before, which
-          Word leaves to those notes alone). Notes left after the last page of text fill pages of their own. The
-          notes stand at the bottom of the page, ending at
-          the bottom margin, under the separator (144 pt long, its font's strikeout stroke on whole device dots: Aptos
-          12 pt 4.3 pt above the baseline and 0.6 pt thick, Times New Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and
-          0.8 pt; docx/generated/notes, docx/local/fbn-*, docx/external/libreoffice/extras-ooxmlexport/tdf90810short); a
-          section whose own w:footnotePr puts them beneath the text has them follow its last line (the settings' alone
-          do not; docx/local/fnpages-f, -g); pages of several columns spread whole notes into columns of their own
-          width, each column taking notes until it holds its share of their height, under one separator at the left,
-          every column of text ending above them (docx/local/fnpages-h). Notes of table cells need room with their
-          row. Measured with docx/generated/notes and docx/local/fnpages-a to -h: all lines within 0.2 pt but the note
-          marks, whose superscripts stand within half a point (run.decoration). Above notes a paragraph's last line
-          needs its whole height and the paragraph's space after, from Word 2013 on (docx/local/fbn-*, fbm-*, fbo-*: a
-          line of 24.15 pt with 10 pt after fits where 34.15 pt are left above the notes, not 33 pt; without notes 16.1
-          pt do, as before Word 2013 with them; docx/external/libreoffice/extras-ooxmlexport/tdf90810short). A note
-          without paragraphs takes the room of an empty one, space after included (docx/local/fnempty-*;
-          powertools/WC/WC064-Footnote); a separator's paragraphs stand at single spacing without space before or
-          after, whatever they and the defaults say (docx/local/fsep-*: the separator 16.2 pt above the note's
-          baseline with before 12, after 0, 10 and 20 pt or double spacing; pandoc/golden/notes).
+          Word leaves to those notes alone). Notes left after the last page of text fill pages of their own. The notes
+          stand at the bottom of the page, ending at the bottom margin, under the separator (144 pt long, its font's
+          strikeout stroke on whole device dots: Aptos 12 pt 4.3 pt above the baseline and 0.6 pt thick, Times New
+          Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and 0.8 pt; docx/generated/notes, docx/local/fbn-*,
+          docx/external/libreoffice/extras-ooxmlexport/tdf90810short); a section whose own w:footnotePr puts them
+          beneath the text has them follow its last line (the settings' alone do not; docx/local/fnpages-f, -g); pages
+          of several columns spread whole notes into columns of their own width, each column taking notes until it
+          holds its share of their height, under one separator at the left, every column of text ending above them
+          (docx/local/fnpages-h). Notes of table cells need room with their row. Measured with docx/generated/notes
+          and docx/local/fnpages-a to -h: all lines within 0.2 pt but the note marks, whose superscripts stand within
+          half a point (run.decoration). Above notes a paragraph's last line needs its whole height and the
+          paragraph's space after, from Word 2013 on (docx/local/fbn-*, fbm-*, fbo-*: a line of 24.15 pt with 10 pt
+          after fits where 34.15 pt are left above the notes, not 33 pt; without notes 16.1 pt do, as before Word 2013
+          with them; docx/external/libreoffice/extras-ooxmlexport/tdf90810short). A note without paragraphs takes the
+          room of an empty one, space after included (docx/local/fnempty-*; powertools/WC/WC064-Footnote); a
+          separator's paragraphs stand at single spacing without space before or after, whatever they and the defaults
+          say (docx/local/fsep-*: the separator 16.2 pt above the note's baseline with before 12, after 0, 10 and 20
+          pt or double spacing; pandoc/golden/notes). Footnotes beneath the text of a section that ends the document
+          come before its endnotes, which follow under their separator below them
+          (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes, 36.0 → 83.2 %).
 
       - id: note.endnotes
         title: Endnotes
@@ -1550,59 +1559,63 @@ areas:
           Fixed tables use the grid; autofit tables are recomputed as Word does (measured with docx/local/tbl-autofit
           in Courier New, ten cases within 0.15 pt): each column's minimum (its widest unbreakable content) and
           maximum (its content unwrapped, at most 22 inches) with the cells' margins, where narrower than half the
-          line beside them that half (docx/local/cellborder), inline pictures with their width;
-          a preferred cell width fixes its column; where the maxima fit the columns take them (stretched in proportion
-          to them for a wider table width), where the minima fit each gets its minimum and a share of the rest in
-          proportion to max - min; where preferred widths do not fit, columns whose contents need more keep their
-          minimum and the others give up what is missing in proportion to how much they prefer over their contents'
-          minimum (docx/local/tblpic table B, tblpic2, overpref-O1 to -O4 within 0.2 pt: cells preferring 221 pt each
-          on 451 pt beside words of 12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where cells prefer percentages
-          that fit and only columns whose contents need more make the table too wide, the others give up what is
-          missing in equal shares (docx/local/t65649-table: four columns of 18 to 38 % give up 1.6 pt each to one of
-          6.5 % whose word needs 6.4 pt more; poi/bug65649); a paragraph's negative left indent shrinks its column's
-          minimum, a negative right one does not (docx/local/negind); where the contents' own minima do not fit either, those shrink in proportion, preferred widths
-          aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt; docx/external/powertools/WC/
-          WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a picture wider than a third);
-          a table narrower than its contents' minima grows to them, up to the width available, before they shrink;
-          one that prefers more than is available keeps them whole, however wide it becomes, in modes 14 and 15 alike
-          (docx/local/tblover-14, -15: pictures of 200 and 250 pt make a table preferring 400 pt 450 pt wide, of 300
-          and 250 pt 468 pt, the width between the margins; 700 pt of pictures in one preferring 500 pt; docx/external/
-          poi/bug59058: 553.5 pt of spacer pictures in a centered table preferring 552.75 pt); cells preferring more
-          than the table give way to its width (tblover T13 to T15); columns with nothing in them, not even margins,
-          take the table's preferred width by its grid, also more than is available (docx/local/twb-*: an empty
-          shaded cell of a table preferring 800 pt, centered across the margins; 400 pt in text boxes 200 pt wide;
-          libreoffice/extras-ooxmlexport/n780563: 1440 pt bands across a page);
-          widths before and after rows do not widen columns. Cells over several columns widen them where they are too
-          narrow together, the narrower spans first: what is missing goes to the columns nothing has given a width yet
-          (in proportion to the grid's widths), else to those without a preferred width of their own in proportion to
-          their widths, else to the span's last column (docx/local/so-1 to so-10, gw-1 to gw-16: a 300 pt cell over a
-          15 pt column and two of 250 pt together makes them 17.2 and 282.8 pt, wherever it stands; over columns
-          preferring 100 and 50 pt 100 and 200 pt; a cell over all columns of a table of percentages leaves them theirs;
-          rows that contradict each other take the widest; docx/external/libreoffice/extras-ooxmlexport/
-          wDateValueFormat, fdo78883). Where the minima shrink, a cell over several columns keeps its contents' minimum,
-          its last column taking it from the others (tdf123705: "n/m" stays on one line). Word 2013
-          tables start their grid at the indent and move it right by half the left border; older compatibility modes
-          put the first cell's text at the indent and let an autofit table as wide as its column end its last cell's
-          text at the column's right edge, the cell's margin and the line's middle beyond it (docx/local/tw-12-*,
-          tw-14-*, tw-15-*: margins of 0.5 and 8.5 pt reach as far past the right margin, in mode 15 nothing; docx/
-          external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 440.7 pt between 432 pt margins); tables nested in
-          cells stand as from Word 2013 on in every mode, their left line at the outer cell's text, 100 % as wide as
-          that text, tblInd from there, unlike those of text boxes (docx/local/nz-11 to nz-14b; core-text/
-          floattable-anchor-height, core-text/fly-minimal-wrap). A nested table needs of its outer column its content
-          and the width it prefers itself, not what its cells prefer: wider ones it gives up in the cell (np-1 to np-4,
-          np-7: a nested cell of 400 pt or three of 150 pt in an outer cell preferring 200 pt leave the outer columns
-          theirs; core-layout/floattable-nested-rowspan, tika/testWORD). Known deviations: a nested table of fixed
-          layout Word narrows to its cell (np-5), ours keeps its grid; for a nested table preferring more than the
-          outer table leaves it Word widens the outer table past its own preferred width (np-6). Cells of tables without any table style (the document has no
-          default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15).
-          A percentage width is of the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100 % indented
+          line beside them that half (docx/local/cellborder), inline pictures with their width; a preferred cell width
+          fixes its column; where the maxima fit the columns take them (stretched in proportion to them for a wider
+          table width), where the minima fit each gets its minimum and a share of the rest in proportion to max - min;
+          where preferred widths do not fit, columns whose contents need more keep their minimum and the others give
+          up what is missing in proportion to how much they prefer over their contents' minimum (docx/local/tblpic
+          table B, tblpic2, overpref-O1 to -O4 within 0.2 pt: cells preferring 221 pt each on 451 pt beside words of
+          12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where cells prefer percentages that fit and only columns
+          whose contents need more make the table too wide, the others give up what is missing in equal shares
+          (docx/local/t65649-table: four columns of 18 to 38 % give up 1.6 pt each to one of 6.5 % whose word needs
+          6.4 pt more; poi/bug65649); a paragraph's negative left indent shrinks its column's minimum, a negative
+          right one does not (docx/local/negind); where the contents' own minima do not fit either, those shrink in
+          proportion, preferred widths aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt;
+          docx/external/powertools/WC/ WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a
+          picture wider than a third); a table narrower than its contents' minima grows to them, up to the width
+          available, before they shrink; one that prefers more than is available keeps them whole, however wide it
+          becomes, in modes 14 and 15 alike (docx/local/tblover-14, -15: pictures of 200 and 250 pt make a table
+          preferring 400 pt 450 pt wide, of 300 and 250 pt 468 pt, the width between the margins; 700 pt of pictures
+          in one preferring 500 pt; docx/external/ poi/bug59058: 553.5 pt of spacer pictures in a centered table
+          preferring 552.75 pt); cells preferring more than the table give way to its width (tblover T13 to T15);
+          columns with nothing in them, not even margins, take the table's preferred width by its grid, also more than
+          is available (docx/local/twb-*: an empty shaded cell of a table preferring 800 pt, centered across the
+          margins; 400 pt in text boxes 200 pt wide; libreoffice/extras-ooxmlexport/n780563: 1440 pt bands across a
+          page); widths before and after rows do not widen columns. Cells over several columns widen them where they
+          are too narrow together, the narrower spans first: what is missing goes to the columns nothing has given a
+          width yet (in proportion to the grid's widths), else to those without a preferred width of their own in
+          proportion to their widths, else to the span's last column (docx/local/so-1 to so-10, gw-1 to gw-16: a 300
+          pt cell over a 15 pt column and two of 250 pt together makes them 17.2 and 282.8 pt, wherever it stands;
+          over columns preferring 100 and 50 pt 100 and 200 pt; a cell over all columns of a table of percentages
+          leaves them theirs; rows that contradict each other take the widest;
+          docx/external/libreoffice/extras-ooxmlexport/ wDateValueFormat, fdo78883). Where the minima shrink, a cell
+          over several columns keeps its contents' minimum, its last column taking it from the others (tdf123705:
+          "n/m" stays on one line). Word 2013 tables start their grid at the indent and move it right by half the left
+          border; older compatibility modes put the first cell's text at the indent and let an autofit table as wide
+          as its column end its last cell's text at the column's right edge, the cell's margin and the line's middle
+          beyond it (docx/local/tw-12-*, tw-14-*, tw-15-*: margins of 0.5 and 8.5 pt reach as far past the right
+          margin, in mode 15 nothing; docx/ external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 440.7 pt between
+          432 pt margins); tables nested in cells stand as from Word 2013 on in every mode, their left line at the
+          outer cell's text, 100 % as wide as that text, tblInd from there, unlike those of text boxes
+          (docx/local/nz-11 to nz-14b; core-text/ floattable-anchor-height, core-text/fly-minimal-wrap). A nested
+          table needs of its outer column its content and the width it prefers itself, not what its cells prefer:
+          wider ones it gives up in the cell (np-1 to np-4, np-7: a nested cell of 400 pt or three of 150 pt in an
+          outer cell preferring 200 pt leave the outer columns theirs; core-layout/floattable-nested-rowspan,
+          tika/testWORD). Floating drawings that text goes around count in their column with their width and effect
+          extents, not their distances (docx/local/agr-anchor, -anchor14: shapes of 72 and 43.2 pt wrapped square
+          alone in two cells share the table in proportion to them and the margins); a paragraph without content needs
+          nothing, its indents neither (agr-text, agr-firsttext; agr-empty, agr-float: empty columns share it equally
+          in modes 15 and 14). Known deviations: a nested table of fixed layout Word narrows to its cell (np-5), ours
+          keeps its grid; for a nested table preferring more than the outer table leaves it Word widens the outer
+          table past its own preferred width (np-6). Cells of tables without any table style (the document has no
+          default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15). A
+          percentage width is of the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100 % indented
           -15.9 or 36 pt is 450.8 pt wide, ending as far before or past the right margin, in modes 14 and 15;
-          docx/external/poi/bug65649).
-          A fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
-          between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before
-          Word 2013 between the middles, a percentage of the available width and the outer cells' margins together
-          (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins of 5.4 pt 231.0 pt wide;
-          pandoc/golden/raw-blocks).
+          docx/external/poi/bug65649). A fixed table with a width of its own scales its grid to it, whatever its cells
+          say; a width in points lies between the outer lines' middles (with cell spacing too), a percentage between
+          their outer edges, before Word 2013 between the middles, a percentage of the available width and the outer
+          cells' margins together (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins of
+          5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks).
 
       - id: table.rows
         title: Row height, splitting and header rows
@@ -1839,43 +1852,46 @@ areas:
           PAGE, NUMPAGES, SECTIONPAGES, PAGEREF (the bookmark's page in its section's format; \p above, below or on
           page n), REF (the bookmark's text, its paragraph's number), STYLEREF (in a header or footer the first
           paragraph of the style on its page, \l the last, else the last before it; in the body the nearest before the
-          field; a heading level or a built-in heading's name in Word's languages; of a character style the text of
-          the first or last runs in it, docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a
-          dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
-          before; \s, as captions with chapter numbers have it, the paragraph's number from its first digit to its
-          last: powertools/HC061 "Table 1.1." of a heading numbered "1."), NOTEREF (the mark of the note in the
-          bookmark, with \f raised as that mark; to a missing bookmark
-          Word's error in the instruction's format, bold in every mode, whatever MERGEFORMAT says: docx/local/nref-*,
-          powertools/RP043, RP044-Rejected 50 → 100 % of the lines), LISTNUM (in the list of its name, an abstract
-          definition's w:name, else Word's default list 1) a) i) (1) (a) (i) 1. a. i. of that name, OutlineDefault and
-          LegalDefault too; without a name in the list of the last numbered paragraph, else the default list; at \l's
-          level, else one deeper than a LISTNUM before it in its paragraph, else the last one's level without a name
-          and the first with one; \s its number; counting with the list's paragraphs: docx/local/lnum-*, powertools/
-          RP026 ×3 50 → 100 %, HC048, libreoffice/extras-ooxmlexport/tdf89731), MACROBUTTON without a result (its
-          display text, the instruction after the macro's name, in the formats of its runs: powertools/
-          DB-HeadersFooters-Dest/Fax, Letter, libreoffice/extras-ooxmlexport/Unsupportedtextfields), SEQ (\c, , \h,
-          \s), SECTION, IF
-          (numbers or text, wildcards), SYMBOL (in its font \f and size \s; libreoffice/extras-ooxmlexport/tdf85161:
-          94 in Symbol prints ⊥; a backslash before a field's name does not hide it), DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
-          language's short date and time) and SAVEDATE (when the document was saved), all in the field's language
-          (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word has them, none in
-          most European languages, upper case in English, the Gregorian calendar in all (docx/local/datelang: 18
-          languages on a German Windows); the page-dependent ones come
-          from a layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format
-          switches (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and
-          about 60 ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved
-          results of the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas,
-          FILENAME, FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word
-          words in the language of its user interface follow the reader's culture, German as measured with
-          docx/local/fielderrors (REF and PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ
-          without a name, \p "oben", "unten", "Seite n"), else English; Word sets error texts in bold before Word
-          2013 (fielderrors-14, -12); a field without an instruction shows nothing. A field Word computes shows its
-          result also where the document saved none (no separate character; tdf154478: a PAGEREF of a missing
-          bookmark inside a table of contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of
-          their instruction's first run, not of the saved result, which they keep only with \* MERGEFORMAT
-          (docx/local/fldfmt: of a bold begin, an italic instruction, a red 16 pt saved result and a 9 pt end Word
-          prints the number italic 12 pt; docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %).
-          Known deviation: LISTNUM keeps its saved result.
+          field; a heading level, or a built-in heading by the name Word's user interface gives it, in its language:
+          docx/external/libreoffice/core-fields/suppress-non-numerical, styleref-flags, tdf86790: "Heading 1" finds no
+          "heading 1" in German Word, 35.3 → 96.5 %, 47.5 → 93.8 %, 47.3 → 96.8 %; extras-ooxmlexport/StyleRef-DE:
+          "Überschrift 1" does; a heading level no paragraph has its own error, extras-uiwriter/tdf146248; of a
+          character style the text of the first or last runs in it,
+          docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a dictionary's headers; a header measured
+          for its page's text sees that page's paragraphs of the layout before; \s, as captions with chapter numbers
+          have it, the paragraph's number from its first digit to its last: powertools/HC061 "Table 1.1." of a heading
+          numbered "1."), NOTEREF (the mark of the note in the bookmark, with \f raised as that mark; to a missing
+          bookmark Word's error in the instruction's format, bold in every mode, whatever MERGEFORMAT says:
+          docx/local/nref-*, powertools/RP043, RP044-Rejected 50 → 100 % of the lines), LISTNUM (in the list of its
+          name, an abstract definition's w:name, else Word's default list 1) a) i) (1) (a) (i) 1. a. i. of that name,
+          OutlineDefault and LegalDefault too; without a name in the list of the last numbered paragraph, else the
+          default list; at \l's level, else one deeper than a LISTNUM before it in its paragraph, else the last one's
+          level without a name and the first with one; \s its number; counting with the list's paragraphs:
+          docx/local/lnum-*, powertools/ RP026 ×3 50 → 100 %, HC048, libreoffice/extras-ooxmlexport/tdf89731),
+          MACROBUTTON without a result (its display text, the instruction after the macro's name, in the formats of
+          its runs: powertools/ DB-HeadersFooters-Dest/Fax, Letter,
+          libreoffice/extras-ooxmlexport/Unsupportedtextfields), SEQ (\c, , \h, \s), SECTION, IF (numbers or text,
+          wildcards), SYMBOL (in its font \f and size \s; libreoffice/extras-ooxmlexport/tdf85161: 94 in Symbol prints
+          ⊥; a backslash before a field's name does not hide it), DATE, TIME and PRINTDATE (when it prints, in the \@
+          picture or the language's short date and time) and SAVEDATE (when the document was saved), all in the
+          field's language (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word
+          has them, none in most European languages, upper case in English, the Gregorian calendar in all
+          (docx/local/datelang: 18 languages on a German Windows); the page-dependent ones come from a layout before.
+          PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format switches (roman, ROMAN,
+          alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60 ST_NumberFormat
+          formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved results of the others and
+          so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas, FILENAME, FILESIZE,
+          NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word words in the language
+          of its user interface follow the reader's culture, German as measured with docx/local/fielderrors (REF and
+          PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ without a name, \p "oben", "unten",
+          "Seite n"), else English; Word sets error texts in bold in every mode (fielderrors, -14, -12 in modes 15, 14
+          and 12); a field without an instruction shows nothing. A field Word computes shows its result also where the
+          document saved none (no separate character; tdf154478: a PAGEREF of a missing bookmark inside a table of
+          contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of their instruction's first
+          run, not of the saved result, which they keep only with \* MERGEFORMAT (docx/local/fldfmt: of a bold begin,
+          an italic instruction, a red 16 pt saved result and a 9 pt end Word prints the number italic 12 pt;
+          docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %). Known deviation: LISTNUM keeps its
+          saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks
@@ -2197,29 +2213,38 @@ areas:
           wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline
           further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes); a turned
           shape turns its text with it unless wps:bodyPr stands it upright or the shape is flipped (libreoffice/
-          extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards; core-exportdata-ooxml-pass/
-          sdt-in-shape-with-textbox: one turned by 180° and flipped keeps its page number upright). Vertical
-          text turns every line a quarter, the insets staying with the shape's sides: vert and eaVert run the lines
-          down, the first at the right; vert270 runs them up, the first at the left; mongolianVert and wordArtVert run
-          them down, the first at the left; eaVert, mongolianVert and the WordArt kinds set East Asian characters
-          upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6). Linked text boxes (wps:txbx id,
-          wps:linkedTxbx id and seq) show the lines of the story that do not fit the boxes before them. A shape that
-          resizes to fit (a:spAutoFit) is as high as its text and insets; a box that does not wrap (wrap none) keeps
-          its lines whole and widens to the longest (docx/local/textboxes: every case as in Word, 96.7 %), measured
-          where it begins, and aligns them in its own width (docx/external/libreoffice/extras-ooxmlexport/
-          testWordArtWithinDraingtool: WordArt right aligned in such a box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 →
-          93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %). WordArt, a
-          text box whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does
-          (pptx text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
-          whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6 or
-          20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
-          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last
-          paragraph after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b,
-          -d; powertools/WC/WC050-Table-in-Text-Box). A floating box that resizes to its text (a:spAutoFit) takes
-          its text's height where the text around it wraps and where it reaches past the page, not its saved or
-          relative height (powertools/DB-GlossaryDocuments/HeaderContent-built, FooterContent-built, DB010-Template:
-          boxes saved 69.85 and 110.55 pt high around 52.9 and 33.4 pt of text, 17.6–38.9 → 100 % of the lines;
-          openxml-sdk/Complex01). Known deviation: linked boxes of different widths keep the first box's line breaks.
+          extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards;
+          core-exportdata-ooxml-pass/ sdt-in-shape-with-textbox: one turned by 180° and flipped keeps its page number
+          upright). Vertical text turns every line a quarter, the insets staying with the shape's sides: vert and
+          eaVert run the lines down, the first at the right; vert270 runs them up, the first at the left;
+          mongolianVert and wordArtVert run them down, the first at the left; eaVert, mongolianVert and the WordArt
+          kinds set East Asian characters upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6).
+          Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the
+          boxes before them. A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that
+          does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case
+          as in Word, 96.7 %), measured where it begins, and aligns them in its own width
+          (docx/external/libreoffice/extras-ooxmlexport/ testWordArtWithinDraingtool: WordArt right aligned in such a
+          box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 → 93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %). WordArt, a text box
+          whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does (pptx
+          text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
+          whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6
+          or 20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
+          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last paragraph
+          after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b, -d;
+          powertools/WC/WC050-Table-in-Text-Box). A floating box that resizes to its text (a:spAutoFit) takes its
+          text's height where the text around it wraps and where it reaches past the page, not its saved or relative
+          height (powertools/DB-GlossaryDocuments/HeaderContent-built, FooterContent-built, DB010-Template: boxes
+          saved 69.85 and 110.55 pt high around 52.9 and 33.4 pt of text, 17.6–38.9 → 100 % of the lines;
+          openxml-sdk/Complex01). Text of automatic color in a shape's text box takes the color of the shape's style
+          (wps:style/a:fontRef), where no paragraph or run shading stands behind it; a color of the run, its styles or
+          the document defaults wins, highlighting does not count (docx/local/fref-colors, -colors14, -normal,
+          -defaults: lt1, FF0000 and accent2, of color auto too;
+          docx/external/libreoffice/extras-ooxmlimport/tdf153791-shd_overrides_fontRef 77.7 → 99.8 %). The text keeps
+          half the outline's width from the shape's edges, drawn or not: a:ln's width, else that of the theme's line
+          its style refers to (a:lnRef; docx/local/fref-inset: theme lines of 1, 1.5 and 2 pt, unfilled ones too,
+          a:ln's own 0.5 pt over the theme's; docx/external/libreoffice/core-exportdata-ooxml-pass/textframe-in-shape,
+          35.8 → 100 % with its table's widths). Known deviation: linked boxes of different widths keep the first
+          box's line breaks.
 
       - id: drawing.groups
         title: Groups

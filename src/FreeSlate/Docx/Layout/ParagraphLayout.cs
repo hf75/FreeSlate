@@ -317,6 +317,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     public (double Laid, double Area)? AlignIn { get; set; }
 
+    /// <summary>The color of automatic text with no shading behind it: a text box's from its shape's style (fontRef).</summary>
+    public FreeSlate.Drawing.RgbColor? TextColor { get; set; }
+
     /// <summary>The width of the column the text stands in, of which horizontal rules take a share (Vml.Rule).</summary>
     public Func<double>? ColumnWidth { get; set; }
 
@@ -1379,11 +1382,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// Whether pictures and boxes count with their width (a frame's width); table autofit leaves them out as Word does
     /// (docx/external/powertools/WC/WC023-Table-4-Row-Image-Before: a picture wider than its cell widens no column).
     /// </param>
-    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false)
+    /// <param name="empty">Whether a paragraph without content needs its indents; in table cells it needs nothing
+    /// (measured with docx/local/agr-text, agr-firsttext: an empty paragraph indented 144 pt from the left or by 14.4 pt
+    /// on its first line beside "x" leaves both columns as without the indents).</param>
+    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false, bool empty = true)
     {
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        if (!empty && text.Length == 0)
+            return (0, 0);
         var advances = Advances(text, charStyles, CharacterExtra);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
@@ -1651,10 +1659,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case FieldInline field when (fields?.Value(field) ?? Evaluator?.Value(field, fields?.On)) is { } value:
                 {
-                    // Word sets its error texts in bold before Word 2013 (measured with docx/local/fielderrors-14, -12),
-                    // NOTEREF's always (nref-miss-15).
+                    // Word sets its error texts in bold (measured with docx/local/fielderrors, -14, -12 in modes 15, 14
+                    // and 12; nref-miss-15).
                     var shown = format;
-                    if (FieldEvaluator.IsError(value) && (context.CompatibilityMode < 15 || field.Type == "NOTEREF") && format.Bold != true)
+                    if (FieldEvaluator.IsError(value) && format.Bold != true)
                     {
                         shown = format.Clone();
                         shown.Bold = true;
@@ -1747,17 +1755,28 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             Add(inline);
         // Text of automatic color is white on dark shading, its own, its paragraph's or its cell's (measured with
         // docx/local/autocolor: where 0.30 red + 0.59 green + 0.11 blue of the shading is below 60 of 255, C00000 and
-        // 006400 white, C80000, 006600 and 3C3C3C black; highlights change nothing).
+        // 006400 white, C80000, 006600 and 3C3C3C black; highlights change nothing); in a text box without shading it
+        // takes the color of its shape's style (measured with docx/local/fref-colors, -colors14, -normal, -defaults:
+        // fontRef lt1, red and accent2 color text without a color of its own, also of color auto, highlighted too; a
+        // color of the run, its styles or the document defaults wins, paragraph or run shading gives auto's black).
         var behind = Shading.Color(paragraph.Format.Shading) ?? Background;
         for (var k = 0; k < list.Count; k++)
         {
-            if (list[k].AutoColor && (list[k].Shading ?? behind) is { } shade && (0.30 * shade.R + 0.59 * shade.G + 0.11 * shade.B) * 255 < 60)
-                list[k] = whitened.GetOrAdd(list[k], s => s with { Color = FreeSlate.Drawing.RgbColor.White });
+            if (!list[k].AutoColor)
+                continue;
+            if ((list[k].Shading ?? behind) is { } shade)
+            {
+                if ((0.30 * shade.R + 0.59 * shade.G + 0.11 * shade.B) * 255 < 60)
+                    list[k] = whitened.GetOrAdd(list[k], s => s with { Color = FreeSlate.Drawing.RgbColor.White });
+            }
+            else if (TextColor is { } color)
+                list[k] = colored.GetOrAdd((list[k], color), s => s.Item1 with { Color = s.Item2 });
         }
         return (text.ToString(), list, labelLength);
     }
 
     readonly System.Collections.Concurrent.ConcurrentDictionary<RunStyle, RunStyle> whitened = new();
+    readonly System.Collections.Concurrent.ConcurrentDictionary<(RunStyle, FreeSlate.Drawing.RgbColor), RunStyle> colored = new();
 
     /// <summary>The shading behind the paragraphs being laid out where they have none of their own: their cell's.</summary>
     public FreeSlate.Drawing.RgbColor? Background { get; set; }
