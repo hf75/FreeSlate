@@ -3499,7 +3499,8 @@ areas:
           m:oMathPara would, whatever the paragraph's justification; text or a space beside them keeps them inline
           (docx/local/dmath-*: one and two equations, left and right aligned paragraphs, m:defJc left; libreoffice/
           extras-ooxmlexport/math-*: math-escaping, math-placeholders, ooxmlimport/tdf169843 0 → 100 % of the lines;
-          pandoc/golden/mark_math). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts,
+          pandoc/golden/mark_math). The highlight of an equation's runs lies behind all of it over its lines, inline
+          and displayed (mark_math). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts,
           the paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in
           two rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space

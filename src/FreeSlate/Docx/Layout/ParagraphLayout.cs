@@ -1551,13 +1551,22 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // and m:intraSp changes nothing).
                     var (mathLeft, mathRight) = (MathTwips("lMargin"), MathTwips("rMargin"));
                     var lines = EquationLines(math, displayWidth == double.MaxValue ? displayWidth : Math.Max(1, displayWidth - mathLeft - mathRight));
+                    // The highlight of the equation's runs lies behind all of it, as behind text (pandoc/golden/
+                    // mark_math: inline and display equations yellow over their lines).
+                    var mathStyle = styles.Style(format, WordSlot.Ascii);
+                    if (math.RunFormats.Values.FirstOrDefault(f => f.Highlight is { } h && h != "none")?.Highlight is { } highlight)
+                    {
+                        var highlighted = format.Clone();
+                        highlighted.Highlight = highlight;
+                        mathStyle = styles.Style(highlighted, WordSlot.Ascii);
+                    }
                     if (!math.Display)
                     {
                         foreach (var equation in lines)
                         {
                             equations[text.Length] = (equation, null);
                             text.Append('\uFFFC');
-                            list.Add(styles.Style(format, WordSlot.Ascii));
+                            list.Add(mathStyle);
                         }
                         break;
                     }
@@ -1587,7 +1596,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                             x = available - width;
                         equations[text.Length] = (lines[k], mathLeft + Math.Max(0, x));
                         text.Append('\uFFFC');
-                        list.Add(styles.Style(format, WordSlot.Ascii));
+                        list.Add(mathStyle);
                     }
                     breakAfterDisplay = true;
                     break;
