@@ -1474,8 +1474,14 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/chtoutline 42.0 → 69.9 %). A grid that snaps characters (w:type
           snapToChars) adds its pitch to East Asian characters only, Latin text keeping its natural width
           (docx/local/cgr-chars, cgr-both: Japanese a point wider a character in both, Latin only under linesAndChars;
-          docx/external/libreoffice/extras-ooxmlexport/tdf91261 57.8 → 85.4 %). Known deviation: Word starts snapped
-          Latin lines 5.4 pt in (cgr-chars).
+          docx/external/libreoffice/extras-ooxmlexport/tdf91261 57.8 → 85.4 %). Before Word 2013 the lines of a
+          character grid's paragraphs span as many whole pitches (the Normal style's size and w:charSpace / 4096) as
+          the column holds, aligned and justified there; Word 2013 and later use the whole column (docx/local/cgw14-*,
+          cgw12-dist: a 415.6 pt column holds 17 pitches of 24 pt, a distributed line spreads over 408 pt, right
+          aligned text ends there, centered text is centered in it, with 10.5 pt runs too; cgw-*, cgw15c-dist;
+          docx/external/libreoffice/extras-ooxmlexport/tdf107359-char-pitch 70.4 → 100 %). Known deviation: Word
+          centers each character in its grid cell where the grid snaps characters, 6 pt in for 12 pt characters in 24
+          pt cells (cgr-chars, cgw-snap, cgw14-snap); ours begin at the margin.
 
       - id: section.printing
         title: Printer and book fold settings
@@ -3842,16 +3848,21 @@ areas:
           extras-ooxmlexport/math-*: math-escaping, math-placeholders, ooxmlimport/tdf169843 0 → 100 % of the lines;
           pandoc/golden/mark_math). The highlight of an equation's runs lies behind all of it over its lines, inline
           and displayed (mark_math). Glyphs that are their character's in the math font (its math alphabets, the
-          script forms by the ssty feature) are printed as text, as Word's PDFs hold them, which the rasterizer fits to
-          the pixel grid; stretched and large variants as outlines (powertools/RP/RP013: the "=" bars one black row).
-          A line's height is the equation's ascent and descent and the spacing's extra of the text fonts,
-          the paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in
-          two rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
+          script forms by the ssty feature) are printed as text, as Word's PDFs hold them, which the rasterizer fits
+          to the pixel grid; stretched and large variants as outlines (powertools/RP/RP013: the "=" bars one black
+          row). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
+          paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in two
+          rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space
           before an opening delimiter; both draw the hyphen-minus as the minus sign and ∇ and ∂ in italic. Glyphs are
           drawn as outlines under transparent selectable text. Text inserted or moved into a math run in a tracked
-          change (w:ins, w:moveTo inside m:r) prints, deleted text not (powertools/RP/RP014-Inserted-Math-Control-Char:
-          "A = 2πr²").
+          change (w:ins, w:moveTo inside m:r) prints, deleted text not
+          (powertools/RP/RP014-Inserted-Math-Control-Char: "A = 2πr²"). An empty base (m:e) keeps the room of the
+          placeholder Word shows while editing, 0.92 em wide: inside delimiters, each part between separators too,
+          under an n-ary operator, a root or an accent, after a function's name and before scripts, which it takes as
+          a letter would (docx/local/mph-11-*, mph-24-*;
+          docx/external/libreoffice/extras-ooxmlexport/2120112713_OpenBrace 67.2 → 94.2 %, math-placeholders 57.4 →
+          94.1 %, tdf158023_export 63.4 → 78.2 %).
 
       - id: math.settings
         title: Document math settings

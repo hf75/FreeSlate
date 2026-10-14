@@ -1131,6 +1131,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         layout.CharacterExtra = properties.Element.Child("docGrid") is { } charGrid && charGrid.Attr("type") is "linesAndChars" or "snapToChars"
             ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
         layout.CharacterExtraEastAsian = properties.Element.Child("docGrid")?.Attr("type") == "snapToChars";
+        layout.GridCell = context.CompatibilityMode < 15 && properties.Element.Child("docGrid") is { } cellGrid && cellGrid.Attr("type") is "linesAndChars" or "snapToChars"
+            ? (context.Styles.Run(null, null, null).Size ?? 10) + (cellGrid.Number("charSpace") ?? 0) / 4096 : null;
         if (page == null || start != "continuous" && start != "nextColumn")
         {
             // A page a page break began that holds nothing yet is the section's first page (measured with
@@ -1319,15 +1321,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     StoryBox Story(string part, PageBox on, PageFields? fields, bool header)
     {
         // Headers and footers do not snap to the body's grid, and their text runs across the page.
-        var (pitch, extra, vertical, turn) = (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian);
-        (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian) = (null, 0, false, false);
+        var (pitch, extra, vertical, turn, cell) = (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian, layout.GridCell);
+        (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian, layout.GridCell) = (null, 0, false, false, null);
         try
         {
             return StoryOf(part, on, fields, header);
         }
         finally
         {
-            (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian) = (pitch, extra, vertical, turn);
+            (layout.LinePitch, layout.CharacterExtra, layout.Vertical, layout.TurnEastAsian, layout.GridCell) = (pitch, extra, vertical, turn, cell);
         }
     }
 

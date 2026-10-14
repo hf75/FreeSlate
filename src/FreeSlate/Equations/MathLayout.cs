@@ -280,6 +280,22 @@ public sealed class MathLayout
         return Sequence(Child(element, name), env, baseSize);
     }
 
+    /// <summary>
+    /// A construct's base (m:e); one that is there but empty keeps the room of the placeholder Office shows for it
+    /// (measured with docx/local/mph-11-*, mph-24-*: inside braces or each part between parentheses, under a sum,
+    /// a root or an accent, after a function's name and before a superscript 0.92 em wide; docx/external/
+    /// libreoffice/extras-ooxmlexport/2120112713_OpenBrace, tdf158023_export, math-placeholders).
+    /// </summary>
+    MathItem Base(XElement element, Env env, double baseSize) =>
+        element.Element(M + "e") is { } e && !HasContent(e) ? Placeholder(env, baseSize) : Sequence(Child(element, "e"), env, baseSize);
+
+    /// <summary>The room of an empty base's placeholder.</summary>
+    SpaceItem Placeholder(Env env, double baseSize)
+    {
+        var em = baseSize * Scale(env);
+        return new SpaceItem { Width = 0.92 * em, Ascent = 0.8 * em };
+    }
+
     /// <summary>Whether an argument shows anything: text in a run, or a construct (which has placeholders of its own).</summary>
     static bool HasContent(XElement argument) =>
         argument.Elements().Any(e => e.Name.Namespace == M && e.Name.LocalName switch
@@ -607,14 +623,18 @@ public sealed class MathLayout
 
     Atom Scripts(XElement element, Env env, double baseSize)
     {
-        var baseAtoms = Child(element, "e").SelectMany(e => Atoms(e, env, baseSize)).ToList();
+        // An empty base takes the scripts as a letter would (mph-24-sup: "2" 0.36 em up).
+        var empty = element.Element(M + "e") is { } scriptBase && !HasContent(scriptBase);
+        var baseAtoms = empty
+            ? [new Atom(Placeholder(env, baseSize), AtomClass.Ord)]
+            : Child(element, "e").SelectMany(e => Atoms(e, env, baseSize)).ToList();
         var nucleus = baseAtoms.Count == 1 ? baseAtoms[0].Item : Row(baseAtoms, env, baseSize);
         var cls = baseAtoms.Count == 1 ? baseAtoms[0].Class : AtomClass.Ord;
         var right = baseAtoms.Count == 1 ? baseAtoms[0].Right : AtomClass.Ord;
         var sup = element.Name.LocalName is "sSup" or "sSubSup" ? Argument(element, "sup", env.Sup, baseSize) : null;
         var sub = element.Name.LocalName is "sSub" or "sSubSup" ? Argument(element, "sub", env.Sub, baseSize) : null;
         // A scripted delimiter still opens on its left and closes on its right.
-        return new Atom(Attach(nucleus, sup, sub, env, baseSize, nucleus is GlyphItem), cls) { Right = right };
+        return new Atom(Attach(nucleus, sup, sub, env, baseSize, nucleus is GlyphItem || empty), cls) { Right = right };
     }
 
     /// <summary>
@@ -699,7 +719,7 @@ public sealed class MathLayout
     {
         var size = baseSize * Scale(env);
         var color = runStyle(rad.Element(M + "radPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
-        var radicand = Sequence(Child(rad, "e"), env.Crampd, baseSize);
+        var radicand = Base(rad, env.Crampd, baseSize);
         var display = env.Level == Level.Display;
         var gap = U(display ? table.RadicalDisplayStyleVerticalGap : table.RadicalVerticalGap, size);
         var thickness = U(table.RadicalRuleThickness, size);
@@ -924,8 +944,8 @@ public sealed class MathLayout
                 ? Math.Max(centered.Width, scriptsEnd) + Math.Max(gap, U(table.SpaceAfterScript, size))
                 : centered.Width + gap;
         }
-        var operand = Sequence(Child(nary, "e"), env, baseSize);
-        if (Child(nary, "e").Any())
+        var operand = Base(nary, env, baseSize);
+        if (nary.Element(M + "e") != null)
             result.Add(operand, operandX, 0);
         result.Italic = operand.Italic;
         return new Atom(result, AtomClass.Op) { Right = AtomClass.Ord };
@@ -970,7 +990,8 @@ public sealed class MathLayout
         var parts = new List<Atom>();
         foreach (var e in d.Elements(M + "e"))
         {
-            var partAtoms = e.Elements().SelectMany(element => Atoms(element, partEnv, baseSize)).ToList();
+            var partAtoms = HasContent(e) ? e.Elements().SelectMany(element => Atoms(element, partEnv, baseSize)).ToList()
+                : [new Atom(Placeholder(partEnv, baseSize), AtomClass.Ord)];
             var row = Row(partAtoms, partEnv, baseSize);
             parts.Add(partAtoms.Count > 0 ? new Atom(row, partAtoms[0].Class) { Right = partAtoms[^1].Right } : new Atom(row, AtomClass.Ord));
         }
@@ -1161,7 +1182,7 @@ public sealed class MathLayout
         var size = baseSize * Scale(env);
         var color = runStyle(acc.Element(M + "accPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(acc, "accPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x0302;
-        var nucleus = Sequence(Child(acc, "e"), env.Crampd, baseSize);
+        var nucleus = Base(acc, env.Crampd, baseSize);
         // Over a single character the accent keeps its size, centered on the character's top accent attachment
         // point (italic letters lean right); over more it grows to the largest size not wider than them, centered
         // (measured: Office's hat over a letter, arrow over two).
@@ -1262,8 +1283,11 @@ public sealed class MathLayout
         // A thin space between the name and its argument, also an opening delimiter (measured: Word's "lim (1 + 1/n)"
         // and "cos nπx/L" keep 3/18 em between them).
         var atoms = new List<Atom> { new(name, AtomClass.Op) { FunctionName = true } };
-        foreach (var element in Child(func, "e"))
-            atoms.AddRange(Atoms(element, env, size));
+        if (func.Element(M + "e") is { } argument && !HasContent(argument))
+            atoms.Add(new Atom(Placeholder(env, size), AtomClass.Ord));
+        else
+            foreach (var element in Child(func, "e"))
+                atoms.AddRange(Atoms(element, env, size));
         return atoms;
     }
 

@@ -314,6 +314,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public bool CharacterExtraEastAsian { get; set; }
 
     /// <summary>
+    /// Before Word 2013, the character grid's pitch (the Normal style's size and w:charSpace / 4096), whose whole
+    /// multiples the lines of paragraphs that snap to the grid span, aligned and justified there; null otherwise
+    /// (measured with docx/local/cgw14-*, cgw12-dist: a 415.6 pt column holds 17 pitches of 24 pt, a distributed line
+    /// spreads over 408 pt, right aligned text ends there, centered text is centered in it, with runs of 10.5 pt too;
+    /// cgw-*, cgw15c-dist: Word 2013 and later use the whole column; docx/external/libreoffice/extras-ooxmlexport/
+    /// tdf107359-char-pitch).
+    /// </summary>
+    public double? GridCell { get; set; }
+
+    /// <summary>
     /// Whether the paragraphs being laid out run down the page (vertical text in sections and table cells): their
     /// lines are thicker (see <see cref="Metrics"/>) and text set across them takes a horizontal line's height.
     /// </summary>
@@ -827,6 +837,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from = 0)
     {
         var format = paragraph.Format;
+        if (GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
+            width = Math.Max(cell, Math.Floor(width / cell + 1e-6) * cell);
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
