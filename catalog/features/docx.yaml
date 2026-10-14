@@ -4051,9 +4051,11 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/layout-flow-alt-alone 48.2 → 90.0 %). A group turns and flips
           as a whole about its box's middle, as shapes do
           (docx/external/libreoffice/extras-ooxmlexport/groupshape-rotation: a group turned 45°, its triangle's
-          corners within 0.1 pt, 56.2 → 93.2 %). Known deviations: a perspective shadow's matrix is left out; the text
-          wraps the stated height of a box fitted to its text; a rule in a text box takes its share of the last column
-          laid out.
+          corners within 0.1 pt, 56.2 → 93.2 %). A shape of a preset type with adjustments of its own (adj) follows
+          its type's path and formulas with them (docx/external/libreoffice/extras-ooxmlimport/vml-adjustments: a
+          triangle's apex at 17639/21600 of its width, 65.9 → 100 %). Known deviations: a perspective shadow's matrix
+          is left out; the text wraps the stated height of a box fitted to its text; a rule in a text box takes its
+          share of the last column laid out.
 
       - id: vml.ole
         title: Embedded objects and controls

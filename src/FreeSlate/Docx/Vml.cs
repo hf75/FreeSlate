@@ -912,7 +912,11 @@ public static class Vml
                 _ => null,
             },
         };
-        if (preset == null && ((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is { } path
+        // A shape of a preset type with adjustments of its own follows its type's path and formulas with them, which
+        // the preset's defaults would not (docx/external/libreoffice/extras-ooxmlimport/vml-adjustments: a triangle's
+        // apex at 17639/21600 of its width).
+        if ((preset == null || shape.Attribute("adj") != null && preset is not ("rect" or "roundRect" or "ellipse" or "line"))
+            && ((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is { } path
             && Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize"),
                 (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin"), Formulas(shape, type, width, height)) is { } custom)
             return custom;
