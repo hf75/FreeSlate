@@ -619,6 +619,19 @@ public sealed partial class ModelReader(DocumentContext context)
         // formatting and number (catalog: review.revisions; measured with docx/generated/revisions); before a table or
         // at the end it stays.
         ParagraphBlock? pending = null;
+        ReadBlocks(container, blocks, ref pending);
+        if (pending != null)
+            blocks.Add(pending);
+    }
+
+    /// <summary>
+    /// The blocks of a container, a paragraph whose mark is gone left waiting in <paramref name="pending"/>: it joins
+    /// the next paragraph also across the edges of content controls and other containers of paragraphs (docx/external/
+    /// powertools/RP/RP018-MoveFrom-MoveTo-CC: a paragraph moved away, alone in its content control, joins the one
+    /// after the control).
+    /// </summary>
+    void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending)
+    {
         foreach (var e in container.Elements())
         {
             if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
@@ -634,7 +647,9 @@ public sealed partial class ModelReader(DocumentContext context)
             // after the paragraph a move left).
             if (pending != null && e.Name.LocalName != "p" && !e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal)
                 && !e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal)
-                && e.Name.LocalName is not ("bookmarkStart" or "bookmarkEnd" or "permStart" or "permEnd" or "proofErr"))
+                && e.Name.LocalName is not ("bookmarkStart" or "bookmarkEnd" or "permStart" or "permEnd" or "proofErr")
+                && !(e.Name.LocalName is "sdt" && (e.Child("sdtPr") is not { } controlPr || Binding.Text(controlPr) == null)
+                     || e.Name.LocalName is "customXml" or "smartTag" or "ins" or "moveTo"))
             {
                 blocks.Add(pending);
                 pending = null;
@@ -688,19 +703,23 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (e.Child("sdtContent") is { } content)
                     {
                         var start = blocks.Count;
-                        ReadBlocks(content, blocks);
                         // A bound control shows its node's value in its first paragraph's formatting.
-                        if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound
-                            && blocks.Skip(start).OfType<ParagraphBlock>().FirstOrDefault() is { } first)
+                        if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound)
                         {
-                            var format = first.Content.FirstOrDefault()?.Format ?? first.MarkFormat;
-                            first.Content.Clear();
-                            first.Content.Add(new TextInline(bound, format));
+                            ReadBlocks(content, blocks);
+                            if (blocks.Skip(start).OfType<ParagraphBlock>().FirstOrDefault() is { } first)
+                            {
+                                var format = first.Content.FirstOrDefault()?.Format ?? first.MarkFormat;
+                                first.Content.Clear();
+                                first.Content.Add(new TextInline(bound, format));
+                            }
                         }
+                        else
+                            ReadBlocks(content, blocks, ref pending);
                     }
                     break;
                 case "customXml" or "smartTag" or "ins" or "moveTo":
-                    ReadBlocks(e, blocks);
+                    ReadBlocks(e, blocks, ref pending);
                     break;
                 // A bookmark between paragraphs starts at the next one and ends after the last (measured with docx/
                 // external/libreoffice/extras-ooxmlexport/tdf154478: PAGEREF finds a table of contents heading by the
@@ -720,8 +739,6 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
             }
         }
-        if (pending != null)
-            blocks.Add(pending);
     }
 
     /// <summary>

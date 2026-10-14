@@ -1939,8 +1939,10 @@ areas:
         office: >-
           Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
           from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows with
-          them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a table
-          and across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments), and keeps its own
+          them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a table,
+          across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments) and across the edges of
+          content controls not bound to data (RP018-MoveFrom-MoveTo-CC 20 → 100 % of the lines, libreoffice/
+          core-docnode/tdf150086 and extras-ooxmlexport/tdf150166 0 → 100 %), and keeps its own
           formatting and number (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the
           lines; RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 %
           of the pixels); formatting changes show the new formatting
