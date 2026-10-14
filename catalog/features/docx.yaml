@@ -1039,7 +1039,8 @@ areas:
           the paragraph mark's no): a quarter of the East Asian character's size after East Asian text, half the Latin
           font's average character width (OS/2) after Latin text (ea-autospace2: Arial, Times New Roman, Calibri,
           Courier New, Segoe UI beside four East Asian fonts within 0.1 pt), none at a line's end. Justified lines
-          with East Asian text (where that default font is one) share their free width equally among the gaps after
+          with two East Asian characters or more (where that default font is one; with one Latin lines' spaces only:
+          docx/local/cjkr-*, cjky-*, cjkz-*, cjkx-*, every character within 0.22 pt) share their free width equally among the gaps after
           and before every East Asian character and after every space, a space 0.45 of its width more and the
           automatic space at an East Asian/Latin boundary once more; distributed lines among all characters where the
           paragraph has East Asian text or the document such a font, else among their spaces (cjk-justify-lines, cjk-

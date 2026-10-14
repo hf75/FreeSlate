@@ -2631,7 +2631,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!justify || Math.Abs(free) < 1e-9)
             return;
         var lineSpaces = movable.Sum(p => p.Text.Count(c => c == ' ')) - (last.Text.Length - last.Text.TrimEnd(' ').Length);
-        if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Any(p => p.Drawing == null && p.Text.Any(EastAsian))
+        // Lines spread around East Asian text from two such characters on, with one only their spaces as Latin lines
+        // (measured with docx/local/cjkr-*: Latin words with one ideograph stretch their spaces alike, with two or four
+        // every gap beside them; cjky-*, cjkz-*: ideographs with spaces between them or Latin words spread every gap;
+        // pandoc/nested_instrText, instrText_hyperlink, empty_field).
+        if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
                 || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0)
             && Distribute(movable, free, spread == Spread.All || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0, line.Hanging > 0, doubled))
             return;
