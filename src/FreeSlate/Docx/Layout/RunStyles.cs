@@ -381,17 +381,33 @@ public sealed class RunStyles(DocumentContext context)
     }
 
     /// <summary>
-    /// The text color: the theme color where w:color names one (through w:clrSchemeMapping), else w:val; "auto" is
-    /// black (catalog: color.models; tints and shades of theme colors are taken from w:val, which Word writes with
-    /// them applied).
+    /// The text color: the theme color where w:color names one (through w:clrSchemeMapping), whatever w:val says, its
+    /// HSL lightness times w:themeShade / 255, or moved toward white by w:themeTint (L·t + 1 − t); else w:val; "auto"
+    /// is black (catalog: color.models; measured with docx/local/thc-plain: w:val FF0000 with accent1 156082 prints
+    /// 156082, accent1 shade BF 0F4761, tint 99 45B0E1, lt2 E8E8E8 shade 80 747474; docx/external/pandoc/golden/links).
     /// </summary>
     RgbColor Color(RunFormat format)
     {
+        if (format.ThemeColor is { } themeColor && ThemeColor(themeColor) is { } color)
+            return Tinted(color, format.ThemeTint, format.ThemeShade);
         if (format.Color is { Length: 6 } hex && hex != "auto")
             return RgbColor.FromHex(hex);
-        if (format.ThemeColor is { } themeColor && ThemeColor(themeColor) is { } color)
-            return color;
         return RgbColor.Black;
+    }
+
+    /// <summary>A theme color with Word's w:themeTint or w:themeShade (two hex digits) applied to its HSL lightness.</summary>
+    static RgbColor Tinted(RgbColor color, string? tint, string? shade)
+    {
+        static double? Share(string? value) =>
+            value is { Length: 2 } && int.TryParse(value, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 255.0 : null;
+        if (Share(shade) == null && Share(tint) == null)
+            return color;
+        var (h, sat, l) = color.ToHsl();
+        if (Share(shade) is { } dark)
+            l *= dark;
+        if (Share(tint) is { } light)
+            l = l * light + 1 - light;
+        return RgbColor.FromHsl(h, sat, l, color.A);
     }
 
     /// <summary>Whether a run's color is automatic: neither w:val nor a theme color gives it one.</summary>

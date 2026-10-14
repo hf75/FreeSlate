@@ -47,6 +47,20 @@ public static class PresetColors
         ["white"] = 0xFFFFFF, ["whitesmoke"] = 0xF5F5F5, ["yellow"] = 0xFFFF00, ["yellowgreen"] = 0x9ACD32,
     };
 
+    /// <summary>The color of a known name (CSS's and DrawingML's), or null.</summary>
+    public static RgbColor? Find(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return null;
+        var key = name;
+        if (key.StartsWith("dk", StringComparison.Ordinal)) key = "dark" + key[2..];
+        else if (key.StartsWith("lt", StringComparison.Ordinal)) key = "light" + key[2..];
+        else if (key.StartsWith("med", StringComparison.Ordinal)) key = "medium" + key[3..];
+        return Named.TryGetValue(key, out var rgb) || Named.TryGetValue(name, out rgb)
+            ? new RgbColor(((rgb >> 16) & 0xFF) / 255.0, ((rgb >> 8) & 0xFF) / 255.0, (rgb & 0xFF) / 255.0)
+            : null;
+    }
+
     public static RgbColor Get(string? name)
     {
         if (string.IsNullOrEmpty(name))

@@ -217,12 +217,21 @@ public static class Shading
     /// <summary>The color a shading paints, or null where it paints nothing.</summary>
     public static RgbColor? Color(XElement? shd) => shd == null ? null : Color(shd.Val(), shd.Attr("color"), shd.Attr("fill"));
 
+    /// <summary>
+    /// A color of a w:shd: six hex digits, or a color's name, which Word reads too (docx/external/powertools/
+    /// HC032-Named-Color: w:fill="orange" fills FFA500); anything else (auto, "#e6e6e6") is none.
+    /// </summary>
+    public static RgbColor? Value(string? value) =>
+        value is { Length: 6 } && int.TryParse(value, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out _)
+            ? RgbColor.FromHex(value)
+            : value is { Length: > 0 } and not "auto" ? FreeSlate.Drawing.PresetColors.Find(value) : null;
+
     /// <summary>The color a w:shd's pattern, pattern color and fill show as.</summary>
     public static RgbColor? Color(string? val, string? patternColor, string? fillColor)
     {
         var pattern = val ?? "clear";
-        var fill = fillColor is { Length: 6 } f ? RgbColor.FromHex(f) : (RgbColor?)null;
-        var color = patternColor is { Length: 6 } c ? RgbColor.FromHex(c) : RgbColor.Black;
+        var fill = Value(fillColor);
+        var color = Value(patternColor) ?? RgbColor.Black;
         if (pattern is "nil")
             return null;
         if (pattern is "clear")

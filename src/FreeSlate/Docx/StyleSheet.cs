@@ -89,6 +89,7 @@ public sealed class StyleSheet
             DefaultRun.Apply(defaults.Child("rPrDefault") is { } runDefault ? runDefault.Child("rPr") : TemplateThemeRun);
             DefaultParagraph.Apply(defaults.Child("pPrDefault") is { } paragraphDefault ? paragraphDefault.Child("pPr") : TemplateParagraph);
         }
+        var builtIn = new Dictionary<(string Type, string Name), List<string>>();
         foreach (var e in root.Elements(Wml.W + "style"))
         {
             // A style without an id has its name for one, as it is (measured with docx/local/styleid: a paragraph naming
@@ -123,7 +124,12 @@ public sealed class StyleSheet
                     Element = new XElement(Wml.W + "style", new XAttribute(Wml.W + "type", "paragraph"), new XAttribute(Wml.W + "styleId", id),
                         new XElement(Wml.W + "name", new XAttribute(Wml.W + "val", style.Name!))),
                 };
-            styles.TryAdd(id, style);
+            if (styles.TryAdd(id, style) && style.Name is { } styleName && BuiltInNames.Contains(styleName))
+            {
+                if (!builtIn.TryGetValue((style.Type, styleName.ToLowerInvariant()), out var ids))
+                    builtIn[(style.Type, styleName.ToLowerInvariant())] = ids = [];
+                ids.Add(id);
+            }
             if (style.Default && style.Type == "paragraph")
                 DefaultParagraphStyle = id;
             if (style.Default && style.Type == "character")
@@ -131,8 +137,35 @@ public sealed class StyleSheet
             if (style.Default && style.Type == "table")
                 DefaultTableStyle = id;
         }
+        // A built-in style defined twice under its name in any case is the later definition, also where a paragraph
+        // names the earlier one (measured with docx/local/dupst-*: "footnote text" of 20 pt, then "Footnote Text"
+        // empty, a paragraph of the first prints in Normal's 11 pt; custom names keep the first; docx/external/tika/
+        // testWORD_various).
+        foreach (var ids in builtIn.Values.Where(ids => ids.Count > 1))
+        {
+            var last = styles[ids[^1]];
+            foreach (var earlier in ids.Take(ids.Count - 1))
+            {
+                styles[earlier] = new StyleDefinition
+                {
+                    Id = earlier, Type = last.Type, Name = last.Name, BasedOn = last.BasedOn, Next = last.Next, Default = styles[earlier].Default,
+                    ParagraphProperties = last.ParagraphProperties, RunProperties = last.RunProperties, TableProperties = last.TableProperties,
+                    Element = last.Element,
+                };
+            }
+        }
         DefaultParagraphStyle ??= IdByName("Normal", "paragraph");
     }
+
+    /// <summary>Names of Word's built-in styles that a document may define twice (the later definition counts).</summary>
+    static readonly HashSet<string> BuiltInNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "footnote text", "endnote text", "footnote reference", "endnote reference", "annotation text", "annotation reference",
+        "header", "footer", "caption", "title", "subtitle", "balloon text", "list paragraph", "no spacing", "quote",
+        "intense quote", "page number", "line number", "body text", "plain text", "hyperlink", "followedhyperlink",
+        "heading 1", "heading 2", "heading 3", "heading 4", "heading 5", "heading 6", "heading 7", "heading 8", "heading 9",
+        "toc 1", "toc 2", "toc 3", "toc 4", "toc 5", "toc 6", "toc 7", "toc 8", "toc 9",
+    };
 
     /// <summary>Word's own Normal Table under a document's id for it: no indent, cell margins 0 and 5.4 pt.</summary>
     static StyleDefinition BuiltInNormalTable(string id, bool isDefault)
