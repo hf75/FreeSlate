@@ -1949,7 +1949,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return Directed(cell, () => Content(kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
         }
         if (!Rotated(cell))
-            return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+        {
+            var wasInCell = paragraphs.InCell;
+            paragraphs.InCell = true;
+            try
+            {
+                return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+            }
+            finally
+            {
+                paragraphs.InCell = wasInCell;
+            }
+        }
         // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
         // with docx/external/powertools/HC008-Test-03: "notes" centered in a btLr cell of a row 72 pt high keeps the
         // row 72 pt high, not 810).

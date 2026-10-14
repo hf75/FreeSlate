@@ -323,6 +323,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     public bool CharacterExtraEastAsian { get; set; }
 
+    /// <summary>Whether the paragraphs being laid out stand in a table cell.</summary>
+    public bool InCell { get; set; }
+
     /// <summary>
     /// Before Word 2013, the character grid's pitch (the Normal style's size and w:charSpace / 4096), whose whole
     /// multiples the lines of paragraphs that snap to the grid span, aligned and justified there; null otherwise
@@ -1805,6 +1808,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             else if (label.Suffix == "space")
                 AddText(" ", label.Format, number: true);
+        }
+        // In a table cell a decimal tab stop aligns a paragraph without tabs at its decimal point, as if a tab began it
+        // (docx/external/libreoffice/extras-odfexport/table_number_format_3: numbers at a stop of 1884 twips without tab
+        // characters; openxml-sdk/complex0, complex2010).
+        if (InCell && paragraph.Format.Tabs?.Any(t => t.Align == "decimal") == true && !paragraph.Content.Any(i => i is TabInline)
+            && paragraph.Content.OfType<TextInline>().FirstOrDefault(t => t.Text.Length > 0) is { } firstText)
+        {
+            text.Append('\t');
+            list.Add(styles.Style(firstText.Format, WordSlot.Ascii));
         }
         foreach (var inline in paragraph.Content)
             Add(inline);

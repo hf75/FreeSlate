@@ -570,6 +570,21 @@ public sealed partial class ModelReader(DocumentContext context)
             }
             notes[type == "normal" ? id : type] = blocks;
         }
+        // A notes part without separators has Word's own (docx/external/libreoffice/extras-ooxmlexport/tdf152203: notes
+        // of type normal alone, a 144 pt line above them on every page).
+        foreach (var kind in new[] { "separator", "continuationSeparator" })
+        {
+            if (notes.ContainsKey(kind) || !notes.Keys.Any(k => k is not ("separator" or "continuationSeparator")))
+                continue;
+            var blocks = new List<Block>();
+            ReadBlocks(new XElement(Wml.W + (endnotes ? "endnote" : "footnote"), new XElement(Wml.W + "p", new XElement(Wml.W + "r", new XElement(Wml.W + kind)))), blocks);
+            foreach (var paragraph in blocks.OfType<ParagraphBlock>())
+            {
+                var f = paragraph.Format;
+                (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
+            }
+            notes[kind] = blocks;
+        }
         noteMark = null;
         (counter, currentPart) = (savedCounter, savedPart);
         return notes;

@@ -1053,7 +1053,9 @@ areas:
           text to its place; at its place or before it nothing breaks (docx/local/ptb-la, ptb-li, ptb-cp: left at the
           margin or the indent after "A", centered after text past the middle; ptb-l0, ptb-l0i, ptb-lr, ptb-anchor: at
           the line's start; docx/external/libreoffice/writerfilter-dmapper/ptab: after a space, the page number a line
-          lower, 33.2 → 92.3 %).
+          lower, 33.2 → 92.3 %). In a table cell a decimal tab stop aligns a paragraph without tabs at its decimal
+          point, as if a tab began it (docx/external/libreoffice/extras-odfexport/table_number_format_3: numbers at a
+          stop of 1884 twips without tab characters, 75.5 → 98.4 %).
 
       - id: paragraph.frames
         title: Text frames and drop caps
@@ -1620,8 +1622,11 @@ areas:
           A note's last paragraph keeps its HTML auto space after below it, the separator's too (docx/local/fau-both,
           fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt below the separator's
           paragraph; fau-note: the separator's own paragraph without it;
-          docx/external/libreoffice/extras-ooxmlexport/tdf104354_firstParaInSection 69.1 → 89.0 %). Known deviation:
-          auto space before a note (fau-before) is left out here.
+          docx/external/libreoffice/extras-ooxmlexport/tdf104354_firstParaInSection 69.1 → 89.0 %). A notes part
+          without separators has Word's own, the 144 pt line and the continuation's
+          (docx/external/libreoffice/extras-ooxmlexport/tdf152203: notes of type normal alone, the line above them on
+          every page, 75.4 → 96.4 %; tdf152506 89.1 → 96.0 %). Known deviation: auto space before a note (fau-before)
+          is left out here.
 
       - id: note.endnotes
         title: Endnotes
