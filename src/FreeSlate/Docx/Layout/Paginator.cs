@@ -341,13 +341,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             _ => (textTop, 0.0),
         };
         var odd = page!.DisplayNumber % 2 == 1;
+        // Older modes put the first cell's text at the left edge and the last cell's at the right one, the table out
+        // by the inset (measured with docx/local/ftx-14-*, -15-*: left 6.0 pt left of the margin, right 6.0 pt past it
+        // with cell margins of 115 twips, 5.64 with 108, centered alike; poi/Bug54771b).
+        var (inset, rightInset) = context.CompatibilityMode < 15 ? box.TextInsets : (0, 0);
         var x = position.Attr("tblpXSpec") switch
         {
-            "left" => frameLeft,
-            "right" => frameLeft + frameWidth - tableWidth,
+            "left" => frameLeft - inset,
+            "right" => frameLeft + frameWidth - tableWidth + rightInset,
             "center" => frameLeft + (frameWidth - tableWidth) / 2,
-            "inside" => odd ? frameLeft : frameLeft + frameWidth - tableWidth,
-            "outside" => odd ? frameLeft + frameWidth - tableWidth : frameLeft,
+            "inside" => odd ? frameLeft - inset : frameLeft + frameWidth - tableWidth + rightInset,
+            "outside" => odd ? frameLeft + frameWidth - tableWidth + rightInset : frameLeft - inset,
             // Older modes put the first cell's text at the position, as they do at an indent (measured with
             // docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in modes 14
             // and 12, extras-ooxmlexport/fdo68607: the text at the margin, the table 5.4 pt left of it).

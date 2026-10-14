@@ -1649,7 +1649,9 @@ areas:
           Tables with w:tblpPr take no room in the text: their outer left edge stands w:tblpX from their column, the
           margin or the page (or aligns by w:tblpXSpec; before Word 2013 their first cell's text stands there, as at an
           indent: docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in modes
-          14 and 12, extras-ooxmlexport/fdo68607), their top w:tblpY below the next paragraph's top above its
+          14 and 12, extras-ooxmlexport/fdo68607; aligned left the first cell's text at the edge, right the last
+          cell's, half the outer line and the cell margin out, centered alike: docx/local/ftx-14-*, -15-*, poi/
+          Bug54771b, libreoffice/extras-ooxmlexport/tdf97090), their top w:tblpY below the next paragraph's top above its
           space before (docx/local/floatanchor-*), the margin or the page (or aligns by w:tblpYSpec), the margin
           without w:vertAnchor; one without a vertical position (tblpY 0, no tblpYSpec or inline) stands at its
           paragraph before Word 2013 whatever its anchor, at its anchor's top from then on (docx/local/ta-*, tb-*;

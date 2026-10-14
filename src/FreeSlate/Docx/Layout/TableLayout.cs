@@ -454,6 +454,12 @@ public sealed class TableBox
     public double Inset { get; init; }
 
     /// <summary>
+    /// How far the first cell's text and the last cell's stand inside the table's left and right edges: its outer
+    /// lines' halves and the cells' margins (older modes place floating tables by them, Paginator.PlaceFloatingTable).
+    /// </summary>
+    public (double Left, double Right) TextInsets { get; init; }
+
+    /// <summary>
     /// The room above the first row of a part of a table with cell spacing that goes on on another page: its frame's
     /// top line and the cell spacing (measured with docx/local/sb-*: 1.5 pt lines and 3 pt spacing 4.5 pt, no lines
     /// 2.9 pt, 0.75 pt lines and spacing 1.5 pt; docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459).
@@ -710,7 +716,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             // docx/local/c2-tblpos in modes 11 to 14).
             _ => indent - (!Legacy ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift)),
         };
-        var box = new TableBox { Left = origin0, Width = tableWidth, Inset = justification is "center" or "right" or "end" ? 0 : indent - origin0 };
+        var lastMargin = rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[^1], format).Right : format.Styled ? 0 : DefaultMargin;
+        var box = new TableBox
+        {
+            Left = origin0, Width = tableWidth, Inset = justification is "center" or "right" or "end" ? 0 : indent - origin0,
+            TextInsets = (shift + Math.Max(firstMargin, shift), rightBorder / 2 + Math.Max(lastMargin, rightBorder / 2)),
+        };
         double X(double position) => origin0 + (rtl ? tableWidth - position : position);
         (double From, double Width) Range(double from, double to) => rtl ? (origin0 + tableWidth - to, to - from) : (origin0 + from, to - from);
 
