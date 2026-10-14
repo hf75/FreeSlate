@@ -9,6 +9,12 @@ public sealed record FontFace(string Family, bool Bold, bool Italic, string Path
     /// <summary>The family's names in other languages (theme fonts are often given as 游ゴシック, 맑은 고딕 …).</summary>
     public IReadOnlyList<string> Aliases { get; init; } = [];
 
+    /// <summary>The face's full and PostScript names (name IDs 4 and 6), by which browsers find it as a local font.</summary>
+    public IReadOnlyList<string> FullNames { get; init; } = [];
+
+    /// <summary>Whether the font names a typographic family of its own (name ID 16), which browsers group it by.</summary>
+    public bool Typographic { get; init; }
+
     /// <summary>
     /// The font of a face that exists in memory only (a font embedded in the presentation, catalog: text.embeddedFonts),
     /// decoded when first needed; null for font files and for embedded fonts that are damaged.
@@ -57,6 +63,21 @@ public sealed class FontLocator
     /// <summary>All known faces of a family: installed ones first, then embedded ones, then cloud fonts.</summary>
     public IEnumerable<FontFace> Faces(string family) =>
         faces.Value.Where(f => f.Matches(family)).OrderBy(f => f.Embedded != null ? embeddedFirst ? -1 : 1 : f.System ? 0 : 2);
+
+    /// <summary>
+    /// Installed faces of a family that browsers do not find by its name, which the HTML names by their own (catalog:
+    /// engine.fonts): fonts without a typographic family whose family name holds a weight or width, which Windows
+    /// groups by the rest of the name (measured with Chrome: "Franklin Gothic Medium" drawn in Franklin Gothic Demi,
+    /// "Franklin Gothic Demi", "Eras Medium ITC", "OCR A Extended", "Arial Rounded MT Bold" in Times New Roman,
+    /// "Gill Sans MT Condensed" italic in Gill Sans MT Italic; each its own face by local()).
+    /// </summary>
+    public IEnumerable<FontFace> Pinned(string family) =>
+        StyleWord.IsMatch(family) && faces.Value.Where(f => f.System && f.Matches(family)).ToList() is { Count: > 0 } found
+            && found.All(f => !f.Typographic && f.FullNames.Count > 0) ? found : [];
+
+    static readonly System.Text.RegularExpressions.Regex StyleWord = new(
+        @"\b(Thin|Hairline|(Extra|Ultra|Semi|Demi)?Light|Book|Medium|Demi|(Demi|Semi|Extra|Ultra)?Bold|Black|Heavy|Cond|Condensed|Narrow|Extended|Expanded|Compressed)\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>
     /// Faces of a family the HTML has to carry: the presentation's embedded fonts, else fonts that are not installed but
@@ -161,7 +182,11 @@ static class OpenTypeInfo
             bold = (selection & 0x20) != 0;
         }
         var aliases = NameStrings(data, name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
-        return new FontFace(family, bold, italic, path, system, index) { Aliases = aliases };
+        var full = new[] { NameString(data, name, 4), NameString(data, name, 6) }.OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
+        return new FontFace(family, bold, italic, path, system, index)
+        {
+            Aliases = aliases, FullNames = full, Typographic = !string.IsNullOrEmpty(NameString(data, name, 16)),
+        };
     }
 
     /// <summary>All values of a name record, in every language.</summary>

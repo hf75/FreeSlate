@@ -3749,7 +3749,9 @@ areas:
           thd2-b; docx/external/poi/rtl 62.9 → 91.9 %).
           Lines grow with the fallback's metrics as in Word; spaces and format characters stay in the run's font,
           marks with their base (docx/local/fallback-arial 96.1 %, fallback-calibri 95.7 %, fallback-times 97 %, every
-          line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat.
+          line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat. Installed fonts
+          the browser does not find by their family name are named by their faces as in pptx (Franklin Gothic
+          Medium, the theme font of powertools/HC006 and HW010-Symbols01, was drawn in Franklin Gothic Demi).
 
       - id: engine.fidelity
         title: Fidelity measurement

@@ -2698,8 +2698,12 @@ areas:
           pt smooth at 96 dpi). Large text is emitted as glyph outlines, so the viewer needs no fonts for it;
           small text, color fonts, synthesized bold or italic and glyphs missing from the font are left to the
           browser, whose hinted rendering matches PowerPoint's small text closely (Arial exactly); fonts the
-          browser cannot find by name are embedded for these runs. Verified with generated/text-basic, text-
-          eastasian, text-more and probe/font.
+          browser cannot find by name are embedded for these runs. Installed fonts without a typographic family
+          whose family name holds a weight or width are named by their faces' full names (local()): Windows groups
+          them by the rest of the name, so Chrome drew "Franklin Gothic Medium" in Franklin Gothic Demi and found
+          "Franklin Gothic Demi", "Eras Medium ITC" or "OCR A Extended" not at all (Times New Roman); all 30 such
+          families on this machine are their own faces so. Verified with generated/text-basic, text-eastasian,
+          text-more and probe/font.
 
       - id: engine.fidelity
         title: Fidelity measurement

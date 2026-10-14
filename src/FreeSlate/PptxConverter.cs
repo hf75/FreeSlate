@@ -189,6 +189,12 @@ public static class PptxConverter
         var css = new StringBuilder();
         foreach (var family in families.Order(StringComparer.OrdinalIgnoreCase))
         {
+            foreach (var face in fonts.Pinned(family).DistinctBy(f => (f.Bold, f.Italic)))
+            {
+                var names = string.Join(",", face.FullNames.Select(n => $"local('{n.Replace("'", "\\'")}')"));
+                css.Append($"@font-face{{font-family:'{family.Replace("'", "\\'")}';src:{names};" +
+                           $"font-weight:{(face.Bold ? 700 : 400)};font-style:{(face.Italic ? "italic" : "normal")}}}\n");
+            }
             foreach (var face in fonts.Embeddable(family).DistinctBy(f => (f.Bold, f.Italic)))
             {
                 var bytes = face.Embedded != null ? face.Embedded.Value : File.ReadAllBytes(face.Path);
