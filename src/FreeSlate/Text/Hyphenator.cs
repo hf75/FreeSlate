@@ -63,9 +63,11 @@ public sealed class Hyphenator
         if (string.IsNullOrEmpty(language))
             return null;
         var tag = language.ToLowerInvariant();
+        // Word breaks British English as American (measured with docx/external/powertools/HC048-Excerpt: en-GB
+        // "arbi-trators", "applica-ble", "rea-sonable", "fi-nancial", where the British patterns give arbit-rators,
+        // applic-able, reas-onable and no break in financial).
         var resource = tag.StartsWith("de", StringComparison.Ordinal) ? "hyph-de.gz"
-            : tag is "en-us" or "en" ? "hyph-en-us.gz"
-            : tag.StartsWith("en", StringComparison.Ordinal) ? "hyph-en-gb.gz"
+            : tag.StartsWith("en", StringComparison.Ordinal) ? "hyph-en-us.gz"
             : null;
         if (resource == null)
             return null;
