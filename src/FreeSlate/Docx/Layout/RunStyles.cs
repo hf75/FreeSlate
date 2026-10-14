@@ -395,7 +395,11 @@ public sealed class RunStyles(DocumentContext context)
         return RgbColor.Black;
     }
 
-    /// <summary>A theme color with Word's w:themeTint or w:themeShade (two hex digits) applied to its HSL lightness.</summary>
+    /// <summary>
+    /// A theme color with Word's w:themeTint or w:themeShade (two hex digits) applied to its HSL lightness, its
+    /// channels cut to whole steps of 255 (measured: docx/local/thc-plain, accent1 156082 shaded BF prints 0F4761 and
+    /// tinted 99 45B0E1, not 104862 and 46B0E1; powertools/HC001: text2 tinted E6 404040).
+    /// </summary>
     static RgbColor Tinted(RgbColor color, string? tint, string? shade)
     {
         static double? Share(string? value) =>
@@ -407,7 +411,9 @@ public sealed class RunStyles(DocumentContext context)
             l *= dark;
         if (Share(tint) is { } light)
             l = l * light + 1 - light;
-        return RgbColor.FromHsl(h, sat, l, color.A);
+        var c = RgbColor.FromHsl(h, sat, l, color.A);
+        static double Cut(double v) => Math.Floor(Math.Clamp(v, 0, 1) * 255 + 1e-6) / 255;
+        return new RgbColor(Cut(c.R), Cut(c.G), Cut(c.B), c.A);
     }
 
     /// <summary>Whether a run's color is automatic: neither w:val nor a theme color gives it one.</summary>
