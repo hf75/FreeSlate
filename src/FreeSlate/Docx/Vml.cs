@@ -502,6 +502,32 @@ public static class Vml
 
     static string Side(XElement? wrap) => (string?)wrap?.Attribute("side") switch { "left" => "left", "right" => "right", "largest" => "largest", _ => "bothSides" };
 
+    /// <summary>
+    /// A picture's own color adjustments (v:imagedata grayscale, bilevel, gain and blacklevel) as DrawingML blip
+    /// effects: gray, black and white, and luminance with a contrast of gain − 1 (1 − 1/gain above 1) and a
+    /// brightness of twice the black level (measured: docx/external/libreoffice/watermark, a logo washed out with
+    /// gain 19661f and blacklevel 22938f prints black as 205 and 89 as 232, contrast −70 %, brightness 70 %).
+    /// </summary>
+    static IEnumerable<XElement> PictureColor(XElement image)
+    {
+        static double? Number(string? value) =>
+            value is not { Length: > 0 } ? null
+            : value.EndsWith('f') && double.TryParse(value[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var fixedPoint) ? fixedPoint / 65536
+            : double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var plain) ? plain : null;
+        if ((string?)image.Attribute("grayscale") is "t" or "true")
+            yield return new XElement(Ns.A + "grayscl");
+        if ((string?)image.Attribute("bilevel") is "t" or "true")
+            yield return new XElement(Ns.A + "biLevel", new XAttribute("thresh", 50000));
+        var gain = Number((string?)image.Attribute("gain")) ?? 1;
+        var black = Number((string?)image.Attribute("blacklevel")) ?? 0;
+        if (Math.Abs(gain - 1) < 1e-6 && Math.Abs(black) < 1e-6)
+            yield break;
+        var contrast = gain <= 1 ? gain - 1 : 1 - 1 / gain;
+        yield return new XElement(Ns.A + "lum",
+            new XAttribute("bright", (long)Math.Round(Math.Clamp(2 * black, -1, 1) * 100000)),
+            new XAttribute("contrast", (long)Math.Round(Math.Clamp(contrast, -1, 1) * 100000)));
+    }
+
     /// <summary>The DrawingML content of a shape: a picture for pictures alone, else a shape.</summary>
     static XElement? Content(XElement shape, XElement? type, double width, double height)
     {
@@ -516,7 +542,7 @@ public static class Vml
         if (image != null && ((string?)image.Attribute(R + "id") ?? (string?)image.Attribute(O + "relid")) is { } relationship)
         {
             // A picture: a frame (t75) or any shape whose image fills it.
-            var blipFill = new XElement(Drawings.Pic + "blipFill", new XElement(Ns.A + "blip", new XAttribute(R + "embed", relationship)));
+            var blipFill = new XElement(Drawings.Pic + "blipFill", new XElement(Ns.A + "blip", new XAttribute(R + "embed", relationship), PictureColor(image)));
             var crop = Crop(image);
             if (crop != null)
                 blipFill.Add(crop);

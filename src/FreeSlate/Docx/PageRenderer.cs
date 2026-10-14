@@ -194,8 +194,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             html += Bevel(drawing);
         if (blocks == null)
             return html;
+        // A turned shape turns its text with it, unless the text stands upright or the shape is flipped (docx/external/
+        // libreoffice/extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards;
+        // core-exportdata-ooxml-pass/sdt-in-shape-with-textbox: one turned by 180° and flipped, which mirrors it top
+        // to bottom, keeps its page number upright).
+        var shapeXfrm = shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm");
+        var turn = (long?)shapeXfrm?.Attribute("rot") is { } rot && (string?)drawing.Body?.Attribute("upright") is not ("1" or "true")
+                   && (string?)shapeXfrm!.Attribute("flipH") is not ("1" or "true") && (string?)shapeXfrm.Attribute("flipV") is not ("1" or "true")
+            ? rot / 60000.0 : 0;
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
-            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, 0, page);
+            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         foreach (var (child, childText) in drawing.ChildText ?? [])
         {

@@ -2222,12 +2222,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
                 return origin + size * Emu(percent) * 12700 / 100000;
             var whole = before + extent + after;
+            // Inside is the left or the top of the area on odd pages, the right or the bottom on even ones, whichever
+            // margin the area is (measured with docx/local/vio-*: relative to the top and the bottom margin, the
+            // margin and the page; libreoffice/core-objectpositioning/inside-outside-vert-align).
             return before + position?.Element(Docx.Drawings.Wp + "align")?.Value switch
             {
                 "right" or "bottom" => origin + size - whole,
                 "center" => origin + (size - whole) / 2,
-                "inside" => odd == horizontal ? origin : origin + size - whole,
-                "outside" => odd == horizontal ? origin + size - whole : origin,
+                "inside" => odd ? origin : origin + size - whole,
+                "outside" => odd ? origin + size - whole : origin,
                 _ => origin,
             };
         }

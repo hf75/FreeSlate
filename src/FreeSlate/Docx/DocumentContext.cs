@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 using FreeSlate.Drawing;
 using FreeSlate.Fonts;
@@ -47,12 +48,13 @@ public sealed class DocumentContext : IDisposable
                    ?? throw new InvalidDataException(package.Exists("/mimetype")
                        ? "The package is an OpenDocument file (it has a mimetype part), not an Office Open XML document."
                        : "No main document part (officeDocument relationship) in the package.");
+        // The settings and the theme first: the parts loaded after them take their shading's theme colors (Load).
+        Settings = Related("settings")?.Root;
+        Theme = Related("theme") is { } theme ? Theme.Load(theme) : Theme.WordDefault();
         Document = Load(MainPart);
         JoinBodies(Document);
-        Settings = Related("settings")?.Root;
         // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
         Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
-        Theme = Related("theme") is { } theme ? Theme.Load(theme) : Theme.WordDefault();
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         DefaultTabStop = Settings.Child("defaultTabStop").Twips("val") ?? 36;
@@ -236,8 +238,75 @@ public sealed class DocumentContext : IDisposable
             return document;
         document = Package.ReadXml(part);
         MarkupCompatibility.Process(document);
+        if (Theme != null)
+            ThemeShading(document);
         documents[part] = document;
         return document;
+    }
+
+    /// <summary>
+    /// Shading that names a theme color (w:shd's w:themeFill, w:themeColor) takes it, tinted or shaded, whatever
+    /// w:fill and w:color say, as text colors do (catalog: color.models; docx/external/libreoffice/
+    /// extras-ooxmlexport/n780853: cells of accent2 and accent1 print C0504D and 4F81BD where w:fill says DD8047 and
+    /// 94B6D2 of another theme).
+    /// </summary>
+    void ThemeShading(XDocument document)
+    {
+        var w = Wml.W;
+        foreach (var shd in document.Descendants(w + "shd"))
+        {
+            if ((string?)shd.Attribute(w + "themeFill") is { } fill && SchemeColor(fill) is { } fillColor)
+                shd.SetAttributeValue(w + "fill", Hex(Tinted(fillColor, (string?)shd.Attribute(w + "themeFillTint"), (string?)shd.Attribute(w + "themeFillShade"))));
+            if ((string?)shd.Attribute(w + "themeColor") is { } pattern && SchemeColor(pattern) is { } patternColor)
+                shd.SetAttributeValue(w + "color", Hex(Tinted(patternColor, (string?)shd.Attribute(w + "themeTint"), (string?)shd.Attribute(w + "themeShade"))));
+        }
+        static string Hex(RgbColor color) => color.ToHex().TrimStart('#').ToUpperInvariant();
+    }
+
+    /// <summary>A theme color by Word's name of it, through the settings' color scheme mapping (w:clrSchemeMapping), or null.</summary>
+    public RgbColor? SchemeColor(string name)
+    {
+        var mapping = Settings.Child("clrSchemeMapping");
+        var scheme = name switch
+        {
+            "text1" or "dark1" => mapping.Attr("t1") ?? "dark1",
+            "background1" or "light1" => mapping.Attr("bg1") ?? "light1",
+            "text2" or "dark2" => mapping.Attr("t2") ?? "dark2",
+            "background2" or "light2" => mapping.Attr("bg2") ?? "light2",
+            _ => name,
+        };
+        var key = scheme switch
+        {
+            "dark1" => "dk1",
+            "light1" => "lt1",
+            "dark2" => "dk2",
+            "light2" => "lt2",
+            "hyperlink" => "hlink",
+            "followedHyperlink" => "folHlink",
+            _ => scheme,
+        };
+        return Theme.Colors.TryGetValue(key, out var color) ? color : null;
+    }
+
+    /// <summary>
+    /// A theme color with Word's w:themeTint or w:themeShade (two hex digits) applied to its HSL lightness, its
+    /// channels cut to whole steps of 255 (measured: docx/local/thc-plain, accent1 156082 shaded BF prints 0F4761 and
+    /// tinted 99 45B0E1, not 104862 and 46B0E1; powertools/HC001: text2 tinted E6 404040).
+    /// </summary>
+    public static RgbColor Tinted(RgbColor color, string? tint, string? shade)
+    {
+        static double? Share(string? value) =>
+            value is { Length: 2 } && int.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var v) ? v / 255.0 : null;
+        if (Share(shade) == null && Share(tint) == null)
+            return color;
+        var (h, sat, l) = color.ToHsl();
+        if (Share(shade) is { } dark)
+            l *= dark;
+        if (Share(tint) is { } light)
+            l = l * light + 1 - light;
+        var c = RgbColor.FromHsl(h, sat, l, color.A);
+        static double Cut(double v) => Math.Floor(Math.Clamp(v, 0, 1) * 255 + 1e-6) / 255;
+        return new RgbColor(Cut(c.R), Cut(c.G), Cut(c.B), c.A);
     }
 
     /// <summary>

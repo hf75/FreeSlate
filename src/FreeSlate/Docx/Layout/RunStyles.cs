@@ -395,53 +395,11 @@ public sealed class RunStyles(DocumentContext context)
         return RgbColor.Black;
     }
 
-    /// <summary>
-    /// A theme color with Word's w:themeTint or w:themeShade (two hex digits) applied to its HSL lightness, its
-    /// channels cut to whole steps of 255 (measured: docx/local/thc-plain, accent1 156082 shaded BF prints 0F4761 and
-    /// tinted 99 45B0E1, not 104862 and 46B0E1; powertools/HC001: text2 tinted E6 404040).
-    /// </summary>
-    static RgbColor Tinted(RgbColor color, string? tint, string? shade)
-    {
-        static double? Share(string? value) =>
-            value is { Length: 2 } && int.TryParse(value, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 255.0 : null;
-        if (Share(shade) == null && Share(tint) == null)
-            return color;
-        var (h, sat, l) = color.ToHsl();
-        if (Share(shade) is { } dark)
-            l *= dark;
-        if (Share(tint) is { } light)
-            l = l * light + 1 - light;
-        var c = RgbColor.FromHsl(h, sat, l, color.A);
-        static double Cut(double v) => Math.Floor(Math.Clamp(v, 0, 1) * 255 + 1e-6) / 255;
-        return new RgbColor(Cut(c.R), Cut(c.G), Cut(c.B), c.A);
-    }
+    static RgbColor Tinted(RgbColor color, string? tint, string? shade) => DocumentContext.Tinted(color, tint, shade);
 
     /// <summary>Whether a run's color is automatic: neither w:val nor a theme color gives it one.</summary>
     bool Automatic(RunFormat format) =>
         !(format.Color is { Length: 6 } hex && hex != "auto") && !(format.ThemeColor is { } themeColor && ThemeColor(themeColor) is not null);
 
-    RgbColor? ThemeColor(string name)
-    {
-        // Word's theme color names map to scheme colors through the settings' color scheme mapping.
-        var mapping = context.Settings.Child("clrSchemeMapping");
-        var scheme = name switch
-        {
-            "text1" or "dark1" => mapping.Attr("t1") ?? "dark1",
-            "background1" or "light1" => mapping.Attr("bg1") ?? "light1",
-            "text2" or "dark2" => mapping.Attr("t2") ?? "dark2",
-            "background2" or "light2" => mapping.Attr("bg2") ?? "light2",
-            _ => name,
-        };
-        var key = scheme switch
-        {
-            "dark1" => "dk1",
-            "light1" => "lt1",
-            "dark2" => "dk2",
-            "light2" => "lt2",
-            "hyperlink" => "hlink",
-            "followedHyperlink" => "folHlink",
-            _ => scheme,
-        };
-        return context.Theme.Colors.TryGetValue(key, out var color) ? color : null;
-    }
+    RgbColor? ThemeColor(string name) => context.SchemeColor(name);
 }

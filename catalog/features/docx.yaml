@@ -2072,7 +2072,11 @@ areas:
           wp14:sizeRelV) apply to shapes as they are and to pictures only both together, scaled evenly to fit
           (docx/local/size-rel-shape, size-rel), each less the effect extents across it (docx/local/relsz-*: 40 % of a
           451.3 pt margin with 1.8 pt of effect extent on the right is 178.7 pt wide, with 1 pt all round 178.5; a
-          picture fits into what is left). Alignment places the drawing with its effect extent (wp:effectExtent),
+          picture fits into what is left). Inside is the left or the top of the area on odd pages and the right or the
+          bottom on even ones, outside the other side, whichever margin the area is (docx/local/vio-*: relative to the
+          top and the bottom margin, the margin and the page; libreoffice/core-objectpositioning/inside-outside-vert-
+          align 4.6 → 100 %; known deviation: relative to the page Word keeps 18 pt from the page's edge, ours none).
+          Alignment places the drawing with its effect extent (wp:effectExtent),
           with or without an effect to fill it, each side where its alignment meets it, across the page and the
           margins (docx/local/sa-d1, sa-d2, sb-*, sc-*: 80 pt left and 36 pt above take a shape centered at the page's
           top 40 pt right and 36 pt down), relatively sized ones too (relsz-3, -4, -5, -7); an offset places the
@@ -2119,7 +2123,10 @@ areas:
         office: >-
           A shape's text box content is laid out like body text in the shape's rectangle less the insets of
           wps:bodyPr, measured from the geometry's text rectangle and from the outline's inner edge (half the outline
-          further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes). Vertical
+          further in: 3 pt with a 6 pt outline), at its top, middle or bottom (docx/generated/textboxes); a turned
+          shape turns its text with it unless wps:bodyPr stands it upright or the shape is flipped (libreoffice/
+          extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards; core-exportdata-ooxml-pass/
+          sdt-in-shape-with-textbox: one turned by 180° and flipped keeps its page number upright). Vertical
           text turns every line a quarter, the insets staying with the shape's sides: vert and eaVert run the lines
           down, the first at the right; vert270 runs them up, the first at the left; mongolianVert and wordArtVert run
           them down, the first at the left; eaVert, mongolianVert and the WordArt kinds set East Asian characters
@@ -2295,7 +2302,10 @@ areas:
           pandoc/golden/links: Hyperlink 4F81BD with
           accent1 156082 prints 156082). A w:color replaces the one of the level below whole, its theme tint and
           shade too (powertools/HW010-SpanWithSingleSpace: a style's accent1 shaded 7F over defaults of text1 tinted
-          A6 prints 234824, 51.8 → 99.1 %). Shading colors may be named (w:fill="orange" fills FFA500), anything else
+          A6 prints 234824, 51.8 → 99.1 %). Shading's theme colors (w:shd's w:themeFill with w:themeFillTint and
+          w:themeFillShade, w:themeColor with w:themeTint and w:themeShade) win over w:fill and w:color as text's do
+          (libreoffice/extras-ooxmlexport/n780853: cells of accent2 and accent1 print C0504D and 4F81BD where w:fill
+          says DD8047 and 94B6D2). Shading colors may be named (w:fill="orange" fills FFA500), anything else
           not six hex digits is none (powertools/HC032-Named-Color).
 
       - id: color.transforms
@@ -3592,7 +3602,9 @@ areas:
           shapes by o:spt, paths as custom geometries, groups (v:group: the children in its coordorigin and coordsize,
           nested, either's second number 0 or 1000 where left out: libreoffice/extras-ooxmlexport/vml-text-vertical-
           adjust, extras-ooxmlimport/groupshape-sdt, coordorigin "9201"; a shape's path counts from its own
-          coordorigin: dml-groupshape-polygon 0 → 100 %, extras-ooxmlimport/ink 5.5 → 99.6 %), pictures (v:imagedata with crop), text boxes
+          coordorigin: dml-groupshape-polygon 0 → 100 %, extras-ooxmlimport/ink 5.5 → 99.6 %), pictures (v:imagedata
+          with crop, grayscale, bilevel, and gain and blacklevel as a luminance of contrast gain − 1 and brightness twice
+          the black level: libreoffice/watermark, extras-ooxmlexport/pictureWatermark, washed out 5.5 → 100 %), text boxes
           (v:textbox with its insets, its text turned down by layout-flow vertical, up with mso-layout-flow-alt
           bottom-to-top, upright East Asian by vertical-ideographic), WordArt (v:textpath),
           placed by the style attribute (position, margins, mso-position-*, rotation, flip, z-index) and w10:wrap
