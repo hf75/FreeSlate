@@ -1059,7 +1059,13 @@ areas:
           its paragraph's top, 37.3 → 100 %; tdf157572_noVAlignAsText 58.2 → 100 %). A frame whose first paragraph
           breaks the page before it, by its own w:pageBreakBefore or its style's, stands on the next page unless the
           page is still empty (docx/external/libreoffice/writerfilter-dmapper/framepr-pagebreak-style: a framed
-          Heading 1 on page 2, 45.3 → 96.7 %).
+          Heading 1 on page 2, 45.3 → 96.7 %). A frame of a given height whose paragraph runs its text down
+          (w:textDirection tbRl) or up (btLr) lays it out along that height, turned a quarter: its first line at the
+          right running down from the top, or at the left running up from the bottom
+          (docx/external/libreoffice/writerfilter-dmapper/frame-direction: frames 44.35 pt wide and 820 pt high, 45.9
+          → 72.8 %; extras-ooxmlexport/tdf154703_framePrTextDirection 57.4 → 70.7 %). Known deviation: Word draws
+          frame-direction's KingsBureauGrot ThreeSeven, a font this machine lacks, in Franklin Gothic Medium, here in
+          Calibri.
 
       - id: paragraph.eastAsian
         title: East Asian line breaking and character grid

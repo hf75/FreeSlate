@@ -568,7 +568,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         double OwnWidth(ParagraphBlock p) => layout.Widths(p, pictures: true).Max is var max && max > 0 ? max
             : layout.Styles.Mark(p.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
         var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width : OwnWidth(first);
-        var laid = group.Select(p => layout.Layout(p, frameWidth)).ToList();
+        // A frame of a given height whose paragraph runs its text down (tbRl) or up (btLr) lays it out along that
+        // height, turned a quarter: its first line at the right and running down from the top, or at the left and
+        // running up from the bottom, as text boxes turn theirs (docx/external/libreoffice/writerfilter-dmapper/
+        // frame-direction: frames 44.35 pt wide and 820 pt high).
+        var turn = first.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? first.Format.TextDirection : null;
+        var laid = group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth)).ToList();
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
             content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
@@ -650,7 +655,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 lineTop += Between(group[k - 1], group[k]);
             foreach (var line in laid[k])
             {
-                var placed = new PlacedLine(line, x, lineTop) { InlineOrigin = origin };
+                var placed = turn switch
+                {
+                    "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - top), top) { Angle = 90 },
+                    "btLr" => new PlacedLine(line, x + (lineTop - top), top + height) { Angle = -90 },
+                    _ => new PlacedLine(line, x, lineTop) { InlineOrigin = origin },
+                };
                 page.Lines.Add(placed);
                 frameLines.Add(placed);
                 lineTop += line.Height;

@@ -300,6 +300,9 @@ public sealed class ParagraphFormat
     /// <summary>w:jc: left/start, center, right/end, both, distribute, …</summary>
     public string? Justification;
 
+    /// <summary>w:textDirection of the paragraph (tbRl, btLr, …), which frames turn their text by.</summary>
+    public string? TextDirection;
+
     /// <summary>Indents in points (w:ind): left/start, right/end, first line (positive) or hanging (negative).</summary>
     public double? Left, Right, FirstLine;
 
@@ -358,6 +361,7 @@ public sealed class ParagraphFormat
             {
                 case "pStyle": Style = e.Val(); break;
                 case "jc": Justification = e.Val(); break;
+                case "textDirection": TextDirection = e.Val() ?? TextDirection; break;
                 case "ind":
                     Left = e.Twips("start") ?? e.Twips("left") ?? Left;
                     Right = e.Twips("end") ?? e.Twips("right") ?? Right;
