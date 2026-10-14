@@ -1613,8 +1613,9 @@ areas:
           vertically as without spacing, a cell merged down framing its rows and the gaps between them and counting in
           the last of them (docx/external/poi/bug57031: a SAS table's two-line heading over two header rows of one line), and an autofit table its text fills as wide as the page with all frames
           (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459); a part that goes on on the next page
-          begins below its frame's top line and the spacing (docx/local/sb-*: 4.5, 2.9 and 1.5 pt). Shading patterns
-          are mixed to a flat color.
+          begins below its frame's top line and the spacing (docx/local/sb-*: 4.5, 2.9 and 1.5 pt), and one that moves
+          to the next page whole leaves no frame behind (bib-chernigovka: no zero-height frame at page 1's bottom).
+          Shading patterns are mixed to a flat color.
 
       - id: table.styles
         title: Table styles and conditional formatting

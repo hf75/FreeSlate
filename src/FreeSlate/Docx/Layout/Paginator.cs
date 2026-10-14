@@ -1912,7 +1912,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (last != null)
                 Below(last, left);
             Describe();
-            TableLayout.Frame(box, left, tableTop, y, page!.Borders);
+            // A table that moves whole leaves no frame behind (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459: a
+            // zero-height frame line at page 1's bottom, the cell-spacing table on page 2).
+            if (y > tableTop + 0.01)
+                TableLayout.Frame(box, left, tableTop, y, page!.Borders);
             NextColumn(natural: true);
             (left, width) = Column(column);
             tableTop = y;
