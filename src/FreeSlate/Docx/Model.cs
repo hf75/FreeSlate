@@ -1069,6 +1069,9 @@ public sealed partial class ModelReader(DocumentContext context)
             public bool InResult;
             public List<Inline>? Cached;
 
+            /// <summary>Whether the field is locked (w:fldLock): Word keeps its saved result.</summary>
+            public bool Locked;
+
             /// <summary>Whether the field prints no result (SET, ASK), once its instruction is read.</summary>
             public bool Silent => silent ??= Instruction.ToString().TrimStart().Split(' ', 2)[0].ToUpperInvariant() is "SET" or "ASK";
             bool? silent;
@@ -1228,7 +1231,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     (bidiOverride, bidiEmbedding) = saved;
                     break;
                 }
-                case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
+                case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? "") && e.Attr("fldLock") is not ("1" or "true" or "on"):
                     var cached = new List<Inline>();
                     ReadInlines(e, paragraphStyle, cached, new FieldState());
                     var simpleFormat = cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun);
@@ -1449,12 +1452,14 @@ public sealed partial class ModelReader(DocumentContext context)
                                         field.Target(content).Add(new TextInline(entries[index], format));
                                 }
                             }
-                            field.Frames.Push(new FieldState.Frame(format));
+                            // A locked field keeps its saved result (docx/external/libreoffice/extras-ooxmlexport/
+                            // tdf148380_fldLocked: a SAVEDATE and a PRINTDATE as saved).
+                            field.Frames.Push(new FieldState.Frame(format) { Locked = e.Attr("fldLock") is "1" or "true" or "on" });
                             break;
                         case "separate" when field.Frames.Count > 0:
                             var frame = field.Frames.Peek();
                             frame.InResult = true;
-                            if (FieldInline.IsPageField(frame.Instruction.ToString()))
+                            if (!frame.Locked && FieldInline.IsPageField(frame.Instruction.ToString()))
                                 frame.Cached = [];
                             break;
                         case "end" when field.Frames.Count > 0:
@@ -1476,7 +1481,7 @@ public sealed partial class ModelReader(DocumentContext context)
                                     field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format));
                                 break;
                             }
-                            if (ended.Cached == null && !ended.InResult && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
+                            if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             if (ended.Cached != null)
                                 field.Target(content).Add(new FieldInline(instruction, ResultFormat(ended, instruction), ended.Cached));

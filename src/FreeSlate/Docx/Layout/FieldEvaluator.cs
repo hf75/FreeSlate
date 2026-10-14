@@ -569,8 +569,16 @@ public sealed class FieldEvaluator
             && DateTime.TryParse(modified, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var saved))
             time = saved.ToLocalTime();
         var at = words.IndexOf("\\@");
+        // Without a picture PRINTDATE and SAVEDATE show the short date and the long time of the field's language, to the
+        // minute (docx/external/libreoffice/extras-ooxmlexport/tdf148380_printField: "12/10/2026 11:21:00" in en-GB,
+        // "3:34:00 PM" printed at 15:34:25).
+        var dated = field.Type is "PRINTDATE" or "SAVEDATE";
+        if (dated)
+            time = new DateTime(time.Year, time.Month, time.Day, time.Hour, time.Minute, 0, time.Kind);
         var picture = at >= 0 && at + 1 < words.Count ? words[at + 1]
-            : field.Type == "TIME" ? culture.DateTimeFormat.ShortTimePattern : culture.DateTimeFormat.ShortDatePattern;
+            : field.Type == "TIME" ? culture.DateTimeFormat.ShortTimePattern
+            : dated ? culture.DateTimeFormat.ShortDatePattern + " " + culture.DateTimeFormat.LongTimePattern
+            : culture.DateTimeFormat.ShortDatePattern;
         var sb = new StringBuilder();
         var quoted = false;
         for (var i = 0; i < picture.Length; i++)

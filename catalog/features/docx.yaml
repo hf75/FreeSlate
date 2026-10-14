@@ -2106,7 +2106,12 @@ areas:
           interface, "Standard" in German Word, not by "Normal"; NOTEREF and REF without a bookmark's name print
           Word's error "Fehler! Es wurde kein Textmarkenname vergeben."; GOTOBUTTON shows its text after the
           bookmark's name as MACROBUTTON does (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields 71.4
-          → 95.8 %; extras-uiwriter/tdf164620 80.8 → 85.2 %). Known deviation: LISTNUM keeps its saved result.
+          → 95.8 %; extras-uiwriter/tdf164620 80.8 → 85.2 %). Without a picture PRINTDATE and SAVEDATE show the short
+          date and the long time of the field's language, to the minute
+          (docx/external/libreoffice/extras-ooxmlexport/tdf148380_printField: "12/10/2026 11:21:00" in en-GB, "3:34:00
+          PM" printed at 15:34:25, 74.1 → 91.6 %; tdf142464_ampm 82.7 → 100 %, fixed-date-field 84.2 → 96.9 %). A
+          locked field (w:fldLock) keeps its saved result (tdf148380_fldLocked 82.1 → 89.1 %). Known deviation:
+          LISTNUM keeps its saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks
