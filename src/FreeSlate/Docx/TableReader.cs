@@ -146,7 +146,41 @@ public sealed partial class ModelReader
                 row.Cells.RemoveAt(c--);
             }
         }
+        // A table whose cells' paragraphs have frame properties stands in that frame, as a floating table placed as the
+        // frame would be (docx/local/lb-1 to lb-4: at the margin's outside top; docx/external/libreoffice/
+        // extras-ooxmlexport/tdf164474: 28.4 pt below the top margin, the text after it at the top). Not a table in a
+        // cell, where frames do not apply (fdo77887, extras-layout/fdo48718-1: a table framed 113.3 pt from the page's
+        // top in a floating table's cell stays in it), nor one framed in line with the text (n780853: w:yAlign inline).
+        if (model.Format.Floating == null && tableParagraph == null
+            && model.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.Frame: { } frame }
+            && frame.Attr("yAlign") != "inline")
+            model.Format.Floating = Floating(frame);
         return new TableBlock(tbl, model);
+    }
+
+    /// <summary>The floating table position (w:tblpPr) that frame properties (w:framePr) give a table in the frame.</summary>
+    XElement Floating(XElement frame)
+    {
+        var position = new XElement(Wml.W + "tblpPr");
+        void Set(string to, string? value)
+        {
+            if (value != null)
+                position.SetAttributeValue(Wml.W + to, value);
+        }
+        Set("horzAnchor", frame.Attr("hAnchor") ?? "text");
+        // Without a vertical anchor a frame stands from the margin, before Word 2013 with the text where it has no
+        // vertical position either (as Paginator.VerticalAnchor).
+        Set("vertAnchor", frame.Attr("vAnchor")
+            ?? (context.CompatibilityMode < 15 && (frame.Twips("y") ?? 0) == 0 && frame.Attr("yAlign") is null or "inline" ? "text" : "margin"));
+        Set("tblpX", frame.Attr("x"));
+        Set("tblpY", frame.Attr("y"));
+        Set("tblpXSpec", frame.Attr("xAlign"));
+        Set("tblpYSpec", frame.Attr("yAlign"));
+        Set("leftFromText", frame.Attr("hSpace"));
+        Set("rightFromText", frame.Attr("hSpace"));
+        Set("topFromText", frame.Attr("vSpace"));
+        Set("bottomFromText", frame.Attr("vSpace"));
+        return position;
     }
 
     static ParagraphFormat Read(XElement? pPr)

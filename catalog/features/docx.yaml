@@ -4103,13 +4103,18 @@ areas:
           writerfilter-dmapper/floattable-then-table, extras-layout/tdf167526; extras-ooxmlexport/tdf92157: a table
           into the distance of a floating table in the right margin stays). A floating table that may not overlap
           others (w:tblOverlap never) moves right of the one before it that it would overlap where it fits, else below
-          it (table.floating). A table that fits beside a floating table it would stand across moves into the room
-          beside it, aligned there as in its column (ib-1: a 90 pt table at the 350 pt one's right distance; ib-2
+          it (table.floating). A table whose cells' paragraphs have frame properties stands in that frame as a
+          floating table placed as the frame would be (lb-1 to lb-4: at the margin's outside top;
+          docx/external/libreoffice/extras-ooxmlexport/tdf164474 54.0 → 91.3 %, tdf104394_lostTextbox,
+          extras-ooxmlimport/tdf75573_lostTable 84.7 → 95.4 %), not in a cell, where frames do not apply
+          (extras-ooxmlexport/fdo77887, extras-layout/fdo48718-1: a table framed 113.3 pt from the page's top in a
+          floating table's cell stays in it), nor framed in line with the text (w:yAlign inline,
+          extras-ooxmlexport/n780853). A table that fits beside a floating table it would stand across moves into the
+          room beside it, aligned there as in its column (ib-1: a 90 pt table at the 350 pt one's right distance; ib-2
           centered in that room; docx/external/libreoffice/extras-uiwriter/tdf134227 60.3 → 100 %). Known deviations:
           in mode 14 Word sets a table beside a shape wrapped square, indented and narrower (fx-5), ours stays over
           it; in mode 14 Word moves only the row of a table that a shape anchored after it overlaps (tbo-14), ours
-          leaves the table; a table whose cells' paragraphs have frame properties stands in that frame at its position
-          (lb-1 to lb-4, tdf104394_lostTextbox), ours in the text.
+          leaves the table.
 
       - id: engine.tableLayout
         title: Table layout
