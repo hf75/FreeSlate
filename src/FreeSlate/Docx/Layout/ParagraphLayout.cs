@@ -314,6 +314,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The width of the column the text stands in, of which horizontal rules take a share (Vml.Rule).</summary>
     public Func<double>? ColumnWidth { get; set; }
 
+    /// <summary>The paragraph's own space before, which its first line keeps below floating objects that push it down.</summary>
+    public double PushedSpace { get; set; }
+
     /// <summary>
     /// A style's parts of a line above and below the baseline: in vertical lines 1/32 of the size more (1.3 times that
     /// for East Asian fonts, as their lines are), half above and half below (measured with docx/local/vertical3,
@@ -956,7 +959,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     }
                     if (segments.Count > 0 || none || r.SkipTo <= offset + skip + 0.01)
                         break;
-                    skip = r.SkipTo - offset;
+                    // A first line pushed below objects keeps its paragraph's space before below them (measured with
+                    // docx/local/fsb-*: 14 pt below a floating table anchored to the page or the text, in modes 14
+                    // and 15; docx/external/powertools/RP/RP051).
+                    skip = r.SkipTo - offset + (first ? PushedSpace : 0);
                 }
                 if (segments.Count > 0)
                 {

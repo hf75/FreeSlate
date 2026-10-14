@@ -2500,7 +2500,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (exclusions.Any(e => e.Top < Math.Max(bottom, linesTop + 1) && e.Bottom > linesTop))
             {
                 var (columnLeft, columnWidth) = (left, width);
-                lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
+                layout.PushedSpace = ownBefore;
+                try
+                {
+                    lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
+                }
+                finally
+                {
+                    layout.PushedSpace = 0;
+                }
             }
         }
         var firstLineTop = (Page: page!, Top: y);

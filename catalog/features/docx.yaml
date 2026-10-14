@@ -1666,7 +1666,9 @@ areas:
           core-layout/floattable-deleted-anchor, writerfilter-dmapper/floattable-header); text wraps
           around them on both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table
           exactly as in Word). The paragraph after the table adds all its space before to the space after the one
-          before it. A table taller than the rest of the page goes on at the top of the next page's body at the same
+          before it; a first line pushed below a floating object keeps its paragraph's own space before below it
+          (docx/local/fsb-*: 14 pt below tables anchored to the page and to the text, modes 14 and 15; powertools/RP/
+          RP051 ×3 +12 to 14 points of the lines). A table taller than the rest of the page goes on at the top of the next page's body at the same
           place across, its rows split at a line of each cell as in the text (in Word 2013 and before alike), header
           rows repeated, the line below the last row of a page closing each part; the paragraph after it begins at the
           top of its last page (docx/local/floatsplit-*: anchored to the text exactly as in Word; docx/external/
