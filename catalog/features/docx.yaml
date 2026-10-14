@@ -428,8 +428,11 @@ areas:
           borders, indent or formatting of its own, its cells 5.4 pt margins left and right (docx/local/tn-*). A
           style without w:styleId has its name for an id, as it is, without w:type it is a paragraph style; styles
           are named by id only (docx/local/styleid: neither the name without its spaces or in another case nor a
-          name of a style with an id applies; docx/external/poi/60329, by SQL Server Reporting Services). The
-          other elements are for editing and change nothing printed.
+          name of a style with an id applies; docx/external/poi/60329, by SQL Server Reporting Services). A built-in
+          style defined twice under its name in any case is the later definition, also for paragraphs that name the
+          earlier one; custom names keep the first (docx/local/dupst-*: "footnote text" of 20 pt, then "Footnote Text",
+          prints a paragraph of the first in Normal's 11 pt; tika/testWORD_various). The other elements are for
+          editing and change nothing printed.
 
       - id: style.defaults
         title: Document defaults
@@ -1405,7 +1408,11 @@ areas:
           marks, whose superscripts stand within half a point (run.decoration). Above notes a paragraph's last line
           needs its whole height and the paragraph's space after, from Word 2013 on (docx/local/fbn-*, fbm-*, fbo-*: a
           line of 24.15 pt with 10 pt after fits where 34.15 pt are left above the notes, not 33 pt; without notes 16.1
-          pt do, as before Word 2013 with them; docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
+          pt do, as before Word 2013 with them; docx/external/libreoffice/extras-ooxmlexport/tdf90810short). A note
+          without paragraphs takes the room of an empty one, space after included (docx/local/fnempty-*;
+          powertools/WC/WC064-Footnote); a separator's paragraphs stand at single spacing without space before or
+          after, whatever they and the defaults say (docx/local/fsep-*: the separator 16.2 pt above the note's
+          baseline with before 12, after 0, 10 and 20 pt or double spacing; pandoc/golden/notes).
 
       - id: note.endnotes
         title: Endnotes
@@ -1853,7 +1860,8 @@ areas:
           and w:lid, list controls the matching entry's display text; a missing node keeps the stored text
           (docx/local/binding 98.8 %, every line as in Word). A picture control (w:picture) binds its picture and
           keeps the one it stores (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding 75.5 to
-          100 %: a node of base64 data printed as text before).
+          100 %: a node of base64 data printed as text before). An empty node leaves a control showing its
+          placeholder (w:showingPlcHdr) as it is, one without it empty (docx/local/bindempty; poi/60316).
 
       - id: sdt.customXml
         title: Custom XML markup and smart tags
@@ -2005,11 +2013,14 @@ areas:
           its margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is
           set or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH,
           wp14:sizeRelV) apply to shapes as they are and to pictures only both together, scaled evenly to fit
-          (docx/local/size-rel-shape, size-rel). Alignment places the drawing with its effect extent (wp:effectExtent),
+          (docx/local/size-rel-shape, size-rel), each less the effect extents across it (docx/local/relsz-*: 40 % of a
+          451.3 pt margin with 1.8 pt of effect extent on the right is 178.7 pt wide, with 1 pt all round 178.5; a
+          picture fits into what is left). Alignment places the drawing with its effect extent (wp:effectExtent),
           with or without an effect to fill it, each side where its alignment meets it, across the page and the
           margins (docx/local/sa-d1, sa-d2, sb-*, sc-*: 80 pt left and 36 pt above take a shape centered at the page's
-          top 40 pt right and 36 pt down), except for shapes sized relative to the page or margins, whose stored
-          extent is not their own (extras-ooxmlimport/groupshape-relsize, DB-GlossaryDocuments/FooterContent-built).
+          top 40 pt right and 36 pt down), relatively sized ones too (relsz-3, -4, -5, -7); an offset places the
+          extent, but the effect extent in a direction the drawing is sized relative to the page or margins
+          (relsz-2, -6, -9 to -11; powertools/WC/WC065-Textbox, DB-GlossaryDocuments/FooterContent-built).
 
       - id: drawing.wrap
         title: Text wrapping around objects
@@ -2063,8 +2074,10 @@ areas:
           (pptx text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
           whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6 or
           20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
-          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). Known deviation: linked
-          boxes of different widths keep the first box's line breaks.
+          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last
+          paragraph after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b,
+          -d; powertools/WC/WC050-Table-in-Text-Box). Known deviation: linked boxes of different widths keep the first
+          box's line breaks.
 
       - id: drawing.groups
         title: Groups
@@ -2215,7 +2228,11 @@ areas:
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx color.models (done). Verified against Word with docx/generated/graphics
           (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks); Verified against Word with
-          docx/generated/pictures (99.6 %).
+          docx/generated/pictures (99.6 %). A run's w:themeColor wins over its w:val, which Word may have written for
+          another theme; w:themeShade multiplies the color's HSL lightness by its share of 255, w:themeTint takes it to
+          L·t + 1 − t (docx/local/thc-plain: 14 cases exact to one step; pandoc/golden/links: Hyperlink 4F81BD with
+          accent1 156082 prints 156082). Shading colors may be named (w:fill="orange" fills FFA500), anything else
+          not six hex digits is none (powertools/HC032-Named-Color).
 
       - id: color.transforms
         title: Color transforms
@@ -2722,7 +2739,10 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx picture.metafiles (done). An EMF+ dual metafile; Verified against Word
-          with docx/generated/pictures (99.6 %).
+          with docx/generated/pictures (99.6 %). An EMF maps through its reference device's millimeters where its
+          micrometers disagree (tika/testWORD_embedded_pdf: the picture at 80 % of its shape as the millimeters say);
+          AlphaBlend sources of 32-bit bitfields keep the alpha of their top byte (powertools/HC044-Embedded-Workbook:
+          the icons of embedded objects on transparent ground, not on black squares).
 
       - id: picture.svg
         title: SVG pictures
@@ -3451,7 +3471,9 @@ areas:
           two rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space
           before an opening delimiter; both draw the hyphen-minus as the minus sign and ∇ and ∂ in italic. Glyphs are
-          drawn as outlines under transparent selectable text.
+          drawn as outlines under transparent selectable text. Text inserted or moved into a math run in a tracked
+          change (w:ins, w:moveTo inside m:r) prints, deleted text not (powertools/RP/RP014-Inserted-Math-Control-Char:
+          "A = 2πr²").
 
       - id: math.settings
         title: Document math settings
@@ -3516,8 +3538,11 @@ areas:
           which alignment counts (docx/local/sa-v*: a shape centered at the page's top with a shadow 80 pt left and
           36 pt up stands 40 pt right and 36 pt down; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw);
           mso-wrap-distance-* keep wrapped text away (9 pt left and right, none above and below by default); a text
-          box with mso-fit-shape-to-text is as high as its text where it is drawn. Known deviations: a perspective
-          shadow's matrix is left out; the text wraps the stated height of a box fitted to its text.
+          box with mso-fit-shape-to-text is as high as its text where it is drawn. Shape types resolve across their
+          part, not only in their w:pict (poi/WordWithAttachments: a picture frame type of the first w:object;
+          libreoffice/core-objectpositioning/vml-vertical-alignment: triangles); v:stroke on="f" takes the outline off
+          as stroked="f" does (tika/testWPSAttachment). Known deviations: a perspective shadow's matrix is left out; the
+          text wraps the stated height of a box fitted to its text.
 
       - id: vml.ole
         title: Embedded objects and controls
