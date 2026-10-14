@@ -274,7 +274,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// (a:spAutoFit) as high as its text and insets, a box that does not wrap (wrap none) at least as wide as its
     /// longest line.
     /// </summary>
-    PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page)
+    PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page) =>
+        FitToText(drawing, text, body, shape, page, blocks!);
+
+    /// <summary>The fitting of <see cref="Fitted"/>, which the paginator applies too before text wraps around the box.</summary>
+    internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks)
     {
         var autofit = body.Element(Ns.A + "spAutoFit") != null;
         var unwrapped = (string?)body.Attribute("wrap") == "none";
@@ -282,7 +286,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return drawing;
         var (l, t, r, b) = Insets(body, shape, drawing.Width, drawing.Height);
         var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
-        var (lines, _, _, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields);
+        var (lines, _, _, height) = blocks.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields);
         if (unwrapped)
         {
             var longest = lines.Select(p => p.Line.Pieces.Count > 0 ? p.Left + p.Line.Pieces[^1].X + p.Line.Pieces[^1].Width : 0).DefaultIfEmpty(0).Max();

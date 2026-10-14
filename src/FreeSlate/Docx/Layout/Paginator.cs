@@ -402,7 +402,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var anchors = new List<CellAnchor>();
             TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
             foreach (var anchor in anchors)
-                page.Drawings.Add(Anchored(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
+                page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
             rowTop += row.Height;
             last = row;
             onPage++;
@@ -1417,7 +1417,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
         foreach (var anchor in anchors.Select(a => a.Offset(0, top)))
-            box.Drawings.Add(Anchored(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX));
+            box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX));
         return box;
     }
 
@@ -1473,21 +1473,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Where the body text ends: above the footnotes the page holds, or where a note continued past it filled it.</summary>
     double Bottom => Math.Min(page!.BodyBottom - notesHeight, bodyEnd ?? double.MaxValue);
 
-    /// <summary>
-    /// The height a floating text box takes that resizes to fit its text (a:spAutoFit): at least the extent Word saved
-    /// with it, which is the text's, whatever relative height it states (docx/external/libreoffice/
-    /// extras-ooxmlexport/tdf123243: a box of 20 % of the margin's height, 144 pt, saved 313.7 pt high around a
-    /// paragraph 300 pt down).
-    /// </summary>
-    static double FittedHeight(AnchorInline anchor, double height)
-    {
-        var shape = anchor.Anchor.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
-        if (shape?.Element(Drawings.Wps + "bodyPr")?.Element(Ns.A + "spAutoFit") == null)
-            return height;
-        var saved = double.TryParse((string?)anchor.Anchor.Element(Drawings.Wp + "extent")?.Attribute("cy"), System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture, out var cy) ? cy / 12700 : 0;
-        return Math.Max(height, saved);
-    }
 
     Dictionary<string, List<Block>>? footnotes;
 
@@ -2029,6 +2014,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// the larger of the two separates them, what the space before has more); the line's top is that of the line
     /// holding the anchor (measured with docx/local/anchor-rules, all within 0.05 pt).
     /// </remarks>
+    /// <summary>
+    /// An anchored drawing placed (Anchored), a text box that resizes to its text (a:spAutoFit) or does not wrap fitted
+    /// to it as it is drawn, so that text goes around the box Word shows, not its saved or relative height (powertools/
+    /// DB-GlossaryDocuments/HeaderContent-built, DB010-Template: boxes saved 69.85 and 110.55 pt high, 52.9 and 33.4
+    /// pt with their text, one 20 % of the page high; openxml-sdk/Complex01: the object after a box saved 110.6 pt high
+    /// stands 3.6 pt below its 30.4 pt).
+    /// </summary>
+    PlacedDrawing PlaceAnchor(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
+        CellAnchor? cell = null, double? character = null)
+    {
+        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
+            return placed;
+        var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
+        return PageRenderer.FitToText(placed, text, body, shape, page, tables);
+    }
+
     static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell = null, double? character = null)
     {
@@ -2279,7 +2281,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var anchors = new List<CellAnchor>();
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
         foreach (var anchor in anchors)
-            page.Drawings.Add(Anchored(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
+            page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
         y += row.Height;
         columnEmpty = false;
         sectionShown = true;
@@ -2441,7 +2443,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // ending above the anchor, the rest of the page stays empty; docx/external/libreoffice/extras-layout/
         // fdo43573-2-min).
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
-                ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
+                ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
                 && Pushed(e) is { } top && (e.Bottom <= y + 0.01 || e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01)))
         {
             NextColumn(natural: true);
@@ -2455,8 +2457,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
         else if (!columnEmpty && context.CompatibilityMode >= 15 && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
                      (string?)anchor.Anchor.Element(Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph" or "line"
-                     && Anchored(anchor, page!, paragraphTop.Top, y, left, width) is var placed && ExclusionOf(placed) != null
-                     && placed.Y + FittedHeight(anchor, placed.Height) > Bottom + 0.01))
+                     && PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is var placed && ExclusionOf(placed) != null
+                     && placed.Y + placed.Height > Bottom + 0.01))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -2466,7 +2468,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var exclusions = PageExclusions();
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
         {
-            if (ExclusionOf(Anchored(anchor, page!, paragraphTop.Top, y, left, width)) is { } own)
+            if (ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { } own)
             {
                 exclusions.RemoveAll(e => e.Source != null && ReferenceEquals(e.Source, own.Source));
                 exclusions.Add(own);
@@ -2736,7 +2738,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // and 81 pt below the paragraph's top there).
             var (anchorPage, anchorTop, columnLeft, columnWidth) = lineParts.TryGetValue(anchor, out var own) ? own : anchorAt ?? (page!, y, left, width);
             var inLine = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage;
-            anchorPage.Drawings.Add(Anchored(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
+            anchorPage.Drawings.Add(PlaceAnchor(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
                 character: inLine ? at.X : columnLeft));
         }
         pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);

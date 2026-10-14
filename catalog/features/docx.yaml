@@ -2076,8 +2076,11 @@ areas:
           20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
           tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last
           paragraph after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b,
-          -d; powertools/WC/WC050-Table-in-Text-Box). Known deviation: linked boxes of different widths keep the first
-          box's line breaks.
+          -d; powertools/WC/WC050-Table-in-Text-Box). A floating box that resizes to its text (a:spAutoFit) takes
+          its text's height where the text around it wraps and where it reaches past the page, not its saved or
+          relative height (powertools/DB-GlossaryDocuments/HeaderContent-built, FooterContent-built, DB010-Template:
+          boxes saved 69.85 and 110.55 pt high around 52.9 and 33.4 pt of text, 17.6–38.9 → 100 % of the lines;
+          openxml-sdk/Complex01). Known deviation: linked boxes of different widths keep the first box's line breaks.
 
       - id: drawing.groups
         title: Groups
