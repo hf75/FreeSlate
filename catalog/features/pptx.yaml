@@ -1895,7 +1895,10 @@ areas:
           30 pt and then wrap into balanced rows; rows are one line height plus 5.85 pt. Pies with data labels
           shrink by 1.785 × label size. A manual plot area layout places the inner plot area (layoutTarget
           inner) or, by default, the plot area with its axis labels (outer); w and h are sizes (wMode, hMode
-          factor) or far edges (edge). Verified with generated/charts, charts-details and charts-data.
+          factor) or far edges (edge). Verified with generated/charts, charts-details and charts-data. Axis titles
+          of 3D charts take their room at their axis's edge and stand centered on the plot area as on flat charts,
+          white in the black chart area of an Office 2007 style's highest level (docx/external/powertools/CU001:
+          "Vehicles" and "Quarter" beside a 3D bar chart).
           Line keys keep their size at every font size (legends of 7 to 24 pt): a 12 pt key box, the line
           19.1 pt long about 12.79 pt from the entry's edge, the text at 24.31 pt; square keys scale with the
           line height. A legend at the side given a size of its own (c:manualLayout w, h) wraps its entries at

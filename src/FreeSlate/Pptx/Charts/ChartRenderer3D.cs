@@ -297,6 +297,23 @@ public sealed partial class ChartRenderer
         var axisRight = behind;
         // The labels along the floor's near edges: under an edge within 34° of the horizontal, else beside it.
         (bool Under, bool Right)? floorAt = null, seriesAt = null;
+        // Axis titles take their room from the outer plot area at the edge of their axis, as on flat charts
+        // (scratch/triage/2026-10-14_agents/charts: powertools/CU001's "Vehicles" left of a 3D bar chart).
+        var axisTitles = new List<(ChartAxis Axis, AxisTitle Title)>();
+        foreach (var axis in new[] { categoryAxis, valueAxis })
+        {
+            if (BuildAxisTitle(axis) is not { } axisTitle)
+                continue;
+            var b = axisTitle.Box;
+            switch (axis.Position)
+            {
+                case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + b.W, W = Math.Max(1, outer.W - b.W) }; break;
+                case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - b.W) }; break;
+                case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + b.H, H = Math.Max(1, outer.H - b.H) }; break;
+                default: axisTitle.Box = b with { Y = outer.Bottom - b.H }; outer = outer with { H = Math.Max(1, outer.H - b.H) }; break;
+            }
+            axisTitles.Add((axis, axisTitle));
+        }
         var plot = outer;
         for (var pass = 0; pass < 3; pass++)
         {
@@ -515,6 +532,13 @@ public sealed partial class ChartRenderer
                 var left = seriesAt?.Right ?? true ? x + ValueLabelGap * s : x - ValueLabelGap * s - Width(label, seriesLayout.Style);
                 svg.Append(text.Label(label, seriesLayout.Style, left, CenteredBaseline(seriesLayout.Style, y)));
             }
+        }
+        // The axis titles, centered on the plot area along their axes.
+        foreach (var (axis, axisTitle) in axisTitles)
+        {
+            var b = axisTitle.Box;
+            axisTitle.Box = axis.Horizontal ? b with { X = plot.X + (plot.W - b.W) / 2 } : b with { Y = plot.Y + (plot.H - b.H) / 2 };
+            svg.Append(DrawAxisTitle(axisTitle));
         }
         return svg.ToString();
     }

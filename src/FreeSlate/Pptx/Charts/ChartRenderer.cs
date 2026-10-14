@@ -1073,7 +1073,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     {
         if (axis.Deleted || axis.Title is not { } element)
             return null;
-        var layers = Layers(DefRPr(element.Element(Ns.C + "txPr")), "axisTitle", new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1")));
+        // Bold 10 pt, white in the black chart area of a legacy style's level 5 (powertools/CU001: "Vehicles").
+        var fallback = new XElement(Ns.A + "defRPr", new XAttribute("sz", "1000"), new XAttribute("b", "1"));
+        if (legacy is { Level: 5 })
+            fallback.Add(new XElement(Ns.A + "solidFill", Scheme("bg1")));
+        var layers = Layers(DefRPr(element.Element(Ns.C + "txPr")), "axisTitle", fallback);
         var rich = element.Element(Ns.C + "tx")?.Element(Ns.C + "rich")
                    ?? new XElement(Ns.C + "rich", new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t",
                        culture.TwoLetterISOLanguageName == "de" ? "Achsentitel" : "Axis Title"))));
