@@ -338,6 +338,15 @@ public sealed class FieldEvaluator
                 $"Fehler! Verwenden Sie die Registerkarte 'Start', um {name} dem Text zuzuweisen, der hier angezeigt werden soll.");
         if (words.Contains("\\n") || words.Contains("\\r") || words.Contains("\\w"))
             return found.Label?.Text ?? "";
+        // \s (Word's captions with chapter numbers): the number alone, from its first digit to its last, without the
+        // level's text around it (docx/external/powertools/HC061: "Table {STYLEREF 1 \s}." of a heading "1." prints
+        // "Table 1.").
+        if (words.Contains("\\s"))
+        {
+            var label = found.Label?.Text ?? "";
+            var (first, end) = (label.IndexOfAny("0123456789".ToCharArray()), label.LastIndexOfAny("0123456789".ToCharArray()));
+            return first >= 0 ? label[first..(end + 1)] : label.Trim().Trim('.', ')', '(', ':', '-');
+        }
         return Text(found.Content).Trim();
     }
 

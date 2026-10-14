@@ -1744,7 +1744,9 @@ areas:
           field; a heading level or a built-in heading's name in Word's languages; of a character style the text of
           the first or last runs in it, docx/external/libreoffice/extras-ooxmlexport/tdf163894_from_top: a
           dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
-          before), NOTEREF (the mark of the note in the bookmark, with \f raised as that mark; to a missing bookmark
+          before; \s, as captions with chapter numbers have it, the paragraph's number from its first digit to its
+          last: powertools/HC061 "Table 1.1." of a heading numbered "1."), NOTEREF (the mark of the note in the
+          bookmark, with \f raised as that mark; to a missing bookmark
           Word's error in the instruction's format, bold in every mode, whatever MERGEFORMAT says: docx/local/nref-*,
           powertools/RP043, RP044-Rejected 50 → 100 % of the lines), LISTNUM (in the list of its name, an abstract
           definition's w:name, else Word's default list 1) a) i) (1) (a) (i) 1. a. i. of that name, OutlineDefault and
