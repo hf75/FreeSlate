@@ -1090,8 +1090,10 @@ areas:
           content (run.content).
         office: >-
           Automatic hyphenation (w:autoHyphenation) by Liang's algorithm with the hyph-utf8 patterns of German
-          (reformed spelling) and American and British English, by the language of each word (w:lang, else the
-          document's culture), at least 2 letters before and 2 (German) or 3 (English) after a break;
+          (reformed spelling) and American English, by the language of each word (w:lang, else the document's
+          culture), British English with the American patterns as Word breaks it (powertools/HC048-Excerpt: en-GB
+          arbi-trators, applica-ble, rea-sonable, fi-nancial, not the British arbit-rators, applic-able), at least 2
+          letters before and 2 (German) or 3 (English) after a break;
           w:suppressAutoHyphens turns it off for a paragraph, w:doNotHyphenateCaps for words in capitals,
           w:consecutiveHyphenLimit limits the lines in a row that end with a hyphen. As Word breaks (measured with
           docx/local/hyph-a to -d and hyph-fit, every line as in Word): the word that does not fit breaks at its last
