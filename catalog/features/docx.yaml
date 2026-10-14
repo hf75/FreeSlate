@@ -2102,7 +2102,11 @@ areas:
           an italic instruction, a red 16 pt saved result and a 9 pt end Word prints the number italic 12 pt;
           docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %). Fields that set or ask for a
           bookmark (SET, ASK) print no result (docx/external/libreoffice/extras-ooxmlexport/fdo76163: "Praun et al.
-          2001" saved as a SET's result, 57.4 → 97.3 %). Known deviation: LISTNUM keeps its saved result.
+          2001" saved as a SET's result, 57.4 → 97.3 %). STYLEREF finds the Normal style by its name in Word's user
+          interface, "Standard" in German Word, not by "Normal"; NOTEREF and REF without a bookmark's name print
+          Word's error "Fehler! Es wurde kein Textmarkenname vergeben."; GOTOBUTTON shows its text after the
+          bookmark's name as MACROBUTTON does (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields 71.4
+          → 95.8 %; extras-uiwriter/tdf164620 80.8 → 85.2 %). Known deviation: LISTNUM keeps its saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks

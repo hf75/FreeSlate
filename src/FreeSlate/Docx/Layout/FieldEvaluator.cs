@@ -221,6 +221,10 @@ public sealed class FieldEvaluator
             // NOTEREF: the mark of the note in the bookmark, Word's error where the bookmark is missing (measured with
             // docx/local/nref-*: a saved "9" printed as the note's 1; the error in bold in modes 14 and 15, with and
             // without MERGEFORMAT; powertools/RP043, RP044).
+            // A reference without a bookmark's name (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields:
+            // NOTEREF without a name and REF "").
+            case "NOTEREF" or "REF" when words.Count < 2 || words[1].Length == 0 || words[1].StartsWith('\\'):
+                return T("Error! No bookmark name given.", "Fehler! Es wurde kein Textmarkenname vergeben.");
             case "NOTEREF" when words.Count > 1 && !words[1].StartsWith('\\') && !bookmarks.ContainsKey(words[1]):
                 return T("Error! Bookmark not defined.", "Fehler! Textmarke nicht definiert.");
             case "NOTEREF" when words.Count > 1 && noteMarks.TryGetValue(words[1], out var note) && note.Mark.Length > 0:
@@ -339,6 +343,10 @@ public sealed class FieldEvaluator
             var own = id != null ? context.Styles.Find(id)?.Name : null;
             if (own != null && Heading(own) is { } ownLevel)
                 own = T($"Heading {ownLevel}", $"Überschrift {ownLevel}");
+            // So does Normal, "Standard" in German Word (docx/external/libreoffice/extras-ooxmlexport/
+            // Unsupportedtextfields: STYLEREF Normal prints the error).
+            if (string.Equals(own, "Normal", StringComparison.OrdinalIgnoreCase))
+                return string.Equals(T("Normal", "Standard"), name, StringComparison.OrdinalIgnoreCase);
             return string.Equals(id, name, StringComparison.OrdinalIgnoreCase) || string.Equals(own, name, StringComparison.OrdinalIgnoreCase);
         }
         ParagraphBlock? found = null;

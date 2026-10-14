@@ -1463,7 +1463,9 @@ public sealed partial class ModelReader(DocumentContext context)
                             // docx/external/libreoffice/extras-ooxmlexport/tdf154478: a PAGEREF of a missing bookmark
                             // shows Word's error text on a line of its own).
                             var instruction = ended.Instruction.ToString();
-                            if (FieldInline.TypeOf(instruction) == "MACROBUTTON" && !ended.InResult && !field.Hidden)
+                            // GOTOBUTTON shows its text after the bookmark's name as MACROBUTTON after the macro's
+                            // (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields: "Line 5").
+                            if (FieldInline.TypeOf(instruction) is "MACROBUTTON" or "GOTOBUTTON" && !ended.InResult && !field.Hidden)
                             {
                                 field.Target(content).AddRange(MacroButton(ended.InstructionRuns));
                                 break;
