@@ -59,7 +59,6 @@ public sealed class DocumentContext : IDisposable
         Numbering = new NumberingDefinitions(Related("numbering"), Styles) { Part = Package.FirstRelationship(MainPart, "numbering")?.Target };
         FontTable = new FontTable(Related("fontTable"));
         Divs = new HtmlDivs(Related("webSettings"));
-        DecimalSymbol = Settings.Child("decimalSymbol").Val() is { Length: > 0 } symbol ? symbol[0] : '.';
     }
 
     public OpcPackage Package { get; }
@@ -210,8 +209,13 @@ public sealed class DocumentContext : IDisposable
     /// <summary>The interval of the default tab stops in points (w:defaultTabStop, 720 twips when absent).</summary>
     public double DefaultTabStop { get; }
 
-    /// <summary>The character decimal tab stops align on (w:decimalSymbol, the language's decimal separator).</summary>
-    public char DecimalSymbol { get; }
+    /// <summary>
+    /// The character decimal tab stops align on: the decimal separator of the regional settings, whatever w:decimalSymbol
+    /// or the text's language say (measured with docx/local/dect-*: on a machine with "," "1,5" and "1,234.5" align on
+    /// their commas, "1.5" and ".5" end at the stop, with w:decimalSymbol "." or "," or none, in en-US and de-DE text;
+    /// docx/external/powertools/HC024, HC025).
+    /// </summary>
+    public char DecimalSymbol => Culture.NumberFormat.NumberDecimalSeparator is { Length: > 0 } separator ? separator[0] : '.';
 
     /// <summary>
     /// How much more 3D text the document draws as bodies, in characters of 12 pt: a 48 pt character takes 85 to 420 KB
