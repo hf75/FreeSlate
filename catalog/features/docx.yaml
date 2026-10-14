@@ -952,7 +952,12 @@ areas:
           cells and text boxes, where the lines take room alike (docx/external/libreoffice/extras-layout/fdo48718-1:
           bordered paragraphs in a cell, the rows below 3 pt lower each). A line of w:sz 0 is as thin as one of 1,
           0.12 pt in Word's print (docx/local/bsz-para: boxes of sizes 0, 1, 2, 4 and 8 drawn 0.12, 0.12, 0.24, 0.48
-          and 0.96 pt wide).
+          and 0.96 pt wide). Shadowed lines (w:shadow) cast black bands of their width as page borders do: right of
+          the right line from below the top line down through the bottom band, below the bottom line from inside the
+          left line to the right band's edge; a shadowed top line keeps its width free above the box, a shadowed
+          bottom line's band takes room below it, the left and right ones none (docx/local/psh-*: 3 and 1 pt lines on
+          all sides, the top, bottom or right alone, around one or two paragraphs, all 100 %;
+          docx/external/libreoffice/extras-ooxmlexport/para-shadow 31.7 → 100 %).
 
       - id: paragraph.tabs
         title: Tab stops
@@ -969,25 +974,30 @@ areas:
           draw a line through the line and the space after the paragraph. Decimal stops align on the decimal separator
           of the regional settings Word runs with, whatever w:decimalSymbol or the text's language say (docx/local/
           dect-*: with a German comma "1,234.5" aligns on its comma, "1.5" and "12.5" end at the stop, within 0.07 pt;
-          powertools/HC024, HC025). A custom stop at or past the right indent holds: from
-          Word 2013 on where it is not past the column's or the cell's edge, the rest of the line then reaching up to
-          that edge and justified to it where it wraps (not where it ends in a line break, docx/local/jz-a to jz-d),
-          the line not breaking next to such tabs (a word that does not fit after them breaks inside where it has no
-          other place); before Word 2013 also past the edge, the line then reaching
-          22 in into the column (docx/local/tov-a to tov-i, tovc-1 to tovc-12, tv-a to tv-d in modes 15, 14 and 12;
-          docx/external/libreoffice/extras-ooxmlexport/tdf77417, extras-ooxmlimport/
-          tdf156078_rightTabOutsideParaRightIndent). Default stops past the indent do not hold, except on a line an
-          earlier stop took further. From Word 2013 on a left stop past the column's edge moves the tab to the next
-          line, where it fills the line; centered, right and decimal stops past it align at the indent, or at the edge
-          where an earlier stop took the line there (docx/generated/tabs, docx/local/tab-rules, tab-break). Centered
-          and decimal text that would reach past the line's end ends there (tv-c, tv-d). A tab goes to the next line together with the word
-          after it where that word does not fit after it (docx/local/lw-6 to lw-10; engine.lineLayout). An absolute position tab (w:ptab) aligns what follows
-          it at the left edge, the middle or the right edge of the margins or indents, as a stop of that alignment
-          there would (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt). Word keeps the default tab stop
+          powertools/HC024, HC025). A custom stop at or past the right indent holds: from Word 2013 on where it is not
+          past the column's or the cell's edge, the rest of the line then reaching up to that edge and justified to it
+          where it wraps (not where it ends in a line break, docx/local/jz-a to jz-d), the line not breaking next to
+          such tabs (a word that does not fit after them breaks inside where it has no other place); before Word 2013
+          also past the edge, the line then reaching 22 in into the column (docx/local/tov-a to tov-i, tovc-1 to
+          tovc-12, tv-a to tv-d in modes 15, 14 and 12; docx/external/libreoffice/extras-ooxmlexport/tdf77417,
+          extras-ooxmlimport/ tdf156078_rightTabOutsideParaRightIndent). Default stops past the indent do not hold,
+          except on a line an earlier stop took further. From Word 2013 on a left stop past the column's edge moves
+          the tab to the next line, where it fills the line; centered, right and decimal stops past it align at the
+          indent, or at the edge where an earlier stop took the line there (docx/generated/tabs, docx/local/tab-rules,
+          tab-break). Centered and decimal text that would reach past the line's end ends there (tv-c, tv-d). A tab
+          goes to the next line together with the word after it where that word does not fit after it (docx/local/lw-6
+          to lw-10; engine.lineLayout). An absolute position tab (w:ptab) aligns what follows it at the left edge, the
+          middle or the right edge of the margins or indents, as a stop of that alignment there would
+          (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt). Word keeps the default tab stop
           (w:defaultTabStop) in 16 bits: 65536 twips are none, its tabs going nowhere, 65537 one twip, 66256 half an
           inch (docx/local/dts-0 to dts-66256, all within 0.7 %;
           docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero 5.7 → 95.9 %); spaces a tab follows do
-          not trail a line for its alignment ("10", a space and tabs of no width centered with the space).
+          not trail a line for its alignment ("10", a space and tabs of no width centered with the space). An absolute
+          position tab whose place lies behind what its line holds before it starts the next line, where it takes the
+          text to its place; at its place or before it nothing breaks (docx/local/ptb-la, ptb-li, ptb-cp: left at the
+          margin or the indent after "A", centered after text past the middle; ptb-l0, ptb-l0i, ptb-lr, ptb-anchor: at
+          the line's start; docx/external/libreoffice/writerfilter-dmapper/ptab: after a space, the page number a line
+          lower, 33.2 → 92.3 %).
 
       - id: paragraph.frames
         title: Text frames and drop caps
@@ -1630,34 +1640,46 @@ areas:
           the top line and margin and the bottom margin comes below it, in every mode (docx/local/rowmar-11 to -15,
           -12c, -15c: rows of 30 pt at least with margins of 5 and 3 pt and 0.25 pt lines are 38.25 pt apart, rows of
           exactly 30 pt 33 pt; beside a cell with 5 pt at the top and one with 10 pt at the bottom a cell without
-          margins puts its text 5 pt down; docx/external/poi/60329). A row
-          fits where it and the line that closes the table below it fit (docx/local/tblbottom-*). Rows that do not
-          fit split at a line of each cell, a paragraph's last line fitting with its space after, before Word 2013 with
-          its cell's bottom margin too (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes
-          on); header rows, rows of
+          margins puts its text 5 pt down; docx/external/poi/60329). A row fits where it and the line that closes the
+          table below it fit (docx/local/tblbottom-*). Rows that do not fit split at a line of each cell, a
+          paragraph's last line fitting with its space after, before Word 2013 with its cell's bottom margin too
+          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on); header rows, rows of
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,
-          docx/local/rs3-*); the
-          rest of a split row ends below its last paragraph's space after, at least its at-least height, and cells
-          aligned to the middle or bottom align again in each part, the first down to its tallest content (tblsplit-*,
-          docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt); a row of a nested table goes on whole where its
-          at-least height does not fit, as the table's own rows do (docx/external/libreoffice/writerfilter-dmapper/
-          floattable-nested: an inner row of 85 pt with one line moves to the next page); content that the cut divides goes on at the top
-          of the rest, whatever its cell's alignment (docx/local/vs-1 to vs-10: of two centered or bottom-aligned
-          lines with one row line on the page the second stands at the next page's top; docx/external/poi/bug65649); a
-          nested row cut in two goes on below its line and its cell's top margin again (docx/local/sr-1 to sr-5: 6.15 pt
-          further down than a row of the table itself; core-text/floattable-anchor-height). Header rows go with the first row to the next page where it does not fit below them
-          (all of it where it may not split, else a line), repeat after every break where the next row fits below
-          them and stay off where it does not, which still pushes what follows the table to the next page; a row that
-          may not split splits at the top of a page that cannot hold it (tblhdr-*). Where the table breaks the line
-          below the page's last row closes it (docx/local/tbl-autofit, tbl-features), and the part on the next page or
-          in the next column begins with the table's top line where no header rows stand above it, after a cut in a row
-          and between rows, also of floating tables (docx/local/cb-1 to cb-7: a 3 pt outer top line over the continued
-          row of a table whose inside lines are 1 pt or none; core-unocore/floattable-split). A table of header rows
-          only moves to the next page where they do not all fit, whether or not they fit a page, and breaks there
-          without repeating them (docx/external/libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader 8.0 →
-          98.1 % with table.styles' look, tdf58944-repeating-table-header 47.3 → 100 %).
+          docx/local/rs3-*); the rest of a split row ends below its last paragraph's space after, at least its
+          at-least height, and cells aligned to the middle or bottom align again in each part, the first down to its
+          tallest content (tblsplit-*, docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt); a row of a nested
+          table goes on whole where its at-least height does not fit, as the table's own rows do
+          (docx/external/libreoffice/writerfilter-dmapper/ floattable-nested: an inner row of 85 pt with one line
+          moves to the next page); content that the cut divides goes on at the top of the rest, whatever its cell's
+          alignment (docx/local/vs-1 to vs-10: of two centered or bottom-aligned lines with one row line on the page
+          the second stands at the next page's top; docx/external/poi/bug65649); a nested row cut in two goes on below
+          its line and its cell's top margin again (docx/local/sr-1 to sr-5: 6.15 pt further down than a row of the
+          table itself; core-text/floattable-anchor-height). Header rows go with the first row to the next page where
+          it does not fit below them (all of it where it may not split, else a line), repeat after every break where
+          the next row fits below them and stay off where it does not, which still pushes what follows the table to
+          the next page; a row that may not split splits at the top of a page that cannot hold it (tblhdr-*). Where
+          the table breaks the line below the page's last row closes it (docx/local/tbl-autofit, tbl-features), and
+          the part on the next page or in the next column begins with the table's top line where no header rows stand
+          above it, after a cut in a row and between rows, also of floating tables (docx/local/cb-1 to cb-7: a 3 pt
+          outer top line over the continued row of a table whose inside lines are 1 pt or none;
+          core-unocore/floattable-split). A table of header rows only moves to the next page where they do not all
+          fit, whether or not they fit a page, and breaks there without repeating them
+          (docx/external/libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader 8.0 → 98.1 % with table.styles'
+          look, tdf58944-repeating-table-header 47.3 → 100 %). A row grows down to the floating drawings in its cells
+          that text goes around (wrapped square, tight, through or top and bottom), placed from their paragraph, their
+          line or the cell's top, for which the margins and the page stand in a cell; not to drawings in front of or
+          behind the text, and a row of exact height keeps it. The cell's text goes around them as in the body, and
+          vertical alignment moves the content together with all its drawings, unwrapped ones too (measured with
+          docx/local/cig-*: a 40 pt shape 0 or 30 pt below its paragraph, of the second paragraph, from the margin, in
+          modes 15 and 14; cig-tb: "Cell" below a shape wrapped top and bottom; cig-va: a bottom-aligned cell's
+          content ends with an unwrapped shape's bottom; docx/external/libreoffice/extras-layout/tdf134277 27.9 → 100
+          %, extras-ooxmlexport/tdf37153_considerWrapOnObjPos 36.5 → 98.8 %). From Word 2013 on drawings of
+          layoutInCell 0 take part as well; before they stand in the column and the table goes below them (cig-noin,
+          -noin14, -noin12). Known deviations: Word cuts drawings at the bottom of a row of exact height (cig-exact);
+          drawings sized relative to the page or its margins take no part in the cell's layout here; before Word 2013
+          drawings of layoutInCell 0 stay in their cells.
 
       - id: table.borders
         title: Table and cell borders and shading

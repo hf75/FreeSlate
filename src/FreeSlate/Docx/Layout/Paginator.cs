@@ -1428,6 +1428,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 double? betweenAt = null;
                 if (frame != null && !continues)
                 {
+                    y += frame.TopShadow;
                     boxTop = y;
                     y += frame.Top is { Visible: true } t ? t.Space + t.Total : 0;
                 }
@@ -1469,6 +1470,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     if (!nextContinues)
                         y += frame.Bottom is { Visible: true } bottomLine ? bottomLine.Space + bottomLine.Total : 0;
                     frame.Draw(box.Shading, box.Borders, left, width, boxTop, y, top: !continues, bottom: !nextContinues, between: betweenAt);
+                    if (!nextContinues)
+                        y += frame.BottomShadow;
                 }
                 previousFrame = frame;
                 foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
@@ -2341,6 +2344,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 || frame.Right is { Visible: true } || frame.Between is { Visible: true } || fill != null ? frame : null;
         }
 
+        /// <summary>
+        /// The room a shadowed top line keeps above the box, its width; a shadowed bottom line's band below it (measured
+        /// with docx/local/psh-*: 3 and 1 pt lines on all sides, the top or the bottom alone, around one or two
+        /// paragraphs; docx/external/libreoffice/extras-ooxmlexport/para-shadow).
+        /// </summary>
+        public double TopShadow => Top is { Visible: true, Shadow: true } t ? t.Total : 0;
+
+        public double BottomShadow => Bottom is { Visible: true, Shadow: true } b ? b.Total : 0;
+
         /// <summary>Whether the frame has a line to show.</summary>
         bool Lined => Top is { Visible: true } || Left is { Visible: true } || Bottom is { Visible: true } || Right is { Visible: true }
                       || Between is { Visible: true };
@@ -2389,6 +2401,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 foreach (var (offset, thickness) in TableLayout.Stripes(line))
                     lines.Add(new FillRect(x + offset, boxTop, thickness, boxBottom - boxTop, line.Color));
+            }
+            // Shadows under the lines, black bands of a line's width as page borders have them: right of a shadowed
+            // right line from below the top line down through the bottom line's width, below a shadowed bottom line from
+            // inside the left line to the right shadow's edge (docx/local/psh-all, psh-right, psh-bottom).
+            var topWidth = top && Top is { Visible: true } shadowTop ? shadowTop.Total : 0;
+            if (Right is { Visible: true, Shadow: true } shadowRight)
+                lines.Add(new FillRect(right, boxTop + topWidth, shadowRight.Total, boxBottom + (bottom ? BottomShadow : 0) - boxTop - topWidth, RgbColor.Black));
+            if (bottom && Bottom is { Visible: true, Shadow: true } shadowBottom)
+            {
+                var from = left + (Left is { Visible: true } shadowLeft ? shadowLeft.Total : 0);
+                lines.Add(new FillRect(from, boxBottom, right + (Right is { Visible: true } r2 ? r2.Total : 0) - from, shadowBottom.Total, RgbColor.Black));
             }
             if (Left is { Visible: true } leftLine)
                 Down(leftLine, left);
@@ -2588,6 +2611,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             if (!continues)
             {
+                y += frame.TopShadow;
                 boxTop = y;
                 y += frame.Top is { Visible: true } t ? t.Space + t.Total : 0;
             }
@@ -2892,6 +2916,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 boxTop = page!.BodyTop;
             frame.Draw(page!, left + Mirror(format), width, format, boxTop, y, top: !continues || boxPage != page, bottom: !nextContinues,
                 between: continues && boxPage == page ? betweenAt : null);
+            if (!nextContinues)
+                y += frame.BottomShadow;
         }
         for (var d = divisions.Count - 1; d >= 0; d--)
         {

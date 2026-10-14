@@ -1026,6 +1026,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 if (c == '\t')
                 {
+                    // An absolute position tab whose place lies behind what the line holds before it starts the next
+                    // line, where it takes the text to its place; at its place or before it nothing breaks (measured
+                    // with docx/local/ptb-la, ptb-li, ptb-cp: left at the margin or the indent after "A", centered after
+                    // text past the middle; ptb-l0, ptb-l0i, ptb-lr: at the line's start; docx/external/libreoffice/
+                    // writerfilter-dmapper/ptab: after a space, the page number a line lower).
+                    if (positional.ContainsKey(i) && i > lineStart && PositionalPlace(text, i, advances, out _) < x - 0.005)
+                    {
+                        end = i;
+                        lastFit = i;
+                        break;
+                    }
                     var to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out var stop);
                     // A custom stop at or past the right indent holds: from Word 2013 on where it is not past the
                     // column's edge, the line then reaching up to that edge; before where it is past it too, the line
@@ -1942,6 +1953,25 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// it, aligned left, centered, right or on the decimal point; a hanging first line stops at the left indent; past
     /// the custom stops the default stops continue (multiples of w:defaultTabStop from the margin).
     /// </summary>
+    /// <summary>
+    /// Where an absolute position tab takes the text after it: the left edge, the middle or the right edge of the margins
+    /// or the indents, as a stop of its alignment there would (see TabStop).
+    /// </summary>
+    double PositionalPlace(string text, int tab, double[] advances, out TabStop stop)
+    {
+        var absolute = positional[tab];
+        var (from, to) = absolute.RelativeTo == "indent" ? (positionalArea.IndentLeft, positionalArea.IndentRight) : (positionalArea.MarginLeft, positionalArea.MarginRight);
+        var (position, align) = absolute.Alignment switch { "center" => ((from + to) / 2, "center"), "right" => (to, "right"), _ => (from, "left") };
+        stop = new TabStop(position, align, absolute.Leader);
+        var next = tab + 1;
+        while (next < text.Length && text[next] is not ('\t' or '\n' or '\f' or '\v'))
+            next++;
+        var length = 0.0;
+        for (var k = tab + 1; k < next; k++)
+            length += advances[k];
+        return align switch { "center" => position - length / 2, "right" => position - length, _ => position };
+    }
+
     /// <param name="limit">
     /// Where the line ends: the right indent, or the edge a stop past it took the line to; centered, right and decimal
     /// stops past it align at it (measured with docx/local/tab-break).
@@ -1951,18 +1981,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         stop = null;
         // An absolute position tab aligns what follows it at the left edge, the middle or the right edge of the
         // margins or the indents, as a stop of its alignment there would.
-        if (positional.TryGetValue(tab, out var absolute))
+        if (positional.ContainsKey(tab))
         {
-            var (from, to) = absolute.RelativeTo == "indent" ? (positionalArea.IndentLeft, positionalArea.IndentRight) : (positionalArea.MarginLeft, positionalArea.MarginRight);
-            var (position, align) = absolute.Alignment switch { "center" => ((from + to) / 2, "center"), "right" => (to, "right"), _ => (from, "left") };
-            stop = new TabStop(position, align, absolute.Leader);
-            var next = tab + 1;
-            while (next < text.Length && text[next] is not ('\t' or '\n' or '\f' or '\v'))
-                next++;
-            var length = 0.0;
-            for (var k = tab + 1; k < next; k++)
-                length += advances[k];
-            return Math.Max(x, align switch { "center" => position - length / 2, "right" => position - length, _ => position });
+            var place = PositionalPlace(text, tab, advances, out var absoluteStop);
+            stop = absoluteStop;
+            return Math.Max(x, place);
         }
         // The tab after a list number takes the left indent as its stop also where the number ends right at it, which
         // leaves the tab no width; custom and default stops count only after its place, as for other tabs (measured

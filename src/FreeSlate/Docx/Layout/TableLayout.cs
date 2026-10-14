@@ -853,7 +853,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     total += heights[k] + (k > r ? topWidths[k] : 0);
                 var content = laid[cell];
                 var margins = CellMargins(r, cell, Math.Min(rows.Count, r + rowsSpanned) - 1);
-                var free = total - margins.Top - content.Height - margins.Bottom;
+                var free = total - margins.Top - (Rotated(cell) ? content.Height : content.Reach ?? content.Height) - margins.Bottom;
                 var lowered = cell.Format.VerticalAlign switch
                 {
                     "center" => Math.Max(0, free) / 2,
@@ -1143,7 +1143,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var part = new CellPart { ContentTop = top0 + Width(borders.Top) + margins.Top, BottomMargin = margins.Bottom, Span = rowsSpanned };
                 // Vertical alignment in the cell, as in tables without spacing (docx/external/poi/
                 // bib-chernigovka.netdo.ru_download_docs_17459: dates centered beside two lines of text).
-                var free = height - Width(borders.Top) - margins.Top - content.Height - margins.Bottom - Width(borders.Bottom);
+                var free = height - Width(borders.Top) - margins.Top - (content.Reach ?? content.Height) - margins.Bottom - Width(borders.Bottom);
                 var lowered = cell.Format.VerticalAlign switch
                 {
                     "center" => Math.Max(0, free) / 2,
@@ -1743,6 +1743,78 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     {
         /// <summary>The floating drawings of the content, relative to its top left.</summary>
         public List<CellAnchor> Anchors { get; init; } = [];
+
+        /// <summary>How far down the content and all its floating drawings reach, which vertical alignment moves together.</summary>
+        public double? Reach { get; init; }
+    }
+
+    /// <summary>
+    /// How far down a floating drawing in a cell reaches from the content's top, placed from its paragraph, its line or
+    /// the cell's top (margins and the page stand for the cell there; see CellAnchor), and whether text goes around it.
+    /// </summary>
+    static (double Bottom, bool Wraps)? Reach(System.Xml.Linq.XElement anchor, double paragraphTop, double lineTop)
+    {
+        if (RelativelySized(anchor))
+            return null;
+        var vertical = anchor.Element(Docx.Drawings.Wp + "positionV");
+        if (vertical?.Element(Docx.Drawings.Wp + "posOffset") is not { } offset
+            || !double.TryParse(offset.Value.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var emu))
+            return null;
+        var effect = anchor.Element(Docx.Drawings.Wp + "effectExtent");
+        var below = double.TryParse((string?)effect?.Attribute("b"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var b) ? b / 12700 : 0;
+        var top = (string?)vertical.Attribute("relativeFrom") switch { "paragraph" => paragraphTop, "line" => lineTop, _ => 0 } + emu / 12700;
+        var wrap = anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
+        return (top + Docx.Drawings.Extent(anchor).Height + below, wrap != null && wrap.Name.LocalName != "wrapNone");
+    }
+
+    /// <summary>
+    /// Whether a floating drawing in a cell is laid out in it: from Word 2013 on always, before where layoutInCell says
+    /// so (measured with docx/local/cig-noin, cig-noin14, cig-noin12: a shape wrapped square of layoutInCell 0 grows
+    /// its row in mode 15; in modes 14 and 12 it stands in the column, the table below it).
+    /// </summary>
+    bool InCell(System.Xml.Linq.XElement anchor) =>
+        context.CompatibilityMode >= 15 || (string?)anchor.Attribute("layoutInCell") is not ("0" or "false");
+
+    /// <summary>
+    /// Whether a drawing takes a share of the page or its margins across or down (wp14:sizeRelH, wp14:sizeRelV), a size
+    /// the cell's layout does not know.
+    /// </summary>
+    static bool RelativelySized(System.Xml.Linq.XElement anchor) =>
+        anchor.Elements().Where(e => e.Name.LocalName is "sizeRelH" or "sizeRelV").SelectMany(e => e.Elements())
+            .Any(e => e.Name.LocalName is "pctWidth" or "pctHeight" && double.TryParse(e.Value, out var share) && share > 0);
+
+    /// <summary>
+    /// The area a floating drawing in a cell keeps text from, relative to the content's top left: its box with its
+    /// effect extents and distances, placed by an offset from its paragraph or the cell's top (see Reach) and from the
+    /// text's left, the page's from the cell's edge, or aligned in the text; null for drawings text does not go around or
+    /// placed otherwise.
+    /// </summary>
+    static Paginator.Exclusion? CellExclusion(System.Xml.Linq.XElement anchor, double paragraphTop, double width, double edge)
+    {
+        var wrap = anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
+        if (wrap == null || wrap.Name.LocalName == "wrapNone" || RelativelySized(anchor))
+            return null;
+        static double? Number(string? value) =>
+            double.TryParse(value?.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : null;
+        var effect = anchor.Element(Docx.Drawings.Wp + "effectExtent");
+        double Emu(System.Xml.Linq.XElement? e, string name) => Number((string?)e?.Attribute(name)) ?? 0;
+        var vertical = anchor.Element(Docx.Drawings.Wp + "positionV");
+        var horizontal = anchor.Element(Docx.Drawings.Wp + "positionH");
+        if (Number(vertical?.Element(Docx.Drawings.Wp + "posOffset")?.Value) is not { } dy || (string?)vertical!.Attribute("relativeFrom") is "line" or "character")
+            return null;
+        var (w, h) = Docx.Drawings.Extent(anchor);
+        var top = ((string?)vertical.Attribute("relativeFrom") == "paragraph" ? paragraphTop : 0) + dy;
+        var from = (string?)horizontal?.Attribute("relativeFrom");
+        double x;
+        if (Number(horizontal?.Element(Docx.Drawings.Wp + "posOffset")?.Value) is { } dx && from != "character")
+            x = (from == "page" ? -edge : 0) + dx;
+        else if (horizontal?.Element(Docx.Drawings.Wp + "align")?.Value is { } align && from is "column" or "margin")
+            x = align switch { "right" => width - w, "center" => (width - w) / 2, _ => 0 };
+        else
+            return null;
+        return new Paginator.Exclusion(x - Emu(effect, "l") - Emu(anchor, "distL"), top - Emu(effect, "t") - Emu(anchor, "distT"),
+            x + w + Emu(effect, "r") + Emu(anchor, "distR"), top + h + Emu(effect, "b") + Emu(anchor, "distB"),
+            wrap.Name.LocalName == "wrapTopAndBottom", (string?)wrap.Attribute("wrapText") ?? "bothSides");
     }
 
     /// <summary>A cell's blocks laid out in its text width: lines with tops from the content's top, and the height.</summary>
@@ -1871,6 +1943,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // Floating tables in the cell, which the text after them goes around, and how far down they reach.
         var around = new List<Paginator.Exclusion>();
         var floatBottom = 0.0;
+        var extent = 0.0;
         // The border box of the paragraphs that share their borders, from the first one's top.
         Paginator.Frame? previousFrame = null;
         var boxTop = 0.0;
@@ -1917,6 +1990,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     double? betweenAt = null;
                     if (frame != null && !continues)
                     {
+                        y += frame.TopShadow;
                         boxTop = y;
                         y += frame.Top is { Visible: true } frameTop ? frameTop.Space + frameTop.Total : 0;
                     }
@@ -1928,6 +2002,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var lineTops = new Dictionary<AnchorInline, (double Top, double X)>(ReferenceEqualityComparer.Instance);
                     var firstLine = lines.Count;
                     var linesTop = y;
+                    // The paragraph's own floating drawings that text goes around push its lines and those after it, as
+                    // in the body (measured with docx/local/cig-tb: a shape wrapped top and bottom takes the cell's text
+                    // below it, the row growing with it; docx/external/powertools/WC/WC048-Text-Box-in-Cell: text beside
+                    // a text box wrapped square).
+                    if (floats)
+                    {
+                        foreach (var own in paragraph.Content.OfType<AnchorInline>())
+                        {
+                            if (InCell(own.Anchor) && CellExclusion(own.Anchor, paragraphTop, width, edge) is { } area)
+                                around.Add(area);
+                        }
+                    }
                     var laid = around.Any(f => f.Bottom > linesTop)
                         ? paragraphs.Layout(paragraph, width, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width))
                         : paragraphs.Layout(paragraph, width, fields);
@@ -1945,12 +2031,26 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         if (!nextContinues)
                             y += frame.Bottom is { Visible: true } bottomLine ? bottomLine.Space + bottomLine.Total : 0;
                         frame.Draw(fills, fills, 0, width, boxTop, y, top: !continues, bottom: !nextContinues, between: betweenAt);
+                        if (!nextContinues)
+                            y += frame.BottomShadow;
                     }
                     previousFrame = frame;
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                     {
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
                         anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
+                        // A cell's row grows down to its drawings that text goes around, whether or not they are laid
+                        // out in the cell, not to those in front of or behind the text; vertical alignment moves the
+                        // content with all of them (measured with docx/local/cig-*: a 40 pt shape wrapped square or top
+                        // and bottom from its paragraph, its line or the margin, layoutInCell 0 too, in modes 15 and 14;
+                        // not wrapped the row keeps its line; a bottom-aligned cell's content ends with an unwrapped
+                        // shape's bottom; docx/external/libreoffice/extras-ooxmlexport/tdf37153_considerWrapOnObjPos).
+                        if (floats && InCell(anchor.Anchor) && Reach(anchor.Anchor, paragraphTop, lineTop) is { } reach)
+                        {
+                            extent = Math.Max(extent, reach.Bottom);
+                            if (reach.Wraps)
+                                floatBottom = Math.Max(floatBottom, reach.Bottom);
+                        }
                     }
                     ownAfter = paragraph.Format.AfterAuto == true && autoSpacing
                         ? (b == blocks.Count - 1 || blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
@@ -2037,7 +2137,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
             }
         }
-        return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom)) { Anchors = anchors };
+        return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom)) { Anchors = anchors, Reach = Math.Max(Math.Max(y + after, floatBottom), extent) };
 
         // The lines of a nested table's row go with what of the row has to stand together.
         void Unit(int from, RowBox row, double rowTop)
