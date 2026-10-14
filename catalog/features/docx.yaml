@@ -1535,8 +1535,9 @@ areas:
           docx/external/poi/bug65649).
           A fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
           between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before
-          Word 2013 between the middles and wider by the outer cells' margins (docx/local/tblwidth-15, -14,
-          tblwidth2-15, -14).
+          Word 2013 between the middles, a percentage of the available width and the outer cells' margins together
+          (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins of 5.4 pt 231.0 pt wide;
+          pandoc/golden/raw-blocks).
 
       - id: table.rows
         title: Row height, splitting and header rows

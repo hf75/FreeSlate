@@ -1335,9 +1335,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>
     /// The width a table asks for (w:tblW in points or percent of the available width) for its grid, or null. A width
     /// in points lies between the outer lines' middles, also with cell spacing (whose gaps it holds); a percentage
-    /// between their outer edges, before Word 2013 (compatibility mode below 15) between the middles and wider by the
-    /// first cell's and the last cell's margins (measured with docx/local/tblwidth-15, -14, tblwidth2-15, -14 and
-    /// compat14-tables).
+    /// between their outer edges, before Word 2013 (compatibility mode below 15) between the middles, of the available
+    /// width and the first cell's and the last cell's margins together (measured with docx/local/tblwidth-15, -14,
+    /// tblwidth2-15, -14 and compat14-tables).
     /// </summary>
     double? Target(TableModel table, List<RowModel> rows, double available, double allowance, double gaps)
     {
@@ -1349,10 +1349,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return target;
         if (!Legacy)
             return target - allowance;
+        // Before Word 2013 the percentage is of the available width and those margins together (measured with
+        // docx/local/tblwidth-14: 50 % of 451.3 pt with margins of 5.4 pt is 231.0 pt wide, not 236.4; pandoc/
+        // golden/raw-blocks: 40 %).
         if (rows.Count > 0 && rows[0].Cells.Count > 0)
         {
             var (first, last) = (rows[0].Cells[0], rows[0].Cells[^1]);
-            target += Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
+            var margins = Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
+            target = (w.Resolve(available + margins) ?? tw + margins) - gaps;
         }
         return target;
     }
