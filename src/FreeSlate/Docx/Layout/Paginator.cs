@@ -1777,8 +1777,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var width = NoteColumns()[0].Width;
         if (noteBoxes.TryGetValue((id, width), out var box))
             return box;
-        var (lines, fills, strokes, height) = footnotes != null && footnotes.TryGetValue(id, out var blocks)
-            ? tables.Blocks(blocks, width, null) : ([], [], [], 0);
+        var blocks = footnotes != null && footnotes.TryGetValue(id, out var found) ? found : null;
+        var (lines, fills, strokes, height) = blocks != null ? tables.Blocks(blocks, width, null) : ([], [], [], 0);
+        // A note's last paragraph keeps its HTML auto space after below it, the separator's too (measured with
+        // docx/local/fau-both, fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt
+        // below the separator's paragraph; fau-note: the separator's own paragraph without it; docx/external/
+        // libreoffice/extras-ooxmlexport/tdf104354_firstParaInSection).
+        if (blocks?.LastOrDefault() is ParagraphBlock { Format.AfterAuto: true } && !context.AddsSpacing && lines.Count > 0)
+            height += 14;
         return noteBoxes[(id, width)] = new NoteBox(lines, fills, strokes, height);
     }
 

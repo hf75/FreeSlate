@@ -1615,6 +1615,11 @@ areas:
           pt or double spacing; pandoc/golden/notes). Footnotes beneath the text of a section that ends the document
           come before its endnotes, which follow under their separator below them
           (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes, 36.0 → 83.2 %).
+          A note's last paragraph keeps its HTML auto space after below it, the separator's too (docx/local/fau-both,
+          fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt below the separator's
+          paragraph; fau-note: the separator's own paragraph without it;
+          docx/external/libreoffice/extras-ooxmlexport/tdf104354_firstParaInSection 69.1 → 89.0 %). Known deviation:
+          auto space before a note (fau-before) is left out here.
 
       - id: note.endnotes
         title: Endnotes
