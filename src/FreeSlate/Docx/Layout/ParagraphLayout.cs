@@ -2381,8 +2381,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     {
         for (var i = labelEnd; i + 1 < text.Length; i++)
         {
+            // Not after a non-breaking hyphen, a hyphen with a word joiner (docx/external/powertools/RP/RP038).
             if ((text[i] is '-' or '\u2013' || text[i] == '\u2010' && context.CompatibilityMode >= 15)
-                && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v') && !rules.NotFirst.Contains(text[i + 1]))
+                && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v' or '\u2060') && !rules.NotFirst.Contains(text[i + 1]))
                 breaks[i] = true;
         }
     }

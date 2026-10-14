@@ -3661,7 +3661,8 @@ areas:
           East Asian, also before periods, closing brackets and quotes, slashes and percent signs (docx/local/
           spacebreak: 19 characters), after every hyphen and en dash whatever stands before it, digits, punctuation
           or a space, after the hyphen U+2010 from Word 2013 on, not after slashes, plus signs, underscores or
-          non-breaking hyphens (docx/local/hyphbreak-15, -12: 19 cases), and before and after inline pictures as
+          non-breaking hyphens (docx/local/hyphbreak-15, -12: 19 cases; w:noBreakHyphen too, powertools/RP/RP038
+          76.5 → 100 % of the lines), and before and after inline pictures as
           beside ideographs (docx/local/tblpic3); a word longer than the line breaks between characters, on the line
           where it begins if nothing but a tab or a list number stands before it there, with at least one character
           after a number, none needed after a tab (docx/local/lw-*, lx-*, ly-*, lt-*: modes 14 and 15); a tab goes to
