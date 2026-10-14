@@ -75,7 +75,7 @@ public sealed partial class ChartRenderer
         if (ex?.Series.Any(s => s.Layout == "paretoLine") == true)
             (left, right) = (left + 7.5, right - 7.5);
         if (title is { Overlay: false })
-            top = title.Box.Bottom - TitlePaddingY + ExTitleGap;
+            top = title.Bottom - TitlePaddingY + ExTitleGap;
         if (legend is { Overlay: false })
         {
             switch (legend.Position)
@@ -215,7 +215,7 @@ public sealed partial class ChartRenderer
             SpPr = element.Element(Ns.C + "spPr"),
             Ex = true,
         };
-        var titleLine = title is { Overlay: false } ? title.Box.Bottom - TitlePaddingY + ExLegendGap : ExMargin;
+        var titleLine = title is { Overlay: false } ? title.Bottom - TitlePaddingY + ExLegendGap : ExMargin;
         Box box;
         if (position is "t" or "b")
         {

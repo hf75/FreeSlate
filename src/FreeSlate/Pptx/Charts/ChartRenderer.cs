@@ -90,6 +90,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public required Box Box { get; set; }
         public bool Overlay { get; init; }
         public XElement? SpPr { get; init; }
+
+        /// <summary>The box the plot and the legend keep below where it is not the title's own: Word's automatic one.</summary>
+        public Box? Room { get; init; }
+
+        /// <summary>Where the room the title takes ends.</summary>
+        public double Bottom => (Room ?? Box).Bottom;
     }
 
     /// <summary>
@@ -238,7 +244,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         // Boundaries the plot area keeps its distance from: the chart edges, the title and the legend.
         double top = 0, bottom = height, left = 0, right = width;
-        if (title is { Overlay: false }) top = title.Box.Bottom;
+        if (title is { Overlay: false }) top = title.Bottom;
         if (legend is { Overlay: false })
         {
             switch (legend.Position)
@@ -538,14 +544,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var w = block.Width + 2 * TitlePaddingX;
         var h = Math.Max(1, layout.Lines.Count) * lineHeight + 2 * TitlePaddingY;
         var box = new Box((width - w) / 2, ex != null ? ExTitleTop - TitlePaddingY : EdgeGap, w, h);
-        if (ManualPosition(element, w, h) is { } manual)
-            box = manual;
+        var manual = ManualPosition(element, w, h);
+        // Word draws a manually placed title where its layout says but lays the plot and the legend out below the
+        // automatic title unless it overlays them (scratch/triage/2026-10-14_agents/charts: libreoffice/
+        // extras-ooxmlexport/tdf134235 plot top 11 pt below the automatic box, powertools/CU007, CU012).
+        var word = manual != null && slide.Presentation.Word;
         return new TitleLayout
         {
             Text = block,
-            Box = box,
-            Overlay = ChartModel.Flag(element, "overlay", false) || ManualPosition(element, w, h) != null,
+            Box = manual ?? box,
+            Overlay = ChartModel.Flag(element, "overlay", false) || manual != null && !word,
             SpPr = element?.Element(Ns.C + "spPr"),
+            Room = word ? box : null,
         };
     }
 
@@ -1242,7 +1252,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 layout.Placed.Add((entries[i], x, rowHeight * (row + 0.5)));
             }
             var h = rows * rowHeight - (rows - 1) * 1.5;   // measured: wrapped legends are 1.5 pt shorter per extra row
-            var y = position == "b" ? height - EdgeGap - h : (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
+            var y = position == "b" ? height - EdgeGap - h : (title is { Overlay: false } ? title.Bottom : 0) + EdgeGap;
             box = new Box((width - w) / 2, y, w, h);
         }
         else
@@ -1251,7 +1261,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var h = rowHeight * entries.Count;
             for (var i = 0; i < entries.Count; i++)
                 layout.Placed.Add((entries[i], VerticalLegendPadding, rowHeight * (i + 0.5)));
-            var areaTop = (title is { Overlay: false } ? title.Box.Bottom : 0) + EdgeGap;
+            var areaTop = (title is { Overlay: false } ? title.Bottom : 0) + EdgeGap;
             var areaBottom = height - EdgeGap;
             var x = position == "l" ? EdgeGap : width - EdgeGap - w;
             var y = position == "tr" ? areaTop : areaTop + (areaBottom - areaTop - h) / 2;

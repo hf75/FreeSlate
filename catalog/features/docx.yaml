@@ -3135,7 +3135,9 @@ areas:
           charts-more, charts-more2 and charts-more3 (88 to 98 %). Without a c:spPr of its own a chart's area is white
           (bg1) with a border of the theme's line style 1 in tx1 tinted 75 % at every Office 2007 style up to 40, where
           PowerPoint draws none below 33, and black from 41 on as in PowerPoint (docx/local/ca-s2, -s18, -s34, -s42;
-          powertools/CU005, CU010).
+          powertools/CU005, CU010). A title placed by hand (c:manualLayout) stands there, but unless it overlays the
+          chart the plot and the legend keep below the automatic title's box, where PowerPoint lets them up
+          (libreoffice/extras-layout/tdf134235 21.4 → 100 % of the lines, powertools/CU007, CU012 20 → 60 %).
 
       - id: chart.data
         title: Series and data caches
