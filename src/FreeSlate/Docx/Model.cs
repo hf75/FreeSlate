@@ -100,7 +100,7 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
 
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
-        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "";
+        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "LISTNUM" or "";
 }
 
 /// <summary>A block of the body: a paragraph or a table.</summary>
@@ -842,6 +842,7 @@ public sealed partial class ModelReader(DocumentContext context)
             (numberFormat.ShadingPattern, numberFormat.ShadingColor, numberFormat.ShadingFill) = (null, null, null);
             numberFormat.Overlay(levelRun);
             label = new ListLabel(next.Text, numberFormat, next.Level.Suffix, next.Level.Justification, next.Level) { Own = next.Own };
+            counter.CurrentList = format.NumberingId;
         }
         // The margins of the HTML divisions around the paragraph add to its indents (catalog: paragraph.htmlDivs).
         if (context.Divs.Chain(format.DivId) is { Count: > 0 } divs)
@@ -952,7 +953,7 @@ public sealed partial class ModelReader(DocumentContext context)
         }
 
         /// <summary>A field instruction's words; quoted arguments are one word without their quotes.</summary>
-        static List<string> Arguments(string instruction)
+        public static List<string> Arguments(string instruction)
         {
             var words = new List<string>();
             var i = 0;
@@ -1054,7 +1055,14 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? ""):
                     var cached = new List<Inline>();
                     ReadInlines(e, paragraphStyle, cached, new FieldState());
-                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun), cached));
+                    var simpleFormat = cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun);
+                    if (FieldInline.TypeOf(e.Attr("instr")!) == "LISTNUM")
+                    {
+                        if (!field.Hidden && ListNumber(e.Attr("instr")!, e) is { } listed)
+                            field.Target(content).Add(new TextInline(listed, simpleFormat));
+                        break;
+                    }
+                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, simpleFormat, cached));
                     break;
                 case "fldSimple":
                     ReadInlines(e, paragraphStyle, content, field);
@@ -1107,6 +1115,36 @@ public sealed partial class ModelReader(DocumentContext context)
             if (maths.Count > 0)
                 content.Add(new MathInline(math, true, jc, format, Formats(math)));
         }
+    }
+
+    /// <summary>
+    /// A LISTNUM field's number (catalog: field.evaluation): in the list of its name (an abstract definition's w:name,
+    /// else Word's default list of that name), without one in the list of the story's last numbered paragraph or the
+    /// default list; at the level \l gives, else one deeper than a LISTNUM before it in its paragraph, else at the last
+    /// LISTNUM's level without a name and the first with one; from \s on where given. It counts with the list, which
+    /// numbered paragraphs count on (measured with docx/local/lnum-*: 1) 2) 3); "1)a)" then "b)"; after \l 3 a plain
+    /// one at level 3, a LegalDefault one at level 1; a LISTNUM between paragraphs of a list "%1." numbered 2. and the
+    /// paragraph after it 3.; MyList's \l 2 1.1. and 1.2. under its first heading).
+    /// </summary>
+    string? ListNumber(string instruction, XElement at)
+    {
+        var words = FieldState.Arguments(instruction.Replace("\\", " \\"));
+        var name = words.Count > 1 && !words[1].StartsWith('\\') ? words[1] : null;
+        int? level = null, start = null;
+        for (var i = 1; i + 1 < words.Count; i++)
+        {
+            if (words[i] == "\\l" && int.TryParse(words[i + 1], out var l))
+                level = Math.Clamp(l, 1, 9) - 1;
+            if (words[i] == "\\s" && int.TryParse(words[i + 1], out var s))
+                start = s;
+        }
+        var paragraph = at.AncestorsAndSelf(Wml.W + "p").FirstOrDefault();
+        var (last, lastParagraph) = counter.ListNum;
+        var ilvl = level ?? (paragraph != null && ReferenceEquals(paragraph, lastParagraph) ? Math.Min(8, last + 1) : name != null ? 0 : last);
+        counter.ListNum = (ilvl, paragraph);
+        var list = name != null ? context.Numbering.Named(name) ?? NumberingDefinitions.DefaultList(name)
+            : counter.CurrentList ?? NumberingDefinitions.DefaultList("NumberDefault");
+        return counter.Next(list, ilvl, null, start)?.Text;
     }
 
     /// <summary>
@@ -1197,6 +1235,12 @@ public sealed partial class ModelReader(DocumentContext context)
                             // docx/external/libreoffice/extras-ooxmlexport/tdf154478: a PAGEREF of a missing bookmark
                             // shows Word's error text on a line of its own).
                             var instruction = ended.Instruction.ToString();
+                            if (FieldInline.TypeOf(instruction) == "LISTNUM")
+                            {
+                                if (!field.Hidden && ListNumber(instruction, e) is { } listed)
+                                    field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format));
+                                break;
+                            }
                             if (ended.Cached == null && !ended.InResult && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             if (ended.Cached != null)

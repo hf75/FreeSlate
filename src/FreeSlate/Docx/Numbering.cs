@@ -121,12 +121,40 @@ public sealed class NumberingDefinitions
 
     readonly Dictionary<string, Instance?> resolved = new(StringComparer.Ordinal);
 
+    /// <summary>The prefix of the numbering ids of LISTNUM's own lists (DefaultList).</summary>
+    const string ListNumPrefix = "\u0001LISTNUM:";
+
+    /// <summary>
+    /// The numbering id of the list a LISTNUM field of a name counts in that no abstract definition has (NumberDefault,
+    /// OutlineDefault, LegalDefault): Word's default list, 1) a) i) (1) (a) (i) 1. a. i., counted per name (measured
+    /// with docx/local/lnum-*: OutlineDefault and LegalDefault count in these too; libreoffice/extras-ooxmlexport/
+    /// tdf89731: "OutlineDefault \l 3" prints i), ii), iii)).
+    /// </summary>
+    public static string DefaultList(string name) => ListNumPrefix + name;
+
+    /// <summary>The numbering id of a list LISTNUM names: an instance of the abstract definition of that w:name, or null.</summary>
+    public string? Named(string name)
+    {
+        var abstractId = abstracts.FirstOrDefault(a => string.Equals(a.Value.Child("name").Val(), name, StringComparison.OrdinalIgnoreCase)).Key;
+        return abstractId == null ? null : instances.FirstOrDefault(n => n.Value.Child("abstractNumId").Val() == abstractId).Key;
+    }
+
     public Instance? Find(string? numId)
     {
         if (numId == null || numId == "0")
             return null;
         if (resolved.TryGetValue(numId, out var cached))
             return cached;
+        if (numId.StartsWith(ListNumPrefix, StringComparison.Ordinal))
+        {
+            var formats = new[] { ("decimal", "%1)"), ("lowerLetter", "%2)"), ("lowerRoman", "%3)"), ("decimal", "(%4)"), ("lowerLetter", "(%5)"),
+                ("lowerRoman", "(%6)"), ("decimal", "%7."), ("lowerLetter", "%8."), ("lowerRoman", "%9.") };
+            return resolved[numId] = new Instance
+            {
+                Id = numId, AbstractId = numId, StartOverrides = new int?[9],
+                Levels = formats.Select(f => (NumberingLevel?)new NumberingLevel { Format = f.Item1, Text = f.Item2 }).ToArray(),
+            };
+        }
         Instance? instance = null;
         if (instances.TryGetValue(numId, out var num) && num.Child("abstractNumId").Val() is { } abstractId
             && Abstract(abstractId, 0) is var (id, element))
@@ -185,12 +213,19 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     readonly Dictionary<string, Counters> lists = new(StringComparer.Ordinal);
     readonly HashSet<string> started = new(StringComparer.Ordinal);
 
+    /// <summary>The numbering instance of the story's last numbered paragraph, which a LISTNUM without a name counts in.</summary>
+    public string? CurrentList { get; set; }
+
+    /// <summary>The level of the story's last LISTNUM field and the paragraph it stands in.</summary>
+    public (int Level, System.Xml.Linq.XElement? Paragraph) ListNum { get; set; }
+
     /// <summary>
     /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
     /// where it has none.
     /// </summary>
     /// <param name="language">The language of the paragraph, for numbers in words.</param>
-    public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl, string? language = null)
+    /// <param name="start">The number to show instead of the next one, from which the level counts on (LISTNUM \s).</param>
+    public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl, string? language = null, int? start = null)
     {
         if (definitions.Find(numId) is not { } instance)
             return null;
@@ -203,15 +238,17 @@ public sealed class ListCounter(NumberingDefinitions definitions)
         {
             for (var i = 0; i < 9; i++)
             {
-                if (instance.StartOverrides[i] is { } start)
+                if (instance.StartOverrides[i] is { } overridden)
                 {
-                    counters.Values[i] = start - 1;
+                    counters.Values[i] = overridden - 1;
                     counters.Used[i] = true;
                 }
             }
         }
         if (!counters.Used[ilvl])
             counters.Values[ilvl] = level.Start - 1;
+        if (start != null)
+            counters.Values[ilvl] = start.Value - 1;
         counters.Values[ilvl]++;
         counters.Used[ilvl] = true;
         for (var d = ilvl + 1; d < 9; d++)

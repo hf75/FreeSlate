@@ -1746,7 +1746,12 @@ areas:
           dictionary's headers; a header measured for its page's text sees that page's paragraphs of the layout
           before), NOTEREF (the mark of the note in the bookmark, with \f raised as that mark; to a missing bookmark
           Word's error in the instruction's format, bold in every mode, whatever MERGEFORMAT says: docx/local/nref-*,
-          powertools/RP043, RP044-Rejected 50 → 100 % of the lines), SEQ (\c, , \h, \s), SECTION, IF
+          powertools/RP043, RP044-Rejected 50 → 100 % of the lines), LISTNUM (in the list of its name, an abstract
+          definition's w:name, else Word's default list 1) a) i) (1) (a) (i) 1. a. i. of that name, OutlineDefault and
+          LegalDefault too; without a name in the list of the last numbered paragraph, else the default list; at \l's
+          level, else one deeper than a LISTNUM before it in its paragraph, else the last one's level without a name
+          and the first with one; \s its number; counting with the list's paragraphs: docx/local/lnum-*, powertools/
+          RP026 ×3 50 → 100 %, HC048, libreoffice/extras-ooxmlexport/tdf89731), SEQ (\c, , \h, \s), SECTION, IF
           (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
           language's short date and time) and SAVEDATE (when the document was saved), all in the field's language
           (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word has them, none in
