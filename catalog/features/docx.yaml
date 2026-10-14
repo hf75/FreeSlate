@@ -3735,7 +3735,9 @@ areas:
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
           stable (at most five runs); an object that goes back and forth between two pages, its own exclusion pushing
           its paragraph off the first, leaves its paragraph at the top of the second and the first without itself
-          (openxml-sdk/Complex01, Strict01 page 4: no stale exclusion; Strict01 65.5 → 76.0 % of the lines); from Word 2013 an object that wraps text and moves with its paragraph takes the
+          and without the paragraph's other objects (openxml-sdk/Complex01, Strict01 page 4: no stale exclusion;
+          Strict01 65.5 → 76.0 % of the lines; Document: a cover's two text boxes, one over a chart, one over the
+          table above it; Complex01 84.5 → 89.0 %); from Word 2013 an object that wraps text and moves with its paragraph takes the
           paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text at
           least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front of
           the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
@@ -3750,19 +3752,27 @@ areas:
           character a line where none, a word breaking where it does not fit (tx-*, ty-*, tz-*, ua-*;
           powertools/RP/RP001-Tracked-Revisions-01-Accepted), and beside objects wrapped along their polygons a segment
           takes text from 9 pt (tv-*, tw-*; core-text/fly-minimal-wrap). A line moved down for the height of its
-          paragraph mark stands where it fits with its own (uitest/tdf124675). A paragraph whose own object leaves it no
+          paragraph mark stands where it fits with its own (uitest/tdf124675); from Word 2013 a line taller than the
+          height it was placed for keeps clear of the objects beside the rest of it too (docx/local/tall-*: a 200 pt
+          inline picture whose line top is clear goes below a shape over its lower or upper part, wrapped square or top
+          and bottom, anchored before or after it; beside one leaving it room enough it stays; in mode 14 it stays over
+          the shape; openxml-sdk/Document: a cover page's text box over a chart's lower half, the cover then on the
+          next page, 68.3 → 95.8 % of the lines). A paragraph whose own object leaves it no
           room on the page moves on with the object, and the page it left is laid out without it
           (docx/local/anchorpush-*). An object kept free above and below that reaches down to its paragraph's place
           pushes the lines already in the column that it overlaps below it; where its paragraph would then no longer
-          begin in the column, or where the object ends above the paragraph, it takes the paragraph to the next (uc-1
-          to uc-5, ud-*; generated/wrapping, local/compat11-wrapping; extras-layout/fdo43573-2-min). Objects beside the
+          begin in the column it takes the paragraph to the next (uc-1 to uc-5, ud-*; generated/wrapping,
+          local/compat11-wrapping; extras-layout/fdo43573-2-min), not where the object only ends above the paragraph
+          (tall-t: a picture line before the anchor goes below the object, the anchor stays). Objects beside the
           column leave its lines alone, also those kept free above and below, and a paragraph going on in another column
           or page goes on beside the objects there (fdo43573-2-min: an image at the top of a page's left column, the
           right column's text and the last line of a paragraph from the page before). Text frames and drop caps
           (paragraph.frames) and floating tables (table.floating)
           take part in the same exclusions. A table does not stand beside the floating objects and frames before it:
-          it begins below every one its part on the page would overlap, from Word 2013 on whatever their wrapping,
-          before only those kept free above and below (docx/local/fx-1 to fx-13, ft-1 to ft-8: below a 40 pt shape
+          it begins below every one its part on the page would overlap, from Word 2013 on whatever their wrapping and
+          also below those anchored after it on the page (tbo-*: a shape anchored after a table over its last or first
+          row, wrapped square or top and bottom; openxml-sdk/Document), before only those kept free above and below
+          (docx/local/fx-1 to fx-13, ft-1 to ft-8: below a 40 pt shape
           wrapped square or top and bottom, also one beside a 70-row table's last rows on the page, and below frames not
           beside text, anchored to the text or the page; a shape right of the table and one without wrapping leave it;
           docx/external/tika/testWORD_tableInRunInsideParagraph, docx/external/libreoffice/core-ooxml-pass/
@@ -3772,7 +3782,9 @@ areas:
           into the distance of a floating table in the right margin stays). A floating table that may not overlap others (w:tblOverlap never) moves right of the one
           before it that it would overlap where it fits, else below it (table.floating). Known deviations: a table
           that fits beside a floating table Word moves beside it (ib-1, ib-2), ours stays at its place across it; in
-          mode 14 Word sets a table beside a shape wrapped square, indented and narrower (fx-5), ours stays over it; a table whose cells' paragraphs have frame properties stands in that
+          mode 14 Word sets a table beside a shape wrapped square, indented and narrower (fx-5), ours stays over it;
+          in mode 14 Word moves only the row of a table that a shape anchored after it overlaps (tbo-14), ours leaves
+          the table; a table whose cells' paragraphs have frame properties stands in that
           frame at its position (lb-1 to lb-4, tdf104394_lostTextbox), ours in the text.
 
       - id: engine.tableLayout

@@ -254,11 +254,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         pages.Add(page);
                     }
                 }
+                // Every object of the paragraph leaves the first page, not only the first one found going back and forth
+                // (Document: two text boxes of the cover, one over the chart, one over a table above it).
                 foreach (var (source, pages) in history)
                 {
                     if (pages.Count < 3 || pages[^1] != pages[^3] || Math.Abs(pages[^1] - pages[^2]) != 1
-                        || AnchorParagraph(blocks, source) is not { } anchorParagraph || !forced.Add(anchorParagraph))
+                        || AnchorParagraph(blocks, source) is not { } anchorParagraph)
                         continue;
+                    forced.Add(anchorParagraph);
                     var earlier = Math.Min(pages[^1], pages[^2]);
                     if (found.TryGetValue(earlier, out var stale))
                         stale.RemoveAll(e => ReferenceEquals(e.Source, source));
@@ -1871,9 +1874,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// 40 pt shape wrapped square or top and bottom, also one beside a 70-row table's last rows on the page, and below a
     /// frame not beside text; a shape right of the table, one without wrapping and in mode 14 one wrapped square leave
     /// it, 340 pt beside it; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang; extras-ooxmlexport/tdf162746:
-    /// in mode 12 below a header's floating table that leaves 5 pt).
+    /// in mode 12 below a header's floating table that leaves 5 pt). From Word 2013 on also below the objects anchored
+    /// after it on the page, where the run before placed them (docx/local/tbo-*: a shape anchored in the paragraph
+    /// after a table or later, over its last or first row, wrapped square or top and bottom; one without wrapping
+    /// leaves it; openxml-sdk/Document: a cover page's text box over the last row of a table above a chart, the cover
+    /// then on the next page). Known deviation: in mode 14 Word moves only the row such an object overlaps (tbo-14),
+    /// ours leaves the table.
     /// </summary>
-    void BelowFloats(TableBox box, double left)
+    void BelowFloats(TableBox box, double left, XElement element)
     {
         var (from, to) = (left + box.Left, left + box.Left + box.Width);
         var height = box.Rows.Sum(r => r.Height);
@@ -1885,7 +1893,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // in the right margin stays).
         bool Beside(Exclusion e) => !e.Frame && !e.Story && (Math.Max(e.Left - columnLeft, columnLeft + columnWidth - e.Right) >= box.Width - 0.01
             || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01);
-        var floats = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(page.FloatingTables.Where(e => !Beside(e)))
+        var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
+        var later = context.CompatibilityMode >= 15 && seeded.TryGetValue(page.Number, out var before)
+            ? before.Where(e => e.Source is { } source && !e.Frame && !placed.Any(p => ReferenceEquals(p.Source, source))
+                && !source.Ancestors().Any(a => ReferenceEquals(a, element)))
+            : [];
+        var floats = placed.Concat(later).Concat(page.FloatingTables.Where(e => !Beside(e)))
             .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom || Math.Max(e.Left - from, to - e.Right) < box.Width / 2) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
         for (var moved = true; moved;)
         {
@@ -1929,7 +1942,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A table whose cells' paragraphs have frame properties stands in that frame (docx/local/lb-1 to lb-4: Word
         // sets such a table at the margin's outside top, beside the frame before it, without them below it).
         if (table.Table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is not ParagraphBlock { Format.Frame: not null })
-            BelowFloats(box, left);
+            BelowFloats(box, left, table.Element);
         tableKept = RowKept(table.Table, box.Rows.Count - 1);
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);
@@ -2496,15 +2509,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // An object kept free above and below that reaches down to its paragraph's place pushes the lines already in
         // the column that it overlaps below it, the page laid out again with it; where the paragraph would then no
-        // longer begin in the column, and where the object ends above the paragraph, it takes the paragraph to the
-        // next, where the object then stands (measured with docx/local/uc-1 to uc-5, ud-*: lines before an anchor
-        // paragraph go below a rectangle at the top margin of 100 or 650 pt, before one of 690 pt they stay and the
-        // anchor goes to the next page with it; docx/generated/wrapping, docx/local/compat11-wrapping: a rectangle
-        // ending above the anchor, the rest of the page stays empty; docx/external/libreoffice/extras-layout/
-        // fdo43573-2-min).
+        // longer begin in the column, it takes the paragraph to the next, where the object then stands (measured with
+        // docx/local/uc-1 to uc-5, ud-*: lines before an anchor paragraph go below a rectangle at the top margin of 100
+        // or 650 pt, before one of 690 pt they stay and the anchor goes to the next page with it; docx/generated/
+        // wrapping, docx/local/compat11-wrapping: a rectangle ending above the anchor, the rest of the page stays
+        // empty; tall-t: one ending above the anchor, which stays, a picture line before it going below it;
+        // docx/external/libreoffice/extras-layout/fdo43573-2-min).
         if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
                 ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
-                && Pushed(e) is { } top && (e.Bottom <= y + 0.01 || e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01)))
+                && Pushed(e) is { } top && e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);

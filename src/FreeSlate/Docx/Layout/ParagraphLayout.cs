@@ -920,6 +920,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var textBand = (Top: 0.0, Bottom: mark.Metrics.Above + mark.Metrics.Below);
         string? clear = null;     // the w:clear of the break that ended the line before
         var remeasured = false;   // whether the line is laid out again with its own height (see below)
+        var grown = false;        // whether the line is laid out again with the height it grew to (see below)
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
@@ -935,11 +936,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var segments = new List<(double Start, double End)>();
             var skip = 0.0;
             var none = false;
+            LineRoom? taken = null;
             if (room != null)
             {
                 for (var attempt = 0; attempt < 400; attempt++)
                 {
-                    var r = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
+                    var r = taken = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
                     var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;
                     if (context.CompatibilityMode < 15 && !r.Tight)
                     {
@@ -1226,6 +1228,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     remeasured = true;
                     continue;
                 }
+                // From Word 2013 on a line taller than the height it was placed for keeps clear of the objects beside
+                // the rest of it too, laid out again with its own height (measured with docx/local/tall-*: a 200 pt
+                // inline picture whose line top is clear moves below a shape over its lower or upper part, also one
+                // wrapped top and bottom, anchored before or after it; beside one leaving it room enough it stays; in
+                // mode 14 it stays over the shape; openxml-sdk/Document: a cover page's text box over a chart's lower
+                // half).
+                if (context.CompatibilityMode >= 15 && !grown && line.Height > estimate + 0.01 && taken != null
+                    && room(new LineSlot(offset + skip, line.Height, line.Baseline - line.Above, line.Baseline + line.Below, clear)) is { } whole
+                    && !SameRoom(whole, taken))
+                {
+                    estimate = line.Height;
+                    textBand = (line.Baseline - line.Above, line.Baseline + line.Below);
+                    hyphenatedLines = hyphenatedBefore;
+                    grown = true;
+                    continue;
+                }
+                grown = false;
                 remeasured = false;
                 offset += skip + line.Height;
                 estimate = line.Height;
@@ -1436,6 +1455,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>A horizontal rule's share of the section's text width (Vml.Rule), 0 for one of its style's width; null for other drawings.</summary>
     static double? RuleShare(DrawingInline drawing) =>
         (string?)drawing.Drawing.Attribute(Vml.Rule) is { } share && double.TryParse(share, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
+
+    /// <summary>Whether two rooms give a line the same segments.</summary>
+    static bool SameRoom(LineRoom a, LineRoom b) =>
+        a.Tight == b.Tight && a.Segments.Count == b.Segments.Count
+        && a.Segments.Zip(b.Segments).All(p => Math.Abs(p.First.Start - p.Second.Start) < 0.01 && Math.Abs(p.First.End - p.Second.End) < 0.01);
 
     static bool HasContent(string text, int start, int end)
     {
