@@ -395,7 +395,12 @@ public sealed class MathLayout
     GlyphItem Glyph(int codepoint, double size, RgbColor color, string? text = null, int level = 0)
     {
         var id = table.ScriptStyle(font.GlyphFor(codepoint), level);
-        return GlyphOf(id, size, color, text ?? char.ConvertFromUtf32(codepoint));
+        var item = GlyphOf(id, size, color, text ?? char.ConvertFromUtf32(codepoint));
+        return new GlyphItem
+        {
+            Font = item.Font, Glyph = item.Glyph, Size = item.Size, Color = item.Color, Text = item.Text, Character = (codepoint, level),
+            Width = item.Width, Ascent = item.Ascent, Descent = item.Descent, Italic = item.Italic,
+        };
     }
 
     static int ScriptLevel(Env env) => env.Level switch { Level.Script => 1, Level.ScriptScript => 2, _ => 0 };

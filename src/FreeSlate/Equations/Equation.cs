@@ -12,9 +12,10 @@ public sealed class Equation(MathItem item) : IInlineObject
     public double Descent => item.Descent;
 
     /// <summary>The equation's SVG with its origin at (x, y) points on the baseline, and the characters it shows.</summary>
-    public (string Svg, string Text) Draw(double x, double y, Html.GlyphCache glyphs, double pxPerPt)
+    /// <param name="asText">Whether glyphs of plain characters are drawn as text in the math font (MathCanvas).</param>
+    public (string Svg, string Text) Draw(double x, double y, Html.GlyphCache glyphs, double pxPerPt, bool asText = false)
     {
-        var canvas = new MathCanvas(glyphs, pxPerPt);
+        var canvas = new MathCanvas(glyphs, pxPerPt) { AsText = asText };
         item.Draw(canvas, x, y);
         return (canvas.Svg, canvas.Text);
     }

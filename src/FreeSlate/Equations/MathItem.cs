@@ -31,6 +31,9 @@ public sealed class GlyphItem : MathItem
     /// <summary>The character the glyph shows (for the selectable text), or null.</summary>
     public string? Text { get; init; }
 
+    /// <summary>The character the glyph is the font's glyph of (its math style), and the script level whose form it has (ssty).</summary>
+    public (int CodePoint, int Level)? Character { get; init; }
+
     public override void Draw(MathCanvas canvas, double x, double y) => canvas.Glyph(this, x, y);
 }
 
@@ -76,8 +79,29 @@ public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
     readonly StringBuilder svg = new();
     readonly StringBuilder text = new();
 
+    /// <summary>
+    /// Whether glyphs that stand for their character are drawn as text in their font, the rest (stretched and large
+    /// variants) as outlines: Word's PDFs hold the math as text, which the rasterizer fits to the pixel grid, an
+    /// outline only smoothed (scratch/triage/2026-10-14_agents/math-embedded: powertools/RP/RP013's "=" bars one
+    /// black row in Word, two gray ones as outlines; as text 82.8 → 90.8 %).
+    /// </summary>
+    public bool AsText { get; init; }
+
     public void Glyph(GlyphItem glyph, double x, double y)
     {
+        if (AsText && glyph.Character is var (codepoint, level) && glyph.Glyph != 0 && glyph.Font.GlyphFor(codepoint) is var plain && plain != 0
+            && (plain == glyph.Glyph || level > 0) && char.ConvertFromUtf32(codepoint) is var character)
+        {
+            var family = glyph.Font.Family.Replace("'", "\\'");
+            svg.Append($"<text x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" font-family=\"'{System.Net.WebUtility.HtmlEncode(family)}'\" font-size=\"{N4(glyph.Size * pxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
+            if (glyph.Color.A < 0.999)
+                svg.Append($" fill-opacity=\"{N4(glyph.Color.A)}\"");
+            // A script form is the font's ssty alternate of the level (Chrome applies the feature as the layout did).
+            var features = plain != glyph.Glyph ? $";font-feature-settings:'ssty' {level}" : "";
+            svg.Append($" style=\"font-kerning:none{features}\">{System.Net.WebUtility.HtmlEncode(character)}</text>");
+            text.Append(glyph.Text ?? character);
+            return;
+        }
         if (glyphs.Id(glyph.Font, glyph.Glyph) is not { } id)
             return;
         var scale = glyph.Size * pxPerPt / glyph.Font.UnitsPerEm;

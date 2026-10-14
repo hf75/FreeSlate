@@ -499,7 +499,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // An equation: its glyphs and rules, its characters transparent on top for selection.
                 if (piece.Equation is { } equation)
                 {
-                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, PxPerPt);
+                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, PxPerPt, asText: true);
                     svg.Append(drawn);
                     if (mathText.Length > 0)
                         selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise - piece.Shift)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
