@@ -1358,7 +1358,19 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
             return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps), lines);
         if (grid.All(w => w > 0))
+        {
+            // Grid columns that no row reaches take nothing of a width of the table's own (measured with docx/local/
+            // tug-1 to tug-4: rows of one cell in a grid of three fill 9072 twips, rows of two share them, a row of
+            // all three keeps the grid; docx/external/libreoffice/extras-mailmerge/grabbagtest).
+            var reached = rows.Count == 0 ? columns
+                : rows.Max(r => (r.Cells.Count == 0 ? r.Format.GridBefore : r.Cells.Max(c => c.Column + c.Format.GridSpan)) + r.Format.GridAfter);
+            if (reached > 0 && reached < columns && Target(table, rows, widthBase ?? available, allowance, gaps) != null)
+            {
+                for (var k = reached; k < columns; k++)
+                    grid[k] = 0;
+            }
             return Scaled(grid);
+        }
         // From the first row's cell widths.
         foreach (var row in table.Rows)
         {

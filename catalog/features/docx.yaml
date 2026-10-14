@@ -1245,7 +1245,11 @@ areas:
           but drawings the line has no descent at all (docx/local/lt-8, lt-10: a bullet beside a 40 pt shape makes the
           line 40 pt high). A level without w:start counts from 0, where letters and roman numbers show nothing
           (docx/local/ns-*: "0.", "1.", "2." in modes 12 to 15, ".", "A.", "B."; docx/external/libreoffice/
-          extras-ooxmlexport/tdf132754). Picture bullets are numbering.pictureBullets.
+          extras-ooxmlexport/tdf132754). Picture bullets are numbering.pictureBullets. Where the numbering comes from
+          a paragraph style, the level's properties sit right under the style that holds w:numPr: the styles it is
+          based on give way to the level, it and the styles based on it override the level (docx/local/lvb-base,
+          lvb-own, lvb-derived: a level's left 2160 over a base style's 1440, under the numbering style's and a
+          derived style's 1440; docx/external/libreoffice/extras-ooxmlexport/n778836 57.1 → 100 %).
 
       - id: numbering.counting
         title: List counters
@@ -1340,31 +1344,36 @@ areas:
         status: done
         strategy: Equal or individual column widths with separator lines; a continuous section break balances the columns above it.
         office: >-
-          An empty paragraph holding a section break after other text of its section takes no room before a
-          continuous section (docx/local/colsect-*: no line, no space, in balanced columns too); alone in its section or
-          before a new page it is a line as any other. All columns of a continuous section begin below the space after
-          the paragraph above it; its first paragraph adds what its space before has more (docx/local/colsp-*). A continuous section break balances the columns above it (before
-          Word 2013 not with w:noColumnBalance, docx/local/colsect-h, -i) by height in whole lines: the columns are as
-          high as the least multiple of the section's least line height that holds all lines, each filled as far as that
-          height lets it with widow, keep-with-next and keep-together rules (a height at which they cannot hold is not
-          taken: the last two lines of a paragraph stand together in the first of three columns, docx/local/kcs-3-4);
-          the first column holds the space before its
-          first paragraph, a column's last line needs its text but not the extra space of multiple line spacing below it,
-          nor the space after its paragraph (docx/local/cb-*, cbx-*, cbs-*: ten 13.6 pt lines below 13.5 pt go 5/5, below
-          13.6 pt 4/6; cbp-*: four paragraphs of four lines with A after move two lines once the first column passes the
-          least multiple of 13.6 pt that holds the second with them, at 27.2 to 57.6 pt before for A = 0 to 24 pt;
-          cbq-*: 1.16 lines in multiples of 15.75 pt; cbr*-*: one 27.2 pt line or lines of 20.4 pt keep the 13.6 pt
-          grid; docx/generated/page-setup: a heading and 60 lines go 31/30 as the 0.3 pt that moving two lines would
-          save stay within one multiple of 16.97 pt, 4 pt would not, docx/local/ps-h*). The columns end below the space after
-          their last paragraph; the next section's first paragraph keeps what its space before has more. Separator
-          lines are 0.75 pt wide in the middle of the gap, from the columns' top to the bottom of the longest column.
-          Columns of different widths (w:equalWidth 0): a paragraph that goes on in another column breaks its rest anew
-          at that column's width, in balanced columns too, the balance trying each height with the text flowing anew
-          (docx/local/uc-1 to uc-8: 90 and 400 words in columns of 132 and 264 pt, either first; docx/external/
-          libreoffice/extras-ooxmlexport/fdo77812, tdf166553_paraStyleAfterBreak, docx/external/openxml-sdk/complex0);
-          one that moves to such a column whole is measured there broken anew (docx/local/cc-*: complex0's heading,
-          two lines in a 264 pt column and four in the 132 pt one beside it, goes to the next page, in a 216 pt
-          column or shortened to a word it stays beside).
+          An empty paragraph holding a section break after other text of its section takes no room before a continuous
+          section (docx/local/colsect-*: no line, no space, in balanced columns too); alone in its section or before a
+          new page it is a line as any other. All columns of a continuous section begin below the space after the
+          paragraph above it; its first paragraph adds what its space before has more (docx/local/colsp-*). A
+          continuous section break balances the columns above it (before Word 2013 not with w:noColumnBalance,
+          docx/local/colsect-h, -i) by height in whole lines: the columns are as high as the least multiple of the
+          section's least line height that holds all lines, each filled as far as that height lets it with widow,
+          keep-with-next and keep-together rules (a height at which they cannot hold is not taken: the last two lines
+          of a paragraph stand together in the first of three columns, docx/local/kcs-3-4); the first column holds the
+          space before its first paragraph, a column's last line needs its text but not the extra space of multiple
+          line spacing below it, nor the space after its paragraph (docx/local/cb-*, cbx-*, cbs-*: ten 13.6 pt lines
+          below 13.5 pt go 5/5, below 13.6 pt 4/6; cbp-*: four paragraphs of four lines with A after move two lines
+          once the first column passes the least multiple of 13.6 pt that holds the second with them, at 27.2 to 57.6
+          pt before for A = 0 to 24 pt; cbq-*: 1.16 lines in multiples of 15.75 pt; cbr*-*: one 27.2 pt line or lines
+          of 20.4 pt keep the 13.6 pt grid; docx/generated/page-setup: a heading and 60 lines go 31/30 as the 0.3 pt
+          that moving two lines would save stay within one multiple of 16.97 pt, 4 pt would not, docx/local/ps-h*).
+          The columns end below the space after their last paragraph; the next section's first paragraph keeps what
+          its space before has more. Separator lines are 0.75 pt wide in the middle of the gap, from the columns' top
+          to the bottom of the longest column. Columns of different widths (w:equalWidth 0): a paragraph that goes on
+          in another column breaks its rest anew at that column's width, in balanced columns too, the balance trying
+          each height with the text flowing anew (docx/local/uc-1 to uc-8: 90 and 400 words in columns of 132 and 264
+          pt, either first; docx/external/ libreoffice/extras-ooxmlexport/fdo77812, tdf166553_paraStyleAfterBreak,
+          docx/external/openxml-sdk/complex0); one that moves to such a column whole is measured there broken anew
+          (docx/local/cc-*: complex0's heading, two lines in a 264 pt column and four in the 132 pt one beside it,
+          goes to the next page, in a 216 pt column or shortened to a word it stays beside). A section on the next
+          column (w:type nextColumn) goes on at the top of the column after the current one, in the columns of the
+          section before, on a new page after its last column and where it has another number of columns
+          (docx/local/ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its second column;
+          ncs-22-15: two after two in the second column, then page 2;
+          docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2 57.1 → 94.7 %).
 
       - id: section.pageBorders
         title: Page borders
@@ -1442,7 +1451,11 @@ areas:
           to every character (East Asian lines exact, Latin within 0.03 pt a character). Lines of auto spacing above
           single take the larger of the factor's pitches and the whole pitches their text needs (docx/local/lgr-20,
           lgr-40: Arial 20 pt at 1.5, 2 and 3 times an 18 pt grid 36, 36 and 54 pt high, 40 pt 54 pt at all three;
-          docx/external/libreoffice/extras-ooxmlexport/chtoutline 42.0 → 69.9 %).
+          docx/external/libreoffice/extras-ooxmlexport/chtoutline 42.0 → 69.9 %). A grid that snaps characters (w:type
+          snapToChars) adds its pitch to East Asian characters only, Latin text keeping its natural width
+          (docx/local/cgr-chars, cgr-both: Japanese a point wider a character in both, Latin only under linesAndChars;
+          docx/external/libreoffice/extras-ooxmlexport/tdf91261 57.8 → 85.4 %). Known deviation: Word starts snapped
+          Latin lines 5.4 pt in (cgr-chars).
 
       - id: section.printing
         title: Printer and book fold settings
@@ -1657,17 +1670,20 @@ areas:
           extents, not their distances (docx/local/agr-anchor, -anchor14: shapes of 72 and 43.2 pt wrapped square
           alone in two cells share the table in proportion to them and the margins); a paragraph without content needs
           nothing, its indents neither (agr-text, agr-firsttext; agr-empty, agr-float: empty columns share it equally
-          in modes 15 and 14). Known deviations: a nested table of fixed layout Word narrows to its cell (np-5), ours
-          keeps its grid; for a nested table preferring more than the outer table leaves it Word widens the outer
-          table past its own preferred width (np-6). Cells of tables without any table style (the document has no
-          default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15). A
-          percentage width is of the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100 % indented
-          -15.9 or 36 pt is 450.8 pt wide, ending as far before or past the right margin, in modes 14 and 15;
-          docx/external/poi/bug65649). A fixed table with a width of its own scales its grid to it, whatever its cells
-          say; a width in points lies between the outer lines' middles (with cell spacing too), a percentage between
-          their outer edges, before Word 2013 between the middles, a percentage of the available width and the outer
-          cells' margins together (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins of
-          5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks).
+          in modes 15 and 14). In a fixed table of a width of its own, grid columns that no row reaches take nothing
+          of that width (docx/local/tug-1 to tug-4: rows of one cell in a grid of three fill 9072 twips, rows of two
+          share them, a row of all three keeps the grid; docx/external/libreoffice/extras-mailmerge/grabbagtest 52.5 →
+          100 %). Known deviations: a nested table of fixed layout Word narrows to its cell (np-5), ours keeps its
+          grid; for a nested table preferring more than the outer table leaves it Word widens the outer table past its
+          own preferred width (np-6). Cells of tables without any table style (the document has no default table style
+          either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12, -14, -15). A percentage width is of
+          the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100 % indented -15.9 or 36 pt is 450.8
+          pt wide, ending as far before or past the right margin, in modes 14 and 15; docx/external/poi/bug65649). A
+          fixed table with a width of its own scales its grid to it, whatever its cells say; a width in points lies
+          between the outer lines' middles (with cell spacing too), a percentage between their outer edges, before
+          Word 2013 between the middles, a percentage of the available width and the outer cells' margins together
+          (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins of 5.4 pt 231.0 pt wide;
+          pandoc/golden/raw-blocks).
 
       - id: table.rows
         title: Row height, splitting and header rows
@@ -2254,7 +2270,12 @@ areas:
           %). A drawing placed from its line stands at the line's top before floating objects pushed it down, where
           the room around it was measured (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top,
           textbox-textline: text boxes wider than the column at their line's top, the text below them, 56.1 → 99.6 %
-          and 58.0 → 100 %).
+          and 58.0 → 100 %). Across, a drawing sized relative to the inside or outside margin (wp14:sizeRelH) takes
+          the width of the margin on the other side than the one it stands in (docx/local/srm-in, srm-out: margins of
+          127.6 and 72 pt, the inside 72 pt wide at the left of odd pages, 127.6 pt at the right of even ones, the
+          outside the other way round;
+          docx/external/libreoffice/extras-ooxmlexport/tdf133861_RelativeAnchorWidthFromInsideOutsideMargin, mirrored,
+          56.0 → 100 %).
 
       - id: drawing.wrap
         title: Text wrapping around objects

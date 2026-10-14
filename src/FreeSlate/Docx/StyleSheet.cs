@@ -241,17 +241,27 @@ public sealed class StyleSheet
         var result = DefaultParagraph.Clone();
         if (table != null)
             result.Overlay(table);
-        if (numbering != null && numberingUnderStyle)
+        // Under the style that numbers the paragraph, above the styles it is based on (measured with docx/local/lvb-base,
+        // lvb-own, lvb-derived: a level's left 2160 over a base style's 1440, under the numbering style's own 1440 and
+        // under a style based on it; docx/external/libreoffice/extras-ooxmlexport/n778836).
+        var chain = Chain(ParagraphStyleOf(styleId));
+        var holder = numbering != null && numberingUnderStyle
+            ? Math.Max(0, chain.FindLastIndex(style => style.ParagraphProperties?.Element(Wml.W + "numPr") != null))
+            : -1;
+        for (var k = 0; k <= chain.Count; k++)
         {
-            var level = new ParagraphFormat();
-            level.Apply(numbering);
-            result.Overlay(level);
-        }
-        foreach (var style in Chain(ParagraphStyleOf(styleId)))
-        {
-            var level = new ParagraphFormat();
-            level.Apply(style.ParagraphProperties);
-            result.Overlay(level);
+            if (k == holder)
+            {
+                var level = new ParagraphFormat();
+                level.Apply(numbering);
+                result.Overlay(level);
+            }
+            if (k < chain.Count)
+            {
+                var own = new ParagraphFormat();
+                own.Apply(chain[k].ParagraphProperties);
+                result.Overlay(own);
+            }
         }
         if (numbering != null && !numberingUnderStyle)
         {

@@ -1114,12 +1114,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A section whose text runs another way begins a new page.
         if (page != null && (page.Section.Upright != null) != (properties.Upright != null))
             start = "nextPage";
+        // A section on the next column with another number of columns begins a new page (measured with docx/local/
+        // ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its second column; ncs-22-15;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2).
+        if (start == "nextColumn" && page != null && page.Section.Columns != properties.Columns)
+            start = "nextPage";
         section = properties;
         layout.Vertical = properties.Upright != null;
         layout.TurnEastAsian = properties.TurnEastAsian;
         layout.LinePitch = GridPitch(properties);
         layout.CharacterExtra = properties.Element.Child("docGrid") is { } charGrid && charGrid.Attr("type") is "linesAndChars" or "snapToChars"
             ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
+        layout.CharacterExtraEastAsian = properties.Element.Child("docGrid")?.Attr("type") == "snapToChars";
         if (page == null || start != "continuous" && start != "nextColumn")
         {
             // A page a page break began that holds nothing yet is the section's first page (measured with
@@ -1147,6 +1153,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             top = first ? Top.Document : Top.Section;
             return;
         }
+        // A section on the next column goes on in the columns of the one before, at the top of the column after the
+        // current one, on the next page after the last (measured with docx/local/ncs-22-15: "Next" level with "Two" in
+        // the second column, "Again" at the top of page 2; ncs-13-*: the second three-column section in the second
+        // column).
+        if (start == "nextColumn")
+        {
+            sectionShown = false;
+            top = Top.Continuous;
+            flow.Clear();
+            NextColumn(natural: false);
+            return;
+        }
         // A continuous section goes on below what the page holds already and the space after its last paragraph,
         // where all its columns begin; its first paragraph adds what its space before has more (measured with
         // docx/local/colsp-*: a second column begins level with the first below 12 pt after, without 24 pt before;
@@ -1159,8 +1177,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         sectionShown = false;
         top = Top.Continuous;
         flow.Clear();
-        if (start == "nextColumn")
-            NextColumn(natural: false);
     }
 
     /// <param name="blank">A page left blank before a section: it has a number but no header or footer.</param>
@@ -2256,8 +2272,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 ("rightMargin", _) => rightMargin,
                 ("topMargin", _) => s.Top,
                 ("bottomMargin", _) => s.Bottom,
-                ("insideMargin", true) => oddPage ? page.TextLeft : rightMargin,
-                ("outsideMargin", true) => oddPage ? rightMargin : page.TextLeft,
+                // Across, Word takes the width of the margin on the other side than the one the drawing stands in
+                // (measured with docx/local/srm-in, srm-out: margins of 127.6 and 72 pt, the inside on odd pages 72 pt
+                // wide at the left, on even ones 127.6 pt at the right, the outside the other way round; docx/external/
+                // libreoffice/extras-ooxmlexport/tdf133861_RelativeAnchorWidthFromInsideOutsideMargin, mirrored).
+                ("insideMargin", true) => oddPage ? rightMargin : page.TextLeft,
+                ("outsideMargin", true) => oddPage ? page.TextLeft : rightMargin,
                 ("insideMargin", false) => oddPage ? s.Top : s.Bottom,
                 ("outsideMargin", false) => oddPage ? s.Bottom : s.Top,
                 (_, true) => page.TextWidth,

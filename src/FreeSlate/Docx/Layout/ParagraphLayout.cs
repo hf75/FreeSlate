@@ -307,6 +307,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public double CharacterExtra { get; set; }
 
     /// <summary>
+    /// Whether the character grid adds to East Asian characters only (w:docGrid type snapToChars; measured with
+    /// docx/local/cgr-chars, cgr-both: Latin text at its natural width there, Japanese one point wider a character;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf91261).
+    /// </summary>
+    public bool CharacterExtraEastAsian { get; set; }
+
+    /// <summary>
     /// Whether the paragraphs being laid out run down the page (vertical text in sections and table cells): their
     /// lines are thicker (see <see cref="Metrics"/>) and text set across them takes a horizontal line's height.
     /// </summary>
@@ -824,7 +831,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         levels = BidiLevels(text, charStyles, format.Bidi == true);
-        var advances = Advances(text, charStyles, CharacterExtra);
+        var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
         if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
@@ -1413,7 +1420,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         if (!empty && text.Length == 0)
             return (0, 0);
-        var advances = Advances(text, charStyles, CharacterExtra);
+        var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
         if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
@@ -1925,7 +1932,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
-    static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0)
+    static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0, bool eastAsianOnly = false)
     {
         var advances = new double[text.Length];
         var start = 0;
@@ -1953,7 +1960,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     }
                 }
                 foreach (var cluster in firstOfCluster)
-                    advances[start + cluster] += style.Spacing + extra;
+                    advances[start + cluster] += style.Spacing + (!eastAsianOnly || EastAsian(text[start + cluster]) ? extra : 0);
             }
             start = i;
         }
