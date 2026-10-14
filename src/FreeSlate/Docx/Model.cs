@@ -216,8 +216,16 @@ public sealed class SectionProperties
         {
             foreach (var reference in sectPr.Elements(Wml.W + name))
             {
+                // A type Word does not know is the default one, where none is given besides (docx/external/poi/60293:
+                // type="odd" with even and odd headers).
                 if (reference.Attr(Wml.R + "id") is { } id && resolve?.Invoke(id) is { } part)
-                    into[reference.Attr("type") ?? "default"] = part;
+                {
+                    var type = reference.Attr("type") ?? "default";
+                    if (type is "even" or "first" or "default")
+                        into[type] = part;
+                    else
+                        into.TryAdd("default", part);
+                }
             }
         }
         s.TitlePage = sectPr.Child("titlePg").OnOff() == true;

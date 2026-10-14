@@ -1359,7 +1359,8 @@ areas:
           first header, also the page a continuous section begins at the top of, not the one after a page where it
           has lines (docx/local/hfc-0t, hfc-2t; a page's header is its top's section's), even page numbers the even header when the settings ask for different odd and even headers; a
           section without a header of a type inherits the previous section's, and a type no section gives is an empty
-          header. Word's footers stand 0.14 pt lower than the footer distance says (its 600 dpi device grid), which
+          header; a reference of a type Word does not know is the default one where no default reference is given
+          (poi/60293: type="odd" with odd and even headers, 75.0 → 100 % of the lines). Word's footers stand 0.14 pt lower than the footer distance says (its 600 dpi device grid), which
           the layout does not copy. Floating tables of headers and footers stand as in the body and take no room in
           the story; those anchored to its text make it reach as far as they do, the paragraph they are anchored to
           going below them where they begin above it, the story's other text over them; the body's text goes around
