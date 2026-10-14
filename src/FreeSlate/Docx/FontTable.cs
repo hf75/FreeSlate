@@ -20,6 +20,8 @@ namespace FreeSlate.Docx;
 /// Microsoft YaHei, Big5 PMingLiU, Thai Browallia New; Arabic and Hebrew by the table's family, serif (roman) Sakkal
 /// Majalla and Times New Roman, monospaced (modern) Tahoma, all others Arial, whatever the PANOSE and the signature
 /// (docx/local/font-sub3; docx/external/libreoffice/extras-odfexport/tdf163575: B Mitra, auto, in Arial).</item>
+/// <item>The signature's Hebrew or Arabic code page (w:sig csb0): Arial, serif fonts Times New Roman; then American
+/// Typewriter and Apple Chancery Courier New (docx/local/font-sig; pandoc/normalize).</item>
 /// <item>The table's family: serif fonts (roman), and fonts the table does not describe, become Cambria; all others
 /// Calibri, sans serif, monospaced (even with a fixed pitch and Courier's PANOSE), script and decorative alike. The
 /// PANOSE numbers and the document's theme fonts do not matter.</item>
@@ -30,7 +32,7 @@ namespace FreeSlate.Docx;
 /// </summary>
 public sealed class FontTable
 {
-    sealed record Entry(string? AltName, int? Charset, string? Family);
+    sealed record Entry(string? AltName, int? Charset, string? Family, uint CodePages = 0);
 
     readonly Dictionary<string, Entry> entries = new(StringComparer.OrdinalIgnoreCase);
 
@@ -41,9 +43,19 @@ public sealed class FontTable
             if (font.Attr("name") is not { Length: > 0 } name)
                 continue;
             var charset = font.Child("charset").Val() is { } hex && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var c) ? c : (int?)null;
-            entries[name] = new Entry(font.Child("altName").Val(), charset, font.Child("family").Val());
+            var codePages = font.Child("sig")?.Attr("csb0") is { } csb0 && uint.TryParse(csb0, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var cp) ? cp : 0;
+            entries[name] = new Entry(font.Child("altName").Val(), charset, font.Child("family").Val(), codePages);
         }
     }
+
+    /// <summary>
+    /// Mac families Word puts in another, after the signature's code pages (docx/local/font-sig: American Typewriter
+    /// and Apple Chancery with a Latin signature print in Courier New; pandoc/normalize).
+    /// </summary>
+    static readonly Dictionary<string, string> MacNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["American Typewriter"] = "Courier New", ["Apple Chancery"] = "Courier New",
+    };
 
     /// <summary>Names Word replaces by an installed family (Windows' font substitutes and other platforms' fonts).</summary>
     static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
@@ -100,6 +112,15 @@ public sealed class FontTable
         };
         if (byCharset != null && fonts.TryResolveTypeface(byCharset, bold, italic) is { } script)
             return script;
+        // A signature with the Hebrew or Arabic code page (bits 5, 6 of w:sig csb0), which Calibri lacks: Arial, a
+        // serif font Times New Roman (measured with docx/local/font-sig: such fonts of family auto in Arial, Hebrew
+        // roman in Times New Roman, Cyrillic or Greek ones in Calibri, the Unicode ranges and PANOSE alone nothing;
+        // pandoc/normalize: Apple Chancery, Apple Symbols, Big Caslon).
+        if (entry != null && (entry.CodePages & 0x60) != 0
+            && fonts.TryResolveTypeface(entry.Family == "roman" ? "Times New Roman" : "Arial", bold, italic) is { } paged)
+            return paged;
+        if (MacNames.TryGetValue(family, out var mac) && fonts.TryResolveFamily(mac, bold, italic) is { } macFont)
+            return macFont;
         return fonts.ResolveFirst(entry == null || entry.Family == "roman" ? Serif : Sans, bold, italic);
     }
 }

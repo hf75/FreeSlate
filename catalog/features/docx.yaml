@@ -491,9 +491,13 @@ areas:
           docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for
           the table's character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft
           YaHei, Big5: PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla
-          and Times New Roman, modern Tahoma, all others Arial, docx/local/font-sub3), else Cambria for serif fonts
-          (w:family roman) and fonts the table does not describe and Calibri for all others, whatever their PANOSE,
-          signature, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1 pt).
+          and Times New Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature
+          with the Hebrew or Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/
+          font-sig: Cyrillic or Greek code pages, Unicode ranges and PANOSE alone change nothing; pandoc/normalize:
+          Apple Chancery, Apple Symbols, Big Caslon), then Courier New for American Typewriter and Apple Chancery,
+          else Cambria for serif fonts (w:family roman) and fonts the table does not describe and Calibri for all
+          others, whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line
+          within 0.1 pt; known deviation: Word draws fonts with the Bengali Unicode range in Mangal or Nirmala UI).
           Caladea and Carlito stand in where Cambria and Calibri are missing too. Of a family's entries the table's
           last one counts, and a character set of 01 means nothing (docx/local/fontdup: OpenSymbol, first roman, then
           auto, prints in Calibri, as in tdf153526_commentInNumbering). A list number's missing complex script font
