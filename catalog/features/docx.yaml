@@ -1678,7 +1678,12 @@ areas:
           also above the top margin (docx/local/fn-1, fn-2, fn-4; core-layout/floattable-next-leaf-in-section). Before Word 2013 a
           table anchored to the page or the margin breaks on its first page where it would at the paragraph after it,
           as many lines down, so past the bottom margin or above it (floatsplit-14p-*, floattable-compat14, docx/
-          external/libreoffice/core-doc/floating-table-dummy-text); w:doNotBreakWrappedTables keeps tables whole
+          external/libreoffice/core-doc/floating-table-dummy-text); from Word 2013 on one whose first row does not
+          fit above the bottom margin stays where it stands on a page without text before it, the row reaching past
+          the margin, and from a page with text goes to the next page at the same place, its next rows going on at
+          the top of the page after (docx/local/flb-spec, flb-below, flb-cross: rows at the page's foot, below and
+          across the bottom margin; flb-margin, flb-*14; powertools/DB-HeadersFooters-Src/Footer: first on its page
+          at the page's foot); w:doNotBreakWrappedTables keeps tables whole
           (writerfilter-dmapper/do-not-break-wrapped-tables). Drawings anchored in its cells stand as in other tables
           (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). In a table cell a
           floating table stands in the cell's text area (tblpX from its left, the margin as the text, the page from the

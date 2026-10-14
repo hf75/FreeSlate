@@ -463,6 +463,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the bottom margin (floattable-2cols, floattable-footer).
         var shift = anchor is "page" or "margin" && context.CompatibilityMode < 15 ? textTop - top : 0;
         double Limit() => Bottom - (split ? 0 : shift);
+        // From Word 2013 on a table anchored to the page or the margin whose first row does not fit above the bottom
+        // margin stays where it stands on a page without text before it, its row reaching past the margin, and goes
+        // to the next page at the same place from one with text, its next rows going on at the top of the page after
+        // (measured with docx/local/flb-spec, flb-below, flb-cross: rows of 20 pt at the page's foot, at 740 and at
+        // 705 pt with the bottom margin at 720 pt, after a paragraph; docx/external/powertools/DB-HeadersFooters-Src/
+        // Footer: the table first on its page at the page's foot).
+        var unbroken = context.CompatibilityMode >= 15 && anchor is "page" or "margin";
+        var emptyPage = columnEmpty && page!.Lines.Count == 0;
         // w:doNotBreakWrappedTables keeps the table whole where it stands (docx/external/libreoffice/
         // writerfilter-dmapper/do-not-break-wrapped-tables).
         var breaks = !context.Compat("doNotBreakWrappedTables");
@@ -481,17 +489,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     Draw(parts.Head);
                     row = parts.Tail;
                 }
-                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01))
+                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01 || unbroken && emptyPage))
                     break;
                 // A table anchored to the text that begins on the next page goes there with its paragraph and stands
                 // where it would at it (measured with docx/local/fn-1, fn-2, fn-4: tblpY -289 and 289 twips put it as
                 // far above and below the next page's top margin, in modes 14 and 15; docx/external/libreoffice/
                 // core-layout/floattable-next-leaf-in-section).
                 var withText = last == null && anchor == "text";
+                var samePlace = last == null && unbroken;
                 if (last != null)
                     Close(last);
                 NewPage(section);
-                rowTop = partTop = page!.BodyTop + (withText ? top - textTop : 0);
+                rowTop = partTop = samePlace ? top : page!.BodyTop + (withText ? top - textTop : 0);
                 onPage = 0;
                 split = true;
                 if (!row.Header)
