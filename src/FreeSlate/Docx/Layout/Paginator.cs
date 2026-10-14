@@ -2038,9 +2038,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
         // Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV; 0 % keeps the extent): shapes take
         // them as they are, pictures only both together, scaled evenly to fit them (measured with
-        // docx/local/size-rel-shape and docx/local/size-rel).
+        // docx/local/size-rel-shape and docx/local/size-rel), each less the effect extents across it (measured with
+        // docx/local/relsz-*: 40 % of a 451.3 pt margin with 1.8 pt of effect extent right is 178.7 pt wide, with 1 pt
+        // all round 178.5; 20 % of 697.9 pt high with 1 pt above and below 137.6; a picture fits into what is left;
+        // scratch: powertools/WC/WC065-Textbox, DB-GlossaryDocuments/FooterContent-built).
         var oddPage = page.DisplayNumber % 2 == 1;
         var rightMargin = s.PageWidth - page.TextLeft - page.TextWidth;
+        // Groups and canvases sized relative to the page keep their share and place it without their effect extents
+        // (docx/external/libreoffice/extras-ooxmlimport/groupshape-relsize: a group 90.9 % of the page high, 10.55 pt of
+        // effect extent below, centered on the page as its share); shapes and pictures go by them (relsz-*).
+        var grouped = element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Name.LocalName is "wgp" or "wpc";
         double? Relative(string name, string percent, bool horizontal)
         {
             if (element.Element(Docx.Drawings.Wp14 + name) is not { } relative
@@ -2062,7 +2069,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 (_, true) => page.TextWidth,
                 (_, false) => s.PageHeight - s.Top - s.Bottom,
             };
-            return frame * share / 100000;
+            var effect = grouped ? null : element.Element(Docx.Drawings.Wp + "effectExtent");
+            double Side(string side) => Math.Max(0, Emu((string?)effect?.Attribute(side)));
+            return Math.Max(0, frame * share / 100000 - (horizontal ? Side("l") + Side("r") : Side("t") + Side("b")));
         }
         var (relativeWidth, relativeHeight) = (Relative("sizeRelH", "pctWidth", true), Relative("sizeRelV", "pctHeight", false));
         if (element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Pic + "pic") != null)
@@ -2102,10 +2111,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
             // Alignment places the shape with its effect extent (measured with docx/local/sa-d1, sa-d2: 80 pt left and
             // 36 pt above take a shape centered at the page's top 40 pt right and 36 pt down, with or without an effect;
-            // sb-*, sc-*: each side counts where its alignment meets it, across the page and the margins), except for a
-            // shape sized relative to the page or the margins, whose stored extent is not its own (docx/external/
-            // libreoffice/extras-ooxmlimport/groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
-            var effects = relativeWidth == null && relativeHeight == null ? element.Element(Docx.Drawings.Wp + "effectExtent") : null;
+            // sb-*, sc-*: each side counts where its alignment meets it, across the page and the margins), shapes sized
+            // relative to the page or the margins too (relsz-3, -4, -5, -7: centered and right aligned with their
+            // effect extents, the whole as wide as the share; docx/external/libreoffice/extras-ooxmlimport/
+            // groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
+            var effects = grouped && (relativeWidth != null || relativeHeight != null) ? null : element.Element(Docx.Drawings.Wp + "effectExtent");
             double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
             x = Position(positionH, x0, xw, w, odd, horizontal: true, Effect("l"), Effect("r"));
             var positionV = element.Element(Docx.Drawings.Wp + "positionV");
@@ -2133,8 +2143,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         double Position(XElement? position, double origin, double size, double extent, bool odd, bool horizontal, double before, double after)
         {
+            // An offset places the extent, but the effect extent where the drawing is sized relative to the page or
+            // margins in that direction (measured with docx/local/relsz-2, -6, -9 to -11: 1 pt of effect extent all
+            // round puts a shape 40 % of the margin wide at offset 0 1 pt right, 20 % high too 1 pt down; a shape of its
+            // own size stands at the offset).
             if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
-                return origin + Emu(offset);
+                return origin + Emu(offset) + ((horizontal ? relativeWidth : relativeHeight) != null ? before : 0);
             if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
                 return origin + size * Emu(percent) * 12700 / 100000;
             var whole = before + extent + after;
