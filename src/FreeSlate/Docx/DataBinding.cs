@@ -53,6 +53,12 @@ public sealed class DataBinding(DocumentContext context)
         // placeholder text stays, without w:showingPlcHdr the control is empty; docx/external/poi/60316).
         if (value == null || value.Length == 0 && sdtPr.Child("showingPlcHdr") != null)
             return null;
+        // Line feeds break the line in a plain text control of several lines (w:text w:multiLine), elsewhere they are
+        // dropped, no space in their place (docx/external/libreoffice/extras-ooxmlexport/tdf81507: a description of
+        // four lines bound four times, as multiLine 1, multiLine 0, w:text alone and a rich text control).
+        value = sdtPr.Child("text")?.Attr("multiLine") is "1" or "true" or "on"
+            ? value.Replace("\r\n", "\n").Replace('\r', '\n')
+            : value.Replace("\r", "").Replace("\n", "");
         // A date shows in the control's format and language; list controls their entry's display text.
         if (sdtPr.Child("date") is { } date)
         {
@@ -95,6 +101,12 @@ public sealed class DataBinding(DocumentContext context)
             if (package.FirstRelationship("/", type)?.Target is { } part && package.Exists(part))
                 items.TryAdd(id, context.Load(part));
         }
+        // Word supplies the cover page properties where the package has none, their values empty (docx/external/
+        // libreoffice/extras-ooxmlexport/sdt-header: a date control bound to PublishDate in a header's cell shows
+        // nothing, not its stored "February 28, 2013"; dkvert, wpg-nested: controls showing their placeholder keep it).
+        XNamespace cover = "http://schemas.microsoft.com/office/2006/coverPageProps";
+        items.TryAdd("{55AF091B-3C7A-41E3-B477-F2FDAA23CFDA}", new XDocument(new XElement(cover + "CoverPageProperties",
+            new[] { "PublishDate", "Abstract", "CompanyAddress", "CompanyPhone", "CompanyFax", "CompanyEmail" }.Select(n => new XElement(cover + n)))));
         return items;
     }
 }

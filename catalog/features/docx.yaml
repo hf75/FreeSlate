@@ -2137,7 +2137,12 @@ areas:
           (w:showingPlcHdr) as it is, one without it empty (docx/local/bindempty; poi/60316). A bound control around
           table cells shows its node's value in its first cell's first paragraph, in its first run's formatting
           (docx/external/libreoffice/extras-ooxmlexport/paragraph-sdt: the document's title from its core properties,
-          41.7 → 94.5 %).
+          41.7 → 94.5 %). Word supplies the cover page properties (store item {55AF091B-3C7A-41E3-B477-F2FDAA23CFDA})
+          where the package has none, their values empty: a control bound to them shows nothing, one showing its
+          placeholder keeps it (docx/external/libreoffice/extras-ooxmlexport/sdt-header: a header's date control bound
+          to PublishDate, 72.8 → 100 %; dkvert, wpg-nested). Line feeds in a node break the line in a plain text
+          control of several lines (w:text w:multiLine), elsewhere they are dropped, no space in their place
+          (tdf81507: a description of four lines bound four times, 65.4 → 98.6 %).
 
       - id: sdt.customXml
         title: Custom XML markup and smart tags
@@ -2352,7 +2357,10 @@ areas:
           (docx/external/libreoffice/extras-layout/floattable-footer-object-nofit: the pages as Word's). A line
           indented past its column's edge stays so beside floating objects
           (docx/external/libreoffice/extras-ooxmlimport/tdf117843: a header's line 7.1 pt into the margin beside text
-          boxes wrapped square).
+          boxes wrapped square). Lines broken beside floating objects on one page break anew where the paragraph goes
+          on in a column without them (docx/external/libreoffice/extras-ooxmlexport/tdf154703_framePrWrapSpacing: the
+          lines a frame narrowed at the bottom of page 1 run across page 2, 69.0 → 90.8 %; special_styles 58.0 → 95.6
+          %).
 
       - id: drawing.shapes
         title: Word shapes

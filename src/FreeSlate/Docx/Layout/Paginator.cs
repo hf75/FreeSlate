@@ -2863,6 +2863,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 exclusions.Add(own);
             }
         }
+        // Whether the lines were broken beside floating objects, which another column or page may not have.
+        var laidAround = false;
         if (exclusions.Count > 0)
         {
             var linesTop = y;
@@ -2874,6 +2876,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 try
                 {
                     lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
+                    laidAround = true;
                 }
                 finally
                 {
@@ -2900,8 +2903,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var around = fresh
                 ? PageExclusions().Where(e => e.Left < columnLeft + columnWidth - 0.01 && e.Right > columnLeft + 0.01 && e.Bottom > linesTop + 0.01).ToList()
                 : [];
-            if (Math.Abs(width - laidWidth) < 0.01 && around.Count == 0)
+            // Lines broken beside objects of the page before break anew in a column without them (measured with
+            // docx/external/libreoffice/extras-ooxmlexport/tdf154703_framePrWrapSpacing: the lines a frame narrowed at
+            // the bottom of page 1 go on across the whole width of page 2).
+            if (Math.Abs(width - laidWidth) < 0.01 && around.Count == 0 && !(fresh && laidAround))
                 return false;
+            laidAround = around.Count > 0;
             lines = [.. lines.Take(k), .. around.Count > 0
                 ? layout.Layout(paragraph, width, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart)
                 : layout.Layout(paragraph, width, from: lines[k].TextStart)];
