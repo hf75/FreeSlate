@@ -30,11 +30,32 @@ public static class Vml
     /// <summary>Marks an inline drawing converted from VML, whose effect extents are the engine's own.</summary>
     public static readonly XName Converted = XNamespace.Get("urn:freeslate:vml") + "converted";
 
+    /// <summary>The shape types of a part by their ids, the first of each id (Types).</summary>
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, XElement>> PartTypes = new();
+
+    /// <summary>
+    /// The shape types a w:pict or w:object can refer to: its own, then the others of its part, as Word resolves them
+    /// across the document (docx/external/poi/WordWithAttachments: a picture frame type defined in the first w:object
+    /// and used by later ones; libreoffice/core-objectpositioning/vml-vertical-alignment: triangles whose type the
+    /// first w:pict defines).
+    /// </summary>
+    static Dictionary<string, XElement> Types(XElement pict)
+    {
+        static Dictionary<string, XElement> Of(IEnumerable<XElement> types) => types.Where(t => t.Attribute("id") != null)
+            .GroupBy(t => (string)t.Attribute("id")!).ToDictionary(g => g.Key, g => g.First());
+        var own = Of(pict.Descendants(V + "shapetype"));
+        if (pict.Document is { } document)
+        {
+            foreach (var (id, type) in PartTypes.GetValue(document, d => Of(d.Descendants(V + "shapetype"))))
+                own.TryAdd(id, type);
+        }
+        return own;
+    }
+
     /// <summary>The drawings of a w:pict or w:object: one per top-level VML shape.</summary>
     public static IEnumerable<XElement> ToDrawings(XElement pict)
     {
-        var types = pict.Descendants(V + "shapetype").Where(t => t.Attribute("id") != null)
-            .GroupBy(t => (string)t.Attribute("id")!).ToDictionary(g => g.Key, g => g.First());
+        var types = Types(pict);
         foreach (var shape in pict.Elements())
         {
             if (shape.Name.Namespace != V || shape.Name.LocalName == "shapetype")
@@ -453,7 +474,10 @@ public static class Vml
         var image = shape.Element(V + "imagedata") ?? type?.Element(V + "imagedata");
         var spt = (string?)shape.Attribute(O + "spt") ?? (string?)type?.Attribute(O + "spt");
         var filled = Flag(shape, "filled", type, true);
-        var stroked = Flag(shape, "stroked", type, true);
+        // v:stroke on="f" turns the outline off as stroked="f" does (docx/external/tika/testWPSAttachment: pictures
+        // of embedded objects with both, printed without a frame).
+        var strokeElement = shape.Element(V + "stroke") ?? type?.Element(V + "stroke");
+        var stroked = Flag(shape, "stroked", type, true) && (string?)strokeElement?.Attribute("on") is not ("f" or "false" or "0");
         var xfrm = Xfrm(width, height, Style((string?)shape.Attribute("style")));
         if (image != null && ((string?)image.Attribute(R + "id") ?? (string?)image.Attribute(O + "relid")) is { } relationship)
         {
@@ -464,7 +488,7 @@ public static class Vml
                 blipFill.Add(crop);
             blipFill.Add(new XElement(Ns.A + "stretch", new XElement(Ns.A + "fillRect")));
             var spPr = new XElement(Drawings.Pic + "spPr", xfrm, new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")));
-            if (stroked && shape.Attribute("strokecolor") != null || shape.Element(V + "stroke") != null)
+            if (stroked && (shape.Attribute("strokecolor") != null || shape.Element(V + "stroke") != null))
                 spPr.Add(Line(shape, type));
             return new XElement(Drawings.Pic + "pic",
                 new XElement(Drawings.Pic + "nvPicPr", new XElement(Drawings.Pic + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")), new XElement(Drawings.Pic + "cNvPicPr")),
