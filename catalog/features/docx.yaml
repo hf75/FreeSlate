@@ -2007,7 +2007,9 @@ areas:
           stay white, 8.2 → 100 %). Of an empty cell whose end mark is hidden only the mark, its last paragraph, takes
           no height; its other empty paragraphs keep their lines
           (docx/external/libreoffice/extras-ooxmlexport/tdf123104: four empty 9 pt paragraphs three lines high, five
-          centered as four).
+          centered as four). A hidden end mark after a line break takes no line of its own either
+          (docx/external/libreoffice/extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone,
+          71.4 → 89.5 %).
 
       - id: table.accessibility
         title: Table title and description
@@ -4085,9 +4087,10 @@ areas:
           (docx/external/libreoffice/extras-ooxmlexport/groupshape-rotation: a group turned 45°, its triangle's
           corners within 0.1 pt, 56.2 → 93.2 %). A shape of a preset type with adjustments of its own (adj) follows
           its type's path and formulas with them (docx/external/libreoffice/extras-ooxmlimport/vml-adjustments: a
-          triangle's apex at 17639/21600 of its width, 65.9 → 100 %). Known deviations: a perspective shadow's matrix
-          is left out; the text wraps the stated height of a box fitted to its text; a rule in a text box takes its
-          share of the last column laid out.
+          triangle's apex at 17639/21600 of its width, 65.9 → 100 %). The picture frame type (t75) is one Word knows
+          without its definition: no fill and no line (fdo76316: shapes of type t75 without a shapetype and without a
+          picture print nothing). Known deviations: a perspective shadow's matrix is left out; the text wraps the
+          stated height of a box fitted to its text; a rule in a text box takes its share of the last column laid out.
 
       - id: vml.ole
         title: Embedded objects and controls

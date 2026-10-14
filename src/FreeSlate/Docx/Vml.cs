@@ -74,6 +74,9 @@ public static class Vml
     /// and used by later ones; libreoffice/core-objectpositioning/vml-vertical-alignment: triangles whose type the
     /// first w:pict defines).
     /// </summary>
+    static readonly XElement PictureFrame = new(V + "shapetype", new XAttribute("id", "_x0000_t75"), new XAttribute("coordsize", "21600,21600"),
+        new XAttribute(O + "spt", "75"), new XAttribute("filled", "f"), new XAttribute("stroked", "f"));
+
     static Dictionary<string, XElement> Types(XElement pict)
     {
         static Dictionary<string, XElement> Of(IEnumerable<XElement> types) => types.Where(t => t.Attribute("id") != null)
@@ -84,6 +87,10 @@ public static class Vml
             foreach (var (id, type) in PartTypes.GetValue(document, d => Of(d.Descendants(V + "shapetype"))))
                 own.TryAdd(id, type);
         }
+        // The picture frame (t75) is a type Word knows without its definition: no fill, no line (docx/external/
+        // libreoffice/extras-ooxmlexport/fdo76316: shapes of type t75 without a shapetype and without a picture print
+        // nothing).
+        own.TryAdd("_x0000_t75", PictureFrame);
         return own;
     }
 

@@ -1959,7 +1959,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             paragraphs.InCell = true;
             try
             {
-                return Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+                var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+                // A hidden end mark after a line break takes no line of its own either (docx/external/libreoffice/
+                // extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone).
+                if (cell.Format.HideMark && cell.Blocks.LastOrDefault() is ParagraphBlock { Content: [.., BreakInline { Type: "textWrapping" or null }] }
+                    && content.Lines.Count > 1 && content.Lines[^1].Line.Pieces.All(p => p.Text.Length == 0 && p.Drawing == null))
+                {
+                    var kept = content.Lines[^2];
+                    content = content with { Lines = content.Lines.Take(content.Lines.Count - 1).ToList(), Height = kept.Top + kept.Line.Height };
+                }
+                return content;
             }
             finally
             {
