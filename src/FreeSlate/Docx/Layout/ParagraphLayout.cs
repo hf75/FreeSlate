@@ -1110,7 +1110,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var breakAt = end == i && end > lineStart && text[end - 1] == '\t' ? end - 1 : end;
                 if (!fits && overTabs != null && (overTabs.Contains(breakAt) || overTabs.Contains(breakAt - 1)))
                     breakAt = wordEnds.LastOrDefault(e => e <= breakAt && !overTabs.Contains(e) && !overTabs.Contains(e - 1), -1);
-                if (!fits && breakAt > lineStart && HasContent(text, Math.Max(lineStart, labelWhole), breakAt))
+                // Spaces alone before it do too: they stay on a line of their own (measured with docx/local/spic-*: a
+                // space or two before a picture as wide as the column or a word wider than it; pandoc/image).
+                if (!fits && breakAt > lineStart && breakAt > labelWhole)
                 {
                     // Automatic hyphenation (measured with docx/local/hyph-a to -d and hyph-fit): the word that does not
                     // fit breaks at its last place where its part and a hyphen fit; justified lines may squeeze their
