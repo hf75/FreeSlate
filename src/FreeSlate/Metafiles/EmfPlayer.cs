@@ -59,15 +59,11 @@ public sealed class EmfPlayer
         var frame = (L: I32(24), T: I32(28), R: I32(32), B: I32(36));
         var devicePx = (X: I32(72), Y: I32(76));
         var deviceMm = (X: I32(80), Y: I32(84));
+        // The reference device's millimeters give the ratio, not the header's micrometers where they disagree (Word
+        // maps by szlMillimeters: docx/external/tika/testWORD_embedded_pdf, 474 × 296 mm against 592666 × 370416 µm,
+        // prints the picture at 80 % of its shape, as the millimeters say).
         var pxPerMmX = deviceMm.X > 0 ? devicePx.X / (double)deviceMm.X : 96 / 25.4;
         var pxPerMmY = deviceMm.Y > 0 ? devicePx.Y / (double)deviceMm.Y : 96 / 25.4;
-        // The header's optional micrometer size refines the ratio (EMF extension 2).
-        var headerSize = (int)U32(4);
-        if (headerSize >= 108 && I32(100) > 0 && I32(104) > 0)
-        {
-            pxPerMmX = devicePx.X / (I32(100) / 1000.0);
-            pxPerMmY = devicePx.Y / (I32(104) / 1000.0);
-        }
         var x = frame.L / 100.0 * pxPerMmX;
         var y = frame.T / 100.0 * pxPerMmY;
         var w = (frame.R - frame.L) / 100.0 * pxPerMmX;

@@ -358,14 +358,18 @@ public sealed class MathLayout
     /// <param name="markers">Whether "&amp;" marks an alignment point (in the rows of an equation array).</param>
     IEnumerable<Atom> Run(XElement run, Env env, bool markers = false)
     {
-        var style = runStyle(run.Element(runProperties));
+        // Text inserted or moved here in a tracked change (w:ins, w:moveTo inside the m:r) is printed with the run's,
+        // deleted text (w:del, w:moveFrom) is not (docx/external/powertools/RP/RP014-Inserted-Math-Control-Char:
+        // "A = 2πr²" with the 2 inserted).
+        var inserted = run.Elements().Where(e => e.Name.LocalName is "ins" or "moveTo").ToList();
+        var style = runStyle(run.Element(runProperties) ?? inserted.Select(i => i.Element(runProperties)).FirstOrDefault(p => p != null));
         var size = style.Size * Scale(env);
         var properties = run.Element(M + "rPr");
         var sty = (string?)properties?.Element(M + "sty")?.Attribute(M + "val");
         var scr = (string?)properties?.Element(M + "scr")?.Attribute(M + "val");
         var normal = On((string?)properties?.Element(M + "nor")?.Attribute(M + "val"), properties?.Element(M + "nor") != null);
         var literal = properties?.Element(M + "lit") != null;
-        var text = string.Concat(run.Elements(M + "t").Select(t => t.Value));
+        var text = string.Concat(run.Elements().SelectMany(e => e.Name == M + "t" ? [e] : inserted.Contains(e) ? e.Elements(M + "t") : []).Select(t => t.Value));
         var atoms = new List<Atom>();
         foreach (var rune in text.EnumerateRunes())
         {

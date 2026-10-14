@@ -44,9 +44,15 @@ public readonly record struct Xform(double M11, double M12, double M21, double M
         return new Xform(a, b, c, d, -(Dx * a + Dy * c), -(Dx * b + Dy * d));
     }
 
-    public string Svg() => FormattableString.Invariant($"matrix({N(M11)} {N(M12)} {N(M21)} {N(M22)} {N(Dx)} {N(Dy)})");
+    /// <summary>
+    /// The transform as SVG, its scale and rotation with six significant digits: logical units of a few hundredths of a
+    /// pixel lose a percent of the picture at three decimals (docx/external/tika/testWORD_embedded_pdf: 0.028356 → 0.028).
+    /// </summary>
+    public string Svg() => FormattableString.Invariant($"matrix({Fine(M11)} {Fine(M12)} {Fine(M21)} {Fine(M22)} {N(Dx)} {N(Dy)})");
 
     static string N(double v) => SvgWriter.Num(v);
+
+    static string Fine(double v) => double.IsNaN(v) || double.IsInfinity(v) ? "0" : v.ToString("G6", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>A clipping region in device coordinates; regions nest by intersection.</summary>

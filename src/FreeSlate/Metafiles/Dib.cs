@@ -164,8 +164,12 @@ public static class Dib
                         var v = BinaryPrimitives.ReadUInt32LittleEndian(line[(x * 4)..]);
                         if (redMask != 0)
                         {
+                            // An AlphaBlend source of bitfields without an alpha mask keeps its alpha in the top byte
+                            // (docx/external/powertools/HC044-Embedded-Workbook: the icons of embedded objects, 32 bpp
+                            // BI_BITFIELDS with masks FF0000, FF00 and FF, drawn with AC_SRC_ALPHA).
                             (r, g, b) = (Channel(v, redMask), Channel(v, greenMask), Channel(v, blueMask));
                             if (alphaMask != 0) a = Channel(v, alphaMask);
+                            else if (useAlpha) a = (byte)(v >> 24);
                         }
                         else
                         {
