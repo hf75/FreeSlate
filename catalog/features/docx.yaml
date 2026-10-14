@@ -49,7 +49,11 @@ areas:
         office: >-
           Shared with pptx: the main part is the package's officeDocument relationship; styles, settings, theme,
           numbering, font table, notes, headers and footers are found through its relationships, pictures and charts
-          through those of the part that refers to them; nothing is found by its path.
+          through those of the part that refers to them; nothing is found by its path. Strict Office Open XML is read
+          as the transitional markup of the same schemas; Word shapes and groups, which it names in the drawing
+          namespace (wp:wsp, wp:spPr, wp:bodyPr, wp:txbx …), are their wps and wpg elements, and DrawingML
+          percentages ("15%") thousandths of a percent (openxml-sdk/Strict01: the cover page's six shapes, gray
+          chart lines).
 
       - id: package.mce
         title: Markup compatibility and extension lists

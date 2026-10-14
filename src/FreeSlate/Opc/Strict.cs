@@ -37,6 +37,22 @@ static class Strict
         ["http://purl.oclc.org/ooxml/wordprocessingml/main"] = "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
     };
 
+    const string StrictDrawing = "http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing";
+
+    /// <summary>
+    /// Word shapes and groups, which Strict names in the drawing namespace (docx/external/openxml-sdk/Strict01:
+    /// wp:wsp with wp:spPr, wp:bodyPr, wp:txbx …), are their transitional wps and wpg elements.
+    /// </summary>
+    static readonly Dictionary<string, string> StrictShapes = new(StringComparer.Ordinal)
+    {
+        ["wsp"] = Wps, ["cNvSpPr"] = Wps, ["cNvCnPr"] = Wps, ["spPr"] = Wps, ["style"] = Wps, ["txbx"] = Wps,
+        ["linkedTxbx"] = Wps, ["bodyPr"] = Wps, ["wgp"] = Wpg, ["cNvGrpSpPr"] = Wpg, ["grpSpPr"] = Wpg, ["grpSp"] = Wpg,
+    };
+
+    const string DrawingMain = "http://schemas.openxmlformats.org/drawingml/2006/main";
+    const string Wps = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape";
+    const string Wpg = "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup";
+
     /// <summary>A strict part's markup renamed to the transitional namespaces; other parts as they are.</summary>
     public static XDocument Transition(XDocument document)
     {
@@ -46,8 +62,20 @@ static class Strict
             return document;
         foreach (var element in root.DescendantsAndSelf())
         {
-            if (Transitional.TryGetValue(element.Name.NamespaceName, out var ns))
+            if (element.Name.NamespaceName == StrictDrawing && StrictShapes.TryGetValue(element.Name.LocalName, out var shapeNs))
+                element.Name = XNamespace.Get(shapeNs) + element.Name.LocalName;
+            else if (Transitional.TryGetValue(element.Name.NamespaceName, out var ns))
                 element.Name = XNamespace.Get(ns) + element.Name.LocalName;
+            // DrawingML's percentages are "15%" in Strict, thousandths of a percent in transitional markup (Strict01:
+            // chart lines tx1 lumMod 15 % drawn black).
+            if (element.Name.NamespaceName == DrawingMain)
+            {
+                foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration && a.Value.EndsWith('%')))
+                {
+                    if (double.TryParse(attribute.Value[..^1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var percent))
+                        attribute.Value = ((long)Math.Round(percent * 1000)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+            }
             if (!element.Attributes().Any(a => a.Name.NamespaceName.StartsWith(Prefix, StringComparison.Ordinal)
                                                || a.IsNamespaceDeclaration && a.Value.StartsWith(Prefix, StringComparison.Ordinal)))
                 continue;
