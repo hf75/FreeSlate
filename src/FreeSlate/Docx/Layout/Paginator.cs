@@ -2190,7 +2190,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 Fill = fill,
                 borders = b,
                 shading = format.Shading,
-                indentLeft = format.Left ?? 0,
+                // From a hanging first line's start (measured with docx/local/pbh-*: hanging 360 to 1080 twips with and
+                // without a number, borders and shading alone, in modes 14 and 15; paragraphs of the same left indent
+                // but other first lines in boxes of their own).
+                indentLeft = Math.Min(format.Left ?? 0, (format.Left ?? 0) + (format.FirstLine ?? 0)),
                 indentRight = format.Right ?? 0,
             };
             return frame.Top is { Visible: true } || frame.Left is { Visible: true } || frame.Bottom is { Visible: true }

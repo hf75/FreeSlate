@@ -909,7 +909,10 @@ areas:
           line below the last, the between line between them with its space above and below it; each line and its
           space take room in the paragraph, the space before and after lie outside the box. The shading reaches 1.4 pt
           left and 1.55 pt right of the text (vertically just its lines), the side lines stand their space outside it
-          (measured with docx/local/pbdr, all lines within 0.15 pt). Double and thin-and-thick lines are drawn in their
+          (measured with docx/local/pbdr, all lines within 0.15 pt); the text's left edge is the first line's where it
+          hangs, its number's too, and paragraphs of the same left indent but other first lines have boxes of their
+          own (docx/local/pbh-*: hanging 360 to 1080 twips, numbered, borders and shading alone, modes 14 and 15,
+          within 0.05 pt; poi/52288, checkboxes, libreoffice/extras-ooxmlexport/tdf153964_numberingAfterBreak14). Double and thin-and-thick lines are drawn in their
           strokes as table borders are (a thin-thick top line 3 pt above 0.75 pt, docx/external/poi/FancyFoot);
           headers and footers draw their paragraphs' borders and shading too, and table cells and text boxes, where the
           lines take room alike (docx/external/libreoffice/extras-layout/fdo48718-1: bordered paragraphs in a cell, the
