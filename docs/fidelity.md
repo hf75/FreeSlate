@@ -57,7 +57,11 @@ PDF (`ExportAsFixedFormat`, the document without markup, optimized for print), a
 `page-001.png`, … The PDF stays in `artifacts/fidelity/docx/…/reference.pdf` for measuring (it embeds font subsets
 and is not committed). Pages of a document may differ in size; each is compared at its own size. `run` converts a
 document with FreeSlate, prints it to PDF with headless Chrome or Edge and rasterizes that PDF with the same renderer,
-so that both sides go through the same rasterizer.
+so that both sides go through the same rasterizer. Before that the browser's PDF is brought to Word's convention for
+fonts: Word embeds TrueType fonts without their `gasp` table, the browser keeps it, and Windows' renderer follows it,
+smoothing glyphs it would grid-fit otherwise (Aptos, Cambria and Cambria Math at text sizes lost 7 to 12 % of a line's
+ink with every glyph in place). `run` renames the `gasp` table of every embedded TrueType program
+(`tools/Fidelity/Word/PdfFonts.cs`); scores before 2026-10-14 were measured without it.
 
 Documents whose name begins with `markup-` (`docx/local/markup-revisions`) are rendered with their markup on both
 sides: Word prints them with all markup (`ExportDocumentWithMarkup`), FreeSlate converts them with `markup: true`.

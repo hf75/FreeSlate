@@ -112,6 +112,8 @@ public static class Pipeline
             {
                 var pdf = Path.Combine(dir, "ours.pdf");
                 browser.PrintToPdf(url, pdf, profile!);
+                // Word's PDFs embed their fonts without gasp tables, which the rasterizer would follow in ours only.
+                PdfFonts.HideGasp(pdf);
                 var reference = References.DocumentPdf(deck);
                 var sizes = File.Exists(reference) ? new PdfText(reference).Pages.Select(p => (p.Width, p.Height)).ToList() : null;
                 PdfPages.Rasterize(pdf, dir, References.DocumentScale, sizes);
