@@ -2174,7 +2174,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="pitch">
     /// The document grid's line pitch (measured with docx/local/docgrid: 18 and 15 pt grids, Arial 10 to 30 pt): a
     /// line of auto spacing takes as many whole pitches as its natural height needs, times its spacing factor, the
-    /// extra half above and half below the text; exact spacing keeps its height.
+    /// extra half above and half below the text; exact spacing keeps its height. What ruby and raised or lowered text
+    /// reach beyond the line counts in its natural height there (measured with docx/local/rg-*: 11 pt MS Mincho with
+    /// ruby 10 pt up, 18.7 pt high, takes two pitches of 18 pt and stands in their middle, its baseline 24.26 pt
+    /// down; ruby 5 pt up one pitch; docx/external/poi/61470).
     /// </param>
     /// <param name="fromTop">
     /// Whether exact lines put their text at the top (w:noExtraLineSpacing): the baseline below the natural ascent, at
@@ -2199,12 +2202,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case "auto" when pitch is { } grid && grid > 0:
                 {
-                    var units = Math.Max(1, Math.Ceiling(natural / grid - 1e-6));
+                    var whole = natural + line.RaisedAbove + line.LoweredBelow;
+                    var units = Math.Max(1, Math.Ceiling(whole / grid - 1e-6));
                     line.Height = units * grid * value / 240;
-                    var extra = line.Height - natural;
-                    line.Baseline = line.Above + extra / 2;
+                    var extra = line.Height - whole;
+                    line.Baseline = line.Above + line.RaisedAbove + extra / 2;
                     line.Overhang = Math.Max(0, extra / 2);
-                    break;
+                    continue;
                 }
                 default:
                     line.Height = natural + line.LargestNatural * (value / 240 - 1);

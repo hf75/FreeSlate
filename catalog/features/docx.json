@@ -6989,7 +6989,7 @@
       "difficulty": 4,
       "status": "done",
       "strategy": "Line pitch (lines snap to the grid) and character pitch, the default of East Asian templates; changes the line height of every paragraph that snaps to the grid.",
-      "office": "A line grid (w:docGrid type lines, linesAndChars, snapToChars) makes every line of auto spacing in paragraphs that snap to it as many whole pitches high as its natural height needs, times its spacing factor, the extra half above and half below; exact spacing and w:snapToGrid off keep their heights; headers and footers do not snap (docx/local/docgrid: 18 and 15 pt grids with Arial 10 to 30 pt, every line within 0.13 pt). A character grid adds w:charSpace / 4096 pt to every character (East Asian lines exact, Latin within 0.03 pt a character).",
+      "office": "A line grid (w:docGrid type lines, linesAndChars, snapToChars) makes every line of auto spacing in paragraphs that snap to it as many whole pitches high as its natural height needs, times its spacing factor, the extra half above and half below; exact spacing and w:snapToGrid off keep their heights; headers and footers do not snap (docx/local/docgrid: 18 and 15 pt grids with Arial 10 to 30 pt, every line within 0.13 pt). What ruby and raised text reach beyond a line counts in its natural height there, the whole standing in the middle of its pitches (docx/local/rg-*: 11 pt MS Mincho with ruby 10 pt up takes two 18 pt pitches, ruby 5 pt up one; poi/61470, tika/testWORD_phonetic 63.2 to 78.1 %). A character grid adds w:charSpace / 4096 pt to every character (East Asian lines exact, Latin within 0.03 pt a character).",
       "elements": [
         "w:docGrid"
       ],

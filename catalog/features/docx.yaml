@@ -1318,8 +1318,10 @@ areas:
           paragraphs that snap to it as many whole pitches high as its natural height needs, times its spacing factor,
           the extra half above and half below; exact spacing and w:snapToGrid off keep their heights; headers and
           footers do not snap (docx/local/docgrid: 18 and 15 pt grids with Arial 10 to 30 pt, every line within 0.13
-          pt). A character grid adds w:charSpace / 4096 pt to every character (East Asian lines exact, Latin within
-          0.03 pt a character).
+          pt). What ruby and raised text reach beyond a line counts in its natural height there, the whole standing in
+          the middle of its pitches (docx/local/rg-*: 11 pt MS Mincho with ruby 10 pt up takes two 18 pt pitches,
+          ruby 5 pt up one; poi/61470, tika/testWORD_phonetic 63.2 to 78.1 %). A character grid adds w:charSpace /
+          4096 pt to every character (East Asian lines exact, Latin within 0.03 pt a character).
 
       - id: section.printing
         title: Printer and book fold settings
