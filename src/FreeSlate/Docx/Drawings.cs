@@ -63,8 +63,11 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
 
     const double EmuPerPoint = 12700;
 
-    /// <summary>Marks on converted VML WordArt: the em box's share above the capitals and below the baseline.</summary>
-    static readonly XName WordArtTop = XNamespace.Get("urn:freeslate:wordart") + "top", WordArtBottom = XNamespace.Get("urn:freeslate:wordart") + "bottom";
+    /// <summary>
+    /// A mark on converted VML WordArt: the shares of its shape left of, above, right of and below the text's ink
+    /// (fractions of its width and height).
+    /// </summary>
+    static readonly XName WordArtInk = XNamespace.Get("urn:freeslate:wordart") + "ink";
 
     PresentationContext? presentation;
     readonly Dictionary<string, SlideRenderer> renderers = new(StringComparer.OrdinalIgnoreCase);
@@ -323,18 +326,18 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         if (element == null)
             return "";
         Place(element, placed.X, placed.Y, w, h);
-        // VML WordArt: the box shrinks to the capitals' share of the em box, about the same turned center.
-        if (double.TryParse((string?)element.Attribute(WordArtTop), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var shareTop)
-            && double.TryParse((string?)element.Attribute(WordArtBottom), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var shareBottom))
+        // VML WordArt: the box shrinks to the ink's share of the text's em boxes and advances, about the same turned
+        // (and flipped) center.
+        if (((string?)element.Attribute(WordArtInk))?.Split(' ').Select(v => double.Parse(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray() is [var shareLeft, var shareTop, var shareRight, var shareBottom])
         {
-            var rotation = ((double?)element.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm")?.Attribute("rot") ?? 0) / 60000 * Math.PI / 180;
-            var (top, bottom) = (h * shareTop, h * shareBottom);
-            var shift = (top - bottom) / 2;
-            var (cx, cy) = (placed.X + w / 2 - Math.Sin(rotation) * shift, placed.Y + h / 2 + Math.Cos(rotation) * shift);
-            var height = h - top - bottom;
-            Place(element, cx - w / 2, cy - height / 2, w, height);
-            element.Attribute(WordArtTop)?.Remove();
-            element.Attribute(WordArtBottom)?.Remove();
+            var xfrm = element.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm");
+            var rotation = ((double?)xfrm?.Attribute("rot") ?? 0) / 60000 * Math.PI / 180;
+            var (left, top, right, bottom) = (w * shareLeft, h * shareTop, w * shareRight, h * shareBottom);
+            var (dx, dy) = ((left - right) / 2 * ((string?)xfrm?.Attribute("flipH") is "1" or "true" ? -1 : 1), (top - bottom) / 2 * ((string?)xfrm?.Attribute("flipV") is "1" or "true" ? -1 : 1));
+            var (cx, cy) = (placed.X + w / 2 + Math.Cos(rotation) * dx - Math.Sin(rotation) * dy, placed.Y + h / 2 + Math.Sin(rotation) * dx + Math.Cos(rotation) * dy);
+            var (width, height) = (w - left - right, h - top - bottom);
+            Place(element, cx - width / 2, cy - height / 2, width, height);
+            element.Attribute(WordArtInk)?.Remove();
         }
         if (docPr?.Attribute("hidden")?.Value is "1" or "true")
             return "";
@@ -503,10 +506,6 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     }
 
     /// <summary>
-    /// VML WordArt (v:textpath, catalog: vml.watermarks): its text stretched over the shape as PowerPoint draws a
-    /// textPlain warp, filled as the shape was; the shape itself is not drawn.
-    /// </summary>
-    /// <summary>
     /// A run of 3D text (catalog: run.textEffects) as a shape without fill or line whose text body has the run's scene
     /// and body, PowerPoint's 3D text (pptx text.threeD): its first baseline, at PowerPoint's single line's ascent
     /// below the top, on the run's (measured with docx/local/text-3d: Word draws such runs as pictures of their lit
@@ -570,37 +569,135 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         return new PlacedDrawing(drawing, box.Part, box.X + left, box.Y + top, w, h) { Behind = box.Behind, Order = box.Order };
     }
 
+    /// <summary>
+    /// VML WordArt (v:textpath, catalog: vml.watermarks): its text bent over the shape as PowerPoint draws the warp
+    /// of the shape type (textPlain stretched over it), text converted from old WordArt, a paragraph per line, filled
+    /// as the shape was; the shape itself is not drawn.
+    /// </summary>
     static void WordArt(XElement shape, XElement art, XElement? docPr, XElement graphicData)
     {
         var spPr = shape.Element(Ns.P + "spPr")!;
-        var fill = spPr.Elements().FirstOrDefault(c => c.Name.LocalName is "solidFill" or "gradFill" or "noFill") is { } f ? new XElement(f) : new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", "000000")));
-        foreach (var paint in spPr.Elements().Where(c => c.Name.LocalName is "solidFill" or "gradFill" or "blipFill" or "noFill" or "ln").ToList())
+        // Pictures fill the glyphs too (docx/external/libreoffice/tdf153258_VML_import_WordArt_detection: a purple
+        // mesh tiled over "zero", "one" and "more").
+        var fill = spPr.Elements().FirstOrDefault(c => c.Name.LocalName is "solidFill" or "gradFill" or "pattFill" or "blipFill" or "noFill") is { } f ? new XElement(f) : new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", "000000")));
+        // The shape's outline and shadow fall on the glyphs (docx/external/libreoffice/extras-ooxmlexport/fdo79540:
+        // "February 2013" in red outlined 2 pt in dark blue, "Pay $12 Dues!" in orange outlined in VML's default 0.75 pt
+        // of black).
+        var outline = spPr.Element(Ns.A + "ln") is { } ln && ln.Element(Ns.A + "noFill") == null ? new XElement(ln) : null;
+        var effects = spPr.Element(Ns.A + "effectLst") is { } shadow ? new XElement(shadow) : null;
+        foreach (var paint in spPr.Elements().Where(c => c.Name.LocalName is "solidFill" or "gradFill" or "pattFill" or "blipFill" or "noFill" or "ln" or "effectLst").ToList())
             paint.Remove();
         spPr.Add(new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill")));
-        var family = "Calibri";
-        foreach (var part in ((string?)art.Attribute("style") ?? "").Split(';'))
-        {
-            var colon = part.IndexOf(':');
-            if (colon > 0 && part[..colon].Trim().Equals("font-family", StringComparison.OrdinalIgnoreCase))
-                family = part[(colon + 1)..].Trim().Trim('"', '\'', ' ').Replace("&quot;", "");
-        }
-        // VML fits the text's em box (ascent and descent) to the shape, PowerPoint's warp its ink: the box shrinks to
-        // the capitals' share of the em box (measured with docx/local/vml-watermark).
-        var font = FreeSlate.Text.FontResolver.Default.ResolveTypeface(family, false, false).Data;
-        var (ascent, descent, _) = font.Hhea;
-        var em = ascent + descent;
-        // The warp ignores insets (as PowerPoint's), so the shape itself shrinks to the capitals once it is placed.
-        if (em > 0)
-        {
-            shape.SetAttributeValue(WordArtTop, ((ascent - font.CapHeight) / em).ToString(System.Globalization.CultureInfo.InvariantCulture));
-            shape.SetAttributeValue(WordArtBottom, (descent / em).ToString(System.Globalization.CultureInfo.InvariantCulture));
-        }
+        var (family, bold, italic) = WordArtFont((string?)art.Attribute("style"));
+        var warp = (string?)art.Attribute("warp") ?? "textPlain";
+        var font = WordArtTypeface(family, bold, italic).Data;
+        family = font.Family;
+        var lines = art.Value.Split('\n');
+        // The warp ignores insets (as PowerPoint's), so the shape itself shrinks to the ink once it is placed.
+        if (warp == "textPlain" && art.Attribute("trim") == null && PlainWordArt(art.Value, (string?)art.Attribute("style"), false, 1, 1) is { } plain)
+            shape.SetAttributeValue(WordArtInk, string.Join(" ", plain.Shares.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))));
+        var adjustments = art.Attributes().Where(a => a.Name.LocalName.StartsWith("adj", StringComparison.Ordinal)).ToList();
+        if (art.Value.Length == 0)
+            return;
+        var guides = adjustments.Select(a => new XElement(Ns.A + "gd", new XAttribute("name", adjustments.Count == 1 ? "adj" : a.Name.LocalName), new XAttribute("fmla", "val " + a.Value)));
+        // Plain lines at VML's pitch, GDI's height (36 pt the size of the text body's runs).
+        var pitch = warp == "textPlain" && lines.Length > 1
+            ? new XElement(Ns.A + "lnSpc", new XElement(Ns.A + "spcPts", new XAttribute("val", (long)Math.Round((font.WinAscent + font.WinDescent) * 3600))))
+            : null;
         shape.Add(new XElement(Ns.P + "txBody",
             new XElement(Ns.A + "bodyPr", new XAttribute("wrap", "none"), new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0), new XAttribute("bIns", 0),
-                new XAttribute("anchor", "ctr"), new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", "textPlain"), new XElement(Ns.A + "avLst"))),
-            new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr")),
-                new XElement(Ns.A + "r", new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600), fill, new XElement(Ns.A + "latin", new XAttribute("typeface", family))),
-                    new XElement(Ns.A + "t", art.Value)))));
+                new XAttribute("anchor", "ctr"), new XAttribute("fromWordArt", 1),
+                new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", warp), new XElement(Ns.A + "avLst", guides), art.Element(Pptx.TextWarp.OwnPaths))),
+            lines.Select(line => new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr"), pitch),
+                line.Length == 0
+                    ? new XElement(Ns.A + "endParaRPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600))
+                    : new XElement(Ns.A + "r", new XElement(Ns.A + "rPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600), new XAttribute("b", bold ? 1 : 0),
+                        new XAttribute("i", italic ? 1 : 0), outline != null ? new XElement(outline) : null, new XElement(fill),
+                        effects != null ? new XElement(effects) : null, new XElement(Ns.A + "latin", new XAttribute("typeface", family))),
+                        new XElement(Ns.A + "t", line))))));
+    }
+
+    /// <summary>
+    /// VML WordArt's typeface: its family where it is there, else Arial, as GDI maps names it lacks (docx/external/
+    /// libreoffice/extras-uiwriter/watermark: "DejaVu Sans Light" in Arial, not in Verdana as PowerPoint takes the name;
+    /// extras-ooxmlexport/watermark-font: "DejaVu Serif" in Arial too).
+    /// </summary>
+    static FreeSlate.Text.ResolvedFont WordArtTypeface(string family, bool bold, bool italic) =>
+        FreeSlate.Text.FontResolver.Default.TryResolveFamily(family, bold, italic) ?? FreeSlate.Text.FontResolver.Default.Resolve("Arial", bold, italic);
+
+    /// <summary>The font of VML WordArt's text path style (font-family, font-weight, font-style), Calibri by default.</summary>
+    static (string Family, bool Bold, bool Italic) WordArtFont(string? style)
+    {
+        var (family, bold, italic) = ("Calibri", false, false);
+        foreach (var part in (style ?? "").Split(';'))
+        {
+            var colon = part.IndexOf(':');
+            if (colon <= 0)
+                continue;
+            var (name, value) = (part[..colon].Trim().ToLowerInvariant(), part[(colon + 1)..].Trim());
+            if (name == "font-family")
+                family = value.Trim('"', '\'', ' ').Replace("&quot;", "");
+            else if (name == "font-weight")
+                bold = value is "bold" or "bolder" or "600" or "700" or "800" or "900";
+            else if (name == "font-style")
+                italic = value is "italic" or "oblique";
+        }
+        return (family, bold, italic);
+    }
+
+    /// <summary>
+    /// VML WordArt in plain text (textPlain) as VML lays it out: each line's em its share of the shape's height, the
+    /// baseline its GDI descent above the line's bottom, lines following each other by GDI's height, the longest
+    /// line's advance the shape's width and the others centered at its scale; trimmed text (trim) its ink fitted to the
+    /// shape instead. Gives the shares of the shape left of, above, right of and below the ink (fractions of its width
+    /// and height, none when trimmed), which PowerPoint's warp fills, and the glyphs' outlines in a shape of
+    /// <paramref name="width"/> by <paramref name="height"/> (points from its top left corner); null without ink
+    /// (measured with docx/local/vwa-f-*: "DRAFT" and "Typeface" in Arial, Segoe UI, Cambria, Verdana, Georgia and
+    /// Arial Black 1 em to the shapes' 100 pt, their side bearings left at the sides; vwa-calibri: Calibri's baseline
+    /// 0.2686 em up, its usWinDescent, not hhea's 0.25; vwa-calibri2, vwa-times2, vwa-segoe3: lines 1.221, 1.107 and
+    /// 1.330 em apart; vwa-plain: trimmed ink filling the shape).
+    /// </summary>
+    internal static (double[] Shares, List<(double X, double Y)> Outline)? PlainWordArt(string text, string? style, bool trim, double width, double height)
+    {
+        var (family, bold, italic) = WordArtFont(style);
+        var font = WordArtTypeface(family, bold, italic).Data;
+        var lines = text.Split('\n');
+        var (units, pitch, descent) = ((double)font.UnitsPerEm, font.WinAscent + font.WinDescent, font.WinDescent);
+        var shaped = lines.Select(line => font.Glyphs(line, false)).ToList();
+        var advances = shaped.Select(glyphs => glyphs.Sum(g => g.Advance)).ToList();
+        var widest = advances.Max();
+        // The ink in em from the first line's origin, y up: its sides, the first line's top and the last line's bottom.
+        var (inkLeft, inkRight, inkTop, inkBottom) = (double.MaxValue, double.MinValue, (double?)null, (double?)null);
+        var outline = new List<(double X, double Y)>();
+        for (var i = 0; i < shaped.Count; i++)
+        {
+            var pen = (widest - advances[i]) / 2;
+            foreach (var g in shaped[i])
+            {
+                var (l, r) = font.GlyphSpan(g.Id);
+                var (b, t) = font.GlyphBounds(g.Id);
+                if (r > l)
+                    (inkLeft, inkRight) = (Math.Min(inkLeft, pen + g.OffsetX + l / units), Math.Max(inkRight, pen + g.OffsetX + r / units));
+                if (t > b && i == 0)
+                    inkTop = Math.Max(inkTop ?? double.MinValue, t / units);
+                if (t > b && i == shaped.Count - 1)
+                    inkBottom = Math.Min(inkBottom ?? double.MaxValue, b / units - (shaped.Count - 1) * pitch);
+                // The outline y down in em.
+                foreach (var contour in Pptx.TextWarp.Contours(font.Outline(g.Id), pen + g.OffsetX, i * pitch - g.OffsetY, 1 / units))
+                    outline.AddRange(contour);
+                pen += g.Advance;
+            }
+        }
+        if (widest <= 0 || inkRight <= inkLeft || outline.Count == 0)
+            return null;
+        var (top, bottom) = (inkTop ?? font.CapHeight, inkBottom ?? -(shaped.Count - 1) * pitch);
+        var em = 1 / (1 + (lines.Length - 1) * pitch);
+        var shares = trim ? new double[4]
+            : [inkLeft / widest, (1 - descent - top) * em, (widest - inkRight) / widest, (descent + bottom + (lines.Length - 1) * pitch) * em];
+        // The ink's rectangle in em (y down) onto the shape less its shares.
+        var (x0, x1, y0, y1) = (shares[0] * width, width - shares[2] * width, shares[1] * height, height - shares[3] * height);
+        var placed = outline.Select(p => (x0 + (p.X - inkLeft) / (inkRight - inkLeft) * (x1 - x0), y0 + (p.Y + top) / Math.Max(1e-9, top - bottom) * (y1 - y0))).ToList();
+        return (shares, placed);
     }
 
     static XElement CNvPr(XElement? own, XElement? docPr)

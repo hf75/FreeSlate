@@ -2187,7 +2187,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
             var effects = grouped && (relativeWidth != null || relativeHeight != null) ? null : element.Element(Docx.Drawings.Wp + "effectExtent");
             double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
-            x = Position(positionH, x0, xw, w, odd, horizontal: true, Effect("l"), Effect("r"));
+            // A turned VML shape by its swapped box or its turned outline (see Vml.TurnedBox), with its effect extents.
+            var turned = Docx.Vml.TurnedSides(element);
+            x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + Effect("l"), (turned?.R ?? 0) + Effect("r"));
             var positionV = element.Element(Docx.Drawings.Wp + "positionV");
             var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
             {
@@ -2201,7 +2203,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
             };
-            y = Position(positionV, y0, yh, h, odd, horizontal: false, Effect("t"), Effect("b"));
+            y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t"), (turned?.B ?? 0) + Effect("b"));
         }
         return new PlacedDrawing(element, anchor.Part, x, y, w, h)
         {

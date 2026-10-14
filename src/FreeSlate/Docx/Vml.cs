@@ -50,6 +50,21 @@ public static class Vml
 
     public static readonly XName RuleBevel = XNamespace.Get("urn:freeslate:vml") + "ruleBevel";
 
+    /// <summary>
+    /// Marks a turned shape with what alignment counts of it beyond its box, left, above, right and below (pt, less
+    /// than none where it falls short): its box, width and height swapped from 45 to 135 degrees (and from 225 to
+    /// 315), about its center, together with its turned outline, curves' control points and WordArt's glyphs included
+    /// (measured with docx/local/vrb-*: a rectangle of 300 by 100 pt turned 30 degrees at the margins' top by its turned
+    /// corners, 45 degrees by its swapped box 300 pt high, an oval by its Béziers' control points; vwa-rc*: WordArt
+    /// "Airplane" centered on the margins turned 10 to 350 degrees, at 315 by its glyphs' height and its box's width).
+    /// Offsets place the box itself (vwa-rot, vwa-rcabs).
+    /// </summary>
+    public static readonly XName TurnedBox = XNamespace.Get("urn:freeslate:vml") + "turned";
+
+    /// <summary>A turned shape's sides beyond its box for alignment (see TurnedBox), or null.</summary>
+    public static (double L, double T, double R, double B)? TurnedSides(XElement anchor) =>
+        ((string?)anchor.Attribute(TurnedBox))?.Split(' ').Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray() is [var l, var t, var r, var b] ? (l, t, r, b) : null;
+
     /// <summary>The shape types of a part by their ids, the first of each id (Types).</summary>
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, XElement>> PartTypes = new();
 
@@ -166,7 +181,144 @@ public static class Vml
             new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(el)), new XAttribute("t", Emu(et)), new XAttribute("r", Emu(er)), new XAttribute("b", Emu(eb))),
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
+        if (TurnedSides(content, style, width, height) is { } turned)
+            anchor.SetAttributeValue(TurnedBox, string.Join(" ", new[] { turned.L, turned.T, turned.R, turned.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
         return anchor;
+    }
+
+    /// <summary>What alignment counts of a turned shape beyond its box (see <see cref="TurnedBox"/>); null unless turned.</summary>
+    static (double L, double T, double R, double B)? TurnedSides(XElement content, Dictionary<string, string> style, double width, double height)
+    {
+        var text = style.GetValueOrDefault("rotation")?.Trim();
+        if (text == null || !double.TryParse(text.TrimEnd('f', 'd', 'e', 'g'), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees))
+            return null;
+        if (text.EndsWith("fd", StringComparison.OrdinalIgnoreCase))
+            degrees /= 65536;
+        var turn = (degrees % 360 + 360) % 360;
+        if (turn < 1e-6 || turn > 360 - 1e-6)
+            return null;
+        // The drawing's own turn and flips (DrawingML's, the turn the other way under one flip; see Xfrm).
+        var xfrm = content.Elements().FirstOrDefault(e => e.Name.LocalName is "spPr" or "grpSpPr")?.Element(Ns.A + "xfrm");
+        var rotation = ((double?)xfrm?.Attribute("rot") ?? 0) / 60000 * Math.PI / 180;
+        var (flipH, flipV) = ((string?)xfrm?.Attribute("flipH") is "1" or "true", (string?)xfrm?.Attribute("flipV") is "1" or "true");
+        IEnumerable<(double X, double Y)>? outline = null;
+        var flips = true;
+        if (content.Element(Drawings.Wps + "txbxWordArt") is { } art)
+        {
+            // WordArt by its glyphs, which its flips do not mirror.
+            if ((string?)art.Attribute("warp") == "textPlain"
+                && Drawings.PlainWordArt(art.Value, (string?)art.Attribute("style"), art.Attribute("trim") != null, width, height) is { } plain)
+                (outline, flips) = (plain.Outline, false);
+        }
+        else if (content.Element(Drawings.Wps + "spPr") is { } spPr)
+            outline = OutlinePoints(spPr, width, height);
+        outline ??= [(0, 0), (width, 0), (width, height), (0, height)];
+        var swapped = turn % 180 >= 45 && turn % 180 < 135;
+        var (minX, minY) = swapped ? (-height / 2, -width / 2) : (-width / 2, -height / 2);
+        var (maxX, maxY) = (-minX, -minY);
+        var (cos, sin) = (Math.Cos(rotation), Math.Sin(rotation));
+        foreach (var (x, y) in outline)
+        {
+            var (ux, uy) = (x - width / 2, y - height / 2);
+            if (flips)
+                (ux, uy) = (flipH ? -ux : ux, flipV ? -uy : uy);
+            var (tx, ty) = (ux * cos - uy * sin, ux * sin + uy * cos);
+            (minX, maxX, minY, maxY) = (Math.Min(minX, tx), Math.Max(maxX, tx), Math.Min(minY, ty), Math.Max(maxY, ty));
+        }
+        return (-width / 2 - minX, -height / 2 - minY, maxX - width / 2, maxY - height / 2);
+    }
+
+    /// <summary>
+    /// The points of a drawing's geometry (a:prstGeom or a:custGeom in its spPr) in a box of <paramref name="width"/>
+    /// by <paramref name="height"/> (pt from its top left corner): its lines' ends and its curves' control points, arcs
+    /// as Béziers of up to a quarter turn; null without a geometry.
+    /// </summary>
+    static List<(double X, double Y)>? OutlinePoints(XElement spPr, double width, double height)
+    {
+        FreeSlate.Drawing.Geometry.GeometryDefinition? definition = null;
+        List<FreeSlate.Drawing.Geometry.Guide>? adjustments = null;
+        if (spPr.Element(Ns.A + "prstGeom") is { } preset && (string?)preset.Attribute("prst") is { } name)
+        {
+            definition = FreeSlate.Drawing.Geometry.PresetGeometries.Get(name);
+            adjustments = preset.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
+                .Select(gd => new FreeSlate.Drawing.Geometry.Guide((string?)gd.Attribute("name") ?? "", (string?)gd.Attribute("fmla") ?? "val 0")).ToList();
+        }
+        else if (spPr.Element(Ns.A + "custGeom") is { } custom)
+            definition = FreeSlate.Drawing.Geometry.GeometryDefinition.Parse(custom);
+        if (definition == null)
+            return null;
+        var points = new List<(double X, double Y)>();
+        foreach (var path in FreeSlate.Drawing.Geometry.GeometryEvaluator.Evaluate(definition, width * 12700, height * 12700, adjustments).Paths)
+        {
+            var (x, y, startX, startY) = (0.0, 0.0, 0.0, 0.0);
+            foreach (var segment in path.Segments)
+            {
+                var v = segment.Values;
+                switch (segment.Command)
+                {
+                    case 'M':
+                        (x, y, startX, startY) = (v[0], v[1], v[0], v[1]);
+                        points.Add((x, y));
+                        break;
+                    case 'L':
+                        (x, y) = (v[0], v[1]);
+                        points.Add((x, y));
+                        break;
+                    case 'Q' or 'C':
+                        for (var i = 0; i + 1 < v.Length; i += 2)
+                            points.Add((v[i], v[i + 1]));
+                        (x, y) = (v[^2], v[^1]);
+                        break;
+                    case 'A':
+                        points.AddRange(ArcPoints(x, y, v));
+                        (x, y) = (v[5], v[6]);
+                        break;
+                    case 'Z':
+                        (x, y) = (startX, startY);
+                        break;
+                }
+            }
+        }
+        // Pixels to points.
+        return points.Select(p => (p.X * 0.75, p.Y * 0.75)).ToList();
+    }
+
+    /// <summary>
+    /// An SVG arc's Béziers' control and end points from (<paramref name="x0"/>, <paramref name="y0"/>): radii, turn,
+    /// large-arc and sweep flags and end point, in pieces of up to a quarter turn.
+    /// </summary>
+    static IEnumerable<(double X, double Y)> ArcPoints(double x0, double y0, double[] arc)
+    {
+        var (rx, ry, large, sweep, x1, y1) = (arc[0], arc[1], arc[3] != 0, arc[4] != 0, arc[5], arc[6]);
+        var (hx, hy) = ((x0 - x1) / 2, (y0 - y1) / 2);
+        if (rx <= 0 || ry <= 0 || hx == 0 && hy == 0)
+        {
+            yield return (x1, y1);
+            yield break;
+        }
+        var lambda = hx * hx / (rx * rx) + hy * hy / (ry * ry);
+        if (lambda > 1)
+            (rx, ry) = (rx * Math.Sqrt(lambda), ry * Math.Sqrt(lambda));
+        var numerator = rx * rx * ry * ry - rx * rx * hy * hy - ry * ry * hx * hx;
+        var denominator = rx * rx * hy * hy + ry * ry * hx * hx;
+        var root = (large == sweep ? -1 : 1) * (denominator > 0 ? Math.Sqrt(Math.Max(0, numerator / denominator)) : 0);
+        var (cx, cy) = (root * rx * hy / ry + (x0 + x1) / 2, -root * ry * hx / rx + (y0 + y1) / 2);
+        var start = Math.Atan2((y0 - cy) / ry, (x0 - cx) / rx);
+        var turn = Math.Atan2((y1 - cy) / ry, (x1 - cx) / rx) - start;
+        if (sweep && turn < 0)
+            turn += 2 * Math.PI;
+        else if (!sweep && turn > 0)
+            turn -= 2 * Math.PI;
+        var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(turn) / (Math.PI / 2) - 1e-9));
+        var step = turn / count;
+        var k = 4.0 / 3 * Math.Tan(step / 4);
+        for (var j = 0; j < count; j++)
+        {
+            var (a0, a1) = (start + j * step, start + (j + 1) * step);
+            yield return (cx + rx * (Math.Cos(a0) - k * Math.Sin(a0)), cy + ry * (Math.Sin(a0) + k * Math.Cos(a0)));
+            yield return (cx + rx * (Math.Cos(a1) + k * Math.Sin(a1)), cy + ry * (Math.Sin(a1) - k * Math.Cos(a1)));
+            yield return (cx + rx * Math.Cos(a1), cy + ry * Math.Sin(a1));
+        }
     }
 
     /// <summary>
@@ -561,10 +713,22 @@ public static class Vml
         if (Shadow(shape, type) is { } shadow)
             properties.Add(new XElement(Ns.A + "effectLst", shadow));
         var wsp = new XElement(Drawings.Wps + "wsp", new XElement(Drawings.Wps + "cNvSpPr"), properties);
-        // WordArt (v:textpath): text stretched to the shape, as PowerPoint draws a textPlain warp.
-        if ((shape.Element(V + "textpath") ?? type?.Element(V + "textpath")) is { } textpath && (string?)shape.Element(V + "textpath")?.Attribute("string") is { } text)
+        // WordArt (v:textpath): text bent as PowerPoint draws the shape type's text warp, on shapes of a type only, with
+        // the text path on (the shape's or its type's); a rectangle with one stays a rectangle with its text box
+        // (docx/external/libreoffice/extras-ooxmlexport/drawinglayer-pic-pos: "The Space Race" small in a framed box).
+        var on = ((string?)shape.Element(V + "textpath")?.Attribute("on") ?? (string?)type?.Element(V + "textpath")?.Attribute("on")
+            ?? (type == null && int.TryParse(spt, out var kind) && kind is >= 136 and <= 175 ? "t" : null)) is "t" or "true" or "1";
+        if (shape.Name == V + "shape" && on && (shape.Element(V + "textpath") ?? type?.Element(V + "textpath")) is { } textpath
+            && (string?)shape.Element(V + "textpath")?.Attribute("string") is { } text)
         {
-            wsp.Add(new XElement(Drawings.Wps + "txbxWordArt", text, new XAttribute("style", (string?)textpath.Attribute("style") ?? "")));
+            // trim fits the ink to the shape instead of the em box (docx/local/vwa-plain: "WORD-ART" in Arial Black
+            // fills its 134.8 pt from the capitals' tops to the baseline); a line break at the end adds no line
+            // (vwa-inflate: three lines and a break fill textInflateTop).
+            var (warp, adjustments) = TextWarp(spt, Adjustments(shape, type));
+            var trim = ((string?)shape.Element(V + "textpath")?.Attribute("trim") ?? (string?)type?.Element(V + "textpath")?.Attribute("trim")) is "t" or "true";
+            wsp.Add(new XElement(Drawings.Wps + "txbxWordArt", text.Replace("\r\n", "\n").TrimEnd('\n'), new XAttribute("style", (string?)textpath.Attribute("style") ?? ""),
+                new XAttribute("warp", warp), trim ? new XAttribute("trim", 1) : null, adjustments.Select((v, i) => new XAttribute("adj" + (i + 1), v)),
+                GuidePaths(shape, type, width, height)));
         }
         else if (shape.Element(V + "textbox")?.Element(Wml.W + "txbxContent") is { } content)
         {
@@ -596,6 +760,76 @@ public static class Vml
                 fits ? new XElement(Ns.A + "spAutoFit") : null));
         }
         return wsp;
+    }
+
+    /// <summary>
+    /// The DrawingML text warp of a WordArt shape type (o:spt 136 to 175) and its adjustments from the shape's (or its
+    /// type's) adj: the angle of arches, circles and buttons in 60000ths instead of 65536ths of a degree, the share of
+    /// the pours' ring and of the other warps' offsets in 100000ths instead of the 21600ths of the shape (their
+    /// defaults agree: 3086 for textCanDown's 14286, 9931 for textCurveUp's 45977, 12000 for textSlantUp's 55555);
+    /// warps whose VML defaults do not map so keep DrawingML's (docx/external/libreoffice/extras-ooxmlimport/WordArt:
+    /// "WORD-ART" along an arch).
+    /// </summary>
+    static (string Preset, List<long> Adjustments) TextWarp(string? spt, List<double> adj)
+    {
+        var preset = spt switch
+        {
+            "137" => "textStop", "138" => "textTriangle", "139" => "textTriangleInverted", "140" => "textChevron",
+            "141" => "textChevronInverted", "142" => "textRingInside", "143" => "textRingOutside", "144" => "textArchUp",
+            "145" => "textArchDown", "146" => "textCircle", "147" => "textButton", "148" => "textArchUpPour",
+            "149" => "textArchDownPour", "150" => "textCirclePour", "151" => "textButtonPour", "152" => "textCurveUp",
+            "153" => "textCurveDown", "154" => "textCascadeUp", "155" => "textCascadeDown", "156" => "textWave1",
+            "157" => "textWave2", "158" => "textDoubleWave1", "159" => "textWave4", "160" => "textInflate",
+            "161" => "textDeflate", "162" => "textInflateBottom", "163" => "textDeflateBottom", "164" => "textInflateTop",
+            "165" => "textDeflateTop", "166" => "textDeflateInflate", "167" => "textDeflateInflateDeflate",
+            "168" => "textFadeRight", "169" => "textFadeLeft", "170" => "textFadeUp", "171" => "textFadeDown",
+            "172" => "textSlantUp", "173" => "textSlantDown", "174" => "textCanUp", "175" => "textCanDown",
+            _ => "textPlain",
+        };
+        double? Value(int i) => i < adj.Count ? adj[i] : null;
+        var adjustments = new List<long>();
+        switch (spt)
+        {
+            case "144" or "145" or "146" or "147" or "148" or "149" or "150" or "151":
+                if (Value(0) is { } angle)
+                {
+                    adjustments.Add((long)Math.Round(((angle / 65536.0 % 360 + 360) % 360) * 60000));
+                    if (spt is "148" or "149" or "150" or "151" && Value(1) is { } ring)
+                        adjustments.Add((long)Math.Round(ring / 10800.0 * 100000));
+                }
+                break;
+            case "136" or "152" or "153" or "154" or "155" or "172" or "173" or "174" or "175":
+                if (Value(0) is { } offset)
+                    adjustments.Add((long)Math.Round(offset / 21600.0 * 100000));
+                break;
+        }
+        return (preset, adjustments);
+    }
+
+    /// <summary>
+    /// A WordArt shape type's own guide paths for warps between pairs of them (its path, each figure from a move a
+    /// guide), as the custom paths of a text warp; null for other warps, which keep DrawingML's: VML's curves are not
+    /// always DrawingML's (docx/local/vwa-inflate: textInflateTop's top is a cubic from 31.9 % down at the sides that
+    /// reaches the top, DrawingML's a quadratic that rises halfway).
+    /// </summary>
+    static XElement? GuidePaths(XElement shape, XElement? type, double width, double height)
+    {
+        if (((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is not { } path
+            || Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize"),
+                (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin"), Formulas(shape, type, width, height)) is not { } geometry)
+            return null;
+        var guides = new List<XElement>();
+        foreach (var figure in geometry.Element(Ns.A + "pathLst")!.Elements(Ns.A + "path"))
+        {
+            foreach (var command in figure.Elements())
+            {
+                if (command.Name.LocalName == "moveTo" || guides.Count == 0)
+                    guides.Add(new XElement(Ns.A + "path", figure.Attribute("w"), figure.Attribute("h")));
+                guides[^1].Add(new XElement(command));
+            }
+        }
+        guides.RemoveAll(g => g.Elements().Count() < 2);
+        return guides.Count >= 2 && guides.Count % 2 == 0 ? new XElement(Pptx.TextWarp.OwnPaths, new XElement(Ns.A + "pathLst", guides)) : null;
     }
 
     static XElement Xfrm(double width, double height, Dictionary<string, string> style)
@@ -659,7 +893,7 @@ public static class Vml
         };
         if (preset == null && ((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is { } path
             && Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize"),
-                (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin")) is { } custom)
+                (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin"), Formulas(shape, type, width, height)) is { } custom)
             return custom;
         var geometry = new XElement(Ns.A + "prstGeom", new XAttribute("prst", preset ?? "rect"), new XElement(Ns.A + "avLst"));
         if (preset == "roundRect" && (string?)shape.Attribute("arcsize") is { } arc)
@@ -673,11 +907,97 @@ public static class Vml
     }
 
     /// <summary>
-    /// A VML path (m, l, c, x, e, r, v, t, nf, ns) as a custom geometry in its coordinate size, its points counted
-    /// from the coordinate origin (docx/external/libreoffice/dml-groupshape-polygon: a polygon of coordorigin
-    /// 420,11929 drawn from m420,12666, its corner at the shape's).
+    /// A shape's adjustments (adj): its own values in place of its type's, one left out (",10800") keeping the type's,
+    /// in 65536ths for values given as fractions (f).
     /// </summary>
-    static XElement? Path(string path, string? coordsize, string? coordorigin = null)
+    static List<double> Adjustments(XElement shape, XElement? type)
+    {
+        var (own, defaults) = (((string?)shape.Attribute("adj") ?? "").Split(','), ((string?)type?.Attribute("adj") ?? "").Split(','));
+        static double? Parse(string[] values, int i)
+        {
+            if (i >= values.Length)
+                return null;
+            var text = values[i].Trim();
+            var fraction = text.EndsWith('f');
+            return double.TryParse(fraction ? text[..^1] : text, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        }
+        return Enumerable.Range(0, Math.Max(own.Length, defaults.Length)).Select(i => Parse(own, i) ?? Parse(defaults, i) ?? 0).ToList();
+    }
+
+    /// <summary>
+    /// The values of a shape's formulas (v:formulas, catalog: vml.shapes), each v:f's eqn in order: an operation on up to
+    /// three arguments, numbers, adjustments (#n), earlier values (@n) or the shape's measures (width and height of its
+    /// coordinate size, xcenter, ycenter, emuwidth …); angles count 65536ths of a degree (docx/external/libreoffice/
+    /// extras-ooxmlexport/fdo74110: textInflateTop's top curve from @0 at the sides to −@1 between). Null without
+    /// formulas.
+    /// </summary>
+    static List<double>? Formulas(XElement shape, XElement? type, double width, double height)
+    {
+        if ((shape.Element(V + "formulas") ?? type?.Element(V + "formulas")) is not { } formulas)
+            return null;
+        var adjustments = Adjustments(shape, type);
+        var size = (((string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize")) ?? "21600,21600").Split(',');
+        var origin = (((string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin")) ?? "0,0").Split(',');
+        double Part(string[] parts, int i, double fallback) =>
+            i < parts.Length && double.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : fallback;
+        var (cw, ch, ox, oy) = (Part(size, 0, 21600), Part(size, 1, 21600), Part(origin, 0, 0), Part(origin, 1, 0));
+        var values = new List<double>();
+        double Argument(string token) => token switch
+        {
+            ['#', .. var n] when int.TryParse(n, out var i) => i < adjustments.Count ? adjustments[i] : 0,
+            ['@', .. var n] when int.TryParse(n, out var i) => i < values.Count ? values[i] : 0,
+            "width" => cw,
+            "height" => ch,
+            "xcenter" => ox + cw / 2,
+            "ycenter" => oy + ch / 2,
+            "emuwidth" => width * 12700,
+            "emuheight" => height * 12700,
+            "emuwidth2" => width * 12700 / 2,
+            "emuheight2" => height * 12700 / 2,
+            "pixelwidth" => width * 96 / 72,
+            "pixelheight" => height * 96 / 72,
+            "pixellinewidth" or "hasstroke" or "hasfill" or "lineDrawn" => 1,
+            _ => double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0,
+        };
+        const double Fd = 65536 * 180 / Math.PI;  // radians to 65536ths of a degree
+        foreach (var f in formulas.Elements(V + "f"))
+        {
+            var parts = ((string?)f.Attribute("eqn") ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            double A(int i) => i < parts.Length ? Argument(parts[i]) : 0;
+            var (a, b, c) = (A(1), A(2), A(3));
+            values.Add(parts.Length == 0 ? 0 : parts[0] switch
+            {
+                "val" => a,
+                "sum" => a + b - c,
+                "prod" => c == 0 ? 0 : a * b / c,
+                "mid" => (a + b) / 2,
+                "abs" => Math.Abs(a),
+                "min" => Math.Min(a, b),
+                "max" => Math.Max(a, b),
+                "if" => a > 0 ? b : c,
+                "mod" => Math.Sqrt(a * a + b * b + c * c),
+                "atan2" => Math.Atan2(b, a) * Fd,
+                "sin" => a * Math.Sin(b / Fd),
+                "cos" => a * Math.Cos(b / Fd),
+                "tan" => a * Math.Tan(b / Fd),
+                "cosatan2" => a * Math.Cos(Math.Atan2(c, b)),
+                "sinatan2" => a * Math.Sin(Math.Atan2(c, b)),
+                "sqrt" => Math.Sqrt(Math.Max(0, a)),
+                "sumangle" => a + b * 65536 - c * 65536,
+                "ellipse" => b == 0 ? 0 : c * Math.Sqrt(Math.Max(0, 1 - a / b * (a / b))),
+                _ => 0,
+            });
+        }
+        return values;
+    }
+
+    /// <summary>
+    /// A VML path (m, l, c, v, t, r, x, e, nf, ns, the arcs ar, at, wa, wr, qx, qy, ae, al) as a custom geometry in its
+    /// coordinate size, each figure a path of its own, its points counted from the coordinate origin (docx/external/
+    /// libreoffice/dml-groupshape-polygon: a polygon of coordorigin 420,11929 drawn from m420,12666, its corner at the
+    /// shape's).
+    /// </summary>
+    static XElement? Path(string path, string? coordsize, string? coordorigin = null, IReadOnlyList<double>? values = null)
     {
         var size = (coordsize ?? "21600,21600").Split(',');
         long cw = size.Length > 0 && long.TryParse(size[0], out var a) ? a : 21600, ch = size.Length > 1 && long.TryParse(size[1], out var b) ? b : 21600;
@@ -706,8 +1026,8 @@ public static class Vml
                 if (pending)
                     tokens.Add("0");
                 pending = false;
-                // Commands of two letters (nf, ns, qx …).
-                if (tokens.Count > 0 && tokens[^1].Length == 1 && char.IsLetter(tokens[^1][0]) && "nq".Contains(tokens[^1][0]))
+                // Commands of two letters (nf, ns, qx, ar, wa …).
+                if (tokens.Count > 0 && tokens[^1].Length == 1 && char.IsLetter(tokens[^1][0]) && "nqaw".Contains(tokens[^1][0]))
                     tokens[^1] += c;
                 else
                     tokens.Add(c.ToString());
@@ -727,7 +1047,7 @@ public static class Vml
                 Number();
                 continue;
             }
-            if (c == '-' && current.Length > 0)
+            if (c is '-' or '@' && current.Length > 0)
                 Number();
             current.Append(c);
         }
@@ -735,7 +1055,11 @@ public static class Vml
         if (pending)
             tokens.Add("0");
 
-        var pathElement = new XElement(Ns.A + "path", new XAttribute("w", cw), new XAttribute("h", ch));
+        // Each figure the path ends (e) is a path of its own, nf and ns leaving it unfilled or unstroked (docx/external/
+        // libreoffice/extras-ooxmlexport/tdf104115: an arc drawn, its pie filled but not drawn).
+        XElement NewPath() => new(Ns.A + "path", new XAttribute("w", cw), new XAttribute("h", ch));
+        var pathElement = NewPath();
+        var paths = new List<XElement> { pathElement };
         string? command = null;
         var numbers = new List<long>();
         long px = 0, py = 0;
@@ -752,6 +1076,7 @@ public static class Vml
                     pathElement.Add(new XElement(Ns.A + "moveTo", Pt(px, py)));
                     break;
                 case "l":
+                    Begin();
                     for (var i = 0; i + 1 < numbers.Count; i += 2)
                     {
                         (px, py) = (numbers[i], numbers[i + 1]);
@@ -759,6 +1084,7 @@ public static class Vml
                     }
                     break;
                 case "r":
+                    Begin();
                     for (var i = 0; i + 1 < numbers.Count; i += 2)
                     {
                         (px, py) = (px + numbers[i], py + numbers[i + 1]);
@@ -766,6 +1092,7 @@ public static class Vml
                     }
                     break;
                 case "c":
+                    Begin();
                     for (var i = 0; i + 5 < numbers.Count; i += 6)
                     {
                         pathElement.Add(new XElement(Ns.A + "cubicBezTo", Pt(numbers[i], numbers[i + 1]), Pt(numbers[i + 2], numbers[i + 3]), Pt(numbers[i + 4], numbers[i + 5])));
@@ -773,6 +1100,7 @@ public static class Vml
                     }
                     break;
                 case "v":
+                    Begin();
                     for (var i = 0; i + 5 < numbers.Count; i += 6)
                     {
                         pathElement.Add(new XElement(Ns.A + "cubicBezTo", Pt(px + numbers[i], py + numbers[i + 1]), Pt(px + numbers[i + 2], py + numbers[i + 3]), Pt(px + numbers[i + 4], py + numbers[i + 5])));
@@ -782,8 +1110,105 @@ public static class Vml
                 case "x":
                     pathElement.Add(new XElement(Ns.A + "close"));
                     break;
+                case "nf":
+                    pathElement.SetAttributeValue("fill", "none");
+                    break;
+                case "ns":
+                    pathElement.SetAttributeValue("stroke", "0");
+                    break;
+                case "e":
+                    pathElement = NewPath();
+                    paths.Add(pathElement);
+                    break;
+                // Arcs of the ellipse in a box (x1, y1, x2, y2) from its ray through (x3, y3) to the one through (x4, y4):
+                // ar and at counterclockwise, wa and wr clockwise; ar and wa begin a new figure there, at and wr draw
+                // a line to it (docx/external/libreoffice/extras-ooxmlexport/cloud, tdf104115).
+                case "ar" or "at" or "wa" or "wr":
+                    for (var i = 0; i + 7 < numbers.Count; i += 8)
+                    {
+                        var (cx, cy) = ((numbers[i] + numbers[i + 2]) / 2.0, (numbers[i + 1] + numbers[i + 3]) / 2.0);
+                        var (rx, ry) = (Math.Abs(numbers[i + 2] - numbers[i]) / 2.0, Math.Abs(numbers[i + 3] - numbers[i + 1]) / 2.0);
+                        if (rx <= 0 || ry <= 0)
+                            continue;
+                        double Ray(long x, long y) => Math.Atan2((y - cy) / ry, (x - cx) / rx);
+                        var (start, end) = (Ray(numbers[i + 4], numbers[i + 5]), Ray(numbers[i + 6], numbers[i + 7]));
+                        var clockwise = command[0] == 'w';
+                        var sweep = clockwise ? Turn(end - start) : -Turn(start - end);
+                        if (Math.Abs(sweep) < 1e-9)
+                            sweep = clockwise ? 2 * Math.PI : -2 * Math.PI;
+                        var (sx, sy) = ((long)Math.Round(cx + rx * Math.Cos(start)), (long)Math.Round(cy + ry * Math.Sin(start)));
+                        To(sx, sy, command is "at" or "wr");
+                        Arc(cx, cy, rx, ry, start, sweep);
+                    }
+                    break;
+                // Quarter ellipses to a point, setting out along x (qx) or y (qy), the next point the other way.
+                case "qx" or "qy":
+                {
+                    var alongX = command == "qx";
+                    Begin();
+                    for (var i = 0; i + 1 < numbers.Count; i += 2)
+                    {
+                        var (x, y) = (numbers[i], numbers[i + 1]);
+                        var (cx, cy) = alongX ? ((double)px, (double)y) : ((double)x, (double)py);
+                        var (rx, ry) = (Math.Abs(x - px) / 1.0, Math.Abs(y - py) / 1.0);
+                        if (rx <= 0 || ry <= 0)
+                            pathElement.Add(new XElement(Ns.A + "lnTo", Pt(x, y)));
+                        else
+                        {
+                            var start = Math.Atan2((py - cy) / ry, (px - cx) / rx);
+                            var end = Math.Atan2((y - cy) / ry, (x - cx) / rx);
+                            var sweep = Turn(end - start);
+                            Arc(cx, cy, rx, ry, start, sweep > Math.PI ? sweep - 2 * Math.PI : sweep);
+                        }
+                        (px, py) = (x, y);
+                        alongX = !alongX;
+                    }
+                    break;
+                }
+                // Ellipses about a center (x, y) with radii (w, h) from an angle through a sweep, both in 65536ths of a
+                // degree: al begins a new figure, ae draws a line to its start (extras-ooxmlimport/WordArt).
+                case "ae" or "al":
+                    for (var i = 0; i + 5 < numbers.Count; i += 6)
+                    {
+                        var (cx, cy, rx, ry) = ((double)numbers[i], (double)numbers[i + 1], (double)numbers[i + 2], (double)numbers[i + 3]);
+                        if (rx <= 0 || ry <= 0)
+                            continue;
+                        var (start, sweep) = (numbers[i + 4] / 65536.0 * Math.PI / 180, numbers[i + 5] / 65536.0 * Math.PI / 180);
+                        var (sx, sy) = ((long)Math.Round(cx + rx * Math.Cos(start)), (long)Math.Round(cy + ry * Math.Sin(start)));
+                        To(sx, sy, command == "ae");
+                        Arc(cx, cy, rx, ry, start, sweep);
+                    }
+                    break;
             }
             numbers.Clear();
+        }
+        // A figure drawn without a move starts at the current point.
+        void Begin()
+        {
+            if (!pathElement.HasElements)
+                pathElement.Add(new XElement(Ns.A + "moveTo", Pt(px, py)));
+        }
+        // The start of an arc: a line to it, or a move where it begins the figure.
+        void To(long x, long y, bool line) => pathElement.Add(new XElement(Ns.A + (line && pathElement.HasElements ? "lnTo" : "moveTo"), Pt(x, y)));
+        // An angle taken into [0, 2π).
+        static double Turn(double angle) => ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        // An elliptical arc from the angle start (the current point) through sweep (radians, clockwise on the page
+        // positive) as cubic Béziers of at most a quarter each.
+        void Arc(double cx, double cy, double rx, double ry, double start, double sweep)
+        {
+            var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(sweep) / (Math.PI / 2) - 1e-9));
+            var step = sweep / count;
+            var k = 4.0 / 3 * Math.Tan(step / 4);
+            for (var j = 0; j < count; j++)
+            {
+                var (a0, a1) = (start + j * step, start + (j + 1) * step);
+                long X(double v) => (long)Math.Round(v);
+                pathElement.Add(new XElement(Ns.A + "cubicBezTo",
+                    Pt(X(cx + rx * (Math.Cos(a0) - k * Math.Sin(a0))), X(cy + ry * (Math.Sin(a0) + k * Math.Cos(a0)))),
+                    Pt(X(cx + rx * (Math.Cos(a1) + k * Math.Sin(a1))), X(cy + ry * (Math.Sin(a1) - k * Math.Cos(a1)))),
+                    Pt(X(cx + rx * Math.Cos(a1)), X(cy + ry * Math.Sin(a1)))));
+                (px, py) = (X(cx + rx * Math.Cos(a1)), X(cy + ry * Math.Sin(a1)));
+            }
         }
         foreach (var token in tokens)
         {
@@ -799,13 +1224,17 @@ public static class Vml
                 numbers.Add(n);
             else if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
                 numbers.Add((long)Math.Round(d));
+            // A formula's value (@n).
+            else if (token[0] == '@' && int.TryParse(token[1..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var k))
+                numbers.Add(values != null && k >= 0 && k < values.Count ? (long)Math.Round(values[k]) : 0);
         }
         Flush();
-        if (!pathElement.HasElements)
+        paths.RemoveAll(p => !p.HasElements);
+        if (paths.Count == 0)
             return null;
         return new XElement(Ns.A + "custGeom", new XElement(Ns.A + "avLst"), new XElement(Ns.A + "gdLst"), new XElement(Ns.A + "ahLst"),
             new XElement(Ns.A + "cxnLst"), new XElement(Ns.A + "rect", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", "r"), new XAttribute("b", "b")),
-            new XElement(Ns.A + "pathLst", pathElement));
+            new XElement(Ns.A + "pathLst", paths));
 
         XElement Pt(long x, long y) => new(Ns.A + "pt", new XAttribute("x", x - ox), new XAttribute("y", y - oy));
     }

@@ -168,7 +168,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // paths (arches, circle, button) is not wrapped (measured: a long line runs once around the circle, and stays
         // whole on the button's lower arc).
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
-        var warpDefinition = warp?.Str("prst") is { } preset ? TextWarp.Definition(preset) : null;
+        var warpDefinition = warp != null ? TextWarp.Definition(warp) : null;
         var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsPaths(warpDefinition));
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";

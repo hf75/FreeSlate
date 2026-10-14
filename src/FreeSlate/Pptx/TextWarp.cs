@@ -28,6 +28,17 @@ public static class TextWarp
     public static GeometryDefinition? Definition(string preset) =>
         preset == "textNoShape" ? null : Presets.Value.GetValueOrDefault(preset);
 
+    /// <summary>
+    /// Guide paths of a warp's own in place of its preset's (an a:pathLst in it): VML WordArt's, whose shape types
+    /// bring their own curves.
+    /// </summary>
+    public static readonly XName OwnPaths = XNamespace.Get("urn:freeslate:warp") + "paths";
+
+    /// <summary>A warp's definition (a:prstTxWarp): its own guide paths, else its preset's.</summary>
+    public static GeometryDefinition? Definition(XElement warp) =>
+        warp.Element(OwnPaths) is { } own ? GeometryDefinition.Parse(own)
+        : (string?)warp.Attribute("prst") is { } preset ? Definition(preset) : null;
+
     /// <summary>A glyph outline as closed contours in pixels, with the line it belongs to and that line's baseline.</summary>
     public sealed record Glyph(List<List<(double X, double Y)>> Contours, int Line, double Baseline);
 

@@ -968,8 +968,35 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "lockedCanvas") is { } canvas)
         {
             var group = FromCanvas(canvas);
-            var boxes = group.Elements().Select(e => (e.Element(Ns.P + "spPr") ?? e.Element(Ns.P + "grpSpPr"))?.Element(Ns.A + "xfrm") ?? e.Element(Ns.P + "xfrm"))
-                .Where(x => x?.Element(Ns.A + "ext") != null).Select(x => ReadTransform(x!)).ToList();
+            // The shapes' own boxes, width and height swapped about their centers when turned by 45 to 135 degrees
+            // (or 225 to 315), as Office bounds groups; those in groups mapped through their groups (docx/external/
+            // libreoffice/extras-ooxmlimport/fdo43641: a rectangle and a connector in a group of the canvas reaching
+            // past them, the box around the two stretched over the frame, not the group's; tdf143476_lockedCanvas_
+            // position: text turned by 308 degrees reaching 438366 EMU high, the top of its group's child space).
+            static List<(double X, double Y, double W, double H)> Boxes(XElement container)
+            {
+                var result = new List<(double X, double Y, double W, double H)>();
+                foreach (var e in container.Elements())
+                {
+                    var x = (e.Element(Ns.P + "spPr") ?? e.Element(Ns.P + "grpSpPr"))?.Element(Ns.A + "xfrm") ?? e.Element(Ns.P + "xfrm");
+                    if (x?.Element(Ns.A + "ext") == null)
+                        continue;
+                    var (bx, by, bw, bh, turn, _, _) = ReadTransform(x);
+                    if (e.Name.LocalName != "grpSp")
+                    {
+                        var swapped = ((turn % 180) + 180) % 180 is >= 45 and < 135;
+                        result.Add(swapped ? (bx + (bw - bh) / 2, by + (bh - bw) / 2, bh, bw) : (bx, by, bw, bh));
+                        continue;
+                    }
+                    var (chOff, chExt) = (x.Element(Ns.A + "chOff"), x.Element(Ns.A + "chExt"));
+                    var (cw, ch) = (chExt.Long("cx") ?? 0, chExt.Long("cy") ?? 0);
+                    var (ox, oy) = cw > 0 && ch > 0 ? (chOff.Long("x") ?? 0, chOff.Long("y") ?? 0) : (0L, 0L);
+                    var (sx, sy) = (cw > 0 ? bw / cw : 1, ch > 0 ? bh / ch : 1);
+                    result.AddRange(Boxes(e).Select(b => (bx + (b.X - ox) * sx, by + (b.Y - oy) * sy, b.W * sx, b.H * sy)));
+                }
+                return result;
+            }
+            var boxes = Boxes(group);
             if (boxes.Count == 0)
                 return;
             var (cx0, cy0) = (boxes.Min(b => b.X), boxes.Min(b => b.Y));

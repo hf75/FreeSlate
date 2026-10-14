@@ -454,8 +454,13 @@ areas:
           into one matrix per leaf shape.
         office: >-
           A locked canvas (lc:lockedCanvas in a graphic frame) is drawn like a picture of its DrawingML
-          shapes: the box around them stretched over the frame together with their lines and text, its own
-          group transform unused, text without a font in Arial (generated/objects-more). a14:isCanvas and
+          shapes: the box around them stretched over the frame together with their lines and text, shapes in groups
+          counting by their own boxes mapped through their groups (docx/external/libreoffice/extras-ooxmlimport/
+          fdo43641: a group reaching past its rectangle and connector, 5.4 → 91.9 %), width and height swapped
+          about their centers when turned by 45 to 135 degrees (or 225 to 315), as Office bounds groups
+          (tdf143476_lockedCanvas_position: text turned by 308 degrees reaching exactly the top of its group's child
+          space, 72.9 %), its own group transform
+          unused, text without a font in Arial (generated/objects-more). a14:isCanvas and
           a15:nonVisualGroupProps only mark groups for editing. Verified with generated/transforms (99.3 %)
           and objects-more.
 

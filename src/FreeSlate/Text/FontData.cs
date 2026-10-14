@@ -589,6 +589,10 @@ public sealed class FontData : IDisposable
     public (double Bottom, double Top) GlyphBounds(uint glyph) =>
         font.TryGetGlyphExtents(glyph, out var extents) ? (extents.YBearing + extents.Height, extents.YBearing) : (0, 0);
 
+    /// <summary>The left and right of a glyph's ink from its origin in font units; zero for empty glyphs.</summary>
+    public (double Left, double Right) GlyphSpan(uint glyph) =>
+        font.TryGetGlyphExtents(glyph, out var extents) ? (extents.XBearing, extents.XBearing + extents.Width) : (0, 0);
+
     /// <summary>Whether the font has a glyph for every character of <paramref name="text"/> (controls and spaces aside).</summary>
     public bool Covers(string text)
     {
