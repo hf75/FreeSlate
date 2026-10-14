@@ -2337,10 +2337,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (left, width) = Column(column);
         var lines = layout.Layout(paragraph, width);
 
+        var brokeBefore = false;
         if (format.PageBreakBefore == true && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
         {
             NewPage(section);
             top = Top.Break;
+            brokeBefore = true;
             (left, width) = Column(column);
         }
 
@@ -2360,6 +2362,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
             // docx/local/breakmark2-*: all of it after paragraphs without space after).
             Top.Leading => Math.Max(0, Gap(before) - pendingAfter),
+            // Before Word 2013 a page break before keeps the space before (measured with docx/local/sptm-11, -12, -14:
+            // 18 pt; -15 none; python-docx/sty-known-styles).
+            Top.Break when brokeBefore && context.CompatibilityMode < 15 => before,
             _ => 0,
         };
         balanced = false;

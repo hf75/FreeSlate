@@ -869,7 +869,8 @@ areas:
         office: >-
           At the top of a page the space before is kept on the document's first page, after a section break only what
           it has more than the space after the section's last paragraph, and dropped after page and column breaks,
-          page break before and natural breaks (docx/local/sp-pagetop). The extra space of auto line spacing below the
+          page break before and natural breaks (docx/local/sp-pagetop); before Word 2013 a page break before keeps it
+          (docx/local/sptm-11, -12, -14; python-docx/sty-known-styles 33.3 → 100 % of the lines). The extra space of auto line spacing below the
           last line may hang past the bottom margin (a line whose text ends 0.4 pt above the margin stays,
           docx/generated/headers-footers). Keep with next, keep lines together and widow control move whole paragraphs
           or two lines (docx/generated/breaks). A paragraph that does not fit and cannot break where it stands (a line
