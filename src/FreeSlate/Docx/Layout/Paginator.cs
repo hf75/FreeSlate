@@ -1068,6 +1068,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             TextLeft = left,
             TextWidth = Math.Max(1, width),
         };
+        layout.ColumnWidth = () => Column(column).Width;
         // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
         // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
         // measured with docx/local/hf-tall, hf-short).

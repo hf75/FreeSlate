@@ -3546,8 +3546,19 @@ areas:
           box with mso-fit-shape-to-text is as high as its text where it is drawn. Shape types resolve across their
           part, not only in their w:pict (poi/WordWithAttachments: a picture frame type of the first w:object;
           libreoffice/core-objectpositioning/vml-vertical-alignment: triangles); v:stroke on="f" takes the outline off
-          as stroked="f" does (tika/testWPSAttachment). Known deviations: a perspective shadow's matrix is left out; the
-          text wraps the stated height of a box fitted to its text.
+          as stroked="f" does (tika/testWPSAttachment). Horizontal rules (o:hr) span o:hrpct of the width of the
+          column they stand in (all of it without, whatever width the style gives; the style's width at 0), in cells
+          and text boxes too, aligned by o:hralign in their paragraph's text area, each on a line of its own; the line
+          is as high as the paragraph mark's with the rule's bottom 2.52 pt above its foot, before Word 2013 where the
+          mark is not on it only 2.52 pt higher and lower than the rule, whatever the spacing; a rule of a share widens
+          no autofit column, and a paragraph of nothing but such rules makes one an inch wide. Unless o:hrnoshade it is
+          framed as Internet Explorer's rules are, 0.24 pt edges of #A0A0A0 above and left and #E3E3E3 below and right
+          (docx/local/hr-*, hrh-*, hrc-*, hrt-*, hrtm-*: 0.75 to 6 pt in Times New Roman 10 to 24 and Calibri 11 at
+          1.08 and 1.15 lines, at 50 and 100 % and 0 with 200 pt, alone, before and after text, in autofit cells, in
+          modes 12, 14 and 15, all 37 within 0.25 pt; poi/bug57031, openxml-sdk/May_12_04, tika/testInstrLink,
+          libreoffice/extras-ooxmlexport/tdf97648_relativeWidth). Known deviations: a perspective shadow's matrix is
+          left out; the text wraps the stated height of a box fitted to its text; a rule in a text box takes its share
+          of the last column laid out.
 
       - id: vml.ole
         title: Embedded objects and controls

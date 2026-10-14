@@ -30,6 +30,26 @@ public static class Vml
     /// <summary>Marks an inline drawing converted from VML, whose effect extents are the engine's own.</summary>
     public static readonly XName Converted = XNamespace.Get("urn:freeslate:vml") + "converted";
 
+    /// <summary>
+    /// Marks a horizontal rule (o:hr): its share of the column's width, 0 for the style's width; RuleAlign its
+    /// alignment (left, center, right), RuleBevel a shaded one. Word draws a rule across o:hrpct of the width of the
+    /// column it stands in (all of it without, whatever width the style gives; the style's width at 0), in a cell or
+    /// a text box too, aligned by o:hralign in its paragraph's text area, on a line of its own; that line is as high
+    /// as the paragraph mark's, the rule's bottom 2.52 pt above its foot, before Word 2013 where the mark is not on it
+    /// only 2.52 pt higher and lower than the rule, whatever the spacing. A rule of a share widens no autofit column,
+    /// a paragraph of nothing else makes one an inch wide. Unless o:hrnoshade it is framed as Internet Explorer's
+    /// rules are, 0.24 pt edges of #A0A0A0 above and left and #E3E3E3 below and right (measured with docx/local/hr-*,
+    /// hrh-*, hrc-*, hrt-*, hrtm-*: rules of 0.75 to 6 pt in Times New Roman 10 to 24 and Calibri 11 at 1.08 and 1.15
+    /// lines, at 50 and 100 % and 0 with 200 pt, alone, before and after text, in autofit cells, in modes 12, 14 and
+    /// 15; poi/bug57031, openxml-sdk/May_12_04, tika/testInstrLink, libreoffice/extras-ooxmlexport/
+    /// tdf97648_relativeWidth: columns of 216 and 283.5 pt).
+    /// </summary>
+    public static readonly XName Rule = XNamespace.Get("urn:freeslate:vml") + "rule";
+
+    public static readonly XName RuleAlign = XNamespace.Get("urn:freeslate:vml") + "ruleAlign";
+
+    public static readonly XName RuleBevel = XNamespace.Get("urn:freeslate:vml") + "ruleBevel";
+
     /// <summary>The shape types of a part by their ids, the first of each id (Types).</summary>
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, XElement>> PartTypes = new();
 
@@ -72,6 +92,12 @@ public static class Vml
             return null;
         var width = Length(style.GetValueOrDefault("width")) ?? 0;
         var height = Length(style.GetValueOrDefault("height")) ?? 0;
+        var rule = (string?)shape.Attribute(O + "hr") is "t" or "true" or "1" && style.GetValueOrDefault("position") != "absolute";
+        if (rule)
+        {
+            width = Math.Max(width, 1);
+            height = height > 0 ? height : 1.5;
+        }
         if (shape.Name == V + "line")
         {
             var (x1, y1) = Point((string?)shape.Attribute("from"));
@@ -101,7 +127,10 @@ public static class Vml
         var docPr = new XElement(Drawings.Wp + "docPr", new XAttribute("id", id.Length is > 0 and < 10 ? id : "1"), new XAttribute("name", (string?)shape.Attribute("id") ?? ""));
         var extent = new XElement(Drawings.Wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         if (style.GetValueOrDefault("position") != "absolute")
-            return new XElement(Drawings.Wp + "inline", picture ? null : new XAttribute(Hangs, 1), new XAttribute(Converted, 1),
+            return new XElement(Drawings.Wp + "inline", picture || rule ? null : new XAttribute(Hangs, 1), new XAttribute(Converted, 1),
+                rule ? new XAttribute(Rule, double.TryParse((string?)shape.Attribute(O + "hrpct"), NumberStyles.Float, CultureInfo.InvariantCulture, out var pct) && pct >= 0 ? pct / 1000 : 1) : null,
+                rule ? new XAttribute(RuleAlign, (string?)shape.Attribute(O + "hralign") ?? "left") : null,
+                rule && !picture && (string?)shape.Attribute(O + "hrnoshade") is not ("t" or "true" or "1") ? new XAttribute(RuleBevel, 1) : null,
                 extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0),
                     new XAttribute("r", Emu(room.Right)), new XAttribute("b", Emu(room.Bottom))), docPr, graphic);
 

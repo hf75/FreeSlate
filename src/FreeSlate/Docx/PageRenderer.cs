@@ -155,6 +155,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// less the insets of wps:bodyPr (0.1 in left and right, 0.05 in top and bottom by default), at the top, the
     /// middle or the bottom.
     /// </summary>
+    /// <summary>A shaded horizontal rule's frame (Vml.Rule): edges of 0.24 pt, dark above and left, light below and right.</summary>
+    static string Bevel(PlacedDrawing rule)
+    {
+        var (w, h, edge) = (Px(rule.Width), Px(rule.Height), Px(0.24));
+        var (right, bottom) = (Px(rule.Width - 0.24), Px(rule.Height - 0.24));
+        return $"<div class=\"sp\" style=\"width:{w}px;height:{h}px;transform:matrix(1,0,0,1,{Px(rule.X)},{Px(rule.Y)})\">" +
+            $"<svg width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" overflow=\"visible\">" +
+            $"<rect width=\"{edge}\" height=\"{h}\" fill=\"#A0A0A0\"/><rect x=\"{right}\" width=\"{edge}\" height=\"{h}\" fill=\"#E3E3E3\"/>" +
+            $"<rect width=\"{w}\" height=\"{edge}\" fill=\"#A0A0A0\"/><rect y=\"{bottom}\" width=\"{w}\" height=\"{edge}\" fill=\"#E3E3E3\"/></svg></div>";
+    }
+
     string Drawing(PlacedDrawing drawing, PageBox page)
     {
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
@@ -171,6 +182,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
             drawing = Fitted(drawing, content, bodyPr, shape, page);
         var html = drawings!.Render(drawing);
+        if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
+            html += Bevel(drawing);
         if (blocks == null)
             return html;
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
@@ -499,6 +512,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                         (dx, dy) = (2 * dx, 2 * dy);
                     var (w, h) = Drawings.Extent(inline.Drawing);
                     var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height;
+                    if (piece.Rule is { } rule)
+                        (w, top) = (rule.Width, baseline + rule.Bottom - h);
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
                     front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;

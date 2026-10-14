@@ -36,6 +36,12 @@ public sealed class Piece
     /// <summary>An inline drawing the piece stands for (one object replacement character), or null.</summary>
     public DrawingInline? Drawing { get; init; }
 
+    /// <summary>
+    /// The width a horizontal rule is drawn with and how far its bottom stands below the baseline (Vml.Rule), where
+    /// the piece is one; it takes no room in the line.
+    /// </summary>
+    public (double Width, double Bottom)? Rule { get; set; }
+
     /// <summary>An equation the piece stands for (one object replacement character), or null.</summary>
     public Equations.Equation? Equation { get; init; }
 
@@ -304,6 +310,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>Whether lines are left where they begin, unaligned: for measuring their natural lengths (rotated cells).</summary>
     public bool Unaligned { get; set; }
+
+    /// <summary>The width of the column the text stands in, of which horizontal rules take a share (Vml.Rule).</summary>
+    public Func<double>? ColumnWidth { get; set; }
 
     /// <summary>
     /// A style's parts of a line above and below the baseline: in vertical lines 1/32 of the size more (1.3 times that
@@ -805,8 +814,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         AutoSpace(text, charStyles, advances, format, autoSpaced, styles.EastAsianDefaults);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
+        // A horizontal rule of a share of the width takes the width it is drawn with (Vml.Rule).
         foreach (var (index, drawing) in objects)
-            advances[index] = drawing.Box.Width;
+            advances[index] = RuleShare(drawing) is > 0 and var share ? share * (ColumnWidth?.Invoke() ?? width - (format.Left ?? 0) - (format.Right ?? 0)) : drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         foreach (var (index, box) in boxes)
@@ -985,6 +995,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 {
                     end = i + 1;
                     endBreak = c switch { '\n' => "line", '\f' => "page", _ => "column" };
+                    lastFit = end;
+                    break;
+                }
+                // A horizontal rule stands on a line of its own, with the break after it (Vml.Rule).
+                if (objects.TryGetValue(i, out var ruled) && RuleShare(ruled) != null)
+                {
+                    end = HasContent(text, lineStart, i) ? i : i + 1;
+                    if (end == i + 1 && end < text.Length && text[end] is '\n' or '\f' or '\v')
+                        endBreak = text[end++] switch { '\n' => "line", '\f' => "page", _ => "column" };
                     lastFit = end;
                     break;
                 }
@@ -1243,6 +1262,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             }
             Align(line, format, line.Limit ?? width - right, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, width - right);
+            // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
+            foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
+            {
+                var share = RuleShare(piece.Drawing!) ?? 1;
+                var ruleWidth = share > 0 ? share * (ColumnWidth?.Invoke() ?? width - right - left) : piece.Drawing.Box.Width;
+                piece.Rule = (ruleWidth, piece.Rule?.Bottom ?? 0);
+                piece.X = (string?)piece.Drawing.Drawing.Attribute(Vml.RuleAlign) switch
+                {
+                    "center" => left + (width - right - left - ruleWidth) / 2,
+                    "right" => width - right - ruleWidth,
+                    _ => left,
+                };
+            }
         }
         // Right-to-left paragraphs and runs: the lines, laid out from the start edge, read in visual order.
         if (levels != null || format.Bidi == true)
@@ -1330,7 +1362,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (pictures)
         {
             foreach (var (index, drawing) in objects)
-                advances[index] = drawing.Box.Width;
+                advances[index] = RuleShare(drawing) > 0 ? 0 : drawing.Box.Width;
             foreach (var (index, box) in boxes)
                 advances[index] = BoxMetrics(box) is var (a, b) ? a + b : 0;
         }
@@ -1384,11 +1416,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         max = Math.Max(max, line - trailing);
         min = Math.Max(min, word);
+        // A paragraph of nothing but horizontal rules of a share of the width is an inch wide (Vml.Rule).
+        if (pictures && objects.Count == text.Length && text.Length > 0 && objects.Values.All(o => RuleShare(o) > 0))
+            (min, max) = (Math.Max(min, 72), Math.Max(max, 72));
         // A negative right indent does not shrink the minimum, a negative left one does (measured with docx/local/negind:
         // a word of 49.3 pt with indents of -5.65 pt on both sides or on the left only makes a column 5.65 pt narrower
         // than without; docx/external/poi/bug65649).
         return (min + left + Math.Max(0, firstLine) + Math.Max(0, right), max + right);
     }
+
+    /// <summary>A horizontal rule's share of the section's text width (Vml.Rule), 0 for one of its style's width; null for other drawings.</summary>
+    static double? RuleShare(DrawingInline drawing) =>
+        (string?)drawing.Drawing.Attribute(Vml.Rule) is { } share && double.TryParse(share, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     static bool HasContent(string text, int start, int end)
     {
@@ -2050,6 +2089,31 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 raised = Math.Max(raised, equation.Ascent);
                 lowered = Math.Max(lowered, equation.Descent);
                 drawings = true;
+                continue;
+            }
+            // A horizontal rule stands in a line as high as the paragraph mark's, its bottom 2.52 pt above the line's
+            // foot; before Word 2013 one without the mark on its line in a line only 2.52 pt higher and lower than
+            // itself, whatever the spacing (Vml.Rule).
+            if (piece.Drawing is { } rule && rule.Drawing.Attribute(Vml.Rule) != null)
+            {
+                var (markAbove, markBelow) = Metrics(mark, Vertical);
+                if (context.CompatibilityMode < 15 && end < text.Length)
+                {
+                    above = Math.Max(above, rule.Box.Height + 2.52);
+                    below = Math.Max(below, 2.52);
+                    raised = Math.Max(raised, rule.Box.Height + 2.52);
+                    lowered = Math.Max(lowered, 2.52);
+                    piece.Rule = (0, 0);
+                    any = true;
+                    continue;
+                }
+                piece.Rule = (0, markBelow - 2.52);
+                above = Math.Max(above, Math.Max(markAbove, rule.Box.Height));
+                below = Math.Max(below, markBelow);
+                raised = Math.Max(raised, Math.Max(markAbove, rule.Box.Height));
+                lowered = Math.Max(lowered, markBelow);
+                largest = Math.Max(largest, markAbove + markBelow);
+                any = texts = true;
                 continue;
             }
             // An inline drawing stands on the baseline: its box is all ascent; the line spacing's extra comes from
