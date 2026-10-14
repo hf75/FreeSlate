@@ -95,8 +95,15 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
         }
     }
 
-    public static string TypeOf(string instruction) =>
-        instruction.Trim().Split(' ', 2)[0].ToUpperInvariant();
+    /// <summary>
+    /// The field's name, upper case; a backslash before it does not hide it (measured: docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf85161, "\SYMBOL 94 \f "Symbol"" without a result prints ⊥).
+    /// </summary>
+    public static string TypeOf(string instruction)
+    {
+        var name = instruction.Trim().Split(' ', 2)[0];
+        return (name.Length > 1 && name[0] == '\\' && char.IsLetter(name[1]) ? name.TrimStart('\\') : name).ToUpperInvariant();
+    }
 
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"

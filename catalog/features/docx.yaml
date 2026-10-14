@@ -1523,7 +1523,10 @@ areas:
           (docx/local/tblover-14, -15: pictures of 200 and 250 pt make a table preferring 400 pt 450 pt wide, of 300
           and 250 pt 468 pt, the width between the margins; 700 pt of pictures in one preferring 500 pt; docx/external/
           poi/bug59058: 553.5 pt of spacer pictures in a centered table preferring 552.75 pt); cells preferring more
-          than the table give way to its width (tblover T13 to T15);
+          than the table give way to its width (tblover T13 to T15); columns with nothing in them, not even margins,
+          take the table's preferred width by its grid, also more than is available (docx/local/twb-*: an empty
+          shaded cell of a table preferring 800 pt, centered across the margins; 400 pt in text boxes 200 pt wide;
+          libreoffice/extras-ooxmlexport/n780563: 1440 pt bands across a page);
           widths before and after rows do not widen columns. Cells over several columns widen them where they are too
           narrow together, the narrower spans first: what is missing goes to the columns nothing has given a width yet
           (in proportion to the grid's widths), else to those without a preferred width of their own in proportion to
@@ -1787,7 +1790,8 @@ areas:
           display text, the instruction after the macro's name, in the formats of its runs: powertools/
           DB-HeadersFooters-Dest/Fax, Letter, libreoffice/extras-ooxmlexport/Unsupportedtextfields), SEQ (\c, , \h,
           \s), SECTION, IF
-          (numbers or text, wildcards), SYMBOL, DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
+          (numbers or text, wildcards), SYMBOL (in its font \f and size \s; libreoffice/extras-ooxmlexport/tdf85161:
+          94 in Symbol prints ⊥; a backslash before a field's name does not hide it), DATE, TIME and PRINTDATE (when it prints, in the \@ picture or the
           language's short date and time) and SAVEDATE (when the document was saved), all in the field's language
           (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word has them, none in
           most European languages, upper case in English, the Gregorian calendar in all (docx/local/datelang: 18
@@ -3586,7 +3590,11 @@ areas:
         office: >-
           VML shapes (w:pict) are converted to Word drawings: rectangles, rounded rectangles, ovals, lines, preset
           shapes by o:spt, paths as custom geometries, groups (v:group: the children in its coordorigin and coordsize,
-          nested), pictures (v:imagedata with crop), text boxes (v:textbox with its insets), WordArt (v:textpath),
+          nested, either's second number 0 or 1000 where left out: libreoffice/extras-ooxmlexport/vml-text-vertical-
+          adjust, extras-ooxmlimport/groupshape-sdt, coordorigin "9201"; a shape's path counts from its own
+          coordorigin: dml-groupshape-polygon 0 → 100 %, extras-ooxmlimport/ink 5.5 → 99.6 %), pictures (v:imagedata with crop), text boxes
+          (v:textbox with its insets, its text turned down by layout-flow vertical, up with mso-layout-flow-alt
+          bottom-to-top, upright East Asian by vertical-ideographic), WordArt (v:textpath),
           placed by the style attribute (position, margins, mso-position-*, rotation, flip, z-index) and w10:wrap
           (docx/local/vml-shapes, vml-group). A shape turns first and flips after, unlike DrawingML (docx/local/
           vmlflip: triangles and connectors turned 30° and 90° with flip:x, flip:y and both; docx/external/libreoffice/

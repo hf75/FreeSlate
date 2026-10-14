@@ -252,6 +252,30 @@ public sealed class FieldEvaluator
     }
 
     /// <summary>
+    /// A SYMBOL field's character in its own font (\f) and size (\s, points) over the field's formatting, or null
+    /// (docx/external/libreoffice/extras-ooxmlexport/tdf85161: code 94 in Symbol prints ⊥).
+    /// </summary>
+    public RunFormat? SymbolFormat(FieldInline field, RunFormat format)
+    {
+        if (field.Type != "SYMBOL")
+            return null;
+        var words = Words(field.Instruction);
+        string? After(string name) => words.IndexOf(name) is var i and >= 0 && i + 1 < words.Count ? words[i + 1] : null;
+        var (font, size) = (After("\\f"), After("\\s"));
+        if (font == null && size == null)
+            return null;
+        var shown = format.Clone();
+        if (font is { Length: > 0 })
+        {
+            (shown.Ascii, shown.HAnsi, shown.EastAsia, shown.ComplexScript) = (font, font, font, font);
+            (shown.AsciiTheme, shown.HAnsiTheme, shown.EastAsiaTheme, shown.ComplexScriptTheme) = (null, null, null, null);
+        }
+        if (size != null && double.TryParse(size, NumberStyles.Float, CultureInfo.InvariantCulture, out var points) && points > 0)
+            (shown.Size, shown.SizeComplex) = (points, points);
+        return shown;
+    }
+
+    /// <summary>
     /// The vertical alignment a NOTEREF with \f gives its number, its note mark's (measured with docx/local/nref-ok-f-14,
     /// -15: superscript as the mark), or null.
     /// </summary>
@@ -612,6 +636,9 @@ public sealed class FieldEvaluator
         }
         if (sb.Length > 0 || any)
             words.Add(sb.ToString());
+        // A backslash before the field's name does not hide it (as Model.TypeOf).
+        if (words.Count > 0 && words[0].Length > 1 && words[0][0] == '\\' && char.IsLetter(words[0][1]))
+            words[0] = words[0].TrimStart('\\');
         return words;
     }
 }

@@ -323,11 +323,16 @@ public static class Vml
     /// </summary>
     static XElement Group(XElement group, Dictionary<string, XElement> types, double width, double height, bool top, (long X, long Y, long W, long H)? place = null)
     {
-        static (long A, long B) Pair(string? value, (long, long) fallback)
+        // A value may leave its second number out, which then is the default's (docx/external/libreoffice/
+        // extras-ooxmlexport/vml-text-vertical-adjust: an inner group's coordorigin "9201", its y 0).
+        static (long A, long B) Pair(string? value, (long A, long B) fallback)
         {
             var parts = (value ?? "").Split(',');
-            return parts.Length == 2 && long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var a)
-                   && long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? (a, b) : fallback;
+            if (parts.Length is < 1 or > 2 || !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var a))
+                return fallback;
+            if (parts.Length == 1 || parts[1].Trim().Length == 0)
+                return (a, fallback.B);
+            return long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var b) ? (a, b) : fallback;
         }
         static long Raw(Dictionary<string, string> style, string name) =>
             double.TryParse(style.GetValueOrDefault(name)?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? (long)Math.Round(v) : 0;
@@ -543,10 +548,25 @@ public static class Vml
             var anchor = Style((string?)shape.Attribute("style")).GetValueOrDefault("v-text-anchor") switch { "middle" => "ctr", "bottom" => "b", _ => "t" };
             // A text box that fits its shape to the text (mso-fit-shape-to-text) is as high as it (testOuterShdw: a box
             // stated 42.45 pt high stands 39.8 pt high around a line of text and its paragraph's top border).
-            var fits = Style((string?)shape.Element(V + "textbox")!.Attribute("style")).GetValueOrDefault("mso-fit-shape-to-text") is "t" or "true";
+            var textStyle = Style((string?)shape.Element(V + "textbox")!.Attribute("style"));
+            var fits = textStyle.GetValueOrDefault("mso-fit-shape-to-text") is "t" or "true";
+            // Text that runs down the box (layout-flow) turns as DrawingML's vertical text: a quarter clockwise, up from
+            // the bottom with mso-layout-flow-alt bottom-to-top, East Asian upright (docx/external/libreoffice/
+            // extras-ooxmlexport/vml-text-vertical-adjust: "TEXT" down a sidebar's text box, its insets as given); in a
+            // turned shape the turn alone sets it (extras-ooxmlexport/TextFrameRotation: a box turned by −90° with
+            // text flowing bottom to top reads upwards, not upside down).
+            var turned = Style((string?)shape.Attribute("style")).GetValueOrDefault("rotation") is { } rotation
+                && double.TryParse(rotation.TrimEnd('f', 'd'), NumberStyles.Float, CultureInfo.InvariantCulture, out var degrees) && degrees != 0;
+            var vertical = turned ? null : textStyle.GetValueOrDefault("layout-flow") switch
+            {
+                "vertical" => textStyle.GetValueOrDefault("mso-layout-flow-alt") == "bottom-to-top" ? "vert270" : "vert",
+                "vertical-ideographic" => "eaVert",
+                _ => null,
+            };
             wsp.Add(new XElement(Drawings.Wps + "bodyPr",
                 new XAttribute("lIns", Emu(Inset(0, 7.2))), new XAttribute("tIns", Emu(Inset(1, 3.6))),
                 new XAttribute("rIns", Emu(Inset(2, 7.2))), new XAttribute("bIns", Emu(Inset(3, 3.6))), new XAttribute("anchor", anchor),
+                vertical != null ? new XAttribute("vert", vertical) : null,
                 fits ? new XElement(Ns.A + "spAutoFit") : null));
         }
         return wsp;
@@ -612,7 +632,8 @@ public static class Vml
             },
         };
         if (preset == null && ((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is { } path
-            && Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize")) is { } custom)
+            && Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize"),
+                (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin")) is { } custom)
             return custom;
         var geometry = new XElement(Ns.A + "prstGeom", new XAttribute("prst", preset ?? "rect"), new XElement(Ns.A + "avLst"));
         if (preset == "roundRect" && (string?)shape.Attribute("arcsize") is { } arc)
@@ -625,11 +646,17 @@ public static class Vml
         return geometry;
     }
 
-    /// <summary>A VML path (m, l, c, x, e, r, v, t, nf, ns) as a custom geometry in its coordinate size.</summary>
-    static XElement? Path(string path, string? coordsize)
+    /// <summary>
+    /// A VML path (m, l, c, x, e, r, v, t, nf, ns) as a custom geometry in its coordinate size, its points counted
+    /// from the coordinate origin (docx/external/libreoffice/dml-groupshape-polygon: a polygon of coordorigin
+    /// 420,11929 drawn from m420,12666, its corner at the shape's).
+    /// </summary>
+    static XElement? Path(string path, string? coordsize, string? coordorigin = null)
     {
         var size = (coordsize ?? "21600,21600").Split(',');
         long cw = size.Length > 0 && long.TryParse(size[0], out var a) ? a : 21600, ch = size.Length > 1 && long.TryParse(size[1], out var b) ? b : 21600;
+        var origin = (coordorigin ?? "").Split(',');
+        long ox = origin.Length > 0 && long.TryParse(origin[0].Trim(), out var oa) ? oa : 0, oy = origin.Length > 1 && long.TryParse(origin[1].Trim(), out var ob) ? ob : 0;
         // Commands and their parameters, a parameter left out before, between or after commas being 0 (m,128588 moves
         // to 0 128588, r469741, draws 469741 to the right; docx/external/libreoffice/extras-ooxmlexport/
         // tdf105875_VmlShapeRotationWithFlip, whose shapes were lost without their starting point).
@@ -754,7 +781,7 @@ public static class Vml
             new XElement(Ns.A + "cxnLst"), new XElement(Ns.A + "rect", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", "r"), new XAttribute("b", "b")),
             new XElement(Ns.A + "pathLst", pathElement));
 
-        static XElement Pt(long x, long y) => new(Ns.A + "pt", new XAttribute("x", x), new XAttribute("y", y));
+        XElement Pt(long x, long y) => new(Ns.A + "pt", new XAttribute("x", x - ox), new XAttribute("y", y - oy));
     }
 
     /// <summary>

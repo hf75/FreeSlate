@@ -1402,8 +1402,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var widths = new double[columns];
         if (sumMax <= space + 0.01)
         {
-            if (target == null || sumMax <= 0)
+            if (target == null)
                 return max;
+            // Columns with nothing in them, not even margins, take the table's width by its grid, else in equal
+            // shares (measured with docx/local/twb-*: one empty cell of a table preferring 800 pt in the body, 400 pt
+            // in text boxes 200 pt wide, as wide as that and centered; libreoffice/extras-ooxmlexport/n780563).
+            if (sumMax <= 0)
+            {
+                var grid = Enumerable.Range(0, columns).Select(k => k < table.Grid.Count ? Math.Max(0, table.Grid[k]) : 0).ToArray();
+                for (var k = 0; k < columns; k++)
+                    widths[k] = grid.Sum() > 0 ? space * grid[k] / grid.Sum() : space / columns;
+                return widths;
+            }
             // Stretched to the table's width in proportion to the maxima of the columns without a preferred width.
             var flexible = Enumerable.Range(0, columns).Where(k => preferred[k] == null).ToList();
             if (flexible.Count == 0)

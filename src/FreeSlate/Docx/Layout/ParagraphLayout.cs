@@ -1649,6 +1649,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         shown = format.Clone();
                         shown.VerticalAlign = alignment;
                     }
+                    else if (Evaluator?.SymbolFormat(field, format) is { } symbol)
+                        shown = symbol;
                     AddText(value, shown, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
                 }
