@@ -6,7 +6,8 @@ using FreeSlate.Text;
 namespace FreeSlate.Equations;
 
 /// <summary>The formatting a math run takes from its run properties: size in points and color.</summary>
-public readonly record struct MathRunStyle(double Size, RgbColor Color);
+/// <summary>A math run's size and color, and the text font its normal text (m:nor) is set in, if any.</summary>
+public readonly record struct MathRunStyle(double Size, RgbColor Color, FontData? Font = null);
 
 /// <summary>
 /// Lays out Office Math (OMML, catalog: text.math) with the OpenType MATH table of the math font, the way TeX and
@@ -233,7 +234,14 @@ public sealed class MathLayout
             case "nary":
                 return [Nary(element, env, Size(element))];
             case "d":
-                return [new Atom(Delimited(element, env, Size(element)), AtomClass.Open) { Right = AtomClass.Close }];
+            {
+                // After delimiters grown well past their own size the group spaces as an inner atom: a thin space
+                // before an ordinary atom (measured with docx/local/mti-*, mth-*: ")" grown to 1.8 times its height
+                // and more before "x" 1.7 to 1.85 pt in Cambria Math 11, displayed and inline; grown to 1.3 times or
+                // not at all none).
+                var (delimited, tall) = Delimited(element, env, Size(element));
+                return [new Atom(delimited, AtomClass.Open) { Right = tall ? AtomClass.Inner : AtomClass.Close }];
+            }
             case "m":
                 return [new Atom(Matrix(element, env, Size(element)), AtomClass.Ord)];
             case "eqArr":
@@ -339,6 +347,12 @@ public sealed class MathLayout
                 x += Math.Max(Spacing(atoms[i - 1].Right, atoms[i].Class, env), atoms[i - 1].FunctionName ? 3 : 0) * em / 18;
             row.Add(atoms[i].Item, x, 0);
             x += atoms[i].Item.Width;
+            // An italic letter before an operator, a relation, a bracket or punctuation keeps its italic correction,
+            // before another letter none (measured with docx/local/mth-*: x+, y=, f(, x), c) at 11 pt within
+            // 0.06 pt of Cambria Math's corrections; xy and ac without).
+            if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter && i + 1 < atoms.Count
+                && atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct)
+                x += letter.Italic;
         }
         row.Width = x;
         row.Italic = atoms.Count > 0 ? atoms[^1].Item.Italic : 0;
@@ -394,13 +408,21 @@ public sealed class MathLayout
                 atoms.Add(new Atom(new SpaceItem(), AtomClass.Ord) { Marker = true });
                 continue;
             }
-            // The hyphen-minus of math text is the minus sign (measured: Word draws Cambria Math's minus glyph).
+            // The hyphen-minus of math text is the minus sign (measured: Word draws Cambria Math's minus glyph); an
+            // ellipsis after an operator stands on the axis (docx/external/libreoffice/extras-ooxmlexport/
+            // EquationWithAboveAndBelowCaption, math-mso2k7: "+…" with U+22EF's glyph).
             var value = !normal && rune.Value == '-' ? 0x2212 : rune.Value;
+            if (!normal && value == 0x2026 && atoms.Count > 0 && atoms[^1].Class is AtomClass.Bin or AtomClass.Rel)
+                value = 0x22EF;
             var cp = normal ? value : Styled(value, sty, scr);
             // A styled form the math font lacks falls back to the character itself.
             if (cp != value && font.GlyphFor(cp) == 0)
                 cp = value;
-            var glyph = Glyph(cp, size, style.Color, char.ConvertFromUtf32(value), ScriptLevel(env));
+            // Normal text (m:nor) is set in the run's text font where it has the character (docx/external/
+            // libreoffice/extras-ooxmlimport/tdf170171: "+" in Arial between Cambria Math's "0;" and "∞").
+            var glyph = normal && style.Font is { } textFont && textFont != font && textFont.GlyphFor(value) is var plain and not 0
+                ? TextGlyph(textFont, plain, value, size, style.Color, ScriptLevel(env))
+                : Glyph(cp, size, style.Color, char.ConvertFromUtf32(value), ScriptLevel(env));
             var cls = literal || normal ? AtomClass.Ord : ClassOf(value);
             atoms.Add(new Atom(glyph, cls));
         }
@@ -420,6 +442,18 @@ public sealed class MathLayout
     }
 
     static int ScriptLevel(Env env) => env.Level switch { Level.Script => 1, Level.ScriptScript => 2, _ => 0 };
+
+    /// <summary>A glyph of a text font, without italic correction.</summary>
+    static GlyphItem TextGlyph(FontData textFont, uint id, int codepoint, double size, RgbColor color, int level)
+    {
+        var (_, bottom, _, top) = textFont.GlyphBox(id);
+        var em = size / textFont.UnitsPerEm;
+        return new GlyphItem
+        {
+            Font = textFont, Glyph = id, Size = size, Color = color, Text = char.ConvertFromUtf32(codepoint), Character = (codepoint, level),
+            Width = textFont.GlyphAdvance(id) * em, Ascent = top * em, Descent = -bottom * em,
+        };
+    }
 
     GlyphItem GlyphOf(uint id, double size, RgbColor color, string? text = null)
     {
@@ -686,8 +720,13 @@ public sealed class MathLayout
         var end = nucleus.Width;
         if (sup != null)
         {
-            result.Add(sup, nucleus.Width + nucleus.Italic, -supShift);
-            end = Math.Max(end, nucleus.Width + nucleus.Italic + sup.Width);
+            // A letter's top right math kern at the superscript's bottom moves it further (measured with
+            // docx/local/mth-d-sup, msk-*: x^2, r^2 and A^2 54, 53 and -44 units right of the italic correction in
+            // Cambria Math 11, its kerns 50, 55 and -40 at that height; e, f and k 13 to 22 units more than theirs).
+            var kern = nucleus is GlyphItem glyph && glyph.Font == font
+                ? U(table.Kern(glyph.Glyph, 0, (int)Math.Round((supShift - sup.Descent) * font.UnitsPerEm / glyph.Size)), glyph.Size) : 0;
+            result.Add(sup, nucleus.Width + nucleus.Italic + kern, -supShift);
+            end = Math.Max(end, nucleus.Width + nucleus.Italic + kern + sup.Width);
         }
         if (sub != null)
         {
@@ -975,7 +1014,7 @@ public sealed class MathLayout
 
     // ------------------------------------------------------------------ delimiters
 
-    MathItem Delimited(XElement d, Env env, double baseSize)
+    (MathItem Item, bool Tall) Delimited(XElement d, Env env, double baseSize)
     {
         var size = baseSize * Scale(env);
         var color = runStyle(d.Element(M + "dPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
@@ -1001,8 +1040,10 @@ public sealed class MathLayout
         // The smallest size at least twice the content's reach from the axis less a shortfall of 630 units (0.31 em),
         // like TeX's \delimitershortfall (measured: the sizes PowerPoint picks around display and text fractions, sums
         // and matrices at 18 and 40 pt bound the shortfall to 613 to 645 units); Word takes the content's height
-        // instead of twice its reach (measured with docx/local/ppt-math, the same equations in Word).
-        var target = (DelimitersByHeight ? ascent + descent : 2 * Math.Max(ascent - axis, descent + axis)) - U(630, size);
+        // instead of twice its reach in displayed equations (measured with docx/local/ppt-math, the same equations in
+        // Word), below display level twice the reach as well (docx/local/mti-i-*, mth-i-binom: an inline fraction in
+        // parentheses grown to their third size, an inline binomial to their second, within 0.25 pt).
+        var target = (DelimitersByHeight && env.Level == Level.Display ? ascent + descent : 2 * Math.Max(ascent - axis, descent + axis)) - U(630, size);
         MathItem Fence(string? chr)
         {
             if (string.IsNullOrEmpty(chr))
@@ -1018,8 +1059,11 @@ public sealed class MathLayout
                 atoms.Add(new Atom(Fence(separator), AtomClass.Ord));
             atoms.Add(parts[i]);
         }
-        atoms.Add(new Atom(Fence(end), AtomClass.Close));
-        return Row(atoms, env, baseSize);
+        var closing = Fence(end);
+        atoms.Add(new Atom(closing, AtomClass.Close));
+        var own = string.IsNullOrEmpty(end) ? null : Glyph(char.ConvertToUtf32(end, 0), size, color);
+        var tall = own != null && own.Ascent + own.Descent > 0 && closing.Ascent + closing.Descent > 1.5 * (own.Ascent + own.Descent);
+        return (Row(atoms, env, baseSize), tall);
     }
 
     static string? DelimiterChar(XElement d, string name, string fallback)

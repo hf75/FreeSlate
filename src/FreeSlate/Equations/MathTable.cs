@@ -16,6 +16,7 @@ public sealed class MathTable
     readonly Dictionary<uint, int> accents = new();
     readonly Dictionary<uint, int> vertical = new();
     readonly Dictionary<uint, int> horizontal = new();
+    readonly Dictionary<uint, (int Info, int Record)> kerns = new();
     readonly int variants;
 
     /// <summary>The constants in table order (MathConstants), the two percentages and two heights first.</summary>
@@ -45,6 +46,15 @@ public sealed class MathTable
         {
             ReadValues(glyphInfo + U16(glyphInfo), italics);
             ReadValues(glyphInfo + U16(glyphInfo + 2), accents);
+            // MathKernInfo: a coverage, then per glyph four MathKern offsets (top right, top left, bottom right,
+            // bottom left).
+            if (U16(glyphInfo + 6) is var kernInfo and > 0)
+            {
+                var info = glyphInfo + kernInfo;
+                var count = U16(info + 2);
+                foreach (var (glyph, index) in Coverage(info + U16(info)))
+                    if (index < count) kerns[glyph] = (info, info + 4 + index * 8);
+            }
         }
         if (variants != 0)
         {
@@ -180,6 +190,23 @@ public sealed class MathTable
     public int MinConnectorOverlap => variants != 0 ? U16(variants) : 0;
 
     public int ItalicsCorrection(uint glyph) => italics.GetValueOrDefault(glyph);
+
+    /// <summary>
+    /// A glyph's math kern at one of its corners (MathKern: 0 top right, 1 top left, 2 bottom right, 3 bottom left) at a
+    /// height above its baseline, in font units: the kern of the first band the height lies below, else the last.
+    /// </summary>
+    public int Kern(uint glyph, int corner, int height)
+    {
+        if (!kerns.TryGetValue(glyph, out var at) || U16(at.Record + corner * 2) is not (var offset and > 0))
+            return 0;
+        // MathKern: a count of correction heights, the heights and then one kern more (MathValueRecords of 4 bytes).
+        var table = at.Info + offset;
+        var count = U16(table);
+        var band = 0;
+        while (band < count && height >= I16(table + 2 + band * 4))
+            band++;
+        return I16(table + 2 + count * 4 + band * 4);
+    }
 
     /// <summary>Where an accent above the glyph centers (from its origin), or null for the middle of its advance.</summary>
     public int? TopAccentAttachment(uint glyph) => accents.TryGetValue(glyph, out var x) ? x : null;

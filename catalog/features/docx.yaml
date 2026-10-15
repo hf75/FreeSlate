@@ -3979,7 +3979,15 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/2120112713_OpenBrace 67.2 → 94.2 %, math-placeholders 57.4 →
           94.1 %, tdf158023_export 63.4 → 78.2 %). A bookmark's end after a display equation stays on its line
           (docx/external/libreoffice/extras-ooxmlexport/tdf130907: _GoBack after the last equation, no empty line,
-          71.3 → 76.0 %).
+          71.3 → 76.0 %). An ellipsis after an operator or relation stands on the axis (U+22EF;
+          EquationWithAboveAndBelowCaption, math-mso2k7: "+…"). An italic letter before an operator, a relation, a
+          bracket or punctuation keeps its italic correction, before another letter none (docx/local/mth-*: x+, y=,
+          f(, x), c) at 11 pt within 0.06 pt); a superscript also moves by its letter's top right math kern
+          (mth-d-sup: x^k 0.27 pt, Cambria Math's 50 units). Delimiters grown past 1.5 times their own height space as
+          an inner atom, a thin space before an ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and
+          inline); below display level they grow by twice the content's reach from the axis (mti-i-*, mth-i-binom).
+          Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
+          "+" in Arial).
 
       - id: math.settings
         title: Document math settings
