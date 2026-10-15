@@ -1093,9 +1093,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 endnotesFrom = s + 1;
                 // Footnotes beneath the text come right after it, before the endnotes, which follow below them
-                // (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes' separator).
-                if (page?.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText" && (pageNotes.Count > 0 || carriedHere != null))
+                // (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes' separator);
+                // from Word 2013 on below the endnotes (measured with docx/local/fbt-14, fbt-15: the footnote above the
+                // endnote in mode 14, below it in mode 15).
+                if (context.CompatibilityMode < 15 && page?.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText"
+                    && (pageNotes.Count > 0 || carriedHere != null))
+                {
                     y = PlaceNotes();
+                    (pendingAfter, pendingOwnAfter) = (0, 0);
+                }
                 var trailing = new List<Block>();
                 trailing.AddRange(endnoteSeparator ?? []);
                 foreach (var note in due)
@@ -2043,8 +2049,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return y;
         }
         // A section that puts its footnotes beneath the text (its own w:footnotePr/w:pos; the settings' alone leave
-        // them at the page's bottom) has them follow its last line (measured with docx/local/fnpages-f and -g).
-        var at = page.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText" ? Math.Min(y, page.BodyBottom - notesHeight) : page.BodyBottom - notesHeight;
+        // them at the page's bottom) has them follow its last line (measured with docx/local/fnpages-f and -g) and that
+        // line's paragraph's space after (fbt2-14, fbt2-15: 12 pt after put the separator 12 pt lower; fbt3-15).
+        var at = page.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText"
+            ? Math.Min(y + (columnEmpty ? 0 : pendingAfter), page.BodyBottom - notesHeight) : page.BodyBottom - notesHeight;
         var x = page.TextLeft;
         void Put(NoteBox box)
         {

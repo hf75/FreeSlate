@@ -1778,7 +1778,8 @@ areas:
           Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and 0.8 pt; docx/generated/notes, docx/local/fbn-*,
           docx/external/libreoffice/extras-ooxmlexport/tdf90810short), the separators' paragraphs off the section's
           line grid (tdf143399: the endnote separator 12.07 pt high on a grid of 15.6 pt); a section whose own w:footnotePr puts them
-          beneath the text has them follow its last line (the settings' alone do not; docx/local/fnpages-f, -g); pages
+          beneath the text has them follow its last line and its paragraph's space after (the settings' alone do not;
+          docx/local/fnpages-f, -g; fbt2-14, fbt2-15: 12 pt after put the separator 12 pt lower, fbt3-15); pages
           of several columns spread whole notes into columns of their own width, each column taking notes until it
           holds its share of their height, under one separator at the left, every column of text ending above them
           (docx/local/fnpages-h). Notes of table cells need room with their row. Measured with docx/generated/notes
@@ -1791,8 +1792,9 @@ areas:
           separator's paragraphs stand at single spacing without space before or after, whatever they and the defaults
           say (docx/local/fsep-*: the separator 16.2 pt above the note's baseline with before 12, after 0, 10 and 20
           pt or double spacing; pandoc/golden/notes). Footnotes beneath the text of a section that ends the document
-          come before its endnotes, which follow under their separator below them
-          (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes, 36.0 → 83.2 %).
+          come before its endnotes before Word 2013, which follow under their separator below them, from Word 2013
+          on after them (docx/local/fbt-14, fbt-15; docx/external/libreoffice/extras-ooxmlexport/fdo79062: three
+          footnotes, then the endnotes, 36.0 → 83.2 → 94.9 %).
           A deleted reference counts in the numbering without the markup, its note not shown (docx/local/fnd-b to
           fnd-d: the second of three references deleted leaves notes 1 and 3). Before Word 2013 the notes keep the room
           of the continuation notice below them where the settings' w:footnotePr lists it, whether a note goes on or not
