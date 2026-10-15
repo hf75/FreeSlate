@@ -102,6 +102,8 @@ public sealed class WmfPlayer
             }
             offset += (int)words * 2;
         }
+        if (gdi is not null)
+            gdi.FlushXor();
         return svg.Finish(x, y, w, h);
     }
 

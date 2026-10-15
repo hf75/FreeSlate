@@ -49,6 +49,8 @@ public sealed class EmfPlayer
             return null;
         var player = new EmfPlayer(data, idPrefix) { displayWidth = displayWidth };
         player.Play();
+        if (player.gdi is not null)
+            player.gdi.FlushXor();
         var (x, y, w, h) = player.ViewBox;
         return player.svg.Finish(x, y, w, h);
     }

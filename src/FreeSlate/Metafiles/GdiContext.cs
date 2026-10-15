@@ -497,7 +497,69 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         if (fillAttributes == " fill=\"none\"" && strokeAttributes.Length == 0)
             return;
         var rule = fill && State.PolyFillMode == 1 ? " fill-rule=\"evenodd\"" : "";
-        Svg.Add($"<path d=\"{d}\"{fillAttributes}{rule}{strokeAttributes}/>", State.Clip);
+        var element = $"<path d=\"{d}\"{fillAttributes}{rule}{strokeAttributes}/>";
+        if (!Xor(element, d, fill))
+            Svg.Add(element, State.Clip);
+    }
+
+    // ------------------------------------------------------------------ XOR masks
+
+    // Drawing with R2_XORPEN, then a shape in black with R2_COPYPEN, then the same drawing again with R2_XORPEN leaves
+    // the drawing inside the shape and the background around it, GDI's way to clip a gradient's strips to a shape
+    // (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/tdf136841: an arrow's gradient of 159 strips, the
+    // square around the arrow white). The first pass and the mask are held back, the second pass drawn clipped to the
+    // mask; drawing that does not follow the pattern goes out as it came.
+    int xorPhase;
+    readonly List<(string Element, Clip? Clip)> xorFirst = [];
+    readonly List<(string Element, Clip? Clip)> xorMask = [];
+    readonly List<(string Element, Clip? Clip)> xorSecond = [];
+    readonly StringBuilder maskPath = new();
+
+    /// <summary>Holds back an element drawn in an XOR pattern; false where it goes out now.</summary>
+    bool Xor(string element, string d, bool fill)
+    {
+        if (State.Rop2 == 7)
+        {
+            xorPhase = xorPhase switch { 0 => 1, 2 => 3, _ => xorPhase };
+            (xorPhase == 1 ? xorFirst : xorSecond).Add((element, State.Clip));
+            return true;
+        }
+        if (xorPhase is 1 or 2 && fill)
+        {
+            xorPhase = 2;
+            xorMask.Add((element, State.Clip));
+            maskPath.Append(d).Append(' ');
+            return true;
+        }
+        if (xorPhase != 0)
+            FlushXor();
+        return false;
+    }
+
+    /// <summary>Draws what an XOR pattern held back: the second pass clipped to the mask, else all of it as it came.</summary>
+    public void FlushXor()
+    {
+        if (xorPhase == 3)
+        {
+            var masked = new Dictionary<object, Clip>(ReferenceEqualityComparer.Instance);
+            var none = new object();
+            foreach (var (element, clip) in xorSecond)
+            {
+                if (!masked.TryGetValue(clip ?? none, out var mask))
+                    masked[clip ?? none] = mask = new Clip { Path = maskPath.ToString().Trim(), Parent = clip };
+                Svg.Add(element, mask);
+            }
+        }
+        else
+        {
+            foreach (var (element, clip) in xorFirst.Concat(xorMask).Concat(xorSecond))
+                Svg.Add(element, clip);
+        }
+        xorFirst.Clear();
+        xorMask.Clear();
+        xorSecond.Clear();
+        maskPath.Clear();
+        xorPhase = 0;
     }
 
     public string FillPaint(GdiBrush brush)

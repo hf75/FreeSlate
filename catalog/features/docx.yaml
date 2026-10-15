@@ -3499,7 +3499,10 @@ areas:
           (docx/external/libreoffice/extras-ooxmlimport/tdf133448: an isotropic window without a viewport, an NMR
           chart over 1024 × 768 px, 9.7 → 90.9 %). An icon's monochrome mask ANDed (SRCAND) and its image XORed at the
           same place (SRCINVERT) make one image, opaque where the mask is black (extras-ooxmlexport/tdf135653: an
-          embedded object's icon on its red ground, 9.2 → 96.3 %).
+          embedded object's icon on its red ground, 9.2 → 96.3 %). Drawing with R2_XORPEN, a shape in black with
+          R2_COPYPEN and the same drawing again with R2_XORPEN leave the drawing inside the shape only, GDI's way to
+          clip a gradient to a shape (extras-ooxmlexport/tdf136841: an arrow's gradient of 159 strips, the square
+          around it white, 52.4 → 96.4 %).
 
       - id: picture.svg
         title: SVG pictures
