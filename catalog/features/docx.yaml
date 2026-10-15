@@ -912,7 +912,10 @@ areas:
           center, right, justified, distributed and the Arabic kashida variants.
         office: >-
           Indents in characters (w:leftChars, w:rightChars, w:firstLineChars, w:hangingChars, hundredths of a
-          character) count over those in twips: a first-line or hanging indent in characters of the paragraph's size,
+          character) count over those in twips: a first-line or hanging indent in characters of the paragraph's first
+          run, its size and its character spacing, the spacing twice where w:balanceSingleByteDoubleByteWidth is on
+          (docx/local/chu2-*: 14 pt runs in a 10.5 pt style indented 28 pt by 200, 29.2 pt with 0.6 pt spacing, 30.4 pt
+          balanced, the mark's size counting for nothing; extras-ooxmlexport/tdf131594 80.9 → 98.7 %),
           a left or right one in characters of the Normal style's, the left one where the first line begins, so the
           left edge lies the hanging indent further in; a hanging indent in characters makes the left one count in
           characters too; 0 leaves the twips (docx/local/chu-15, chu-14: of 22 pt text under 10.5 pt Normal leftChars

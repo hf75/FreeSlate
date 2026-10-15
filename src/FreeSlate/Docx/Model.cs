@@ -1096,6 +1096,17 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         else
             ReadInlines(p, styleId, content, field);
+        // A first line or hanging indent in characters counts the characters of the paragraph's first run, its size
+        // and its character spacing, the spacing twice where the document balances single- and double-byte widths
+        // (measured with docx/local/chu2-15, chu2-14, chu2-grid, chu2-bal: firstLineChars 200 of 14 pt runs in a style
+        // of 10.5 pt indents 28 pt, 29.2 pt with 0.6 pt spacing, 30.4 pt balanced; the mark's size counts for nothing;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf131594).
+        if (format.FirstLineChars is { } characters && characters != 0
+            && content.OfType<TextInline>().FirstOrDefault(t => t.Text.Length > 0)?.Format is { Size: { } runSize } first)
+        {
+            var spacing = (first.Spacing ?? 0) * (context.Compat("balanceSingleByteDoubleByteWidth") ? 2 : 1);
+            format.ApplyCharacterUnits(context.Styles.Run(context.Styles.DefaultParagraphStyle, null, null).Size ?? 10, runSize + spacing);
+        }
         foreach (var anchor in content.OfType<AnchorInline>())
             anchor.Indents = (format.Left ?? 0, format.Right ?? 0);
         return new ParagraphBlock(p, format, content, mark)
