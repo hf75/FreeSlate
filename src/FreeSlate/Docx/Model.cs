@@ -1656,6 +1656,16 @@ public sealed partial class ModelReader(DocumentContext context)
                                 field.Target(content).AddRange(MacroButton(ended.InstructionRuns));
                                 break;
                             }
+                            // An EQ field shows its instruction laid out (EqField), its error bold where its text is not.
+                            if (FieldInline.TypeOf(instruction) == "EQ" && !ended.InResult)
+                            {
+                                var errorFormat = (ended.InstructionFormat ?? ended.Format).Clone();
+                                errorFormat.Bold = errorFormat.Bold != true;
+                                if (!field.Hidden && EqField.Inlines(ended.InstructionRuns, context.ListSeparator,
+                                        context.Culture.TwoLetterISOLanguageName == "de" ? "Fehler!" : "Error!", errorFormat) is { } shown)
+                                    field.Target(content).AddRange(shown);
+                                break;
+                            }
                             if (FieldInline.TypeOf(instruction) == "LISTNUM")
                             {
                                 if (!field.Hidden && ListNumber(instruction, e) is { } listed)
@@ -1728,7 +1738,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 case "ruby" when !field.Hidden:
                 {
-                    List<TextInline> Texts(XElement? part)
+                    List<TextInline> Texts(XElement? part, double? size = null)
                     {
                         var texts = new List<TextInline>();
                         foreach (var r in part?.Elements(Wml.W + "r") ?? [])
@@ -1736,6 +1746,11 @@ public sealed partial class ModelReader(DocumentContext context)
                             var own = new RunFormat();
                             own.Apply(r.Child("rPr"));
                             var runFormat = context.Styles.Run(paragraphStyle, own.Style, own, tableRun);
+                            if (size != null)
+                            {
+                                runFormat = runFormat.Clone();
+                                runFormat.Size = size;
+                            }
                             var value = string.Concat(r.Elements(Wml.W + "t").Select(Text));
                             if (value.Length > 0)
                                 texts.Add(new TextInline(value, runFormat));
@@ -1743,7 +1758,9 @@ public sealed partial class ModelReader(DocumentContext context)
                         return texts;
                     }
                     var properties = e.Child("rubyPr");
-                    field.Target(content).Add(new RubyInline(Texts(e.Child("rubyBase")), Texts(e.Child("rt")),
+                    // The ruby text takes w:hps's size, whatever its runs say (measured with docx/local/rbs-15: hps 16
+                    // over runs of 20 pt and hps 40 over runs of 8 pt print 8 and 20 pt; extras-rtfexport/tdf138779).
+                    field.Target(content).Add(new RubyInline(Texts(e.Child("rubyBase")), Texts(e.Child("rt"), properties.Child("hps").Number("val") / 2),
                         properties.Child("rubyAlign").Val() ?? "center", (properties.Child("hpsRaise").Number("val") ?? 0) / 2, format));
                     break;
                 }

@@ -272,6 +272,12 @@ public sealed class DocumentContext : IDisposable
     public char DecimalSymbol => Culture.NumberFormat.NumberDecimalSeparator is { Length: > 0 } separator ? separator[0] : '.';
 
     /// <summary>
+    /// The character that parts the arguments of EQ fields: the list separator of the regional settings, ";" in German
+    /// (measured with docx/local/eqf-15: a comma there is text).
+    /// </summary>
+    public char ListSeparator => Culture.TextInfo.ListSeparator is { Length: > 0 } separator ? separator[0] : ',';
+
+    /// <summary>
     /// How much more 3D text the document draws as bodies, in characters of 12 pt: a 48 pt character takes 85 to 420 KB
     /// of markup (docx/local/text-3d, docx/external/libreoffice/writerfilter-dmapper/fdo78333-1-minimized), so a page
     /// of it would not fit in memory (fdo78333: 2900 characters in a text box); the rest is drawn flat.

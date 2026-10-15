@@ -819,7 +819,11 @@ areas:
           docx/external/poi/61470: とうきょう over 東京 at distributeSpace, 東 at 73.344 and 京 at 87.144 pt; mean
           distance 3.56 → 0.31 dots); rightVertical runs it down the
           base's right, centered on the base; the line makes room for it (docx/local/ruby: the lines' baselines within
-          0.1 pt).
+          0.1 pt). The ruby text takes w:hps's size whatever its runs say (docx/local/rbs-15: hps 16 over runs of
+          20 pt prints 8 pt, hps 40 over runs of 8 pt 20 pt). What ruby reaches above the text counts in what multiple
+          line spacing multiplies, the extra going below the text, where raised text (w:position, EQ \s\up) adds its
+          part once (docx/local/eql-15, eql-s: MS Mincho 20 pt with 8 pt ruby 19 and 23 pt up is 1.15 times its single
+          height at 1.15 lines; docx/external/libreoffice/extras-rtfexport/tdf138779 61.7 → 98.0 % with EQ fields).
 
       - id: run.eastAsian
         title: East Asian layout and emphasis marks
@@ -2356,7 +2360,15 @@ areas:
           82.1 → 89.1 %). A backslash in a date picture takes the character after it as it is, and a switch written
           against its argument's quote (\@"MMMM d") still takes it (extras-uiwriter/tdf164620: "Wednesday 14 October
           2026" and "14/10/2026 15:36:19 PM", 85.9 → 95.1 %; tdf148380_modifiedField 89.2 → 94.0 %,
-          pandoc/text_in_shape_format 91.1 → 94.7 %). Known deviation: LISTNUM keeps its saved result.
+          pandoc/text_in_shape_format 91.1 → 94.7 %). EQ fields show their instruction laid out: its text in the
+          formats of the instruction's runs, \s\up n and \s\do n raising and lowering their argument n points like
+          w:position, \o of one argument that argument, \* switches nothing; a fraction (\f) of other than two
+          arguments or an integral (\i) of other than three make the whole field "Fehler!" in bold; arguments part at
+          the list separator of the regional settings, ";" in German, a comma there is text (docx/local/eqf-15,
+          cc-equal; extras-ooxmlexport/tdf66401 70.0 → 90.6 %, extras-odfexport/tdf130314 61.3 → 84.8 %,
+          extras-rtfexport/tdf138779 61.7 → 98.0 % with run.ruby). Known deviations: LISTNUM keeps its saved result;
+          EQ fractions, arrays, radicals, brackets, displacements, lists, boxes and overstrikes of several arguments
+          print nothing.
 
       - id: field.hyperlinks
         title: Hyperlinks

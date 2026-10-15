@@ -145,6 +145,9 @@ public sealed class Line
     /// <summary>The largest single line height of the line's fonts, which multiple line spacing multiplies.</summary>
     public double LargestNatural { get; set; }
 
+    /// <summary>How far ruby reaches above Above, which multiple line spacing multiplies too.</summary>
+    public double RubyAbove { get; set; }
+
     /// <summary>
     /// The part of the height below the text that may hang past the bottom of the page: the extra space of multiple
     /// line spacing (measured with docx/generated/headers-footers: a line of Aptos 12 pt at 1.16 lines whose text
@@ -2330,7 +2333,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         // Vertical metrics: the largest parts above and below the baseline of the line's runs (raised runs reach
         // further); an empty line takes its break's or the paragraph mark's.
-        double above = 0, below = 0, raised = 0, lowered = 0, largest = 0;
+        double above = 0, below = 0, raised = 0, lowered = 0, largest = 0, rubyRaised = 0;
         var any = false;
         var texts = false;       // anything but list numbers that stands like text
         var drawings = false;
@@ -2365,7 +2368,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     lowered = Math.Max(lowered, height / 2 - middle);
                 }
                 else
+                {
                     raised = Math.Max(raised, rubyText.Raise + rubyStyle.Metrics.Above);
+                    rubyRaised = Math.Max(rubyRaised, rubyText.Raise + rubyStyle.Metrics.Above);
+                }
             }
             // A check box form field stands like a character of its size.
             if (piece.CheckBox is { } checkBox)
@@ -2573,6 +2579,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         line.RaisedAbove = Math.Max(0, raised - above);
         line.LoweredBelow = Math.Max(0, lowered - below);
+        line.RubyAbove = Math.Max(0, rubyRaised - above);
         return line;
     }
 
@@ -2633,7 +2640,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     continue;
                 }
                 default:
-                    line.Height = natural + line.LargestNatural * (value / 240 - 1);
+                    // From single spacing on the multiple takes in what ruby reaches above the text, the extra going
+                    // below it (measured with docx/local/eql-15, eql-s: MS Mincho 20 pt with 8 pt ruby raised 19 and
+                    // 23 pt is 1.15 times its single height at 1.15 lines, with EQ \s\up or w:position as high its
+                    // single height and the 20 pt line's extra; docx/external/libreoffice/extras-rtfexport/tdf138779).
+                    line.Height = natural + (line.LargestNatural + (value >= 240 ? line.RubyAbove : 0)) * (value / 240 - 1);
                     // Below single spacing the line loses its share above the baseline and below it alike (measured
                     // with docx/local/linemult-120, -156, -192: Arial 10 pt, Times New Roman and Traditional Arabic
                     // 20 pt at 0.5, 0.65 and 0.8 put their baselines at that share of their single ones, the line
