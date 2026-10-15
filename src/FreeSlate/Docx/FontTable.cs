@@ -69,6 +69,12 @@ public sealed class FontTable
         ["Arabic Transparent Bold"] = "Arial", ["FangSong_GB2312"] = "FangSong", ["KaiTi_GB2312"] = "KaiTi",
     };
 
+    /// <summary>Windows' font substitutes (the registry's FontSubstitutes) for names of Latin fonts.</summary>
+    static readonly Dictionary<string, string> WindowsSubstitutes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Times"] = "Times New Roman", ["Helvetica"] = "Arial",
+    };
+
     /// <summary>Names Word itself replaces by an installed family (docx/local/fontnames-plain), before PowerPoint's.</summary>
     static readonly Dictionary<string, string> WordNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -119,6 +125,10 @@ public sealed class FontTable
         if (entry != null && (entry.Ranges & (1u << 10)) != 0 && ((entry.Ranges & (1u << 26)) != 0 || (entry.Ranges & 1u) == 0)
             && fonts.TryResolveFamily("Sylfaen", bold, italic) is { } armenian)
             return armenian;
+        // Windows' own font substitutes hold for every character set (Word's PDF of docx/external/poi/bookmarks, in a
+        // Word session of its own: Times of character set CC in Times New Roman; Liberation Serif of CC in Cambria, fs2-c).
+        if (WindowsSubstitutes.TryGetValue(family, out var windows) && fonts.TryResolveFamily(windows, bold, italic) is { } substituted)
+            return substituted;
         if (entry?.Charset != 204 && (fonts.TryResolveTypeface(family, bold, italic)
                 ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null)) is { } typeface)
             return typeface;

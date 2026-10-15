@@ -517,7 +517,9 @@ areas:
           E7006EFF or the Armenian range alone, whatever their code pages; extras-ooxmlexport/fdo71646; Latin and
           Armenian alone, extras-layout/tdf138465min, and Georgian alone, pano2-04, not), those not for a Cyrillic
           font (fs2-a to -c: Liberation Serif of character set 00 or EE in Times New Roman, of CC in Cambria, which
-          also passes the signature's code pages by; extras-layout/tdf153136), then a font for the table's
+          also passes the signature's code pages by; extras-layout/tdf153136), Windows' own substitutes (Times,
+          Helvetica) for every character set (Word's PDF of docx/external/poi/bookmarks in a session of its own: Times of
+          CC in Times New Roman, 77.9 → 100 %), then a font for the table's
           character set (symbol: Wingdings, docx/local/psym-a, psym-b: U+F021 to U+F0FE of a missing font of charset 02
           all in Wingdings; Shift JIS: Yu Gothic, MS PMincho where the alternate name is Times New Roman, before that
           name (docx/local/fs3-a, fs3-b, fs3-c: Liberation Serif and Sans of charset 80; extras-ooxmlexport/fdo69548,
