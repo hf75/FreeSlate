@@ -52,6 +52,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         else
             svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+        paperSize = (page.PaperWidth, page.PaperHeight);
         // A page of vertical text is laid out turned a quarter: its body is turned back onto the page, its drawings
         // stand upright where their middles turn to, its header, footer and border stand upright.
         var turn = page.Upright != null ? $"translate({Units.Css(width)} 0) rotate(90)" : null;
@@ -84,8 +85,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // (scratch/triage/2026-10-14_agents/misc: docx/external/openxml-sdk/complex0, 2010: a header's picture
         // 546.75 pt wide over the body's lines).
         var storyInline = new List<PlacedDrawing>();
-        Lines(page.Lines.Where(l => l.Story), svg, selection, storyInline);
-        Lines(page.Lines.Where(l => !l.Story), svg, selection, inline);
+        Lines(page.Lines.Where(l => l.Story), svg, selection, storyInline, onPage: true);
+        Lines(page.Lines.Where(l => !l.Story), svg, selection, inline, onPage: true);
         if (drawings != null && storyInline.Count > 0)
             svg.Insert(textStart, string.Concat((turn == null ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page))));
         front.AddRange(turn == null ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
@@ -291,7 +292,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// own 0.5 pt over the theme's, 2 pt lines unfilled or without a fill 1 pt; docx/external/libreoffice/
     /// extras-ooxmlexport/textframe-in-shape).
     /// </summary>
-    static (double L, double T, double R, double B) Insets(XElement? body, XElement? shape, double w, double h, Drawing.Theme? theme)
+    internal static (double L, double T, double R, double B) Insets(XElement? body, XElement? shape, double w, double h, Drawing.Theme? theme)
     {
         double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
         static double? Width(XElement? ln) =>
@@ -451,14 +452,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return svg.ToString();
     }
 
-    void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front)
+    /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>
+    void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front, bool onPage = false)
     {
-        foreach (var placed in lines)
+        foreach (var line in lines)
         {
+            var grows = onPage && line.Angle == 0;
+            var placed = grows ? OnDots(line) : line;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
                 svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
             var baseline = placed.Top + placed.Line.Baseline;
+            if (grows)
+                baseline += Grow(baseline, paperSize.Height);
             if (placed.Angle != 0)
                 svg.Append($"<g transform=\"rotate({Units.Css(placed.Angle)} {Px(placed.Left + placed.PivotX)} {Px(placed.Top + placed.PivotY)})\">");
             // Editable ranges (w:permStart, w:permEnd): gray brackets 0.24 pt thin through the line (measured with
@@ -477,6 +483,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
+                if (grows)
+                    x += Grow(x, paperSize.Width);
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
                 // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
                 // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
@@ -708,6 +716,32 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>A length in whole dots of Word's device.</summary>
     static int Dots(double points) => (int)Math.Round(points / Dot, MidpointRounding.AwayFromZero);
+
+    /// <summary>The paper size of the page being drawn, over which Word's PDF moves text (see <see cref="Grow"/>).</summary>
+    (double Width, double Height) paperSize;
+
+    /// <summary>
+    /// How far Word's PDF moves a run of text right of or below a place of its 600 dpi device, in points: 0.945 dots
+    /// (0.04 mm) more across the paper's whole width or height, in the 0.2 dot steps of its PDF's 1/3000 in grid, the
+    /// glyphs' widths as they are (measured with docx/local/lsg7-a4, lsg8-a4-*, lsg9-*: line starts 0.2 dots further
+    /// right from 491.5 dots on and every 1050 dots after on A4, every 740 on A5 and 1079 on Letter; lsgy-a4: baselines
+    /// alike down the page).
+    /// </summary>
+    static double Grow(double at, double extent) => extent > 0 ? 0.2 * Dot * Math.Round(4.725 * at / extent + 0.032) : 0;
+
+    /// <summary>
+    /// A line of the page moved to start on a whole dot of Word's device: the column's or cell's edge and the line's
+    /// indent each rounded to one, halves to even (measured with docx/local/lsg-*, lsg2-*: margins of 1120 to 1160
+    /// twips start where 467.5 dots goes to 468 and 472.5 to 472, indents of 0 to 24 twips add whole dots).
+    /// </summary>
+    static PlacedLine OnDots(PlacedLine placed)
+    {
+        // In whole twips first, so that halves stay halves.
+        static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
+        var start = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces[0].X : 0;
+        var shift = Snap(placed.Left) - placed.Left + Snap(start) - start;
+        return Math.Abs(shift) < 1e-9 ? placed : placed with { Left = placed.Left + shift };
+    }
 
     /// <summary>Where a line's content ends (from the column's left edge): its last character but spaces, or tab.</summary>
     static double ContentEnd(Line line)
