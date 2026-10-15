@@ -2021,7 +2021,12 @@ areas:
           cell, at margins of 10 and 15 pt above and below and not at those across, in mode 14 not cut; unwrapped ones
           neither move nor are cut; WC048-Text-Box-in-Cell 88.3 → 90.1 %,
           libreoffice/extras-ooxmlexport/tdf135943_shapeWithText_LayoutInCell0_compat15 49.2 → 99.0 %,
-          tdf162551_notLayoutInCell_charLeft_fromTop 27.6 → 90.9 %). Known deviations: Word cuts drawings at the
+          tdf162551_notLayoutInCell_charLeft_fromTop 27.6 → 90.9 %). Before Word 2013 a drawing of layoutInCell 0
+          placed from its paragraph in a cell of a floating table stands as far below the page's top as that paragraph
+          below the top of the paragraph the table belongs to, across from the cell's text (docx/local/nie-a to nie-d:
+          100 pt below a cell's paragraph 20 pt below that top, 120 pt below the page's top, whatever the vertAnchor;
+          from its line or the page as said, nie-e, nie-f; extras-ooxmlexport/missing-path 87.8 → 100 %,
+          extras-uiwriter/tdf78727 59.2 → 100 %). Known deviations: Word cuts drawings at the
           bottom of a row of exact height (cig-exact); before Word 2013 a drawing of layoutInCell 0 does not move the
           table aside (cig-noin14, ccl-out14).
 

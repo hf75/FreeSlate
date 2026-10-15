@@ -474,8 +474,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // The table's lines stay where it stands when a table after it moves the text below itself (see Lower).
             for (var k = count; k < page.Lines.Count; k++)
                 frameLines.Add(page.Lines[k]);
+            // Before Word 2013 a drawing of layoutInCell 0 placed from its paragraph in a cell stands as far below the
+            // page's top as that paragraph stands below the top of the paragraph the table belongs to (measured with
+            // docx/local/nie-a to nie-d: 100 pt below a cell's paragraph 20 pt below that top puts it 120 pt below the
+            // page's top, whatever the table's vertAnchor; placed from its line or the page as said, nie-e, nie-f;
+            // docx/external/libreoffice/extras-ooxmlexport/missing-path, extras-uiwriter/tdf78727).
             foreach (var anchor in anchors)
-                page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
+                page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.Cell == null && context.CompatibilityMode < 15 ? anchor.ParagraphTop - textTop : anchor.ParagraphTop,
+                    anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
             rowTop += row.Height;
             last = row;
             onPage++;
