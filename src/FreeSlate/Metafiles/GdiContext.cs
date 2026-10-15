@@ -107,6 +107,12 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
     /// <summary>Device units per output pixel; hatch and pattern brushes are sized in output pixels.</summary>
     public double UnitsPerPixel { get; init; } = 1;
 
+    /// <summary>
+    /// Whether device units are pixels of the metafile's reference device (EMF), in which GDI realizes fonts: top and
+    /// bottom aligned text then stands by the font's ascent and descent in whole device pixels.
+    /// </summary>
+    public bool DevicePixels { get; init; }
+
     /// <summary>EMF+ records drew the current part; the duplicate GDI drawing of dual metafiles is skipped.</summary>
     public bool SuppressDrawing { get; set; }
 
@@ -597,9 +603,14 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         var (upX, upY) = (sin, -cos);
         var size = emLogical * scaleY;
 
-        // Reference point to baseline start: horizontal alignment along the baseline, vertical across it.
+        // Reference point to baseline start: horizontal alignment along the baseline, vertical across it. Top and
+        // bottom alignment use GDI's ascent and descent of the font realized in whole device pixels (measured in Word's
+        // PDFs: Arial at 13 px stands 13 px below its reference point by its VDMX, Calibri at 15 px 14).
         var alongOffset = (s.TextAlign & 6) switch { 2 => -totalWidth, 6 => -totalWidth / 2, _ => 0 } * scaleX;
-        var belowOffset = (s.TextAlign & 24) switch { 24 => 0, 8 => -data.WinDescent * emLogical, _ => data.WinAscent * emLogical } * scaleY;
+        double ascent = data.WinAscent * size, descent = data.WinDescent * size;
+        if (DevicePixels && font.Height < 0 && Math.Round(size) is >= 1 and var ppem)
+            (ascent, descent) = data.GdiMetrics((int)ppem);
+        var belowOffset = (s.TextAlign & 24) switch { 24 => 0, 8 => -descent, _ => ascent };
         var (rx, ry) = total.Apply(x, y);
         var px = rx + dirX * alongOffset - upX * belowOffset;
         var py = ry + dirY * alongOffset - upY * belowOffset;

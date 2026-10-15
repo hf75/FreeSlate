@@ -2145,6 +2145,12 @@ areas:
           default list; at \l's level, else one deeper than a LISTNUM before it in its paragraph, else the last one's
           level without a name and the first with one; \s its number; counting with the list's paragraphs:
           docx/local/lnum-*, powertools/ RP026 ×3 50 → 100 %, HC048, libreoffice/extras-ooxmlexport/tdf89731),
+          AUTONUM, AUTONUMLGL and AUTONUMOUT whatever result was saved (the paragraphs holding them count once each, a
+          heading at its outline level with the deeper levels and the body text after it starting again, body text
+          in a count of its own one level below the last heading; AUTONUM shows the paragraph's count, AUTONUMLGL the
+          counts down to its level, 1.0.1.2., AUTONUMOUT its count in its level's outline style I. A. 1. a) (1) (a)
+          (i) (a) (i), 1. below the ninth level), BIDIOUTLINE, which counts too, ### in bold (docx/local/anf-a to
+          anf-c, modes 14 and 15; libreoffice/extras-ooxmlexport/99_Fields 66.7 → 100 % of the lines),
           MACROBUTTON without a result (its display text, the instruction after the macro's name, in the formats of
           its runs: powertools/ DB-HeadersFooters-Dest/Fax, Letter,
           libreoffice/extras-ooxmlexport/Unsupportedtextfields), SEQ (\c, , \h, \s), SECTION, IF (numbers or text,

@@ -279,6 +279,52 @@ public sealed class FontData : IDisposable
 
     public double WinDescent { get; }
 
+    (int Ascent, int Descent)[]? vdmx;
+
+    /// <summary>
+    /// GDI's ascent and descent in whole pixels (tmAscent, tmDescent) of the font realized at <paramref name="ppem"/>
+    /// pixels per em (lfHeight = −ppem): the VDMX record of the size where the font has one for the Windows ANSI
+    /// character set and a 1:1 device, else usWinAscent and usWinDescent scaled and rounded (measured with GDI's
+    /// GetTextMetrics: Arial, Times New Roman, Courier New, Segoe UI and Verdana by their VDMX, Calibri and Cambria
+    /// without one rounded, Tahoma's VDMX for all glyphs (bCharSet 0) not used).
+    /// </summary>
+    public (int Ascent, int Descent) GdiMetrics(int ppem)
+    {
+        vdmx ??= ReadVdmx();
+        if (ppem > 0 && ppem < vdmx.Length && vdmx[ppem] is { Ascent: > 0 } record)
+            return record;
+        return ((int)Math.Floor(WinAscent * ppem + 0.5), (int)Math.Floor(WinDescent * ppem + 0.5));
+    }
+
+    (int Ascent, int Descent)[] ReadVdmx()
+    {
+        var records = new (int Ascent, int Descent)[256];
+        var table = Table("VDMX");
+        if (table == null || table.Length < 6)
+            return records;
+        var ratios = BinaryPrimitives.ReadUInt16BigEndian(table.AsSpan(4));
+        for (var i = 0; i < ratios && 6 + 4 * ratios + 2 * (i + 1) <= table.Length; i++)
+        {
+            var ratio = table.AsSpan(6 + 4 * i, 4);
+            // Ranges for all glyphs (character set 0) are not GDI's; a range of 0:0:0 fits any device.
+            if (ratio[0] == 0 || !(ratio[1] == 0 && ratio[2] == 0 && ratio[3] == 0 || ratio[1] == 1 && ratio[2] <= 1 && ratio[3] >= 1))
+                continue;
+            var group = BinaryPrimitives.ReadUInt16BigEndian(table.AsSpan(6 + 4 * ratios + 2 * i));
+            if (group + 4 > table.Length)
+                break;
+            var count = BinaryPrimitives.ReadUInt16BigEndian(table.AsSpan(group));
+            for (var r = 0; r < count && group + 4 + 6 * (r + 1) <= table.Length; r++)
+            {
+                var entry = table.AsSpan(group + 4 + 6 * r, 6);
+                var height = BinaryPrimitives.ReadUInt16BigEndian(entry);
+                if (height < records.Length)
+                    records[height] = (BinaryPrimitives.ReadInt16BigEndian(entry[2..]), -BinaryPrimitives.ReadInt16BigEndian(entry[4..]));
+            }
+            break;
+        }
+        return records;
+    }
+
     /// <summary>Advance width of <paramref name="text"/> in em (multiply by the font size).</summary>
     public double Width(string text, bool kerning)
     {

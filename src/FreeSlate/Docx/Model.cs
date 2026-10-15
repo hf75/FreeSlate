@@ -107,7 +107,11 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
 
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
-        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "LISTNUM" or "";
+        or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "LISTNUM"
+        or "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE" or "";
+
+    /// <summary>The paragraph numbering fields, which number the paragraphs they stand in (catalog: field.evaluation).</summary>
+    public static bool IsAutoNumber(string instruction) => TypeOf(instruction) is "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE";
 }
 
 /// <summary>A block of the body: a paragraph or a table.</summary>
@@ -1275,6 +1279,12 @@ public sealed partial class ModelReader(DocumentContext context)
                             field.Target(content).Add(new TextInline(listed, simpleFormat));
                         break;
                     }
+                    if (FieldInline.IsAutoNumber(e.Attr("instr")!))
+                    {
+                        if (!field.Hidden)
+                            field.Target(content).Add(AutoNumber(e.Attr("instr")!, e, simpleFormat));
+                        break;
+                    }
                     field.Target(content).Add(new FieldInline(e.Attr("instr")!, simpleFormat, cached));
                     break;
                 case "fldSimple":
@@ -1411,6 +1421,29 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>
+    /// What a paragraph numbering field shows (catalog: field.evaluation): AUTONUM, AUTONUMLGL and AUTONUMOUT the
+    /// number of their paragraph by its outline level (ListCounter.AutoNumber), whatever result was saved; BIDIOUTLINE
+    /// counts too but prints ### in bold (measured with docx/local/anf-a to anf-c, in modes 14 and 15: BIDIOUTLINE in
+    /// body text and headings ###, then AUTONUMOUT 2., 3., II., A., 1.; AUTONUMLGL 3.1.2., 4.1.1., body text after a
+    /// ninth level heading 1.0.1.0.0.0.0.0.1.1.; two fields in one paragraph the same number;
+    /// docx/external/libreoffice/extras-ooxmlexport/99_Fields).
+    /// </summary>
+    TextInline AutoNumber(string instruction, XElement at, RunFormat format)
+    {
+        var paragraph = at.AncestorsAndSelf(Wml.W + "p").FirstOrDefault();
+        var direct = new ParagraphFormat();
+        direct.Apply(paragraph?.Child("pPr"));
+        var outline = context.Styles.Paragraph(direct.Style, direct).OutlineLevel;
+        var type = FieldInline.TypeOf(instruction);
+        var text = counter.AutoNumber(type, outline is >= 0 and <= 8 ? outline.Value + 1 : 0, paragraph);
+        if (type != "BIDIOUTLINE")
+            return new TextInline(text, format);
+        var bold = format.Clone();
+        bold.Bold = true;
+        return new TextInline("###", bold);
+    }
+
+    /// <summary>
     /// The format of a field result the layout computes: a page field Word computes as it prints takes the format of
     /// its instruction's first run, not its saved result's, which it keeps only with \* MERGEFORMAT (measured with
     /// docx/local/fldfmt: PAGE, NUMPAGES and PAGEREF of a bold begin, an italic instruction, a red 16 pt saved result
@@ -1513,6 +1546,12 @@ public sealed partial class ModelReader(DocumentContext context)
                             {
                                 if (!field.Hidden && ListNumber(instruction, e) is { } listed)
                                     field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format));
+                                break;
+                            }
+                            if (FieldInline.IsAutoNumber(instruction))
+                            {
+                                if (!field.Hidden)
+                                    field.Target(content).Add(AutoNumber(instruction, e, ended.InstructionFormat ?? ended.Format));
                                 break;
                             }
                             if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)

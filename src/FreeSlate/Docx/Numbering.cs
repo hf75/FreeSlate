@@ -222,6 +222,51 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// <summary>The level of the story's last LISTNUM field and the paragraph it stands in.</summary>
     public (int Level, System.Xml.Linq.XElement? Paragraph) ListNum { get; set; }
 
+    readonly int[] autoHeadings = new int[10];
+    int autoBody, autoLevel;
+    System.Xml.Linq.XElement? autoParagraph;
+
+    /// <summary>
+    /// The text of an AUTONUM, AUTONUMLGL or AUTONUMOUT field in a paragraph of an outline level (1 to 9; 0 for body
+    /// text): the paragraphs holding such fields count once each, a heading at its level (the deeper levels and the
+    /// body text after it starting again), body text in a count of its own one level below the last heading.
+    /// AUTONUM shows the paragraph's count, AUTONUMLGL the counts of the levels down to it ("1.0.1.2."), AUTONUMOUT its
+    /// count in its level's outline style (I., A., 1., a), (1), (a), (i), (a), (i); below the ninth 1.).
+    /// </summary>
+    public string AutoNumber(string type, int level, System.Xml.Linq.XElement? paragraph)
+    {
+        if (paragraph == null || !ReferenceEquals(paragraph, autoParagraph))
+        {
+            autoParagraph = paragraph;
+            if (level is >= 1 and <= 9)
+            {
+                autoHeadings[level]++;
+                Array.Clear(autoHeadings, level + 1, 9 - level);
+                (autoBody, autoLevel) = (0, level);
+            }
+            else
+                autoBody++;
+        }
+        var heading = level is >= 1 and <= 9;
+        var depth = heading ? level : autoLevel + 1;
+        var count = heading ? autoHeadings[level] : autoBody;
+        return type switch
+        {
+            "AUTONUMLGL" => string.Concat(Enumerable.Range(1, depth - 1).Select(l => autoHeadings[l] + ".")) + count + ".",
+            "AUTONUMOUT" => depth switch
+            {
+                1 => NumberText.Format(count, "upperRoman") + ".",
+                2 => NumberText.Format(count, "upperLetter") + ".",
+                4 => NumberText.Format(count, "lowerLetter") + ")",
+                5 => $"({count})",
+                6 or 8 => "(" + NumberText.Format(count, "lowerLetter") + ")",
+                7 or 9 => "(" + NumberText.Format(count, "lowerRoman") + ")",
+                _ => count + ".",
+            },
+            _ => count + ".",
+        };
+    }
+
     /// <summary>
     /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
     /// where it has none.

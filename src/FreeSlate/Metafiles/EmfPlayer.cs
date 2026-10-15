@@ -87,6 +87,7 @@ public sealed class EmfPlayer
         {
             // Units per output pixel: from the display width, else the picture at its natural size (96 dpi).
             UnitsPerPixel = displayWidth is > 0 ? w / displayWidth.Value : (pxPerMmX + pxPerMmY) / 2 * 25.4 / 96,
+            DevicePixels = true,
         };
 
         var offset = 0;
