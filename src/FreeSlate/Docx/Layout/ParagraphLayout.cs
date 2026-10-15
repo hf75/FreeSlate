@@ -1756,13 +1756,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     break;
                 case FieldInline field when (fields?.Value(field) ?? Evaluator?.Value(field, fields?.On)) is { } value:
                 {
-                    // Word sets its error texts in bold (measured with docx/local/fielderrors, -14, -12 in modes 15, 14
-                    // and 12; nref-miss-15).
+                    // Word sets its error texts in bold where the field's text would not be bold, and regular where it
+                    // would (measured with docx/local/fielderrors, -14, -12 in modes 15, 14 and 12; nref-miss-15; eb-15,
+                    // -14, -12: bold from a paragraph or character style or direct formatting makes the error regular,
+                    // a bold paragraph and character style cancelling each other leave it bold).
                     var shown = format;
-                    if (FieldEvaluator.IsError(value) && format.Bold != true)
+                    if (FieldEvaluator.IsError(value))
                     {
                         shown = format.Clone();
-                        shown.Bold = true;
+                        shown.Bold = format.Bold != true;
                     }
                     else if (Evaluator?.NoteAlignment(field) is { } alignment)
                     {
@@ -2040,7 +2042,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var start = 0;
         for (var i = 1; i <= text.Length; i++)
         {
-            if (i < text.Length && ReferenceEquals(charStyles[i], charStyles[start]) && text[i] is not ('\t' or '\n' or '\f' or '\v')
+            if (i < text.Length && charStyles[i].ShapesWith(charStyles[start]) && text[i] is not ('\t' or '\n' or '\f' or '\v')
                 && text[start] is not ('\t' or '\n' or '\f' or '\v'))
                 continue;
             if (text[start] is not ('\t' or '\n' or '\f' or '\v'))
@@ -2369,8 +2371,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // the line 90 + 3.38 + 2.32 pt high, a picture alone 160.5 + 2.32 pt).
             if (piece.Drawing is { } drawing)
             {
-                above = Math.Max(above, drawing.Box.Height);
-                raised = Math.Max(raised, drawing.Box.Height);
+                // Lowered or raised (w:position) it moves as text does (Word's PDFs of docx/external/libreoffice/
+                // extras-layout/tdf138465min: an equation of 15.6 pt lowered 3 pt makes the line's ascent 12.6 pt;
+                // extras-ooxmlimport/tdf119200: equations lowered 2, 3 and 4 pt on an exact line).
+                var drawingLift = NoSpaceRaiseLower ? 0 : piece.Style.Raise;
+                above = Math.Max(above, drawing.Box.Height + Math.Min(0, drawingLift));
+                raised = Math.Max(raised, drawing.Box.Height + drawingLift);
+                lowered = Math.Max(lowered, -drawingLift);
                 drawings = true;
                 pictures = true;
                 continue;

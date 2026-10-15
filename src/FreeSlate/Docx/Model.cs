@@ -1066,6 +1066,13 @@ public sealed partial class ModelReader(DocumentContext context)
         var result = new List<(XElement, List<Block>)>();
         foreach (var shape in content.Descendants(Drawings.Wps + "wsp"))
         {
+            // A shape that goes on with a linked story has no text of its own; it shows what the boxes before it leave
+            // (docx/external/libreoffice/extras-ooxmlexport/tdf73499: "textboxes!" in a group's second shape).
+            if (shape.Element(Drawings.Wps + "linkedTxbx") != null)
+            {
+                result.Add((shape, []));
+                continue;
+            }
             if (shape.Element(Drawings.Wps + "txbx")?.Element(Wml.W + "txbxContent") is not { } box)
                 continue;
             var (savedParagraph, savedRun) = (tableParagraph, tableRun);

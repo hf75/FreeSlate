@@ -2293,8 +2293,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         bool Takes(RowBox row, double top) => Fits(row, top) || Split(row, top) != null;
         // A table of header rows only moves where they do not all fit, whether or not they fit a page (docx/external/
         // libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader: eight rows after a line go to the next page and
-        // break there).
-        if (headers.Count > 0 && !columnEmpty
+        // break there). Before Word 2013 header rows stand where they fit as other rows do, repeat after a break below
+        // all of them and not after one between them (measured with docx/local/hk-*: in modes 11, 12 and 14 a header
+        // row with room for no row below it stays and repeats on the next page; of two the first stays alone and the
+        // second goes on with the table; docx/external/poi/bug57031).
+        if (headers.Count > 0 && !columnEmpty && context.CompatibilityMode >= 15
             && (headers.Count < box.Rows.Count ? !Takes(box.Rows[headers.Count], y + headersHeight) : !Fits(headers[^1], y + headersHeight - headers[^1].Height)))
         {
             NextColumn(natural: true);
@@ -3177,6 +3180,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var hereAtTop = columnEmpty;
         (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
         var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top, double X)>(ReferenceEqualityComparer.Instance);
+        // How far floating objects pushed each anchor's line down and where its room begins after them, and how far
+        // they pushed the paragraph's first line down (for drawings text does not go around, see PlaceAnchor below).
+        var linePushes = new Dictionary<AnchorInline, (double Skip, double? Start, bool Empty)>(ReferenceEqualityComparer.Instance);
+        (PageBox Page, double Skip)? firstPush = null;
         // The part of the paragraph in each column or page (its first line's top there, the column), and the part each
         // anchor's line stands in.
         (PageBox Page, double Top, double Left, double Width)? partAt = null;
@@ -3341,8 +3348,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             y += skip;
             // Where the first line stands as planned the paragraph begins above it; moved to another column or page,
             // it begins with the line.
-            anchorAt ??= (page!, page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - skip - firstLineTop.Top) < 0.01
-                ? paragraphTop.Top : y, left, width);
+            var planned = page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - skip - firstLineTop.Top) < 0.01;
+            anchorAt ??= (page!, planned ? paragraphTop.Top : y, left, width);
+            firstPush ??= (page!, planned ? skip : 0);
             if (partAt is not { } part || !ReferenceEquals(part.Page, page) || Math.Abs(part.Left - left) > 0.01)
                 partAt = ReferenceEquals(anchorAt.Value.Page, page) && Math.Abs(anchorAt.Value.Left - left) < 0.01 ? anchorAt : (page!, y, left, width);
             // A drawing placed from its line stands where the line stood before floating objects pushed it down, as the
@@ -3352,6 +3360,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 lineTops[anchor] = (page!, y - skip, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
                 lineParts[anchor] = partAt!.Value;
+                linePushes[anchor] = (skip, line.Start, line.Pieces.Count == 0);
             }
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
                 line = line.Trimmed(trim);
@@ -3475,8 +3484,27 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // and 81 pt below the paragraph's top there).
             var (anchorPage, anchorTop, columnLeft, columnWidth) = lineParts.TryGetValue(anchor, out var own) ? own : anchorAt ?? (page!, y, left, width);
             var inLine = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage;
-            anchorPage.Drawings.Add(PlaceAnchor(anchor, anchorPage, anchorTop, inLine ? at.Top : anchorTop, columnLeft, columnWidth,
-                character: inLine ? at.X : columnLeft));
+            var (lineTop, character) = inLine ? (at.Top, at.X) : (anchorTop, columnLeft);
+            // Before Word 2013 a drawing that text does not go around stands from the paragraph's first line and its own
+            // line where the floating objects text goes around pushed them: down, and right for the column and the
+            // character (measured with docx/local/np-*: in modes 12 and 14 an unwrapped rectangle 28.35 pt from the
+            // column and the paragraph, or the character and the line, stands 28.35 pt right of and below its line
+            // pushed below one wrapped rectangle and right of another, from the margin where it was; one wrapped square
+            // stays where the line was planned, as in mode 15; docx/external/libreoffice/extras-uiwriter/tdf98987).
+            if (context.CompatibilityMode < 15 && inLine && linePushes.TryGetValue(anchor, out var push)
+                && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is null or { Name.LocalName: "wrapNone" })
+            {
+                if (firstPush is { } first && first.Page == anchorPage)
+                    anchorTop += first.Skip;
+                lineTop += push.Skip;
+                if (push.Start is { } start && start > 0.01)
+                {
+                    if (push.Empty)
+                        character = Math.Max(character, columnLeft + start);
+                    (columnLeft, columnWidth) = (columnLeft + start, Math.Max(0, columnWidth - start));
+                }
+            }
+            anchorPage.Drawings.Add(PlaceAnchor(anchor, anchorPage, anchorTop, lineTop, columnLeft, columnWidth, character: character));
         }
         pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
         pendingOwnAfter = OwnAfter(paragraph);
@@ -3879,7 +3907,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 y += blocks[k - 1] switch
                 {
                     ParagraphBlock before => Between(before, paragraph),
-                    TableBlock before => context.Between(0, SpaceBefore(paragraph, LastParagraph(before.Table), false), 0),
+                    TableBlock before => context.Between(0, SpaceBefore(paragraph, LastParagraph(before.Table), false, afterTable: true), 0),
                     _ => 0,
                 };
             }
@@ -4091,7 +4119,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         context.Between(SpaceAfter(first, second), SpaceBefore(second, first, false), OwnAfter(first));
 
     /// <summary>The space before the paragraph being placed, after the previous one.</summary>
-    double SpaceBefore(ParagraphBlock paragraph) => SpaceBefore(paragraph, stylePrevious, paragraphNumber == 0);
+    double SpaceBefore(ParagraphBlock paragraph) => SpaceBefore(paragraph, stylePrevious, paragraphNumber == 0, afterTable: previous == null && stylePrevious != null);
 
     /// <summary>The last paragraph of a table: its last cell's, in a nested table the nested table's.</summary>
     static ParagraphBlock? LastParagraph(TableModel table) =>
@@ -4105,15 +4133,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The space before a paragraph; contextual spacing drops it after a paragraph of the same style.</summary>
     /// <param name="prior">The paragraph before it, if one.</param>
     /// <param name="first">Whether it begins the document.</param>
-    double SpaceBefore(ParagraphBlock paragraph, ParagraphBlock? prior, bool first)
+    /// <param name="afterTable">Whether a table stands before it, <paramref name="prior"/> its last paragraph.</param>
+    double SpaceBefore(ParagraphBlock paragraph, ParagraphBlock? prior, bool first, bool afterTable = false)
     {
         if (paragraph.Format.ContextualSpacing == true && prior != null && SameStyle(prior, paragraph))
             return 0;
         // HTML auto spacing (w:beforeAutospacing) is 14 pt, none before the document's first paragraph (measured with
         // docx/local/html-divs, altchunk and c2-html, 14 pt after a table too); where the document says
-        // w:doNotUseHTMLParagraphAutoSpacing, the paragraph's own space before (measured with docx/local/c2-html).
+        // w:doNotUseHTMLParagraphAutoSpacing, the paragraph's own space before (measured with docx/local/c2-html). An
+        // item after an item of its list has none, not after a table that ends with one (Word's PDF of
+        // docx/external/libreoffice/extras-ooxmlexport/tdf132807: the item after a table 14 pt below it).
         if (paragraph.Format.BeforeAuto == true && !context.AddsSpacing)
-            return first || prior != null && TableLayout.ListPair(prior, paragraph) ? 0 : 14;
+            return first || !afterTable && prior != null && TableLayout.ListPair(prior, paragraph) ? 0 : 14;
         return paragraph.Format.Before ?? 0;
     }
 

@@ -975,7 +975,10 @@ areas:
           Cambria rounded, Tahoma's VDMX for all glyphs not used; Word's PDFs: Arial at 13 px 13 px below the
           reference point, Calibri at 15 px 14 px, LibreOffice's tdf99631 in Word 89.4 → 98.8 %; PowerPoint:
           poi/at.ecodesign.www_downloads_Vertiefungsvortrag_elektronik slides 21 and 25 0.4 and 1.6 points better).
-          WMF text keeps the unrounded ascent (not measured). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
+          WMF text keeps the unrounded ascent (not measured). 8-bit text reads in its font's character set: Cyrillic
+          (204) as Windows-1251, Central European (238) as 1250 and so on, symbol fonts byte by byte, the rest as
+          Windows-1252 (Word's PDF of LibreOffice's fdo58949: Equation.3 previews with lfCharSet 204 print "НВВ",
+          83.9 → 95.8 %). Flood fills are not drawn, as PowerPoint draws none (measured); escapes
           draw nothing, color management records leave the colors as they are, and OpenGL records are not
           drawn. Verified
           with generated/metafiles (PowerPoint's EMF and WMF exports, GDI+ dual and GDI-only recordings, GDI

@@ -106,6 +106,21 @@ public sealed record RunStyle(
 
     /// <summary>The line metrics Word takes from the font, in points (<see cref="WordFonts.LineMetrics"/>).</summary>
     public (double Above, double Below) Metrics => WordFonts.LineMetrics(Font.Data, Size, LineHeights);
+
+    /// <summary>
+    /// Whether text of this style and another is shaped together, kerned across them: the same font, size, features
+    /// and spacing, whatever their colors, decorations or revision ids (measured with docx/local/kr-15, kr-12: pairs of
+    /// Times New Roman and Aptos kerned across runs of one letter each, also of other w:rsidR and red and black; not
+    /// across runs of 12 and 9 pt or of regular and bold).
+    /// </summary>
+    public bool ShapesWith(RunStyle other) =>
+        ReferenceEquals(this, other)
+        || Font == other.Font && Size == other.Size && Bold == other.Bold && Italic == other.Italic && Features.SequenceEqual(other.Features)
+           && Spacing == other.Spacing && Scale == other.Scale && Raise == other.Raise && ScriptBase == other.ScriptBase
+           && ScriptShift == other.ScriptShift && Caps == other.Caps && SmallCaps == other.SmallCaps && Language == other.Language
+           && RightToLeft == other.RightToLeft && Override == other.Override && LegacyKerning == other.LegacyKerning
+           && KernFrom == other.KernFrom && FitText == other.FitText && FitTextId == other.FitTextId && Hidden == other.Hidden
+           && Border == other.Border && LineHeights == other.LineHeights && Emphasis == other.Emphasis;
 }
 
 /// <summary>

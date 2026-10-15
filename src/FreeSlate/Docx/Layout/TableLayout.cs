@@ -1081,7 +1081,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // Autofit columns of cells without preferred widths hold the cells' own borders too, which every spaced cell
         // draws on both sides (HTML tables Word imports, docx/local/altchunk, altchunk-tables): a cell's own, else the
         // table's inside line or side; they take their room from what the columns may have, so a table its text fills
-        // is as wide as the page (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459).
+        // is as wide as the page (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459). A cell's border set
+        // to nil or none draws nothing and takes no room (docx/external/poi/bug57031: SAS tables whose cells clear
+        // their borders inside a 0.75 pt frame have columns as wide as their text and margins).
         double[]? edges = null;
         if (!sized && format.Layout != "fixed" && rows.SelectMany(r => r.Cells).All(c => c.Format.Width is not { Type: "dxa" or "pct" } cw || cw.Value <= 0))
         {
@@ -1089,10 +1091,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             edges = new double[columns];
             for (var k = 0; k < columns; k++)
             {
-                edges[k] = Width(k == 0 ? outer.Left : inside) + Width(k == columns - 1 ? outer.Right : inside);
-                foreach (var cell in rows.SelectMany(r => r.Cells).Where(c => c.Column == k && c.Format.GridSpan <= 1))
-                    edges[k] = Math.Max(edges[k], Width(Visible(cell.CellBorders.Left) ?? (k == 0 ? outer.Left : inside))
-                                                  + Width(Visible(cell.CellBorders.Right) ?? (k == columns - 1 ? outer.Right : inside)));
+                var single = rows.SelectMany(r => r.Cells).Where(c => c.Column == k && c.Format.GridSpan <= 1).ToList();
+                edges[k] = single.Count == 0 ? Width(k == 0 ? outer.Left : inside) + Width(k == columns - 1 ? outer.Right : inside)
+                    : single.Max(cell => Width(cell.CellBorders.Left ?? (k == 0 ? outer.Left : inside))
+                                         + Width(cell.CellBorders.Right ?? (k == columns - 1 ? outer.Right : inside)));
             }
         }
         var grid = Grid(table, rows, columns, available - extras - (edges?.Sum() ?? 0), sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
@@ -1429,6 +1431,29 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     grid[k] = 0;
             }
             return Scaled(grid);
+        }
+        // A grid that lists fewer columns than the rows use is not the table's: Word builds it from the cells' widths,
+        // those of one column first, then what the spanning cells leave to theirs (Word's PDF of docx/external/
+        // libreoffice/extras-ooxmlimport/n780645: grid columns of 2029 and 7469 twips for a row of two cells, the second
+        // spanning four, and a row of five cells of 2029, 3589, 1530, 989 and 1361, which make the grid).
+        if (table.Grid.Count < columns)
+        {
+            var built = new double[columns];
+            foreach (var single in new[] { true, false })
+            {
+                foreach (var cell in table.Rows.SelectMany(r => r.Cells))
+                {
+                    if (single != cell.Format.GridSpan <= 1 || cell.Format.Width?.Resolve(available) is not { } w || w <= 0 || cell.Column >= columns)
+                        continue;
+                    var end = Math.Min(columns, cell.Column + cell.Format.GridSpan);
+                    var open = Enumerable.Range(cell.Column, end - cell.Column).Where(k => built[k] <= 0).ToList();
+                    var rest = w - Enumerable.Range(cell.Column, end - cell.Column).Sum(k => built[k]);
+                    if (open.Count > 0 && rest > 0)
+                        open.ForEach(k => built[k] = rest / open.Count);
+                }
+            }
+            if (built.All(w => w > 0))
+                return Scaled(built);
         }
         // From the first row's cell widths.
         foreach (var row in table.Rows)

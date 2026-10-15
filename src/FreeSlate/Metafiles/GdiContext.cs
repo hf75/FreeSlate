@@ -37,6 +37,31 @@ public sealed class GdiFont
     public bool StrikeOut { get; init; }
     public int CharSet { get; init; }
     public string Face { get; init; } = "Arial";
+
+    static GdiFont() => System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+    /// <summary>
+    /// The code page GDI reads the font's 8-bit text in ([MS-WMF] 2.1.1.5 CharacterSet): Windows-1251 for Cyrillic
+    /// (204), 1250 for Central European (238) and so on; symbol fonts take each byte as their character (their symbol
+    /// encoding maps it), ANSI, the default and the double-byte sets Windows-1252 (docx/external/libreoffice/
+    /// extras-odfexport/fdo58949: Equation.3 previews with lfCharSet 204 print "НВВ" in Word's PDF).
+    /// </summary>
+    public System.Text.Encoding Encoding => CharSet switch
+    {
+        2 => System.Text.Encoding.Latin1,
+        161 => Code(1253),
+        162 => Code(1254),
+        163 => Code(1258),
+        177 => Code(1255),
+        178 => Code(1256),
+        186 => Code(1257),
+        204 => Code(1251),
+        222 => Code(874),
+        238 => Code(1250),
+        _ => Code(1252),
+    };
+
+    static System.Text.Encoding Code(int page) => System.Text.Encoding.GetEncoding(page);
 }
 
 /// <summary>

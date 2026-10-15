@@ -582,7 +582,7 @@ public sealed class EmfPlayer
         if ((options & 0x10) != 0)   // ETO_GLYPH_INDEX: glyph ids, mapped back to characters through the font
             text = GlyphText(o + offString, chars);
         else
-            text = wide ? Encoding.Unicode.GetString(Span(o + offString, chars * 2)) : Encoding.Latin1.GetString(Span(o + offString, chars));
+            text = wide ? Encoding.Unicode.GetString(Span(o + offString, chars * 2)) : gdi.State.Font.Encoding.GetString(Span(o + offString, chars));
         double[]? dx = null;
         if (offDx > 0)
         {
@@ -619,7 +619,7 @@ public sealed class EmfPlayer
         var options = U32(o + 20);
         var hasRect = (options & 0x100) == 0;   // ETO_NO_RECT absent
         var textOffset = o + 36 + (hasRect ? 16 : 0);
-        var text = (options & 0x200) != 0 ? Encoding.Latin1.GetString(Span(textOffset, chars)) : Encoding.Unicode.GetString(Span(textOffset, chars * 2));
+        var text = (options & 0x200) != 0 ? gdi.State.Font.Encoding.GetString(Span(textOffset, chars)) : Encoding.Unicode.GetString(Span(textOffset, chars * 2));
         gdi.Text(x, y, text, null, null, null);
     }
 

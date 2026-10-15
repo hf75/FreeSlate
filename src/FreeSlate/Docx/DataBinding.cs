@@ -28,26 +28,19 @@ public sealed class DataBinding(DocumentContext context)
         var binding = sdtPr.Child("dataBinding");
         if (binding?.Attr("xpath") is not { Length: > 0 } xpath || sdtPr.Child("picture") != null)
             return null;
-        var store = binding.Attr("storeItemID") ?? "";
-        if (Items().GetValueOrDefault(store.Trim().ToUpperInvariant()) is not { } document)
-            return null;
-        var namespaces = new XmlNamespaceManager(new NameTable());
-        foreach (Match m in Prefix.Matches(binding.Attr("prefixMappings") ?? ""))
-            namespaces.AddNamespace(m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value);
-        string? value;
-        try
+        // A binding without a data store item takes the first custom XML part, in the order the document's
+        // relationships list them, in which the node exists (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/
+        // tdf147724: "HERUNTERLADEN" from item2, listed before item1, whose node says "ABC"); one naming an item that is
+        // not there keeps the stored text.
+        var store = binding.Attr("storeItemID");
+        IEnumerable<XDocument> documents = string.IsNullOrWhiteSpace(store) ? Items().Values
+            : Items().GetValueOrDefault(store.Trim().ToUpperInvariant()) is { } named ? [named] : [];
+        string? value = null;
+        foreach (var document in documents)
         {
-            value = (document.XPathEvaluate(xpath, namespaces) as IEnumerable<object>)?.FirstOrDefault() switch
-            {
-                XElement element => element.Value,
-                XAttribute attribute => attribute.Value,
-                XText text => text.Value,
-                _ => null,
-            };
-        }
-        catch (Exception e) when (e is XPathException or ArgumentException or InvalidOperationException)
-        {
-            return null;
+            value = Evaluate(document, xpath, binding.Attr("prefixMappings"));
+            if (value != null)
+                break;
         }
         // An empty node leaves a control showing its placeholder as it is (measured with docx/local/bindempty: the
         // placeholder text stays, without w:showingPlcHdr the control is empty; docx/external/poi/60316).
@@ -79,6 +72,43 @@ public sealed class DataBinding(DocumentContext context)
             return item.Attr("displayText") ?? value;
         return value;
     }
+
+    /// <summary>
+    /// The value of the node an XPath finds in a data store item, or null. A prefix the mappings do not declare names the
+    /// item's namespaces in their order, ns0 its root's, as Word writes them (Word's PDF of docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf151912: /ns0:BlogPostInfo/ns0:PostTitle without w:prefixMappings finds the title in a
+    /// part whose root has a default namespace).
+    /// </summary>
+    static string? Evaluate(XDocument document, string xpath, string? mappings)
+    {
+        var namespaces = new XmlNamespaceManager(new NameTable());
+        foreach (Match m in Prefix.Matches(mappings ?? ""))
+            namespaces.AddNamespace(m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value);
+        var uris = document.Root?.DescendantsAndSelf().Select(e => e.Name.NamespaceName).Where(u => u.Length > 0).Distinct().ToList() ?? [];
+        foreach (Match m in Undeclared.Matches(xpath))
+        {
+            var prefix = m.Groups[1].Value;
+            if (namespaces.LookupNamespace(prefix) == null && prefix.StartsWith("ns", StringComparison.Ordinal)
+                && int.TryParse(prefix.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture, out var k) && k < uris.Count)
+                namespaces.AddNamespace(prefix, uris[k]);
+        }
+        try
+        {
+            return (document.XPathEvaluate(xpath, namespaces) as IEnumerable<object>)?.FirstOrDefault() switch
+            {
+                XElement element => element.Value,
+                XAttribute attribute => attribute.Value,
+                XText text => text.Value,
+                _ => null,
+            };
+        }
+        catch (Exception e) when (e is XPathException or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    static readonly Regex Undeclared = new("(?<![\\w.-])([A-Za-z_][\\w.-]*):(?=[A-Za-z_*])", RegexOptions.Compiled);
 
     Dictionary<string, XDocument> Items()
     {

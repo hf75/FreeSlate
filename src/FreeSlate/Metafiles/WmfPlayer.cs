@@ -248,7 +248,7 @@ public sealed class WmfPlayer
             case 0x0521:   // TEXTOUT
             {
                 var length = I16(p);
-                var text = Ansi.GetString(Span(p + 2, length));
+                var text = gdi.State.Font.Encoding.GetString(Span(p + 2, length));
                 var padded = (length + 1) & ~1;
                 gdi.Text(I16(p + 2 + padded + 2), I16(p + 2 + padded), text, null, null, null);
                 break;
@@ -265,7 +265,7 @@ public sealed class WmfPlayer
                     rect = (I16(q), I16(q + 2), I16(q + 4), I16(q + 6));
                     q += 8;
                 }
-                var text = Ansi.GetString(Span(q, length));
+                var text = gdi.State.Font.Encoding.GetString(Span(q, length));
                 q += (length + 1) & ~1;
                 double[]? dx = null;
                 if (q + length * 2 <= p + size)

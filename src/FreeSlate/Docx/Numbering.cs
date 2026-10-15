@@ -196,11 +196,18 @@ public sealed class NumberingDefinitions
     {
         if (depth > 8 || !abstracts.TryGetValue(id, out var element))
             return null;
-        if (element.Child("numStyleLink").Val() is { } styleId
-            && styles.Find(styleId)?.ParagraphProperties.Child("numPr").Child("numId").Val() is { } linkedNum
-            && instances.TryGetValue(linkedNum, out var num) && num.Child("abstractNumId").Val() is { } linkedAbstract
-            && linkedAbstract != id)
-            return Abstract(linkedAbstract, depth + 1);
+        if (element.Child("numStyleLink").Val() is { } styleId)
+        {
+            if (styles.Find(styleId)?.ParagraphProperties.Child("numPr").Child("numId").Val() is { } linkedNum
+                && instances.TryGetValue(linkedNum, out var num) && num.Child("abstractNumId").Val() is { } linkedAbstract
+                && linkedAbstract != id)
+                return Abstract(linkedAbstract, depth + 1);
+            // Without that numbering style the definition that names it as its own (w:styleLink) has the levels (Word's
+            // PDF of docx/external/libreoffice/extras-ooxmlexport/tdf120394: an empty styles part, "1" and "1.2.1"
+            // from the abstract numbering linked to CurrentList1).
+            if (abstracts.FirstOrDefault(a => a.Key != id && a.Value.Child("styleLink").Val() == styleId).Key is { } owner)
+                return Abstract(owner, depth + 1);
+        }
         return (id, element);
     }
 }

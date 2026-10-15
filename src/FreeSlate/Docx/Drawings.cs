@@ -643,12 +643,14 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     }
 
     /// <summary>
-    /// VML WordArt's typeface: its family where it is there, else Arial, as GDI maps names it lacks (docx/external/
+    /// VML WordArt's typeface: its family where it is installed, else Arial, as GDI maps names it lacks (docx/external/
     /// libreoffice/extras-uiwriter/watermark: "DejaVu Sans Light" in Arial, not in Verdana as PowerPoint takes the name;
-    /// extras-ooxmlexport/watermark-font: "DejaVu Serif" in Arial too).
+    /// extras-ooxmlexport/watermark-font: "DejaVu Serif" in Arial too); GDI does not see Office's cloud fonts
+    /// (extras-ooxmlexport/fdo74110: "Noto Sans", there only in Office's font cache, in Arial).
     /// </summary>
     static FreeSlate.Text.ResolvedFont WordArtTypeface(string family, bool bold, bool italic) =>
-        FreeSlate.Text.FontResolver.Default.TryResolveFamily(family, bold, italic) ?? FreeSlate.Text.FontResolver.Default.Resolve("Arial", bold, italic);
+        (FreeSlate.Fonts.FontLocator.Default.IsInstalled(family) ? FreeSlate.Text.FontResolver.Default.TryResolveFamily(family, bold, italic) : null)
+        ?? FreeSlate.Text.FontResolver.Default.Resolve("Arial", bold, italic);
 
     /// <summary>Whether VML WordArt's text path style kerns its text (v-text-kern:t).</summary>
     static bool Kerned(string? style) => (style ?? "").Split(';').Any(part => part.Split(':') is [var name, var value]

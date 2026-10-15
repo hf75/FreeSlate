@@ -214,7 +214,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         foreach (var (child, childText) in drawing.ChildText ?? [])
         {
-            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect || childText.Count == 0)
+            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect
+                || childText.Count == 0 && child.Element(Drawings.Wps + "linkedTxbx") == null)
                 continue;
             // WordArt in a group bends its text in its shape's place.
             if (Warped(child.Element(Drawings.Wps + "bodyPr")) is { } childWarp && WordArt(childText, childWarp) is { } childArt)
@@ -468,7 +469,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             var (left, top) = (x + l, y + t + offset);
             Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
-            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, rotation == 0 ? inner : []);
+            // An unturned box's lines stand on Word's device as the body's do (docx/external/libreoffice/
+            // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments).
+            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
         }
         else
         {
@@ -613,7 +616,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     if (context.CompatibilityMode <= 12 && shape && inline.Drawing.Attribute(Vml.Converted) == null)
                         (dx, dy) = (2 * dx, 2 * dy);
                     var (w, h) = Drawings.Extent(inline.Drawing);
-                    var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height;
+                    var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height - piece.Style.Raise;
                     if (piece.Rule is { } rule)
                         (w, top) = (rule.Width, baseline + rule.Bottom - h);
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
@@ -689,7 +692,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// <see cref="DeviceGlyphs"/>). The line goes on the device in stretches, each from the nearest whole dot, its error
     /// counted from there: at the line's start (on a dot already), after a tab or anything but plain text and where a
     /// piece does not go on where the one before ended; plain text is one glyph per character at the font's advances
-    /// (kerned or not), without spacing, scaling or synthetic bold, left to right (measured with docx/local/adv-*, 92
+    /// (kerned or not, spaced or not), without scaling or synthetic bold, left to right (measured with docx/local/adv-*, 92
     /// to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103 documents of the corpus,
     /// 67,985 characters: 88.5 %, 72.5 % before; the error counted from the line's exact start instead: 84.0 %). Null
     /// for lines without plain text.
@@ -742,8 +745,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var exact = piece.Advances[i] / Dot;
                 // Kerning counts in the natural width as part of the glyph's design width (docx/generated/*, Aptos with
                 // w:kern: 77.8 % of the characters within half a dot of Word's PDF; the kerning rounded on its own 64.3 %).
-                var kerning = (int)Math.Round(piece.Advances[i] * data.UnitsPerEm / piece.Style.Size - design);
-                var natural = DeviceGlyphs.Natural(design + kerning, data.UnitsPerEm, pixels);
+                var spacing = piece.Style.Spacing;
+                var kerning = (int)Math.Round((piece.Advances[i] - spacing) * data.UnitsPerEm / piece.Style.Size - design);
+                // Character spacing (w:spacing) adds its whole dots (measured with docx/local/gxs-a, gxs-k: 5, 10, 20, -5
+                // and -10 twips in Times New Roman, Calibri and Arial, kerned and not, 2, 4, 8, -2 and -4 dots more than
+                // the natural width, a dot more or less where the error says).
+                var natural = DeviceGlyphs.Natural(design + kerning, data.UnitsPerEm, pixels) + (int)Math.Round(spacing / Dot, MidpointRounding.AwayFromZero);
                 // A justified space is as much wider on the device as the line's spaces are, in whole dots; the error
                 // decides which of them take a dot more or less (Word's PDF of docx/external/poi/bug57031: spaces of 25
                 // dots 33 or 34, 31 or 32 wide, a dot more on one or two of 10 to 18).
@@ -811,7 +818,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// The glyphs of a piece of plain text (see <see cref="DevicePositions"/>): one per character at the font's advance,
-    /// kerned or not; none for a piece without text, null for tabs, objects and text that is not plain.
+    /// kerned or not, spaced or not; none for a piece without text, null for tabs, objects and text that is not plain.
     /// </summary>
     static uint[]? PlainGlyphs(Piece piece)
     {
@@ -831,8 +838,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         for (var i = 0; i < glyphs.Length; i++)
         {
             var glyph = glyphs[i];
+            // Kern table pairs before Word 2010 (RunStyle.LegacyKerning) count as kerning; the last glyph's pair may be
+            // with the next piece's or line's first (RunStyle.ShapesWith).
+            var pair = style.LegacyKerning && i + 1 < glyphs.Length ? data.LegacyKerning(glyph.Id, glyphs[i + 1].Id) * style.Size : 0;
+            var kerned = (style.LegacyKerning || style.Features.Contains("kern")) && i == glyphs.Length - 1;
             if (glyph.Cluster != i || glyph.Id == 0 || char.IsSurrogate(piece.Text[i]) || Math.Abs(glyph.OffsetX) > 1e-9
-                || Math.Abs(piece.Advances[i] - glyph.Advance * style.Size) > 1e-4 || style.Font.SyntheticBold || style.Spacing != 0)
+                || !kerned && Math.Abs(piece.Advances[i] - glyph.Advance * style.Size - style.Spacing - pair) > 1e-4 || style.Font.SyntheticBold)
                 return null;
             ids[i] = glyph.Id;
         }
