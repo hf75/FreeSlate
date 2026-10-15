@@ -131,17 +131,22 @@ public sealed class RunFormat
             {
                 case "rStyle": Style = e.Val(); break;
                 case "rFonts":
-                    Ascii = e.Attr("ascii") ?? Ascii;
-                    HAnsi = e.Attr("hAnsi") ?? HAnsi;
-                    EastAsia = e.Attr("eastAsia") ?? EastAsia;
-                    ComplexScript = e.Attr("cs") ?? ComplexScript;
+                {
+                    // An empty font name names nothing: the slot keeps the font it had (LibreOffice's
+                    // extras-ooxmlexport/font-name-is-empty: w:ascii="" prints in the style's Calibri).
+                    string? Named(string name) => e.Attr(name) is { Length: > 0 } font && !string.IsNullOrWhiteSpace(font) ? font : null;
+                    Ascii = Named("ascii") ?? Ascii;
+                    HAnsi = Named("hAnsi") ?? HAnsi;
+                    EastAsia = Named("eastAsia") ?? EastAsia;
+                    ComplexScript = Named("cs") ?? ComplexScript;
                     // A font named directly replaces a theme font of the same slot set at a lower level.
-                    AsciiTheme = e.Attr("asciiTheme") ?? (e.Attr("ascii") != null ? null : AsciiTheme);
-                    HAnsiTheme = e.Attr("hAnsiTheme") ?? (e.Attr("hAnsi") != null ? null : HAnsiTheme);
-                    EastAsiaTheme = e.Attr("eastAsiaTheme") ?? (e.Attr("eastAsia") != null ? null : EastAsiaTheme);
-                    ComplexScriptTheme = e.Attr("cstheme") ?? (e.Attr("cs") != null ? null : ComplexScriptTheme);
+                    AsciiTheme = e.Attr("asciiTheme") ?? (Named("ascii") != null ? null : AsciiTheme);
+                    HAnsiTheme = e.Attr("hAnsiTheme") ?? (Named("hAnsi") != null ? null : HAnsiTheme);
+                    EastAsiaTheme = e.Attr("eastAsiaTheme") ?? (Named("eastAsia") != null ? null : EastAsiaTheme);
+                    ComplexScriptTheme = e.Attr("cstheme") ?? (Named("cs") != null ? null : ComplexScriptTheme);
                     Hint = e.Attr("hint") ?? Hint;
                     break;
+                }
                 case "sz": Size = e.HalfPoints("val") ?? Size; break;
                 case "szCs": SizeComplex = e.HalfPoints("val") ?? SizeComplex; break;
                 case "b": Bold = e.OnOff(); break;

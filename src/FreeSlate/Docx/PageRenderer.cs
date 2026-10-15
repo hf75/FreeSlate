@@ -496,7 +496,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var line in lines)
         {
             var grows = onPage && line.Angle == 0;
-            var placed = grows ? OnDots(line) : line;
+            var placed = grows ? OnDots(line, paperSize.Width) : line;
             onDevice = grows && DevicePlaced ? DevicePositions(placed) : null;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
@@ -689,7 +689,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// <see cref="DeviceGlyphs"/>). The line goes on the device in stretches, each from the nearest whole dot, its error
     /// counted from there: at the line's start (on a dot already), after a tab or anything but plain text and where a
     /// piece does not go on where the one before ended; plain text is one glyph per character at the font's advances
-    /// (kerned or not), without spacing, scaling or synthetic bold, left to right and below 24 pt (measured with docx/local/adv-*, 92
+    /// (kerned or not), without spacing, scaling or synthetic bold, left to right (measured with docx/local/adv-*, 92
     /// to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103 documents of the corpus,
     /// 67,985 characters: 88.5 %, 72.5 % before; the error counted from the line's exact start instead: 84.0 %). Null
     /// for lines without plain text.
@@ -703,7 +703,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var stretches = new List<(int Index, int Start, double Error)>();
         var pieces = new List<(Piece Piece, int Index, bool Joined)>();
         var (open, end) = (false, 0.0);
-        Piece? previous = null;
+        Piece? previous = null, previousPiece = null;
         foreach (var piece in line.Pieces)
         {
             if (PlainGlyphs(piece) is not { } ids)
@@ -718,11 +718,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var nominal = NominalPositions(piece);
             // Word writes runs one after the other as one run of its PDF where they are alike (SameRun).
             pieces.Add((piece, glyphs.Count, previous != null && piece.Link == previous.Link && SameRun(piece.Style, previous.Style)));
+            // A run of another size or height starts a stretch of its own (Word's PDFs of PowerTools'
+            // WC/WC034-Endnotes-Before and RC/RC007-Endnotes-Before: the text after a superscript endnote reference on
+            // the dot nearest to its place, 43 → 75 % of the characters within half a dot; the corpus sample alike).
+            var resync = previousPiece is { } last
+                && (Math.Abs(last.Style.Size - piece.Style.Size) > 1e-6 || Math.Abs(last.Style.Raise - piece.Style.Raise) > 1e-6);
+            previousPiece = piece;
             previous = piece;
-            if (!open || Math.Abs(piece.X - end) > 0.01)
+            // A stretch starts on the dot nearest to its place, halves down (measured with docx/local/gxt-*: text after
+            // tab stops of 1440 + 7·k twips at the stop's dot, 1322.5 dots at 1322, 1357.5 at 1357; 58 of 60 exact
+            // and the halves so).
+            if (!open || resync || Math.Abs(piece.X - end) > 0.01)
             {
                 var at = (placed.Left + piece.X) / Dot;
-                var start = (int)Math.Round(at);
+                var start = (int)Math.Ceiling(at - 0.5 - 1e-6);
                 stretches.Add((glyphs.Count, start, start - at));
                 open = true;
             }
@@ -738,7 +747,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // A justified space is as much wider on the device as the line's spaces are, in whole dots; the error
                 // decides which of them take a dot more or less (Word's PDF of docx/external/poi/bug57031: spaces of 25
                 // dots 33 or 34, 31 or 32 wide, a dot more on one or two of 10 to 18).
-                if (piece.Text[i] == ' ' && piece.SpaceExtra != 0 && spaces++ < piece.JustifiedSpaces)
+                if (piece.SpaceExtra != 0 && piece.Widened(i, ref spaces))
                 {
                     natural += (int)Math.Round(piece.SpaceExtra / Dot);
                     exact += piece.SpaceExtra / Dot;
@@ -813,7 +822,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return [];
         var style = piece.Style;
         var data = style.Font.Data;
-        if (data.IsColor || Math.Abs(style.Scale - 1) > 1e-6 || style.Size is <= 0 or >= 24)
+        if (data.IsColor || Math.Abs(style.Scale - 1) > 1e-6 || style.Size <= 0)
             return null;
         var glyphs = data.GlyphsWithFeatures(piece.Text, style.Features, language: style.Language);
         if (glyphs.Length != piece.Text.Length)
@@ -840,7 +849,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             positions[i] = x;
             x += piece.Advances[i];
-            if (piece.Text[i] == ' ' && spaces++ < piece.JustifiedSpaces)
+            if (piece.Widened(i, ref spaces))
                 x += piece.SpaceExtra;
         }
         positions[^1] = x;
@@ -934,7 +943,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// indent each rounded to one, halves to even (measured with docx/local/lsg-*, lsg2-*: margins of 1120 to 1160
     /// twips start where 467.5 dots goes to 468 and 472.5 to 472, indents of 0 to 24 twips add whole dots).
     /// </summary>
-    static PlacedLine OnDots(PlacedLine placed)
+    static PlacedLine OnDots(PlacedLine placed, double pageWidth)
     {
         // In whole twips first, so that halves stay halves.
         static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
@@ -946,7 +955,27 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // 7, 39 of 40 centered and 35 of 40 right aligned lines on Word's dot; docx/external/libreoffice/
         // extras-ooxmlexport/tdf106174_rtlParaAlign: margins of 750 twips on a page 8391 wide, the right edge at
         // 3183.75 dots on 3184).
-        if (placed.Line.Alignment is { } aligned)
+        // Lines of right-to-left paragraphs stand on the device's grid mirrored about the page's width in whole dots, up
+        // (measured by agent AQ in Word's PDFs: tdf106174_rtlParaAlign, a page of 3496.25 dots mirrored about 3497, the
+        // right margin of 312.5 dots putting start aligned text's right end at 3185; fdo72560, fdo72560b, fdo72560c: end
+        // aligned text's left end at 473 and 474): start aligned (and justified) lines end at the room's right edge
+        // counted from the page's right edge and floored, end aligned lines begin at its left edge so counted, centered
+        // lines take half the room left over floored from the room's right edge so counted.
+        if (placed.Line.Mirrored is { } mirrored && placed.Line.Pieces.Count > 0)
+        {
+            var width = pageWidth / Dot;
+            var axis = Math.Ceiling(width - 1e-6);
+            var (roomLeft, roomRight) = ((placed.Left + mirrored.Left) / Dot, (placed.Left + mirrored.Right) / Dot);
+            var (target, current) = mirrored.Justification switch
+            {
+                "right" or "end" => (axis - Math.Floor(width - roomLeft + 1e-6), roomLeft),
+                "center" => (axis - Math.Floor(width - roomRight + 1e-6) - Math.Floor((roomRight - roomLeft - mirrored.Width / Dot) / 2 + 1e-6),
+                    roomRight - (roomRight - roomLeft - mirrored.Width / Dot) / 2),
+                _ => (axis - Math.Floor(width - roomRight + 1e-6), roomRight),
+            };
+            shift = (target - current) * Dot;
+        }
+        else if (placed.Line.Alignment is { } aligned)
         {
             var left = Snap(placed.Left) + Snap(aligned.Left);
             var right = Snap(placed.Left + aligned.Right);
@@ -1263,7 +1292,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             {
                 Text = piece.Text, Style = style with { Color = color, Hollow = false, TextFill = null, Outline = null },
                 X = piece.X, Advances = piece.Advances, Lead = piece.Lead, Level = piece.Level,
-                SpaceExtra = piece.SpaceExtra, JustifiedSpaces = piece.JustifiedSpaces,
+                SpaceExtra = piece.SpaceExtra, JustifiedSpaces = piece.JustifiedSpaces, UnspreadSpaces = piece.UnspreadSpaces,
             }, x + dx, baseline + dy));
         var gray = FreeSlate.Drawing.RgbColor.FromHex("999999");
         double move = 0;
@@ -1416,15 +1445,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             return sb.ToString();
         }
-        var at = x + (width - baseWidth) / 2;
-        foreach (var (text, style) in baseText)
-        {
-            sb.Append(TextAt(text, style, at, baseline));
-            at += ParagraphLayout.Measure(text, style).Sum();
-        }
-        var letters = rubyText.Sum(t => t.Text.EnumerateRunes().Count());
-        var free = width - rubyWidth;
-        var (start, gap) = free <= 0.01 || letters == 0 ? (x, 0.0) : ruby.Align switch
+        // The narrower of base and ruby spreads over the wider one's width as w:rubyAlign says, the base too
+        // (measured: Word's PDF of docx/external/poi/61470: とうきょう over 東京 at
+        // distributeSpace, 東 at 73.344 and 京 at 87.144 pt, half a gap at either end).
+        (double Start, double Gap) Spread(int letters, double free) => free <= 0.01 || letters == 0 ? (x, 0.0) : ruby.Align switch
         {
             "left" => (x, 0.0),
             "right" or "rightVertical" => (x + free, 0.0),
@@ -1432,12 +1456,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             "distributeSpace" => (x + free / letters / 2, free / letters),
             _ => (x + free / 2, 0.0),
         };
-        at = start;
-        foreach (var (text, style) in rubyText)
+        void Draw(List<(string Text, RunStyle Style)> texts, double width, double y)
         {
-            sb.Append(TextAt(text, style, at, baseline - ruby.Raise, gap));
-            at += ParagraphLayout.Measure(text, style).Sum() + gap * text.EnumerateRunes().Count();
+            var (at, gap) = Spread(texts.Sum(t => t.Text.EnumerateRunes().Count()), width);
+            foreach (var (text, style) in texts)
+            {
+                sb.Append(TextAt(text, style, at, y, gap));
+                at += ParagraphLayout.Measure(text, style).Sum() + gap * text.EnumerateRunes().Count();
+            }
         }
+        Draw(baseText, width - baseWidth, baseline);
+        Draw(rubyText, width - rubyWidth, baseline - ruby.Raise);
         return sb.ToString();
     }
 

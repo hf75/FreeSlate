@@ -27,6 +27,9 @@ public sealed class NumberingLevel
     public XElement? ParagraphProperties, RunProperties;
     public string? PictureBullet;
 
+    /// <summary>Word 6 numbering (w:legacy): how far the text stands from the number's start at least and from its end, in points.</summary>
+    public (double Indent, double Space)? Legacy;
+
     public static NumberingLevel Read(XElement lvl)
     {
         var level = new NumberingLevel
@@ -44,6 +47,8 @@ public sealed class NumberingLevel
             ParagraphProperties = lvl.Child("pPr"),
             RunProperties = lvl.Child("rPr"),
             PictureBullet = lvl.Child("lvlPicBulletId").Val(),
+            Legacy = lvl.Child("legacy") is { } legacy && legacy.Attr("legacy") is "1" or "true" or "on"
+                ? (legacy.Twips("legacyIndent") ?? 0, legacy.Twips("legacySpace") ?? 0) : null,
         };
         // A level text without w:val shows nothing; an empty one too.
         if (lvl.Child("lvlText") is { } text && text.Attr("val") == null)

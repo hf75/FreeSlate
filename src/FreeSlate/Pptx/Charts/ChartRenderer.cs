@@ -402,7 +402,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <param name="nudge">Pixels added after snapping: ½ puts a 1 px outline on whole pixels.</param>
-    string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0, double nudge = 0)
+    string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0, double nudge = 0, bool area = false)
     {
         double x0, y0, x1, y1;
         if (snap)
@@ -424,6 +424,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // Picture patterns start at the shape's own origin: the rectangle is drawn there and moved into place.
         if (fill is PictureFill)
             return $"<rect transform=\"translate({Units.Css(x0)} {Units.Css(y0)})\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
+        // An area's dashed outline begins at the bottom left corner and runs right, up, left and down, as Office writes
+        // the rectangle (measured with Word's PDF of LibreOffice's extras-ooxmlexport/Chart_Plot_BorderLine_Style: the
+        // plot area's dashes from its bottom left corner, 77.5 → 99.6 %); bars' outlines not (Chart_BorderLine_Style:
+        // 94.5 → 79.2 % so).
+        if (area && outline is { Visible: true } && outline.Dash is not ("solid" or "") && radius <= 0)
+            return $"<path d=\"M{Units.Css(x0)} {Units.Css(y1)}H{Units.Css(x1)}V{Units.Css(y0)}H{Units.Css(x0)}Z\"{fillAttributes}{stroke}/>";
         return $"<rect x=\"{Units.Css(x0)}\" y=\"{Units.Css(y0)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\"{corners}{fillAttributes}{stroke}/>";
     }
 
@@ -477,7 +483,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var outline = layers.Count > 0 ? OutlineReader.Merge(layers) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
-        return Rect(box, fill, outline, snap, radius);
+        return Rect(box, fill, outline, snap, radius, area: true);
     }
 
     /// <summary>

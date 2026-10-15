@@ -104,12 +104,15 @@ public sealed class MathLayout
 
     MathItem Finished(MathItem item, bool display, double size)
     {
+        item.Ascent += U(table.MathLeading, size);
+        // A displayed equation is at least as high as the math font's ascent with its line gap above the baseline
+        // and its descent below (measured by agent AJ in Word's PDFs of LibreOffice's extras-ooxmlexport/math-color:
+        // seven baselines within 0.08 pt with Cambria Math's 1593 + 353 units above, 11.40 pt at 12 pt, not 11.10).
         if (display)
         {
-            item.Ascent = Math.Max(item.Ascent, font.Ascent * size);
+            item.Ascent = Math.Max(item.Ascent, (font.Ascent + font.LineGap) * size);
             item.Descent = Math.Max(item.Descent, font.Descent * size);
         }
-        item.Ascent += U(table.MathLeading, size);
         return item;
     }
 
@@ -342,18 +345,45 @@ public sealed class MathLayout
     /// </param>
     MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false, bool broken = false, bool closes = true)
     {
+        var em = Sized(size, env);
+        // After a comma Word drops a single space, sets two as a space of two ems and keeps three or more as they are
+        // (measured with docx/local/msp2-a at 11 pt: "x, y" as "x,y", the comma's thin space after it; "x,  y" 21.98
+        // and "x,  +y" 22.10 pt from the comma's end to what follows; "x,   y" three spaces of their own width;
+        // semicolons, periods and colons keep their spaces; LibreOffice's extras-ooxmlexport/math-mso2k7).
+        for (var i = 0; i < atoms.Count - 1; i++)
+        {
+            if (atoms[i].Item is not GlyphItem { Text: "," })
+                continue;
+            var spaces = 0;
+            while (i + 1 + spaces < atoms.Count && IsSpace(atoms[i + 1 + spaces]))
+                spaces++;
+            if (spaces == 1)
+                atoms.RemoveAt(i + 1);
+            else if (spaces == 2 && atoms[i + 1].Item is GlyphItem space)
+            {
+                atoms.RemoveRange(i + 1, 2);
+                atoms.Insert(i + 1, atoms[i] with
+                {
+                    Item = new GlyphItem { Font = space.Font, Glyph = space.Glyph, Size = space.Size, Color = space.Color, Text = space.Text, Width = 2 * em },
+                    Class = AtomClass.Ord, Right = AtomClass.Ord,
+                });
+            }
+        }
         for (var i = 0; i < atoms.Count; i++)
         {
             if (atoms[i].Class != AtomClass.Bin)
                 continue;
-            var before = i == 0 ? continued ? AtomClass.Ord : AtomClass.Open : atoms[i - 1].Right;
+            // Spaces before an operator do not count: after a comma and spaces it is unary too (msp2-a: "x,  +y").
+            var k = i - 1;
+            while (k >= 0 && IsSpace(atoms[k]))
+                k--;
+            var before = k < 0 ? continued ? AtomClass.Ord : AtomClass.Open : atoms[k].Right;
             var after = i + 1 < atoms.Count ? atoms[i + 1].Class : broken ? AtomClass.Ord : AtomClass.Close;
             if (before is AtomClass.Bin or AtomClass.Op or AtomClass.Rel or AtomClass.Open or AtomClass.Punct || after is AtomClass.Rel or AtomClass.Close or AtomClass.Punct)
                 atoms[i] = atoms[i] with { Class = AtomClass.Ord, Right = AtomClass.Ord };
         }
         var row = new ListItem();
         var x = 0.0;
-        var em = Sized(size, env);
         for (var i = 0; i < atoms.Count; i++)
         {
             // Spaces typed in a run stand as they are, without the spacing of their neighbors' classes.
@@ -368,9 +398,10 @@ public sealed class MathLayout
             // it: before a closing delimiter or separator, under a fraction's bar, under an accent, at the end of a
             // script and of the equation (LibreOffice's extras-ooxmlexport/math-d: x→| 0.33 pt, math-accents: a bar
             // over a 6.96 pt wide, docx/local/mth-d-close); not at the end of an n-ary's operand (closes).
-            if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter
+            // A space after the letter takes it too (docx/local/msp-a, msp2-a: "a b" and "x ,y" 0.21 and 0.36 pt).
+            if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter && !IsSpace(atoms[i])
                 && (i + 1 == atoms.Count ? closes : atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct
-                    || atoms[i + 1].Item is not GlyphItem))
+                    || atoms[i + 1].Item is not GlyphItem || IsSpace(atoms[i + 1])))
                 x += letter.Italic;
         }
         row.Width = x;
@@ -584,6 +615,9 @@ public sealed class MathLayout
         '(' or '[' or '{' or 0x27E8 or 0x2308 or 0x230A or 0x27E6 or 0x2329 => AtomClass.Open,
         ')' or ']' or '}' or 0x27E9 or 0x2309 or 0x230B or 0x27E7 or 0x232A or '!' => AtomClass.Close,
         ',' or ';' => AtomClass.Punct,
+        // The axis ellipsis spaces as an inner atom, a thin space before punctuation (measured with docx/local/msp-a:
+        // "x+⋯,y" and "x+…,y" with 1.82 pt more than the glyphs' widths before the comma at 11 pt).
+        0x22EF => AtomClass.Inner,
         _ => AtomClass.Ord,
     };
 

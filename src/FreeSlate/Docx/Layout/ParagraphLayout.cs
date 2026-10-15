@@ -29,6 +29,21 @@ public sealed class Piece
     public double SpaceExtra { get; set; }
     public int JustifiedSpaces { get; set; }
 
+    /// <summary>The spaces at the piece's start that justification leaves as they are (those that begin a line).</summary>
+    public int UnspreadSpaces { get; set; }
+
+    /// <summary>
+    /// Whether justification widens the character at <paramref name="index"/>: a space past the unspread ones, among
+    /// the justified ones; <paramref name="spaces"/> counts the piece's spaces met so far.
+    /// </summary>
+    public bool Widened(int index, ref int spaces)
+    {
+        if (Text[index] != ' ')
+            return false;
+        var k = spaces++;
+        return k >= UnspreadSpaces && k < UnspreadSpaces + JustifiedSpaces;
+    }
+
     public bool IsTab { get; init; }
 
     /// <summary>Part of the paragraph's list number (with a space after it).</summary>
@@ -165,6 +180,16 @@ public sealed class Line
     /// and the width of its content, by which Word places it on its device (PageRenderer.OnDots); null for others.
     /// </summary>
     public (bool Center, double Left, double Right, double Width)? Alignment { get; set; }
+
+    /// <summary>
+    /// For a line of a right-to-left paragraph: its alignment (w:jc), the edges of its room as it shows (from the
+    /// column's left edge) and its content's width, by which Word places it from the page's right edge
+    /// (PageRenderer.OnDots); null for others.
+    /// </summary>
+    public (string Justification, double Left, double Right, double Width)? Mirrored { get; set; }
+
+    /// <summary>The line's room as laid out before mirroring (w:jc, its start and end edge, its content's width).</summary>
+    internal (string Justification, double Start, double End, double Width)? Room { get; set; }
 
     /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
     public List<string>? Notes { get; set; }
@@ -418,7 +443,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 for (var k = 0; k < index - piece.Start; k++)
                 {
                     x += piece.Advances[k];
-                    if (piece.Text[k] == ' ' && spaces++ < piece.JustifiedSpaces)
+                    if (piece.Widened(k, ref spaces))
                         x += piece.SpaceExtra;
                 }
                 return x;
@@ -791,6 +816,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The place in its text of the tab after the list number of the paragraph being laid out, or -1.</summary>
     int labelTab = -1;
 
+    /// <summary>The Word 6 numbering of the paragraph's list number (NumberingLevel.Legacy), or null.</summary>
+    (double Indent, double Space)? legacyLabel;
+
     /// <summary>Whether the tab after a list number passes the hanging indent for a custom stop after it (see TabStop).</summary>
     bool NumberTabSkipsIndent => numberTabSkipsIndent ??= context.CompatibilityMode < 15 && context.Compat("doNotUseIndentAsNumberingTabStop");
     bool? numberTabSkipsIndent;
@@ -865,6 +893,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
+        legacyLabel = paragraph.Label?.Level.Legacy;
         levels = BidiLevels(text, charStyles, format.Bidi == true);
         var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
         if (balanced.Count > 0)
@@ -2089,6 +2118,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab: a number tab where the first line begins,
         // past the indent, does not count).
         var label = tab == labelTab;
+        // Word 6 numbering puts the text its legacy indent after the number's start, its legacy space after the number's
+        // end and at the left indent, whichever is furthest (measured with docx/local/lgy-a, lgy-b: indents of 0, 336 and
+        // 720 twips, spaces of 0, 120 and 288, hanging indents of 0 and 360, all 18 in modes 15 and 12 within 0.01 pt).
+        if (label && legacyLabel is { } legacy)
+            return Math.Max(Math.Max(left + firstLine + legacy.Indent, x + legacy.Space), left);
         if ((firstLine < 0 || label) && x < left + (label ? 0.005 : -0.005))
         {
             // The left indent is a stop for the hanging first line, unless a custom stop comes before it; with
@@ -2762,7 +2796,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     static void Visual(Line line, double width, bool rightToLeft)
     {
         if (rightToLeft)
+        {
             line.Alignment = null;
+            if (line.Room is { } room)
+                line.Mirrored = (room.Justification, width - room.End, width - room.Start, room.Width);
+        }
         var pieces = line.Pieces;
         for (var i = 0; i < pieces.Count;)
         {
@@ -2835,6 +2873,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
         // start align at the start, right and end at the end (measured with docx/local/bidi).
         var jc = format.Justification ?? "left";
+        line.Room = (jc, startX, Math.Min(limit, edge ?? limit), end - line.Pieces[0].X);
         // Centered and right aligned lines are laid out as left aligned, tabs and list numbers with them, and move as
         // a whole (measured with docx/local/numcenter: "a", a tab and "b" centered with the tab to the first default
         // stop after the line's start; a number, its tab to the indent and the text, its following lines from the
@@ -2883,10 +2922,24 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 || everyCharacter)
             && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0, doubled, ideographicTrails, spaceShare))
             return;
-        // The spaces between words share the free width (trailing spaces excluded).
+        // The spaces between words share the free width: not those that end the line, nor those it begins with
+        // (measured with docx/local/jls-*: one to three spaces before a justified paragraph's first word, and one after
+        // a line break, stay 25 dots wide in Times New Roman 12 pt while the line's other spaces widen, in mode 14 too;
+        // docx/external/poi/bug57031).
+        var leading = new Dictionary<Piece, int>(ReferenceEqualityComparer.Instance);
+        for (var p = 0; lastTab < 0 && p < movable.Count; p++)
+        {
+            var count = 0;
+            while (count < movable[p].Text.Length && movable[p].Text[count] == ' ')
+                count++;
+            if (count > 0)
+                leading[movable[p]] = count;
+            if (count < movable[p].Text.Length || movable[p].Drawing != null)
+                break;
+        }
         var spaces = 0;
         foreach (var piece in movable)
-            spaces += piece.Text.Count(c => c == ' ');
+            spaces += piece.Text.Count(c => c == ' ') - leading.GetValueOrDefault(piece);
         spaces -= trailingSpaces.Values.Sum();
         if (spaces <= 0)
             return;
@@ -2896,12 +2949,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         foreach (var piece in movable)
         {
             piece.X = x;
-            var own = piece.Text.Count(c => c == ' ');
+            var own = piece.Text.Count(c => c == ' ') - leading.GetValueOrDefault(piece);
             own -= trailingSpaces.GetValueOrDefault(piece);
             own = Math.Min(Math.Max(0, own), remaining);
             remaining -= own;
             piece.SpaceExtra = extra;
             piece.JustifiedSpaces = own;
+            piece.UnspreadSpaces = leading.GetValueOrDefault(piece);
             x += piece.Width;
         }
     }

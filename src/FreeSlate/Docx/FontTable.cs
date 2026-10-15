@@ -109,19 +109,22 @@ public sealed class FontTable
 
     static string? ScriptFont(uint ranges)
     {
+        // A range without a font of its own (Thai) is passed over (measured with docx/local/pano2-01: Thai and Georgian
+        // in Sylfaen).
         for (var bit = 15; bit <= 26; bit++)
         {
             if ((ranges & (1u << bit)) == 0)
                 continue;
-            return bit switch
-            {
-                15 => "Mangal",
-                16 or 17 or 18 or 19 or 20 or 22 or 23 => "Nirmala UI",
-                21 => "Microsoft New Tai Lue",
-                25 => "Leelawadee UI",
-                26 => "Sylfaen",
-                _ => null,
-            };
+            if (bit switch
+                {
+                    15 => "Mangal",
+                    16 or 17 or 18 or 19 or 20 or 22 or 23 => "Nirmala UI",
+                    21 => "Microsoft New Tai Lue",
+                    25 => "Leelawadee UI",
+                    26 => "Sylfaen",
+                    _ => null,
+                } is { } font)
+                return font;
         }
         return null;
     }
@@ -135,9 +138,11 @@ public sealed class FontTable
         entries.TryGetValue(family, out var entry);
         if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveFamily(alternate, bold, italic) is { } named)
             return named;
+        // A symbol font prints in Wingdings (measured with docx/local/psym-a, psym-b: U+F021 to U+F0FE in a missing
+        // "starbats" or "ZzSymbol" of charset 02 all in Wingdings; LibreOffice's extras-ooxmlexport/starbats-bullet).
         var byCharset = entry?.Charset switch
         {
-            2 => "Symbol",
+            2 => "Wingdings",
             128 => "Yu Gothic",
             129 => "Malgun Gothic",
             134 => "Microsoft YaHei",

@@ -396,6 +396,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038).
             _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset : 0),
         };
+        // From the page, Word puts the table on its device's dot left of the position (PowerTools' DB-HeadersFooters-Src/
+        // Letterhead: tblpX 1135 twips, 472.92 dots, at 472, its cells' text a dot left of where rounding put it;
+        // LibreOffice's writerfilter-dmapper/floattable-header-overlap: 1362 twips, 567.5 dots, at 567).
+        if (position.Attr("horzAnchor") == "page" && position.Attr("tblpXSpec") == null)
+            x = Math.Floor(x / 0.12 + 1e-6) * 0.12;
         // A table placed above the page's top stands at it (measured with docx/local/hft-*: tblpY -2000 from the
         // margin, the page or without an anchor, in the body and in a header, at the page's top edge).
         var top = Math.Max(0, position.Attr("tblpYSpec") switch
@@ -1061,13 +1066,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 trailing.AddRange(endnoteSeparator ?? []);
                 foreach (var note in due)
                     trailing.AddRange(note.Blocks);
+                var pitch = layout.LinePitch;
                 for (var i = 0; i < trailing.Count; i++)
                 {
+                    // The separator's paragraphs keep off the line grid (see Note).
+                    layout.LinePitch = i < (endnoteSeparator?.Count ?? 0) ? null : pitch;
                     if (trailing[i] is TableBlock)
                         PlaceTable(trailing, i);
                     else
                         Place(trailing, i);
                 }
+                layout.LinePitch = pitch;
             }
             if (emptyEnd)
                 Place(sectionBlocks, sectionBlocks.Count - 1);
@@ -1178,6 +1187,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // header-footer-delete: a Letter section after an A4 one on page 3).
         if (start is "continuous" or "nextColumn" && page != null
             && (Math.Abs(page.Section.PageWidth - properties.PageWidth) > 0.5 || Math.Abs(page.Section.PageHeight - properties.PageHeight) > 0.5))
+            start = "nextPage";
+        // A continuous section on a page a page break began that holds nothing yet takes that page as its own, its
+        // headers too (LibreOffice's core-unocore/tdf149555: a page break ending section 1, HEADER 2 on page 2).
+        if (start == "continuous" && !first && breakPage && page is { Lines.Count: 0 } && pageNotes.Count == 0 && pages.Count > 1
+            && ReferenceEquals(pages[^1], page))
             start = "nextPage";
         section = properties;
         if (start != "nextColumn")
@@ -1309,6 +1323,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var headerBox = Story(page.Header, page, null, header: true);
                 page.BodyTop = Math.Max(page.BodyTop, headerBox.Bottom);
                 page.FloatingTables.AddRange(headerBox.Floats);
+                page.FloatingTables.AddRange(StoryObstacles(headerBox));
                 if (layout.Evaluator != null)
                     layout.Evaluator.Laying = null;
             }
@@ -1317,6 +1332,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var footerBox = Story(page.Footer, page, null, header: false);
                 page.BodyBottom = Math.Min(page.BodyBottom, footerBox.Top);
                 page.FloatingTables.AddRange(footerBox.Floats);
+                page.FloatingTables.AddRange(StoryObstacles(footerBox));
             }
         }
         page.Border = PageBorders.Layout(page.Upright ?? page, context.Settings);
@@ -1688,6 +1704,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>A header or footer laid out: its lines, table fills and strokes, and where its content begins and ends.</summary>
+    /// <summary>
+    /// The drawings of a header or footer that text goes around, which keep the body's text off them as the body's own
+    /// do (by agent AE in Word's PDFs: LibreOffice's core-layout/table-fly-overlap, a header picture wrapped square
+    /// from 34.25 to 164.75 pt with the body's table below it; core-objectpositioning/floattable-footer-object).
+    /// </summary>
+    static IEnumerable<Exclusion> StoryObstacles(StoryBox story) =>
+        story.Drawings.Select(ExclusionOf).OfType<Exclusion>().Select(e => e with { Story = true });
+
     sealed class StoryBox
     {
         public List<PlacedLine> Lines { get; } = [];
@@ -1869,7 +1893,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (noteBoxes.TryGetValue((id, width), out var box))
             return box;
         var blocks = footnotes != null && footnotes.TryGetValue(id, out var found) ? found : null;
+        // Separators keep off the section's line grid (LibreOffice's extras-ooxmlexport/tdf143399: lines of 15.6 pt,
+        // the separator's paragraph 12.07 pt high in Word).
+        var pitch = layout.LinePitch;
+        if (id is "separator" or "continuationSeparator")
+            layout.LinePitch = null;
         var (lines, fills, strokes, height) = blocks != null ? tables.Blocks(blocks, width, null) : ([], [], [], 0);
+        layout.LinePitch = pitch;
         // A note's last paragraph keeps its HTML auto space after below it, the separator's too (measured with
         // docx/local/fau-both, fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt
         // below the separator's paragraph; fau-note: the separator's own paragraph without it; docx/external/
@@ -2397,7 +2427,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     PlacedDrawing Placed(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell, double? character)
     {
-        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.CompatibilityMode < 15);
         placed = placed with { Order = context.StackingOrder(anchor.Anchor) };
         // From Word 2013 on the shapes of a drawing in a cell that text goes around are cut at the cell's inside, between
         // the inner edges of its side lines and from its content's top to its bottom, its text box's text not (measured
@@ -2419,13 +2449,32 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return placed;
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
-        return PageRenderer.FitToText(placed, text, body, shape, page, tables, context.Theme);
+        var fitted = PageRenderer.FitToText(placed, text, body, shape, page, tables, context.Theme);
+        // A box that grows or shrinks to its text is aligned as it then is (LibreOffice's core-doc/
+        // text-box-word-wrap: a header box without wrapping saved 34.95 pt wide, 103.1 pt with its text, ends at the
+        // page's right edge).
+        var grown = fitted.Width - placed.Width;
+        if (Math.Abs(grown) > 0.01 && anchor.Anchor.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align")?.Value.Trim() is { } align)
+        {
+            var odd = page.DisplayNumber % 2 == 1;
+            var move = align switch
+            {
+                "right" => grown,
+                "center" => grown / 2,
+                "inside" => odd ? 0 : grown,
+                "outside" => odd ? grown : 0,
+                _ => 0,
+            };
+            fitted = fitted with { X = fitted.X - move };
+        }
+        return fitted;
     }
 
     static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell = null, double? character = null)
+        CellAnchor? cell = null, double? character = null, bool legacy = false)
     {
         var element = anchor.Anchor;
+        var alignedAcross = false;
         var (w, h) = Docx.Drawings.Extent(element);
         var s = page.Section;
         // EMU, or a universal measure (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: a simple
@@ -2509,6 +2558,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outsideMargin" => odd ? (page.TextLeft + page.TextWidth, s.PageWidth - page.TextLeft - page.TextWidth) : (0.0, page.TextLeft),
                 _ => (page.TextLeft, page.TextWidth),
             };
+            // Before Word 2013 an alignment in the column counts from the paragraph's indents, centering not, and an
+            // aligned drawing placed down by an offset stands its effect extent lower (measured by agent AG in Word's
+            // PDFs of LibreOffice's extras-ooxmlexport/tdf160049_anchorMargin14, mode 14: left aligned at a left indent
+            // of 1701 twips, right aligned at a right indent of 1134, centered on the column, each 1.5 pt of effect
+            // extent lower; offsets across not; tdf160049_anchorMargin2, tdf160077_layoutInCell).
+            alignedAcross = legacy && positionH?.Element(Docx.Drawings.Wp + "align") != null;
+            if (alignedAcross && fromH == "column")
+                (x0, xw) = positionH!.Element(Docx.Drawings.Wp + "align")!.Value.Trim() switch
+                {
+                    "left" => (x0 + anchor.Indents.Left, xw - anchor.Indents.Left),
+                    "right" => (x0, xw - anchor.Indents.Right),
+                    _ => (x0, xw),
+                };
             // Alignment places the shape with its effect extent (measured with docx/local/sa-d1, sa-d2: 80 pt left and
             // 36 pt above take a shape centered at the page's top 40 pt right and 36 pt down, with or without an effect;
             // sb-*, sc-*: each side counts where its alignment meets it, across the page and the margins), shapes sized
@@ -2581,7 +2643,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // round puts a shape 40 % of the margin wide at offset 0 1 pt right, 20 % high too 1 pt down; a shape of its
             // own size stands at the offset).
             if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
-                return origin + Emu(offset) + ((horizontal ? relativeWidth : relativeHeight) != null ? before : 0);
+                return origin + Emu(offset) + ((horizontal ? relativeWidth : relativeHeight) != null || !horizontal && alignedAcross ? before : 0);
             // A percentage places the extent with its effect extent before it, sized relative or not (measured with
             // docx/local/pcp-*: 20 % of the page across and 10 % down with 10 pt of effect extent left and top, from the
             // page and the margin, 10 pt right and down; docx/external/libreoffice/extras-ooxmlexport/

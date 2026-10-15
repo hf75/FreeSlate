@@ -25,6 +25,9 @@ public sealed record AnchorInline(XElement Anchor, string Part, RunFormat Format
 
     /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
     public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
+
+    /// <summary>The left and right indent of the paragraph the drawing is anchored in, in points.</summary>
+    public (double Left, double Right) Indents { get; set; }
 }
 
 /// <summary>A drawing placed on a page: its element, the part its relationships belong to and its extent's box.</summary>

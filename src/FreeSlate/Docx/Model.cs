@@ -1044,6 +1044,8 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         else
             ReadInlines(p, styleId, content, field);
+        foreach (var anchor in content.OfType<AnchorInline>())
+            anchor.Indents = (format.Left ?? 0, format.Right ?? 0);
         return new ParagraphBlock(p, format, content, mark)
         {
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,

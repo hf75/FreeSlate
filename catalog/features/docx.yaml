@@ -510,14 +510,17 @@ areas:
           Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family
           of that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
           docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for the table's
-          character set (symbol: Symbol, Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
+          character set (symbol: Wingdings, docx/local/psym-a, psym-b: U+F021 to U+F0FE of a missing font of charset 02
+          all in Wingdings; Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
           PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla and Times New
           Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature with the Hebrew or
           Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/ font-sig:
           Cyrillic or Greek code pages and PANOSE alone change nothing; pandoc/normalize: Apple Chancery, Apple
           Symbols, Big Caslon), then a font for an Indic, Lao or Georgian Unicode range of the signature (w:sig usb0
           bits 15 to 26, the lowest first: Devanagari Mangal, Bengali to Tamil, Kannada and Malayalam Nirmala UI,
-          Telugu Microsoft New Tai Lue, Lao Leelawadee UI, Georgian Sylfaen, Thai none; docx/local/fsu-a to fsu-c:
+          Telugu Microsoft New Tai Lue, Lao Leelawadee UI, Georgian Sylfaen, Thai none, passed over for the next
+          (docx/local/pano2-01: Thai and Georgian in Sylfaen; known deviation: without Latin ranges Word prints Lao in
+          DokChampa, pano2-00, pano2-02); docx/local/fsu-a to fsu-c:
           Bangla MN's 80008003 in Mangal, also pandoc/normalize exported on its own), then Courier New for American
           Typewriter and Apple Chancery, else Cambria for serif fonts (w:family roman) and fonts the table does not
           describe and Calibri for all others, whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %,
@@ -548,7 +551,9 @@ areas:
           obfuscated fonts have their first 32 bytes XORed with the w:fontKey GUID's bytes read from its end (a
           Gabriola Word embedded decodes to the installed file); they stand behind the installed fonts as in Word and
           are embedded into the HTML when the browser lacks them (a renamed embedded family renders as in Word,
-          docx/local/embedded-renamed 97.8 %).
+          docx/local/embedded-renamed 97.8 %). A subset (w:subsetted) that lacks characters of the runs set in it is
+          not used at all (LibreOffice's writerfilter-dmapper/subsetted-embedded-font: a subset of 11 characters,
+          "MASTER SERVICES AGREEMENT" printed in another font; subsetted-full-embedded-font: 755 characters, used).
 
       - id: font.theme
         title: Theme fonts
@@ -592,7 +597,9 @@ areas:
           is below 60 of 255 (docx/local/autocolor: 100 shadings of each kind, C00000 and 006400 white, C80000, 006600
           and 3C3C3C black; highlights, even black, change nothing). Characters the run's font lacks fall back per
           Unicode range as Word's do (Segoe UI Symbol and Emoji, Cambria Math, Nirmala UI, Leelawadee, MS Mincho, …),
-          the line growing with them, whole clusters together (engine.fonts, docx/local/fallback). Sizes in
+          the line growing with them, whole clusters together (engine.fonts, docx/local/fallback). An empty font name
+          (w:ascii="") names nothing, the slot keeping the font it had (LibreOffice's extras-ooxmlexport/
+          font-name-is-empty: the style's Calibri; 25 → 100 % of the characters within half a dot). Sizes in
           half-points may carry a unit (w:sz "20pt" is 20 pt; docx/external/libreoffice/extras-ooxmlimport/tdf108408
           6.0 → 91.8 %). Colors may be written with a "#" before their six hex digits, other "#" values being no
           color, for text, shading and borders alike (tdf57589_hashColor: #004080 text, #e6e6e6 cells, "#f00ff"
@@ -780,7 +787,9 @@ areas:
         office: >-
           Ruby sets its phonetic text w:hpsRaise above its base, centered, left or right over it or spread over it
           (distributeLetter: the gaps between its letters; distributeSpace: also half a gap at either end); a ruby
-          wider than its base spans its own width with the base centered under it; rightVertical runs it down the
+          wider than its base spans its own width with the base spread under it alike (Word's PDF of
+          docx/external/poi/61470: とうきょう over 東京 at distributeSpace, 東 at 73.344 and 京 at 87.144 pt; mean
+          distance 3.56 → 0.31 dots); rightVertical runs it down the
           base's right, centered on the base; the line makes room for it (docx/local/ruby: the lines' baselines within
           0.1 pt).
 
@@ -1073,7 +1082,9 @@ areas:
           (docx/external/poi/ThreeColHead, ThreeColFoot: within 0.1 pt). Word keeps the default tab stop
           (w:defaultTabStop) in 16 bits: 65536 twips are none, its tabs going nowhere, 65537 one twip, 66256 half an
           inch (docx/local/dts-0 to dts-66256, all within 0.7 %;
-          docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero 5.7 → 95.9 %); spaces a tab follows do
+          docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero 5.7 → 95.9 %); a document without
+          settings takes the stop of Word's own Normal template, 708 twips in the German Word the references come from
+          (LibreOffice's extras-ooxmlimport/xml_space: 14 → 88 % of the characters within half a dot); spaces a tab follows do
           not trail a line for its alignment ("10", a space and tabs of no width centered with the space). An absolute
           position tab whose place lies behind what its line holds before it starts the next line, where it takes the
           text to its place; at its place or before it nothing breaks (docx/local/ptb-la, ptb-li, ptb-cp: left at the
@@ -1315,7 +1326,11 @@ areas:
           financial numerals with the one before ten (壹 to 玖, 10 壹拾, 11 壹拾壹, 20 貳拾; LibreOffice's
           extras-ooxmlexport/cjklist34 0 → 100 % of the lines); the heavenly stems turn decimal after ten; Word 2010's
           custom formats pad with zeros (docx/external/powertools/LIR001 … LIR020 and docx/local/numwords2-*: every
-          number exactly as Word writes it). The tab after a number takes the left indent as its stop also where the
+          number exactly as Word writes it). Word 6 numbering (w:legacy) puts the text after its number at the
+          furthest of the number's start and w:legacyIndent, the number's end and w:legacySpace, and the left indent
+          (docx/local/lgy-a, lgy-b: legacy indents of 0, 336 and 720 twips, spaces of 0, 120 and 288, hanging indents of 0
+          and 360, every line as in Word in modes 15 and 12; LibreOffice's extras-ooxmlexport/tdf90697_complexBreaksHeaders:
+          seven times the characters in place). The tab after a number takes the left indent as its stop also where the
           number ends right at it (an empty number, one right-aligned at the indent), leaving the text there; custom
           and default stops count only after its place, as for other tabs (docx/local/emptylabel, tabzero, tabzero2;
           docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab). The level's indents and tabs override the
@@ -1401,7 +1416,9 @@ areas:
           (docx/local/hf-restart-*). A section on a new page right after a page break begins on the page the break
           began while that holds nothing, an empty paragraph holding the break taking no line there (docx/local/pbs-*:
           no empty page between, also before a landscape section or after a break that ends a paragraph with text; of
-          two page breaks one page stays empty; docx/external/poi/bug65649). Before Word 2013 a page break in the
+          two page breaks one page stays empty; docx/external/poi/bug65649), and so does a continuous section, with its
+          own headers there (docx/external/libreoffice/core-unocore/tdf149555: HEADER 2 on page 2 after section 1's
+          page break). Before Word 2013 a page break in the
           paragraph that ends a section goes unseen where the next section goes on on the same page (docx/local/pb14*,
           pb12*: "A", a page break holding a continuous section break and "B" on one page, in mode 15 on two;
           docx/external/libreoffice/extras-uiwriter/tdf131963), unless w:splitPgBreakAndParaMark moves the mark and
@@ -1610,7 +1627,10 @@ areas:
           is the default one where no default reference is given (poi/60293: type="odd" with odd and even headers,
           75.0 → 100 % of the lines). Word's footers stand 0.14 pt lower than the footer distance says (its 600 dpi
           device grid), which the layout does not copy. Inline pictures of headers and footers lie behind the body's
-          text, as Word draws their layer first (openxml-sdk/complex0, 2010). Floating tables of headers and footers
+          text, as Word draws their layer first (openxml-sdk/complex0, 2010). Drawings of headers and footers that text
+          goes around keep the body's text off them as the body's own do (by agent AE: LibreOffice's
+          core-layout/table-fly-overlap, a header picture wrapped square from 34.25 to 164.75 pt with the body below
+          it; known deviation: our body's tables pass beside it in mode 14). Floating tables of headers and footers
           stand as in the body and take no room in the story; those anchored to its text make it reach as far as they
           do, the paragraph they are anchored to going below them where they begin above it, the story's other text
           over them; the body's text goes around those anchored to the page, and a table of the body below one that
@@ -1660,7 +1680,8 @@ areas:
           stand at the bottom of the page, ending at the bottom margin, under the separator (144 pt long, its font's
           strikeout stroke on whole device dots: Aptos 12 pt 4.3 pt above the baseline and 0.6 pt thick, Times New
           Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and 0.8 pt; docx/generated/notes, docx/local/fbn-*,
-          docx/external/libreoffice/extras-ooxmlexport/tdf90810short); a section whose own w:footnotePr puts them
+          docx/external/libreoffice/extras-ooxmlexport/tdf90810short), the separators' paragraphs off the section's
+          line grid (tdf143399: the endnote separator 12.07 pt high on a grid of 15.6 pt); a section whose own w:footnotePr puts them
           beneath the text has them follow its last line (the settings' alone do not; docx/local/fnpages-f, -g); pages
           of several columns spread whole notes into columns of their own width, each column taking notes until it
           holds its share of their height, under one separator at the left, every column of text ending above them
@@ -2008,7 +2029,10 @@ areas:
           suffice, 71 → 100 %; writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first,
           empty line where it is). One that ends the document, no paragraph after it, stands in the text
           (extras-ooxmlimport/table_width: at the body's top, not at its tblpY of 513 pt). Their outer left edge
-          stands w:tblpX from their column, the margin or the page (or aligns by w:tblpXSpec; before Word 2013 their
+          stands w:tblpX from their column, the margin or the page, from the page on the device's dot left of it
+          (PowerTools' DB-HeadersFooters-Src/Letterhead: tblpX 1135 twips, 472.92 dots, at 472;
+          writerfilter-dmapper/floattable-header-overlap: 567.5 dots at 567; 2.5 → 91 % and 12 → 84 % of the characters
+          within half a dot) (or aligns by w:tblpXSpec; before Word 2013 their
           first cell's text stands there, as at an indent: docx/external/libreoffice/core-layout/floattable-compat14,
           -compat14-body, -compat14-nosplit in modes 14 and 12, extras-ooxmlexport/fdo68607; aligned left the first
           cell's text at the edge, right the last cell's, half the outer line and the cell margin out, centered alike:
@@ -2519,7 +2543,11 @@ areas:
           bottom on even ones, outside the other side, whichever margin the area is (docx/local/vio-*: relative to the
           top and the bottom margin, the margin and the page; libreoffice/core-objectpositioning/inside-outside-vert-
           align 4.6 → 100 %; known deviation: relative to the page Word keeps 18 pt from the page's edge, ours none).
-          Alignment places the drawing with its effect extent (wp:effectExtent), with or without an effect to fill it,
+          Before Word 2013 an alignment in the column counts from the paragraph's indents, centering not, and a drawing
+          so aligned and placed down by an offset stands its effect extent lower (by agent AG: LibreOffice's
+          extras-ooxmlexport/tdf160049_anchorMargin14, mode 14: left aligned at a left indent of 1701 twips, right
+          aligned at a right indent of 1134, each 1.5 pt lower, offsets across not; tdf160049_anchorMargin2,
+          tdf160077_layoutInCell). Alignment places the drawing with its effect extent (wp:effectExtent), with or without an effect to fill it,
           each side where its alignment meets it, across the page and the margins (docx/local/sa-d1, sa-d2, sb-*,
           sc-*: 80 pt left and 36 pt above take a shape centered at the page's top 40 pt right and 36 pt down),
           relatively sized ones too (relsz-3, -4, -5, -7); an offset places the extent, but the effect extent in a
@@ -2617,7 +2645,9 @@ areas:
           does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case
           as in Word, 96.7 %), measured where it begins, and aligns them in its own width
           (docx/external/libreoffice/extras-ooxmlexport/ testWordArtWithinDraingtool: WordArt right aligned in such a
-          box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 → 93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %). WordArt, a text box
+          box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 → 93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %), aligned as it then
+          is (LibreOffice's core-doc/text-box-word-wrap: a header box saved 34.95 pt wide, 103.1 pt with its text, at
+          the page's right edge). WordArt, a text box
           whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does (pptx
           text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
           whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6
@@ -4091,7 +4121,9 @@ areas:
           to the pixel grid, delimiters at their own size too; stretched and large variants as outlines
           (powertools/RP/RP013: the "=" bars one black row; libreoffice/extras-ooxmlexport/math-d: "|" one black
           column). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
-          paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in two
+          paragraph mark's where the equation stands alone (docx/local/eq-shaded); a displayed equation reaches at
+          least the math font's ascent with its line gap above the baseline (Cambria Math's 1593 + 353 units: 11.40 pt
+          at 12 pt; libreoffice/extras-ooxmlexport/math-color: twice the characters in place). Word differs from PowerPoint in two
           rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space
           before an opening delimiter; both draw the hyphen-minus as the minus sign and ∇ and ∂ in italic. Glyphs are
@@ -4104,9 +4136,10 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/2120112713_OpenBrace 67.2 → 94.2 %, math-placeholders 57.4 →
           94.1 %, tdf158023_export 63.4 → 78.2 %). A bookmark's end after a display equation stays on its line
           (docx/external/libreoffice/extras-ooxmlexport/tdf130907: _GoBack after the last equation, no empty line,
-          71.3 → 76.0 %). An ellipsis after an operator or relation stands on the axis (U+22EF;
+          71.3 → 76.0 %). An ellipsis after an operator or relation stands on the axis (U+22EF, spaced as an inner atom:
+          a thin space before a comma, docx/local/msp-a;
           EquationWithAboveAndBelowCaption, math-mso2k7: "+…"). An italic letter before an operator, a relation, a
-          bracket, punctuation or a construct (scripts, a fraction) keeps its italic correction, before another letter
+          bracket, punctuation, a space or a construct (scripts, a fraction) keeps its italic correction, before another letter
           none (docx/local/mth-*: x+, y=, f(, x), c) at 11 pt within 0.06 pt; powertools/RP/RP013: π before r² 0.32
           pt), and so does the last letter of a box: before a closing delimiter or separator, under a fraction's bar
           or an accent, at a script's and at the equation's end (LibreOffice's extras-ooxmlexport/math-d: x before
@@ -4139,7 +4172,11 @@ areas:
           the sign at the end of the line and the one at the start); an operator at a line's end keeps the space
           before it. m:lMargin and m:rMargin narrow the room of display equations, also without m:dispDef, which
           center in it (mathset-d). The equations of one m:oMathPara stand on one line one after the other. m:preSp,
-          m:postSp, m:interSp, m:intraSp and m:smallFrac changed nothing in Word's printout (mathset-d).
+          m:postSp, m:interSp, m:intraSp and m:smallFrac changed nothing in Word's printout (mathset-d). Spaces typed
+          in an equation keep their widths, without their neighbors' spacing, but after a comma one space goes, two
+          make a space of two ems and an operator after them is unary (docx/local/msp2-a at 11 pt: "x, y" as "x,y",
+          "x,  y" 21.98 and "x,  +y" 22.10 pt from the comma's end, three spaces as typed; LibreOffice's
+          extras-ooxmlexport/math-mso2k7).
 
   - id: vml
     title: Legacy VML content
@@ -4327,7 +4364,12 @@ areas:
           and indents 0 to 24 twips, the right margin no matter); centered and right aligned lines stand by their
           room's edges each rounded so, their content's width in whole dots and half the room left over rounded down
           (docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of 7 twips: 291
-          of 320 line starts on Word's dot, 256 before). Within a line Word puts each glyph on its device by its
+          of 320 line starts on Word's dot, 256 before). Lines of right-to-left paragraphs stand on the grid mirrored
+          about the page's width in whole dots, up: start aligned and justified lines end at their room's right edge
+          counted from the page's right edge and floored, end aligned ones begin at its left edge so counted, centered
+          ones take half the room left over floored (Word's PDFs of LibreOffice's extras-ooxmlexport/
+          tdf106174_rtlParaAlign: a page of 3496.25 dots mirrored about 3497, a right margin of 312.5 dots ending the
+          text at 3185; fdo72560, fdo72560b, fdo72560c: end aligned text from 473 and 474). Within a line Word puts each glyph on its device by its
           natural width in whole dots at the font's pixel size (its design width with its kerning scaled, up from 0.46
           of a dot), a dot less or more where the error against the exact advances would pass 1.5 dots after the next
           glyph, the line in stretches of 1024 dots at whose ends the error comes back within half a dot; a stretch
@@ -4337,11 +4379,13 @@ areas:
           need what the first needs within 0.01 pt (14,496 runs of extras-ooxmlexport's PDFs: 99.8 %), otherwise as
           adjustments written once they reach 3/1000 em, their remainder dropped; runs of the same w:rPr, w:rsidRPr
           and w:rsidR are one (docx/local/adv-*, probes in five fonts from 8 to 28 pt: all 90 lines and 100 runs of
-          Word's PDFs). Ours alike for text of one glyph per character below 24 pt without spacing, scaling or
-          synthetic bold (adv-*: 92 to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103
-          documents of the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before).
+          Word's PDFs). Ours alike for text of one glyph per character without spacing, scaling or synthetic bold
+          (adv-*: 92 to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103 documents of
+          the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before; gxl-*, 24 to 72 pt
+          in five fonts: 90 to 100 %, 60 to 75 % before), the text after a tab from the stop's nearest dot, halves
+          down (gxt-*: 58 of 60 stops exact, the halves so).
           Known deviation: Word rounds some halves up where the page is wide (1462.5 dots and more) or the margins
-          mirrored (lsm-2418); text from 24 pt, in text boxes and right to left keeps its exact advances.
+          mirrored (lsm-2418); text in text boxes and right to left keeps its exact advances.
 
       - id: engine.pagination
         title: Pagination

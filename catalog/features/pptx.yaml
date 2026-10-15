@@ -1973,6 +1973,9 @@ areas:
         office: >-
           PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel
           grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
+          The chart's areas (plot and chart area, legend, title) run from their bottom left corner right, up, left
+          and down, where a dashed outline begins (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/
+          Chart_Plot_BorderLine_Style 77.5 → 99.6 %); bars do not (Chart_BorderLine_Style).
           Picture fills come from the chart part's relationships; c:pictureOptions stacks them from the bar's
           base at their own proportions (stack) or one per c:pictureStackUnit of the value axis (stackScale),
           else stretches them over the bar (generated/charts-data). Verified with generated/charts, charts-

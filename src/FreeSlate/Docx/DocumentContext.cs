@@ -97,8 +97,10 @@ public sealed class DocumentContext : IDisposable
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         // Word keeps the default tab stop in 16 bits: 65536 twips are none, 66256 half an inch (measured with
         // docx/local/dts-*; docx/external/libreoffice/extras-ooxmlexport/tdf168607_tabstopZero: 65536, tabs of no width).
+        // A document without settings takes the default tab stop of Word's own Normal template, 1.25 cm in the German
+        // Word the references come from (LibreOffice's extras-ooxmlimport/xml_space: 708 twips, 86.6 → 99.9 % emulated).
         DefaultTabStop = long.TryParse(Settings.Child("defaultTabStop").Val(), out var stop) ? (stop % 65536 + 65536) % 65536 / 20.0
-            : Settings.Child("defaultTabStop").Twips("val") ?? 36;
+            : Settings.Child("defaultTabStop").Twips("val") ?? (Settings == null ? 35.4 : 36);
         Numbering = new NumberingDefinitions(Related("numbering"), Styles) { Part = Package.FirstRelationship(MainPart, "numbering")?.Target };
         FontTable = new FontTable(Related("fontTable"));
         Divs = new HtmlDivs(Related("webSettings"));
@@ -380,6 +382,11 @@ public sealed class DocumentContext : IDisposable
                     || Package.Relationship(table.Target, id) is not { External: false } rel || !Package.Exists(rel.Target))
                     continue;
                 var (part, key) = (rel.Target, embed.Attr("fontKey"));
+                // A subset that lacks characters of the text set in it is not used at all (LibreOffice's
+                // writerfilter-dmapper/subsetted-embedded-font: a subset of 11 characters, "MASTER SERVICES AGREEMENT"
+                // printed in the substitute; subsetted-full-embedded-font: 755 characters, used).
+                if (embed.Attr("subsetted") is "1" or "true" or "on" && !Covers(Deobfuscate(Package.ReadBytes(part), key), family))
+                    continue;
                 faces.Add(new FontFace(family, bold, italic, $"embedded:{part}", System: false)
                 {
                     Embedded = new Lazy<byte[]?>(() =>
@@ -397,6 +404,34 @@ public sealed class DocumentContext : IDisposable
             }
         }
         return faces;
+    }
+
+    /// <summary>Whether a font has every character of the runs of the main part that name it directly.</summary>
+    bool Covers(byte[] font, string family)
+    {
+        FontData data;
+        try
+        {
+            data = new FontData(font, family, family);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+        foreach (var run in Document.Descendants(Wml.W + "r"))
+        {
+            if (run.Child("rPr")?.Child("rFonts") is not { } fonts || fonts.Attr("ascii") != family && fonts.Attr("hAnsi") != family)
+                continue;
+            foreach (var text in run.Elements(Wml.W + "t"))
+            {
+                foreach (var rune in text.Value.EnumerateRunes())
+                {
+                    if (!System.Text.Rune.IsWhiteSpace(rune) && !data.HasGlyph(rune.Value))
+                        return false;
+                }
+            }
+        }
+        return true;
     }
 
     /// <summary>An embedded font's bytes with the font key's obfuscation undone (none without a key).</summary>
