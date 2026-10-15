@@ -727,6 +727,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             reach = allowance + Margins(rows[0], rows[0].Cells[^1], format).Right
                 + (format.Indent == null ? 0 : Math.Max(firstLeft, Width(vertical[0, 0]) / 2));
         }
+        // A centered or right-aligned one of automatic width by both its outer cell margins, its first cell's text at
+        // the left margin and its last cell's at the right one (measured with docx/local/tac-14: cells of 2 × 6000
+        // twips centered or right aligned span the column and both margins of 5.4 or 10 pt, tac-15 the column;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf79329); one of 100 % stays the column's width
+        // (extras-ooxmlexport/sdt-company-multipara).
+        else if (Legacy && !format.BidiVisual && format.Justification is "center" or "right" or "end" && format.Width is not { Type: "dxa" or "pct", Value: > 0 }
+            && rows.Count > 0 && rows[0].Cells.Count > 0)
+            reach = allowance + Margins(rows[0], rows[0].Cells[0], format).Left + Margins(rows[0], rows[0].Cells[^1], format).Right;
         // A percentage width is of the column's width, whatever the indent (measured with docx/local/tpi-1 to tpi-6:
         // 100 % indented -15.9 or 36 pt is 450.8 pt wide, in modes 14 and 15; docx/external/poi/bug65649).
         var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
@@ -749,10 +757,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var justification = format.Justification;
         if (rtl)
             justification = justification switch { "right" or "end" => "left", "center" => "center", _ => "right" };
+        var lastTextInset = rightBorder / 2 + Math.Max(rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[^1], format).Right : 0, rightBorder / 2);
         double origin0 = justification switch
         {
             "center" => (available - tableWidth) / 2,
-            "right" or "end" => available - tableWidth - (rtl ? indent : 0),
+            // Older modes end the last cell's text at the column's right edge, the table out by its margin and half its
+            // line (measured with docx/local/tal-12, tal-14: tables of 200, 451.3 and 500 pt with cell margins of 5.4
+            // and 10 pt end their right lines that far past the margin, within 0.12 pt; tal-15 at it).
+            "right" or "end" => available - tableWidth - (rtl ? indent : 0) + (Legacy && !rtl ? lastTextInset : 0),
             // Older modes put the first cell's text at the indent; a table without any indent (none in its
             // properties or style) has its left line centered on the column's edge there (measured with
             // docx/local/c2-tblpos in modes 11 to 14).
