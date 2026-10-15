@@ -32,7 +32,7 @@ namespace FreeSlate.Docx;
 /// </summary>
 public sealed class FontTable
 {
-    sealed record Entry(string? AltName, int? Charset, string? Family, uint CodePages = 0);
+    sealed record Entry(string? AltName, int? Charset, string? Family, uint CodePages = 0, uint Ranges = 0);
 
     readonly Dictionary<string, Entry> entries = new(StringComparer.OrdinalIgnoreCase);
 
@@ -44,7 +44,8 @@ public sealed class FontTable
                 continue;
             var charset = font.Child("charset").Val() is { } hex && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var c) ? c : (int?)null;
             var codePages = font.Child("sig")?.Attr("csb0") is { } csb0 && uint.TryParse(csb0, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var cp) ? cp : 0;
-            entries[name] = new Entry(font.Child("altName").Val(), charset, font.Child("family").Val(), codePages);
+            var ranges = font.Child("sig")?.Attr("usb0") is { } usb0 && uint.TryParse(usb0, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var ur) ? ur : 0;
+            entries[name] = new Entry(font.Child("altName").Val(), charset, font.Child("family").Val(), codePages, ranges);
         }
     }
 
@@ -106,6 +107,25 @@ public sealed class FontTable
         ?? fonts.TryResolveTypeface(family, bold, italic)
         ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null);
 
+    static string? ScriptFont(uint ranges)
+    {
+        for (var bit = 15; bit <= 26; bit++)
+        {
+            if ((ranges & (1u << bit)) == 0)
+                continue;
+            return bit switch
+            {
+                15 => "Mangal",
+                16 or 17 or 18 or 19 or 20 or 22 or 23 => "Nirmala UI",
+                21 => "Microsoft New Tai Lue",
+                25 => "Leelawadee UI",
+                26 => "Sylfaen",
+                _ => null,
+            };
+        }
+        return null;
+    }
+
     static string? WordName(string family) =>
         WordNames.TryGetValue(family, out var named) ? named
         : WordPrefixes.FirstOrDefault(p => family.StartsWith(p.Prefix, StringComparison.OrdinalIgnoreCase)).Family;
@@ -136,6 +156,12 @@ public sealed class FontTable
         if (entry != null && (entry.CodePages & 0x60) != 0
             && fonts.TryResolveTypeface(entry.Family == "roman" ? "Times New Roman" : "Arial", bold, italic) is { } paged)
             return paged;
+        // A signature with an Indic, Lao or Georgian Unicode range (w:sig usb0 bits 15 to 26) takes that script's font,
+        // the lowest range first (measured with docx/local/fsu-c: Devanagari Mangal, Bengali to Tamil, Kannada and
+        // Malayalam Nirmala UI, Telugu Microsoft New Tai Lue, Lao Leelawadee UI, Georgian Sylfaen, Thai nothing;
+        // fsu-a, fsu-b: Bangla MN's 80008003 and five other names in Mangal; pandoc/normalize).
+        if (entry != null && ScriptFont(entry.Ranges) is { } scriptName && fonts.TryResolveFamily(scriptName, bold, italic) is { } ranged)
+            return ranged;
         if (MacNames.TryGetValue(family, out var mac) && fonts.TryResolveFamily(mac, bold, italic) is { } macFont)
             return macFont;
         // A name in East Asian characters, of no font here, is Yu Gothic's (measured with docx/local/fsy-list, fsy-mzz:

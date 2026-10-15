@@ -510,21 +510,24 @@ areas:
           PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla and Times New
           Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature with the Hebrew or
           Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/ font-sig:
-          Cyrillic or Greek code pages, Unicode ranges and PANOSE alone change nothing; pandoc/normalize: Apple
-          Chancery, Apple Symbols, Big Caslon), then Courier New for American Typewriter and Apple Chancery, else
-          Cambria for serif fonts (w:family roman) and fonts the table does not describe and Calibri for all others,
-          whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %, font-sub2 98 %, every line within 0.1
-          pt; known deviation: Word draws fonts with the Bengali Unicode range in Mangal or Nirmala UI). Caladea and
-          Carlito stand in where Cambria and Calibri are missing too. Of a family's entries the table's last one
-          counts, and a character set of 01 means nothing (docx/local/fontdup: OpenSymbol, first roman, then auto,
-          prints in Calibri, as in tdf153526_commentInNumbering). A list number's missing complex script font becomes
-          Times New Roman instead (see run.complexScript). A missing family that the table gives an East Asian
-          character set takes that script's font before what its name begins with, and a missing name in East Asian
-          characters Yu Gothic, Latin and kana alike (docx/local/fsy-*, measured one Word instance a document since
-          Word keeps a family's substitute for its session: "Arial Unicode MS" and "Arial Zz" of charset 80 in Yu
-          Gothic, of charset 00 or undescribed in Arial; "ＭＳ 明朝;MS Mincho" and "明朝Zz" in Yu Gothic, "Zz;MS Mincho" in
-          Cambria; docx/external/libreoffice/extras-ooxmlexport/tdf107969 66.6 → 92.6 %, extras-uiwriter/tdf128375
-          66.3 → 93.4 %).
+          Cyrillic or Greek code pages and PANOSE alone change nothing; pandoc/normalize: Apple Chancery, Apple
+          Symbols, Big Caslon), then a font for an Indic, Lao or Georgian Unicode range of the signature (w:sig usb0
+          bits 15 to 26, the lowest first: Devanagari Mangal, Bengali to Tamil, Kannada and Malayalam Nirmala UI,
+          Telugu Microsoft New Tai Lue, Lao Leelawadee UI, Georgian Sylfaen, Thai none; docx/local/fsu-a to fsu-c:
+          Bangla MN's 80008003 in Mangal, also pandoc/normalize exported on its own), then Courier New for American
+          Typewriter and Apple Chancery, else Cambria for serif fonts (w:family roman) and fonts the table does not
+          describe and Calibri for all others, whatever their PANOSE, pitch or the theme (docx/local/font-sub 94.4 %,
+          font-sub2 98 %, every line within 0.1 pt). Caladea and Carlito stand in where Cambria and Calibri are
+          missing too. Of a family's entries the table's last one counts, and a character set of 01 means nothing
+          (docx/local/fontdup: OpenSymbol, first roman, then auto, prints in Calibri, as in
+          tdf153526_commentInNumbering). A list number's missing complex script font becomes Times New Roman instead
+          (see run.complexScript). A missing family that the table gives an East Asian character set takes that
+          script's font before what its name begins with, and a missing name in East Asian characters Yu Gothic, Latin
+          and kana alike (docx/local/fsy-*, measured one Word instance a document since Word keeps a family's
+          substitute for its session: "Arial Unicode MS" and "Arial Zz" of charset 80 in Yu Gothic, of charset 00 or
+          undescribed in Arial; "ＭＳ 明朝;MS Mincho" and "明朝Zz" in Yu Gothic, "Zz;MS Mincho" in Cambria;
+          docx/external/libreoffice/extras-ooxmlexport/tdf107969 66.6 → 92.6 %, extras-uiwriter/tdf128375 66.3 → 93.4
+          %).
 
       - id: font.embedded
         title: Embedded fonts
