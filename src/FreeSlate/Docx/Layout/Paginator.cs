@@ -430,6 +430,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
             }
         }
+        // A table standing with the text over the lines before it, or over their paragraph's space after, moves them
+        // below itself and keeps its place, the text going on below them (LibreOffice's core-text/
+        // floattable-negative-vert-offset: tblpY -269 puts the line before the table below it, its paragraph after
+        // that; floattable-anchor-next-page: 1.2 pt of overlap suffice; writerfilter-dmapper/
+        // floattable-outer-nonsplit-inner: an empty paragraph whose 8 pt space after reaches the next table goes below
+        // it, and below each table after); its distance from the text counts for nothing there, nor does an overlap of
+        // less than a point (writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first, empty
+        // line where it is; extras-layout/tdf167540: tblpY 1 twip, 43 twips from the text).
+        if (anchor == "text" && !columnEmpty && y + pendingAfter - top > 1)
+            Lower(Math.Min(top, y - 0.02), top + height + Twips("bottomFromText"), left, width);
         // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
         // that does not fit below the rows before it on the page goes on at the top of the next page's body, where
         // the table stands at the same place across, its header rows repeated; the line below the last row of a page
@@ -445,7 +455,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // Drawings anchored in the cells stand as in the rows of other tables (docx/external/libreoffice/
             // extras-ooxmlexport/fdo68607: a text box with the title above the table).
             var anchors = new List<CellAnchor>();
-            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            var count = page!.Lines.Count;
+            TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            // The table's lines stay where it stands when a table after it moves the text below itself (see Lower).
+            for (var k = count; k < page.Lines.Count; k++)
+                frameLines.Add(page.Lines[k]);
             foreach (var anchor in anchors)
                 page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
             rowTop += row.Height;
@@ -659,8 +673,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
         // A frame standing with the text is placed by w:y alone, its w:yAlign unseen (docx/external/libreoffice/
         // extras-ooxmlexport/tdf157572_insidiousCombination: a frame of yAlign bottom and vAnchor text below its
-        // paragraph's top, not above it).
-        var top = dropCap is "drop" or "margin" ? textTop : (VerticalAnchor(properties) == "text" ? null : properties.Attr("yAlign")) switch
+        // paragraph's top, not above it); so is any frame with a w:y (measured with docx/local/fya-14, fya-15: yAlign
+        // center and w:y 10 stand 0.5 pt below the margin or the page, without w:y on the margin's middle;
+        // tdf157572_defaultVAnchor).
+        var top = dropCap is "drop" or "margin" ? textTop : (VerticalAnchor(properties) == "text" || properties.Attr("y") != null ? null : properties.Attr("yAlign")) switch
         {
             "top" or "inside" => frameTop,
             "bottom" or "outside" => frameTop + frameHeight - height,
@@ -1152,10 +1168,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A section whose text runs another way begins a new page.
         if (page != null && (page.Section.Upright != null) != (properties.Upright != null))
             start = "nextPage";
-        // A section on the next column with another number of columns begins a new page (measured with docx/local/
-        // ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its second column; ncs-22-15;
-        // docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2).
-        if (start == "nextColumn" && page != null && page.Section.Columns != properties.Columns)
+        // A section on the next column with another number of columns than the section before begins a new page
+        // (measured with docx/local/ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its
+        // second column; ncs-22-15; docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2;
+        // _c14, _c15: three after three on a page that two columns began go on in its columns).
+        if (start == "nextColumn" && page != null && section.Columns != properties.Columns)
             start = "nextPage";
         // So does a continuous section on paper of another size (docx/external/libreoffice/core-doc/
         // header-footer-delete: a Letter section after an A4 one on page 3).
@@ -1163,6 +1180,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             && (Math.Abs(page.Section.PageWidth - properties.PageWidth) > 0.5 || Math.Abs(page.Section.PageHeight - properties.PageHeight) > 0.5))
             start = "nextPage";
         section = properties;
+        if (start != "nextColumn")
+            columnsRightToLeft = properties.Element?.Child("bidi").OnOff() == true;
         tables.PageArea = (properties.PageWidth - properties.Left - properties.Right - properties.Gutter, properties.PageHeight - properties.Top - properties.Bottom,
             properties.PageWidth, properties.PageHeight);
         layout.Vertical = properties.Upright != null;
@@ -1450,7 +1469,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
                     _ => (textTop, 0.0),
                 };
-                var frameTop = (onPage || VerticalAnchor(properties) != "text" ? properties.Attr("yAlign") : null) switch
+                var frameTop = ((onPage || VerticalAnchor(properties) != "text") && properties.Attr("y") == null ? properties.Attr("yAlign") : null) switch
                 {
                     "top" or "inside" => areaTop,
                     "bottom" or "outside" => areaTop + areaHeight - frameHeight,
@@ -1710,15 +1729,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // docx/local/csm-1, csm-cols: its text 144 pt from the page's left edge below a section's at 72 pt, its two
         // columns to its 36 pt right margin; docx/external/libreoffice/extras-ooxmlexport/fdo52208).
         var (left, textWidth) = ReferenceEquals(s, page!.Section) || s.Vertical ? (page.TextLeft, page.TextWidth) : TextArea(s, page.DisplayNumber);
+        var (areaLeft, columnLeft, columnWidth) = (left, left, 0.0);
         if (s.ColumnWidths is { Count: > 0 } widths)
         {
             for (var k = 0; k < index && k < widths.Count; k++)
-                left += widths[k].Width + widths[k].Space;
-            return (left, widths[Math.Min(index, widths.Count - 1)].Width);
+                columnLeft += widths[k].Width + widths[k].Space;
+            columnWidth = widths[Math.Min(index, widths.Count - 1)].Width;
         }
-        var width = (textWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
-        return (left + index * (width + s.ColumnSpace), width);
+        else
+        {
+            columnWidth = (textWidth - s.ColumnSpace * (s.Columns - 1)) / s.Columns;
+            columnLeft = left + index * (columnWidth + s.ColumnSpace);
+        }
+        // The columns of a right-to-left section (w:bidi) run from the right (LibreOffice's extras-ooxmlexport/
+        // tdf135343_columnSectionBreak_c12v3: "RTL 1" centered in the right-hand first column); a section on the next
+        // column keeps the direction of the section whose columns it goes on in (_c14: its w:bidi changes nothing).
+        return columnsRightToLeft && s.Columns > 1 ? (areaLeft + textWidth - (columnLeft - areaLeft) - columnWidth, columnWidth) : (columnLeft, columnWidth);
     }
+
+    /// <summary>Whether the current columns run from the right: the w:bidi of the section that set them up.</summary>
+    bool columnsRightToLeft;
 
     /// <summary>Where the body text ends: above the footnotes the page holds, or where a note continued past it filled it.</summary>
     double Bottom => Math.Min(page!.BodyBottom - notesHeight, bodyEnd ?? double.MaxValue);
@@ -2160,7 +2190,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var box = LaidTable(table, width, stylePrevious, keep: false, joined);
         if (table.Table.Format.Floating == null)
             previousTable = (table, box);
-        if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0)
+        // A floating table that ends the document, no paragraph after it to anchor it, stands in the text (LibreOffice's
+        // extras-ooxmlimport/table_width: at the body's top, not at its tblpY 513 pt).
+        if (table.Table.Format.Floating is { } floating && box.Rows.Count > 0 && !ReferenceEquals(table, documentEnd))
         {
             PlaceFloatingTable(blocks, index, floating, box, left, width);
             return;
@@ -2366,6 +2398,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         CellAnchor? cell, double? character)
     {
         var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        placed = placed with { Order = context.StackingOrder(anchor.Anchor) };
         // From Word 2013 on the shapes of a drawing in a cell that text goes around are cut at the cell's inside, between
         // the inner edges of its side lines and from its content's top to its bottom, its text box's text not (measured
         // with docx/local/cdr-pager, ccl-mar, ccl-thick, ccl-col: a 387 pt box in a 200 pt cell ends at it, margins of

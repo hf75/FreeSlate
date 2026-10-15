@@ -471,8 +471,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
+        // The effects reach the geometry also where it leaves the shape's box (a callout's tail: LibreOffice's
+        // extras-ooxmlexport/tdf41466_testVmlShapeWithTextbox, a tail 40 pt beside the box casts its shadow too).
+        (double X, double Y, double W, double H)? effectRegion = null;
+        if (effects != null && PathBounds(new EvaluatedPath(geometry.Paths.SelectMany(p => p.Segments).ToList(), "norm", false)) is var (gx, gy, gw, gh)
+            && (gx < -0.5 || gy < -0.5 || gx + gw > pw + 0.5 || gy + gh > ph + 0.5))
+        {
+            var (rx, ry) = (Math.Min(0, gx), Math.Min(0, gy));
+            effectRegion = (rx, ry, Math.Max(pw, gx + gw) - rx, Math.Max(ph, gy + gh) - ry);
+        }
         var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
-            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix);
+            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix, region: effectRegion);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new StringBuilder();
         var shapeMarkup = wireframe && solidBody ? "" : paths.ToString() + ends;

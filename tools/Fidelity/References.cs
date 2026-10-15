@@ -106,8 +106,12 @@ public static class References
                 if (Repo.IsDocument(deck))
                 {
                     // Word gives the authors of tracked changes and comments their colors in the order it meets them in
-                    // a session, over all its documents: a document shown with its markup gets a Word of its own.
-                    if (Repo.Markup(deck) && word != null)
+                    // a session, over all its documents: a document shown with its markup gets a Word of its own. So
+                    // does a document that names a font this machine lacks, since Word keeps the substitute it chose
+                    // for a missing family for the rest of its session (LibreOffice's fdo69649 sets "ITC Officina Sans
+                    // Bold" in its w:altName Times New Roman alone, in Calibri after other documents of its folder).
+                    var own = Repo.Markup(deck) || NamesMissingFont(source);
+                    if (own && word != null)
                     {
                         word.Dispose();
                         word = null;
@@ -122,7 +126,7 @@ public static class References
                             word = null;
                         }
                     }
-                    if (Repo.Markup(deck) && word != null)
+                    if (own && word != null)
                     {
                         word.Dispose();
                         word = null;
@@ -245,6 +249,26 @@ public static class References
         catch (InvalidDataException)
         {
             return "damaged package";
+        }
+    }
+
+    /// <summary>Whether a Word document's font table names a family this machine has no face of (cloud fonts count as had).</summary>
+    static bool NamesMissingFont(string path)
+    {
+        try
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(path);
+            if (zip.GetEntry("word/fontTable.xml") is not { } entry)
+                return false;
+            using var stream = entry.Open();
+            var w = System.Xml.Linq.XNamespace.Get("http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+            return System.Xml.Linq.XDocument.Load(stream).Descendants(w + "font")
+                .Select(font => (string?)font.Attribute(w + "name"))
+                .Any(name => name is { Length: > 0 } && !FreeSlate.Fonts.FontLocator.Default.Faces(name).Any());
+        }
+        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException)
+        {
+            return false;
         }
     }
 }

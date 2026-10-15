@@ -72,17 +72,18 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
         "thinThickThinSmallGap" => Width + 3,
         "thinThickThinMediumGap" => Width * 3,
         "thinThickThinLargeGap" => Width * 2 + 3,
-        // The thin lines take half the width each, 0.75 pt at least, though they print on whole dots (Thin; measured
-        // with docx/local/b3d-emb: 6 pt of room for a line of 3 pt, its strokes 5.88 pt).
-        "threeDEmboss" or "threeDEngrave" => Width + 2 * Math.Max(0.75, Width / 2),
+        // The thin lines take 0.75 pt each, 1.5 pt from a line of 3 pt on, though they print on whole dots (Thin;
+        // measured with docx/local/b3d-emb: 6 pt of room for a line of 3 pt, its strokes 5.88 pt).
+        "threeDEmboss" or "threeDEngrave" => Width + 2 * (Width < 3 - 1e-6 ? 0.75 : 1.5),
         _ => Width,
     };
 
     /// <summary>
-    /// The thin lines beside an embossed or engraved line at the width: half of it, 0.75 pt at least, on Word's
-    /// 0.12 pt dots (measured with docx/local/b3d-emb, b3d-thin: 1.44 pt beside 3 pt, 0.72 pt beside 1 pt).
+    /// The thin lines beside an embossed or engraved line: 0.72 pt beside lines thinner than 3 pt, 1.44 pt beside
+    /// thicker ones (measured with docx/local/b3d-emb, b3d-thin: 1.44 pt beside 3 pt, 0.72 pt beside 1 pt; LibreOffice's
+    /// extras-ooxmlexport/tdf82177_tblBorders and all_gaps_word: 0.72 beside sz 6, 12 and 18, 1.44 beside 24, 36, 48).
     /// </summary>
-    public double Thin => Math.Floor(Math.Max(0.75, Width / 2) / 0.12 + 1e-6) * 0.12;
+    public double Thin => Width < 3 - 1e-6 ? 0.72 : 1.44;
 
     /// <summary>
     /// The shades of an embossed or engraved line top to bottom and left to right, on every side: embossed light, the
@@ -215,12 +216,14 @@ public sealed record CellMargins(double? Top, double? Left, double? Bottom, doub
     {
         if (e == null)
             return null;
+        // Twips past 32767 wrap around as Word's 16-bit values do, a margin below 0 none (LibreOffice's
+        // extras-ooxmlexport/large-twips: left margins of 65000 count as 0).
         static double? Side(XElement? s) => s?.Attr("type") switch
         {
             null when s == null => null,
             "nil" => 0,
             "pct" => null,
-            _ => s!.Twips("w"),
+            _ => s!.Twips("w") is { } t ? Math.Max(0, TableWidth.Wrapped(t * 20) / 20) : null,
         };
         return new CellMargins(Side(e.Child("top")), Side(e.Child("left") ?? e.Child("start")), Side(e.Child("bottom")), Side(e.Child("right") ?? e.Child("end")));
     }
@@ -243,8 +246,14 @@ public readonly record struct TableWidth(double Value, string Type)
             value = double.Parse(raw[..^1], System.Globalization.CultureInfo.InvariantCulture) * 50;
         else
             value = e.Number("w") ?? 0;
-        return new TableWidth(type == "dxa" ? value / 20 : value, type);
+        return new TableWidth(type == "dxa" ? Wrapped(value) / 20 : value, type);
     }
+
+    /// <summary>
+    /// Twips as Word holds them, in 16 bits: from 32768 on they wrap around to negative values (LibreOffice's
+    /// extras-ooxmlexport/large-twips: a table indent of 65000 twips stands 536 twips left of the margin).
+    /// </summary>
+    public static double Wrapped(double twips) => twips is > 32767 and < 65536 ? twips - 65536 : twips;
 
     /// <summary>The width in points against a reference width (for percentages), or null for auto.</summary>
     public double? Resolve(double reference) => Type switch

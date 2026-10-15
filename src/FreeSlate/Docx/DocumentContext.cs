@@ -16,6 +16,44 @@ public sealed class DocumentContext : IDisposable
 {
     readonly Dictionary<string, XDocument> documents = new(StringComparer.OrdinalIgnoreCase);
 
+    readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<XElement, long>> stacking = new();
+
+    /// <summary>
+    /// The stacking order of a floating drawing (wp:anchor/@relativeHeight) as Word takes it, through its part in
+    /// document order: a height of 0 or 1, or of 0x1E000000 and more, counts as unset and stands above every drawing
+    /// before it, at 0x0F000000 at least; the others as they are, equal ones the later on top (measured with
+    /// docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one on top; 0x10000000, 0,
+    /// 0x0F000005 the unset one above 0x10000000; 0 above 0x0EFFFFFF; 0x1E000000 below 0x1DFFFFFE; LibreOffice's
+    /// extras-ooxmlexport/tdf159158_zOrder_*). Drawings outside a part (VML shapes) keep their own, and so do all of a
+    /// part that holds VML shapes, which Word stacks against DrawingML ones in an order it builds as it meets them
+    /// (docx/local/zo-k, zo-q, zo-v, zo-x: a z-index of 5 under 0x0F000000 alone, over it beside another VML shape or
+    /// after an unset height; not modeled).
+    /// </summary>
+    public long StackingOrder(XElement anchor)
+    {
+        static long? Height(XElement element) => long.TryParse((string?)element.Attribute("relativeHeight"), out var height) ? height : null;
+        if (anchor.Document is not { } document)
+            return Height(anchor) ?? 0;
+        var orders = stacking.GetValue(document, part =>
+        {
+            var result = new Dictionary<XElement, long>();
+            XNamespace v = "urn:schemas-microsoft-com:vml";
+            if (part.Descendants().Any(e => e.Name.Namespace == v && ((string?)e.Attribute("style"))?.Contains("z-index", StringComparison.Ordinal) == true))
+                return result;
+            var highest = 0L;
+            foreach (var element in part.Descendants(Docx.Drawings.Wp + "anchor"))
+            {
+                var height = Height(element) ?? 0;
+                if (height is 0 or 1 || height >= 0x1E000000)
+                    height = Math.Max(highest + 1, 0x0F000000);
+                result[element] = height;
+                highest = Math.Max(highest, height);
+            }
+            return result;
+        });
+        return orders.TryGetValue(anchor, out var order) ? order : Height(anchor) ?? 0;
+    }
+
     /// <summary>
     /// A damaged document with several w:body elements shows them all, one after the other, under the last one's
     /// section properties (measured with docx/external/poi/MultipleBodyBug).

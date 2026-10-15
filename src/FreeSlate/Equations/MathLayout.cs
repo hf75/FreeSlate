@@ -214,12 +214,12 @@ public sealed class MathLayout
     /// <summary>Font units at the size of a level (points).</summary>
     double U(int units, double size) => units * size / font.UnitsPerEm;
 
-    MathItem Sequence(IEnumerable<XElement> elements, Env env, double size)
+    MathItem Sequence(IEnumerable<XElement> elements, Env env, double size, bool closes = true)
     {
         var atoms = new List<Atom>();
         foreach (var element in elements)
             atoms.AddRange(Atoms(element, env, size));
-        return Row(atoms, env, size);
+        return Row(atoms, env, size, closes: closes);
     }
 
     /// <summary>The atoms of one element of a sequence.</summary>
@@ -302,8 +302,8 @@ public sealed class MathLayout
     /// a root or an accent, after a function's name and before a superscript 0.92 em wide; docx/external/
     /// libreoffice/extras-ooxmlexport/2120112713_OpenBrace, tdf158023_export, math-placeholders).
     /// </summary>
-    MathItem Base(XElement element, Env env, double baseSize) =>
-        element.Element(M + "e") is { } e && !HasContent(e) ? Placeholder(env, baseSize) : Sequence(Child(element, "e"), env, baseSize);
+    MathItem Base(XElement element, Env env, double baseSize, bool closes = true) =>
+        element.Element(M + "e") is { } e && !HasContent(e) ? Placeholder(env, baseSize) : Sequence(Child(element, "e"), env, baseSize, closes);
 
     /// <summary>The room of an empty base's placeholder.</summary>
     SpaceItem Placeholder(Env env, double baseSize)
@@ -334,7 +334,13 @@ public sealed class MathLayout
     /// <param name="continued">The row continues a broken line: an operator at its start stays binary.</param>
     /// <param name="continued">Whether the row continues a broken equation: a binary operator at its start keeps its spacing.</param>
     /// <param name="broken">Whether the row ends where the equation breaks: a binary operator at its end keeps the spacing before it.</param>
-    MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false, bool broken = false)
+    /// <param name="closes">
+    /// Whether a box ends after the row (the equation, a delimiter's, a fraction's part, an accented base, a script),
+    /// which keeps its last letter's italic correction; not after an n-ary's operand (LibreOffice's extras-ooxmlexport/
+    /// math-nary: an equation ending in a sum over x centered as without x's correction; math-lim: one ending in a
+    /// function's argument x centered with it).
+    /// </param>
+    MathItem Row(List<Atom> atoms, Env env, double size, bool continued = false, bool broken = false, bool closes = true)
     {
         for (var i = 0; i < atoms.Count; i++)
         {
@@ -355,15 +361,21 @@ public sealed class MathLayout
                 x += Math.Max(Spacing(atoms[i - 1].Right, atoms[i].Class, env), atoms[i - 1].FunctionName ? 3 : 0) * em / 18;
             row.Add(atoms[i].Item, x, 0);
             x += atoms[i].Item.Width;
-            // An italic letter before an operator, a relation, a bracket or punctuation keeps its italic correction,
-            // before another letter none (measured with docx/local/mth-*: x+, y=, f(, x), c) at 11 pt within
-            // 0.06 pt of Cambria Math's corrections; xy and ac without).
-            if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter && i + 1 < atoms.Count
-                && atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct)
+            // An italic letter before an operator, a relation, a bracket, punctuation or a construct (scripts, a
+            // fraction, …) keeps its italic correction, before another letter none (measured with docx/local/mth-*:
+            // x+, y=, f(, x), c) at 11 pt within 0.06 pt of Cambria Math's corrections; xy and ac without;
+            // powertools/RP/RP013: π before r² 0.32 pt), and so does the last letter of a row, whose box ends after
+            // it: before a closing delimiter or separator, under a fraction's bar, under an accent, at the end of a
+            // script and of the equation (LibreOffice's extras-ooxmlexport/math-d: x→| 0.33 pt, math-accents: a bar
+            // over a 6.96 pt wide, docx/local/mth-d-close); not at the end of an n-ary's operand (closes).
+            if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter
+                && (i + 1 == atoms.Count ? closes : atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct
+                    || atoms[i + 1].Item is not GlyphItem))
                 x += letter.Italic;
         }
         row.Width = x;
-        row.Italic = atoms.Count > 0 ? atoms[^1].Item.Italic : 0;
+        // The last letter's correction is in the width already where the row closes a box.
+        row.Italic = atoms.Count > 0 && !(closes && atoms[^1].Class == AtomClass.Ord && atoms[^1].Item is GlyphItem { Italic: > 0 }) ? atoms[^1].Item.Italic : 0;
         return row;
     }
 
@@ -463,12 +475,12 @@ public sealed class MathLayout
         };
     }
 
-    GlyphItem GlyphOf(uint id, double size, RgbColor color, string? text = null)
+    GlyphItem GlyphOf(uint id, double size, RgbColor color, string? text = null, (int CodePoint, int Level)? character = null)
     {
         var (_, bottom, _, top) = font.GlyphBox(id);
         return new GlyphItem
         {
-            Font = font, Glyph = id, Size = size, Color = color, Text = text,
+            Font = font, Glyph = id, Size = size, Color = color, Text = text, Character = character,
             Width = U(font.GlyphAdvance(id), size), Ascent = U(top, size), Descent = U(-bottom, size), Italic = U(table.ItalicsCorrection(id), size),
         };
     }
@@ -808,7 +820,9 @@ public sealed class MathLayout
     {
         var glyph = font.GlyphFor(codepoint);
         var text = char.ConvertFromUtf32(codepoint);
-        var basic = GlyphOf(glyph, size, color, text);
+        // The delimiter at its own size stands for its character, which Word's PDF holds as text (LibreOffice's
+        // extras-ooxmlexport/math-d: "|" one black column in Word, two gray ones as an outline).
+        var basic = GlyphOf(glyph, size, color, text, (codepoint, 0));
         double Extent(MathItem item) => vertically ? item.Ascent + item.Descent : item.Width;
         if (Extent(basic) >= target)
             return basic;
@@ -991,7 +1005,7 @@ public sealed class MathLayout
                 ? Math.Max(centered.Width, scriptsEnd) + Math.Max(gap, U(table.SpaceAfterScript, size))
                 : centered.Width + gap;
         }
-        var operand = Base(nary, env, baseSize);
+        var operand = Base(nary, env, baseSize, closes: false);
         if (nary.Element(M + "e") != null)
             result.Add(operand, operandX, 0);
         result.Italic = operand.Italic;

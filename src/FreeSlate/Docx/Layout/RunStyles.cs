@@ -212,7 +212,11 @@ public sealed class RunStyles(DocumentContext context)
     {
         var bold = (complex ? format.BoldComplex : format.Bold) == true;
         var italic = (complex ? format.ItalicComplex : format.Italic) == true;
-        var size = (complex ? format.SizeComplex ?? format.Size : format.Size) ?? 10;
+        // A right-to-left run or mark without a complex script size anywhere takes Word's default of 10 pt, not its w:sz
+        // (measured with docx/local/rsz-a, rsz-b: w:rtl Hebrew, Latin and empty marks of w:sz 28 print at 10 pt, at
+        // the docDefaults' w:szCs 20 pt where it has one; Hebrew without w:rtl at 14 pt; LibreOffice's
+        // extras-ooxmlexport/style-inheritance: empty w:rtl marks of sz 14).
+        var size = (complex ? format.SizeComplex ?? (format.RightToLeft == true ? 10 : format.Size) : format.Size) ?? 10;
         var family = Family(format, slot);
         var font = context.FontTable.Resolve(context.Fonts, family, bold, italic);
         var color = Color(format);

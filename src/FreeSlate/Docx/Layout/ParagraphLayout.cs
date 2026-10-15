@@ -160,6 +160,12 @@ public sealed class Line
     /// <summary>Whether the line continues past a floating object in a second segment.</summary>
     public bool Jumped { get; set; }
 
+    /// <summary>
+    /// How a centered or right aligned line was moved (from the column's left edge): the room's left and right edge
+    /// and the width of its content, by which Word places it on its device (PageRenderer.OnDots); null for others.
+    /// </summary>
+    public (bool Center, double Left, double Right, double Width)? Alignment { get; set; }
+
     /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
     public List<string>? Notes { get; set; }
 
@@ -1904,7 +1910,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         XNamespace v = "urn:schemas-microsoft-com:vml";
         var embed = picture.Descendants(v + "imagedata").Select(i => (string?)i.Attribute(Wml.R + "id")).FirstOrDefault(r => r != null)
                     ?? picture.Descendants(FreeSlate.Ns.A + "blip").Select(b => (string?)b.Attribute(Wml.R + "embed")).FirstOrDefault(r => r != null);
-        if (embed == null)
+        // A picture bullet without a picture takes its place and shows nothing (LibreOffice's
+        // extras-ooxmlexport/lvlPicBulletId: a v:shape without v:imagedata, no bullet character drawn).
+        if (embed == null && !picture.Descendants(v + "shape").Any())
             return null;
         // The picture's aspect ratio from its VML style or its extent.
         var aspect = 1.0;
@@ -1919,6 +1927,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (w, h) = ((long)Math.Round(height * aspect * 12700), (long)Math.Round(height * 12700));
         var a = FreeSlate.Ns.A;
         XNamespace pic = "http://schemas.openxmlformats.org/drawingml/2006/picture";
+        if (embed == null)
+            return new DrawingInline(new XElement(Drawings.Wp + "inline",
+                new XElement(Drawings.Wp + "extent", new XAttribute("cx", w), new XAttribute("cy", h)),
+                new XElement(Drawings.Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "Picture bullet"))), part, label.Format);
         var drawing = new XElement(Drawings.Wp + "inline",
             new XElement(Drawings.Wp + "extent", new XAttribute("cx", w), new XAttribute("cy", h)),
             new XElement(Drawings.Wp + "docPr", new XAttribute("id", 0), new XAttribute("name", "Picture bullet")),
@@ -2387,8 +2399,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         else if (any && below == 0 && largest == 0)
         {
-            // Only a number on the line: the paragraph mark gives the rest.
+            // Only a number on the line: the paragraph mark gives the rest, its ascent too where it is the larger
+            // (docx/external/libreoffice/core-text/redline-bullet: an item whose text is all deleted keeps a Courier New
+            // 10 pt bullet with the baseline the mark's Aptos 12 pt ascent below the line's top; poi/delins).
             var (a, b) = Metrics(mark, Vertical);
+            above = Math.Max(above, a);
+            raised = Math.Max(raised, a);
             below = b;
             largest = a + b;
             lowered = Math.Max(lowered, b);
@@ -2745,6 +2761,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     static void Visual(Line line, double width, bool rightToLeft)
     {
+        if (rightToLeft)
+            line.Alignment = null;
         var pieces = line.Pieces;
         for (var i = 0; i < pieces.Count;)
         {
@@ -2837,6 +2855,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             foreach (var piece in line.Pieces)
                 piece.X += shift;
+            if (content[0] == line.Pieces[0])
+                line.Alignment = (jc == "center", line.Pieces[0].X - shift, Math.Min(limit, edge ?? limit), end - (line.Pieces[0].X - shift));
             return;
         }
         var justified = jc is "both" or "lowKashida" or "mediumKashida" or "highKashida" or "distribute" or "thaiDistribute";

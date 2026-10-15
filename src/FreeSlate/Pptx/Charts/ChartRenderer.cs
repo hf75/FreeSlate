@@ -39,7 +39,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     const double TitlePaddingX = 3, TitlePaddingY = 1.5;
     const double TickLength = 3.75;           // 5 px
     const double LabelOffset = 3;             // data labels from the end of a bar or a point
-    const double PieLabelMargin = 1.785;      // × s: pies shrink by this on every side when they show data labels
+    const double PieLabelShare = 0.876, PieLabelMargin = 0.163;   // pies with outside labels: share of half the plot less × s
     const double LabelMaxShare = 0.2;         // data labels wrap at this share of the chart's width
     const double LabelKeyText = 1.108;        // × L from a data label's inset to its text after a legend key
     const double PieOutsideGapX = 0.0509, PieOutsideGapY = 0.04;   // × r, outside pie labels off the edge
@@ -3941,12 +3941,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // tdf125444 and percentage-number-formats).
         var labelled = rings.Select(r => DataLabel(group, r, -1))
             .FirstOrDefault(l => l != null && (doughnut || (l.Position ?? "bestFit") is "bestFit" or "outEnd"));
-        var margin = labelled != null && PlotLayout() == null ? PieLabelMargin * labelled.Style.Size : 0;
+        // Such a pie is 0.876 of half the plot's smaller side less 0.163 of the labels' size across (measured in Word's
+        // PDFs: LibreOffice's extras-layout/tdf137116 53.71 pt of 63.0 at 10 pt, outside_long_data_label 59.0 of 69.0,
+        // tdf134866 99.25 of 115; PowerPoint's local/pielabels slide 4 142.5 of 163.5, measured 142.1).
+        var half = Math.Min(plot.W, plot.H) / 2;
+        var available = labelled != null && PlotLayout() == null ? PieLabelShare * half - PieLabelMargin * labelled.Style.Size : half;
         // A plot area placed by hand around the pie itself (layoutTarget inner) holds the pie with its series' explosion,
         // single exploded slices reach beyond it (measured: LibreOffice's tdf146756_bestFit, one slice exploded by 17 %,
         // and tdf146487, all by 8 %).
         var seriesExplosion = rings.Select(s => ChartModel.Number(s.Element, "explosion") ?? 0).DefaultIfEmpty(0).Max() / 100;
-        var radius = Math.Max(1, Math.Min(plot.W, plot.H) / 2 - margin) / (1 + (PlotLayout() is { Inner: true } ? seriesExplosion : maxExplosion));
+        var radius = Math.Max(1, available) / (1 + (PlotLayout() is { Inner: true } ? seriesExplosion : maxExplosion));
         var (cx, cy) = (plot.X + plot.W / 2, plot.Y + plot.H / 2);
         var hole = doughnut ? Math.Clamp(group.HoleSize, 10, 90) / 100 : 0;
         var ringWidth = (radius - radius * hole) / rings.Count;

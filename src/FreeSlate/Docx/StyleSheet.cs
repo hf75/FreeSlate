@@ -107,7 +107,12 @@ public sealed class StyleSheet
                 Next = e.Child("next").Val(),
                 Default = e.Attr("default") is "1" or "true" or "on",
                 ParagraphProperties = e.Child("pPr"),
-                RunProperties = e.Child("rPr"),
+                // Run properties written inside the style's w:pPr (not the schema's place) are the style's too, under its
+                // own w:rPr (LibreOffice's extras-ooxmlexport/tdf135774_numberingCRProps: a style's w:pPr/w:rPr/w:highlight
+                // highlights its paragraphs' runs in Word).
+                RunProperties = e.Child("pPr")?.Child("rPr") is { HasElements: true } markRun
+                    ? new XElement(Wml.W + "rPr", markRun.Elements(), e.Child("rPr")?.Elements() ?? [])
+                    : e.Child("rPr"),
                 TableProperties = e.Child("tblPr"),
                 Element = e,
             };

@@ -59,6 +59,9 @@ public static class NumberText
         "chosung" => Cycled(Chosung, n),
         "ideographDigital" or "japaneseDigitalTenThousand" or "taiwaneseDigital" or "koreanDigital2" => DigitByDigit(n, "〇一二三四五六七八九"),
         "koreanDigital" => DigitByDigit(n, "영일이삼사오육칠팔구"),
+        // Financial numerals with their ten written as one ten (LibreOffice's extras-ooxmlexport/cjklist34: 壹 to 玖,
+        // 10 壹拾, 11 壹拾壹, 20 貳拾).
+        "ideographLegalTraditional" when n is > 0 and < 10000 => Legal(n, "零壹貳參肆伍陸柒捌玖", "拾佰仟"),
         "japaneseCounting" or "chineseCounting" or "taiwaneseCounting" or "chineseCountingThousand"
             or "taiwaneseCountingThousand" or "japaneseLegal" or "ideographLegalTraditional" or "chineseLegalSimplified"
             or "koreanCounting" or "koreanLegal" when format != "chineseCounting" || n < 100 => Chinese(n),
@@ -197,6 +200,32 @@ public static class NumberText
     }
 
     /// <summary>Chinese numerals: 一 … 十, 十一, 二十 …, 百 and 千 for larger numbers.</summary>
+    /// <summary>
+    /// A number of 1 to 9999 in financial numerals: each digit with its unit (ten, hundred, thousand), one zero for
+    /// the zeros between, none at the end, the one before ten kept.
+    /// </summary>
+    static string Legal(int n, string digits, string units)
+    {
+        var text = new System.Text.StringBuilder();
+        var zero = false;
+        for (var power = 3; power >= 0; power--)
+        {
+            var digit = n / (int)Math.Pow(10, power) % 10;
+            if (digit == 0)
+            {
+                zero = text.Length > 0;
+                continue;
+            }
+            if (zero)
+                text.Append(digits[0]);
+            zero = false;
+            text.Append(digits[digit]);
+            if (power > 0)
+                text.Append(units[power - 1]);
+        }
+        return text.ToString();
+    }
+
     static string Chinese(int n)
     {
         const string digits = "〇一二三四五六七八九";

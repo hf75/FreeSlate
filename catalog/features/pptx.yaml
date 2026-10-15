@@ -740,7 +740,9 @@ areas:
           0.35 blurRad). With rotWithShape 0, as PowerPoint writes its shadows, the offset and the transform
           stay on the slide, about the box around the turned shape (measured with generated/effects). Verified
           with generated/effects and probe/shadow, probe/rotshadow. The outline's outer half casts its shadow too
-          (docx/external/libreoffice/extras-ooxmlexport/n705956-2: a 3 pt outline's shadow was cut at the box).
+          (docx/external/libreoffice/extras-ooxmlexport/n705956-2: a 3 pt outline's shadow was cut at the box), and so
+          does geometry beyond the shape's box (docx/external/libreoffice/extras-ooxmlexport/
+          tdf41466_testVmlShapeWithTextbox: a callout's tail 40 pt beside its box, 85.4 → 94.2 %).
 
       - id: effect.innerShadow
         title: Inner shadow
@@ -1708,9 +1710,13 @@ areas:
           details and local/pielabels. A fill of the series' own colors the points without one even where
           the colors vary by point (LibreOffice's tdf150176 and tdf146756: the first slice in bg2). The room
           for outside labels follows the series' label position, not single points' (centered labels with some
-          at bestFit keep the pie at full size: tdf125444, percentage-number-formats). A plot area placed by
-          hand around the pie (layoutTarget inner) holds the pie with its series' explosion; single exploded
-          slices reach beyond it (tdf146756_bestFit, tdf146487).
+          at bestFit keep the pie at full size: tdf125444, percentage-number-formats); with them the pie is 0.876
+          of half the plot's smaller side less 0.163 of the labels' size across (Word's PDFs of LibreOffice's
+          extras-layout/tdf137116: 53.71 pt of 63.0 at 10 pt, outside_long_data_label 59.0 of 69.0, tdf134866 99.25
+          of 115; local/pielabels slide 4: 142.5 of 163.5; tdf137116 79.2 → 94.3 %, outside_long_data_label 81.9 →
+          99.6 %, pielabels 98.9 → 99.2 %). A plot area placed by hand around the pie (layoutTarget inner) holds
+          the pie with its series' explosion; single exploded slices reach beyond it (tdf146756_bestFit,
+          tdf146487).
 
       - id: chart.area
         title: Area charts

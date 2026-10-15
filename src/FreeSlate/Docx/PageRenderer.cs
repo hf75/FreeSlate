@@ -191,6 +191,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
             drawing = Fitted(drawing, content, bodyPr, shape, page);
+        if (blocks != null && drawing.ChildText is { Count: > 0 })
+            drawing = FittedChildren(drawing, page);
         var html = drawings!.Render(drawing);
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
             html += Bevel(drawing);
@@ -319,6 +321,37 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// </summary>
     PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page) =>
         FitToText(drawing, text, body, shape, page, blocks!, context.Theme);
+
+    /// <summary>
+    /// A group whose text boxes resize to their text (a:spAutoFit) with those shapes as high as their text and insets,
+    /// their tops kept (LibreOffice's extras-ooxmlexport/groupshape-theme-font: a box saved 127.3 pt high fits its text,
+    /// 66.45 pt); the drawing's copy, the document's model untouched.
+    /// </summary>
+    PlacedDrawing FittedChildren(PlacedDrawing drawing, PageBox page)
+    {
+        if (!drawing.ChildText!.Any(c => c.Text.Count > 0 && c.Shape.Element(Drawings.Wps + "bodyPr") is { } b && b.Element(Ns.A + "spAutoFit") != null && !Vertical(b)))
+            return drawing;
+        var clone = new XElement(drawing.Drawing);
+        var originals = drawing.Drawing.Descendants(Drawings.Wps + "wsp").ToList();
+        var copies = clone.Descendants(Drawings.Wps + "wsp").ToList();
+        var children = new List<(XElement Shape, List<Block> Text)>();
+        foreach (var (child, text) in drawing.ChildText!)
+        {
+            var index = originals.IndexOf(child);
+            if (index < 0 || index >= copies.Count)
+                return drawing;
+            var copy = copies[index];
+            children.Add((copy, text));
+            if (text.Count == 0 || child.Element(Drawings.Wps + "bodyPr") is not { } body || body.Element(Ns.A + "spAutoFit") == null || Vertical(body)
+                || Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { H: > 0 } rect
+                || copy.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext") is not { } ext
+                || !double.TryParse((string?)ext.Attribute("cy"), NumberStyles.Float, CultureInfo.InvariantCulture, out var cy) || cy <= 0)
+                continue;
+            var fitted = FitToText(new PlacedDrawing(child, drawing.Part, rect.X, rect.Y, rect.W, rect.H), text, body, child, page, blocks!, context.Theme);
+            ext.SetAttributeValue("cy", (long)Math.Round(fitted.Height * cy / rect.H));
+        }
+        return drawing with { Drawing = clone, ChildText = children };
+    }
 
     /// <summary>The fitting of <see cref="Fitted"/>, which the paginator applies too before text wraps around the box.</summary>
     internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks,
@@ -710,7 +743,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var paint = style.Hollow
             ? $"fill=\"{(style.Shadow ? "#FFFFFF" : "none")}\" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(0.14 * PxPerPt / scale)}\" stroke-linejoin=\"round\""
             : $"fill=\"{style.Color.ToHex()}\"" + (style.Font.SyntheticBold
-                ? $" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(data.UnitsPerEm * 0.025)}\" stroke-linejoin=\"round\""
+                ? $" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Units.Css1(data.UnitsPerEm / 35.0)}\" stroke-miterlimit=\"10\""
                 : "");
         return $"<g transform=\"{transform}\" {paint}>{units}</g>";
     }
@@ -744,6 +777,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
         var start = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces[0].X : 0;
         var shift = Snap(placed.Left) - placed.Left + Snap(start) - start;
+        // Centered and right aligned lines: the room's edges each on a dot (the left one as lines start, the right one
+        // where it stands on the page), the content's width in whole dots, half the room left over rounded down
+        // (measured with docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of
+        // 7, 39 of 40 centered and 35 of 40 right aligned lines on Word's dot; docx/external/libreoffice/
+        // extras-ooxmlexport/tdf106174_rtlParaAlign: margins of 750 twips on a page 8391 wide, the right edge at
+        // 3183.75 dots on 3184).
+        if (placed.Line.Alignment is { } aligned)
+        {
+            var left = Snap(placed.Left) + Snap(aligned.Left);
+            var right = Snap(placed.Left + aligned.Right);
+            var width = Math.Round(aligned.Width / Dot, MidpointRounding.AwayFromZero) * Dot;
+            var to = aligned.Center ? left + Math.Floor(Math.Round((right - left - width) / Dot) / 2) * Dot : right - width;
+            // The line's left end, also where right-to-left runs were put in visual order after the first piece.
+            shift = to - (placed.Left + placed.Line.Pieces.Min(p => p.X));
+        }
         return Math.Abs(shift) < 1e-9 ? placed : placed with { Left = placed.Left + shift };
     }
 
@@ -1108,7 +1156,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         else if (words.Count == 0)
             sb.Append($" x=\"{X(0, text.Length)}\"");
         sb.Append($" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\"{TextPaint(piece, x, baseline)}");
-        if (style.Bold) sb.Append(" font-weight=\"700\"");
+        // Bold of a font without a bold face: Word fills the glyphs and strokes them a 35th of the size wide (its PDF:
+        // Lucida Sans Unicode at 12 and 14.04 pt stroked 0.343 and 0.401 pt; LibreOffice's extras-ooxmlexport/
+        // style-inheritance), where the browser would embolden them its own way.
+        if (style.Bold && style.Font.SyntheticBold && !style.Hollow && style.TextFill == null && style.Outline == null)
+            sb.Append($" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Px(style.Size / 35)}\" stroke-miterlimit=\"10\"");
+        else if (style.Bold) sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         // Our positions already hold the kerning; the browser must not add its own. The features the run turns on are
         // the browser's to apply too. Right-to-left text the browser shapes itself: Arabic with its kerning and
@@ -1282,13 +1335,25 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// A piece's text with its glow and shadow (the filter shared with PowerPoint, sized with the font) and its
     /// reflection: a mirrored copy below the baseline (catalog: run.textEffects).
     /// </summary>
+    int effectCopies;
+
     string WithEffects(Piece piece, string markup, double x, double baseline)
     {
         var style = piece.Style;
         if (style.Effects is not { } effects || drawings == null || markup.Length == 0)
             return markup;
         var scale = Html.SvgEffects.TextScale.Of(style.Size);
-        if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
+        // Shadows and glow lie behind a copy of the text, the text itself unfiltered on top: a filtered group is printed
+        // as a picture, its outline lighter than Word's vector text (LibreOffice's extras-ooxmlexport/
+        // tdf166325_scheme_color: a 0.5 pt text outline with a shadow). Effects on the text itself filter it.
+        if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, new StringBuilder(), boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Shape) == null
+            && Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Outer) is { } outer)
+        {
+            // The copy refers to the text, which so stands in the page once (to select, search and read).
+            var id = $"tx{++effectCopies}";
+            markup = $"<use href=\"#{id}\" filter=\"url(#{outer})\"/><g id=\"{id}\">{markup}</g>";
+        }
+        else if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
             markup = $"<g filter=\"url(#{filter})\">{markup}</g>";
         // Text reflects about its baseline, the box reaching up to the font's ascent (as PowerPoint draws it).
         if (effects.Element(Ns.A + "reflection") is { } reflection)

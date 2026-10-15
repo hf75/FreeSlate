@@ -1289,11 +1289,12 @@ public static class Vml
                 "dark1" => "dk1", "light1" => "lt1", "dark2" => "dk2", "light2" => "lt2", "text1" => "tx1", "text2" => "tx2",
                 "background1" => "bg1", "background2" => "bg2", "hyperlink" => "hlink", "followedHyperlink" => "folHlink", var other => other,
             }));
-            if ((string?)background.Attribute(Wml.W + "themeTint") is { } tint && int.TryParse(tint, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var t))
-                scheme.Add(new XElement(Ns.A + "tint", new XAttribute("val", t * 100000 / 255)));
-            if ((string?)background.Attribute(Wml.W + "themeShade") is { } shade && int.TryParse(shade, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var s))
-                scheme.Add(new XElement(Ns.A + "shade", new XAttribute("val", s * 100000 / 255)));
-            return new XElement(Ns.A + "solidFill", scheme);
+            // The theme color wins over w:color, tinted or shaded in its HSL lightness as text colors are (measured with
+            // docx/local/bgt-a to bgt-c, variants of LibreOffice's WPC_CanvasBackground: background2 EEECE1 shaded 3F
+            // prints 484329 with w:color 484329, FF0000 or none; this rule gives 494429).
+            var tinted = DocumentContext.Tinted(colors.Resolve(scheme), (string?)background.Attribute(Wml.W + "themeTint"),
+                (string?)background.Attribute(Wml.W + "themeShade"));
+            return new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", tinted.ToHex().TrimStart('#'))));
         }
         return color is { Length: 6 } hex && hex != "auto" ? new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", hex))) : null;
     }
@@ -1425,8 +1426,13 @@ public static class Vml
             ? Blend(FocusStops(colors, focus), sigma)
             : TwiceFocused(colors, focus);
 
-    /// <summary>Whether a gradient blends along an S-curve in linear light: unless its method is none or linear.</summary>
-    static bool Sigma(XElement? fill) => (string?)fill?.Attribute("method") is not ("none" or "linear");
+    /// <summary>
+    /// Whether a gradient blends along an S-curve in linear light: unless its method is none or linear, or it lists
+    /// its colors, which blend straight in RGB whatever the method (measured with docx/local/vgc-a: red to blue
+    /// halfway 182,0,189 without a list, 127,0,127 with colors="0 red;1 blue", also at focus 100 %, with method
+    /// "linear sigma" and o:fill gradientUnscaled; docx/external/libreoffice/extras-ooxmlexport/tdf159158_zOrder_zIndexMax).
+    /// </summary>
+    static bool Sigma(XElement? fill) => (string?)fill?.Attribute("method") is not ("none" or "linear") && fill?.Attribute("colors") == null;
 
     /// <summary>
     /// The page background's linear VML gradient as Word prints it (catalog: document.background), in points from the

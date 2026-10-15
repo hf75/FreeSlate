@@ -170,8 +170,10 @@ areas:
           Color, gradient, texture or picture behind every page (w:background with its VML fill). Whether Word's PDF
           export includes it must be measured before it is drawn.
         office: >-
-          Word prints the page color whether or not w:displayBackgroundShape is set: w:background's color (theme
-          colors with tint and shade) or the fill of its v:background, behind everything on each page
+          Word prints the page color whether or not w:displayBackgroundShape is set: w:background's color (a theme
+          color over w:color, its tint and shade applied to its HSL lightness as for text: docx/local/bgt-a to bgt-c,
+          background2 EEECE1 shaded 3F prints 484329 whatever w:color says, 494429 by that rule; LibreOffice's
+          WPC_CanvasBackground 47 → 100 % emulated) or the fill of its v:background, behind everything on each page
           (docx/local/misc-nothing, misc-nobg), as its PDF draws it (measured with Word's own presets,
           docx/local/bgpreset-*, and docx/local/ bggrad-*). A linear gradient lies over a tile of 1025 × 769 of Word's
           0.12 pt dots from the page's corner and turns back at the tile's end: at the angles 0 and 180 and at
@@ -437,7 +439,9 @@ areas:
           formats), numbering, paragraph style, character style and direct formatting, each style through its basedOn
           chain (cycles cut); toggle properties (b, i, caps, smallCaps, strike, dstrike, vanish, emboss, imprint,
           outline, shadow) flip along the chain (17.7.3); default paragraph, character and table styles apply where
-          none is named. The default paragraph and table style is the last one marked w:default; without one marked,
+          none is named. Run properties written inside a style's w:pPr (not their place) are the style's, under its own
+          w:rPr (LibreOffice's extras-ooxmlexport/tdf135774_numberingCRProps: a highlight there highlights the runs in
+          Word). The default paragraph and table style is the last one marked w:default; without one marked,
           paragraphs take the paragraph style named Normal (in any case, whatever its id), tables none
           (docx/local/nodefault-*, tdef-*). Word keeps its own Normal Table: a table style of that name shows no
           borders, indent or formatting of its own, its cells 5.4 pt margins left and right (docx/local/tn-*). A
@@ -592,7 +596,9 @@ areas:
           half-points may carry a unit (w:sz "20pt" is 20 pt; docx/external/libreoffice/extras-ooxmlimport/tdf108408
           6.0 → 91.8 %). Colors may be written with a "#" before their six hex digits, other "#" values being no
           color, for text, shading and borders alike (tdf57589_hashColor: #004080 text, #e6e6e6 cells, "#f00ff"
-          nothing; 25.2 → 88.8 %).
+          nothing; 25.2 → 88.8 %). Bold of a font without a bold face is the regular face filled and stroked a 35th of
+          the size wide (Word's PDF of LibreOffice's extras-ooxmlexport/style-inheritance: Lucida Sans Unicode at 12
+          and 14.04 pt stroked 0.343 and 0.401 pt).
 
       - id: run.decoration
         title: Underline, strike, caps, highlight, borders and shading
@@ -692,27 +698,31 @@ areas:
           Complex-script runs use their own font, size, bold and italic; reordering and shaping as in pptx
           `text.rtl` (done), with w:bdo and w:dir as explicit embeddings.
         office: >-
-          Complex script text takes the w:cs font with w:szCs, w:bCs and w:iCs. Bidirectional levels follow UAX #9
-          with the paragraph's direction as the base, neutrals of w:rtl and w:dir runs reading right to left and w:bdo
-          forcing its direction; lines are reordered between their tabs, right-to-left pieces reach the browser whole
-          from their right end (shaped, mirrored brackets) and justification widens their spaces. Clusters of several
-          characters (marks, conjuncts, emoji sequences) are drawn whole. In a left-to-right paragraph a right-to-left
-          run is an embedding of its own, reversed as a whole with its neutrals ("abc def!" shows "!abc def";
-          docx/local/bidi 94.1 %, every line as in Word; fallback-marks 93.3 %). Which characters are complex script
-          follows ECMA-376's two steps as Word takes them: by its block a character is ASCII (Basic Latin and the
-          right-to-left scripts: Hebrew, Arabic, Syriac, Thaana, the Arabic presentation forms), East Asian or high
-          ANSI (all else, Thai and the Indic scripts too, which fall back from the high ANSI font and never take the
-          w:cs font); w:cs and w:rtl then make every character complex script in font, size, bold and italic, Latin
-          letters and punctuation too, but in a w:rtl run (not w:cs) numbers keep the font of their block with complex
-          script size and bold, Arabic-Indic digits always, digits and % $ unless the run's w:lang w:bidi is Hebrew;
-          w:hint="cs" changes nothing (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs paragraph
-          mark measures its empty line in its w:cs font. A right-to-left paragraph's list number takes the rules of a
-          w:rtl run but for its left-to-right letters ("1." beside Arabic: "1" Times New Roman, "." Aharoni; "a." "a"
-          in the ASCII font), a left-to-right paragraph's none, whatever the w:rtl of its mark or level, and a
-          number's missing w:cs font becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text set in Times New
-          Roman beside Aharoni lines had made every line taller (docx/external/powertools/ HC002-Hebrew-01,
-          HC003-Hebrew-02, HC012-Test-07, HC014-RTL-Table-01 from 2–26 % to 100 % of their lines). Tabs and breaks of
-          a right-to-left or complex script run take its complex script font and size, as its other characters do
+          Complex script text takes the w:cs font with w:szCs, w:bCs and w:iCs; a w:rtl run or paragraph mark without a
+          w:szCs anywhere takes Word's default of 10 pt, not its w:sz (docx/local/rsz-a, rsz-b: w:rtl Hebrew, Latin
+          and empty marks of w:sz 28 print at 10 pt, at the docDefaults' w:szCs 20 pt where it has one, Hebrew without
+          w:rtl at its w:sz; LibreOffice's extras-ooxmlexport/style-inheritance 93 → 100 % of the lines).
+          Bidirectional levels follow UAX #9 with the paragraph's direction as the base, neutrals of w:rtl and w:dir
+          runs reading right to left and w:bdo forcing its direction; lines are reordered between their tabs,
+          right-to-left pieces reach the browser whole from their right end (shaped, mirrored brackets) and
+          justification widens their spaces. Clusters of several characters (marks, conjuncts, emoji sequences) are
+          drawn whole. In a left-to-right paragraph a right-to-left run is an embedding of its own, reversed as a
+          whole with its neutrals ("abc def!" shows "!abc def"; docx/local/bidi 94.1 %, every line as in Word;
+          fallback-marks 93.3 %). Which characters are complex script follows ECMA-376's two steps as Word takes them:
+          by its block a character is ASCII (Basic Latin and the right-to-left scripts: Hebrew, Arabic, Syriac,
+          Thaana, the Arabic presentation forms), East Asian or high ANSI (all else, Thai and the Indic scripts too,
+          which fall back from the high ANSI font and never take the w:cs font); w:cs and w:rtl then make every
+          character complex script in font, size, bold and italic, Latin letters and punctuation too, but in a w:rtl
+          run (not w:cs) numbers keep the font of their block with complex script size and bold, Arabic-Indic digits
+          always, digits and % $ unless the run's w:lang w:bidi is Hebrew; w:hint="cs" changes nothing
+          (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs paragraph mark measures its empty line
+          in its w:cs font. A right-to-left paragraph's list number takes the rules of a w:rtl run but for its
+          left-to-right letters ("1." beside Arabic: "1" Times New Roman, "." Aharoni; "a." "a" in the ASCII font), a
+          left-to-right paragraph's none, whatever the w:rtl of its mark or level, and a number's missing w:cs font
+          becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text set in Times New Roman beside Aharoni lines
+          had made every line taller (docx/external/powertools/ HC002-Hebrew-01, HC003-Hebrew-02, HC012-Test-07,
+          HC014-RTL-Table-01 from 2–26 % to 100 % of their lines). Tabs and breaks of a right-to-left or complex
+          script run take its complex script font and size, as its other characters do
           (docx/external/powertools/RP/RP051-Arabic: two breaks of w:rtl runs of w:szCs 14 two lines 17.9 pt high).
 
       - id: run.content
@@ -810,7 +820,9 @@ areas:
           (pptx `text.fillOutline`, `text.effects` and `text.threeD`, done).
         office: >-
           w14:glow, w14:shadow and w14:reflection are drawn by the effect filter shared with PowerPoint (sized with
-          the font; text reflects about its baseline), w14:textOutline as a stroke, w14:textFill as a solid, gradient
+          the font; text reflects about its baseline; glow and shadow behind a copy of the text, the text unfiltered,
+          since a filtered group prints as a picture: LibreOffice's extras-ooxmlexport/tdf166325_scheme_color 88.4 →
+          93.9 % emulated), w14:textOutline as a stroke, w14:textFill as a solid, gradient
           or no fill. A color's w14:alpha is its transparency, not its opacity as a:alpha (docx/local/w14alpha,
           w14shadow: fills, outlines and shadows of w14:alpha 20000, 50000 and 80000 print at 80, 50 and 20 % opacity;
           docx/external/libreoffice/writerfilter-dmapper/tdf152884_Char_Transparency 11.3 → 100 %,
@@ -1096,21 +1108,23 @@ areas:
           attribute (special_styles), w:x and w:xAlign as one position and w:y and w:yAlign as another
           (docx/local/framepos: a paragraph's w:x of the page, 0 too, over its style's xAlign right of the margin;
           tdf112446_frameStyle), one without any w: attribute makes no frame (docx/local/fe-5, fg-7; tdf133457). w:y
-          and w:yAlign count from the margin without w:vAnchor (fd-1, fd-3, fd-5); a frame without a vertical position
-          (w:y 0, no w:yAlign or inline) stands at its paragraph before mode 15 whatever its anchor and on its
-          anchor's top from mode 15 (ff-*, fg-*, fh-*; core-ooxml-pass/fdo81491). The body's text goes around frames
-          standing on the page, also lines above them and around those of headers (special_styles: an envelope address
-          at the page's bottom; fh-1). Lines above a frame standing with the text that it reaches with its w:vSpace go
-          below it (notBeside), the frame keeping its place, and a next frame follows them (fi-2, fi-3, fj-2;
-          tdf105035_framePrB: a title and an author line framed with vSpace 187; tdf164500_framePrBeforeTable); the
-          last paragraph's space after stands in the frame (fk-*). Before mode 15 Word draws a frame's inline shapes
-          and groups (VML and DrawingML, not pictures) at the frame's left edge and as far below the page's top as the
-          frame stands below where its paragraph would stand in the text, wherever they stand in its lines, the text
-          where it belongs (docx/local/framepg-*, frin-*, frio-*: a rectangle after "Framed " in a frame at page y
-          49.8 pt, the first paragraph below a top margin of 27 pt, at 22.75 pt, after a 13.8 pt line at 8.95 pt, in a
-          frame without a position at the page's top; FDO78590, Tdf147485: a letterhead logo 27 pt above its frame,
-          within 0.05 pt). A frame without w:w is as wide as its paragraph, an empty one as its mark (Calibri 11's 6.4
-          pt ¶), one of several paragraphs as its column; its borders go down past the last paragraph's space after
+          and w:yAlign count from the margin without w:vAnchor (fd-1, fd-3, fd-5), a w:y outweighing a w:yAlign
+          beside it (fya-14, fya-15: yAlign center with w:y 10 stands 0.5 pt below the margin or the page, without w:y
+          on the margin's middle; tdf157572_defaultVAnchor); a frame without a vertical position (w:y 0, no w:yAlign
+          or inline) stands at its paragraph before mode 15 whatever its anchor and on its anchor's top from mode 15
+          (ff-*, fg-*, fh-*; core-ooxml-pass/fdo81491). The body's text goes around frames standing on the page, also
+          lines above them and around those of headers (special_styles: an envelope address at the page's bottom;
+          fh-1). Lines above a frame standing with the text that it reaches with its w:vSpace go below it (notBeside),
+          the frame keeping its place, and a next frame follows them (fi-2, fi-3, fj-2; tdf105035_framePrB: a title
+          and an author line framed with vSpace 187; tdf164500_framePrBeforeTable); the last paragraph's space after
+          stands in the frame (fk-*). Before mode 15 Word draws a frame's inline shapes and groups (VML and DrawingML,
+          not pictures) at the frame's left edge and as far below the page's top as the frame stands below where its
+          paragraph would stand in the text, wherever they stand in its lines, the text where it belongs
+          (docx/local/framepg-*, frin-*, frio-*: a rectangle after "Framed " in a frame at page y 49.8 pt, the first
+          paragraph below a top margin of 27 pt, at 22.75 pt, after a 13.8 pt line at 8.95 pt, in a frame without a
+          position at the page's top; FDO78590, Tdf147485: a letterhead logo 27 pt above its frame, within 0.05 pt). A
+          frame without w:w is as wide as its paragraph, an empty one as its mark (Calibri 11's 6.4 pt ¶), one of
+          several paragraphs as its column; its borders go down past the last paragraph's space after
           (docx/external/libreoffice/extras-layout/tdf124423: two empty paragraphs framed across the column 48.4 pt
           high with their 8 pt after each; tdf135035: a column of three; poi/checkboxes; frame-wrap-auto). A frame
           standing with the text (w:vAnchor text) is placed by w:y alone, its w:yAlign unseen
@@ -1297,31 +1311,36 @@ areas:
           Russian), legal numbering, suffix tab, space or nothing, numbers aligned left, centered or right at the
           first line's indent (docx/local/num-rules). Number words and ordinals follow the paragraph's language
           (English, German, French, Russian; words only below a million); letters repeat up to thirty times, then
-          start over; Chinese counting goes digit by digit from 100 (○ for zero); the heavenly stems turn decimal
-          after ten; Word 2010's custom formats pad with zeros (docx/external/powertools/LIR001 … LIR020 and
-          docx/local/numwords2-*: every number exactly as Word writes it). The tab after a number takes the left
-          indent as its stop also where the number ends right at it (an empty number, one right-aligned at the
-          indent), leaving the text there; custom and default stops count only after its place, as for other tabs
-          (docx/local/emptylabel, tabzero, tabzero2; docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab).
-          The level's indents and tabs override the paragraph style's (a level indented 360 twips puts a List
-          Paragraph, whose style says 720, at 360; docx/generated/lists); where the numbering comes from the paragraph
-          style itself, the style's override the level's attribute by attribute (a style's left 1080 with a level's
-          left 1620 and hanging 360 makes left 1080, hanging 360; docx/local/styleind-A … -H). The number is drawn in
-          the paragraph mark's formatting with the level's run properties over it, but for the mark's shading: a mark
-          shaded directly, through its style or in a pattern leaves the number and its tab or space white, only the
-          level's own w:shd shades them, while the mark's highlight is theirs (docx/local/labelshd; docx/external/
+          start over; Chinese counting goes digit by digit from 100 (○ for zero); ideographLegalTraditional writes
+          financial numerals with the one before ten (壹 to 玖, 10 壹拾, 11 壹拾壹, 20 貳拾; LibreOffice's
+          extras-ooxmlexport/cjklist34 0 → 100 % of the lines); the heavenly stems turn decimal after ten; Word 2010's
+          custom formats pad with zeros (docx/external/powertools/LIR001 … LIR020 and docx/local/numwords2-*: every
+          number exactly as Word writes it). The tab after a number takes the left indent as its stop also where the
+          number ends right at it (an empty number, one right-aligned at the indent), leaving the text there; custom
+          and default stops count only after its place, as for other tabs (docx/local/emptylabel, tabzero, tabzero2;
+          docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab). The level's indents and tabs override the
+          paragraph style's (a level indented 360 twips puts a List Paragraph, whose style says 720, at 360;
+          docx/generated/lists); where the numbering comes from the paragraph style itself, the style's override the
+          level's attribute by attribute (a style's left 1080 with a level's left 1620 and hanging 360 makes left
+          1080, hanging 360; docx/local/styleind-A … -H). The number is drawn in the paragraph mark's formatting with
+          the level's run properties over it, but for the mark's shading: a mark shaded directly, through its style or
+          in a pattern leaves the number and its tab or space white, only the level's own w:shd shades them, while the
+          mark's highlight is theirs (docx/local/labelshd; docx/external/
           libreoffice/extras-tiledrendering/tdf114799_shd, tdf114799_highlight); only its ascent counts in the line
           height, not its descent (a 16 pt number before 12 pt text makes the line 17.52 pt high), and beside nothing
           but drawings the line has no descent at all (docx/local/lt-8, lt-10: a bullet beside a 40 pt shape makes the
-          line 40 pt high). A level without w:start counts from 0, where letters and roman numbers show nothing
-          (docx/local/ns-*: "0.", "1.", "2." in modes 12 to 15, ".", "A.", "B."; docx/external/libreoffice/
-          extras-ooxmlexport/tdf132754). Picture bullets are numbering.pictureBullets. Where the numbering comes from
-          a paragraph style, the level's properties sit right under the style that holds w:numPr: the styles it is
-          based on give way to the level, it and the styles based on it override the level (docx/local/lvb-base,
-          lvb-own, lvb-derived: a level's left 2160 over a base style's 1440, under the numbering style's and a
-          derived style's 1440; docx/external/libreoffice/extras-ooxmlexport/n778836 57.1 → 100 %). A legal level
-          (w:isLgl) prints the numbers of all levels as Arabic numerals, zero-padded ones (decimalZero) staying so
-          (docx/local/lgl-*: upper Roman, full-width, circled, ordinal and letters as 1, decimalZero as 01;
+          line 40 pt high); beside nothing at all it takes the paragraph mark's ascent where that is larger, and its
+          descent (libreoffice/core-text/redline-bullet: a Courier New 10 pt bullet whose item's text is all deleted
+          stands on the Aptos 12 pt mark's baseline, 0 → 100 % of the lines). A level without w:start counts from 0,
+          where letters and roman numbers show nothing (docx/local/ns-*: "0.", "1.", "2." in modes 12 to 15, ".",
+          "A.", "B."; docx/external/libreoffice/ extras-ooxmlexport/tdf132754). Picture bullets are
+          numbering.pictureBullets. Where the numbering comes from a paragraph style, the level's properties sit right
+          under the style that holds w:numPr: the styles it is based on give way to the level, it and the styles based
+          on it override the level (docx/local/lvb-base, lvb-own, lvb-derived: a level's left 2160 over a base style's
+          1440, under the numbering style's and a derived style's 1440;
+          docx/external/libreoffice/extras-ooxmlexport/n778836 57.1 → 100 %). A legal level (w:isLgl) prints the
+          numbers of all levels as Arabic numerals, zero-padded ones (decimalZero) staying so (docx/local/lgl-*: upper
+          Roman, full-width, circled, ordinal and letters as 1, decimalZero as 01;
           docx/external/libreoffice/extras-ooxmlexport/listWithLgl "Sect 1.01"). Numbering switched off in a paragraph
           (w:numId 0 in its own w:numPr) takes its indents from its own w:ind alone, none from its styles, numbered or
           not (docx/local/nz0-*; tdf95374).
@@ -1357,7 +1376,9 @@ areas:
         office: >-
           A level with w:lvlPicBulletId shows the picture of its w:numPicBullet (VML or DrawingML) where the number
           would stand, on the baseline, 0.996 × size − 1.97 pt high (from 8 to 48 pt: 6 to 45.85 pt) and as wide as
-          its aspect ratio makes it; the tab after it goes on from its end (picture bullet probes Word made, 94 %).
+          its aspect ratio makes it; the tab after it goes on from its end (picture bullet probes Word made, 94 %). A
+          w:numPicBullet whose VML shape has no picture keeps that room and shows nothing, no bullet character
+          (LibreOffice's extras-ooxmlexport/lvlPicBulletId 63.6 → 100 % of the lines).
 
   - id: section
     title: Sections and pages
@@ -1447,13 +1468,17 @@ areas:
           (docx/local/cc-*: complex0's heading, two lines in a 264 pt column and four in the 132 pt one beside it,
           goes to the next page, in a 216 pt column or shortened to a word it stays beside). A section on the next
           column (w:type nextColumn) goes on at the top of the column after the current one, in the columns of the
-          section before, on a new page after its last column and where it has another number of columns
-          (docx/local/ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its second column;
-          ncs-22-15: two after two in the second column, then page 2;
-          docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2 57.1 → 94.7 %). A continuous
-          section that begins on a page has its own left and right margins there (docx/local/csm-1, csm-cols: its text
-          144 pt from the page's left edge below a section's at 72 pt, its two columns out to its 36 pt right margin;
-          docx/external/libreoffice/extras-ooxmlexport/fdo52208 70.7 → 92.6 %, endingSectionProps 94.5 → 98.3 %).
+          section before, on a new page after its last column and where it has another number of columns than the
+          section before (docx/local/ncs-13-12, -14, -15: three columns after one begin page 2, the next three in its
+          second column; ncs-22-15: two after two in the second column, then page 2;
+          docx/external/libreoffice/extras-ooxmlexport/tdf135343_columnSectionBreak_c14v2 57.1 → 94.7 %; _c14, _c15:
+          three after three on a page that two began go on in its columns). The columns of a right-to-left section
+          (w:bidi) run from the right, a section on the next column keeping the direction of the one whose columns it
+          goes on in (tdf135343_columnSectionBreak_c12v3: "RTL 1" centered in the right-hand first column; _c14). A
+          continuous section that begins on a page has its own left and right margins there (docx/local/csm-1,
+          csm-cols: its text 144 pt from the page's left edge below a section's at 72 pt, its two columns out to its
+          36 pt right margin; docx/external/libreoffice/extras-ooxmlexport/fdo52208 70.7 → 92.6 %, endingSectionProps
+          94.5 → 98.3 %).
 
       - id: section.pageBorders
         title: Page borders
@@ -1787,9 +1812,14 @@ areas:
           % indented -15.9 or 36 pt is 450.8 pt wide, ending as far before or past the right margin, in modes 14 and
           15; docx/external/poi/bug65649). A fixed table with a width of its own scales its grid to it, whatever its
           cells say; a width in points lies between the outer lines' middles (with cell spacing too), a percentage
-          between their outer edges, before Word 2013 between the middles, a percentage of the available width and the
-          outer cells' margins together (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with margins
-          of 5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks).
+          between their outer edges, of the available width less the outer lines (docx/local/tpw-15: 40 % and 50 % of
+          451.3 pt with outer lines of 0.5, 3 and 6 pt 180.87, 182.31, 184.11, 225.87, 227.07 and 228.63 pt wide;
+          core-unocore/floattable-split), before Word 2013 between the middles, a percentage of the available width
+          and the outer cells' margins together (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with
+          margins of 5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks). Widths, indents and cell margins in twips wrap
+          around past 32767 as Word's 16-bit values do, a margin below 0 none (LibreOffice's
+          extras-ooxmlexport/large-twips: a table indent of 65000 twips stands 536 twips left of the margin, cell
+          margins of 65000 count as 0).
 
       - id: table.rows
         title: Row height, splitting and header rows
@@ -1916,11 +1946,12 @@ areas:
           thin crosses 28 of 64 dots (docx/local/shp-patterns: all 37 patterns in Word's print, 100 %;
           docx/external/libreoffice/extras-ooxmlexport/style-pane-format-filter 33.4 → 99.0 %, theme-preservation 34.2
           → 98.7 %). Embossed and engraved lines (threeDEmboss, threeDEngrave) are their width wide with a thin line
-          on each side, half the width and 0.75 pt at least, printed on whole dots, the room their full width; top to
-          bottom and left to right on every side embossed light, the line, dark, engraved the other way round:
-          automatic and black lines C0C0C0, 606060 and black, others their color and 70 and 80 of Word's 240 steps of
-          lightness darker, towards white less (docx/local/b3d-*: sz 24 and 8, auto, red and eight colors, paragraphs
-          and cells, 87 to 100 %; docx/external/powertools/HC049-Borders 42.4 → 92.9 %,
+          on each side, 0.72 pt beside lines thinner than 3 pt and 1.44 pt beside thicker ones, in room of 0.75 or
+          1.5 pt (LibreOffice's extras-ooxmlexport/tdf82177_tblBorders, all_gaps_word: 0.72 pt beside sz 6, 12 and 18,
+          1.44 pt beside 24, 36 and 48); top to bottom and left to right on every side embossed light, the line, dark,
+          engraved the other way round: automatic and black lines C0C0C0, 606060 and black, others their color and 70
+          and 80 of Word's 240 steps of lightness darker, towards white less (docx/local/b3d-*: sz 24 and 8, auto, red
+          and eight colors, paragraphs and cells, 87 to 100 %; docx/external/powertools/HC049-Borders 42.4 → 92.9 %,
           libreoffice/extras-ooxmlexport/all_gaps_word, tdf82177_tblBorders). Inset and outset paragraph lines are
           plain (b3d-in, b3d-out). Between rows the inside line stands also where a cell has none above or below it
           (w:gridBefore, w:gridAfter), the top and bottom lines at the table's first and last row only
@@ -1970,38 +2001,44 @@ areas:
         status: done
         strategy: Positioned like a frame; text wraps around it (engine.floats).
         office: >-
-          Tables with w:tblpPr take no room in the text: their outer left edge stands w:tblpX from their column, the
-          margin or the page (or aligns by w:tblpXSpec; before Word 2013 their first cell's text stands there, as at
-          an indent: docx/external/libreoffice/core-layout/floattable-compat14, -compat14-body, -compat14-nosplit in
-          modes 14 and 12, extras-ooxmlexport/fdo68607; aligned left the first cell's text at the edge, right the last
-          cell's, half the outer line and the cell margin out, centered alike: docx/local/ftx-14-*, -15-*, poi/
-          Bug54771b, libreoffice/extras-ooxmlexport/tdf97090), their top w:tblpY below the next paragraph's top above
-          its space before (docx/local/floatanchor-*), the margin or the page (or aligns by w:tblpYSpec), the margin
-          without w:vertAnchor; one without a vertical position (tblpY 0, no tblpYSpec or inline) stands at its
-          paragraph before Word 2013 whatever its anchor, at its anchor's top from then on (docx/local/ta-*, tb-*;
-          core-layout/floattable-deleted-anchor, writerfilter-dmapper/floattable-header); text wraps around them on
-          both sides, their distances kept free (docx/local/float-tables 91.3 %: a column-aligned table exactly as in
-          Word). The paragraph after the table adds all its space before to the space after the one before it; a first
-          line pushed below a floating object keeps its paragraph's own space before below it (docx/local/fsb-*: 14 pt
-          below tables anchored to the page and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points
-          of the lines). A table taller than the rest of the page goes on at the top of the next page's body at the
-          same place across, its rows split at a line of each cell as in the text (in Word 2013 and before alike),
-          header rows repeated, the line below the last row of a page closing each part; the paragraph after it begins
-          at the top of its last page (docx/local/floatsplit-*: anchored to the text exactly as in Word;
-          docx/external/ libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages); one
-          anchored to the text whose first row does not fit goes to the next page with its paragraph and stands where
-          it would at it, also above the top margin (docx/local/fn-1, fn-2, fn-4;
-          core-layout/floattable-next-leaf-in-section). Before Word 2013 a table anchored to the page or the margin
-          breaks on its first page where it would at the paragraph after it, as many lines down, so past the bottom
-          margin or above it (floatsplit-14p-*, floattable-compat14, docx/
-          external/libreoffice/core-doc/floating-table-dummy-text); from Word 2013 on one whose first row does not fit
-          above the bottom margin stays where it stands on a page without text before it, a row of exact height
-          reaching past the margin, one of at least height keeping its content there, a line of each cell or, where
-          none has more, all of it, the rest of its height gone (powertools/DB-HeadersFooters-Src/Footer: first on its
-          page at the page's foot, a row of 45.35 pt 9.24 pt high there, 78.0 → 99.9 %), and from a page with text
-          goes to the next page at the same place, its next rows going on at the top of the page after
-          (docx/local/flb-spec, flb-below, flb-cross: rows at the page's foot, below and across the bottom margin;
-          flb-margin, flb-*14); w:doNotBreakWrappedTables keeps tables whole
+          Tables with w:tblpPr take no room in the text, but one standing with the text (vertAnchor text) over the
+          lines before it, or over their paragraph's space after, moves those lines below itself and keeps its place,
+          the text going on below them (LibreOffice's core-text/floattable-negative-vert-offset: tblpY -269 puts the
+          line before the table below it, 33 → 100 % of the lines; floattable-anchor-next-page: 1.2 pt of overlap
+          suffice, 71 → 100 %; writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first,
+          empty line where it is). One that ends the document, no paragraph after it, stands in the text
+          (extras-ooxmlimport/table_width: at the body's top, not at its tblpY of 513 pt). Their outer left edge
+          stands w:tblpX from their column, the margin or the page (or aligns by w:tblpXSpec; before Word 2013 their
+          first cell's text stands there, as at an indent: docx/external/libreoffice/core-layout/floattable-compat14,
+          -compat14-body, -compat14-nosplit in modes 14 and 12, extras-ooxmlexport/fdo68607; aligned left the first
+          cell's text at the edge, right the last cell's, half the outer line and the cell margin out, centered alike:
+          docx/local/ftx-14-*, -15-*, poi/ Bug54771b, libreoffice/extras-ooxmlexport/tdf97090), their top w:tblpY
+          below the next paragraph's top above its space before (docx/local/floatanchor-*), the margin or the page (or
+          aligns by w:tblpYSpec), the margin without w:vertAnchor; one without a vertical position (tblpY 0, no
+          tblpYSpec or inline) stands at its paragraph before Word 2013 whatever its anchor, at its anchor's top from
+          then on (docx/local/ta-*, tb-*; core-layout/floattable-deleted-anchor,
+          writerfilter-dmapper/floattable-header); text wraps around them on both sides, their distances kept free
+          (docx/local/float-tables 91.3 %: a column-aligned table exactly as in Word). The paragraph after the table
+          adds all its space before to the space after the one before it; a first line pushed below a floating object
+          keeps its paragraph's own space before below it (docx/local/fsb-*: 14 pt below tables anchored to the page
+          and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points of the lines). A table taller
+          than the rest of the page goes on at the top of the next page's body at the same place across, its rows
+          split at a line of each cell as in the text (in Word 2013 and before alike), header rows repeated, the line
+          below the last row of a page closing each part; the paragraph after it begins at the top of its last page
+          (docx/local/floatsplit-*: anchored to the text exactly as in Word; docx/external/
+          libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages); one anchored to the
+          text whose first row does not fit goes to the next page with its paragraph and stands where it would at it,
+          also above the top margin (docx/local/fn-1, fn-2, fn-4; core-layout/floattable-next-leaf-in-section). Before
+          Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
+          paragraph after it, as many lines down, so past the bottom margin or above it (floatsplit-14p-*,
+          floattable-compat14, docx/ external/libreoffice/core-doc/floating-table-dummy-text); from Word 2013 on one
+          whose first row does not fit above the bottom margin stays where it stands on a page without text before it,
+          a row of exact height reaching past the margin, one of at least height keeping its content there, a line of
+          each cell or, where none has more, all of it, the rest of its height gone
+          (powertools/DB-HeadersFooters-Src/Footer: first on its page at the page's foot, a row of 45.35 pt 9.24 pt
+          high there, 78.0 → 99.9 %), and from a page with text goes to the next page at the same place, its next rows
+          going on at the top of the page after (docx/local/flb-spec, flb-below, flb-cross: rows at the page's foot,
+          below and across the bottom margin; flb-margin, flb-*14); w:doNotBreakWrappedTables keeps tables whole
           (writerfilter-dmapper/do-not-break-wrapped-tables). Drawings anchored in its cells stand as in other tables
           (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). In a table cell a
           floating table stands in the cell's text area (tblpX from its left, the margin as the text, the page from
@@ -2459,39 +2496,46 @@ areas:
         office: >-
           Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name,
           at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight
-          (docx/generated/drawings). The paragraph's top lies above its own space before (below the space after the
-          paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules, within 0.05
-          pt); an anchor in a part of the paragraph in a later column or page counts from that part and its column
-          (extras-layout/shape-anchored-in-follow: a rectangle anchored at the end of a paragraph that goes on in the
-          next page's second column stands there; extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6); relative to the
-          character counts from the start of the character before the anchor (docx/local/anchor- char, within 0.01
-          pt). In table cells the column and margin across are the cell's text area, the page and its margins the cell
-          inside its line, down the page and margins the cell's content, whether layoutInCell is set or not
-          (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV) apply to
-          shapes as they are and to pictures only both together, scaled evenly to fit (docx/local/size-rel-shape,
-          size-rel), each less the effect extents across it (docx/local/relsz-*: 40 % of a 451.3 pt margin with 1.8 pt
-          of effect extent on the right is 178.7 pt wide, with 1 pt all round 178.5; a picture fits into what is
-          left). Inside is the left or the top of the area on odd pages and the right or the bottom on even ones,
-          outside the other side, whichever margin the area is (docx/local/vio-*: relative to the top and the bottom
-          margin, the margin and the page; libreoffice/core-objectpositioning/inside-outside-vert- align 4.6 → 100 %;
-          known deviation: relative to the page Word keeps 18 pt from the page's edge, ours none). Alignment places
-          the drawing with its effect extent (wp:effectExtent), with or without an effect to fill it, each side where
-          its alignment meets it, across the page and the margins (docx/local/sa-d1, sa-d2, sb-*, sc-*: 80 pt left and
-          36 pt above take a shape centered at the page's top 40 pt right and 36 pt down), relatively sized ones too
-          (relsz-3, -4, -5, -7); an offset places the extent, but the effect extent in a direction the drawing is
-          sized relative to the page or margins (relsz-2, -6, -9 to -11; powertools/WC/WC065-Textbox,
-          DB-GlossaryDocuments/FooterContent-built). A simple position (wp:simplePos) may be a universal measure
-          (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: 10cm 5cm, 8.1 → 100 %). From Word 2013
-          on a drawing that text goes around, placed from its paragraph or line, stays below the top margin, behind
-          the text too; before, and unwrapped, it stands above it (docx/local/wrm-15, wrm-behind, wrm-14, wrm-none,
-          wrm-mid: 20 pt above the first paragraph; docx/external/libreoffice/extras-ooxmlimport/tdf60351 40.5 → 51.3
-          %). A drawing placed from its line stands at the line's top before floating objects pushed it down, where
-          the room around it was measured (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top,
-          textbox-textline: text boxes wider than the column at their line's top, the text below them, 56.1 → 99.6 %
-          and 58.0 → 100 %). Across, a drawing sized relative to the inside or outside margin (wp14:sizeRelH) takes
-          the width of the margin on the other side than the one it stands in (docx/local/srm-in, srm-out: margins of
-          127.6 and 72 pt, the inside 72 pt wide at the left of odd pages, 127.6 pt at the right of even ones, the
-          outside the other way round;
+          (docx/generated/drawings), taken through the part in document order: a relativeHeight of 0 or 1, or of
+          0x1E000000 and more, counts as unset and stands above every drawing before it, at 0x0F000000 at least, equal
+          ones the later on top (docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one
+          on top, 0x10000000, 0, 0x0F000005 the unset one above 0x10000000, 0 above 0x0EFFFFFF, 0x1E000000 below
+          0x1DFFFFFE; LibreOffice's extras-ooxmlexport/tdf159158_zOrder_*). Known deviation: VML shapes against
+          DrawingML ones stack by an order Word builds as it meets them (zo-q: z-index 5 under 0x0F000000; zo-v: two of
+          5 over it; zo-x: over it after an unset one; zo-r, zo-s: z-index 0 over it), not modeled: parts holding VML
+          shapes keep the heights as they are. The paragraph's top lies above its own space before (below the space
+          after the paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules,
+          within 0.05 pt); an anchor in a part of the paragraph in a later column or page counts from that part and
+          its column (extras-layout/shape-anchored-in-follow: a rectangle anchored at the end of a paragraph that goes
+          on in the next page's second column stands there; extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6);
+          relative to the character counts from the start of the character before the anchor (docx/local/anchor- char,
+          within 0.01 pt). In table cells the column and margin across are the cell's text area, the page and its
+          margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is set
+          or not (docx/local/cell-anchor). Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV)
+          apply to shapes as they are and to pictures only both together, scaled evenly to fit
+          (docx/local/size-rel-shape, size-rel), each less the effect extents across it (docx/local/relsz-*: 40 % of a
+          451.3 pt margin with 1.8 pt of effect extent on the right is 178.7 pt wide, with 1 pt all round 178.5; a
+          picture fits into what is left). Inside is the left or the top of the area on odd pages and the right or the
+          bottom on even ones, outside the other side, whichever margin the area is (docx/local/vio-*: relative to the
+          top and the bottom margin, the margin and the page; libreoffice/core-objectpositioning/inside-outside-vert-
+          align 4.6 → 100 %; known deviation: relative to the page Word keeps 18 pt from the page's edge, ours none).
+          Alignment places the drawing with its effect extent (wp:effectExtent), with or without an effect to fill it,
+          each side where its alignment meets it, across the page and the margins (docx/local/sa-d1, sa-d2, sb-*,
+          sc-*: 80 pt left and 36 pt above take a shape centered at the page's top 40 pt right and 36 pt down),
+          relatively sized ones too (relsz-3, -4, -5, -7); an offset places the extent, but the effect extent in a
+          direction the drawing is sized relative to the page or margins (relsz-2, -6, -9 to -11;
+          powertools/WC/WC065-Textbox, DB-GlossaryDocuments/FooterContent-built). A simple position (wp:simplePos) may
+          be a universal measure (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: 10cm 5cm, 8.1 →
+          100 %). From Word 2013 on a drawing that text goes around, placed from its paragraph or line, stays below
+          the top margin, behind the text too; before, and unwrapped, it stands above it (docx/local/wrm-15,
+          wrm-behind, wrm-14, wrm-none, wrm-mid: 20 pt above the first paragraph;
+          docx/external/libreoffice/extras-ooxmlimport/tdf60351 40.5 → 51.3 %). A drawing placed from its line stands
+          at the line's top before floating objects pushed it down, where the room around it was measured
+          (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top, textbox-textline: text boxes wider
+          than the column at their line's top, the text below them, 56.1 → 99.6 % and 58.0 → 100 %). Across, a drawing
+          sized relative to the inside or outside margin (wp14:sizeRelH) takes the width of the margin on the other
+          side than the one it stands in (docx/local/srm-in, srm-out: margins of 127.6 and 72 pt, the inside 72 pt
+          wide at the left of odd pages, 127.6 pt at the right of even ones, the outside the other way round;
           docx/external/libreoffice/extras-ooxmlexport/tdf133861_RelativeAnchorWidthFromInsideOutsideMargin, mirrored,
           56.0 → 100 %). A drawing that text wraps around (square, tight, through, top and bottom) and that stands
           down from its paragraph or line stays on the page across: past the right edge it ends there, past the left
@@ -2616,9 +2660,11 @@ areas:
           again; the text boxes of grouped shapes are laid out in their shapes' places and turn with them
           (docx/local/groups: a stretched group, a nested group with a turned star and a text box, 100 %). A group
           without a:chOff and a:chExt maps its children 1:1 from 0 0, so that the offsets of nested groups add up
-          (docx/external/libreoffice/extras-ooxmlexport/dml-groupshape-childposition 80.8 → 100 %). Graphic frames in
-          groups and canvases (wpg:graphicFrame, wpc:graphicFrame: charts) stand in their group's coordinates
-          (docx/external/libreoffice/extras-ooxmlimport/tdf124398 3.6 → 97.3 %,
+          (docx/external/libreoffice/extras-ooxmlexport/dml-groupshape-childposition 80.8 → 100 %). A grouped text
+          box that resizes to its text (a:spAutoFit) is as high as its text and insets, its top kept
+          (extras-ooxmlexport/groupshape-theme-font: a box saved 127.3 pt high fits its text, 66.45 pt). Graphic
+          frames in groups and canvases (wpg:graphicFrame, wpc:graphicFrame: charts) stand in their group's
+          coordinates (docx/external/libreoffice/extras-ooxmlimport/tdf124398 3.6 → 97.3 %,
           extras-ooxmlexport/tdf124398_groupshapeChart 38.3 → 91.7 %).
 
       - id: drawing.canvas
@@ -2671,7 +2717,9 @@ areas:
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx theme.colors (done). Scheme colors through the theme and
           w:clrSchemeMapping; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF
-          renderer ignoring Chrome's soft masks).
+          renderer ignoring Chrome's soft masks). A document without a theme part takes Word's own theme of 2023, its
+          colors (accent1 156082 …) and format scheme as Word writes them into new documents
+          (LibreOffice's extras-odfexport/tdf168980: a text box outlined in accent1 prints 156082).
 
       - id: theme.fonts
         title: Theme fonts
@@ -4040,8 +4088,9 @@ areas:
           pandoc/golden/mark_math). The highlight of an equation's runs lies behind all of it over its lines, inline
           and displayed (mark_math). Glyphs that are their character's in the math font (its math alphabets, the
           script forms by the ssty feature) are printed as text, as Word's PDFs hold them, which the rasterizer fits
-          to the pixel grid; stretched and large variants as outlines (powertools/RP/RP013: the "=" bars one black
-          row). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
+          to the pixel grid, delimiters at their own size too; stretched and large variants as outlines
+          (powertools/RP/RP013: the "=" bars one black row; libreoffice/extras-ooxmlexport/math-d: "|" one black
+          column). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
           paragraph mark's where the equation stands alone (docx/local/eq-shaded). Word differs from PowerPoint in two
           rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space
@@ -4057,13 +4106,19 @@ areas:
           (docx/external/libreoffice/extras-ooxmlexport/tdf130907: _GoBack after the last equation, no empty line,
           71.3 → 76.0 %). An ellipsis after an operator or relation stands on the axis (U+22EF;
           EquationWithAboveAndBelowCaption, math-mso2k7: "+…"). An italic letter before an operator, a relation, a
-          bracket or punctuation keeps its italic correction, before another letter none (docx/local/mth-*: x+, y=,
-          f(, x), c) at 11 pt within 0.06 pt); a superscript also moves by its letter's top right math kern
-          (mth-d-sup: x^k 0.27 pt, Cambria Math's 50 units). Delimiters grown past 1.5 times their own height space as
-          an inner atom, a thin space before an ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and
-          inline); below display level they grow by twice the content's reach from the axis (mti-i-*, mth-i-binom).
-          Scripts and their scripts take the font's 73 and 60 % of their base in whole half points down (Word's PDFs:
-          12 pt 8.5 and 7, 14 pt 10 and 8, 11 pt 8 and 6.5, 20 pt 14.5; docx/generated/equations 89.6 → 91.1 %,
+          bracket, punctuation or a construct (scripts, a fraction) keeps its italic correction, before another letter
+          none (docx/local/mth-*: x+, y=, f(, x), c) at 11 pt within 0.06 pt; powertools/RP/RP013: π before r² 0.32
+          pt), and so does the last letter of a box: before a closing delimiter or separator, under a fraction's bar
+          or an accent, at a script's and at the equation's end (LibreOffice's extras-ooxmlexport/math-d: x before
+          "|" 0.33 pt, math-accents: a bar over a 6.96 pt wide; docx/local/mth-d-close; math-lim: an equation ending in
+          a function's argument x centered with x's correction, 89.1 → 98.2 %), not at the end of an n-ary's operand
+          (math-nary: an equation ending in a sum over x centered as without x's correction, 83.8 → 92.2 %); a
+          superscript also moves by its letter's top right math kern (mth-d-sup: x^k 0.27 pt, Cambria Math's 50
+          units). Delimiters grown past 1.5 times their own height space as an inner atom, a thin space before an
+          ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and inline); below display level they
+          grow by twice the content's reach from the axis (mti-i-*, mth-i-binom). Scripts and their scripts take the
+          font's 73 and 60 % of their base in whole half points down (Word's PDFs: 12 pt 8.5 and 7, 14 pt 10 and 8, 11
+          pt 8 and 6.5, 20 pt 14.5; docx/generated/equations 89.6 → 91.1 %,
           docx/external/libreoffice/extras-ooxmlexport/tdf171433_equation 77.5 → 95.0 %, math-literal 84.7 → 90.8 %).
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
@@ -4141,18 +4196,21 @@ areas:
           180, the focus ±50 % reversed, any other the rest to 100 %); along its colors list where it has one; color2
           "fill darken(n)" or "lighten(n)" for one-color gradients; gradientRadial from its focus position outwards;
           colors blend in linear light along an S-curve, in plain RGB along a straight line where the method is none
-          or linear, and o:opacity2 fades color2 without tinting (within 3 of 255 of Word's pixels); pattern fills as
-          their 8 × 8 bitmap, a point a bit, tiled from the page's corner; double and triple lines (linestyle), line
-          opacity, shadows (v:shadow: an unblurred copy at its offset, 2 pt right and down by default, in its color
-          and opacity, a double shadow's second in color2 at offset2 behind it). Word 97 borders (w10:bordertop,
-          borderleft, borderbottom, borderright) frame the shape outside, width/8 pt each floored to Word's 0.12 pt
-          dots, double lines three times that, dotted and dashed ones dashed (docx/local/vml-border). w10:anchorlock
-          only locks the anchor while editing. A floating shape's shadow widens its extent on its side, which
-          alignment counts (docx/local/sa-v*: a shape centered at the page's top with a shadow 80 pt left and 36 pt up
-          stands 40 pt right and 36 pt down; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw);
-          mso-wrap-distance-* keep wrapped text away (9 pt left and right, none above and below by default); a text
-          box with mso-fit-shape-to-text is as high as its text where it is drawn. Shape types resolve across their
-          part, not only in their w:pict (poi/WordWithAttachments: a picture frame type of the first w:object;
+          or linear or the gradient lists its colors, whatever its method (docx/local/vgc-a: red to blue halfway
+          182,0,189 plainly, 127,0,127 with colors="0 red;1 blue", at focus 100 %, with "linear sigma" and o:fill;
+          LibreOffice's tdf159158_zOrder_zIndexMax 76.4 → 98.9 % emulated), and o:opacity2 fades color2 without
+          tinting (within 3 of 255 of Word's pixels); pattern fills as their 8 × 8 bitmap, a point a bit, tiled from
+          the page's corner; double and triple lines (linestyle), line opacity, shadows (v:shadow: an unblurred copy
+          at its offset, 2 pt right and down by default, in its color and opacity, a double shadow's second in color2
+          at offset2 behind it). Word 97 borders (w10:bordertop, borderleft, borderbottom, borderright) frame the
+          shape outside, width/8 pt each floored to Word's 0.12 pt dots, double lines three times that, dotted and
+          dashed ones dashed (docx/local/vml-border). w10:anchorlock only locks the anchor while editing. A floating
+          shape's shadow widens its extent on its side, which alignment counts (docx/local/sa-v*: a shape centered at
+          the page's top with a shadow 80 pt left and 36 pt up stands 40 pt right and 36 pt down;
+          docx/external/libreoffice/extras-ooxmlexport/testOuterShdw); mso-wrap-distance-* keep wrapped text away (9
+          pt left and right, none above and below by default); a text box with mso-fit-shape-to-text is as high as its
+          text where it is drawn. Shape types resolve across their part, not only in their w:pict
+          (poi/WordWithAttachments: a picture frame type of the first w:object;
           libreoffice/core-objectpositioning/vml-vertical-alignment: triangles); v:stroke on="f" takes the outline off
           as stroked="f" does (tika/testWPSAttachment). Horizontal rules (o:hr) span o:hrpct of the width of the
           column they stand in (all of it without, whatever width the style gives; the style's width at 0), in cells
@@ -4266,7 +4324,10 @@ areas:
           1079 across Letter; lsgy-a4: baselines down the page; scaling the whole page instead moved pattern fills,
           pictures and turned frames that Word leaves); lines on the page start on whole dots, the column's or cell's
           edge and the line's indent each rounded, halves to even (lsg-*, lsg2-*, lsg3-*: margins 1120 to 1160 twips
-          and indents 0 to 24 twips, the right margin no matter). Known deviation: Word rounds some halves up where
+          and indents 0 to 24 twips, the right margin no matter); centered and right aligned lines stand by their
+          room's edges each rounded so, their content's width in whole dots and half the room left over rounded down
+          (docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of 7 twips: 291
+          of 320 line starts on Word's dot, 256 before). Known deviation: Word rounds some halves up where
           the page is wide (1462.5 dots and more) or the margins mirrored (lsm-2418), and places glyphs within a line
           on its device's hinted widths, which we do not.
 

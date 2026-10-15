@@ -93,12 +93,13 @@ public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
             && (plain == glyph.Glyph || level > 0) && char.ConvertFromUtf32(codepoint) is var character)
         {
             var family = glyph.Font.Family.Replace("'", "\\'");
-            svg.Append($"<text x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" font-family=\"'{System.Net.WebUtility.HtmlEncode(family)}'\" font-size=\"{N4(glyph.Size * pxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
+            // Drawn only: the equation's text to select is its own layer (Text).
+            svg.Append($"<text aria-hidden=\"true\" x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" font-family=\"'{System.Net.WebUtility.HtmlEncode(family)}'\" font-size=\"{N4(glyph.Size * pxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
             if (glyph.Color.A < 0.999)
                 svg.Append($" fill-opacity=\"{N4(glyph.Color.A)}\"");
             // A script form is the font's ssty alternate of the level (Chrome applies the feature as the layout did).
             var features = plain != glyph.Glyph ? $";font-feature-settings:'ssty' {level}" : "";
-            svg.Append($" style=\"font-kerning:none{features}\">{System.Net.WebUtility.HtmlEncode(character)}</text>");
+            svg.Append($" style=\"font-kerning:none;user-select:none{features}\">{System.Net.WebUtility.HtmlEncode(character)}</text>");
             text.Append(glyph.Text ?? character);
             return;
         }

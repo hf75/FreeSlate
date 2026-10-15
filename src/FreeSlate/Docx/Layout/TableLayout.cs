@@ -1477,8 +1477,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var target = tw - gaps;
         if (w.Type != "pct")
             return target;
+        // From Word 2013 on the percentage is of the available width less the outer lines' share, which then come on top
+        // (measured with docx/local/tpw-15: 40 % and 50 % of 451.3 pt with outer lines of 0.5, 3 and 6 pt are 180.87,
+        // 182.31, 184.11, 225.87, 227.07 and 228.63 pt between their outer edges; LibreOffice's core-unocore/
+        // floattable-split, core-frmedt/floating-table-caption: 40 % with 3 pt lines).
         if (!Legacy)
-            return target - allowance;
+            return (w.Resolve(available - allowance) ?? tw) - gaps;
         // Before Word 2013 the percentage is of the available width and those margins together (measured with
         // docx/local/tblwidth-14: 50 % of 451.3 pt with margins of 5.4 pt is 231.0 pt wide, not 236.4; pandoc/
         // golden/raw-blocks: 40 %).
