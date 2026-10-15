@@ -4327,9 +4327,21 @@ areas:
           and indents 0 to 24 twips, the right margin no matter); centered and right aligned lines stand by their
           room's edges each rounded so, their content's width in whole dots and half the room left over rounded down
           (docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of 7 twips: 291
-          of 320 line starts on Word's dot, 256 before). Known deviation: Word rounds some halves up where
-          the page is wide (1462.5 dots and more) or the margins mirrored (lsm-2418), and places glyphs within a line
-          on its device's hinted widths, which we do not.
+          of 320 line starts on Word's dot, 256 before). Within a line Word puts each glyph on its device by its
+          natural width in whole dots at the font's pixel size (its design width with its kerning scaled, up from 0.46
+          of a dot), a dot less or more where the error against the exact advances would pass 1.5 dots after the next
+          glyph, the line in stretches of 1024 dots at whose ends the error comes back within half a dot; a stretch
+          starts on the nearest dot, its error counted from there, at the line's start, after a tab or an object;
+          justified spaces are as much wider in whole dots, the error deciding which take a dot more. Its PDF writes
+          the device's advances per run against the glyphs' widths: as character spacing where the first seven glyphs
+          need what the first needs within 0.01 pt (14,496 runs of extras-ooxmlexport's PDFs: 99.8 %), otherwise as
+          adjustments written once they reach 3/1000 em, their remainder dropped; runs of the same w:rPr, w:rsidRPr
+          and w:rsidR are one (docx/local/adv-*, probes in five fonts from 8 to 28 pt: all 90 lines and 100 runs of
+          Word's PDFs). Ours alike for text of one glyph per character below 24 pt without spacing, scaling or
+          synthetic bold (adv-*: 92 to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103
+          documents of the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before).
+          Known deviation: Word rounds some halves up where the page is wide (1462.5 dots and more) or the margins
+          mirrored (lsm-2418); text from 24 pt, in text boxes and right to left keeps its exact advances.
 
       - id: engine.pagination
         title: Pagination

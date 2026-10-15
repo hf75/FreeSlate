@@ -1473,6 +1473,7 @@ public sealed partial class ModelReader(DocumentContext context)
             characterStyle = null;
         var format = context.Styles.Run(paragraphStyle, characterStyle, direct, tableRun);
         (format.Override, format.Embedding) = (bidiOverride, bidiEmbedding);
+        format.Source = (r.Child("rPr")?.ToString(SaveOptions.DisableFormatting) ?? "", r.Attr("rsidRPr"), r.Attr("rsidR"));
         if (field.Silent)
             format.Vanish = true;
         if (context.Markup)

@@ -88,6 +88,9 @@ public sealed class RunFormat
 
     public string? Style;
 
+    /// <summary>The run the format is a w:r's, as Word tells its runs apart: its w:rPr as written, w:rsidRPr and w:rsidR.</summary>
+    public (string Properties, string? PropertiesRevision, string? Revision)? Source;
+
     public RunFormat Clone() => (RunFormat)MemberwiseClone();
 
     /// <summary>Lays the properties a w:rPr sets over this format.</summary>

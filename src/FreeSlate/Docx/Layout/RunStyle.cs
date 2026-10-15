@@ -19,6 +19,9 @@ public sealed record RunStyle(
     public string? Underline { get; init; }
     public RgbColor? UnderlineColor { get; init; }
 
+    /// <summary>The w:r the style is a run's (<see cref="RunFormat.Source"/>), which Word's PDF writes as one with a like run after it.</summary>
+    public (string Properties, string? PropertiesRevision, string? Revision)? Source { get; init; }
+
     /// <summary>The character style of the run (w:rStyle), which STYLEREF looks for on a page.</summary>
     public string? CharacterStyle { get; init; }
     public bool Strike { get; init; }

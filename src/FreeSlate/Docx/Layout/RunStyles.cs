@@ -256,6 +256,7 @@ public sealed class RunStyles(DocumentContext context)
             Revision = revision,
             Change = format.Change,
             CharacterStyle = format.Style,
+            Source = format.Source,
             LineHeights = LineHeights,
             Underline = revision?.Kind switch { "ins" => "single", "moveTo" => "double", _ => format.Underline is { } u && u != "none" ? u : null },
             UnderlineColor = revision?.Kind is "ins" or "moveTo" ? null : format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,

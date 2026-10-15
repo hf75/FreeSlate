@@ -492,10 +492,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front, bool onPage = false)
     {
+        var outer = onDevice;
         foreach (var line in lines)
         {
             var grows = onPage && line.Angle == 0;
             var placed = grows ? OnDots(line) : line;
+            onDevice = grows && DevicePlaced ? DevicePositions(placed) : null;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
                 svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
@@ -520,8 +522,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
+                // A run of text moves by where its first glyph stands on the device.
                 if (grows)
-                    x += Grow(x, paperSize.Width);
+                    x += Grow(x + (onDevice != null && onDevice.TryGetValue(piece, out var device) ? device[0] : 0), paperSize.Width);
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
                 // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
                 // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
@@ -665,10 +668,170 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             if (placed.Angle != 0)
                 svg.Append("</g>");
         }
+        onDevice = outer;
     }
 
-    /// <summary>The x position (points from the piece's start) of every UTF-16 unit, justification included.</summary>
-    static double[] Positions(Piece piece)
+    /// <summary>
+    /// The x position (points from the piece's start) of every UTF-16 unit, justification included: where Word's PDF
+    /// puts them in the line being drawn on the page (<see cref="DevicePositions"/>), otherwise by their advances.
+    /// </summary>
+    static double[] Positions(Piece piece) =>
+        onDevice != null && onDevice.TryGetValue(piece, out var device) ? device : NominalPositions(piece);
+
+    /// <summary>The places Word's PDF gives the glyphs of the line being drawn on the page, by piece (see <see cref="Positions"/>).</summary>
+    [ThreadStatic] static Dictionary<Piece, double[]>? onDevice;
+
+    /// <summary>Whether glyphs stand where Word's device puts them; FS_DOCX_GLYPHS=nominal keeps their advances, for measuring.</summary>
+    static readonly bool DevicePlaced = Environment.GetEnvironmentVariable("FS_DOCX_GLYPHS") != "nominal";
+
+    /// <summary>
+    /// Where Word's PDF puts the glyphs of a line on the page, by piece, as positions from the piece's place (see
+    /// <see cref="DeviceGlyphs"/>). The line goes on the device in stretches, each from the nearest whole dot, its error
+    /// counted from there: at the line's start (on a dot already), after a tab or anything but plain text and where a
+    /// piece does not go on where the one before ended; plain text is one glyph per character at the font's advances
+    /// (kerned or not), without spacing, scaling or synthetic bold, left to right and below 24 pt (measured with docx/local/adv-*, 92
+    /// to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103 documents of the corpus,
+    /// 67,985 characters: 88.5 %, 72.5 % before; the error counted from the line's exact start instead: 84.0 %). Null
+    /// for lines without plain text.
+    /// </summary>
+    static Dictionary<Piece, double[]>? DevicePositions(PlacedLine placed)
+    {
+        var line = placed.Line;
+        if (line.Vertical || line.TurnEastAsian || line.Pieces.Count == 0)
+            return null;
+        var glyphs = new List<(int Natural, double Nominal, double Width)>();
+        var stretches = new List<(int Index, int Start, double Error)>();
+        var pieces = new List<(Piece Piece, int Index, bool Joined)>();
+        var (open, end) = (false, 0.0);
+        Piece? previous = null;
+        foreach (var piece in line.Pieces)
+        {
+            if (PlainGlyphs(piece) is not { } ids)
+            {
+                (open, previous) = (false, null);
+                continue;
+            }
+            if (ids.Length == 0)
+                continue;
+            var data = piece.Style.Font.Data;
+            var pixels = DeviceGlyphs.PixelSize(piece.Style.Size);
+            var nominal = NominalPositions(piece);
+            // Word writes runs one after the other as one run of its PDF where they are alike (SameRun).
+            pieces.Add((piece, glyphs.Count, previous != null && piece.Link == previous.Link && SameRun(piece.Style, previous.Style)));
+            previous = piece;
+            if (!open || Math.Abs(piece.X - end) > 0.01)
+            {
+                var at = (placed.Left + piece.X) / Dot;
+                var start = (int)Math.Round(at);
+                stretches.Add((glyphs.Count, start, start - at));
+                open = true;
+            }
+            var spaces = 0;
+            for (var i = 0; i < piece.Text.Length; i++)
+            {
+                var design = data.GlyphAdvance(ids[i]);
+                var exact = piece.Advances[i] / Dot;
+                // Kerning counts in the natural width as part of the glyph's design width (docx/generated/*, Aptos with
+                // w:kern: 77.8 % of the characters within half a dot of Word's PDF; the kerning rounded on its own 64.3 %).
+                var kerning = (int)Math.Round(piece.Advances[i] * data.UnitsPerEm / piece.Style.Size - design);
+                var natural = DeviceGlyphs.Natural(design + kerning, data.UnitsPerEm, pixels);
+                // A justified space is as much wider on the device as the line's spaces are, in whole dots; the error
+                // decides which of them take a dot more or less (Word's PDF of docx/external/poi/bug57031: spaces of 25
+                // dots 33 or 34, 31 or 32 wide, a dot more on one or two of 10 to 18).
+                if (piece.Text[i] == ' ' && piece.SpaceExtra != 0 && spaces++ < piece.JustifiedSpaces)
+                {
+                    natural += (int)Math.Round(piece.SpaceExtra / Dot);
+                    exact += piece.SpaceExtra / Dot;
+                }
+                glyphs.Add((natural, exact, Math.Round(1000.0 * design / data.UnitsPerEm) / 1000 * pixels * 72 / 600));
+            }
+            end = piece.X + nominal[^1];
+        }
+        if (pieces.Count == 0)
+            return null;
+        // The device's places of every glyph and of what follows each.
+        var places = new int[glyphs.Count];
+        var ends = new int[glyphs.Count];
+        for (var s = 0; s < stretches.Count; s++)
+        {
+            var (from, to) = (stretches[s].Index, s + 1 < stretches.Count ? stretches[s + 1].Index : glyphs.Count);
+            var natural = new int[to - from];
+            var nominal = new double[to - from];
+            for (var k = from; k < to; k++)
+                (natural[k - from], nominal[k - from]) = (glyphs[k].Natural, glyphs[k].Nominal);
+            var stretch = DeviceGlyphs.Place(natural, nominal, stretches[s].Error);
+            for (var k = from; k < to; k++)
+                (places[k], ends[k]) = (stretches[s].Start + stretch[k - from], stretches[s].Start + stretch[k - from + 1]);
+        }
+        // Each run of Word's PDF has its first glyph where the device put it, the others as its writer encodes the
+        // device's advances.
+        var result = new Dictionary<Piece, double[]>();
+        for (var p = 0; p < pieces.Count;)
+        {
+            var q = p + 1;
+            while (q < pieces.Count && pieces[q].Joined)
+                q++;
+            var (from, to) = (pieces[p].Index, pieces[q - 1].Index + pieces[q - 1].Piece.Text.Length);
+            var advances = new int[to - from - 1];
+            var widths = new double[to - from - 1];
+            for (var k = from; k < to - 1; k++)
+                (advances[k - from], widths[k - from]) = (places[k + 1] - places[k], glyphs[k].Width);
+            var encoded = DeviceGlyphs.Encode(advances, widths, DeviceGlyphs.PixelSize(pieces[p].Piece.Style.Size) * 72.0 / 600);
+            for (var r = p; r < q; r++)
+            {
+                var (piece, index, _) = pieces[r];
+                var count = piece.Text.Length;
+                var positions = new double[count + 1];
+                for (var k = 0; k < count; k++)
+                    positions[k] = (places[from] + encoded[index - from + k]) * Dot - (placed.Left + piece.X);
+                positions[count] = positions[count - 1] + (ends[index + count - 1] - places[index + count - 1]) * Dot;
+                result[piece] = positions;
+            }
+            p = q;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Whether Word holds two runs as one: the same w:rPr, w:rsidRPr and w:rsidR (of 103 documents of the corpus, 88.5 %
+    /// of the characters within half a dot of Word's PDF; 88.1 % with every w:r a run of its own, 85.6 % with runs of the
+    /// same w:rPr as one, 86.0 % with the same w:rPr and w:rsidRPr).
+    /// </summary>
+    static bool SameRun(RunStyle a, RunStyle b) =>
+        a.Source is { } x && b.Source == x && a.Features.SequenceEqual(b.Features) && a with { Features = b.Features } == b;
+
+    /// <summary>
+    /// The glyphs of a piece of plain text (see <see cref="DevicePositions"/>): one per character at the font's advance,
+    /// kerned or not; none for a piece without text, null for tabs, objects and text that is not plain.
+    /// </summary>
+    static uint[]? PlainGlyphs(Piece piece)
+    {
+        if (piece.IsTab || piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null || piece.Combined != null
+            || piece.Across != null || piece.Separator || piece.Rule != null || piece.RightToLeft || piece.Lead != 0)
+            return null;
+        if (piece.Text.Length == 0)
+            return [];
+        var style = piece.Style;
+        var data = style.Font.Data;
+        if (data.IsColor || Math.Abs(style.Scale - 1) > 1e-6 || style.Size is <= 0 or >= 24)
+            return null;
+        var glyphs = data.GlyphsWithFeatures(piece.Text, style.Features, language: style.Language);
+        if (glyphs.Length != piece.Text.Length)
+            return null;
+        var ids = new uint[glyphs.Length];
+        for (var i = 0; i < glyphs.Length; i++)
+        {
+            var glyph = glyphs[i];
+            if (glyph.Cluster != i || glyph.Id == 0 || char.IsSurrogate(piece.Text[i]) || Math.Abs(glyph.OffsetX) > 1e-9
+                || Math.Abs(piece.Advances[i] - glyph.Advance * style.Size) > 1e-4 || style.Font.SyntheticBold || style.Spacing != 0)
+                return null;
+            ids[i] = glyph.Id;
+        }
+        return ids;
+    }
+
+    /// <summary>The x position (points from the piece's start) of every UTF-16 unit by their advances, justification included.</summary>
+    static double[] NominalPositions(Piece piece)
     {
         var positions = new double[piece.Text.Length + 1];
         var x = 0.0;
