@@ -1965,7 +1965,10 @@ areas:
           451.3 pt with outer lines of 0.5, 3 and 6 pt 180.87, 182.31, 184.11, 225.87, 227.07 and 228.63 pt wide;
           core-unocore/floattable-split), before Word 2013 between the middles, a percentage of the available width
           and the outer cells' margins together (docx/local/tblwidth-15, -14, tblwidth2-15, -14: 50 % of 451.3 pt with
-          margins of 5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks). Widths, indents and cell margins in twips wrap
+          margins of 5.4 pt 231.0 pt wide; pandoc/golden/raw-blocks), half an outer line instead of its margin where
+          that is wider (docx/local/tpw-14: margins of 0.5 pt, 40 % and 50 % with outer lines of 0.5, 3 and 6 pt
+          180.99, 181.71, 182.91, 226.23, 227.19 and 228.63 pt between the middles; extras-ooxmlexport/
+          tdf168988_grabbagDatePicker 86.1 → 100 %, tdf160077_layoutInCellC 94.3 → 99.8 %). Widths, indents and cell margins in twips wrap
           around past 32767 as Word's 16-bit values do, a margin below 0 none (LibreOffice's
           extras-ooxmlexport/large-twips: a table indent of 65000 twips stands 536 twips left of the margin, cell
           margins of 65000 count as 0).

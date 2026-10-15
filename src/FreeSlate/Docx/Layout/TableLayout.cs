@@ -1435,7 +1435,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         for (var k = 0; k < columns; k++)
             grid[k] = k < table.Grid.Count ? table.Grid[k] : 0;
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
-            return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps), lines);
+            return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps, lines), lines);
         if (grid.All(w => w > 0))
         {
             // Grid columns that no row reaches take nothing of a width of the table's own (measured with docx/local/
@@ -1443,7 +1443,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             // all three keeps the grid; docx/external/libreoffice/extras-mailmerge/grabbagtest).
             var reached = rows.Count == 0 ? columns
                 : rows.Max(r => (r.Cells.Count == 0 ? r.Format.GridBefore : r.Cells.Max(c => c.Column + c.Format.GridSpan)) + r.Format.GridAfter);
-            if (reached > 0 && reached < columns && Target(table, rows, widthBase ?? available, allowance, gaps) != null)
+            if (reached > 0 && reached < columns && Target(table, rows, widthBase ?? available, allowance, gaps, lines) != null)
             {
                 for (var k = reached; k < columns; k++)
                     grid[k] = 0;
@@ -1499,7 +1499,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         double[] Scaled(double[] widths)
         {
             var sum = widths.Sum();
-            if (Target(table, rows, widthBase ?? available, allowance, gaps) is not { } target || sum <= 0)
+            if (Target(table, rows, widthBase ?? available, allowance, gaps, lines) is not { } target || sum <= 0)
                 return widths;
             return widths.Select(w => w * target / sum).ToArray();
         }
@@ -1512,7 +1512,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// width and the first cell's and the last cell's margins together (measured with docx/local/tblwidth-15, -14,
     /// tblwidth2-15, -14 and compat14-tables).
     /// </summary>
-    double? Target(TableModel table, List<RowModel> rows, double available, double allowance, double gaps)
+    double? Target(TableModel table, List<RowModel> rows, double available, double allowance, double gaps, BorderLine?[,]? lines = null)
     {
         var format = table.Format;
         if (format.Width is not { Type: "dxa" or "pct" } w || w.Resolve(available) is not { } tw || tw <= 0)
@@ -1528,11 +1528,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return (w.Resolve(available - allowance) ?? tw) - gaps;
         // Before Word 2013 the percentage is of the available width and those margins together (measured with
         // docx/local/tblwidth-14: 50 % of 451.3 pt with margins of 5.4 pt is 231.0 pt wide, not 236.4; pandoc/
-        // golden/raw-blocks: 40 %).
+        // golden/raw-blocks: 40 %), or half the outer line where that is wider (docx/local/tpw-14: 40 % and 50 % with
+        // margins of 0.5 pt and outer lines of 0.5, 3 and 6 pt are 180.99, 181.71, 182.91, 226.23, 227.19 and 228.63 pt
+        // between the lines' middles; docx/external/libreoffice/extras-ooxmlexport/tdf168988_grabbagDatePicker).
         if (rows.Count > 0 && rows[0].Cells.Count > 0)
         {
             var (first, last) = (rows[0].Cells[0], rows[0].Cells[^1]);
-            var margins = Margins(rows[0], first, format).Left + Margins(rows[0], last, format).Right;
+            var (leftLine, rightLine) = lines is { Length: > 0 } ? (Width(lines[0, 0]) / 2, Width(lines[0, lines.GetLength(1) - 1]) / 2) : (0, 0);
+            var margins = Math.Max(Margins(rows[0], first, format).Left, leftLine) + Math.Max(Margins(rows[0], last, format).Right, rightLine);
             target = (w.Resolve(available + margins) ?? tw + margins) - gaps;
         }
         return target;
