@@ -3519,18 +3519,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // character (measured with docx/local/np-*: in modes 12 and 14 an unwrapped rectangle 28.35 pt from the
             // column and the paragraph, or the character and the line, stands 28.35 pt right of and below its line
             // pushed below one wrapped rectangle and right of another, from the margin where it was; one wrapped square
-            // stays where the line was planned, as in mode 15; docx/external/libreoffice/extras-uiwriter/tdf98987).
-            if (context.CompatibilityMode < 15 && inLine && linePushes.TryGetValue(anchor, out var push)
-                && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is null or { Name.LocalName: "wrapNone" })
+            // stays where the line was planned, as in mode 15; docx/external/libreoffice/extras-uiwriter/tdf98987). Only
+            // the paragraph's own wrapped drawings so move it, and the indent is no push (extras-layout/tdf123651: an
+            // unwrapped arrow of an indented paragraph whose lines other floats push stays where it was planned).
+            static bool Wrapped(AnchorInline a) => a.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { } w
+                && w.Name.LocalName != "wrapNone";
+            if (context.CompatibilityMode < 15 && inLine && linePushes.TryGetValue(anchor, out var push) && !Wrapped(anchor)
+                && paragraph.Content.OfType<AnchorInline>().Any(Wrapped))
             {
-                if (firstPush is { } first && first.Page == anchorPage)
+                // Down only where one of them covers the paragraph's top, which then moves (docx/local/np2-a, -c: a
+                // drawing kept free above and below 8.3 pt under the top leaves the unwrapped one where it was, one from
+                // 20 pt above takes it below; np2-b: one wrapped square beside the line takes it right all the same).
+                var plannedTop = anchorTop;
+                var covered = paragraph.Content.OfType<AnchorInline>().Where(Wrapped)
+                    .Select(a => ExclusionOf(PlaceAnchor(a, anchorPage, plannedTop, at.Top, columnLeft, columnWidth)))
+                    .Any(e => e is { } area && area.Top <= plannedTop + 0.01 && area.Bottom > plannedTop + 0.01);
+                if (covered && firstPush is { } first && first.Page == anchorPage)
                     anchorTop += first.Skip;
-                lineTop += push.Skip;
-                if (push.Start is { } start && start > 0.01)
+                if (covered)
+                    lineTop += push.Skip;
+                var indent = Math.Max(0, (format.Left ?? 0) + (lines.FirstOrDefault()?.First == true ? format.FirstLine ?? 0 : 0));
+                if (push.Start is { } start && start > indent + 0.01)
                 {
                     if (push.Empty)
                         character = Math.Max(character, columnLeft + start);
-                    (columnLeft, columnWidth) = (columnLeft + start, Math.Max(0, columnWidth - start));
+                    (columnLeft, columnWidth) = (columnLeft + start - indent, Math.Max(0, columnWidth - start + indent));
                 }
             }
             anchorPage.Drawings.Add(PlaceAnchor(anchor, anchorPage, anchorTop, lineTop, columnLeft, columnWidth, character: character));

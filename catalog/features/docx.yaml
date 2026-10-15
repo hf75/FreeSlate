@@ -2628,11 +2628,13 @@ areas:
           (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top, textbox-textline: text boxes wider
           than the column at their line's top, the text below them, 56.1 → 99.6 % and 58.0 → 100 %), a drawing text goes
           around that is; before Word 2013 a drawing text does not go around stands from its paragraph's first line and
-          its own line where wrapped drawings pushed them, down, and right for the column and the character
-          (docx/local/np-*: in modes 12 and 14 an unwrapped rectangle 28.35 pt from the column and the paragraph, or
-          the character and the line, stands 28.35 pt right of and below its line pushed below one wrapped rectangle
-          and right of another, one placed from the margin or wrapped square where it was;
-          docx/external/libreoffice/extras-uiwriter/tdf98987 83.2 → 100 %); from Word 2013 on it stands from the
+          its own line where the paragraph's own wrapped drawings pushed them, right for the column and the
+          character, and down where one of them covers the paragraph's top (docx/local/np-*: in modes 12 and 14 an
+          unwrapped rectangle 28.35 pt from the column and the paragraph, or the character and the line, stands 28.35
+          pt right of and below its line pushed below one wrapped rectangle and right of another, one placed from the
+          margin or wrapped square where it was; np2-a, -b, -c: one kept free above and below from 8.3 pt under the
+          top leaves it where it was, from 20 pt above takes it down, one wrapped square beside the line takes it
+          right; docx/external/libreoffice/extras-uiwriter/tdf98987 83.2 → 100 %, extras-layout/tdf123651 kept); from Word 2013 on it stands from the
           column and its paragraph's top as planned (tdf137850_compat15ZOrder). Across, a drawing
           sized relative to the inside or outside margin (wp14:sizeRelH) takes the width of the margin on the other
           side than the one it stands in (docx/local/srm-in, srm-out: margins of 127.6 and 72 pt, the inside 72 pt
@@ -4350,7 +4352,10 @@ areas:
           (docx/external/libreoffice/extras-ooxmlexport/groupshape-rotation: a group turned 45°, its triangle's
           corners within 0.1 pt, 56.2 → 93.2 %). A shape of a preset type with adjustments of its own (adj) follows
           its type's path and formulas with them (docx/external/libreoffice/extras-ooxmlimport/vml-adjustments: a
-          triangle's apex at 17639/21600 of its width, 65.9 → 100 %). The picture frame type (t75) is one Word knows
+          triangle's apex at 17639/21600 of its width, 65.9 → 100 %), as does a hexagon, whose formulas count across
+          and down on their own (Word's PDF of extras-ooxmlexport/test76317: 98.9 by 74.15 pt cut in by a quarter of its
+          width, 78.5 → 100 %); parallelograms and down arrows Word draws as the presets (tdf97618, tdf123651). The
+          picture frame type (t75) is one Word knows
           without its definition: no fill and no line (fdo76316: shapes of type t75 without a shapetype and without a
           picture print nothing). Known deviations: a perspective shadow's matrix is left out; the text wraps the
           stated height of a box fitted to its text; a rule in a text box takes its share of the last column laid out.

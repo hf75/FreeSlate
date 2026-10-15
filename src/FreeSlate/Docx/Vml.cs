@@ -922,7 +922,12 @@ public static class Vml
         // A shape of a preset type with adjustments of its own follows its type's path and formulas with them, which
         // the preset's defaults would not (docx/external/libreoffice/extras-ooxmlimport/vml-adjustments: a triangle's
         // apex at 17639/21600 of its width).
-        if ((preset == null || shape.Attribute("adj") != null && preset is not ("rect" or "roundRect" or "ellipse" or "line"))
+        // So does a hexagon, whose formulas count across and down on their own where the preset counts by the shorter
+        // side (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/test76317: 98.9 by 74.15 pt cut in by a
+        // quarter of its width, 24.7 pt, not of its height); parallelograms and down arrows Word draws as the presets
+        // (extras-ooxmlexport/tdf97618_testVmlShapeTextWordWrap, extras-layout/tdf123651).
+        if ((preset == null || shape.Attribute("adj") != null && preset is not ("rect" or "roundRect" or "ellipse" or "line")
+             || preset == "hexagon")
             && ((string?)shape.Attribute("path") ?? (string?)type?.Attribute("path")) is { } path
             && Path(path, (string?)shape.Attribute("coordsize") ?? (string?)type?.Attribute("coordsize"),
                 (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin"), Formulas(shape, type, width, height)) is { } custom)
