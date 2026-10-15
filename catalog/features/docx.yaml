@@ -1913,7 +1913,10 @@ areas:
           → 100 %, tdf79329 67.5 → 99.0 %, extras-uiwriter/tdf135623 93.7 → 99.9 %; a table of 100 % keeps the
           column's width, sdt-company-multipara); tables nested in cells stand as from Word 2013 on in every mode, their left line at the
           outer cell's text, 100 % as wide as that text, tblInd from there, unlike those of text boxes
-          (docx/local/nz-11 to nz-14b; core-text/ floattable-anchor-height, core-text/fly-minimal-wrap). A nested
+          (docx/local/nz-11 to nz-14b; core-text/ floattable-anchor-height, core-text/fly-minimal-wrap). A table inside a
+          paragraph (w:p > w:tbl, outside the schema) stands right below the paragraph's text before it, which loses its
+          space after and the empty line of a break ending it, the rest of the paragraph below the table where there
+          is any (Word's PDF of docx/external/libreoffice/extras-ooxmlimport/tdf111550 68.6 → 93.3 %). A nested
           table needs of its outer column its content and the width it prefers itself, not what its cells prefer:
           wider ones it gives up in the cell (np-1 to np-4, np-7: a nested cell of 400 pt or three of 150 pt in an
           outer cell preferring 200 pt leave the outer columns theirs; core-layout/floattable-nested-rowspan,

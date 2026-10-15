@@ -701,6 +701,62 @@ public sealed partial class ModelReader(DocumentContext context)
     /// writerfilter-dmapper/if-field). Fields Word keeps the saved results of, as tables of contents, keep their
     /// paragraphs.
     /// </summary>
+    /// <summary>
+    /// The blocks of a container with a table inside a paragraph (w:p > w:tbl) as a table right below the
+    /// paragraph's text before it, without that part's space after or the empty line of a break ending it, and the text
+    /// after it with the paragraph's mark, where there is any (Word's PDF of docx/external/libreoffice/
+    /// extras-ooxmlimport/tdf111550: "[outer:A2]" and a line break, then an inner table, in a cell: the inner table's
+    /// text a line below, the outer row ending below the inner table).
+    /// </summary>
+    IEnumerable<XElement> SplitTables(IEnumerable<XElement> elements)
+    {
+        foreach (var e in elements)
+        {
+            if (e.Name != Wml.W + "p" || e.Element(Wml.W + "tbl") == null)
+            {
+                yield return e;
+                continue;
+            }
+            var pPr = e.Element(Wml.W + "pPr");
+            var part = new List<XElement>();
+            XElement Paragraph(bool last)
+            {
+                var properties = pPr == null ? new XElement(Wml.W + "pPr") : new XElement(pPr);
+                if (!last)
+                {
+                    properties.Element(Wml.W + "sectPr")?.Remove();
+                    var spacing = properties.Element(Wml.W + "spacing");
+                    if (spacing == null)
+                        properties.Add(spacing = new XElement(Wml.W + "spacing"));
+                    spacing.SetAttributeValue(Wml.W + "after", "0");
+                    spacing.SetAttributeValue(Wml.W + "afterAutospacing", null);
+                    if (part.LastOrDefault() is { } run && run.Name == Wml.W + "r" && run.Elements().LastOrDefault() is { } br && br.Name == Wml.W + "br"
+                        && br.Attribute(Wml.W + "type") is null or { Value: "textWrapping" })
+                        part[^1] = new XElement(run.Name, run.Attributes(), run.Elements().SkipLast(1));
+                }
+                var paragraph = new XElement(e.Name, e.Attributes(), properties, part);
+                part = [];
+                return paragraph;
+            }
+            foreach (var child in e.Elements().Where(c => c.Name != Wml.W + "pPr"))
+            {
+                if (child.Name == Wml.W + "tbl")
+                {
+                    yield return Paragraph(last: false);
+                    yield return child;
+                }
+                else
+                    part.Add(child);
+            }
+            if (part.Count == 0 && pPr?.Element(Wml.W + "sectPr") == null)
+                continue;
+            var end = Paragraph(last: true);
+            if (sectionOf.TryGetValue(e, out var section))
+                sectionOf[end] = section;
+            yield return end;
+        }
+    }
+
     IEnumerable<XElement> JoinedFields(IEnumerable<XElement> elements)
     {
         var list = elements as IList<XElement> ?? elements.ToList();
@@ -808,7 +864,7 @@ public sealed partial class ModelReader(DocumentContext context)
 
     void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending)
     {
-        foreach (var e in JoinedFields(container.Elements()))
+        foreach (var e in JoinedFields(SplitTables(container.Elements())))
         {
             if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
                 currentSection = section;
