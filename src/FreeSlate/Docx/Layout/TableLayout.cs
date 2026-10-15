@@ -239,6 +239,22 @@ public sealed class RowBox
                     k = first;
                 rest = cell.Lines[k];
             }
+            // A paragraph kept with the next one goes on with the next one's first line from Word 2013 on, where the cell
+            // has lines before it (measured with docx/local/spg2-15, spg3-15: kept with a paragraph that does not fit, the
+            // last line on the page goes on, framed or not; spg2-12, spg3-12 and -14 stay).
+            if (rest != null && rest.Line.First)
+            {
+                var k = cell.Lines.FindIndex(l => ReferenceEquals(l, rest));
+                var kept = k;
+                while (kept > 0 && cell.Lines[kept].Line.First && cell.Lines[kept - 1].Keep)
+                {
+                    kept--;
+                    while (kept > 0 && !cell.Lines[kept].Line.First)
+                        kept--;
+                }
+                if (kept > 0)
+                    rest = cell.Lines[kept];
+            }
             if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
                 return null;
             // Content cut in two goes on at the top of the continuation, whatever the cell's alignment (measured with
@@ -250,7 +266,11 @@ public sealed class RowBox
             // A nested row cut in two goes on below its line and its cell's margin again (measured with docx/local/sr-3,
             // sr-5: 6.15 pt lower than the line of a row of the table itself, in modes 11 and 15; docx/external/
             // libreoffice/core-text/floattable-anchor-height).
-            var offset = rest != null ? rest.Top - cell.ContentTop - rest.Carry : 0;
+            // A paragraph that begins the continuation keeps what its space before has more than the space after the
+            // paragraph above it, which ends the part before the cut (measured with docx/local/spg-14, spg-15, spgf-14,
+            // spgf-15: 12 pt before after 0, 6 and 18 pt after keep 12, 6 and 0 pt, in inline and floating tables;
+            // docx/external/libreoffice/core-layout/floattable-deleted-anchor).
+            var offset = rest != null ? rest.Top - cell.ContentTop - rest.Carry - rest.Lead : 0;
             foreach (var line in cell.Lines)
             {
                 if (rest == null || line.Top < rest.Top)
@@ -300,6 +320,16 @@ public sealed class RowBox
         if (!any || !continues && !dropRest)
             return null;
         tail.Height = continues ? Math.Max(tailHeight, TopWidth + Least) : 0;
+        // The part before the cut ends below its cells' content, a paragraph's last line with its space after, and
+        // their bottom margin where the page has room for it, not at the page's end (spg-*, spgf-*: the line below a
+        // cell's last line on the page with 0, 6 and 18 pt after is that far below it, 25 pt above the page's end;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf170381).
+        if (continues && head.Cells.All(c => c.Anchors.Count == 0))
+        {
+            var bottom = head.Cells.Max(c => Math.Max(c.Lines.Count == 0 ? 0 : c.Lines.Max(l => l.Top + l.Line.Height + l.After) - c.Lowered,
+                c.Fills.Count == 0 ? 0 : c.Fills.Max(f => f.Y + f.Height)) + c.BottomMargin);
+            head.Height = Math.Min(available, Math.Max(bottom, TopWidth + Least));
+        }
         Realign(head.Cells, null);
         Realign(tail.Cells, tail.Height);
         return (head, tail);
@@ -2257,6 +2287,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var y = 0.0;
         var after = 0.0;
         var ownAfter = 0.0;
+        // The space after the last paragraph in the text's flow: frames stand out of it (RowBox.Split).
+        var flowAfter = 0.0;
         var first = true;
         // Floating tables in the cell, which the text after them goes around, and how far down they reach.
         var around = new List<Paginator.Exclusion>();
@@ -2343,7 +2375,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         foreach (var anchor in line.Anchors ?? [])
                             lineTops[anchor] = (y, line.AnchorX?.GetValueOrDefault(anchor) ?? 0);
                         // Widow control holds where rows split from Word 2013 on (docx/local/rs3-*14, rs3-*12).
-                        lines.Add(new PlacedLine(line, 0, y) { Widow = (paragraph.Format.WidowControl ?? true) && context.CompatibilityMode >= 15 });
+                        lines.Add(new PlacedLine(line, 0, y)
+                        {
+                            Widow = (paragraph.Format.WidowControl ?? true) && context.CompatibilityMode >= 15,
+                            Lead = !first && lines.Count == firstLine ? Math.Max(0, before - flowAfter) : 0,
+                        });
                         y += line.Height;
                     }
                     if (frame != null)
@@ -2383,8 +2419,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             : blocks[b + 1] is ParagraphBlock nextParagraph && ListPair(paragraph, nextParagraph) ? 0 : 14)
                         : paragraph.Format.After ?? 0;
                     after = !spaced && following == style ? 0 : ownAfter;
+                    // A frame in a cell stands out of the text's flow: the paragraph after it begins a split row's
+                    // continuation with what its space before has more than the space after the paragraph above the
+                    // frame (measured with docx/local/spg3-12, -14, -15: 12 pt before after a framed paragraph with no
+                    // space after below one with 12 pt after keep nothing; core-ooxml-pass/fdo78904_fileHang).
+                    if (paragraph.Format.Frame == null)
+                        flowAfter = after;
                     if (lines.Count > firstLine)
-                        lines[^1] = lines[^1] with { After = after };
+                        lines[^1] = lines[^1] with { After = after, Keep = paragraph.Format.KeepNext == true && context.CompatibilityMode >= 15 };
                     previous = style;
                     first = false;
                     break;

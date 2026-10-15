@@ -1993,7 +1993,17 @@ areas:
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,
-          docx/local/rs3-*); the rest of a split row ends below its last paragraph's space after, at least its
+          docx/local/rs3-*), and a paragraph kept with the next one goes on with the next one's first line
+          (docx/local/spg2-15, spg3-15; in older modes it stays, spg2-12, spg3-12, -14); the part before the cut ends
+          below its cells' content, a paragraph's last line with its space after, and their bottom margin where the
+          page has room for it, not at the page's end (docx/local/spg-*, spgf-*: 0, 6 and 18 pt after 25 pt above the
+          page's end; rowmar-11 to -14); a paragraph that begins the rest keeps what its space before has more than
+          the space after the paragraph above it, a frame in the cell standing out of that flow (spg-11 to -15,
+          spgf-14, -15: 12 pt before after 0, 6 and 18 pt after keep 12, 6 and 0 pt, in floating tables too; spg3-*:
+          after a framed paragraph below one with 12 pt after nothing; docx/external/libreoffice/core-layout/
+          floattable-deleted-anchor 87.0 → 99.9 %, writerfilter-dmapper/floattable-nested 84.3 → 93.9 %,
+          core-text/floattable-bad-fly-pos 88.4 → 97.5 %, core-layout/floattable-in-inlinetable 90.6 → 98.4 %,
+          core-ooxml-pass/fdo78904_fileHang); the rest of a split row ends below its last paragraph's space after, at least its
           at-least height, and cells aligned to the middle or bottom align again in each part, the first down to its
           tallest content (tblsplit-*, docx/local/rowsplit-*, rowsplit2-*: 13 cases within 0.1 pt); a row of a nested
           table goes on whole where its at-least height does not fit, as the table's own rows do

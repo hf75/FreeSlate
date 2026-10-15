@@ -42,6 +42,15 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     public double Carry { get; init; }
 
     /// <summary>
+    /// What the space before a paragraph's first line has more than the space after the paragraph above it, in table
+    /// cells, which the line keeps at the top of a split row's continuation (RowBox.Split).
+    /// </summary>
+    public double Lead { get; init; }
+
+    /// <summary>Whether the line ends a paragraph kept with the next one, in table cells from Word 2013 on (RowBox.Split).</summary>
+    public bool Keep { get; init; }
+
+    /// <summary>
     /// How far below the line's top the part of a nested table it stands in reaches that has to go with it where a row
     /// splits: its row's at-least height, the whole row where it may not split (RowBox.Split).
     /// </summary>
