@@ -1763,8 +1763,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     var shown = format;
                     if (FieldEvaluator.IsError(value))
                     {
-                        shown = format.Clone();
-                        shown.Bold = format.Bold != true;
+                        var errorFormat = field.ErrorFormat ?? format;
+                        shown = errorFormat.Clone();
+                        shown.Bold = errorFormat.Bold != true;
                     }
                     else if (Evaluator?.NoteAlignment(field) is { } alignment)
                     {
@@ -2148,8 +2149,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 width += advances[k];
             // Centered and decimal text that would reach past the line's end ends there (measured with docx/local/tv-c,
             // tv-d: a word of 200 pt centered 20.8 pt short of the indent, "12," and 40 zeros at a decimal stop at the
-            // indent, in modes 14 and 15).
-            var start = t.Align switch
+            // indent, in modes 14 and 15). After a list number every stop is a left one (measured with
+            // docx/local/lbt2-15, lbt2-14: centre, right and decimal stops between the number's end and the indent put
+            // the text at the stop; docx/external/libreoffice/extras-ooxmlexport/rhbz988516).
+            var start = (label ? "left" : t.Align) switch
             {
                 "center" or "right" or "end" or "decimal" when t.Position > limit + 0.005 => limit - width,
                 "center" => Math.Min(t.Position - width / 2, limit - width),

@@ -667,7 +667,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var hSpace = Twips("hSpace");
         var x = dropCap == "margin" ? left - frameWidth - hSpace
             : dropCap == "drop" ? left
-            : properties.Attr("xAlign") switch
+            // A w:x, 0 too, outweighs a w:xAlign beside it (measured with docx/local/fxa-a, -b, -f: x 720 and xAlign
+            // center in either order 36 pt from the column, x 0 at the margin, in modes 14 and 15; docx/external/
+            // libreoffice/extras-ooxmlexport/tdf112287B).
+            : (properties.Attr("x") != null ? null : properties.Attr("xAlign")) switch
             {
                 "left" => frameLeft,
                 "right" => frameLeft + frameSpan - frameWidth,
@@ -804,7 +807,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     string VerticalAnchor(XElement properties, string anchor = "vAnchor") =>
         context.CompatibilityMode < 15 && (properties.Twips(anchor == "vAnchor" ? "y" : "tblpY") ?? 0) == 0
-            && properties.Attr(anchor == "vAnchor" ? "yAlign" : "tblpYSpec") is null or "inline"
+            && (properties.Attr(anchor == "vAnchor" ? "yAlign" : "tblpYSpec") is null or "inline"
+                // A frame's w:y 0 is no position whatever w:yAlign beside it says (measured with docx/local/fxa-c,
+                // -d: y 0 and yAlign bottom at the paragraph in mode 14, with vAnchor margin too, on the top margin
+                // in mode 15; tdf112287B).
+                || anchor == "vAnchor" && properties.Attr("y") != null)
             ? "text"
             : properties.Attr(anchor) ?? "margin";
 
@@ -1471,7 +1478,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "margin" => (on.TextLeft, on.TextWidth),
                     _ => (left, width),
                 };
-                var x = properties.Attr("xAlign") switch
+                var x = (properties.Attr("x") != null ? null : properties.Attr("xAlign")) switch
                 {
                     "left" or "inside" => spanLeft,
                     "right" or "outside" => spanLeft + span - frameWidth,
@@ -2492,9 +2499,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // scratch: powertools/WC/WC065-Textbox, DB-GlossaryDocuments/FooterContent-built).
         var oddPage = page.DisplayNumber % 2 == 1;
         var rightMargin = s.PageWidth - page.TextLeft - page.TextWidth;
-        // Groups and canvases sized relative to the page keep their share and place it without their effect extents
-        // (docx/external/libreoffice/extras-ooxmlimport/groupshape-relsize: a group 90.9 % of the page high, 10.55 pt of
-        // effect extent below, centered on the page as its share); shapes and pictures go by them (relsz-*).
+        // Groups and canvases sized relative to the page go by their effect extents as shapes do and draw their
+        // content as much larger as their own extent (a:xfrm a:ext) is than the anchor's (measured with
+        // docx/local/gr-*: a group 50 % of the page wide with 1.2 pt of effect extent right 296.45 pt wide, centered as
+        // 297.65 pt, in modes 14 and 15; docx/external/libreoffice/extras-ooxmlimport/groupshape-relsize: 90.9 % of
+        // the page high, 10.55 pt of effect extent below, an own extent of 730.1 pt over an anchor's of 719.9 pt drawn
+        // 765.4 pt high, centered as its share; core-ooxml-pass/fdo69616, extras-layout/tdf69648).
         var grouped = element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Name.LocalName is "wgp" or "wpc";
         double? Relative(string name, string percent, bool horizontal)
         {
@@ -2521,7 +2531,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 (_, true) => page.TextWidth,
                 (_, false) => s.PageHeight - s.Top - s.Bottom,
             };
-            var effect = grouped ? null : element.Element(Docx.Drawings.Wp + "effectExtent");
+            var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
             double Side(string side) => Math.Max(0, Emu((string?)effect?.Attribute(side)));
             return Math.Max(0, frame * share / 100000 - (horizontal ? Side("l") + Side("r") : Side("t") + Side("b")));
         }
@@ -2580,7 +2590,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // relative to the page or the margins too (relsz-3, -4, -5, -7: centered and right aligned with their
             // effect extents, the whole as wide as the share; docx/external/libreoffice/extras-ooxmlimport/
             // groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
-            var effects = grouped && (relativeWidth != null || relativeHeight != null) ? null : element.Element(Docx.Drawings.Wp + "effectExtent");
+            var effects = element.Element(Docx.Drawings.Wp + "effectExtent");
             double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
             // A turned VML shape by its swapped box or its turned outline (see Vml.TurnedBox), with its effect extents.
             var turned = Docx.Vml.TurnedSides(element);
@@ -2629,7 +2639,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // margin or the page it stays past the edge; docx/external/libreoffice/extras-ooxmlexport/tdf170908_delText).
             if (cell == null && (string?)positionV?.Attribute("relativeFrom") is null or "paragraph" or "line"
                 && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
+            {
                 x = Math.Max(0, Math.Min(x, s.PageWidth - w));
+                // Before Word 2013 it stays on the page down too: above the page's top it begins there, past its bottom
+                // it ends there (measured with docx/local/vc-*: a 200 pt square 1000 pt above or 700 pt below its
+                // paragraph, DrawingML or VML, wrapped square, at the page's top or ending at its bottom in modes 12 and
+                // 14, unwrapped off the page; from Word 2013 the margins hold it; docx/external/libreoffice/
+                // extras-ooxmlexport/tdf78902).
+                if (legacy)
+                    y = Math.Max(0, Math.Min(y, s.PageHeight - h));
+            }
+        }
+        if (grouped && (relativeWidth != null || relativeHeight != null)
+            && element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Elements()
+                .FirstOrDefault(e => e.Name.LocalName == "grpSpPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext") is { } own
+            && Docx.Drawings.Extent(element) is var (anchorWidth, anchorHeight) && anchorWidth > 0 && anchorHeight > 0)
+        {
+            if (relativeWidth != null)
+                w *= Emu((string?)own.Attribute("cx")) / anchorWidth;
+            if (relativeHeight != null)
+                h *= Emu((string?)own.Attribute("cy")) / anchorHeight;
         }
         return new PlacedDrawing(element, anchor.Part, x, y, w, h)
         {

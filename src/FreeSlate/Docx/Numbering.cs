@@ -228,6 +228,9 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     readonly Dictionary<string, Counters> lists = new(StringComparer.Ordinal);
     readonly HashSet<string> started = new(StringComparer.Ordinal);
 
+    /// <summary>The levels of started instances whose start override applies where the instance first uses them.</summary>
+    readonly HashSet<(string Instance, int Level)> pendingOverrides = [];
+
     /// <summary>The numbering instance of the story's last numbered paragraph, which a LISTNUM without a name counts in.</summary>
     public string? CurrentList { get; set; }
 
@@ -297,16 +300,23 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             return null;
         if (!lists.TryGetValue(instance.AbstractId, out var counters))
             lists[instance.AbstractId] = counters = new Counters();
+        // A start override starts its level over where the instance first uses that level; until then the level shows
+        // what it counts, a level not used yet its own start (measured with docx/local/sov-15: level 0 starting at 1
+        // and overridden to 5 shows 1.1. and 1.2. before its first paragraph, then 5. and 5.1.; started at 10 and
+        // overridden to 10 10.1., 10.2., 10.; a second instance overridden to 7 goes on with 5.2., then 7.;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf153104).
         if (started.Add(instance.Id))
         {
             for (var i = 0; i < 9; i++)
             {
-                if (instance.StartOverrides[i] is { } overridden)
-                {
-                    counters.Values[i] = overridden - 1;
-                    counters.Used[i] = true;
-                }
+                if (instance.StartOverrides[i] != null)
+                    pendingOverrides.Add((instance.Id, i));
             }
+        }
+        if (pendingOverrides.Remove((instance.Id, ilvl)) && instance.StartOverrides[ilvl] is { } overridden)
+        {
+            counters.Values[ilvl] = overridden - 1;
+            counters.Used[ilvl] = true;
         }
         if (!counters.Used[ilvl])
             counters.Values[ilvl] = level.Start - 1;

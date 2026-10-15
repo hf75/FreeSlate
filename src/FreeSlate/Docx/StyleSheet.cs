@@ -265,6 +265,14 @@ public sealed class StyleSheet
             {
                 var own = new ParagraphFormat();
                 own.Apply(chain[k].ParagraphProperties);
+                // A style that switches numbering off (w:numId 0) drops the left and first-line indents of the styles
+                // it is based on, numbered or not, for itself and the styles based on it; the right one stays
+                // (measured with docx/local/nzs-15, nzs-14: under a numbered style of left 2000, right 1500, hanging 500
+                // such styles' lines begin at the margin, with a left of their own of 1000 there, and end 1500 twips
+                // from the right; docx/external/libreoffice/extras-ooxmlexport/tdf132752).
+                if (own.NumberingId == "0")
+                    (result.Left, result.FirstLine, result.LeftChars, result.FirstLineChars)
+                        = (DefaultParagraph.Left, DefaultParagraph.FirstLine, DefaultParagraph.LeftChars, DefaultParagraph.FirstLineChars);
                 result.Overlay(own);
             }
         }

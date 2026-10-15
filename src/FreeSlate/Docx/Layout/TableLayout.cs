@@ -1688,6 +1688,19 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
             return widths;
         }
+        // Percentages that add up to more than the table, those before the last fitting: they take theirs, the last
+        // column what is left (measured with docx/local/pw-a, -b, -c: cells of 30 and 80 %, 80 and 30 %, 50, 40 and
+        // 30 % of a table as wide as the column, autofit or fixed, in modes 14 and 15, within 0.1 pt; docx/external/
+        // libreoffice/extras-ooxmlexport/fdo78469). Known deviation: where those before the last do not fit either
+        // (pw-d: 30, 80 and 10 %) Word narrows them otherwise.
+        if (percentages && columns > 1 && prefers.All(p => p != null) && prefers.Take(columns - 1).Sum(p => p!.Value) <= space + 0.01)
+        {
+            var used = 0.0;
+            for (var k = 0; k < columns - 1; k++)
+                used += widths[k] = Math.Max(prefers[k]!.Value, natural[k]);
+            widths[^1] = Math.Max(natural[^1], space - used);
+            return widths;
+        }
         var rest = space;
         var preferred = 0.0;
         var slack = 0.0;

@@ -93,6 +93,13 @@ public sealed class RunFormat
 
     public RunFormat Clone() => (RunFormat)MemberwiseClone();
 
+    /// <summary>
+    /// What a run's format was resolved from: its own properties, character style and table style level, and the
+    /// instance resolved (a format changed after it, a clone, is not this one), to resolve it again under another
+    /// paragraph style; null for formats not of a run.
+    /// </summary>
+    internal (RunFormat Direct, string? CharacterStyle, RunFormat? Table, RunFormat Resolved)? Origin { get; set; }
+
     /// <summary>Lays the properties a w:rPr sets over this format.</summary>
     public void Apply(XElement? rPr)
     {
@@ -314,6 +321,28 @@ public sealed class ParagraphFormat
     /// <summary>Indents in points (w:ind): left/start, right/end, first line (positive) or hanging (negative).</summary>
     public double? Left, Right, FirstLine;
 
+    /// <summary>Indents in hundredths of a character (w:leftChars, w:rightChars, w:firstLineChars; a hanging one negative).</summary>
+    public double? LeftChars, RightChars, FirstLineChars;
+
+    /// <summary>
+    /// The indents in characters (see <see cref="LeftChars"/>) in points, over those in twips: a first line or hanging
+    /// indent in characters of the paragraph's size, a left or right one in characters of the Normal style's, the left
+    /// one where the first line begins, so the left edge lies the hanging indent further in; a hanging indent in
+    /// characters makes the left one count in characters too; 0 leaves the twips (measured with docx/local/chu-15,
+    /// chu-14: of 22 pt text under 10.5 pt Normal leftChars 200 puts the first line 21 pt in and the rest the style's
+    /// hanging of 72 pt further, hangingChars 100 hangs 22 pt from a left of 0, firstLineChars 200 indents 44 pt,
+    /// leftChars 0 and firstLineChars 0 keep the twips; docx/external/libreoffice/extras-ooxmlexport/tdf167721_chUnits).
+    /// </summary>
+    public void ApplyCharacterUnits(double normalSize, double ownSize)
+    {
+        if (FirstLineChars is { } first && first != 0)
+            FirstLine = first / 100 * ownSize;
+        if (LeftChars is { } left && left != 0 || FirstLineChars is < 0)
+            Left = (LeftChars ?? 0) / 100 * normalSize + Math.Max(0, -(FirstLine ?? 0));
+        if (RightChars is { } right && right != 0)
+            Right = right / 100 * normalSize;
+    }
+
     /// <summary>Space before and after in points; their line-unit and automatic variants.</summary>
     public double? Before, After;
     public double? BeforeLines, AfterLines;
@@ -377,6 +406,12 @@ public sealed class ParagraphFormat
                         FirstLine = -hanging;
                     else if (e.Twips("firstLine") is { } first)
                         FirstLine = first;
+                    LeftChars = e.Number("startChars") ?? e.Number("leftChars") ?? LeftChars;
+                    RightChars = e.Number("endChars") ?? e.Number("rightChars") ?? RightChars;
+                    if (e.Number("hangingChars") is { } hangingChars)
+                        FirstLineChars = -hangingChars;
+                    else if (e.Number("firstLineChars") is { } firstChars)
+                        FirstLineChars = firstChars;
                     break;
                 case "spacing":
                     Before = e.Twips("before") ?? Before;

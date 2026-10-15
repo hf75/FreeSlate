@@ -904,7 +904,16 @@ areas:
           Left, right, first-line and hanging indents (mirrored on even pages with w:mirrorIndents); alignment left,
           center, right, justified, distributed and the Arabic kashida variants.
         office: >-
-          Justified lines may squeeze the spaces between their words to take one more word: where the spaces shrink
+          Indents in characters (w:leftChars, w:rightChars, w:firstLineChars, w:hangingChars, hundredths of a
+          character) count over those in twips: a first-line or hanging indent in characters of the paragraph's size,
+          a left or right one in characters of the Normal style's, the left one where the first line begins, so the
+          left edge lies the hanging indent further in; a hanging indent in characters makes the left one count in
+          characters too; 0 leaves the twips (docx/local/chu-15, chu-14: of 22 pt text under 10.5 pt Normal leftChars
+          200 puts the first line 21 pt in and the rest the style's hanging of 72 pt further, hangingChars 100 hangs
+          22 pt from a left of 0, firstLineChars 200 indents 44 pt, every line within a dot;
+          docx/external/libreoffice/extras-ooxmlexport/tdf167721_chUnits 50.7 → 99.95 %). Known deviation: styles that
+          mix both kinds at several levels (tdf167721_chUnits2, _chUnits3). Justified lines may squeeze the spaces
+          between their words to take one more word: where the spaces shrink
           less than half as much as the spaces of the line without the word would stretch, and by less than a quarter
           (docx/local/compress3: 225 lines of random words alike; compress, compress2: a Russian line taken at 23.6 %,
           not at 25.9 %; jc-compress: ten Courier New words fit a column 12 pt narrower than they are, not 13 pt);
@@ -1129,9 +1138,12 @@ areas:
           tdf112446_frameStyle), one without any w: attribute makes no frame (docx/local/fe-5, fg-7; tdf133457). w:y
           and w:yAlign count from the margin without w:vAnchor (fd-1, fd-3, fd-5), a w:y outweighing a w:yAlign
           beside it (fya-14, fya-15: yAlign center with w:y 10 stands 0.5 pt below the margin or the page, without w:y
-          on the margin's middle; tdf157572_defaultVAnchor); a frame without a vertical position (w:y 0, no w:yAlign
-          or inline) stands at its paragraph before mode 15 whatever its anchor and on its anchor's top from mode 15
-          (ff-*, fg-*, fh-*; core-ooxml-pass/fdo81491). The body's text goes around frames standing on the page, also
+          on the margin's middle; tdf157572_defaultVAnchor), as a w:x, 0 too, outweighs a w:xAlign (docx/local/fxa-a,
+          -b, -f: x 720 and xAlign center in either order 36 pt from the column, x 0 at the margin, in modes 14 and 15);
+          a frame without a vertical position (w:y 0, whatever w:yAlign beside it says, or no w:y and no w:yAlign or
+          inline) stands at its paragraph before mode 15 whatever its anchor and on its anchor's top from mode 15
+          (ff-*, fg-*, fh-*, fxa-c, -d: y 0 and yAlign bottom; core-ooxml-pass/fdo81491; extras-ooxmlexport/tdf112287B
+          52.0 → 100 %). The body's text goes around frames standing on the page, also
           lines above them and around those of headers (special_styles: an envelope address at the page's bottom;
           fh-1). Lines above a frame standing with the text that it reaches with its w:vSpace go below it (notBeside),
           the frame keeping its place, and a next frame follows them (fi-2, fi-3, fj-2; tdf105035_framePrB: a title
@@ -1344,7 +1356,9 @@ areas:
           "1" and "1.2.1", 86.9 → 98.2 %). The tab after a number takes the left indent as its stop also where the
           number ends right at it (an empty number, one right-aligned at the indent), leaving the text there; custom
           and default stops count only after its place, as for other tabs (docx/local/emptylabel, tabzero, tabzero2;
-          docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab). The level's indents and tabs override the
+          docx/external/libreoffice/extras-ooxmlexport/tdf153042_largeTab), every one of them as a left stop
+          (docx/local/lbt2-15, lbt2-14: centre, right and decimal stops between the number's end and the indent put the
+          text at the stop; extras-ooxmlexport/rhbz988516 79.9 → 100 %). The level's indents and tabs override the
           paragraph style's (a level indented 360 twips puts a List Paragraph, whose style says 720, at 360;
           docx/generated/lists); where the numbering comes from the paragraph style itself, the style's override the
           level's attribute by attribute (a style's left 1080 with a level's left 1620 and hanging 360 makes left
@@ -1368,8 +1382,11 @@ areas:
           numbers of all levels as Arabic numerals, zero-padded ones (decimalZero) staying so (docx/local/lgl-*: upper
           Roman, full-width, circled, ordinal and letters as 1, decimalZero as 01;
           docx/external/libreoffice/extras-ooxmlexport/listWithLgl "Sect 1.01"). Numbering switched off in a paragraph
-          (w:numId 0 in its own w:numPr) takes its indents from its own w:ind alone, none from its styles, numbered or
-          not (docx/local/nz0-*; tdf95374).
+          (w:numId 0 in its own w:numPr) takes its left and first-line indents from its own w:ind alone, none from its
+          styles, numbered or not, the right one as usual (docx/local/nz0-*, nzs-*; tdf95374); a paragraph style that
+          switches it off drops its base styles' left and first-line indents for itself and the styles based on it,
+          the right one staying (docx/local/nzs-15, nzs-14: under a numbered style of left 2000, right 1500, hanging 500
+          and an unnumbered one alike; extras-ooxmlexport/tdf132752 58.3 → 96.4 %).
 
       - id: numbering.counting
         title: List counters
@@ -1383,7 +1400,10 @@ areas:
           specification leaves gaps.
         office: >-
           Instances of one abstract definition count together; an instance with a start override restarts the shared
-          counter where it is first used, and the other instances go on from there (5, 6, then 7); a deeper level used
+          counter at the overridden level where it first uses that level, and the other instances go on from there (5,
+          6, then 7); until then the level counts as it would, unused its own start (docx/local/sov-15: level 0 starting
+          at 1 and overridden to 5 shows 1.1., 1.2., then 5., 5.1.; started and overridden at 10 10.1., 10.2., 10.;
+          LibreOffice's extras-ooxmlexport/tdf153104 77.8 → 96.5 %, tdf148455_1, _2 97.7 → 100 %); a deeper level used
           before a higher one shows the higher one's start and counts from it (7.1.1. then 7.2.); w:lvlRestart 0 never
           restarts; paragraphs numbered through their style continue the same counters (docx/local/num-rules). A
           paragraph of nothing but a section break takes no number and counts for none, in modes 14 and 15
@@ -1793,7 +1813,11 @@ areas:
           12, 48 and 30 pt take 143.6, 157.1 and 150.3 pt); where cells prefer percentages that fit and only columns
           whose contents need more make the table too wide, the others give up what is missing in equal shares
           (docx/local/t65649-table: four columns of 18 to 38 % give up 1.6 pt each to one of 6.5 % whose word needs
-          6.4 pt more; poi/bug65649); a paragraph's negative left indent shrinks its column's minimum, a negative
+          6.4 pt more; poi/bug65649); percentages that add up to more than the table, those before the last fitting,
+          leave the last column what is left (docx/local/pw-a, -b, -c 14 and 15: cells of 30 and 80 %, 80 and 30 %,
+          50, 40 and 30 % within 0.1 pt; extras-ooxmlexport/fdo78469 85.7 → 99.99 %; known deviations: pw-d, 30, 80
+          and 10 %, Word narrows otherwise; fixed tables take their cells' percentages over a grid that disagrees,
+          pw-*f, ours the grid); a paragraph's negative left indent shrinks its column's minimum, a negative
           right one does not (docx/local/negind); where the contents' own minima do not fit either, those shrink in
           proportion, preferred widths aside (tblpic3 G: pictures of 200, 200 and 100 pt take 180, 180 and 91 pt;
           docx/external/powertools/WC/ WC023-Table-4-Row-Image-Before keeps three equal columns although each holds a
@@ -2255,7 +2279,9 @@ areas:
           -14, -12: bold from a paragraph style, a character style or direct formatting makes the error regular, a
           bold paragraph and character style that cancel each other leave it bold;
           docx/external/libreoffice/writerfilter-dmapper/tdf158360 84.6 → 99.6 %, extras-ooxmlexport/tdf64531 89.4 →
-          96.6 %); a field without an instruction shows nothing. A field Word computes shows its result
+          96.6 %), in the font and size of the separate character's run, not of the instruction's, the begin's, the
+          saved result's or the mark's (docx/local/ef-15, ef-14: only a separate run in Arial 14 prints the error in
+          Arial 14; extras-ooxmlexport/fdo78910 82.3 → 99.4 %); a field without an instruction shows nothing. A field Word computes shows its result
           also where the document saved none (no separate character; tdf154478: a PAGEREF of a missing bookmark inside
           a table of contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of their
           instruction's first run, not of the saved result, which they keep only with \* MERGEFORMAT
@@ -2288,9 +2314,11 @@ areas:
           (with \l) make the text a link in the HTML. A table of contents' w:hyperlink entries print as if their runs
           had no character style where it is the Hyperlink style, with or without TOC \h: their direct formatting and
           other character styles show, the style's color, underline, bold and size do not; outside w:hyperlink, outside
-          the TOC field and in a HYPERLINK field's result the style shows (docx/local/toclink, toclink-2; 38 documents
-          better, among them docx/external/libreoffice/extras-ooxmlexport/fdo78654 52.7 → 92.2 %, powertools/
-          HC022-Table-Of-Contents 66.8 → 90.4 %).
+          the TOC field and in a HYPERLINK field's result outside it the style shows (docx/local/toclink, toclink-2; 38
+          documents better, among them docx/external/libreoffice/extras-ooxmlexport/fdo78654 52.7 → 92.2 %, powertools/
+          HC022-Table-Of-Contents 66.8 → 90.4 %); entries that are HYPERLINK fields in the TOC field's result print
+          alike (docx/local/toch-15: plain with the Hyperlink style, blue and underlined with direct formatting;
+          extras-ooxmlexport/tdf150166 83.8 → 99.9 %, core-docnode/tdf150086 86.6 → 98.3 %).
 
       - id: field.bookmarks
         title: Bookmarks
@@ -2463,8 +2491,12 @@ areas:
           with them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a
           table, across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments) and across the edges
           of content controls not bound to data (RP018-MoveFrom-MoveTo-CC 20 → 100 % of the lines, libreoffice/
-          core-docnode/tdf150086 and extras-ooxmlexport/tdf150166 0 → 100 %), and keeps its own formatting and number
-          (docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-* 23.9 → 100 % of the lines;
+          core-docnode/tdf150086 and extras-ooxmlexport/tdf150166 0 → 100 %); the joined paragraph keeps the next
+          one's formatting and number, the text before it taking that paragraph's style with its runs' own formatting
+          and character styles (docx/local/dm-a, -b, -c: a Times New Roman 14 style's text before a Normal paragraph
+          in Calibri 11, bold where its runs are, and the other way round; dm-d, -e: the next one's space before;
+          extras-ooxmlexport/tdf125894 79.0 → 100 %; docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-*
+          23.9 → 100 % of the lines;
           RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 % of the
           pixels); formatting changes show the new formatting (docx/generated/revisions 91.8 %). With markup (the
           converter's markup option, Word's "All Markup" with comments and formatting in balloons;
@@ -2569,7 +2601,11 @@ areas:
           apply to shapes as they are and to pictures only both together, scaled evenly to fit
           (docx/local/size-rel-shape, size-rel), each less the effect extents across it (docx/local/relsz-*: 40 % of a
           451.3 pt margin with 1.8 pt of effect extent on the right is 178.7 pt wide, with 1 pt all round 178.5; a
-          picture fits into what is left). Inside is the left or the top of the area on odd pages and the right or the
+          picture fits into what is left), groups and canvases too, which draw their content as much larger as their
+          own extent (a:xfrm a:ext) is than the anchor's (docx/local/gr-*: 50 % of the page with 1.2 pt of effect
+          extent right and below 296.45 × 251.35 pt, centered as their share, in modes 14 and 15; LibreOffice's
+          extras-ooxmlimport/groupshape-relsize: an own extent of 730.1 pt over 719.9 drawn 765.4 pt high;
+          extras-layout/tdf69648, core-ooxml-pass/fdo69616 87.6 → 100 %). Inside is the left or the top of the area on odd pages and the right or the
           bottom on even ones, outside the other side, whichever margin the area is (docx/local/vio-*: relative to the
           top and the bottom margin, the margin and the page; libreoffice/core-objectpositioning/inside-outside-vert-
           align 4.6 → 100 %; known deviation: relative to the page Word keeps 18 pt from the page's edge, ours none).
@@ -2608,7 +2644,10 @@ areas:
           placed down from the margin or the page it stays past the edge (docx/local/clp-*: a 200 pt rectangle 450 pt
           right of the column or 500 pt right of the page;
           docx/external/libreoffice/extras-ooxmlexport/tdf170908_delText 73.3 → 94.9 %,
-          tdf153613_anchoredAfterPgBreak, -2, -3 91.2 → 100 %). Percentages (wp14:pctPosHOffset, pctPosVOffset) place
+          tdf153613_anchoredAfterPgBreak, -2, -3 91.2 → 100 %). Before Word 2013 it stays on the page down too: above
+          the page's top it begins there, past its bottom it ends there, DrawingML and VML alike; unwrapped it stays off
+          the page (docx/local/vc-a, -b, -c, -d 12 and 14: a 200 pt square 1000 pt above or 700 pt below its
+          paragraph; extras-ooxmlexport/tdf78902 50.6 → 100 %). Percentages (wp14:pctPosHOffset, pctPosVOffset) place
           the extent with its effect extent before it, sized relative or not (docx/local/pcp-*: 10 pt of effect extent
           left and top 10 pt right and down, from the page and the margin; extras-ooxmlexport/content-control-shape
           68.3 → 99.7 %).

@@ -79,6 +79,14 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
     /// <summary>The field's type, the instruction's first word in capitals ("PAGE").</summary>
     public string Type => TypeOf(Instruction);
 
+    /// <summary>
+    /// The format of an error text the field shows: its separate character's run's (measured with docx/local/ef-15,
+    /// ef-14: of a begin, an instruction, a separate and an end run in Calibri, Times New Roman and Arial, a saved
+    /// result in Arial 14 and a mark in Courier New, PAGEREF's and REF's errors take the separate run's font and size;
+    /// docx/external/libreoffice/extras-ooxmlexport/fdo78910), or null for a field without one.
+    /// </summary>
+    public RunFormat? ErrorFormat { get; init; }
+
     /// <summary>The number format of the field's \* switch ("Arabic", "roman", "ALPHABETIC" …), or null.</summary>
     public string? NumberFormat
     {
@@ -763,6 +771,28 @@ public sealed partial class ModelReader(DocumentContext context)
     /// powertools/RP/RP018-MoveFrom-MoveTo-CC: a paragraph moved away, alone in its content control, joins the one
     /// after the control).
     /// </summary>
+    /// <summary>
+    /// The text of a paragraph whose mark is gone as it joins the next one: in that paragraph's style, the runs' own
+    /// formatting and character styles kept (measured with docx/local/dm-a, dm-b, dm-c: text of a Times New Roman 14
+    /// style before a Normal paragraph prints in Calibri 11, bold where its runs are, Normal text before the style's
+    /// paragraph in Times New Roman 14; docx/external/libreoffice/extras-ooxmlexport/tdf125894).
+    /// </summary>
+    List<Inline> Restyled(ParagraphBlock joining, string? style)
+    {
+        if (context.Styles.ParagraphStyleOf(joining.Format.Style) == context.Styles.ParagraphStyleOf(style))
+            return joining.Content;
+        return joining.Content.Select(inline =>
+        {
+            if (inline is not TextInline { Format.Origin: { } origin } text || !ReferenceEquals(origin.Resolved, text.Format))
+                return inline;
+            var format = context.Styles.Run(style, origin.CharacterStyle, origin.Direct, origin.Table);
+            (format.Override, format.Embedding, format.Source, format.Vanish, format.Revision, format.Change)
+                = (text.Format.Override, text.Format.Embedding, text.Format.Source, text.Format.Vanish, text.Format.Revision, text.Format.Change);
+            format.Origin = origin with { Resolved = format };
+            return text with { Format = format };
+        }).ToList();
+    }
+
     void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending)
     {
         foreach (var e in JoinedFields(container.Elements()))
@@ -811,7 +841,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
                     if (pending != null)
                     {
-                        paragraph = paragraph with { Content = [.. pending.Content, .. paragraph.Content] };
+                        paragraph = paragraph with { Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content] };
                         pending = null;
                     }
                     if (markDeleted)
@@ -978,6 +1008,15 @@ public sealed partial class ModelReader(DocumentContext context)
     /// </summary>
     readonly List<XElement> strayBreaks = [];
 
+    /// <summary>A paragraph's indents in characters in points (ParagraphFormat.ApplyCharacterUnits).</summary>
+    void CharacterIndents(ParagraphFormat format, string? styleId)
+    {
+        if (format.LeftChars is null or 0 && format.RightChars is null or 0 && format.FirstLineChars is null or 0)
+            return;
+        var normal = context.Styles.Run(context.Styles.DefaultParagraphStyle, null, null).Size ?? 10;
+        format.ApplyCharacterUnits(normal, context.Styles.Run(styleId, null, null).Size ?? normal);
+    }
+
     ParagraphBlock Paragraph(XElement p, bool number = true)
     {
         var pPr = p.Child("pPr");
@@ -987,8 +1026,12 @@ public sealed partial class ModelReader(DocumentContext context)
         // Numbering switched off in the paragraph itself (w:numId 0) leaves it the indents of its own w:ind alone, none
         // of its styles' (measured with docx/local/nz0-*: a style's left 567 and hanging 567 gone, with numbering in
         // the style or without, a direct left 1136 kept; docx/external/libreoffice/extras-ooxmlexport/tdf95374).
+        // The right one stays (docx/local/nzs-15, nzs-14: a paragraph of a style of right 1500 with numId 0 of its own
+        // ends its lines 1500 twips from the right).
         if (direct.NumberingId == "0")
-            (format.Left, format.Right, format.FirstLine) = (direct.Left, direct.Right, direct.FirstLine);
+            (format.Left, format.FirstLine, format.LeftChars, format.FirstLineChars)
+                = (direct.Left, direct.FirstLine, direct.LeftChars, direct.FirstLineChars);
+        CharacterIndents(format, direct.Style);
         var styleId = context.Styles.ParagraphStyleOf(direct.Style);
         var markDirect = new RunFormat();
         markDirect.Apply(pPr.Child("rPr"));
@@ -1006,6 +1049,7 @@ public sealed partial class ModelReader(DocumentContext context)
         if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0, mark.Language) : null) is { } next)
         {
             format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph, numberingUnderStyle: direct.NumberingId == null);
+            CharacterIndents(format, direct.Style);
             var levelRun = new RunFormat();
             levelRun.Apply(next.Level.RunProperties);
             // The number takes the mark's highlight but not its shading, the paragraph style's neither: only the
@@ -1115,6 +1159,8 @@ public sealed partial class ModelReader(DocumentContext context)
             public readonly List<(string Text, RunFormat Format)> InstructionRuns = [];
             public bool InResult;
             public List<Inline>? Cached;
+            /// <summary>The format of the run of the separate character, which an error text takes.</summary>
+            public RunFormat? SeparateFormat;
 
             /// <summary>Whether the field is locked (w:fldLock): Word keeps its saved result.</summary>
             public bool Locked;
@@ -1477,7 +1523,13 @@ public sealed partial class ModelReader(DocumentContext context)
         var direct = new RunFormat();
         direct.Apply(r.Child("rPr"));
         var characterStyle = direct.Style;
-        if (tocLink && context.Styles.Find(characterStyle) is { } linkStyle
+        // So do the runs of a HYPERLINK field in a table of contents' result; direct formatting stays (measured with
+        // docx/local/toch-15: an entry as a HYPERLINK field with the Hyperlink style prints plain, one with direct blue
+        // and underline so, the field outside the table in the style; docx/external/libreoffice/extras-ooxmlexport/
+        // tdf150166, core-docnode/tdf150086).
+        var inTocField = openFields.Any(f => f.InResult && FieldInline.TypeOf(f.Instruction.ToString()) == "TOC")
+                         && openFields.Any(f => FieldInline.TypeOf(f.Instruction.ToString()) == "HYPERLINK");
+        if ((tocLink || inTocField) && context.Styles.Find(characterStyle) is { } linkStyle
             && (string.Equals(linkStyle.Name, "Hyperlink", StringComparison.OrdinalIgnoreCase) || string.Equals(linkStyle.Id, "Hyperlink", StringComparison.OrdinalIgnoreCase)))
             characterStyle = null;
         var format = context.Styles.Run(paragraphStyle, characterStyle, direct, tableRun);
@@ -1491,6 +1543,7 @@ public sealed partial class ModelReader(DocumentContext context)
             if (r.Child("rPr")?.Child("rPrChange") is { } rPrChange)
                 format.Change = new FormatChange(context.Describe.Run(r.Child("rPr"), rPrChange.Child("rPr")), context.Author(rPrChange.Attr("author")));
         }
+        format.Origin = (direct, characterStyle, tableRun, format);
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)
@@ -1536,6 +1589,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         case "separate" when field.Frames.Count > 0:
                             var frame = field.Frames.Peek();
                             frame.InResult = true;
+                            frame.SeparateFormat = format;
                             if (!frame.Locked && FieldInline.IsPageField(frame.Instruction.ToString()))
                                 frame.Cached = [];
                             break;
@@ -1567,7 +1621,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             if (ended.Cached != null)
-                                field.Target(content).Add(new FieldInline(instruction, ResultFormat(ended, instruction), ended.Cached));
+                                field.Target(content).Add(new FieldInline(instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat });
                             break;
                     }
                     break;
