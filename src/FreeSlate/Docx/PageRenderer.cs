@@ -620,6 +620,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     if (piece.Rule is { } rule)
                         (w, top) = (rule.Width, baseline + rule.Bottom - h);
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
+                    // A drawing whose turn swaps its box's sides turns about that box's middle (ri-*: Drawings.Box).
+                    if (Drawings.InlineSwapped(inline.Drawing))
+                        (ix, iy) = (ix + (h - w) / 2, iy + (w - h) / 2);
                     front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
                     continue;
                 }

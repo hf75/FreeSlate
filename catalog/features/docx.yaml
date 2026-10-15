@@ -509,7 +509,11 @@ areas:
           other platforms' names: ArialMT, TimesNewRomanPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier,
           Palatino, Geneva, Lucida Grande, and Windows' font substitutes), then the table's w:altName where a family
           of that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
-          docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), then a font for the table's
+          docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), which comes before the
+          PostScript, platform and free names (docx/local/fs2-d: DejaVu Sans with altName Times New Roman in Times New
+          Roman, without it in Verdana; LibreOffice's core-layout/tdf157096 85.2 → 99.7 %), those not for a Cyrillic
+          font (fs2-a to -c: Liberation Serif of character set 00 or EE in Times New Roman, of CC in Cambria, which
+          also passes the signature's code pages by; extras-layout/tdf153136), then a font for the table's
           character set (symbol: Wingdings, docx/local/psym-a, psym-b: U+F021 to U+F0FE of a missing font of charset 02
           all in Wingdings; Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
           PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla and Times New
@@ -601,7 +605,10 @@ areas:
           is below 60 of 255 (docx/local/autocolor: 100 shadings of each kind, C00000 and 006400 white, C80000, 006600
           and 3C3C3C black; highlights, even black, change nothing). Characters the run's font lacks fall back per
           Unicode range as Word's do (Segoe UI Symbol and Emoji, Cambria Math, Nirmala UI, Leelawadee, MS Mincho, …),
-          the line growing with them, whole clusters together (engine.fonts, docx/local/fallback). An empty font name
+          the line growing with them, whole clusters together (engine.fonts, docx/local/fallback); arrows and
+          geometric shapes in Cambria Math, also those drawn as emoji elsewhere, the black square and rectangle in
+          Arial (docx/local/gf-15: U+2190 to U+21FF and U+25A0 to U+25FF in Calibri, Aptos and Times New Roman text;
+          LibreOffice's extras-ooxmlexport/tdf94628 83.0 → 100 %). An empty font name
           (w:ascii="") names nothing, the slot keeping the font it had (LibreOffice's extras-ooxmlexport/
           font-name-is-empty: the style's Calibri; 25 → 100 % of the characters within half a dot). Sizes in
           half-points may carry a unit (w:sz "20pt" is 20 pt; docx/external/libreoffice/extras-ooxmlimport/tdf108408
@@ -2101,6 +2108,10 @@ areas:
           Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
           paragraph after it, as many lines down, so past the bottom margin or above it (floatsplit-14p-*,
           floattable-compat14, docx/ external/libreoffice/core-doc/floating-table-dummy-text); from Word 2013 on one
+          standing above the text's top breaks that much above the bottom margin (docx/local/fm-a15, fm-e15: 60 rows at
+          tblpY -345 twips from the margin, 50 on the first page; anchored to the text 51; extras-ooxmlimport/tdf109053
+          76.4 → 95.9 %; known deviation: fm-d15, such a table after ten lines of text, goes whole to the next page in
+          Word); from Word 2013 on one
           whose first row does not fit above the bottom margin stays where it stands on a page without text before it,
           a row of exact height reaching past the margin, one of at least height keeping its content there, a line of
           each cell or, where none has more, all of it, the rest of its height gone
@@ -2557,10 +2568,18 @@ areas:
         office: >-
           Pictures, shapes, groups, canvases, charts and SmartArt are converted to PresentationML and drawn by the
           slide renderer with the document's theme and color mapping. An inline drawing's box (its extent with the
-          effect extents) stands on the baseline as all ascent; the extra of multiple line spacing comes from the
+          effect extents) stands on the baseline as all ascent, from Word 2010 on with its extent's sides swapped where
+          it is turned by 45 degrees up to 135 or 225 up to 315, turned about that box's middle (docx/local/ri-*: a
+          100 x 60 pt rectangle at 45 to 120 and 250 degrees 60 pt wide and 100 pt high, at 0, 30 and 135 degrees not;
+          LibreOffice's extras-ooxmlexport/tdf103001 29.5 → 96.4 %; Word 2007's documents hold the turned bounds in
+          their effect extents, extras-ooxmlimport/tdf143475_rotatedWord2007imageInline); the extra of multiple line spacing comes from the
           fonts (a 90 pt picture beside 12 pt Aptos at 1.16 lines makes the line 90 + 3.38 + 2.32 pt high, a picture
           alone 160.5 + 2.32 pt; docx/generated/drawings); a picture alone smaller than its paragraph mark's line
-          takes that line's whole height (docx/local/smallpic-single, -115). In modes 11 and 12 (and without a mode)
+          takes that line's whole height (docx/local/smallpic-single, -115); before Word 2013 a line of drawings without
+          the paragraph mark is as high as they are, without spacing's extra, one a line break ends with the break's
+          font as text has (docx/local/dl-a14 to dl-d14: a 470 by 2 pt rectangle too wide for the line between 36 pt
+          words makes a line 2 pt high; one of 40 by 20 pt between line breaks a line of the 36 pt font; in mode 15
+          the mark's line; LibreOffice's extras-ooxmlexport/128197_compat14 53.4 → 98.4 %). In modes 11 and 12 (and without a mode)
           Word draws a shape's or a group's extent its effect extent's left and top once more in, the line keeping its
           room, pictures not (docx/local/effx-*: 9 pt left put a shape 18 pt in, from mode 14 on 9 pt; pe-*). A group
           holding a text box that does not wrap (wrap none, as WordArt's) gets its effect extents anew, whatever the
@@ -4507,7 +4526,10 @@ areas:
           or a space, after the hyphen U+2010 from Word 2013 on, not after slashes, plus signs, underscores or
           non-breaking hyphens (docx/local/hyphbreak-15, -12: 19 cases; w:noBreakHyphen too, powertools/RP/RP038
           76.5 → 100 % of the lines), and before and after inline pictures as
-          beside ideographs (docx/local/tblpic3); a word longer than the line breaks between characters, on the line
+          beside ideographs (docx/local/tblpic3); spaces with a no-break space among them break nowhere, neither after
+          them nor before the no-break space (docx/local/nb-15, nb-14: "X)" and NBSP SP, SP NBSP or NBSP NBSP SP before
+          a word too long for the line keep it there, broken by characters; LibreOffice's extras-ooxmlexport/tdf134606
+          85.8 → 99.6 %); a word longer than the line breaks between characters, on the line
           where it begins if nothing but a tab or a list number stands before it there, with at least one character
           after a number, none needed after a tab (docx/local/lw-*, lx-*, ly-*, lt-*: modes 14 and 15); spaces alone
           before what does not fit stay on a line of their own (docx/local/spic-*: a space or two before a picture as
@@ -4545,7 +4567,10 @@ areas:
           at least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front
           of the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
           tdf123243, tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); lines are broken into the segments
-          beside the objects, words that do not fit a segment continue in the next one, lines with no room move down
+          beside the objects, words that do not fit a segment continue in the next one, each segment aligned in its own
+          room, justified ones but the paragraph's last (docx/local/jf-*: justified, centred and right aligned lines
+          beside a frame and rectangles wrapped square or tight, every segment within 0.2 pt; LibreOffice's
+          extras-ooxmlexport/tdf133701 87.9 → 98.0 %), lines with no room move down
           below the object (docx/generated/wrapping, wrap-types), below the first of the objects beside them to end
           (td-1), beside objects wrapped along their polygons a line at a time, so on the paragraph's line pitch
           (ub-*), and to the next page where they do not fit below it. A segment takes text from 18 pt, also an empty

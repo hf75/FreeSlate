@@ -486,7 +486,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // with docx/local/floatsplit-14p-*: as many lines as anchored to the text; dummyv0, -v2, -v4: variants of
         // docx/external/libreoffice/core-doc/floating-table-dummy-text; floattable-compat14); Word 2013 breaks it at
         // the bottom margin (floattable-2cols, floattable-footer).
-        var shift = anchor is "page" or "margin" && context.CompatibilityMode < 15 ? textTop - top : 0;
+        // From Word 2013 on one standing above the text's top breaks that much above the bottom margin (measured with
+        // docx/local/fm-a15, fm-e15: 60 rows at tblpY -345 twips from the margin, 50 on the first page, 51 at the text's
+        // top; docx/external/libreoffice/extras-layout/tdf109053).
+        var shift = anchor is not ("page" or "margin") ? 0 : context.CompatibilityMode < 15 ? textTop - top : Math.Max(0, textTop - top);
         double Limit() => Bottom - (split ? 0 : shift);
         // From Word 2013 on a table anchored to the page or the margin whose first row does not fit above the bottom
         // margin stays where it stands on a page without text before it, its row reaching past the margin, and goes

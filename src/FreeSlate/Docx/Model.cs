@@ -1739,6 +1739,9 @@ public sealed partial class ModelReader(DocumentContext context)
                         {
                             var text = TextBox(d);
                             var children = ChildTextBoxes(d);
+                            // From Word 2010 on a drawing turned across its line swaps its box's sides (Drawings.Box).
+                            if (context.CompatibilityMode >= 14 && Drawings.TurnedAcross(d))
+                                d.SetAttributeValue(Drawings.SwappedTurn, "1");
                             if (d.Name == Drawings.Wp + "inline")
                                 field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
                             // A hidden floating drawing (wp:docPr hidden) is gone, the text not wrapping around it either

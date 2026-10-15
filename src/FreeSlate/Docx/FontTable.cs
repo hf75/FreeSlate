@@ -10,12 +10,15 @@ namespace FreeSlate.Docx;
 /// <list type="number">
 /// <item>An installed family, or a family known by the name: Word's own (any Futura Century Gothic, any Baskerville
 /// Baskerville Old Face, Myriad Pro Segoe UI, New York Times New Roman, Gill Sans Light and Helvetica Light the Nova
-/// families where Office has them: docx/local/fontnames-plain), PostScript names and other platforms' names as
-/// PowerPoint knows them (ArialMT, Arial-BoldMT, TimesNewRomanPSMT, CourierNewPSMT, Calibri-Bold, Helvetica,
-/// Helvetica Neue, Times, Courier, Palatino; the style in a name is dropped), Geneva (Arial), Lucida Grande (Segoe UI)
-/// and Windows' font substitutes (MS Shell Dlg, Tahoma Armenian, Arial CE …).</item>
+/// families where Office has them: docx/local/fontnames-plain).</item>
 /// <item>The table's alternate name (w:altName) where a family of that very name is installed (docx/local/
-/// fontnames-alt: an altName of Courier counts for nothing; docx/external/powertools/RP/RP052-Deleted-Para-Mark).</item>
+/// fontnames-alt: an altName of Courier counts for nothing; fs2-d: DejaVu Sans with altName Times New Roman in Times
+/// New Roman; docx/external/powertools/RP/RP052-Deleted-Para-Mark).</item>
+/// <item>PostScript names, other platforms' names and free families as PowerPoint knows them (ArialMT, Arial-BoldMT,
+/// TimesNewRomanPSMT, CourierNewPSMT, Calibri-Bold, Helvetica, Helvetica Neue, Times, Courier, Palatino, Liberation
+/// Serif, DejaVu Sans; the style in a name is dropped), Geneva (Arial), Lucida Grande (Segoe UI) and Windows' font
+/// substitutes (MS Shell Dlg, Tahoma Armenian, Arial CE …), not for a Cyrillic font (docx/local/fs2-a to -c:
+/// Liberation Serif of character set 00 or EE in Times New Roman, of CC in Cambria).</item>
 /// <item>The table's character set: symbol fonts become Symbol, Shift JIS Yu Gothic, Hangul Malgun Gothic, GB 2312
 /// Microsoft YaHei, Big5 PMingLiU, Thai Browallia New; Arabic and Hebrew by the table's family, serif (roman) Sakkal
 /// Majalla and Times New Roman, monospaced (modern) Tahoma, all others Arial, whatever the PANOSE and the signature
@@ -94,11 +97,23 @@ public sealed class FontTable
     /// "Arial Unicode MS" and "Arial Zz" of charset 80 in Yu Gothic, Latin and kana alike, of charset 00 or not described
     /// in Arial; docx/external/libreoffice/extras-ooxmlexport/tdf107969).
     /// </summary>
-    public ResolvedFont Resolve(FontResolver fonts, string family, bool bold, bool italic) =>
-        (entries.TryGetValue(family, out var entry) && entry.Charset is 128 or 129 or 134 or 136
-            ? fonts.TryResolveFamily(family, bold, italic)
-            : Available(fonts, family, bold, italic))
-        ?? Substitute(fonts, family, bold, italic);
+    public ResolvedFont Resolve(FontResolver fonts, string family, bool bold, bool italic)
+    {
+        if (entries.TryGetValue(family, out var entry) && entry.Charset is 128 or 129 or 134 or 136)
+            return fonts.TryResolveFamily(family, bold, italic) ?? Substitute(fonts, family, bold, italic);
+        // The family itself or Word's name for it, then an installed alternate name, then the names of other platforms
+        // and free families, those not for a Cyrillic font (measured with docx/local/fs2-*, each in a Word session of
+        // its own: DejaVu Sans with altName Times New Roman in Times New Roman, without it in Verdana; Liberation Serif
+        // of character set 00 or EE in Times New Roman, of CC in Cambria; docx/external/libreoffice/core-layout/tdf157096).
+        if ((fonts.TryResolveFamily(family, bold, italic) ?? (WordName(family) is { } named ? fonts.TryResolveFamily(named, bold, italic) : null)) is { } own)
+            return own;
+        if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveFamily(alternate, bold, italic) is { } alternative)
+            return alternative;
+        if (entry?.Charset != 204 && (fonts.TryResolveTypeface(family, bold, italic)
+                ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null)) is { } typeface)
+            return typeface;
+        return Substitute(fonts, family, bold, italic);
+    }
 
     /// <summary>The family itself where the machine has it, or the font Windows or Word puts for its name, else null.</summary>
     public static ResolvedFont? Available(FontResolver fonts, string family, bool bold, bool italic) =>
@@ -158,7 +173,10 @@ public sealed class FontTable
         // serif font Times New Roman (measured with docx/local/font-sig: such fonts of family auto in Arial, Hebrew
         // roman in Times New Roman, Cyrillic or Greek ones in Calibri, the Unicode ranges and PANOSE alone nothing;
         // pandoc/normalize: Apple Chancery, Apple Symbols, Big Caslon).
-        if (entry != null && (entry.CodePages & 0x60) != 0
+        // A Cyrillic font (character set CC) passes it by (Word's PDF of docx/external/libreoffice/extras-layout/
+        // tdf153136, in a session of its own: Liberation Serif, roman, CC, with the Hebrew code page among others, in
+        // Cambria).
+        if (entry != null && entry.Charset != 204 && (entry.CodePages & 0x60) != 0
             && fonts.TryResolveTypeface(entry.Family == "roman" ? "Times New Roman" : "Arial", bold, italic) is { } paged)
             return paged;
         // A signature with an Indic, Lao or Georgian Unicode range (w:sig usb0 bits 15 to 26) takes that script's font,

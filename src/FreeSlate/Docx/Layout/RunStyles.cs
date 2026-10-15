@@ -140,15 +140,20 @@ public sealed class RunStyles(DocumentContext context)
     /// </summary>
     static IEnumerable<string> Fallbacks(int c, bool serif, bool eastAsian)
     {
-        if (c >= 0x1F000 && c <= 0x1FAFF || EmojiPresentation(c))
+        if (c >= 0x1F000 && c <= 0x1FAFF || EmojiPresentation(c) && c is not (>= 0x2190 and <= 0x21FF or >= 0x25A0 and <= 0x25FF))
             return ["Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"];
         return c switch
         {
-            >= 0x2100 and <= 0x214F or >= 0x2200 and <= 0x23FF or >= 0x1D400 and <= 0x1D7FF or >= 0x27C0 and <= 0x27EF or >= 0x2980 and <= 0x2AFF
+            // Arrows and geometric shapes the run's font lacks print in Cambria Math, the black square and rectangle in
+            // Arial (measured with docx/local/gf-15: U+2190 to U+21FF and U+25A0 to U+25FF in Calibri, Aptos and Times
+            // New Roman paragraphs; docx/external/libreoffice/extras-ooxmlexport/tdf94628: "◥" in Cambria Math).
+            >= 0x2100 and <= 0x214F or >= 0x2190 and <= 0x21FF or >= 0x2200 and <= 0x23FF or >= 0x1D400 and <= 0x1D7FF or >= 0x27C0 and <= 0x27EF
+                or >= 0x2980 and <= 0x2AFF
                 => ["Cambria Math", "Segoe UI Symbol", "STIX Two Math", "DejaVu Sans"],
             >= 0x2460 and <= 0x24FF => ["Cambria Math", serif ? "MS Mincho" : "MS Gothic", "Segoe UI Symbol"],
-            >= 0x25A0 and <= 0x25FF => ["Arial", "Segoe UI Symbol", "DejaVu Sans"],
-            >= 0x2190 and <= 0x21FF or >= 0x2600 and <= 0x27BF or >= 0x27F0 and <= 0x297F or >= 0x2800 and <= 0x28FF or >= 0x2B00 and <= 0x2BFF
+            0x25A0 or 0x25AC => ["Arial", "Cambria Math", "Segoe UI Symbol", "DejaVu Sans"],
+            >= 0x25A0 and <= 0x25FF => ["Cambria Math", "Arial", "Segoe UI Symbol", "DejaVu Sans"],
+            >= 0x2600 and <= 0x27BF or >= 0x27F0 and <= 0x297F or >= 0x2800 and <= 0x28FF or >= 0x2B00 and <= 0x2BFF
                 => ["Segoe UI Symbol", "Noto Sans Symbols", "Noto Sans Symbols 2", "DejaVu Sans"],
             >= 0x0E00 and <= 0x0EFF or >= 0x1780 and <= 0x17FF => ["Leelawadee UI", "Tahoma", "Noto Sans Thai", "Noto Sans Lao", "Noto Sans Khmer"],
             >= 0x0900 and <= 0x0DFF => ["Nirmala UI", "Mangal", "Noto Sans Devanagari"],

@@ -50,8 +50,11 @@ public static class LineBreaker
             }
             if (notFirst.Contains(next) || notLast.Contains(c))
                 continue;
+            // Word breaks neither after spaces with a no-break space among them nor before one (measured with
+            // docx/local/nb-15, nb-14: "X)" and NBSP SP, SP NBSP or NBSP NBSP SP before a word too long for the line keep
+            // it there); its documents come with their line breaking rules.
             if (c is ' ' or '\t' or '​' or '­')
-                result[i] = next is not (' ' or '\t');
+                result[i] = next is not (' ' or '\t') && !(rules != null && (next == ' ' || c == ' ' && NoBreakSpaceBefore(text, i)));
             else if (c is '-' or '‐' or '–' && i > 0 && char.IsLetter(text[i - 1]) && char.IsLetterOrDigit(next))
                 result[i] = true;
             else if (c == '—' || next == '—')
@@ -60,6 +63,17 @@ public static class LineBreaker
                 result[i] = next is not (' ' or '\t');
         }
         return result;
+    }
+
+    /// <summary>Whether the run of spaces ending at <paramref name="end"/> holds a no-break space.</summary>
+    static bool NoBreakSpaceBefore(string text, int end)
+    {
+        for (var k = end; k >= 0 && text[k] is ' ' or ' '; k--)
+        {
+            if (text[k] == ' ')
+                return true;
+        }
+        return false;
     }
 
     /// <summary>Ideographs, kana and the East Asian punctuation and full-width forms.</summary>

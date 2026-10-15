@@ -286,13 +286,40 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         return new XElement(Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", side), new XAttribute("b", side));
     }
 
-    /// <summary>A drawing's extent with its effect extents, in points.</summary>
+    /// <summary>
+    /// A drawing's extent with its effect extents, in points; an inline drawing turned by 45 degrees up to 135 (or 225 up
+    /// to 315) takes its extent's height across and its width down from Word 2010 on (measured with docx/local/ri-*: a
+    /// 100 x 60 pt rectangle at 45, 60, 90, 120 and 250 degrees makes a line 100 pt high and 60 pt wide, at 0, 30 and
+    /// 135 degrees one 60 pt high; docx/external/libreoffice/extras-ooxmlexport/tdf103001 in mode 14); Word 2007's
+    /// documents hold the turned bounds in their effect extents (extras-ooxmlimport/tdf143475_rotatedWord2007imageInline:
+    /// a picture turned 75 degrees in a box of its width and 178.5 pt high). The reader marks those that swap
+    /// (<see cref="SwappedTurn"/>).
+    /// </summary>
     public static (double Width, double Height) Box(XElement drawing)
     {
         var extent = drawing.Element(Wp + "extent");
         var effect = EffectExtent(drawing);
         double E(XElement? e, string name) => double.TryParse((string?)e?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / EmuPerPoint : 0;
-        return (E(extent, "cx") + E(effect, "l") + E(effect, "r"), E(extent, "cy") + E(effect, "t") + E(effect, "b"));
+        var (width, height) = InlineSwapped(drawing) ? (E(extent, "cy"), E(extent, "cx")) : (E(extent, "cx"), E(extent, "cy"));
+        return (width + E(effect, "l") + E(effect, "r"), height + E(effect, "t") + E(effect, "b"));
+    }
+
+    /// <summary>Marks an inline drawing whose turn swaps its box's sides (see <see cref="Box"/>).</summary>
+    public static readonly XName SwappedTurn = XNamespace.Get("urn:freeslate:drawing") + "swapped";
+
+    /// <summary>Whether an inline drawing's box swaps its sides (see <see cref="Box"/>).</summary>
+    public static bool InlineSwapped(XElement drawing) => drawing.Attribute(SwappedTurn) != null;
+
+    /// <summary>Whether an inline drawing is turned by 45 degrees up to 135, or 225 up to 315.</summary>
+    public static bool TurnedAcross(XElement drawing)
+    {
+        if (drawing.Name != Wp + "inline" || drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault() is not { } content)
+            return false;
+        var xfrm = content.Elements().FirstOrDefault(e => e.Name.LocalName is "spPr" or "grpSpPr")?.Element(Ns.A + "xfrm");
+        if (!long.TryParse((string?)xfrm?.Attribute("rot"), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var rot))
+            return false;
+        var degrees = ((rot / 60000.0) % 360 + 360) % 360;
+        return degrees is >= 45 and < 135 or >= 225 and < 315;
     }
 
     /// <summary>The effect extents left and above the drawing's extent, in points.</summary>

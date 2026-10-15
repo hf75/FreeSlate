@@ -1380,7 +1380,38 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             : styles.EastAsianDefaults ? Spread.EastAsian : Spread.None;
         foreach (var line in lines)
         {
-            // Lines broken around floating objects align in their room; lines in several segments stay as they are.
+            // Lines broken around floating objects align in their room; a line in several segments aligns each of them
+            // in its own, justified ones all but the paragraph's last (measured with docx/local/jf-*: justified lines
+            // beside a frame and beside rectangles wrapped square or tight end each segment at its room's end, centred
+            // and right aligned ones centre or end each; docx/external/libreoffice/extras-ooxmlexport/tdf133701).
+            if (line.Jumped && !Unaligned && line.Cut is { Count: > 1 } cut)
+            {
+                var groups = new List<List<Piece>> { new() };
+                foreach (var piece in line.Pieces)
+                {
+                    if (piece.IsTab && piece.Start < 0)
+                        groups.Add([]);
+                    else
+                        groups[^1].Add(piece);
+                }
+                var lastGroup = groups.FindLastIndex(g => g.Count > 0);
+                for (var g = 0; g <= lastGroup; g++)
+                {
+                    if (groups[g].Count == 0)
+                        continue;
+                    var x0 = groups[g][0].X;
+                    var k = Math.Max(0, cut.FindLastIndex(s => s.Start <= x0 + 0.01));
+                    var segmentStart = g == 0 ? line.Start ?? left + (line.First ? firstLine - labelShift : 0) : cut[k].Start;
+                    var segmentEnd = k == cut.Count - 1 ? line.Limit ?? (AlignIn is { } inBox && Math.Abs(width - inBox.Laid) < 1e-6 ? inBox.Area : width) - right
+                        : cut[k].End;
+                    var part = new Line { First = line.First && g == 0, Last = line.Last && g == lastGroup, Natural = line.Natural,
+                        EndBreak = g == lastGroup ? line.EndBreak : null, Hanging = g == lastGroup ? line.Hanging : 0 };
+                    part.Pieces.AddRange(groups[g]);
+                    Align(part, format, segmentEnd, segmentStart, expandBreaks, Doubled, characters, segmentEnd, IdeographicTrails,
+                        context.CompatibilityMode < 15 ? 0.6 : 0.45);
+                }
+                continue;
+            }
             if (line.Jumped || Unaligned)
                 continue;
             // A display equation's line stands where its justification puts it, from the left indent.
@@ -2426,7 +2457,25 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             largest = Math.Max(largest, a + b);
             lowered = Math.Max(lowered, b + boxed - lift + reachBelow);
         }
-        if (drawings && !texts)
+        // Before Word 2013 a line of drawings without the paragraph mark is as high as they are, without spacing's extra;
+        // where a line break ends it, it has the break's font as text has (measured with docx/local/dl-a14, dl-b14: a 470
+        // by 2 pt rectangle too wide for the line between 36 pt words makes a line 2 pt high, at 1.15 lines too; dl-c14,
+        // dl-d14: a 40 by 20 pt one between line breaks a line of the 36 pt font; in mode 15 both the mark's; LibreOffice's
+        // extras-ooxmlexport/128197_compat14).
+        if (drawings && !texts && context.CompatibilityMode < 15 && end < text.Length)
+        {
+            if (end > start && text[end - 1] is '\n' or '\v' && end - 1 < charStyles.Count)
+            {
+                var (a, b) = Metrics(charStyles[end - 1], Vertical);
+                above = Math.Max(above, a);
+                raised = Math.Max(raised, a);
+                below = Math.Max(below, b);
+                lowered = Math.Max(lowered, b);
+                largest = a + b;
+            }
+            any = true;
+        }
+        else if (drawings && !texts)
         {
             // Drawings without text: no descent, the paragraph mark's font gives the spacing's extra; pictures
             // smaller than the mark's line still take its whole height (measured with docx/local/smallpic-single and
@@ -2638,8 +2687,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     {
         for (var i = 0; i + 1 < text.Length; i++)
         {
-            if (text[i] is ' ' or '\t' && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v') && !EastAsian(text[i + 1]))
-                breaks[i] = true;
+            if (text[i] is not (' ' or '\t') || text[i + 1] is ' ' or '\t' or '\n' or '\f' or '\v' or ' ' || EastAsian(text[i + 1]))
+                continue;
+            // Spaces with a no-break space among them give no break (measured with docx/local/nb-15, nb-14: "X)" and
+            // NBSP SP, SP NBSP or NBSP NBSP SP before a word too long for the line keep it there, broken by characters,
+            // SP and SP SP not; docx/external/libreoffice/extras-ooxmlexport/tdf134606).
+            var start = i;
+            while (start > 0 && text[start - 1] is ' ' or ' ')
+                start--;
+            if (text[i] == ' ' && text.AsSpan(start, i - start).Contains(' '))
+                continue;
+            breaks[i] = true;
         }
     }
 
