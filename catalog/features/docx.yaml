@@ -2552,7 +2552,9 @@ areas:
           the row 22.9 pt high, 8 pt after and lines of 259 from the defaults, not the table style's single lines, the
           Normal style's 20 pt after or the paragraph's 30 pt; a lost mark in the first cell alone 13.9 pt;
           docx/external/libreoffice/extras-ooxmlexport/TC-table-Separate-Move 71.1 → 100 %, TC-table-DnD-move twice
-          56.0 → 100 %, TC-table-rowDND 58.7 → 100 %, TC-table-rowDND-front 86.7 → 100 %). Known deviation: only the
+          56.0 → 100 %, TC-table-rowDND 58.7 → 100 %, TC-table-rowDND-front 86.7 → 100 %), also inside content
+          controls (tdf157011_ins_del_empty_cols: Google Docs' paragraphs each in a w:sdt, 58.3 → 100 %). Known
+          deviation: only the
           all markup view with Word's default balloons; English balloon texts follow Word's terms but were not
           measured.
 

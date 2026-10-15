@@ -15,6 +15,21 @@ public sealed partial class ModelReader
     ParagraphFormat? tableParagraph;
     RunFormat? tableRun;
 
+    /// <summary>
+    /// The last paragraph or table of a cell, inside content controls and custom XML too (docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf157011_ins_del_empty_cols: Google Docs' paragraphs each in a w:sdt).
+    /// </summary>
+    static XElement? LastBlock(XElement container)
+    {
+        var last = container.Elements().LastOrDefault(e => e.Name.LocalName is "p" or "tbl" or "sdt" or "customXml");
+        return last?.Name.LocalName switch
+        {
+            "sdt" => last.Child("sdtContent") is { } content ? LastBlock(content) : null,
+            "customXml" => LastBlock(last),
+            _ => last,
+        };
+    }
+
     TableBlock Table(XElement tbl)
     {
         var model = new TableModel();
@@ -134,7 +149,7 @@ public sealed partial class ModelReader
                 // 20 pt after or the paragraph's own 30 pt; with a 20 pt mark 34.8 pt; a first cell's lost mark single
                 // lines without space after, 13.9 pt; a lost mark before another paragraph as any other;
                 // docx/external/libreoffice/extras-ooxmlexport/TC-table-Separate-Move, TC-table-DnD-move: 56.0 → 100 %).
-                if (!context.Markup && cellElements[c].Elements().LastOrDefault(e => e.Name.LocalName is "p" or "tbl" or "sdt" or "customXml") is { } lastElement
+                if (!context.Markup && LastBlock(cellElements[c]) is { } lastElement
                     && lastElement.Name == Wml.W + "p" && lastElement.Child("pPr")?.Child("rPr") is { } lostMark
                     && (lostMark.Child("del") ?? lostMark.Child("moveFrom")) != null && cell.Blocks.LastOrDefault() is ParagraphBlock joined)
                 {
