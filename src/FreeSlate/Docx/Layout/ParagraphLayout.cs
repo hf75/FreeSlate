@@ -10,6 +10,10 @@ public sealed class Piece
 {
     public required string Text { get; init; }
     public required RunStyle Style { get; init; }
+
+    /// <summary>Whether the piece's first letter joins the letter before it, its last the one after (Arabic words over runs).</summary>
+    public bool JoinsBefore { get; init; }
+    public bool JoinsAfter { get; init; }
     public double X { get; set; }
 
     /// <summary>Where the piece's text begins in its paragraph's text; -1 for tabs and spacers.</summary>
@@ -749,7 +753,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             return [];
         var layout = new Equations.MathLayout(font, table,
             rPr => styles.Style(rPr != null && math.RunFormats.TryGetValue(rPr, out var run) ? run : math.Format, WordSlot.Ascii) is var s
-                ? new Equations.MathRunStyle(s.Size, s.Color)
+                ? new Equations.MathRunStyle(s.Size, s.Color, s.Font.Data)
                 : default,
             Wml.W + "rPr")
         {
@@ -1773,17 +1777,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
                     break;
+                // Tabs and breaks of a right-to-left or complex script run take its complex script font and size
+                // (docx/external/powertools/RP/RP051-Arabic: an empty paragraph of two breaks in w:rtl runs of w:szCs
+                // 14, two lines 17.9 pt high).
                 case TabInline tab:
                     if (tab.Positional is { } absolute)
                         positional[text.Length] = absolute;
                     text.Append('\t');
-                    list.Add(styles.Style(format, WordSlot.Ascii));
+                    list.Add(styles.Character(format, '\t'));
                     break;
                 case BreakInline b:
                     if (b.Type is not ("page" or "column") && b.Clear is "left" or "right" or "all")
                         clears[text.Length] = b.Clear;
                     text.Append(b.Type switch { "page" => '\f', "column" => '\v', _ => '\n' });
-                    list.Add(styles.Style(format, WordSlot.Ascii));
+                    list.Add(styles.Character(format, '\n'));
                     break;
             }
         }
@@ -1871,6 +1878,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The width of the hyphen a soft hyphen shows at a line's end, in the run's style.</summary>
     static double HyphenWidth(RunStyle style) =>
         style.Font.Data.GlyphsWithFeatures("-", style.Features, language: style.Language).Sum(g => g.Advance) * style.Size * style.Scale + style.Spacing;
+
+    /// <summary>What kerning between a letter and the hyphen after it adds to the letter's advance (0 unkerned).</summary>
+    static double HyphenKern(RunStyle style, char letter)
+    {
+        if (!style.Features.Contains("kern"))
+            return 0;
+        var data = style.Font.Data;
+        var pair = data.GlyphsWithFeatures($"{letter}-", style.Features, language: style.Language).Sum(g => g.Advance);
+        var alone = data.GlyphsWithFeatures(letter.ToString(), style.Features, language: style.Language).Sum(g => g.Advance)
+            + data.GlyphsWithFeatures("-", style.Features, language: style.Language).Sum(g => g.Advance);
+        return (pair - alone) * style.Size * style.Scale;
+    }
 
     /// <summary>
     /// A picture bullet (w:lvlPicBulletId, catalog: numbering.pictureBullets) as an inline picture: about 2 pt less high
@@ -1969,6 +1988,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
+    /// <summary>Whether a character takes part in Arabic, Syriac or N'Ko joining (letters, tatweel and the marks on them).</summary>
+    internal static bool Joining(char c) =>
+        c is >= '\u0620' and <= '\u065F' or '\u0670' or >= '\u0671' and <= '\u06D3' or '\u06D5' or >= '\u06FA' and <= '\u06FC' or '\u06FF'
+            or >= '\u0710' and <= '\u074F' or >= '\u0750' and <= '\u077F' or >= '\u07CA' and <= '\u07F5' or >= '\u08A0' and <= '\u08C9';
+
     static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0, bool eastAsianOnly = false)
     {
         var advances = new double[text.Length];
@@ -1982,7 +2006,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 var style = charStyles[start];
                 var piece = text[start..i];
-                var glyphs = style.Font.Data.GlyphsWithFeatures(piece, style.Features, language: style.Language);
+                // An Arabic word over several runs is shaped joined, as Word sets it (docx/external/powertools/RP/
+                // RP051-Arabic: "ال" and "ملاحة" in two runs one word 25.5 pt wide, not 32.7 pt of a final lam).
+                var before = start > 0 && Joining(text[start - 1]) && Joining(text[start]) ? text[(start - 1)..start] : null;
+                var after = i < text.Length && Joining(text[i - 1]) && Joining(text[i]) ? text[i..(i + 1)] : null;
+                var glyphs = style.Font.Data.GlyphsWithFeatures(piece, style.Features, language: style.Language, before: before, after: after);
                 var firstOfCluster = new HashSet<int>();
                 for (var k = 0; k < glyphs.Length; k++)
                 {
@@ -2135,6 +2163,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     pieceAdvances[^1] = HyphenWidth(charStyles[end - 1]);
                 if (automatic)
                     pieceAdvances = [.. pieceAdvances, HyphenWidth(charStyles[end - 1])];
+                // The hyphen kerns with the letter before it (docx/external/libreoffice/extras-ooxmlexport/
+                // tdf160518_useWord2013TrackBottomHyphenation: "differ-" in kerned Times New Roman 49 pt, the hyphen
+                // 0.93 pt left by the pair's 41 units).
+                if ((hyphen || automatic) && pieceAdvances.Length >= 2)
+                {
+                    var before = hyphen ? end - 2 : end - 1;
+                    if (before >= pieceStart && text[before] is var letter && !char.IsSurrogate(letter))
+                        pieceAdvances[^2] += HyphenKern(charStyles[end - 1], letter);
+                }
                 if (hyphen || automatic)
                     line.Hyphenated = true;
                 var piece = new Piece
@@ -2143,6 +2180,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Style = charStyles[pieceStart],
                     X = x,
                     Start = pieceStart,
+                    JoinsBefore = pieceStart > 0 && Joining(text[pieceStart - 1]) && Joining(text[pieceStart]),
+                    JoinsAfter = i < text.Length && i > pieceStart && Joining(text[i - 1]) && Joining(text[i]),
                     Advances = pieceAdvances,
                     Lead = leads.GetValueOrDefault(pieceStart),
                     IsLabel = pieceStart < labelEnd,
@@ -2361,7 +2400,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // empty-superscript: an empty paragraph with a superscript 10 pt mark 12.2 pt high).
             (above, below) = style.ScriptBase is { } markBase ? WordFonts.LineMetrics(style.Font.Data, markBase, style.LineHeights) : Metrics(style, Vertical);
             largest = above + below;
-            (raised, lowered) = (above, below);
+            // A mark raised or lowered (w:position) moves its line as such text does, a superscript or subscript one not
+            // (docx/external/powertools/HC061-Hyperlink-in-Field: empty cells of a table style raising its text 3 pt as
+            // high as those with text).
+            var markLift = NoSpaceRaiseLower ? 0 : style.Raise;
+            (raised, lowered) = (above + markLift, below - markLift);
+            if (format.TextAlignment is not ("top" or "center" or "bottom"))
+                (above, below) = (above + Math.Min(0, markLift), Math.Max(0, below - Math.Max(0, markLift)));
         }
         line.Above = above;
         line.Below = below;

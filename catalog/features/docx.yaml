@@ -698,15 +698,17 @@ areas:
           right-to-left scripts: Hebrew, Arabic, Syriac, Thaana, the Arabic presentation forms), East Asian or high
           ANSI (all else, Thai and the Indic scripts too, which fall back from the high ANSI font and never take the
           w:cs font); w:cs and w:rtl then make every character complex script in font, size, bold and italic, Latin
-          letters and punctuation too, but in a w:rtl run (not w:cs) numbers keep the font of their block with
-          complex script size and bold, Arabic-Indic digits always, digits and % $ unless the run's w:lang w:bidi is
-          Hebrew; w:hint="cs" changes nothing (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs
-          paragraph mark measures its empty line in its w:cs font. A right-to-left paragraph's list number takes the
-          rules of a w:rtl run but for its left-to-right letters ("1." beside Arabic: "1" Times New Roman, "."
-          Aharoni; "a." "a" in the ASCII font), a left-to-right paragraph's none, whatever the w:rtl of its mark or
-          level, and a number's missing w:cs font becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text
-          set in Times New Roman beside Aharoni lines had made every line taller (docx/external/powertools/
-          HC002-Hebrew-01, HC003-Hebrew-02, HC012-Test-07, HC014-RTL-Table-01 from 2–26 % to 100 % of their lines).
+          letters and punctuation too, but in a w:rtl run (not w:cs) numbers keep the font of their block with complex
+          script size and bold, Arabic-Indic digits always, digits and % $ unless the run's w:lang w:bidi is Hebrew;
+          w:hint="cs" changes nothing (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs paragraph
+          mark measures its empty line in its w:cs font. A right-to-left paragraph's list number takes the rules of a
+          w:rtl run but for its left-to-right letters ("1." beside Arabic: "1" Times New Roman, "." Aharoni; "a." "a"
+          in the ASCII font), a left-to-right paragraph's none, whatever the w:rtl of its mark or level, and a
+          number's missing w:cs font becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text set in Times New
+          Roman beside Aharoni lines had made every line taller (docx/external/powertools/ HC002-Hebrew-01,
+          HC003-Hebrew-02, HC012-Test-07, HC014-RTL-Table-01 from 2–26 % to 100 % of their lines). Tabs and breaks of
+          a right-to-left or complex script run take its complex script font and size, as its other characters do
+          (docx/external/powertools/RP/RP051-Arabic: two breaks of w:rtl runs of w:szCs 14 two lines 17.9 pt high).
 
       - id: run.content
         title: Breaks, symbols and special characters
@@ -925,7 +927,9 @@ areas:
           whatever instance numbers them, items of two definitions not (acl2-two, acl2-direct, acl2-bullet; tdf133052,
           tdf133363 70.5 → 96.3 %). An empty paragraph's raised or lowered mark (w:vertAlign) takes the line of its
           unscaled size (docx/external/libreoffice/core-text/empty-superscript: a superscript 10 pt mark 12.2 pt high,
-          65.8 → 97.9 %).
+          65.8 → 97.9 %). An empty paragraph whose mark is raised or lowered (w:position, also from a table style)
+          moves its line as such text does, a superscript or subscript mark not
+          (docx/external/powertools/HC061-Hyperlink-in-Field: empty cells as high as those with text).
 
       - id: paragraph.pagination
         title: Keep with next, keep lines together, widow control, page break before
@@ -1226,8 +1230,11 @@ areas:
           line that ends with a hyphen may end a page before Word 2013 and where the document allows it
           (w:compatSetting allowHyphenationAtTrackBottom), else it goes on with the line after it (docx/local/hyph-d;
           docx/external/libreoffice/extras-ooxmlexport/tdf160518_allowHyphenationAtTrackBottom 40.9 → 89.0 %,
-          tdf160518_useWord2013TrackBottomHyphenation; powertools/HC048-Excerpt in mode 14 87.5 → 93.7 %). Known
-          deviation: with useWord2013TrackBottomHyphenation 0 Word breaks that line anew without its hyphen
+          tdf160518_useWord2013TrackBottomHyphenation; powertools/HC048-Excerpt in mode 14 87.5 → 93.7 %). The hyphen
+          at a line's end kerns with the letter before it
+          (docx/external/libreoffice/extras-ooxmlexport/tdf160518_useWord2013TrackBottomHyphenation: "differ-" in
+          kerned Times New Roman 49 pt, the hyphen 0.98 pt left). Known deviation: with
+          useWord2013TrackBottomHyphenation 0 Word breaks that line anew without its hyphen
           (extras-ooxmlexport/tdf165354 41.4 → 78.1 %), here it keeps the hyphen. Known deviations: Word's own
           dictionaries may allow other places than the patterns (it leaves un-characteristically whole); other
           languages are not hyphenated.

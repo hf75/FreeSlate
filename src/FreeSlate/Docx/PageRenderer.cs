@@ -1119,8 +1119,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         sb.Append('>');
         // The browser joins Arabic letters across bidirectional controls, Word does not (FontData.NonJoining); the
         // piece is drawn with its direction overridden, so they have nothing else to do there.
+        // A word over several runs keeps its letters joined at the runs' ends: zero width joiners there (as Word draws
+        // the word in one, docx/external/powertools/RP/RP051-Arabic).
         if (words.Count == 0)
-            sb.Append(WebUtility.HtmlEncode(piece.RightToLeft && FreeSlate.Text.FontData.FontFeaturesAlways(text) ? FreeSlate.Text.FontData.NonJoining(text) : text));
+            sb.Append(WebUtility.HtmlEncode((piece.RightToLeft && piece.JoinsBefore ? "\u200D" : "")
+                + (piece.RightToLeft && FreeSlate.Text.FontData.FontFeaturesAlways(text) ? FreeSlate.Text.FontData.NonJoining(text) : text)
+                + (piece.RightToLeft && piece.JoinsAfter ? "\u200D" : "")));
         else
         {
             var at = 0;

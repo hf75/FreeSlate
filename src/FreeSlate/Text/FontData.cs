@@ -402,7 +402,10 @@ public sealed class FontData : IDisposable
     /// stays 0. Word chooses its features itself (kerning by size, ligatures and contextual alternates by the run's
     /// settings), unlike PowerPoint (<see cref="Glyphs"/>).
     /// </summary>
-    public ShapedGlyph[] GlyphsWithFeatures(string text, IReadOnlyList<string> features, bool rightToLeft = false, string? language = null)
+    /// <param name="before">Text before this one that its first glyphs join (an Arabic word over several runs).</param>
+    /// <param name="after">Text after this one that its last glyphs join.</param>
+    public ShapedGlyph[] GlyphsWithFeatures(string text, IReadOnlyList<string> features, bool rightToLeft = false, string? language = null,
+        string? before = null, string? after = null)
     {
         if (text.Length == 0)
             return [];
@@ -410,11 +413,18 @@ public sealed class FontData : IDisposable
         List<string> pieces = rightToLeft ? [text] : Scripts.Split(text).Select(p => p.Text).ToList();
         var result = new List<ShapedGlyph>();
         var offset = 0;
-        foreach (var piece in pieces)
+        for (var p = 0; p < pieces.Count; p++)
         {
+            var piece = pieces[p];
             using var buffer = new Buffer();
             var own = FontFeaturesAlways(piece);
-            buffer.AddUtf16(own ? NonJoining(piece) : piece);
+            var shaped = own ? NonJoining(piece) : piece;
+            // The neighbors the piece joins shape it as context, outside its own glyphs.
+            var (pre, post) = (p == 0 ? before ?? "" : "", p == pieces.Count - 1 ? after ?? "" : "");
+            if (pre.Length + post.Length > 0)
+                buffer.AddUtf16(pre + shaped + post, pre.Length, shaped.Length);
+            else
+                buffer.AddUtf16(shaped);
             buffer.GuessSegmentProperties();
             if (rightToLeft)
                 buffer.Direction = Direction.RightToLeft;
@@ -426,7 +436,7 @@ public sealed class FontData : IDisposable
             for (var i = 0; i < infos.Length; i++)
             {
                 var advance = (double)positions[i].XAdvance / UnitsPerEm + (positions[i].XAdvance != 0 ? advanceExtra : 0);
-                result.Add(new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster + offset, advance, 0,
+                result.Add(new ShapedGlyph(infos[i].Codepoint, (int)infos[i].Cluster - pre.Length + offset, advance, 0,
                     (double)positions[i].XOffset / UnitsPerEm, (double)positions[i].YOffset / UnitsPerEm));
             }
             offset += piece.Length;
