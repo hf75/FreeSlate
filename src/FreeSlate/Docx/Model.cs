@@ -87,6 +87,14 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
     /// </summary>
     public RunFormat? ErrorFormat { get; init; }
 
+    /// <summary>
+    /// The format of a simple field's result with \* MERGEFORMAT once a header or footer showed it empty on some page:
+    /// its paragraph style's, on every page (measured with docx/local/fsf4-b, fsf4-d: a STYLEREF that finds an empty
+    /// heading on one page prints plain on all; docx/external/libreoffice/extras-ooxmlexport/tdf170602_exportContext),
+    /// or null.
+    /// </summary>
+    public RunFormat? Unmerged { get; init; }
+
     /// <summary>The number format of the field's \* switch ("Arabic", "roman", "ALPHABETIC" …), or null.</summary>
     public string? NumberFormat
     {
@@ -1327,7 +1335,8 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "fldSimple" when FieldInline.IsPageField(e.Attr("instr") ?? "") && e.Attr("fldLock") is not ("1" or "true" or "on"):
                     var cached = new List<Inline>();
                     ReadInlines(e, paragraphStyle, cached, new FieldState());
-                    var simpleFormat = cached.FirstOrDefault()?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun);
+                    var styleFormat = context.Styles.Run(paragraphStyle, null, null, tableRun);
+                    var simpleFormat = cached.FirstOrDefault()?.Format ?? styleFormat;
                     if (FieldInline.TypeOf(e.Attr("instr")!) == "LISTNUM")
                     {
                         if (!field.Hidden && ListNumber(e.Attr("instr")!, e) is { } listed)
@@ -1340,7 +1349,22 @@ public sealed partial class ModelReader(DocumentContext context)
                             field.Target(content).Add(AutoNumber(e.Attr("instr")!, e, simpleFormat));
                         break;
                     }
-                    field.Target(content).Add(new FieldInline(e.Attr("instr")!, simpleFormat, cached));
+                    // A simple field has no instruction runs: what Word computes prints in the paragraph style's format,
+                    // in the saved result's only with \* MERGEFORMAT, its errors in the style's bold (measured with
+                    // docx/local/fsf-15, fsf-12, fsf2-*, fsf5-15: PAGE, NUMPAGES, SEQ, DATE, PAGEREF, SECTION and
+                    // STYLEREF saved italic 16 pt red print plain 10 pt, with MERGEFORMAT italic 16 pt red, in the body
+                    // and in a header; an error of REF or STYLEREF bold 10 pt either way). REF takes its bookmark's
+                    // text with its format, which the saved result holds (Word's PDF of docx/external/libreoffice/
+                    // extras-ooxmlimport/tdf133647_unicode: a REF of a heading in Calibri Light prints in Calibri Light).
+                    var instr = e.Attr("instr")!;
+                    var merged = instr.Contains("MERGEFORMAT", StringComparison.OrdinalIgnoreCase);
+                    var computed = FieldInline.TypeOf(instr) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "SEQ" or "DATE" or "TIME"
+                        or "PAGEREF" or "SECTION" or "STYLEREF";
+                    field.Target(content).Add(new FieldInline(instr, merged || !computed ? simpleFormat : styleFormat, cached)
+                    {
+                        ErrorFormat = styleFormat,
+                        Unmerged = merged && FieldInline.TypeOf(instr) == "STYLEREF" && cached.Count > 0 ? styleFormat : null,
+                    });
                     break;
                 case "fldSimple":
                     ReadInlines(e, paragraphStyle, content, field);

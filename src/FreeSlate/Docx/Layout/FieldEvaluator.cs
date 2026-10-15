@@ -46,6 +46,18 @@ public sealed class FieldEvaluator
     /// <summary>Whether a header's STYLEREF had to guess its page's paragraphs (no layout before): another one follows.</summary>
     bool guessed;
 
+    /// <summary>The fields of headers and footers that came out empty on a page (see <see cref="FieldInline.Unmerged"/>).</summary>
+    readonly HashSet<FieldInline> emptied = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Whether a field came out empty for the first time in the layout in progress: another one follows.</summary>
+    bool newlyEmptied;
+
+    /// <summary>Notes that a header's or footer's field came out empty on a page.</summary>
+    public void Empty(FieldInline field) => newlyEmptied |= emptied.Add(field);
+
+    /// <summary>Whether a header's or footer's field came out empty on some page.</summary>
+    public bool Emptied(FieldInline field) => emptied.Contains(field);
+
     /// <summary>The page whose header the layout in progress measures, for its fields without a page of their own.</summary>
     public PageBox? Laying { get; set; }
 
@@ -162,8 +174,8 @@ public sealed class FieldEvaluator
         var before = new Dictionary<FieldInline, string?>(ReferenceEqualityComparer.Instance);
         foreach (var field in paragraphs.SelectMany(p => Fields(p.Content)).Where(Paged))
             before[field] = Value(field, null);
-        var again = guessed;
-        guessed = false;
+        var again = guessed || newlyEmptied;
+        (guessed, newlyEmptied) = (false, false);
         pages = laid;
         bookmarkPages.Clear();
         paragraphPages.Clear();
@@ -353,6 +365,12 @@ public sealed class FieldEvaluator
         var last = words.Contains("\\l");
         if (on != null)
         {
+            // An empty paragraph of the style that ended a section at the page's top before the next section took
+            // the page empties the field on the way, though the page shows what follows (Word's PDF of docx/external/
+            // libreoffice/extras-ooxmlexport/tdf170602_exportContext: an empty heading holding a section break after a
+            // page break; the headers print "Einleitung" and all others plain; docx/local/tdh-g).
+            if (field.Unmerged != null && on.Passed.Any(Matches))
+                Empty(field);
             var here = ParagraphsOf(on).Where(Matches).ToList();
             found = here.Count > 0 ? last ? here[^1] : here[0] : null;
             if (found == null)
@@ -364,6 +382,9 @@ public sealed class FieldEvaluator
                         break;
                 }
             }
+            // Without one on the page or before it, the first after it (measured with docx/local/fsf4-c: a header's
+            // STYLEREF on a page before the first heading prints that heading, not the error).
+            found ??= paragraphs.FirstOrDefault(Matches);
         }
         else if (paragraphOf.TryGetValue(field, out var paragraph))
         {

@@ -1483,7 +1483,12 @@ areas:
           paragraph holding the break before a continuous section gives its space after as the section's last, which
           the next paragraph's space before has to exceed (docx/local/sbb-a, sbb-b, sbb-c: after a page break 200 pt
           after leave nothing of 150 pt before, none all of it, in modes 14 and 15;
-          docx/external/libreoffice/extras-ooxmlexport/tdf170119_bottomSpacing 42.6 → 94.8 %). Vertical alignment
+          docx/external/libreoffice/extras-ooxmlexport/tdf170119_bottomSpacing 42.6 → 94.8 %). One that a page break
+          left at a page's top before a section on a new page still gives its space after, which shortens the next
+          paragraph's space before, and its style for contextual spacing (docx/local/secb-b, secb-d, secb-e in modes 12,
+          14 and 15: a heading with 24 pt before 18 pt down below 6 pt after, at the top after an empty paragraph of
+          its style with contextual spacing; extras-ooxmlexport/tdf170602_exportContext 89.3 → 97.3 % with the
+          header's field format). Vertical alignment
           centers the text from the top margin, with the space before its first paragraph, to the space after its last
           (docx/generated/page-setup, page 4; docx/local/va-1 to va-5 in modes 12 to 15), an empty paragraph that only
           ends the section left out (vb-1 to vb-3); justified (both) it spreads the room left evenly between the
@@ -2304,7 +2309,16 @@ areas:
           a table of contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of their
           instruction's first run, not of the saved result, which they keep only with \* MERGEFORMAT
           (docx/local/fldfmt: of a bold begin, an italic instruction, a red 16 pt saved result and a 9 pt end Word
-          prints the number italic 12 pt; docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %).
+          prints the number italic 12 pt; docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %). A
+          simple field (w:fldSimple) has no instruction runs: PAGE, NUMPAGES, SEQ, DATE, PAGEREF, SECTION and STYLEREF
+          print in the paragraph style's format, in the saved result's only with \* MERGEFORMAT, their errors in the
+          style's bold (docx/local/fsf-15, fsf-12, fsf2-*, fsf5-15: a saved result italic 16 pt red prints plain 10 pt,
+          with MERGEFORMAT italic 16 pt red, in the body and in headers); REF keeps its bookmark's format
+          (extras-ooxmlimport/tdf133647_unicode: Calibri Light). A STYLEREF with MERGEFORMAT that comes out empty on a
+          page of its header, also on the way where an empty heading ending a section stood at a page's top before the
+          next section took the page, prints in the style's format on every page (docx/local/fsf4-b, fsf4-d, tdh-g;
+          extras-ooxmlexport/tdf170602_exportContext); a header's STYLEREF before the first paragraph of its style
+          finds that one (fsf4-c).
           Fields that set or ask for a bookmark (SET, ASK) print no result
           (docx/external/libreoffice/extras-ooxmlexport/fdo76163: "Praun et al. 2001" saved as a SET's result, 57.4 →
           97.3 %). STYLEREF finds the Normal style by its name in Word's user interface, "Standard" in German Word,

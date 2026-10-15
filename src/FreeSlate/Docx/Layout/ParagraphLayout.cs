@@ -1805,6 +1805,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     }
                     else if (Evaluator?.SymbolFormat(field, format) is { } symbol)
                         shown = symbol;
+                    if (field.Unmerged is { } unmerged && Evaluator != null && fields?.On != null)
+                    {
+                        if (value.Length == 0)
+                            Evaluator.Empty(field);
+                        if (Evaluator.Emptied(field) && !FieldEvaluator.IsError(value))
+                            shown = unmerged;
+                    }
                     AddText(value, shown, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
                 }

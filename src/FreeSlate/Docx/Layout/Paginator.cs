@@ -60,6 +60,12 @@ public sealed class PageBox
     /// <summary>The body's paragraphs that begin on the page, in their order (for STYLEREF and PAGEREF).</summary>
     public List<ParagraphBlock> Paragraphs { get; } = [];
 
+    /// <summary>
+    /// Empty paragraphs ending a section that the page began with before the next section took it (see Place), which
+    /// a header's STYLEREF met on the way (FieldEvaluator).
+    /// </summary>
+    public List<ParagraphBlock> Passed { get; } = [];
+
     /// <summary>The number of the last chapter heading on the page or before it (section.pageNumbers), or "".</summary>
     public string Chapter { get; set; } = "";
 
@@ -191,6 +197,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether the current page was begun by a page break and holds nothing yet: a section on a new page that
     /// would begin after it begins on it instead (StartSection).</summary>
     bool breakPage;
+
+    /// <summary>The paragraphs a page passed that the next section took over, for its first page (PageBox.Passed).</summary>
+    readonly List<ParagraphBlock> passedOver = [];
 
     int paragraphNumber;
     /// <summary>How the current column began, which decides the space before its first paragraph.</summary>
@@ -1223,6 +1232,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // where the section is landscape or the break ends a paragraph with text, one of two page breaks does).
             if (!first && breakPage && page is { Lines.Count: 0 } && pageNotes.Count == 0 && pages.Count > 1 && ReferenceEquals(pages[^1], page))
             {
+                passedOver.AddRange(page.Passed);
                 pages.RemoveAt(pages.Count - 1);
                 page = pages[^1];
             }
@@ -1304,6 +1314,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             TextLeft = left,
             TextWidth = Math.Max(1, width),
         };
+        if (!blank)
+        {
+            page.Passed.AddRange(passedOver);
+            passedOver.Clear();
+        }
         layout.ColumnWidth = () => Column(column).Width;
         // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
         // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
@@ -2911,10 +2926,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // has to exceed (measured with docx/local/sbb-a, sbb-b, sbb-c: after a page break, 200 pt after leave
             // nothing of 150 pt before, none all of it, in modes 14 and 15; docx/external/libreoffice/
             // extras-ooxmlexport/tdf170119_bottomSpacing).
-            if (columnEmpty && nextContinuous)
+            // Before a section on a new page its space after still shortens the next paragraph's space before and its
+            // style still counts for contextual spacing (measured with docx/local/secb-b, secb-e in modes 12, 14 and 15:
+            // a heading with 24 pt before 18 pt down below 6 pt after, at the top after one of its style with contextual
+            // spacing; docx/external/libreoffice/extras-ooxmlexport/tdf170602_exportContext).
+            if (columnEmpty && nextContinuous || !nextContinuous)
             {
                 pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
                 pendingOwnAfter = OwnAfter(paragraph);
+            }
+            if (!nextContinuous)
+            {
+                stylePrevious = paragraph;
+                page!.Passed.Add(paragraph);
             }
             return;
         }
