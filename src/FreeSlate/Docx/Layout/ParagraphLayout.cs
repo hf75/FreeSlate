@@ -909,7 +909,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
-        levels = BidiLevels(text, charStyles, format.Bidi == true);
+        levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
         var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
@@ -2877,11 +2877,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// left-to-right paragraph right-to-left runs are embeddings of their own, reversed as a whole ("abc def!" in a
     /// w:rtl run shows "!abc def", measured with docx/local/bidi).
     /// </summary>
-    static byte[]? BidiLevels(string text, List<RunStyle> styles, bool rightToLeft)
+    static byte[]? BidiLevels(string text, List<RunStyle> styles, bool rightToLeft, int labelLength = 0)
     {
         if (!rightToLeft && !styles.Any(s => s.RightToLeft || s.Override == "rtl") && !Bidi.HasRightToLeft(text))
             return null;
-        var levels = Bidi.Levels(text, rightToLeft, i => i < styles.Count && styles[i].RightToLeft ? true : null);
+        // Neutrals between text of both directions read as their run does: right to left in w:rtl runs, left to right in
+        // the others, also in right-to-left paragraphs (Word's PDFs of docx/external/libreoffice/extras-ooxmlexport/
+        // fdo43093b: "$" of a run without w:rtl stays after its "M"; extras-ooxmlimport/tdf129659: the period after
+        // "Lemberg." in such a run stays at its end); a list number's as the paragraph does (docx/local/rtlnum-e:
+        // "a." before Hebrew text in a right-to-left paragraph reads ".a").
+        var levels = Bidi.Levels(text, rightToLeft, i => i < labelLength ? null : i < styles.Count && styles[i].RightToLeft);
         if (!rightToLeft)
         {
             for (var i = 0; i < text.Length && i < styles.Count;)

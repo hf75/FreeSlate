@@ -739,7 +739,10 @@ areas:
           and empty marks of w:sz 28 print at 10 pt, at the docDefaults' w:szCs 20 pt where it has one, Hebrew without
           w:rtl at its w:sz; LibreOffice's extras-ooxmlexport/style-inheritance 93 → 100 % of the lines).
           Bidirectional levels follow UAX #9 with the paragraph's direction as the base, neutrals of w:rtl and w:dir
-          runs reading right to left and w:bdo forcing its direction; lines are reordered between their tabs,
+          runs reading right to left, those of other runs left to right also in right-to-left paragraphs, a list
+          number's as the paragraph (Word's PDFs of extras-ooxmlexport/fdo43093b: "$" stays after its "M", 82.6 → 97.8 %;
+          extras-ooxmlimport/tdf129659: "Lemberg." keeps its period at its end, 85.8 → 91.1 %; docx/local/rtlnum-e:
+          "a." reads ".a"), and w:bdo forcing its direction; lines are reordered between their tabs,
           right-to-left pieces reach the browser whole from their right end (shaped, mirrored brackets) and
           justification widens their spaces. Clusters of several characters (marks, conjuncts, emoji sequences) are
           drawn whole. In a left-to-right paragraph a right-to-left run is an embedding of its own, reversed as a
