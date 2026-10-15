@@ -679,7 +679,10 @@ areas:
           stands as unlowered; tdf99602_charStyleSubscript 41.1 to 96.9 %, tdf143384_tableInFoot_negativeMargins
           33.7 to 99.3 %); an inline picture or object lowered or raised moves as such text does (Word's PDFs of
           docx/external/libreoffice/extras-layout/tdf138465min: an equation 15.6 pt high lowered 3 pt gives its line
-          an ascent of 12.6 pt, 76.6 → 84.5 %; extras-ooxmlimport/tdf119200: equations lowered 2, 3 and 4 pt). Known
+          an ascent of 12.6 pt, 76.6 → 84.5 %; extras-ooxmlimport/tdf119200: equations lowered 2, 3 and 4 pt on exact
+          lines), except that lowering moves nothing on a line of nothing but drawings that is not exactly so high
+          (docx/local/c2mt-a, -c, -e: an equation of 13.25 pt alone in its paragraph lowered 2 to 6 pt stands as
+          unlowered, the lines below too; c2mt-d: raised 2 pt its line grows; extras-odfexport/2_MathType3). Known
           deviation: where characters align their tops, centers or bottoms (w:textAlignment)
           lowered text keeps its whole ascent; Word lets the font's line gap take up the lowering there (lowr-18:
           12 pt lowered 6 pt make the line 5.6 pt higher). Fit text (w:fitText):

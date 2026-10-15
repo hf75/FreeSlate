@@ -79,6 +79,9 @@ public sealed class Piece
     /// <summary>How far the piece stands above the line's baseline by the paragraph's w:textAlignment, in points.</summary>
     public double Shift { get; set; }
 
+    /// <summary>How far an inline drawing stands raised (lowered where negative) by its run's w:position, in points.</summary>
+    public double Lift { get; set; }
+
     /// <summary>Where a display equation's line stands from the paragraph's left indent (m:jc, m:wrapIndent), or null.</summary>
     public double? DisplayX { get; init; }
 
@@ -2415,7 +2418,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // Lowered or raised (w:position) it moves as text does (Word's PDFs of docx/external/libreoffice/
                 // extras-layout/tdf138465min: an equation of 15.6 pt lowered 3 pt makes the line's ascent 12.6 pt;
                 // extras-ooxmlimport/tdf119200: equations lowered 2, 3 and 4 pt on an exact line).
-                var drawingLift = NoSpaceRaiseLower ? 0 : piece.Style.Raise;
+                // On a line of nothing but drawings lowering moves nothing, unless the line is exactly so high (Word's
+                // PDFs of docx/local/c2mt-a, -c, -e: an equation of 13.25 pt alone in its paragraph lowered 2, 4 or 6 pt
+                // stands where it does unlowered, the lines below too; c2mt-d: raised 2 pt the line grows; LibreOffice's
+                // extras-odfexport/2_MathType3; on exact lines extras-ooxmlimport/tdf119200 lowers them).
+                var drawingLift = NoSpaceRaiseLower ? 0
+                    : onlyDrawings && format.LineRule != "exact" ? Math.Max(0, piece.Style.Raise) : piece.Style.Raise;
+                piece.Lift = drawingLift;
                 above = Math.Max(above, drawing.Box.Height + Math.Min(0, drawingLift));
                 raised = Math.Max(raised, drawing.Box.Height + drawingLift);
                 lowered = Math.Max(lowered, -drawingLift);

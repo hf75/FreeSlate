@@ -715,7 +715,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     if (context.CompatibilityMode <= 12 && shape && inline.Drawing.Attribute(Vml.Converted) == null)
                         (dx, dy) = (2 * dx, 2 * dy);
                     var (w, h) = Drawings.Extent(inline.Drawing);
-                    var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height - piece.Style.Raise;
+                    var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height - piece.Lift;
                     if (piece.Rule is { } rule)
                         (w, top) = (rule.Width, baseline + rule.Bottom - h);
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
