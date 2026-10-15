@@ -65,7 +65,12 @@ public sealed class RunStyles(DocumentContext context)
     /// </param>
     public RunStyle Character(RunFormat format, int c, bool smallCapital = false, bool? numberRightToLeft = null)
     {
-        var rightToLeft = numberRightToLeft is { } paragraph ? paragraph && Bidi.Classify(c) != Bidi.Type.L : format.RightToLeft == true;
+        // Hebrew and Arabic letters of a number take the rules of a w:rtl run in a left-to-right paragraph too (Word's PDF
+        // of docx/external/libreoffice/extras-ooxmlexport/tdf141231_arabicHebrewNumbering: an arabicAlpha number's letter
+        // in the theme's Arabic font Arial at w:szCs 28 pt, its "." in Calibri at w:sz 24 pt).
+        var rightToLeft = numberRightToLeft is { } paragraph
+            ? paragraph && Bidi.Classify(c) != Bidi.Type.L || Bidi.Classify(c) is Bidi.Type.R or Bidi.Type.AL
+            : format.RightToLeft == true;
         var slot = SlotOf(c, format, rightToLeft);
         var style = Style(format, slot, smallCapital, slot == WordSlot.ComplexScript || rightToLeft && slot != WordSlot.EastAsia);
         // A list number's complex script font that the machine lacks becomes Times New Roman, not what the font table

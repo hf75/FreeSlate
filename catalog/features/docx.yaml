@@ -748,8 +748,13 @@ areas:
           (docx/local/rtlslot-a to -p, every line as in Word). A w:rtl or w:cs paragraph mark measures its empty line
           in its w:cs font. A right-to-left paragraph's list number takes the rules of a w:rtl run but for its
           left-to-right letters ("1." beside Arabic: "1" Times New Roman, "." Aharoni; "a." "a" in the ASCII font), a
-          left-to-right paragraph's none, whatever the w:rtl of its mark or level, and a number's missing w:cs font
-          becomes Times New Roman (docx/local/rtlnum-a to -o). Hebrew text set in Times New Roman beside Aharoni lines
+          left-to-right paragraph's none, whatever the w:rtl of its mark or level, but for its Hebrew and Arabic
+          letters, which do (extras-ooxmlexport/tdf141231_arabicHebrewNumbering: an arabicAlpha number's letter in the
+          theme's Arabic font Arial at w:szCs 28 pt, its "." in Calibri at 24 pt, 81.3 → 94.9 % with the note marks;
+          FDO74106: hebrew1 letters in Arial, 99.2 → 100 %), and a number's missing w:cs font becomes Times New Roman
+          (docx/local/rtlnum-a to -o). A note's mark in Hebrew or Arabic letters takes the complex script font at the
+          run's own size (tdf141231: abjad marks of Calibri runs in Arial at 15.5 pt; the text of such runs keeps
+          Calibri, which has the letters, docx/local/arf-15). Hebrew text set in Times New Roman beside Aharoni lines
           had made every line taller (docx/external/powertools/ HC002-Hebrew-01, HC003-Hebrew-02, HC012-Test-07,
           HC014-RTL-Table-01 from 2–26 % to 100 % of their lines). Tabs and breaks of a right-to-left or complex
           script run take its complex script font and size, as its other characters do

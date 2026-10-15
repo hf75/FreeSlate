@@ -1646,7 +1646,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         separators.Clear();
         clears.Clear();
 
-        void AddText(string value, RunFormat format, string? link = null, bool number = false)
+        void AddText(string value, RunFormat format, string? link = null, bool number = false, bool noteMark = false)
         {
             // Medium and high kashida justification lengthen every Arabic word by two or three kashidas.
             if (paragraph.Format.Justification is "mediumKashida" or "highKashida")
@@ -1696,6 +1696,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var lower = small && (Rune.IsLower(rune) || rune.Value == ' ');
                 var shown = format.Caps == true || lower && rune.Value != 0x17F ? rune.Value == 0x131 ? new Rune('I') : Rune.ToUpperInvariant(rune) : rune;
                 var style = styles.Character(format, shown.Value, lower, number ? paragraph.Format.Bidi == true : null);
+                // A note's mark in Hebrew or Arabic letters takes the complex script font at the run's own size (Word's
+                // PDF of docx/external/libreoffice/extras-ooxmlexport/tdf141231_arabicHebrewNumbering: abjad and Hebrew
+                // marks of Calibri runs in the theme's Arial at 15.5 pt, not at w:szCs; text of such runs keeps Calibri,
+                // docx/local/arf-15).
+                if (noteMark && FreeSlate.Text.Bidi.Classify(shown.Value) is FreeSlate.Text.Bidi.Type.R or FreeSlate.Text.Bidi.Type.AL)
+                    style = styles.Style(format, WordSlot.ComplexScript, lower, complex: false);
                 if (shown.Value == '\\' && YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
                     && !style.Font.Data.EastAsian)
                     shown = new Rune('\u00A5');
@@ -1849,7 +1855,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 case NoteReferenceInline note:
                     if (!note.Endnote && !note.Own)
                         notes.Add((text.Length, note.Id));
-                    AddText(note.Mark.Length > 0 && NoteMarks?.GetValueOrDefault((note.Endnote, note.Id)) is { } mark ? mark : note.Mark, format);
+                    AddText(note.Mark.Length > 0 && NoteMarks?.GetValueOrDefault((note.Endnote, note.Id)) is { } mark ? mark : note.Mark, format, noteMark: true);
                     break;
                 case SeparatorInline separator:
                     separators[text.Length] = separator.Continuation;
