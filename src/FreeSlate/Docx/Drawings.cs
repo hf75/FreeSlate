@@ -153,6 +153,23 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                 if (picture.Kind == "pattern" && context.Package.Relationship(context.MainPart, picture.Id) is { External: false } rel && context.Package.Exists(rel.Target)
                     && Html.Gif.Decode(context.Package.ReadBytes(rel.Target)) is var (bitsWide, bitsHigh, rgba) && bitsWide > 0 && bitsHigh > 0)
                 {
+                    // An 8 × 8 picture other than Word's 48 patterns prints a bit a 600 dpi dot, kept at 150 dpi in Word's
+                    // PDF: a tile of 2 × 2 pixels of 0.48 pt, of the bits at (0, 0), (4, 0), (0, 4) and (4, 4) (measured
+                    // with docx/local/ypf-a to ypf-f: one dot, a diagonal, half white, four dots; Word's patterns, as
+                    // its own documents hold them, are PatternPresets' first 48, ypf-c's checkerboard among them;
+                    // docx/external/libreoffice/extras-tiledrendering/tdf159626_yellowPatternFillB).
+                    bool White(int x, int y) => rgba[(y * bitsWide + x) * 4] + rgba[(y * bitsWide + x) * 4 + 1] + rgba[(y * bitsWide + x) * 4 + 2] >= 3 * 128;
+                    // A tile so fine prints as the mean of its pixels (Word's rasterized page: 239,239,48 for one silver
+                    // pixel of four on yellow, 224,224,96 for two), which is what is drawn: browsers drop pattern
+                    // cells below a pixel.
+                    if (bitsWide == 8 && bitsHigh == 8 && !WordPattern(White))
+                    {
+                        var share = new[] { (0, 0), (4, 0), (0, 4), (4, 4) }.Count(b => White(b.Item1, b.Item2)) / 4.0;
+                        var (fore, back) = (FreeSlate.Drawing.RgbColor.FromHex(picture.Color), FreeSlate.Drawing.RgbColor.FromHex(picture.Color2));
+                        var mean = new FreeSlate.Drawing.RgbColor(fore.R * share + back.R * (1 - share), fore.G * share + back.G * (1 - share),
+                            fore.B * share + back.B * (1 - share));
+                        return Page("", $" fill=\"{mean.ToHex()}\"");
+                    }
                     var bits = new System.Text.StringBuilder($"<rect width=\"{Units.Css(bitsWide * Px)}\" height=\"{Units.Css(bitsHigh * Px)}\" fill=\"#{picture.Color2.ToLowerInvariant()}\"/>");
                     for (var y = 0; y < bitsHigh; y++)
                         for (var x = 0; x < bitsWide; x++)
@@ -198,6 +215,14 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];
 
     /// <summary>The text box content element of a drawing's shape (wps:txbx/w:txbxContent), or null.</summary>
+    /// <summary>
+    /// Whether an 8 × 8 picture is one of Word's 48 patterns, its white bits a preset's (measured with Word's own
+    /// documents of the 48 patterns: the presets of PatternPresets but horz, vert, cross, dnDiag, upDiag and diagCross).
+    /// </summary>
+    static bool WordPattern(Func<int, int, bool> white) =>
+        FreeSlate.Drawing.PatternPresets.Tiles.Where(p => p.Key is not ("horz" or "vert" or "cross" or "dnDiag" or "upDiag" or "diagCross"))
+            .Any(p => Enumerable.Range(0, 8).All(y => Enumerable.Range(0, 8).All(x => white(x, y) == ((p.Value[y] >> (7 - x) & 1) == 1))));
+
     public static XElement? TextBoxContent(XElement drawing) =>
         drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Wps + "wsp")?.Element(Wps + "txbx")?.Element(Wml.W + "txbxContent");
 

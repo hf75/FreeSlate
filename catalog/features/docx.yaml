@@ -182,7 +182,11 @@ areas:
           round, at any focus but 0, ±50 and 100 % Word applies the focus twice; colors blend as on shapes. Radial
           gradients repeat a tile of 1025 × 769 dots, Word's "from corner" presets (o:fill gradientCenter) one of 512
           × 384. Textures tile at the picture's size; a picture over the page Word prints as tiles of its pixels at
-          0.12 pt each; a pattern as its 8 × 8 bitmap, a point a bit, white in the fill color and black in color2. A
+          0.12 pt each; a pattern as its 8 × 8 bitmap, a point a bit, white in the fill color and black in color2, where
+          the bitmap is one of Word's 48 patterns (the presets but horz, vert, cross, dnDiag, upDiag, diagCross, as Word's
+          own documents of them hold them); another 8 × 8 bitmap a bit a 600 dpi dot, kept at 150 dpi: a tile of the
+          bits at (0, 0), (4, 0), (0, 4), (4, 4) in 0.48 pt pixels, printed as their mean (docx/local/ypf-a to ypf-f;
+          extras-tiledrendering/tdf159626_yellowPatternFillB 52.4 → 100 %). A
           background without a color (w:color, w:themeColor) Word ignores, its VML fill too
           (docx/external/libreoffice/extras-ooxmlexport/tdf126533_noPageBitmap: no picture of the page, 13.7 → 100 %).
           Known deviations: Word's PDF draws a gradient between two colors with the method linear or none in steps of
