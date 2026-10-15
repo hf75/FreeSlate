@@ -3748,6 +3748,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (result == null)
             return;
+        // Before Word 2013 the space after the paragraph that ends the section is shared out among the columns, where the
+        // paragraph has text (docx/external/libreoffice/extras-ooxmlimport/tdf103931: an empty one alone in its section
+        // keeps it whole).
+        var shared = context.CompatibilityMode < 15 && items[^1].Block is { EndsSection: not null } && !page.Lines[items[^1].Index].SectionMark;
         var bottom = columnTop;
         for (var i = 0; i < items.Count; i++)
         {
@@ -3757,7 +3761,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A column ends below its last line and the space after its paragraph (measured with page-setup: the
             // next section's heading stands its space after and its own space before below the longest column).
             var columnEnds = i + 1 == items.Count || result[i + 1].Column != c;
-            bottom = Math.Max(bottom, columnTop + offset + old.Line.Height + (columnEnds ? items[i].After : 0));
+            bottom = Math.Max(bottom, columnTop + offset + old.Line.Height + (columnEnds && !(shared && i + 1 == items.Count) ? items[i].After : 0));
+        }
+        // Before Word 2013 the next section begins below the longest column, where the paragraph that ends the section
+        // ends it without its space after, or, where that is lower, a column's share of all the section's lines and
+        // spaces and that space after (measured with docx/local/cbl-12,
+        // cbl-14: 15 lines of 15.44 pt in three columns end 77.2, 80.53 and 87.2 pt down with 0, 10 and 30 pt after, 18
+        // lines 95.97 with 10 pt, 16 lines at their longest column of six whatever the space after; cbl-15 below the
+        // longest column and the space after; docx/external/libreoffice/extras-ooxmlexport/tdf121670_columnsInSectionsOnly).
+        if (shared)
+        {
+            var total = items[0].FirstGap + heights.Sum() + items.Skip(1).Sum(f => f.Gap) + items[^1].After;
+            bottom = Math.Max(bottom, columnTop + total / columns);
         }
         y = bottom;
         column = 0;
