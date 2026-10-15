@@ -1949,8 +1949,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return noteBoxes[(id, width)] = new NoteBox(lines, fills, strokes, height);
     }
 
-    /// <summary>The separator above the first footnote of a page.</summary>
-    double SeparatorHeight => footnotes != null && footnotes.ContainsKey("separator") ? Note("separator").Height : 0;
+    /// <summary>
+    /// The separator above the first footnote of a page; before Word 2013 also the room of the continuation notice
+    /// below the last one where the settings list it, whether a note goes on or not (measured with docx/local/fnd-l,
+    /// fnd-n: an empty notice of 12 pt Courier New listed in w:footnotePr puts the separator 13.68 pt higher in modes 14
+    /// and 12, fnd-g not in mode 15, fnd-m not where only the separators are listed; docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf141660).
+    /// </summary>
+    double SeparatorHeight => footnotes == null ? 0
+        : (footnotes.ContainsKey("separator") ? Note("separator").Height : 0)
+          + (context.CompatibilityMode < 15 && footnotes.ContainsKey("continuationNotice") ? Note("continuationNotice").Height : 0);
 
     /// <summary>
     /// The height footnotes need below the text (catalog: note.footnotes): their content in the text width, and the

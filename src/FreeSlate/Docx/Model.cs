@@ -617,6 +617,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
                 }
             }
+            // The continuation notice counts only where the settings list it among the special notes (see
+            // Paginator.SeparatorHeight).
+            if (type == "continuationNotice" && context.Settings.Child(endnotes ? "endnotePr" : "footnotePr")?
+                    .Elements(Wml.W + (endnotes ? "endnote" : "footnote")).Any(e => e.Attr("id") == id) != true)
+                continue;
             notes[type == "normal" ? id : type] = blocks;
         }
         // A notes part without separators has Word's own (docx/external/libreoffice/extras-ooxmlexport/tdf152203: notes
@@ -1331,6 +1336,13 @@ public sealed partial class ModelReader(DocumentContext context)
                     revision = saved;
                     break;
                 }
+                case "del" when !field.Hidden:
+                    // Without the markup a deleted note reference still counts in the numbering, its note not shown
+                    // (measured with docx/local/fnd-b, fnd-c, fnd-d: the second of three references deleted leaves the
+                    // others numbered 1 and 3; docx/external/libreoffice/extras-ooxmlexport/tdf141660).
+                    foreach (var deleted in e.Descendants().Where(x => x.Name == Wml.W + "footnoteReference" || x.Name == Wml.W + "endnoteReference"))
+                        NextNoteMark(deleted.Name.LocalName == "endnoteReference");
+                    break;
                 case "commentRangeStart" or "commentRangeEnd" when context.Markup && e.Attr("id") is { } commentId:
                     if (e.Name.LocalName == "commentRangeStart")
                         CommentAnchored(commentId);

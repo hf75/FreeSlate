@@ -1784,6 +1784,12 @@ areas:
           pt or double spacing; pandoc/golden/notes). Footnotes beneath the text of a section that ends the document
           come before its endnotes, which follow under their separator below them
           (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes, 36.0 → 83.2 %).
+          A deleted reference counts in the numbering without the markup, its note not shown (docx/local/fnd-b to
+          fnd-d: the second of three references deleted leaves notes 1 and 3). Before Word 2013 the notes keep the room
+          of the continuation notice below them where the settings' w:footnotePr lists it, whether a note goes on or not
+          (fnd-l, fnd-n: an empty notice of 12 pt Courier New puts the separator 13.68 pt higher in modes 14 and 12;
+          fnd-g in mode 15 and fnd-m listing the separators alone not;
+          docx/external/libreoffice/extras-ooxmlexport/tdf141660 81.7 → 96.1 %).
           A note's last paragraph keeps its HTML auto space after below it, the separator's too (docx/local/fau-both,
           fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt below the separator's
           paragraph; fau-note: the separator's own paragraph without it;
