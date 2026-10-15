@@ -2366,6 +2366,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         CellAnchor? cell, double? character)
     {
         var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        // From Word 2013 on the shapes of a drawing in a cell that text goes around are cut at the cell's inside, between
+        // the inner edges of its side lines and from its content's top to its bottom, its text box's text not (measured
+        // with docx/local/cdr-pager, ccl-mar, ccl-thick, ccl-col: a 387 pt box in a 200 pt cell ends at it, margins of
+        // 10 pt above and 15 pt below cut it there, those across not; ccl-14 not cut, ccl-none and ccl-behind unwrapped
+        // not; docx/external/powertools/WC/WC048-Text-Box-in-Cell).
+        if (context.CompatibilityMode >= 15 && cell?.Inside is { } inside && cell.Content is { } content
+            && anchor.Anchor.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
+            placed = placed with { Clip = (inside.Left, content.Top, Math.Max(0, inside.Right - inside.Left), content.Height) };
         // From Word 2013 on a drawing of the text that text goes around, placed from its paragraph or line, stays below
         // the top margin (measured with docx/local/wrm-15, wrm-behind: 20 pt above the first paragraph at the margin,
         // wrapped square or behind the text tight; wrm-14 above it in mode 14, wrm-none unwrapped above it;
@@ -2506,6 +2514,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (wrapsInCell && cell?.Content != null && (string?)positionV?.Attribute("relativeFrom") is not ("paragraph" or "line")
                 && positionV?.Element(Docx.Drawings.Wp + "posOffset") == null)
                 y = y0 + Effect("t");
+            // There it also stays within the cell: across between the inner edges of its side lines, ending at the right
+            // one or else beginning at the left one, and down not above its content's top (measured with
+            // docx/local/ccl-col, ccl-left, ccl-up in modes 15 and 14: 150 pt boxes 120 pt right of and 50 pt left of the
+            // column in a 200 pt cell end at its right and begin at its left, one 30 pt above its paragraph stands at the
+            // cell's top; ccl-none, ccl-behind: without wrapping it keeps its place).
+            if (wrapsInCell && cell?.Inside is { } inside)
+                x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
+            if (wrapsInCell && cell?.Content is { } within)
+                y = Math.Max(y, within.Top + Effect("t"));
             // A drawing that the text wraps around and that stands down from its paragraph or line stays on the page
             // across: past the right edge it ends there, past the left edge it begins there, wider than the page at its
             // left edge (measured with docx/local/clp-*: a 200 pt rectangle 450 pt right of the column or 500 pt right of

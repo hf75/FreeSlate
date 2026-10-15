@@ -130,6 +130,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         X = paperWidth - drawing.Y - drawing.Height / 2 - drawing.Width / 2,
         Y = drawing.X + drawing.Width / 2 - drawing.Height / 2,
+        Clip = null,
     };
 
     /// <summary>A page border's lines, then its art borders' shapes.</summary>
@@ -193,6 +194,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var html = drawings!.Render(drawing);
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
             html += Bevel(drawing);
+        if (drawing.Clip is { } clip)
+            html = $"<div style=\"position:absolute;overflow:hidden;left:{Px(clip.X)}px;top:{Px(clip.Y)}px;width:{Px(clip.Width)}px;height:{Px(clip.Height)}px\">"
+                + $"<div style=\"position:absolute;left:{Px(-clip.X)}px;top:{Px(-clip.Y)}px\">{html}</div></div>";
         if (blocks == null)
             return html;
         // A turned shape turns its text with it, unless the text stands upright or the shape is flipped (docx/external/

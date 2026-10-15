@@ -29,6 +29,9 @@ public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double
     public (double Left, double Width)? Cell { get; init; }
     public (double Top, double Height)? Content { get; init; }
 
+    /// <summary>The cell between the inner edges of its side lines, which drawings that text goes around stay within.</summary>
+    public (double Left, double Right)? Inside { get; init; }
+
     /// <summary>Where the drawing is anchored in its line, for positions relative to the character.</summary>
     public double? CharacterX { get; init; }
 
@@ -40,6 +43,7 @@ public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double
         Text = Text is { } t ? (t.Left + dx, t.Width) : null,
         Cell = Cell is { } c ? (c.Left + dx, c.Width) : null,
         Content = Content is { } v ? (v.Top + dy, v.Height) : null,
+        Inside = Inside is { } i ? (i.Left + dx, i.Right + dx) : null,
     };
 }
 
@@ -816,8 +820,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
+                var outerInside = cellInside;
+                cellInside = (x[c0] + shift + leftLine / 2 - textLeft, x[c1] + shift - rightLine / 2 - textLeft);
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift,
                     CellShading(cell, rows[r]));
+                cellInside = outerInside;
                 laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
                 if (!span.ContainsKey(cell) && !(Rotated(cell) && TurnsInRow(rows[r])))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -974,6 +981,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             Text = moved.Text ?? (textFrom, content.Width),
                             Cell = moved.Cell ?? (cellFrom + inner, cellWidth - inner),
                             Content = moved.Content ?? (top, Math.Max(0, total - top - margins.Bottom)),
+                            Inside = moved.Inside ?? (insideLeft, insideRight),
                         });
                     }
                 }
@@ -1141,8 +1149,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var margins = Margins(row, cell, format);
                 var textLeft = left + Width(borders.Left) + margins.Left;
                 var textRight = right - Width(borders.Right) - margins.Right;
+                var outerInside = cellInside;
+                cellInside = (-margins.Left, textRight - textLeft + margins.Right);
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left,
                     Shading.Color(cell.Format.Shading));
+                cellInside = outerInside;
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
                 cellHeights[cell] = Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom);
                 if (!span.ContainsKey(cell))
@@ -1232,6 +1243,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         Text = moved.Text ?? (origin0 + content.Left, content.Width),
                         Cell = moved.Cell ?? (origin0 + left + Width(borders.Left), right - left - Width(borders.Left) - Width(borders.Right)),
                         Content = moved.Content ?? (part.ContentTop, Math.Max(0, height - part.ContentTop + top0 - margins.Bottom - Width(borders.Bottom))),
+                        Inside = moved.Inside ?? (origin0 + left + Width(borders.Left), origin0 + right - Width(borders.Right)),
                     });
                 }
                 rowBox.Cells.Add(part);
@@ -1889,18 +1901,24 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>
     /// Where a floating drawing in a cell stands down from the content's top: an offset from its paragraph, its line or
     /// the cell's top; aligned or placed by a percentage from the page or the margins one that text goes around stands
-    /// at the content's top (see Paginator.Anchored; measured with docx/local/cdr-pager); null where it is placed
-    /// otherwise.
+    /// at the content's top, and one placed above it moves down to it (see Paginator.Anchored; measured with
+    /// docx/local/cdr-pager, ccl-up); null where it is placed otherwise.
     /// </summary>
     static double? CellTop(System.Xml.Linq.XElement element, double paragraphTop, double lineTop)
     {
         var vertical = element.Element(Docx.Drawings.Wp + "positionV");
         var from = (string?)vertical?.Attribute("relativeFrom");
+        var wraps = element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom");
+        var least = Emu(element.Element(Docx.Drawings.Wp + "effectExtent"), "t");
         if (vertical?.Element(Docx.Drawings.Wp + "posOffset") is { } offset)
-            return Number(offset.Value) is { } dy ? from switch { "paragraph" => paragraphTop, "line" => lineTop, _ => 0 } + dy : null;
-        if (from is not ("paragraph" or "line" or "character") && vertical != null
-            && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
-            return Emu(element.Element(Docx.Drawings.Wp + "effectExtent"), "t");
+        {
+            if (Number(offset.Value) is not { } dy)
+                return null;
+            var top = from switch { "paragraph" => paragraphTop, "line" => lineTop, _ => 0 } + dy;
+            return wraps ? Math.Max(top, least) : top;
+        }
+        if (from is not ("paragraph" or "line" or "character") && vertical != null && wraps)
+            return least;
         return null;
     }
 
@@ -1964,6 +1982,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         context.CompatibilityMode >= 15 || (string?)anchor.Attribute("layoutInCell") is not ("0" or "false");
 
     /// <summary>
+    /// The inside of the cell being laid out, between the inner edges of its side lines, relative to its text's left:
+    /// drawings that text goes around stay within it across (see <see cref="CellExclusion"/>).
+    /// </summary>
+    (double Left, double Right)? cellInside;
+
+    /// <summary>
     /// The area a floating drawing in a cell keeps text from, relative to the content's top left: its box with its
     /// effect extents and distances, placed down as in <see cref="Reach"/> and across by an offset from the text's left
     /// (the page's from the cell's edge), aligned in the text with its effect extents (measured with docx/local/cdr-pct:
@@ -1994,6 +2018,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             x = align switch { "right" => width - w - after, "center" => before + (width - before - w - after) / 2, _ => before };
         else
             return null;
+        if (cellInside is { } inside)
+            x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
         return new Paginator.Exclusion(x - before - Emu(element, "distL"), top - Emu(effect, "t") - Emu(element, "distT"),
             x + w + after + Emu(element, "distR"), top + h + Emu(effect, "b") + Emu(element, "distB"),
             wrap.Name.LocalName == "wrapTopAndBottom", (string?)wrap.Attribute("wrapText") ?? "bothSides");

@@ -42,6 +42,12 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
     /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
     public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
 
+    /// <summary>
+    /// The area of the page the drawing's shapes are cut at, its text box's text not (a table cell's inside, see
+    /// Paginator.Placed), or null.
+    /// </summary>
+    public (double X, double Y, double Width, double Height)? Clip { get; init; }
+
     /// <summary>The text box's body properties (insets, vertical anchor) of the shape (wps:bodyPr).</summary>
     public XElement? Body => Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")?.Element(Drawings.Wps + "bodyPr");
 }

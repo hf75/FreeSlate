@@ -1859,9 +1859,18 @@ areas:
           (docx/external/libreoffice/extras-ooxmlimport/tdf97038, extras-ooxmlexport/tdf128646: pictures behind the
           text right of the page in cells) (measured with docx/local/cdr-*: a box 40 % of the margin wide 178.7 pt,
           one line high 19.4 pt instead of 110.6, centered on the page or right of it and 2.5 % down at the cell's top
-          left; docx/external/powertools/WC/WC048-Text-Box-in-Cell, WC049-Text-Box-in-Cell). Known deviations: Word
-          cuts drawings at the bottom of a row of exact height (cig-exact); before Word 2013 a drawing of layoutInCell
-          0 does not move the table aside (cig-noin14).
+          left; docx/external/powertools/WC/WC048-Text-Box-in-Cell, WC049-Text-Box-in-Cell). Drawings that text goes
+          around stay within their cell, across between the inner edges of its side lines, ending at the right one or
+          else beginning at the left one, and down not above its content's top; from Word 2013 on their shapes are cut
+          at the cell's inside, across between those lines and down from its content's top to its bottom within the
+          cell's margins, their text boxes' text not (docx/local/ccl-*: 150 pt boxes 120 pt right of and 50 pt left of
+          the column in a 200 pt cell and one 30 pt above its paragraph, in modes 15 and 14; a 387 pt box cut at the
+          cell, at margins of 10 and 15 pt above and below and not at those across, in mode 14 not cut; unwrapped ones
+          neither move nor are cut; WC048-Text-Box-in-Cell 88.3 → 90.1 %,
+          libreoffice/extras-ooxmlexport/tdf135943_shapeWithText_LayoutInCell0_compat15 49.2 → 99.0 %,
+          tdf162551_notLayoutInCell_charLeft_fromTop 27.6 → 90.9 %). Known deviations: Word cuts drawings at the
+          bottom of a row of exact height (cig-exact); before Word 2013 a drawing of layoutInCell 0 does not move the
+          table aside (cig-noin14, ccl-out14).
 
       - id: table.borders
         title: Table and cell borders and shading
@@ -2237,7 +2246,12 @@ areas:
         strategy: Block, row, cell and inline content controls render their content; frames and tags are screen-only.
         office: >-
           Block, row, cell and inline content controls render their content; their frames, tags and titles are screen-
-          only (docx/generated/content-controls 94.2 %).
+          only (docx/generated/content-controls 94.2 %). Every control showing its placeholder (w:showingPlcHdr) shows
+          the content of the first such control of the same docPart in the document, a block control's paragraphs in
+          later block controls and its first paragraph's runs in inline ones, a block control after an inline one its
+          own (docx/local/sph-*: three controls of different text all show the first's, in one paragraph or three,
+          plain or rich text; controls not showing their placeholder, of another docPart or of none keep theirs;
+          docx/external/poi/55966 71.2 → 97.4 %).
 
       - id: sdt.types
         title: Content control types

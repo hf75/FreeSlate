@@ -325,6 +325,35 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
     string? bidiOverride, bidiEmbedding;
 
+    /// <summary>
+    /// The content of the first content control showing its placeholder of each docPart, and whether it is a block
+    /// control's (see <see cref="Shown"/>).
+    /// </summary>
+    readonly Dictionary<string, (XElement Content, bool Block)> placeholders = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// What a content control shows: in every control showing its placeholder (w:showingPlcHdr) Word shows the content
+    /// of the first such control of the same docPart in the document, a block control's paragraphs in later block
+    /// controls and its first paragraph's runs in inline ones; a block control after an inline one keeps its own
+    /// (measured with docx/local/sph-*: controls of "Alpha one", "Bravo two" and "Charlie three" all show "Alpha one",
+    /// in one paragraph or three, plain or rich text, two block controls and an inline one "Block one"; controls not
+    /// showing their placeholder take no part, nor those of another docPart or of none; docx/external/poi/55966).
+    /// </summary>
+    XElement Shown(XElement sdt, XElement content, bool block)
+    {
+        if (sdt.Child("sdtPr") is not { } properties || properties.Child("showingPlcHdr") == null
+            || properties.Child("placeholder").Child("docPart").Attr("val") is not { } part)
+            return content;
+        if (!placeholders.TryGetValue(part, out var first))
+        {
+            placeholders[part] = (content, block);
+            return content;
+        }
+        if (block)
+            return first.Block ? first.Content : content;
+        return first.Block ? first.Content.Descendants(Wml.W + "p").FirstOrDefault() ?? content : first.Content;
+    }
+
     /// <summary>How deep the table being read is nested, and how deep tables may nest before only their paragraphs are
     /// read (a guard for the stack: Word itself does not open a test document with 5000 nested tables).</summary>
     int tableDepth;
@@ -818,7 +847,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             }
                         }
                         else
-                            ReadBlocks(content, blocks, ref pending);
+                            ReadBlocks(Shown(e, content, block: true), blocks, ref pending);
                     }
                     break;
                 case "customXml" or "smartTag" or "ins" or "moveTo":
@@ -1263,7 +1292,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             field.Target(content).Add(new TextInline(bound, format));
                         }
                         else
-                            ReadInlines(sdtContent, paragraphStyle, content, field);
+                            ReadInlines(Shown(e, sdtContent, block: false), paragraphStyle, content, field);
                     }
                     break;
             }
