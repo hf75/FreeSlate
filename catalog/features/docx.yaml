@@ -1157,18 +1157,22 @@ areas:
           docx/local/cjkr-*, cjky-*, cjkz-*, cjkx-*, every character within 0.22 pt) share their free width equally
           among the gaps after and before every East Asian character and after every space, a space 0.45 of its width
           more and the automatic space at an East Asian/Latin boundary once more; distributed lines among all
-          characters where the paragraph has East Asian text or the document such a font, else among their spaces
-          (cjk-justify-lines, cjk- justify15/12, cjk-justify-western, docx/generated/paragraph-alignment). Before Word
-          2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent
-          and descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine
-          fonts at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's
-          characters by their fonts' win ascents and descents (ec-none); punctuation compression
-          (w:characterSpacingControl) and w:adjustRightInd changed nothing in Word's printout (ec-*, ea-adjust).
-          Before Word 2013 ideographic spaces (U+3000) at a line's end trail it as spaces do, hanging past the edge
-          (docx/local/isp-both-12: "tttest（" justified to the margin, the twelve ideographic spaces after it past it;
-          tdf128375). Known deviation: from Word 2013 on an opening bracket followed by ideographic spaces goes to the
-          next line with them (isp-both), here it ends the line with the first of them. Known deviation: custom
-          kinsoku lists not in code point order lose different characters in Word than here.
+          characters where the paragraph has East Asian text or the document such a font (cjk-justify-lines,
+          cjk-justify15/12, cjk-justify-western), Latin ones too, every line of the paragraph, unless their text is
+          kerned or takes ligatures, then among their spaces (docx/local/dst-*, dst2-*, dst4-*: a space 0.44 of its
+          width more than a letter, before Word 2013 0.6, dst6-*; dst5-kern, dst5-lig,
+          docx/generated/paragraph-alignment: spaces only;
+          docx/external/libreoffice/extras-ooxmlexport/para-adjust-distribute 75.2 to 100 %). Before Word 2013
+          justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
+          descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts
+          at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by
+          their fonts' win ascents and descents (ec-none); punctuation compression (w:characterSpacingControl) and
+          w:adjustRightInd changed nothing in Word's printout (ec-*, ea-adjust). Before Word 2013 ideographic spaces
+          (U+3000) at a line's end trail it as spaces do, hanging past the edge (docx/local/isp-both-12: "tttest（"
+          justified to the margin, the twelve ideographic spaces after it past it; tdf128375). Known deviation: from
+          Word 2013 on an opening bracket followed by ideographic spaces goes to the next line with them (isp-both),
+          here it ends the line with the first of them. Known deviation: custom kinsoku lists not in code point order
+          lose different characters in Word than here.
 
       - id: paragraph.bidi
         title: Right-to-left paragraphs and text direction

@@ -1352,7 +1352,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
-                IdeographicTrails);
+                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -2586,7 +2586,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// doubles. The last character of the line and the spaces after it take none.
     /// </summary>
     /// <returns>Whether the line was justified so (false where nothing can take the width).</returns>
-    static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled, bool ideographicTrails = false)
+    static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled, bool ideographicTrails = false,
+        double spaceShare = 0.45)
     {
         var chars = new List<(Piece Piece, int Index)>();
         foreach (var piece in pieces)
@@ -2618,7 +2619,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             var extra = 0.0;
             if (c == ' ' && chars[n].Index >= 0)
-                extra += 0.45 * chars[n].Piece.Advances[chars[n].Index];
+                extra += spaceShare * chars[n].Piece.Advances[chars[n].Index];
             if (doubled != null && chars[n].Index >= 0)
                 extra += doubled(chars[n].Piece, chars[n].Index);
             gaps.Add((n, extra));
@@ -2644,6 +2645,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         return true;
     }
+
+    /// <summary>Text set with kerning or ligatures, which a distributed line does not spread between its letters.</summary>
+    static bool Shaped(RunStyle style) =>
+        style.Features.Any(f => f is "kern" or "liga" or "clig" or "calt" or "hlig" or "dlig");
 
     static bool Justified(ParagraphFormat format) =>
         format.Justification is "both" or "distribute" or "lowKashida" or "mediumKashida" or "highKashida" or "thaiDistribute";
@@ -2729,8 +2734,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <param name="doubled">What justification adds at a boundary between East Asian and Latin text after a character.</param>
     /// <param name="edge">The paragraph's own right edge, which centered and right aligned lines a tab stop took past it align by.</param>
+    /// <param name="spaceShare">What a space takes beyond the other characters of a line spread between all of them, in its own width.</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false)
+        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -2793,7 +2799,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
-        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled, ideographicTrails))
+        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled, ideographicTrails, spaceShare))
             return;
         if (!justify || Math.Abs(free) < 1e-9)
             return;
@@ -2802,9 +2808,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // (measured with docx/local/cjkr-*: Latin words with one ideograph stretch their spaces alike, with two or four
         // every gap beside them; cjky-*, cjkz-*: ideographs with spaces between them or Latin words spread every gap;
         // pandoc/nested_instrText, instrText_hyperlink, empty_field).
+        // Distributed lines of Latin text spread over every character too, unless their text is kerned or takes
+        // ligatures, which keeps it together as justified text where it has spaces (measured with docx/local/dst-*,
+        // dst2-*, dst3-two, dst4-*: every line of the paragraph, full or not, each space 0.44 of its width more than a
+        // letter in mode 15, dst6-*: 0.6 in modes 11 to 14; dst5-kern, dst5-lig and docx/generated/paragraph-alignment:
+        // spaces only; docx/external/libreoffice/extras-ooxmlexport/para-adjust-distribute).
+        var everyCharacter = jc is "distribute" or "thaiDistribute" && (lineSpaces <= 0 || !movable.Any(p => p.Text.Length > 0 && Shaped(p.Style)));
         if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
-                || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0)
-            && Distribute(movable, free, spread == Spread.All || jc is "distribute" or "thaiDistribute" && lineSpaces <= 0, line.Hanging > 0, doubled, ideographicTrails))
+                || everyCharacter)
+            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0, doubled, ideographicTrails, spaceShare))
             return;
         // The spaces between words share the free width (trailing spaces excluded).
         var spaces = 0;
