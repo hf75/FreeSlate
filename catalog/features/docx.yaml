@@ -1227,13 +1227,18 @@ areas:
           character, measured with docx/local/kinsoku-chars* (154 candidates each where it would begin and where it
           would end a line): Japanese standard !%),.:;?]}¢°’”‰′″℃、。々〉》」』】〕゛゜ゝゞ・ヽヾ！％），．：；？］｝｡｣､･ﾞﾟ￠ may not begin a
           line and $([\{£¥‘“〈《「『【〔＄（［｛｢￡￥ not end one, w:strictFirstAndLastChars adds the small kana and ー; Simplified
-          and Traditional Chinese have their own lists, Korean none, other languages take the Japanese ones. A
+          and Traditional Chinese have their own lists, Korean none; other languages and text without one keep the
+          Japanese ones' Latin punctuation alone (hgl-*, hgd-*, hgn-*: a 。 after a full line of ideographs begins the
+          next line in en-US, de-DE and without a language whatever the default East Asian font). A
           document's own lists (w:noLineBreaksBefore, w:noLineBreaksAfter for a w:lang) replace both of Word's, a
           missing one by none (kinsoku-custom*); Word looks them up as written in code point order, as it writes them.
           East Asian punctuation and full-width forms break like ideographs (a line may end between 。 and 「, ea-
           adjust). Punctuation that may not begin a line hangs past the end instead where w:overflowPunct lets it (on
           by default): before Word 2013 in every paragraph, from then on in justified ones; Japanese ,.’”、。」』】），．］｝｡､,
-          Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width. Only paragraphs
+          Chinese more (kinsoku-chars12-*, -both, -distribute); the line before it fills its width; only where the
+          document's default East Asian font is one, else the character before it goes down with it whatever room the
+          line leaves (hgr-*, hgd-*; docx/external/libreoffice/extras-odfexport/tdf130314 84.8 → 99.2 % with
+          drawing.wrapping). Only paragraphs
           with East Asian text or an East Asian language for it hang punctuation: a comma after Latin words goes down
           with its word (hangcomma-*; docx/external/poi/bug65649), before Word 2013 with ja-JP as the East Asian
           language it hangs (c3-lines12-*; docx/external/libreoffice/core-ooxml-pass/fdo63164-1), from Word 2013 on
@@ -2752,7 +2757,10 @@ areas:
           Square wrapping keeps the box with the effect extents and the wrap distances free, top and bottom the whole
           width; tight and through wrapping keep free what of the wrap polygon (21600ths of the extent) lies beside
           each line's text, from its ascent to its descent, with the left and right distances; text goes to both
-          sides, the left or right one or the larger (wrapText). Objects push every line of their page, also above
+          sides, the left or right one or the larger (wrapText); before Word 2013 an object wrapped "left" that
+          leaves no room left of it has the lines beside it on its right, one wrapped "right" at the right edge none
+          on its left (docx/local/wsd-14, wsd2-14; from Word 2013 on both below them, wsd-15;
+          docx/external/libreoffice/extras-odfexport/tdf130314). Objects push every line of their page, also above
           their anchor (docx/generated/wrapping, docx/generated/wrap-types: all lines within 0.2 pt). A line that a
           floating table on the page pushes past its bottom moves on, though no text stands above it
           (docx/external/libreoffice/extras-layout/floattable-footer-object-nofit: the pages as Word's). A line

@@ -955,8 +955,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // footnotes; c3-lines12-* with ja-JP and docx/external/libreoffice/core-ooxml-pass/fdo63164-1 with zh-CN: after
         // Latin words; docx/external/powertools/DB007-Abstract, openxml-sdk/May_12_04 with en-US: not); from Word 2013 on
         // the language alone does not do (docx/local/hangcomma-h4, -h7: zh-CN and ja-JP for East Asian text, no hanging
-        // comma; docx/external/libreoffice/extras-ooxmlexport/tdf163894).
-        var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
+        // comma; docx/external/libreoffice/extras-ooxmlexport/tdf163894); and only where the document's default East
+        // Asian font is one (docx/local/hgr-*, hgd-*: a 。 after a full line of SimSun ideographs in zh-CN hangs with
+        // SimSun as that font, with none it goes down with its ideograph whatever the room left; extras-odfexport/
+        // tdf130314).
+        var hanging = format.OverflowPunctuation != false && format.Kinsoku != false && styles.EastAsianDefaults
             && (context.CompatibilityMode < 15 || Justified(format))
             && (HasEastAsian(text) || context.CompatibilityMode < 15 && HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
         var hangAt = -1;

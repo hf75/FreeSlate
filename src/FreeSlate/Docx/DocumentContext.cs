@@ -189,8 +189,11 @@ public sealed class DocumentContext : IDisposable
     /// (w:noLineBreaksBefore, w:noLineBreaksAfter with its w:lang) where it has them, else Word's (measured with
     /// docx/local/kinsoku-chars*: 154 candidates in Japanese, Simplified and Traditional Chinese and Korean, each
     /// where it would begin and where it would end a line). Japanese takes the standard characters, small kana and
-    /// the prolonged sound mark too where the document says w:strictFirstAndLastChars; Korean has none; other
-    /// languages take the Japanese ones. The characters that may hang past the end were measured in compatibility
+    /// the prolonged sound mark too where the document says w:strictFirstAndLastChars; Korean has none; other languages
+    /// and none have the Japanese rules for Latin punctuation alone (measured with docx/local/hgl-*, hgd-*, hgn-*: a 。
+    /// after a full line of ideographs begins the next line in en-US, de-DE and without a language whatever the default
+    /// East Asian font, in zh-CN and ja-JP the last ideograph goes down with it or the 。 hangs; hangcomma-h2: a Latin
+    /// comma hangs without a language). The characters that may hang past the end were measured in compatibility
     /// mode 12 and in justified paragraphs (kinsoku-chars12-*, kinsoku-chars15-*-both).
     /// </summary>
     public Text.LineBreaker.Kinsoku Kinsoku(string? language)
@@ -198,9 +201,16 @@ public sealed class DocumentContext : IDisposable
         var tag = (language ?? "").ToLowerInvariant();
         var family = tag.StartsWith("ko", StringComparison.Ordinal) ? "ko"
             : tag is "zh-tw" or "zh-hk" or "zh-mo" || tag.StartsWith("zh-hant", StringComparison.Ordinal) ? "zh-tw"
-            : tag.StartsWith("zh", StringComparison.Ordinal) ? "zh-cn" : "ja";
+            : tag.StartsWith("zh", StringComparison.Ordinal) ? "zh-cn" : tag.StartsWith("ja", StringComparison.Ordinal) ? "ja" : "";
         if (kinsoku.TryGetValue(family, out var known))
             return known;
+        if (family.Length == 0)
+        {
+            // Other languages and none keep the Japanese rules for Latin punctuation alone.
+            var japanese = Kinsoku("ja");
+            static string Latin(string characters) => string.Concat(characters.Where(c => c < '⺀'));
+            return kinsoku[family] = new Text.LineBreaker.Kinsoku(Latin(japanese.NotFirst), Latin(japanese.NotLast), Latin(japanese.Hanging));
+        }
         var (notFirst, notLast, hanging) = family switch
         {
             "ko" => ("", "", ""),

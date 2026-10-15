@@ -863,9 +863,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a text frame's standing with the text (w:vAnchor text), not on the page.</summary>
         public bool WithText { get; init; }
+
+        /// <summary>
+        /// Whether text goes right of the area where its wrapText "left" leaves no room left of it (before Word 2013;
+        /// measured with docx/local/wsd-14, wsd2-14: a rectangle at the column's left edge has the lines beside it on
+        /// its right, from Word 2013 on below it, wsd-15; one wrapped "right" at the right edge has none on its left).
+        /// </summary>
+        public bool OtherSide { get; init; }
     }
 
-    static Exclusion? ExclusionOf(PlacedDrawing drawing)
+    Exclusion? ExclusionOf(PlacedDrawing drawing)
     {
         var element = drawing.Drawing;
         var wrap = element.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
@@ -877,6 +884,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (el, et, er, eb) = effect != null ? (Emu(effect, "l"), Emu(effect, "t"), Emu(effect, "r"), Emu(effect, "b")) : (0, 0, 0, 0);
         var (dl, dt, dr, db) = (Emu(element, "distL"), Emu(element, "distT"), Emu(element, "distR"), Emu(element, "distB"));
         var side = (string?)wrap.Attribute("wrapText") ?? "bothSides";
+        var otherSide = side == "left" && context.CompatibilityMode < 15;
         // Tight and through wrapping follow the wrap polygon, in 21600ths of the drawing's extent (measured with
         // docx/generated/wrap-types: text beside an oval and a triangle starts the right distance from the polygon).
         if (wrap.Name.LocalName is "wrapTight" or "wrapThrough"
@@ -890,10 +898,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 DistanceLeft = dl,
                 DistanceRight = dr,
                 Source = element,
+                OtherSide = otherSide,
             };
         }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element };
+            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide };
     }
 
     /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
@@ -992,7 +1001,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var keepAfter = after.end > after.Item1;
                 switch (e.Side)
                 {
-                    case "left": keepAfter = false; break;
+                    case "left": keepAfter = e.OtherSide && !keepBefore; break;
                     case "right": keepBefore = false; break;
                     case "largest":
                         if (keepBefore && keepAfter)
@@ -1734,7 +1743,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// do (by agent AE in Word's PDFs: LibreOffice's core-layout/table-fly-overlap, a header picture wrapped square
     /// from 34.25 to 164.75 pt with the body's table below it; core-objectpositioning/floattable-footer-object).
     /// </summary>
-    static IEnumerable<Exclusion> StoryObstacles(StoryBox story) =>
+    IEnumerable<Exclusion> StoryObstacles(StoryBox story) =>
         story.Drawings.Select(ExclusionOf).OfType<Exclusion>().Select(e => e with { Story = true });
 
     sealed class StoryBox
