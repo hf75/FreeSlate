@@ -511,11 +511,17 @@ areas:
           of that very name is installed (an altName of Courier or Arial Unicode MS counts for nothing,
           docx/local/fontnames-alt; RP052-Deleted-Para-Mark 90.3 to 100 % of its lines), which comes before the
           PostScript, platform and free names (docx/local/fs2-d: DejaVu Sans with altName Times New Roman in Times New
-          Roman, without it in Verdana; LibreOffice's core-layout/tdf157096 85.2 → 99.7 %), those not for a Cyrillic
+          Roman, without it in Verdana; LibreOffice's core-layout/tdf157096 85.2 → 99.7 %), and before them Sylfaen for
+          a signature with the Armenian range and the Georgian one or without Basic Latin (w:sig usb0 bits 10, 26, 0;
+          docx/local/fs3-d, -f, -g, pano-00 to pano-15: DejaVu, Liberation and unknown names with usb0 E7002EFF,
+          E7006EFF or the Armenian range alone, whatever their code pages; extras-ooxmlexport/fdo71646; Latin and
+          Armenian alone, extras-layout/tdf138465min, and Georgian alone, pano2-04, not), those not for a Cyrillic
           font (fs2-a to -c: Liberation Serif of character set 00 or EE in Times New Roman, of CC in Cambria, which
           also passes the signature's code pages by; extras-layout/tdf153136), then a font for the table's
           character set (symbol: Wingdings, docx/local/psym-a, psym-b: U+F021 to U+F0FE of a missing font of charset 02
-          all in Wingdings; Shift JIS: Yu Gothic, Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
+          all in Wingdings; Shift JIS: Yu Gothic, MS PMincho where the alternate name is Times New Roman, before that
+          name (docx/local/fs3-a, fs3-b, fs3-c: Liberation Serif and Sans of charset 80; extras-ooxmlexport/fdo69548,
+          fdo47669, extras-ooxmlimport/tdf103931), Hangul: Malgun Gothic, GB 2312: Microsoft YaHei, Big5:
           PMingLiU, Thai: Browallia New; Arabic and Hebrew by the table's family: roman Sakkal Majalla and Times New
           Roman, modern Tahoma, all others Arial, docx/local/font-sub3), then Arial for a signature with the Hebrew or
           Arabic code page (w:sig csb0 bits 5, 6), Times New Roman for such serif fonts (docx/local/ font-sig:

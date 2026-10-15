@@ -109,6 +109,16 @@ public sealed class FontTable
             return own;
         if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveFamily(alternate, bold, italic) is { } alternative)
             return alternative;
+        // A signature with the Armenian Unicode range and the Georgian one, or without Basic Latin, takes Sylfaen before
+        // what other platforms call the family and before its code pages (measured with docx/local/fs3-d, fs3-f, fs3-g,
+        // each in a Word session of its own: DejaVu Sans with usb0 E7002EFF or the Armenian range alone in Sylfaen, with
+        // csb0 alone in Verdana; pano-00 to pano-15: DejaVu, Liberation and unknown names with usb0 E7006EFF and the
+        // Hebrew and Arabic code pages in Sylfaen; pano2-04: the Georgian range alone with those code pages in Arial;
+        // Word's PDFs of LibreOffice's extras-ooxmlexport/fdo71646, and of extras-layout/tdf138465min: Liberation Serif
+        // with E0002EFF, Latin and Armenian without Georgian, in Times New Roman).
+        if (entry != null && (entry.Ranges & (1u << 10)) != 0 && ((entry.Ranges & (1u << 26)) != 0 || (entry.Ranges & 1u) == 0)
+            && fonts.TryResolveFamily("Sylfaen", bold, italic) is { } armenian)
+            return armenian;
         if (entry?.Charset != 204 && (fonts.TryResolveTypeface(family, bold, italic)
                 ?? (Aliases.TryGetValue(family, out var alias) ? fonts.TryResolveTypeface(alias, bold, italic) : null)) is { } typeface)
             return typeface;
@@ -151,6 +161,13 @@ public sealed class FontTable
     ResolvedFont Substitute(FontResolver fonts, string family, bool bold, bool italic)
     {
         entries.TryGetValue(family, out var entry);
+        // A Japanese entry whose alternate name is Times New Roman prints in MS PMincho, Word's Japanese Times; without
+        // an alternate name it takes Yu Gothic below (measured with docx/local/fs3-a, fs3-b, fs3-c, each in a Word
+        // session of its own; Word's PDFs of LibreOffice's extras-ooxmlexport/fdo69548, fdo47669, extras-ooxmlimport/
+        // tdf103931: Liberation Serif, roman, charset 80, altName Times New Roman).
+        if (entry is { Charset: 128 } && string.Equals(entry.AltName, "Times New Roman", StringComparison.OrdinalIgnoreCase)
+            && fonts.TryResolveTypeface("MS PMincho", bold, italic) is { } mincho)
+            return mincho;
         if (entry?.AltName is { Length: > 0 } alternate && fonts.TryResolveFamily(alternate, bold, italic) is { } named)
             return named;
         // A symbol font prints in Wingdings (measured with docx/local/psym-a, psym-b: U+F021 to U+F0FE in a missing
