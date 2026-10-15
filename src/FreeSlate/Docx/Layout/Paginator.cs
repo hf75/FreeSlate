@@ -396,13 +396,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038).
             _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset : 0),
         };
-        var top = position.Attr("tblpYSpec") switch
+        // A table placed above the page's top stands at it (measured with docx/local/hft-*: tblpY -2000 from the
+        // margin, the page or without an anchor, in the body and in a header, at the page's top edge).
+        var top = Math.Max(0, position.Attr("tblpYSpec") switch
         {
             "top" or "inside" => frameTop,
             "bottom" or "outside" => frameTop + frameHeight - height,
             "center" => frameTop + (frameHeight - height) / 2,
             _ => frameTop + Twips("tblpY"),
-        };
+        });
         // A table that may not overlap others (w:tblOverlap never) moves with its distances off a floating table before
         // it on the page that it would overlap: right of it where it fits in its horizontal anchor's span, else below
         // it, its distance left then counting from its place (measured with docx/local/tc-5: beside a table at the
@@ -1132,6 +1134,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             && (Math.Abs(page.Section.PageWidth - properties.PageWidth) > 0.5 || Math.Abs(page.Section.PageHeight - properties.PageHeight) > 0.5))
             start = "nextPage";
         section = properties;
+        tables.PageArea = (properties.PageWidth - properties.Left - properties.Right - properties.Gutter, properties.PageHeight - properties.Top - properties.Bottom,
+            properties.PageWidth, properties.PageHeight);
         layout.Vertical = properties.Upright != null;
         layout.TurnEastAsian = properties.TurnEastAsian;
         layout.LinePitch = GridPitch(properties);
@@ -1347,6 +1351,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var left = on.TextLeft;
         var width = on.TextWidth;
         var anchors = new List<CellAnchor>();
+        // The drawings of floating tables standing on the page, already placed from its top.
+        var fixedAnchors = new List<CellAnchor>();
         var y = 0.0;
         double after = 0;
         var first = true;
@@ -1380,10 +1386,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width
                     : layout.Widths(framed, fields, pictures: true).Max is var max && max > 0 ? Math.Min(max, width)
                     : layout.Styles.Mark(framed.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
-                var laid = group.Select(p => layout.Layout(p, frameWidth, fields)).ToList();
+                // Turned text, the paragraphs' borders and shading and the first paragraph's space before as in the body
+                // (see PlaceFrame; docx/external/libreoffice/extras-ooxmlexport/fdo76979: a header's frame of btLr text
+                // 42.55 by 85 pt, bordered and shaded black, beside the body).
+                var turn = framed.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? framed.Format.TextDirection : null;
+                var laid = group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, fields)).ToList();
                 var content = 0.0;
                 for (var k = 0; k < group.Count; k++)
                     content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
+                var frameBorders = Frame.Read(framed.Format);
+                var borderTop = frameBorders?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
+                var spaceTop = framed.Format.Before ?? 0;
+                content += spaceTop + borderTop + (frameBorders?.Bottom is { Visible: true } bb ? bb.Space + bb.Total : 0);
                 var frameHeight = properties.Twips("h") is { } h && h > 0 ? properties.Attr("hRule") == "exact" ? h : Math.Max(h, content) : content;
                 var next = end < blocks.Count ? blocks[end] as ParagraphBlock : null;
                 var textTop = y + (first ? next?.Format.Before ?? 0 : context.Between(after, next?.Format.Before ?? 0));
@@ -1414,17 +1428,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "center" => areaTop + (areaHeight - frameHeight) / 2,
                     _ => areaTop + Twips("y"),
                 };
-                var lineTop = frameTop;
+                var lineTop = frameTop + spaceTop + borderTop;
                 for (var k = 0; k < group.Count; k++)
                 {
                     if (k > 0)
                         lineTop += Between(group[k - 1], group[k]);
                     foreach (var line in laid[k])
                     {
-                        (onPage ? placed : box.Lines).Add(new PlacedLine(line, x, lineTop));
+                        (onPage ? placed : box.Lines).Add(turn switch
+                        {
+                            "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - frameTop), frameTop) { Angle = 90 },
+                            "btLr" => new PlacedLine(line, x + (lineTop - frameTop), frameTop + frameHeight) { Angle = -90 },
+                            _ => new PlacedLine(line, x, lineTop),
+                        });
                         lineTop += line.Height;
                     }
                 }
+                var frameBox = onPage ? fixedBox : box;
+                var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
+                frameBorders?.Draw(frameBox.Shading, frameBox.Borders, x, frameWidth, frameTop + spaceTop, frameTop + Math.Max(given, frameHeight),
+                    top: true, bottom: true, between: null);
                 // The body's text goes around a frame standing on the page, as around a floating table there (measured
                 // with docx/local/fh-1: a header's frame on the top margin in mode 15 puts the body's first line beside it).
                 if (onPage && properties.Attr("wrap") != "none")
@@ -1461,6 +1484,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "margin" => (s.Top, s.PageHeight - s.Top - s.Bottom),
                     _ => (y + (first ? 0 : after), 0.0),
                 };
+                // Placed on the page above its top it stands at it, as in the body (PlaceFloatingTable); one placed from
+                // the story's text stands where it is, above its paragraph too (docx/external/libreoffice/
+                // extras-ooxmlexport/tdf149089: a header's table 1.35 pt above the header's first paragraph).
                 var tableTop = position.Attr("tblpYSpec") switch
                 {
                     "top" or "inside" => areaTop,
@@ -1468,11 +1494,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "center" => areaTop + (areaHeight - height) / 2,
                     _ => areaTop + Twips("tblpY"),
                 };
+                if (onPage)
+                    tableTop = Math.Max(0, tableTop);
                 var target = onPage ? fixedBox : box;
                 var rowTop = tableTop;
                 foreach (var row in laid.Rows)
                 {
-                    TableLayout.Draw(row, row.Height, x - laid.Left, rowTop, target.Lines, target.Shading, target.Borders, target.Strokes, anchors);
+                    TableLayout.Draw(row, row.Height, x - laid.Left, rowTop, target.Lines, target.Shading, target.Borders, target.Strokes, onPage ? fixedAnchors : anchors);
                     rowTop += row.Height;
                 }
                 if (laid.Rows.Count > 0)
@@ -1604,7 +1632,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             box.Bottom = Math.Max(box.Bottom, area.Bottom + top);
         }
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
-        foreach (var anchor in anchors.Select(a => a.Offset(0, top)))
+        // Those of floating tables on the page stand where their tables do, not again below the story's top
+        // (docx/external/libreoffice/extras-ooxmlexport/tdf105688: a picture in a header table placed from the page).
+        foreach (var anchor in anchors.Select(a => a.Offset(0, top)).Concat(fixedAnchors))
             box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings));
         return box;
     }
@@ -2236,8 +2266,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             TableLayout.Draw(new RowBox().With(mergedDown), 0, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes);
         mergedDown.Clear();
         // A table that another table follows directly continues in it: Word joins them, one line between (measured
-        // with docx/local/tbl-geom).
-        if (last != null && !(index + 1 < blocks.Count && blocks[index + 1] is TableBlock))
+        // with docx/local/tbl-geom); a floating table after it or before it joins nothing (docx/external/libreoffice/
+        // extras-layout/floattable-not-wrapped-by-table: the bottom line before a floating table drawn).
+        if (last != null && !(table.Table.Format.Floating == null && index + 1 < blocks.Count && blocks[index + 1] is TableBlock { Table.Format.Floating: null }))
         {
             Below(last, left);
             y += last.BottomBorderWidth;
@@ -2433,6 +2464,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
             };
             y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t"), (turned?.B ?? 0) + Effect("b"));
+            // In a cell a drawing that text goes around, aligned or placed by a percentage on the page or its margins,
+            // stands at the cell's inside left and its content's top, the alignment and the percentage unseen (measured
+            // with docx/local/cdr-pagec, cdr-pagecf: centered on the page at the cell's left line; cdr-pager: right of
+            // the page and 2.5 % down at the cell's top left; docx/external/powertools/WC/WC048-Text-Box-in-Cell); one
+            // without wrapping keeps its place (docx/external/libreoffice/extras-ooxmlimport/tdf97038: a picture behind
+            // the text right and at the top of the cell's room).
+            var wrapsInCell = cell != null && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom");
+            if (wrapsInCell && cell?.Cell != null && fromH is "page" or "leftMargin" or "rightMargin" or "insideMargin" or "outsideMargin"
+                && positionH?.Element(Docx.Drawings.Wp + "posOffset") == null)
+                x = x0 + Effect("l");
+            if (wrapsInCell && cell?.Content != null && (string?)positionV?.Attribute("relativeFrom") is not ("paragraph" or "line")
+                && positionV?.Element(Docx.Drawings.Wp + "posOffset") == null)
+                y = y0 + Effect("t");
             // A drawing that the text wraps around and that stands down from its paragraph or line stays on the page
             // across: past the right edge it ends there, past the left edge it begins there, wider than the page at its
             // left edge (measured with docx/local/clp-*: a 200 pt rectangle 450 pt right of the column or 500 pt right of
@@ -2923,7 +2967,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (exclusions.Any(e => e.Top < Math.Max(bottom, linesTop + 1) && e.Bottom > linesTop))
             {
                 var (columnLeft, columnWidth) = (left, width);
-                layout.PushedSpace = ownBefore;
+                // A paragraph whose box begins with it keeps its top border too above a first line pushed below
+                // objects, the box beginning below them (docx/external/libreoffice/core-ooxml-pass/tdf108272: a
+                // bordered heading below a header's floating table, its top line at the table's bottom).
+                var opening = frame != null && !bare && !continues && frame.Top is { Visible: true } line ? line.Space + line.Total : 0;
+                layout.PushedSpace = ownBefore + opening;
                 try
                 {
                     lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
@@ -2933,6 +2981,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 {
                     layout.PushedSpace = 0;
                 }
+                if (opening > 0 && lines.Count > 0 && lines[0].Skip > 0.01)
+                    boxTop = linesTop + lines[0].Skip - opening;
             }
         }
         var firstLineTop = (Page: page!, Top: y);
@@ -2999,6 +3049,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // top line (measured with docx/local/bsp-nat-15, -14, bsp-col-15, bsp-pbr-*, bsp-cbr-*: a paragraph broken by
         // the page's end, a column's or a page or column break, its shading and side lines in both parts).
         var (partTop, partFirst, partPage, partLeft, partWidth) = (boxTop, true, page!, left, width);
+        // At least spacing's extra above a first line goes above the box too, its top line the extra lower (measured
+        // with docx/local/abx-*: a top border of space 6 over 8.5 pt Verdana at least 12 and 24 pt 1.68 and 13.68 pt
+        // lower, its text where it was; exact and auto lines keep it at the top; docx/external/powertools/
+        // DB-HeadersFooters-Dest/Fax (content control)).
+        if (frame != null && !bare && !continues && format.LineRule == "atLeast" && lines.Count > 0)
+            partTop += Math.Max(0, lines[0].Height - lines[0].Above - lines[0].Below - lines[0].RaisedAbove - lines[0].LoweredBelow);
         var partBottoms = new List<double>();
         var boxDone = false;
         void ClosePart()

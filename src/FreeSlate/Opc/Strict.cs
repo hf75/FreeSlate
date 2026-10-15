@@ -51,6 +51,13 @@ static class Strict
 
     const string DrawingMain = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
+    /// <summary>Word 2010's relative sizes and positions (wp14:pctWidth …), which Strict writes as "45.5%" too.</summary>
+    const string Wp14 = "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing";
+
+    /// <summary>A text box's content, which Strict documents of Word name in the wne namespace (docx/external/openxml-sdk/Strict01).</summary>
+    static readonly XName StrictTextBoxContent = XName.Get("txbxContent", "http://schemas.microsoft.com/office/word/2006/wordml");
+    static readonly XName TextBoxContent = XName.Get("txbxContent", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+
     static readonly XName WordTextDirection = XName.Get("textDirection", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
 
     /// <summary>Strict's text directions (ST_TextDirection) as the transitional ones.</summary>
@@ -72,6 +79,8 @@ static class Strict
         {
             if (element.Name.NamespaceName == StrictDrawing && StrictShapes.TryGetValue(element.Name.LocalName, out var shapeNs))
                 element.Name = XNamespace.Get(shapeNs) + element.Name.LocalName;
+            else if (element.Name == StrictTextBoxContent)
+                element.Name = TextBoxContent;
             else if (Transitional.TryGetValue(element.Name.NamespaceName, out var ns))
                 element.Name = XNamespace.Get(ns) + element.Name.LocalName;
             // Text directions have names of their own in Strict (docx/external/libreoffice/extras-ooxmlexport/
@@ -81,6 +90,12 @@ static class Strict
                 direction.Value = transitional;
             // DrawingML's percentages are "15%" in Strict, thousandths of a percent in transitional markup (Strict01:
             // chart lines tx1 lumMod 15 % drawn black).
+            // So are Word's relative sizes and positions, as element text (Strict01: wp14:pctWidth "45.5%", the cover
+            // page's panels placed and sized from it).
+            if (element.Name.NamespaceName == Wp14 && element.Name.LocalName.StartsWith("pct", StringComparison.Ordinal) && !element.HasElements
+                && element.Value.Trim() is var text && text.EndsWith('%')
+                && double.TryParse(text[..^1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var share))
+                element.Value = ((long)Math.Round(share * 1000)).ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (element.Name.NamespaceName == DrawingMain)
             {
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration && a.Value.EndsWith('%')))

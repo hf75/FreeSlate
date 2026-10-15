@@ -18,15 +18,20 @@ public sealed record BorderLine(string Style, double Width, RgbColor Color, doub
     /// <summary>
     /// The color of one side of the border: an automatic outset or inset border in Word's two shades of gray, light
     /// above and left of a raised (outset) table and dark below and right of it, a cell's the other way round
-    /// (measured with HTML tables Word imports, docx/local/altchunk, altchunk-tables: F0F0F0 and A0A0A0).
+    /// (measured with HTML tables Word imports, docx/local/altchunk, altchunk-tables: F0F0F0 and A0A0A0); one of a
+    /// color of its own in that color on its light sides and half of it, each channel halved down, on its dark sides
+    /// (docx/external/tika/testInstrLink: EDEBE9 and 767574; poi/bug59058: C0C0C0 and 606060).
     /// </summary>
     public RgbColor ColorOf(string side, bool cell)
     {
-        if (!AutoColor || Style is not ("outset" or "inset"))
+        if (Style is not ("outset" or "inset"))
             return Color;
         var raised = (Style == "outset") != cell;
         var light = side is "top" or "left" ? raised : !raised;
+        if (!AutoColor)
+            return light ? Color : new RgbColor(Half(Color.R), Half(Color.G), Half(Color.B));
         return RgbColor.FromHex(light ? "F0F0F0" : "A0A0A0");
+        static double Half(double channel) => Math.Floor(Math.Round(channel * 255) / 2) / 255;
     }
 
     /// <summary>A border element, or null where it is absent; "none" and "nil" are kept (they override).</summary>

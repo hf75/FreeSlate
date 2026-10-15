@@ -55,7 +55,9 @@ areas:
           ("15%") thousandths of a percent (openxml-sdk/Strict01: the cover page's six shapes, gray chart lines).
           Strict's text directions (tb, rl, lr and their V forms) are read as the transitional ones
           (docx/external/libreoffice/extras-ooxmlexport/tdf150822: a section of "rl" runs down, 50.4 → 100 %;
-          tdf79272_strictDxa: a cell of "lr" reads upward).
+          tdf79272_strictDxa: a cell of "lr" reads upward). Strict documents of Word also write Word 2010's relative
+          sizes and positions (wp14:pctWidth …) as "45.5%" and name text box content wne:txbxContent; both are read
+          (openxml-sdk/Strict01: the cover page's panels, every text box's text).
 
       - id: package.mce
         title: Markup compatibility and extension lists
@@ -1017,7 +1019,12 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/tdf153964_firstIndentAfterBreak14 81.6 → 99.5 %,
           tdf153964_numberingAfterBreak14 78.7 → 99.3 %, tdf153964_topMarginAfterBreak14, -15 48.3 → 99.0 %;
           extras-ooxmlimport/n820504 44.8 → 89.7 %). The shading lies between the top and the bottom line, the gap of
-          a double line white (bsp2-other).
+          a double line white (bsp2-other). A paragraph whose first line goes below a floating object takes its top
+          border along, the box beginning below the object (docx/external/libreoffice/core-ooxml-pass/tdf108272: a
+          bordered heading below a header's floating table, its top line at the table's bottom). At least spacing's
+          extra above a bordered paragraph's first line goes above its top border (docx/local/abx-*: space 6 over 8.5
+          pt Verdana at least 12 and 24 pt, the line 1.68 and 13.68 pt lower; exact and auto lines keep the border at
+          the top; docx/external/powertools/DB-HeadersFooters-Dest/Fax (content control)).
 
       - id: paragraph.tabs
         title: Tab stops
@@ -1309,7 +1316,12 @@ areas:
           a paragraph style, the level's properties sit right under the style that holds w:numPr: the styles it is
           based on give way to the level, it and the styles based on it override the level (docx/local/lvb-base,
           lvb-own, lvb-derived: a level's left 2160 over a base style's 1440, under the numbering style's and a
-          derived style's 1440; docx/external/libreoffice/extras-ooxmlexport/n778836 57.1 → 100 %).
+          derived style's 1440; docx/external/libreoffice/extras-ooxmlexport/n778836 57.1 → 100 %). A legal level
+          (w:isLgl) prints the numbers of all levels as Arabic numerals, zero-padded ones (decimalZero) staying so
+          (docx/local/lgl-*: upper Roman, full-width, circled, ordinal and letters as 1, decimalZero as 01;
+          docx/external/libreoffice/extras-ooxmlexport/listWithLgl "Sect 1.01"). Numbering switched off in a paragraph
+          (w:numId 0 in its own w:numPr) takes its indents from its own w:ind alone, none from its styles, numbered or
+          not (docx/local/nz0-*; tdf95374).
 
       - id: numbering.counting
         title: List counters
@@ -1465,8 +1477,10 @@ areas:
           tiles as fit of the picture's length in whole device dots plus one, stretched to the side dot by dot (the
           first tiles a dot shorter). The ten basic art borders (black and white dots, dashes and squares, thin, wide
           inline, midline and outline lines) are drawn from their measured geometry, the bottom's and right's tiles as
-          Word's own (docx/local/pgb-art2 99.3 %, pgb-art3 99.4 %, sizes 10 to 31 pt). Known deviation: Word's other
-          155 art borders are pictures of its own (apples, hearts, trees ...) and are left out.
+          Word's own (docx/local/pgb-art2 99.3 %, pgb-art3 99.4 %, sizes 10 to 31 pt). 3-D page borders (threeDEmboss,
+          threeDEngrave) of black or the automatic color are light gray, gray and black stripes (C0C0C0, 606060,
+          000000) as table borders' (docx/external/libreoffice/extras-ooxmlexport/n705956-1). Known deviation: Word's
+          other 155 art borders are pictures of its own (apples, hearts, trees ...) and are left out.
 
       - id: section.lineNumbers
         title: Line numbers
@@ -1580,7 +1594,11 @@ areas:
           bottom, the footer 7.5 pt higher; Cool15691_headerTextWrapsAroundImage, -Largest: a header's text beside its
           picture wrapped square, 82.0 → 91.5 %). Their paragraphs take HTML auto spacing as the body's do: 14 pt,
           none before the first (docx/external/libreoffice/extras-ooxmlexport/fdo80997: a header 14 pt above the body,
-          a footer's text 14 pt above the page's bottom, 53.3 → 97.6 %).
+          a footer's text 14 pt above the page's bottom, 53.3 → 97.6 %). Frames in headers and footers turn their text
+          (btLr, tbRl), draw their paragraphs' borders and shading around the whole frame and keep the first
+          paragraph's space before inside, as in the body (docx/external/libreoffice/extras-ooxmlexport/fdo76979: a
+          black frame of turned text 42.55 by 85 pt). Known deviation: Word shades the paragraphs of such a frame one
+          by one along their lines, empty ones shorter.
 
   - id: note
     title: Footnotes and endnotes
@@ -1832,10 +1850,18 @@ areas:
           floattable-in-inltbl-in-sect 59.7 → 90.6 %; extras-uiwriter/tdf133982 94.0 → 96.8 %). In tables with cell
           spacing an at-least height lies between the row's largest top and bottom margins as in other tables, and a
           fixed table's grid columns hold the gaps between its cells (tdf123104: a row of 49.5 pt at least with
-          margins of 3.75 pt 57 pt high, cells 1.5 pt narrower than their grid columns, 65.0 → 100 %). Known
-          deviations: Word cuts drawings at the bottom of a row of exact height (cig-exact); drawings sized relative
-          to the page or its margins take no part in the cell's layout here; before Word 2013 a drawing of
-          layoutInCell 0 does not move the table aside (cig-noin14).
+          margins of 3.75 pt 57 pt high, cells 1.5 pt narrower than their grid columns, 65.0 → 100 %). Drawings in
+          cells sized relative to the page or its margins take their share of the section's text area or paper less
+          their effect extents across, text boxes that resize to their text their fitted height, in the cell's layout
+          as in their drawing; aligned or placed by a percentage on the page or the margins they stand at the cell's
+          inside left and its content's top, alignments in the text count their effect extents, and the row reaches
+          their effect extent and distance below; unwrapped ones keep their places
+          (docx/external/libreoffice/extras-ooxmlimport/tdf97038, extras-ooxmlexport/tdf128646: pictures behind the
+          text right of the page in cells) (measured with docx/local/cdr-*: a box 40 % of the margin wide 178.7 pt,
+          one line high 19.4 pt instead of 110.6, centered on the page or right of it and 2.5 % down at the cell's top
+          left; docx/external/powertools/WC/WC048-Text-Box-in-Cell, WC049-Text-Box-in-Cell). Known deviations: Word
+          cuts drawings at the bottom of a row of exact height (cig-exact); before Word 2013 a drawing of layoutInCell
+          0 does not move the table aside (cig-noin14).
 
       - id: table.borders
         title: Table and cell borders and shading
@@ -1890,6 +1916,9 @@ areas:
           its side lines from its own cell, the merge's bottom line its last row's cell's
           (docx/external/libreoffice/extras-ooxmlexport/tdf132898_extraBorder: a 5 pt right border of the continuing
           cells beside them, 75.3 → 100 %; tdf132898_missingBorder 93.9 → 100 %; tdf129452_excessBorder 95.4 → 100 %).
+          Outset and inset borders of a color of their own draw it on their light sides and half of it, each channel
+          halved down, on their dark sides (docx/external/tika/testInstrLink: EDEBE9 and 767574; poi/bug59058: C0C0C0
+          and 606060).
 
       - id: table.styles
         title: Table styles and conditional formatting
@@ -1983,13 +2012,20 @@ areas:
           the page or the margin as body text does
           (docx/external/libreoffice/writerfilter-dmapper/floattable-header-overlap: the ninth empty paragraph below a
           header's table 343 pt down, the body below the header then, 65.7 → 88.1 %;
-          extras-layout/testHeaderImageAlignment 90.6 → 100 %). Known deviations: a table centered on the margin
-          stands about 5 pt further right in Word; of two floating tables after each other in a cell Word sets the
-          second below the first before Word 2013, beside it from then on (docx/local/ng-3 to ng-5), ours at its
-          paragraph; a line centered beside a floating table centers in its segment in Word (nf-4); tables anchored to
-          the page that do not fit, which Word 2013 begins on the next page (docx/local/floatsplit-15p-*); the
-          compatibility setting allowTextAfterFloatingTableBreak (text after the table beside its first part;
-          docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
+          extras-layout/testHeaderImageAlignment 90.6 → 100 %). A table placed above the page's top stands at it, in
+          the body and in headers where it is placed from the page or the margin (docx/local/hft-*: tblpY -2000 from
+          the margin, the page or without vertAnchor; a header's table placed from its text 1.35 pt above it stays
+          there: docx/external/libreoffice/extras-ooxmlexport/tdf149089). A floating table after a table does not join
+          it, the table before keeps its bottom line
+          (docx/external/libreoffice/core-layout/floattable-not-wrapped-by-table). Floating tables in a cell stay
+          where they are placed whatever the cell's vertical alignment, the cell's text lowered by the room below the
+          lowest of text and tables (docx/local/nfv-*: vAlign center and bottom with vertAnchor page and text). Known
+          deviations: a table centered on the margin stands about 5 pt further right in Word; of two floating tables
+          after each other in a cell Word sets the second below the first before Word 2013, beside it from then on
+          (docx/local/ng-3 to ng-5), ours at its paragraph; a line centered beside a floating table centers in its
+          segment in Word (nf-4); tables anchored to the page that do not fit, which Word 2013 begins on the next page
+          (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after the
+          table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
 
       - id: table.cells
         title: Cell alignment, text direction and header cells
@@ -2020,7 +2056,10 @@ areas:
           (docx/external/libreoffice/extras-ooxmlexport/tdf123104: four empty 9 pt paragraphs three lines high, five
           centered as four). A hidden end mark after a line break takes no line of its own either
           (docx/external/libreoffice/extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone,
-          71.4 → 89.5 %).
+          71.4 → 89.5 %). Cells of turned text (btLr, tbRl) align their lines across the cell by w:vAlign, right for
+          btLr and left for tbRl, in the room the cell's width leaves beside the lines and its side lines, its margins
+          not counted (docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri 11, each 13.78 pt
+          across, within 0.07 pt).
 
       - id: table.accessibility
         title: Table title and description
@@ -4128,7 +4167,9 @@ areas:
           itself whatever picture they store, scaled from 256 × 128 pixels to the shape: on white an X in 32 px Arial
           10 px in with its baseline at 68, a line 2 px thick at 75 across the shape, the suggested signer, the
           signer's title and e-mail in 11 px Segoe UI 10 px in, their baselines at 91, 107 and 123 (docx/local/ole-
-          sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and without signer and title, within 0.2 pt).
+          sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and without signer and title, within 0.2 pt). An object
+          may show a Word drawing (w:object holding w:drawing and w:objectEmbed) instead of a VML shape
+          (docx/external/openxml-sdk/Strict01: an EMF of 362 by 146 pt).
 
       - id: vml.watermarks
         title: Watermarks

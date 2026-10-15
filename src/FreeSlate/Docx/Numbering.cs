@@ -263,9 +263,16 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             if (restart == null || restart > 0 && ilvl < restart)
                 counters.Used[d] = false;
         }
-        var own = level.Format is "none" or "bullet" ? "" : Number(counters.Values[ilvl], level.Legal ? "decimal" : level.Format, language);
+        var own = level.Format is "none" or "bullet" ? "" : Number(counters.Values[ilvl], level.Legal ? Legal(level.Format) : level.Format, language);
         return (Text(instance, counters, ilvl, level, language), level, own);
     }
+
+    /// <summary>
+    /// A level's number format in a legal level (w:isLgl): Arabic numerals, zero-padded ones staying so (measured with
+    /// docx/local/lgl-*: upper Roman, full-width, circled, ordinal and letter numbers print as 1, decimalZero as 01;
+    /// docx/external/libreoffice/extras-ooxmlexport/listWithLgl: "Sect 1.01").
+    /// </summary>
+    static string Legal(string? format) => format == "decimalZero" ? format : "decimal";
 
     static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level, string? language)
     {
@@ -289,7 +296,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
                     counters.Used[k] = true;
                 }
                 var value = counters.Used[k] ? counters.Values[k] : referenced?.Start ?? 1;
-                var format = level.Legal ? "decimal" : referenced?.Format ?? "decimal";
+                var format = level.Legal ? Legal(referenced?.Format) : referenced?.Format ?? "decimal";
                 if (format != "none")
                     sb.Append(Number(value, format == "bullet" ? "decimal" : format, language));
                 i++;

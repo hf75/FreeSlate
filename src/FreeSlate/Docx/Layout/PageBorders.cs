@@ -215,12 +215,16 @@ public static class PageBorders
                 k++;
                 continue;
             }
+            // 3-D lines of black or the automatic color in light gray, gray and black, as table borders' (BorderLine.
+            // Shades; docx/external/libreoffice/extras-ooxmlexport/n705956-1: threeDEmboss C0C0C0, 606060 and black
+            // from the outside in).
+            var black = line.AutoColor || line.Color.R + line.Color.G + line.Color.B < 0.01;
             var color = kind switch
             {
                 Kind.Gap => RgbColor.White,
-                Kind.Light => Lighter(line.Color, 1.0 / 6),
-                Kind.Mid => Lighter(line.Color, -1.0 / 8),
-                Kind.Dark => Lighter(line.Color, -1.0 / 6),
+                Kind.Light => black ? RgbColor.FromHex("C0C0C0") : Lighter(line.Color, 1.0 / 6),
+                Kind.Mid => black ? RgbColor.FromHex("606060") : Lighter(line.Color, -1.0 / 8),
+                Kind.Dark => black ? RgbColor.Black : Lighter(line.Color, -1.0 / 6),
                 _ => line.Color,
             };
             var a = from + outerStart.Take(k).Sum(s => s.Width);

@@ -951,6 +951,11 @@ public sealed partial class ModelReader(DocumentContext context)
         var direct = new ParagraphFormat();
         direct.Apply(pPr);
         var format = context.Styles.Paragraph(direct.Style, direct, table: tableParagraph);
+        // Numbering switched off in the paragraph itself (w:numId 0) leaves it the indents of its own w:ind alone, none
+        // of its styles' (measured with docx/local/nz0-*: a style's left 567 and hanging 567 gone, with numbering in
+        // the style or without, a direct left 1136 kept; docx/external/libreoffice/extras-ooxmlexport/tdf95374).
+        if (direct.NumberingId == "0")
+            (format.Left, format.Right, format.FirstLine) = (direct.Left, direct.Right, direct.FirstLine);
         var styleId = context.Styles.ParagraphStyleOf(direct.Style);
         var markDirect = new RunFormat();
         markDirect.Apply(pPr.Child("rPr"));
@@ -1613,8 +1618,10 @@ public sealed partial class ModelReader(DocumentContext context)
                     }
                     break;
                 case "pict" or "object" when !field.Hidden && format.Vanish != true:
-                    // Legacy VML drawings, converted to Word drawings (catalog: vml.shapes, vml.ole, vml.watermarks).
-                    foreach (var d in Vml.ToDrawings(e))
+                    // Legacy VML drawings, converted to Word drawings (catalog: vml.shapes, vml.ole, vml.watermarks); an
+                    // object may show itself as a Word drawing instead (docx/external/openxml-sdk/Strict01: w:object
+                    // holding w:drawing and w:objectEmbed, an EMF of 362 by 146 pt).
+                    foreach (var d in Vml.ToDrawings(e).Concat(e.Elements(Wml.W + "drawing").SelectMany(drawing => drawing.Elements())))
                     {
                         var text = TextBox(d);
                         var children = ChildTextBoxes(d);
