@@ -212,6 +212,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
             html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
+        // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
+        // text box's table borders lines in Word's PDF).
+        var grouped = drawing.Drawing.Attribute(Vml.Source) == null
+            && drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wpg + "wgp") != null;
         foreach (var (child, childText) in drawing.ChildText ?? [])
         {
             if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect
@@ -226,7 +230,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 html += drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b));
                 continue;
             }
-            html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page);
+            html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, grouped);
         }
         return html;
     }
@@ -403,7 +407,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// sides. Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show what does not fit the boxes before
     /// them, line by line.
     /// </summary>
-    string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page)
+    /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
+    string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
+        bool grouped = false)
     {
         var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
@@ -413,6 +419,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         List<FillRect> fills = [];
         List<Stroke> strokes = [];
         double height;
+        FillRect? lastShading = null;
         var linked = shape?.Element(Drawings.Wps + "linkedTxbx");
         var story = (string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") ?? (string?)linked?.Attribute("id");
         var seq = linked != null && int.TryParse((string?)linked.Attribute("seq"), out var place) ? place : 0;
@@ -432,6 +439,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             try
             {
                 (lines, fills, strokes, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, areaWidth), fields);
+                lastShading = blocks.LastShading;
             }
             finally
             {
@@ -457,6 +465,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // tdf131922_LanguageInGroupShape: five lines centered in a box for four, from the top inset; fdo83057).
         var free = Math.Max(0, areaHeight - height);
         var offset = (string?)body?.Attribute("anchor") switch { "ctr" => free / 2, "b" => free, _ => 0 };
+        // The last paragraph's shading reaches down to the box's bottom inset where the text with its space after
+        // leaves room below it (measured with docx/local/grr-h, grr-k, grr-l, grr-n: a shaded last paragraph, also with
+        // 6 pt after, also alone in a box 27.5 pt high, shaded down to 3.6 pt above the box's bottom; grr-i, grr-o: one
+        // before another paragraph not; grr-g, grr-m in a group; docx/external/libreoffice/extras-ooxmlexport/
+        // testWPGZOrder: a line of 15.5 pt with 10 pt after in a box of 19.5 pt shaded 15.5 pt).
+        if (lastShading is { } shade && free > 0.01 && fills.IndexOf(shade) is >= 0 and var at)
+            fills[at] = shade with { Height = Math.Max(shade.Height, areaHeight - offset - shade.Y) };
         var width = page.PaperWidth * PxPerPt;
         var heightPx = page.PaperHeight * PxPerPt;
         var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
@@ -468,7 +483,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (vert == null)
         {
             var (left, top) = (x + l, y + t + offset);
-            Fills(fills.Select(f => f with { X = left + f.X, Y = top + f.Y }), strokes.Select(s => s.Offset(left, top)), svg);
+            var placed = fills.Select(f => f with { X = left + f.X, Y = top + f.Y }).ToList();
+            // The shading and borders of a box in a group: Word's PDF holds them as a bitmap of 200 dpi with an alpha
+            // channel over the box's width between its top and bottom insets, the text over it (measured with
+            // docx/local/grr-a to grr-g: tables' borders and cells' shading, paragraphs' borders and shading, a box of
+            // 216 by 288 pt with insets of 3.6 pt a bitmap of 599 by 779 pixels from 3.6 pt below its top, also without a
+            // fill; a box alone none; docx/external/libreoffice/extras-ooxmlexport/tdf66039: thin borders gray and
+            // soft in the reference's raster).
+            if (grouped && rotation == 0 && placed.Count > 0 && h - t - b > 0)
+            {
+                svg.Append(FillBitmap(placed, x, y + t, w, h - t - b));
+                placed.Clear();
+            }
+            Fills(placed, strokes.Select(s => s.Offset(left, top)), svg);
             // An unturned box's lines stand on Word's device as the body's do (docx/external/libreoffice/
             // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments).
             Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
@@ -490,6 +517,50 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var drawing in inner)
             svg.Append(Drawing(drawing, page));
         return svg.ToString();
+    }
+
+    /// <summary>
+    /// Fills drawn in their order into one bitmap of 200 dpi with an alpha channel, stretched over the rectangle (in
+    /// points) as Word's PDF holds the shading and borders of a grouped text box (see <see cref="TextBox"/>): each pixel
+    /// covered as far as the fill's area covers it.
+    /// </summary>
+    static string FillBitmap(List<FillRect> fills, double x, double y, double w, double h)
+    {
+        var (width, height) = (Math.Max(1, (int)Math.Round(w * 200 / 72)), Math.Max(1, (int)Math.Round(h * 200 / 72)));
+        var (sx, sy) = (width / w, height / h);
+        // Premultiplied color and alpha.
+        var color = new float[width * height * 4];
+        foreach (var fill in fills)
+        {
+            var (x0, x1) = ((fill.X - x) * sx, (fill.X + fill.Width - x) * sx);
+            var (y0, y1) = ((fill.Y - y) * sy, (fill.Y + fill.Height - y) * sy);
+            for (var py = Math.Max(0, (int)Math.Floor(y0)); py < Math.Min(height, (int)Math.Ceiling(y1)); py++)
+            {
+                var rowCover = Math.Min(y1, py + 1) - Math.Max(y0, py);
+                for (var px = Math.Max(0, (int)Math.Floor(x0)); px < Math.Min(width, (int)Math.Ceiling(x1)); px++)
+                {
+                    var cover = (float)((Math.Min(x1, px + 1) - Math.Max(x0, px)) * rowCover * fill.Color.A);
+                    if (cover <= 0)
+                        continue;
+                    var i = (py * width + px) * 4;
+                    color[i] = (float)fill.Color.R * cover + color[i] * (1 - cover);
+                    color[i + 1] = (float)fill.Color.G * cover + color[i + 1] * (1 - cover);
+                    color[i + 2] = (float)fill.Color.B * cover + color[i + 2] * (1 - cover);
+                    color[i + 3] = cover + color[i + 3] * (1 - cover);
+                }
+            }
+        }
+        var rgba = new byte[color.Length];
+        for (var i = 0; i < color.Length; i += 4)
+        {
+            var alpha = color[i + 3];
+            if (alpha <= 0)
+                continue;
+            for (var c = 0; c < 3; c++)
+                rgba[i + c] = (byte)Math.Round(Math.Clamp(color[i + c] / alpha, 0, 1) * 255);
+            rgba[i + 3] = (byte)Math.Round(Math.Clamp(alpha, 0, 1) * 255);
+        }
+        return $"<image x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\" preserveAspectRatio=\"none\" href=\"{FreeSlate.Metafiles.Png.DataUri(width, height, rgba)}\"/>";
     }
 
     /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>

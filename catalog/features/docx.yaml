@@ -2776,7 +2776,15 @@ areas:
           or 20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
           tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last paragraph
           after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b, -d;
-          powertools/WC/WC050-Table-in-Text-Box). A floating box that resizes to its text (a:spAutoFit) takes its
+          powertools/WC/WC050-Table-in-Text-Box). The shading of a box's last paragraph reaches down to its bottom
+          inset where the text with its space after leaves room below it (docx/local/grr-h, grr-k, grr-l, grr-n; not
+          before another paragraph, grr-i, grr-o; extras-ooxmlexport/testWPGZOrder: a paragraph whose space after
+          passes the bottom keeps its shading). In a DrawingML group (wpg) Word's PDF holds a box's shading and borders
+          (of tables, cells and paragraphs) as a bitmap of 200 dpi with an alpha channel over the box's width between
+          its top and bottom insets, the text over it as text, so thin lines come out gray and soft: we draw them into
+          such a bitmap too (docx/local/grr-a to grr-t: text boxes and rectangles with text, outlined, nested, without a
+          fill; a box alone and a VML group's box none, extras-ooxmlexport/tdf164065; tdf66039 39.3 → 99.6 %,
+          testWPGZOrder 94.6 → 99.6 %). A floating box that resizes to its text (a:spAutoFit) takes its
           text's height where the text around it wraps and where it reaches past the page, not its saved or relative
           height (powertools/DB-GlossaryDocuments/HeaderContent-built, FooterContent-built, DB010-Template: boxes
           saved 69.85 and 110.55 pt high around 52.9 and 33.4 pt of text, 17.6–38.9 → 100 % of the lines;

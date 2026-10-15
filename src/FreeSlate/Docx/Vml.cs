@@ -30,6 +30,9 @@ public static class Vml
     /// <summary>Marks an inline drawing converted from VML, whose effect extents are the engine's own.</summary>
     public static readonly XName Converted = XNamespace.Get("urn:freeslate:vml") + "converted";
 
+    /// <summary>Marks any drawing converted from VML, inline or floating.</summary>
+    public static readonly XName Source = XNamespace.Get("urn:freeslate:vml") + "source";
+
     /// <summary>
     /// Marks a horizontal rule (o:hr): its share of the column's width, 0 for the style's width; RuleAlign its
     /// alignment (left, center, right), RuleBevel a shaded one. Word draws a rule across o:hrpct of the width of the
@@ -151,7 +154,7 @@ public static class Vml
         var docPr = new XElement(Drawings.Wp + "docPr", new XAttribute("id", id.Length is > 0 and < 10 ? id : "1"), new XAttribute("name", (string?)shape.Attribute("id") ?? ""));
         var extent = new XElement(Drawings.Wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         if (style.GetValueOrDefault("position") != "absolute")
-            return new XElement(Drawings.Wp + "inline", picture || rule ? null : new XAttribute(Hangs, 1), new XAttribute(Converted, 1),
+            return new XElement(Drawings.Wp + "inline", picture || rule ? null : new XAttribute(Hangs, 1), new XAttribute(Converted, 1), new XAttribute(Source, 1),
                 rule ? new XAttribute(Rule, double.TryParse((string?)shape.Attribute(O + "hrpct"), NumberStyles.Float, CultureInfo.InvariantCulture, out var pct) && pct >= 0 ? pct / 1000 : 1) : null,
                 rule ? new XAttribute(RuleAlign, (string?)shape.Attribute(O + "hralign") ?? "left") : null,
                 rule && !picture && (string?)shape.Attribute(O + "hrnoshade") is not ("t" or "true" or "1") ? new XAttribute(RuleBevel, 1) : null,
@@ -176,7 +179,7 @@ public static class Vml
         // The distances wrapped text keeps (mso-wrap-distance-*), 9 pt left and right and none above and below unless
         // given (docx/external/libreoffice/extras-ooxmlexport/testOuterShdw: 10.8 pt below a box at the page's top).
         long Distance(string side, long fallback) => Length(style.GetValueOrDefault("mso-wrap-distance-" + side)) is { } d ? Emu(d) : fallback;
-        var anchor = new XElement(Drawings.Wp + "anchor",
+        var anchor = new XElement(Drawings.Wp + "anchor", new XAttribute(Source, 1),
             new XAttribute("distT", Distance("top", 0)), new XAttribute("distB", Distance("bottom", 0)),
             new XAttribute("distL", Distance("left", 114300)), new XAttribute("distR", Distance("right", 114300)),
             new XAttribute("simplePos", 0), new XAttribute("relativeHeight", Math.Abs(z)), new XAttribute("behindDoc", z < 0 ? 1 : 0),

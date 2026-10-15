@@ -1879,6 +1879,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return (min, max);
     }
 
+    /// <summary>The shading of the last paragraph of the blocks laid out last (<see cref="Blocks"/>), one of their fills, or null.</summary>
+    public FillRect? LastShading { get; private set; }
+
     /// <summary>
     /// Blocks laid out in a width as in a table cell or a text box: lines, fills and strokes relative to their top
     /// left, and their height; <paramref name="unaligned"/> leaves the lines where they begin, for measuring them.
@@ -1895,6 +1898,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         try
         {
             var content = Content(blocks, width, fields);
+            LastShading = content.LastShading;
             return (content.Lines, content.Fills, content.Strokes, content.Height);
         }
         finally
@@ -1921,6 +1925,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
         /// <summary>How far the cell's vertical alignment moves one of the content's lines, fills or strokes.</summary>
         public double Lowering(object item, double lowered) => Floated?.Contains(item) == true ? 0 : lowered;
+
+        /// <summary>The shading of the content's last paragraph, where it is the last block and shaded (one of the fills).</summary>
+        public FillRect? LastShading { get; init; }
     }
 
     /// <summary>
@@ -2238,6 +2245,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // The border box of the paragraphs that share their borders, from the first one's top.
         Paginator.Frame? previousFrame = null;
         var boxTop = 0.0;
+        FillRect? lastShading = null;
         contextual ??= !(context.CompatibilityMode < 15 && context.Compat("allowSpaceOfSameStyleInTable"));
         for (var b = 0; b < blocks.Count; b++)
         {
@@ -2321,7 +2329,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     {
                         if (!nextContinues)
                             y += frame.Bottom is { Visible: true } bottomLine ? bottomLine.Space + bottomLine.Total : 0;
+                        var shadedAt = fills.Count;
                         frame.Draw(fills, fills, 0, width, boxTop, y, top: !continues, bottom: !nextContinues, between: betweenAt);
+                        if (b == blocks.Count - 1 && frame.Fill != null && fills.Count > shadedAt)
+                            lastShading = fills[shadedAt];
                         if (!nextContinues)
                             y += frame.BottomShadow;
                     }
@@ -2445,6 +2456,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom))
         {
             Anchors = anchors, Reach = Math.Max(Math.Max(y + after, floatBottom), extent), Floated = floated.Count > 0 ? floated : null,
+            LastShading = lastShading,
         };
 
         // The lines of a nested table's row go with what of the row has to stand together.
