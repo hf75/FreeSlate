@@ -1377,7 +1377,10 @@ public sealed partial class ModelReader(DocumentContext context)
                         {
                             var inner = new List<Inline>();
                             ReadInlines(sdtContent, paragraphStyle, inner, new FieldState());
-                            var format = inner.FirstOrDefault(i => i is TextInline)?.Format ?? context.Styles.Run(paragraphStyle, null, null, tableRun);
+                            var plainFormat = context.Styles.Run(paragraphStyle, null, null, tableRun);
+                            // Its five spaces for an empty node stand in the paragraph style's format, not the runs' (Word's
+                            // PDF of docx/external/libreoffice/extras-ooxmlexport/sdt-2-run: Calibri 11 beside runs of 22 pt).
+                            var format = bound == DataBinding.Empty ? plainFormat : inner.FirstOrDefault(i => i is TextInline)?.Format ?? plainFormat;
                             field.Target(content).Add(new TextInline(bound, format));
                         }
                         else

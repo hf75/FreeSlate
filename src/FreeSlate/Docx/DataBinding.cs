@@ -20,6 +20,9 @@ public sealed class DataBinding(DocumentContext context)
     /// <summary>The data store items by their ids: the custom XML parts and the package's properties.</summary>
     Dictionary<string, XDocument>? items;
 
+    /// <summary>What a plain text control bound to an empty node shows, in the paragraph style's format (see Text).</summary>
+    public const string Empty = "     ";
+
     static readonly Regex Prefix = new("xmlns:([\\w.-]+)\\s*=\\s*(?:'([^']*)'|\"([^\"]*)\")", RegexOptions.Compiled);
 
     /// <summary>The text a bound content control shows, or null where it is not bound or its node does not exist.</summary>
@@ -52,6 +55,11 @@ public sealed class DataBinding(DocumentContext context)
         if (value.Length == 0 && sdtPr.Child("placeholder")?.Child("docPart").Val() is { Length: > 0 } partName
             && Placeholders().GetValueOrDefault(partName) is { Length: > 0 } placeholder)
             return placeholder;
+        // A plain text control left empty shows five spaces (Word's PDF of docx/local/bindempty: "Empty without
+        // placeholder:" and seven spaces to the line's end; docx/external/libreoffice/extras-ooxmlexport/sdt-2-run: an
+        // empty subject 12.6 pt of Calibri 11 before "third").
+        if (value.Length == 0 && sdtPr.Child("text") != null)
+            return Empty;
         // Line feeds break the line in a plain text control of several lines (w:text w:multiLine), elsewhere they are
         // dropped, no space in their place (docx/external/libreoffice/extras-ooxmlexport/tdf81507: a description of
         // four lines bound four times, as multiLine 1, multiLine 0, w:text alone and a rich text control).

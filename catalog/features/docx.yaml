@@ -2450,7 +2450,9 @@ areas:
           (w:picture) binds its picture and
           keeps the one it stores (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding 75.5 to 100 %:
           a node of base64 data printed as text before). An empty node leaves a control showing its placeholder
-          (w:showingPlcHdr) as it is, one without it empty (docx/local/bindempty; poi/60316), one with a placeholder
+          (w:showingPlcHdr) as it is, a plain text control without it five spaces in its paragraph style's format
+          (docx/local/bindempty: seven spaces to the line's end; poi/60316; extras-ooxmlexport/sdt-2-run: 12.6 pt of
+          Calibri 11 before text of 22 pt, 54.4 → 82.2 %), one with a placeholder
           building block of the glossary (w:placeholder w:docPart) that block's text (Word's PDF of LibreOffice's
           extras-ooxmlexport/fdo67013: a header's control bound to an empty title prints "[Type the document title]",
           83.5 → 99.9 %). A bound control around
