@@ -197,7 +197,8 @@ public sealed class RowBox
     /// may not split, header rows, rows of exact height, rows whose at-least height does not fit above the cut and
     /// rows with a cell whose first line does not (a picture line with space after it that fits alone moves on too).
     /// </summary>
-    public (RowBox Head, RowBox Tail)? Split(double available, bool force = false)
+    /// <param name="dropRest">Whether a row whose lines all stand above the cut may end there, the rest of its height gone.</param>
+    public (RowBox Head, RowBox Tail)? Split(double available, bool force = false, bool dropRest = false)
     {
         if (!force && (CantSplit || Header || Exact || TopWidth + Least > available + 0.01)
             || Frames.Count > 0 || Cells.Any(c => c.Lines.Any(l => l.Angle != 0)))
@@ -292,9 +293,9 @@ public sealed class RowBox
             head.Cells.Add(headPart);
             tail.Cells.Add(tailPart);
         }
-        if (!any || !continues)
+        if (!any || !continues && !dropRest)
             return null;
-        tail.Height = Math.Max(tailHeight, TopWidth + Least);
+        tail.Height = continues ? Math.Max(tailHeight, TopWidth + Least) : 0;
         Realign(head.Cells, null);
         Realign(tail.Cells, tail.Height);
         return (head, tail);

@@ -495,6 +495,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     Draw(parts.Head);
                     row = parts.Tail;
                 }
+                // A row of at least height that such a table puts below the margin on a page without text before it
+                // keeps one line of each cell there and goes on at the next page (docx/external/powertools/
+                // DB-HeadersFooters-Src/Footer: a row of 45.35 pt at the page's foot cut after its first line, 9.24 pt,
+                // its text at its top); rows of exact height reach past the margin whole (flb-*).
+                else if (unbroken && emptyPage && onPage == 0 && !row.Exact && !row.CantSplit && !row.Header && Least(row) is { } least)
+                {
+                    Draw(least.Head);
+                    row = least.Tail;
+                }
                 else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01 || unbroken && emptyPage))
                     break;
                 // A table anchored to the text that begins on the next page goes there with its paragraph and stands
@@ -535,6 +544,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The paragraph after the table adds all its space before to the space after the paragraph before the table
         // (docx/local/floatanchor-fb: 12 pt after and 24 pt before make 36).
         pendingOwnAfter = 0;
+    }
+
+    /// <summary>
+    /// A row cut after the first line of each of its cells, or, where none has more than one, after its content, the
+    /// rest of its height gone (DB-HeadersFooters-Src/Footer: one line in each cell, the row 9.24 pt high on the page
+    /// and nothing on the next); null where it has no lines.
+    /// </summary>
+    static (RowBox Head, RowBox Tail)? Least(RowBox row)
+    {
+        var withLines = row.Cells.Count(c => c.Lines.Count > 0);
+        if (withLines == 0)
+            return null;
+        for (var available = row.TopWidth + 1; available < row.Height; available += 0.5)
+        {
+            if (row.Split(available, force: true) is { } parts && parts.Head.Cells.Count(c => c.Lines.Count > 0) >= withLines)
+                return parts;
+        }
+        var content = row.Cells.Where(c => c.Lines.Count > 0)
+            .Max(c => c.Lines.Max(l => l.Top - c.Lowered + l.Line.Height + l.After) + c.BottomMargin);
+        return row.Split(content + 0.01, force: true, dropRest: true);
     }
 
     /// <summary>

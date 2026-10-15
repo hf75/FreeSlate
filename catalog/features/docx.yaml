@@ -1983,24 +1983,27 @@ areas:
           breaks on its first page where it would at the paragraph after it, as many lines down, so past the bottom
           margin or above it (floatsplit-14p-*, floattable-compat14, docx/
           external/libreoffice/core-doc/floating-table-dummy-text); from Word 2013 on one whose first row does not fit
-          above the bottom margin stays where it stands on a page without text before it, the row reaching past the
-          margin, and from a page with text goes to the next page at the same place, its next rows going on at the top
-          of the page after (docx/local/flb-spec, flb-below, flb-cross: rows at the page's foot, below and across the
-          bottom margin; flb-margin, flb-*14; powertools/DB-HeadersFooters-Src/Footer: first on its page at the page's
-          foot); w:doNotBreakWrappedTables keeps tables whole (writerfilter-dmapper/do-not-break-wrapped-tables).
-          Drawings anchored in its cells stand as in other tables (extras-ooxmlexport/fdo68607: a title text box above
-          the table; extras-layout/tdf116256). In a table cell a floating table stands in the cell's text area (tblpX
-          from its left, the margin as the text, the page from the cell's left edge, tblpXSpec right at its right),
-          tblpY below the next paragraph's top or the content's top, not above the cell, and the cell's text after it
-          wraps around it; the cell is as high as it reaches (docx/ local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15;
-          core-layout/floattable-del-empty, extras-layout/ tdf170477, writerfilter-dmapper/floattable-nested-layout);
-          without vertAnchor tblpY counts from the content's top, and one without a vertical position not anchored to
-          the text stands in the text as other tables there, the text below it (docx/local/nh-*, ni-* in modes 14 and
-          15); in notes it stays in the text (writerfilter-dmapper/floattable-footnote-redline). A table with
-          w:tblOverlap never moves off a floating table before it on the page that it would overlap: right of it where
-          it fits in its horizontal anchor's span, both distances kept, else below it, its distance left then counting
-          from its place (docx/local/tc-5, td-*; core-objectpositioning/floattable-tbl-overlap). A floating table in a
-          cell is laid out as the tables nested there, keeping its cells' margins in older modes as well
+          above the bottom margin stays where it stands on a page without text before it, a row of exact height
+          reaching past the margin, one of at least height keeping its content there, a line of each cell or, where
+          none has more, all of it, the rest of its height gone (powertools/DB-HeadersFooters-Src/Footer: first on its
+          page at the page's foot, a row of 45.35 pt 9.24 pt high there, 78.0 → 99.9 %), and from a page with text
+          goes to the next page at the same place, its next rows going on at the top of the page after
+          (docx/local/flb-spec, flb-below, flb-cross: rows at the page's foot, below and across the bottom margin;
+          flb-margin, flb-*14); w:doNotBreakWrappedTables keeps tables whole
+          (writerfilter-dmapper/do-not-break-wrapped-tables). Drawings anchored in its cells stand as in other tables
+          (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). In a table cell a
+          floating table stands in the cell's text area (tblpX from its left, the margin as the text, the page from
+          the cell's left edge, tblpXSpec right at its right), tblpY below the next paragraph's top or the content's
+          top, not above the cell, and the cell's text after it wraps around it; the cell is as high as it reaches
+          (docx/ local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15; core-layout/floattable-del-empty, extras-layout/
+          tdf170477, writerfilter-dmapper/floattable-nested-layout); without vertAnchor tblpY counts from the
+          content's top, and one without a vertical position not anchored to the text stands in the text as other
+          tables there, the text below it (docx/local/nh-*, ni-* in modes 14 and 15); in notes it stays in the text
+          (writerfilter-dmapper/floattable-footnote-redline). A table with w:tblOverlap never moves off a floating
+          table before it on the page that it would overlap: right of it where it fits in its horizontal anchor's
+          span, both distances kept, else below it, its distance left then counting from its place (docx/local/tc-5,
+          td-*; core-objectpositioning/floattable-tbl-overlap). A floating table in a cell is laid out as the tables
+          nested there, keeping its cells' margins in older modes as well
           (docx/external/libreoffice/writerfilter-dmapper/floattable-hidemark, mode 12: 43.8 → 71.4 %). Before Word
           2013 the first cell's text stands at the position whether the table has an indent of 0 or none, and the
           table's own indent (w:tblInd) moves it further right, from the margin, the page and the text alike; Word
