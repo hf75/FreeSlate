@@ -208,7 +208,7 @@ public sealed class DocumentContext : IDisposable
         {
             // Other languages and none keep the Japanese rules for Latin punctuation alone.
             var japanese = Kinsoku("ja");
-            static string Latin(string characters) => string.Concat(characters.Where(c => c < '⺀'));
+            static string Latin(string characters) => string.Concat(characters.Where(c => c < '\u2E80'));
             return kinsoku[family] = new Text.LineBreaker.Kinsoku(Latin(japanese.NotFirst), Latin(japanese.NotLast), Latin(japanese.Hanging));
         }
         var (notFirst, notLast, hanging) = family switch

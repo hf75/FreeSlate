@@ -560,11 +560,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
-    /// <summary>Whether a paragraph's runs or mark have an East Asian language for East Asian text (w:lang w:eastAsia).</summary>
-    static bool HasEastAsianLanguage(ParagraphBlock paragraph)
+    /// <summary>
+    /// Whether a paragraph has an East Asian language for East Asian text (w:lang w:eastAsia): its runs or its mark,
+    /// where the document defaults name none or an East Asian one too (measured with docx/local/hgp-*: a comma or period
+    /// after Latin words before Word 2013 hangs with zh-CN in the Normal style and no document defaults, not with en-US
+    /// as the defaults' East Asian language; docx/external/libreoffice/extras-ooxmlexport/
+    /// tdf89377_tableWithBreakBeforeParaStyle; extras-ooxmlimport/groupshape-child-rotation: zh-CN in the defaults, en-US
+    /// in Normal, no period hangs).
+    /// </summary>
+    bool HasEastAsianLanguage(ParagraphBlock paragraph)
     {
         static bool Asian(string? tag) => tag != null && (tag.StartsWith("ja", StringComparison.OrdinalIgnoreCase)
             || tag.StartsWith("zh", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("ko", StringComparison.OrdinalIgnoreCase));
+        if (context.Styles.DefaultRun.LanguageEastAsia is { } language && !Asian(language))
+            return false;
         return Asian(paragraph.MarkFormat.LanguageEastAsia) || paragraph.Content.Any(i => Asian(i.Format.LanguageEastAsia));
     }
 
@@ -955,13 +964,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // footnotes; c3-lines12-* with ja-JP and docx/external/libreoffice/core-ooxml-pass/fdo63164-1 with zh-CN: after
         // Latin words; docx/external/powertools/DB007-Abstract, openxml-sdk/May_12_04 with en-US: not); from Word 2013 on
         // the language alone does not do (docx/local/hangcomma-h4, -h7: zh-CN and ja-JP for East Asian text, no hanging
-        // comma; docx/external/libreoffice/extras-ooxmlexport/tdf163894); and only where the document's default East
-        // Asian font is one (docx/local/hgr-*, hgd-*: a 。 after a full line of SimSun ideographs in zh-CN hangs with
-        // SimSun as that font, with none it goes down with its ideograph whatever the room left; extras-odfexport/
-        // tdf130314).
-        var hanging = format.OverflowPunctuation != false && format.Kinsoku != false && styles.EastAsianDefaults
+        // comma; docx/external/libreoffice/extras-ooxmlexport/tdf163894). East Asian punctuation hangs only where the
+        // document's default East Asian font is one (docx/local/hgr-*, hgd-*: a 。 after a full line of SimSun ideographs
+        // in zh-CN hangs with SimSun as that font, with none it goes down with its ideograph whatever the room left;
+        // extras-odfexport/tdf130314), Latin commas and periods without (fdo63164-1).
+        var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
             && (context.CompatibilityMode < 15 || Justified(format))
             && (HasEastAsian(text) || context.CompatibilityMode < 15 && HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
+        if (!styles.EastAsianDefaults)
+            hanging = string.Concat(hanging.Where(c => c < '\u2E80'));
         var hangAt = -1;
         var hyphens = Hyphenation(text, charStyles, format);
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;

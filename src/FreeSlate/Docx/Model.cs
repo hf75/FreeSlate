@@ -1109,6 +1109,14 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         foreach (var anchor in content.OfType<AnchorInline>())
             anchor.Indents = (format.Left ?? 0, format.Right ?? 0);
+        // A paragraph mark within a field's instruction belongs to it and is hidden: the paragraph runs into the next
+        // one (Word's PDF of docx/external/libreoffice/extras-globalfilter/fieldmark_QUOTE_nest: a QUOTE field's
+        // instruction over seven paragraphs, a nested QUOTE in it, prints its result's six lines from the top).
+        if (openFields.Any(f => !f.InResult))
+        {
+            mark = mark.Clone();
+            mark.Vanish = true;
+        }
         return new ParagraphBlock(p, format, content, mark)
         {
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
