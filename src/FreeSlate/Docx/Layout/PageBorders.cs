@@ -75,7 +75,23 @@ public static class PageBorders
         static double Shadow(Side? s) => s is { Line.Shadow: true } ? s.Total : 0;
         // The frame's outer edges.
         double l, t, r, b;
-        if (borders.Attr("offsetFrom") == "page")
+        var lined = !new[] { top, left, bottom, right }.Any(side => side != null && ArtBorders.Drawn(side.Line.Style));
+        if (borders.Attr("offsetFrom") == "page" && lined)
+        {
+            // On the device: the spaces floored to whole dots from the page's edges, the right and bottom edges a dot
+            // further out as GDI's rectangles end (measured with docx/local/pgb-c: 20 pt from an A4 page's edges at
+            // 19.92 pt, the right line ending at 575.52 pt; docx/external/libreoffice/extras-ooxmlexport/fdo64350: the
+            // shadows of a Letter page ending 23.88 pt from its right and bottom edges; art borders keep the frame they
+            // were measured with, docx/local/pgb-art2, pgb-art3).
+            const double Dot = 72.0 / 600;
+            static double Floored(double space) => Math.Floor(space / Dot + 1e-6) * Dot;
+            var (width, height) = (Math.Round(page.Width / Dot) * Dot, Math.Round(page.Height / Dot) * Dot);
+            l = Floored(Space(left)) + Shadow(left);
+            t = Floored(Space(top)) + Shadow(top);
+            r = width - Floored(Space(right)) + Dot - Shadow(right);
+            b = height - Floored(Space(bottom)) + Dot - Shadow(bottom);
+        }
+        else if (borders.Attr("offsetFrom") == "page")
         {
             l = Space(left) + Shadow(left);
             t = Space(top) + Shadow(top);

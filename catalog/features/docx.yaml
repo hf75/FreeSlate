@@ -1561,7 +1561,12 @@ areas:
           Line borders as Word prints them: from the page's edge a side's outer edge stands its space from the edge,
           from the text its inner edge its space outside the margins and around a header and footer the page has
           (w:bordersDoNotSurroundHeader, w:bordersDoNotSurroundFooter); on all pages, the first or all but the first;
-          in front of or behind the text. Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
+          in front of or behind the text. From the page's edge the spaces are floored to whole device dots and the
+          right and bottom sides stand a dot further out, as GDI's rectangles end (docx/local/pgb-c: 20 pt at 19.92 pt,
+          the right line ending at 575.52 pt of an A4 page; extras-ooxmlexport/fdo64350: shadows ending 23.88 pt from
+          the right and bottom edges). Dashed and dotted lines are stroked dash by dash, as Word's PDF strokes them
+          with a dash pattern, which the rasterizer widens to a pixel (fdo64350, page-borders-export-case-2 63.7 →
+          86.3 %). Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
           thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the
           corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades;
           shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c:
@@ -2013,7 +2018,9 @@ areas:
           Double lines take three times their width, triple five; thin-and-thick lines lie top to bottom and left to
           right on every side, small gaps and thin lines 0.75 pt, medium ones half the width, large gaps the width
           beside 1.5 pt and 0.75 pt lines (docx/local/tblcompound-24, -12, as page borders); dotted and dashed lines
-          are dashed strokes; diagonal lines; with cell spacing every cell has its own frame, the cells twice the
+          are dashed strokes, drawn dash by dash as strokes of their own (the browser's PDF would fill each dash as a
+          shape, lighter than Word's stroked dashes; extras-ooxmlexport/tableborder-finedash 69.3 → 81.1 %, tdf61000
+          91.7 → 97.7 %); diagonal lines; with cell spacing every cell has its own frame, the cells twice the
           spacing apart, its content aligned vertically as without spacing, a cell merged down framing its rows and
           the gaps between them and counting in the last of them (docx/external/poi/bug57031: a SAS table's two-line
           heading over two header rows of one line), and an autofit table its text fills as wide as the page with all
@@ -2452,7 +2459,10 @@ areas:
           a node of base64 data printed as text before). An empty node leaves a control showing its placeholder
           (w:showingPlcHdr) as it is, a plain text control without it five spaces in its paragraph style's format
           (docx/local/bindempty: seven spaces to the line's end; poi/60316; extras-ooxmlexport/sdt-2-run: 12.6 pt of
-          Calibri 11 before text of 22 pt, 54.4 → 82.2 %), one with a placeholder
+          Calibri 11 before text of 22 pt, 54.4 → 82.2 %); a value that takes the place of the placeholder a control
+          showed leaves the placeholder's formatting (the Placeholder Text style of its stored run) behind, in the
+          control's own format (writerfilter-dmapper/content-control-data-binding-color: "ABC" in black, not red, 77.0 →
+          100 %); one with a placeholder
           building block of the glossary (w:placeholder w:docPart) that block's text (Word's PDF of LibreOffice's
           extras-ooxmlexport/fdo67013: a header's control bound to an empty title prints "[Type the document title]",
           83.5 → 99.9 %). A bound control around

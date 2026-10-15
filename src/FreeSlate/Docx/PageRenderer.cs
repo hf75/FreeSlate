@@ -155,9 +155,37 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             svg.Append($"<rect x=\"{Px(fill.X)}\" y=\"{Px(fill.Y)}\" width=\"{Px(fill.Width)}\" height=\"{Px(fill.Height)}\" fill=\"{fill.Color.ToHex()}\"/>");
         foreach (var s in strokes)
         {
-            var dash = s.Dash is { } pattern ? $" stroke-dasharray=\"{string.Join(' ', pattern.Split(' ').Select(v => Units.Css(double.Parse(v, CultureInfo.InvariantCulture) * PxPerPt)))}\"" : "";
-            svg.Append($"<line x1=\"{Px(s.X1)}\" y1=\"{Px(s.Y1)}\" x2=\"{Px(s.X2)}\" y2=\"{Px(s.Y2)}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"{dash}/>");
+            if (s.Dash is { } pattern && Dashes(s, pattern) is { Length: > 0 } dashes)
+                svg.Append($"<path d=\"{dashes}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"/>");
+            else
+                svg.Append($"<line x1=\"{Px(s.X1)}\" y1=\"{Px(s.Y1)}\" x2=\"{Px(s.X2)}\" y2=\"{Px(s.Y2)}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"/>");
         }
+    }
+
+    /// <summary>
+    /// A dashed line's dashes as the subpaths of one path, each a stroke of its own: Word's PDF strokes them with a
+    /// dash pattern, which the rasterizer widens to a pixel as any stroke, where the browser's PDF fills every dash as
+    /// a shape of its own, lighter (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/fdo64350: a dashed page
+    /// border of 0.48 pt, dashes of 1.44 pt and gaps of 0.48 pt).
+    /// </summary>
+    static string Dashes(Stroke s, string pattern)
+    {
+        var lengths = pattern.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray();
+        var length = Math.Sqrt((s.X2 - s.X1) * (s.X2 - s.X1) + (s.Y2 - s.Y1) * (s.Y2 - s.Y1));
+        if (lengths.Length == 0 || lengths.Sum() <= 0 || length <= 0)
+            return "";
+        var (dx, dy) = ((s.X2 - s.X1) / length, (s.Y2 - s.Y1) / length);
+        var d = new StringBuilder();
+        var (at, k) = (0.0, 0);
+        while (at < length && d.Length < 1_000_000)
+        {
+            var end = Math.Min(length, at + lengths[k % lengths.Length]);
+            if (k % 2 == 0 && end > at)
+                d.Append($"M{Px(s.X1 + dx * at)} {Px(s.Y1 + dy * at)}L{Px(s.X1 + dx * end)} {Px(s.Y1 + dy * end)}");
+            at = end;
+            k++;
+        }
+        return d.ToString();
     }
 
     /// <summary>

@@ -1380,7 +1380,19 @@ public sealed partial class ModelReader(DocumentContext context)
                             var plainFormat = context.Styles.Run(paragraphStyle, null, null, tableRun);
                             // Its five spaces for an empty node stand in the paragraph style's format, not the runs' (Word's
                             // PDF of docx/external/libreoffice/extras-ooxmlexport/sdt-2-run: Calibri 11 beside runs of 22 pt).
-                            var format = bound == DataBinding.Empty ? plainFormat : inner.FirstOrDefault(i => i is TextInline)?.Format ?? plainFormat;
+                            // A value that takes the place of the placeholder the control showed leaves the placeholder's
+                            // formatting behind, in the control's own (Word's PDF of docx/external/libreoffice/
+                            // writerfilter-dmapper/content-control-data-binding-color: "ABC" from the node in black, not
+                            // in the red of the Placeholder Text style its stored run has).
+                            RunFormat ControlFormat()
+                            {
+                                var own = new RunFormat();
+                                own.Apply(sdtPr.Child("rPr"));
+                                return context.Styles.Run(paragraphStyle, own.Style, own, tableRun);
+                            }
+                            var format = bound == DataBinding.Empty ? plainFormat
+                                : sdtPr.Child("showingPlcHdr") != null ? ControlFormat()
+                                : inner.FirstOrDefault(i => i is TextInline)?.Format ?? plainFormat;
                             field.Target(content).Add(new TextInline(bound, format));
                         }
                         else
