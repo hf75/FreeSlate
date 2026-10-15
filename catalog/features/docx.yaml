@@ -1922,7 +1922,11 @@ areas:
           their first cell's text at the left margin (docx/local/tal-12, tal-14, tac-14: cell margins of 5.4 and 10 pt
           within 0.12 pt, tac-15, tal-15 at the column; extras-ooxmlexport/table-alignment 87.3 → 100 %, fdo66474 79.1
           → 100 %, tdf79329 67.5 → 99.0 %, extras-uiwriter/tdf135623 93.7 → 99.9 %; a table of 100 % keeps the
-          column's width, sdt-company-multipara); tables nested in cells stand as from Word 2013 on in every mode, their left line at the
+          column's width, sdt-company-multipara); right-to-left tables (w:bidiVisual) do so from the right, their first
+          cell's text at the indent from the right margin, without an indent their right line on it, and aligned to
+          their end (jc right) their last cell's text at the left margin (docx/local/btv-12, btv-14 within 0.15 pt,
+          btv-15 without outset; extras-ooxmlexport/table-rtl 92.7 → 100 %, FDO76312 81.4 → 85.4 %,
+          python-docx/tbl-on-off-props 97.9 → 100 %); tables nested in cells stand as from Word 2013 on in every mode, their left line at the
           outer cell's text, 100 % as wide as that text, tblInd from there, unlike those of text boxes
           (docx/local/nz-11 to nz-14b; core-text/ floattable-anchor-height, core-text/fly-minimal-wrap). A table inside a
           paragraph (w:p > w:tbl, outside the schema) stands right below the paragraph's text before it, which loses its

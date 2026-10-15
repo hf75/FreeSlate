@@ -758,17 +758,23 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (rtl)
             justification = justification switch { "right" or "end" => "left", "center" => "center", _ => "right" };
         var lastTextInset = rightBorder / 2 + Math.Max(rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[^1], format).Right : 0, rightBorder / 2);
+        // Older modes put the first cell's text at the indent; a table without any indent (none in its properties or
+        // style) has its first line centered on the column's edge there (measured with docx/local/c2-tblpos in modes
+        // 11 to 14). A right-to-left table does so from the right (docx/local/btv-12, btv-14: tblInd 84 pt with cell
+        // margins of 5.4 and 10 pt puts the right line 78.6 and 74 pt from the right margin, without tblInd at it;
+        // btv-15 84 pt and at it; docx/external/libreoffice/core-ooxml-pass/FDO76312).
+        var startOffset = indent - (!Legacy ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift));
         double origin0 = justification switch
         {
             "center" => (available - tableWidth) / 2,
             // Older modes end the last cell's text at the column's right edge, the table out by its margin and half its
             // line (measured with docx/local/tal-12, tal-14: tables of 200, 451.3 and 500 pt with cell margins of 5.4
             // and 10 pt end their right lines that far past the margin, within 0.12 pt; tal-15 at it).
-            "right" or "end" => available - tableWidth - (rtl ? indent : 0) + (Legacy && !rtl ? lastTextInset : 0),
-            // Older modes put the first cell's text at the indent; a table without any indent (none in its
-            // properties or style) has its left line centered on the column's edge there (measured with
-            // docx/local/c2-tblpos in modes 11 to 14).
-            _ => indent - (!Legacy ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift)),
+            "right" or "end" => available - tableWidth + (rtl ? -startOffset : Legacy ? lastTextInset : 0),
+            // A right-to-left one aligned to its end, at the left, likewise ends its last cell's text at the column's
+            // left edge (btv-12, btv-14: jc right with cell margins of 5.4 and 10 pt puts the left line that far left
+            // of the left margin; btv-15 at it).
+            _ => rtl ? indent - (Legacy ? lastTextInset : 0) : startOffset,
         };
         var lastMargin = rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[^1], format).Right : format.Styled ? 0 : DefaultMargin;
         var box = new TableBox
