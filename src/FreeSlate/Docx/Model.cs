@@ -912,6 +912,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     {
                         paragraph = paragraph with { Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content] };
                         pending = null;
+                        // Joined so, a paragraph of contextual spacing loses its space before, whatever the styles
+                        // (measured with docx/local/dmk-f, dmk-h, dmk-j, dmk-k: after a paragraph of 3.5 pt after the
+                        // gap is those 3.5 pt, the joined one's 18 pt and the first one's 24 pt gone; dmk-a: without
+                        // contextual spacing its own 18 pt; docx/external/libreoffice/extras-uiwriter/tdf125916).
+                        if (paragraph.Format.ContextualSpacing == true)
+                            (paragraph.Format.Before, paragraph.Format.BeforeLines, paragraph.Format.BeforeAuto) = (0, null, false);
                     }
                     if (markDeleted)
                         pending = paragraph;

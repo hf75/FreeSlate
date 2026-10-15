@@ -2604,7 +2604,9 @@ areas:
           one's formatting and number, the text before it taking that paragraph's style with its runs' own formatting
           and character styles (docx/local/dm-a, -b, -c: a Times New Roman 14 style's text before a Normal paragraph
           in Calibri 11, bold where its runs are, and the other way round; dm-d, -e: the next one's space before;
-          extras-ooxmlexport/tdf125894 79.0 → 100 %; docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-*
+          none where that one has contextual spacing, whatever the styles, dmk-f to dmk-k: after 3.5 pt after the gap
+          is 3.5 pt, the joined paragraph's 18 pt and the first's 24 pt before gone; extras-uiwriter/tdf125916 56.9 →
+          95.4 %; extras-ooxmlexport/tdf125894 79.0 → 100 %; docx/external/powertools/RA001-Tracked-Revisions-01, -02, RP001-*
           23.9 → 100 % of the lines;
           RP015-MoveFrom-MoveTo, FA-RevTracking/014-MovedParagraph, tdf104797, tdf123460, tdf149711 54 to 97 % of the
           pixels); formatting changes show the new formatting (docx/generated/revisions 91.8 %). With markup (the
