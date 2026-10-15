@@ -77,14 +77,25 @@ public sealed partial class ChartRenderer
         public double Sy { get; } = sy;
         double scale = 1, offsetX, offsetY;
 
+        /// <summary>How much larger the box would be in the whole plot area, without the margins it is fitted in.</summary>
+        public double Untrimmed { get; private set; } = 1;
+
         public override (double X, double Y) Map(double x, double y, double z) => (offsetX + (x + z * Sx) * scale, offsetY - (y + z * Sy) * scale);
 
         public override void Fit(double w, double h, double d, Box plot, Slabs slabs = default)
         {
+            // Office fits the box into its plot area less 1.72 pt on the left, 2.79 above, 3.34 on the right and 1.9
+            // below, whatever the chart's size (measured with docx/local/c3o-*: bars and columns in charts of 432 by
+            // 252 and 300 by 300 pt, rotations 0 to 40, depths 100 and 200 %, gap depths 0 and 150 %, gap widths 150
+            // and 300 %, where the plot area lies 11 pt inside the chart: the box's front within 0.3 pt, turned 30 and
+            // 40° 0.8 pt larger than Word's; docx/external/powertools/CU001, CU007, CU012).
+            var whole = plot;
+            plot = new Box(plot.X + 1.72, plot.Y + 2.79, Math.Max(1, plot.W - 5.06), Math.Max(1, plot.H - 4.69));
             var depth = d + slabs.Behind;
             var (u0, u1) = (-slabs.Left + Math.Min(0, depth * Sx), w + slabs.Right + Math.Max(0, depth * Sx));
             var (v0, v1) = (-slabs.Below + Math.Min(0, depth * Sy), h + slabs.Above + Math.Max(0, depth * Sy));
             scale = Math.Min(plot.W / Math.Max(1e-9, u1 - u0), plot.H / Math.Max(1e-9, v1 - v0));
+            Untrimmed = Math.Min(whole.W / Math.Max(1e-9, u1 - u0), whole.H / Math.Max(1e-9, v1 - v0)) / Math.Max(1e-9, scale);
             offsetX = plot.X + (plot.W - (u1 - u0) * scale) / 2 - u0 * scale;
             offsetY = plot.Y + (plot.H - (v1 - v0) * scale) / 2 + v1 * scale;
         }
@@ -279,6 +290,10 @@ public sealed partial class ChartRenderer
         // 0.82 high box reach 0.083 of its width) are slabs outside the box: the side wall beside it on the side the
         // viewer sees, the floor below it, the back wall behind it.
         double Thickness(string wall) => (ChartModel.Number(model.Chart.Element(Ns.C + wall), "thickness") ?? 0) / 100;
+        // Bars lie on their side: the floor stands at the category axis on the left, the side wall lies below them,
+        // each lit as the face it is (measured with docx/local/c3o-a, c3o-col: a green floor and a blue side wall,
+        // left 0.64 and below 0.757 of their colors, for bars the floor's green on the left).
+        var (sideWall, floorWall) = columns ? ("sideWall", "floor") : ("floor", "sideWall");
         var (fromRight, fromAbove) = (Math.Sin(view.RotY * Math.PI / 180) >= 0, Math.Sin(view.RotX * Math.PI / 180) >= 0);
         var slabs = default(Slabs);
         // A manual layout places the box's plot area itself (layoutTarget inner) or the area its labels share with it
@@ -343,7 +358,7 @@ public sealed partial class ChartRenderer
             else
                 (frame.W, frame.H) = (1 / Math.Max(1e-9, ratio), 1);
             var unit = Math.Min(frame.W, frame.H);
-            var (side, floor, back) = (Thickness("sideWall") * unit, Thickness("floor") * unit, Thickness("backWall") * unit);
+            var (side, floor, back) = (Thickness(sideWall) * unit, Thickness(floorWall) * unit, Thickness("backWall") * unit);
             slabs = new Slabs(fromRight ? side : 0, fromRight ? 0 : side, fromAbove ? floor : 0, fromAbove ? 0 : floor, back);
             projection.Fit(frame.W, frame.H, d, plot, slabs);
             behind = !projection.NearerBelow(2, d / 2);
@@ -361,7 +376,9 @@ public sealed partial class ChartRenderer
             // The value scale follows the box's edge halfway back (in perspective the front edge looks longer).
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
-            ScaleValueAxis3D(value, length);
+            // The value axis takes its steps from the box as large as the whole plot area (generated/charts-3d
+            // slide 14: PowerPoint's 0 to 5 by 0.5 beside a box fitted 4.7 pt lower).
+            ScaleValueAxis3D(value, projection is Oblique oblique ? length * oblique.Untrimmed : length);
             // A 3D surface's bands are the value axis's steps.
             if (group.Type == "surface3DChart")
                 surfaceAxis = value.Scale;
@@ -416,13 +433,13 @@ public sealed partial class ChartRenderer
         else
             svg.Append(Wall(model.Chart.Element(Ns.C + "backWall"), Quad((0, 0, backZ), (w, 0, backZ), (w, h, backZ), (0, h, backZ)), WallShade((0, 0, behind ? 1 : -1), 1)));
         if (sideOuter != sideX)
-            svg.Append(WallSlab(model.Chart.Element(Ns.C + "sideWall"), projection, (Math.Min(sideX, sideOuter), 0, 0), (Math.Max(sideX, sideOuter), h, d)));
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + sideWall), projection, (Math.Min(sideX, sideOuter), 0, 0), (Math.Max(sideX, sideOuter), h, d)));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "sideWall"), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), WallShade((sideX == 0 ? 1 : -1, 0, 0), SideShade)));
+            svg.Append(Wall(model.Chart.Element(Ns.C + sideWall), Quad((sideX, 0, 0), (sideX, 0, d), (sideX, h, d), (sideX, h, 0)), WallShade((sideX == 0 ? 1 : -1, 0, 0), SideShade)));
         if (floorOuter != floorY)
-            svg.Append(WallSlab(model.Chart.Element(Ns.C + "floor"), projection, (0, Math.Min(floorY, floorOuter), 0), (w, Math.Max(floorY, floorOuter), d)));
+            svg.Append(WallSlab(model.Chart.Element(Ns.C + floorWall), projection, (0, Math.Min(floorY, floorOuter), 0), (w, Math.Max(floorY, floorOuter), d)));
         else
-            svg.Append(Wall(model.Chart.Element(Ns.C + "floor"), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), WallShade((0, floorY == 0 ? 1 : -1, 0), TopShade)));
+            svg.Append(Wall(model.Chart.Element(Ns.C + floorWall), Quad((0, floorY, 0), (w, floorY, 0), (w, floorY, d), (0, floorY, d)), WallShade((0, floorY == 0 ? 1 : -1, 0), TopShade)));
 
         // Gridlines on the back wall and on the wall or floor beside the value axis; on thick walls they also cross
         // the side wall's (or floor's) front face and the back wall's end (measured).
@@ -1109,7 +1126,10 @@ public sealed partial class ChartRenderer
         if (floor.HasLabels && floor.Labels.Count > 0 && floorUnder)
         {
             bottom = Math.Min(bottom, outer.Bottom + LabelBleed - LabelExtent(floor) - CategoryLabelGap * floor.Style.Size);
-            if (edgeCategories && floor.Rotation == 0 && !floor.Axis.IsValue)
+            // Labels on the floor's ends (a value axis of bars, categories on the edges) keep their outer halves in
+            // the plot area (measured with docx/external/powertools/CU007-Chart-Cached-Data-07: Word's inner plot area
+            // ends 6.85 pt, half of "350", inside the outer one).
+            if ((edgeCategories || floor.Axis.IsValue) && floor.Rotation == 0)
             {
                 left = Math.Max(left, outer.X + Width(floor.Labels[0], floor.Style) / 2);
                 right = Math.Min(right, outer.Right - Width(floor.Labels[^1], floor.Style) / 2);
