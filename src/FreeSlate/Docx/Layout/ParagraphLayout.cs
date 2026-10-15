@@ -978,14 +978,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;
         var hyphenLimit = (int)(context.Settings.Child("consecutiveHyphenLimit").Number("val") ?? 0);
         var hyphenatedLines = 0;
-        // The last hyphenation place of the word [from, to) where its part before it and a hyphen fit the line.
+        // The last hyphenation place of the word [from, to) where its part before it and a hyphen fit the line; before
+        // Word 2013 the part and the wider of the hyphen and the letter after the place (measured with docx/local/hys-14l,
+        // hys-14j: Times New Roman 11 at 211 line widths, "inter|n" needing 1.83 pt more than "inter-"; hys-15l, hys-15j
+        // the hyphen alone).
         int? Hyphenate(int from, int to, double startX, double lineLimit)
         {
             int? best = null;
             var px = startX;
             for (var k = from; k < to; k++)
             {
-                if (k > from && hyphens![k] && px + HyphenWidth(charStyles[k - 1]) <= lineLimit + 0.005)
+                var hyphen = k > from ? HyphenWidth(charStyles[k - 1]) : 0;
+                if (context.CompatibilityMode < 15)
+                    hyphen = Math.Max(hyphen, advances[k]);
+                if (k > from && hyphens![k] && px + hyphen <= lineLimit + 0.005)
                     best = k;
                 px += advances[k];
             }
