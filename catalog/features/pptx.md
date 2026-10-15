@@ -973,7 +973,7 @@ gradFill and pattFill inside a:ln.
 
 **Rendering:** Dilate and blur the shape's alpha, colored.
 
-**Office behaviour:** Verified with generated/effects.
+**Office behaviour:** Verified with generated/effects. The glow grows from the shape's whole silhouette, also where its fill is mostly transparent (Word's PDF of LibreOffice's extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as strong as around an opaque one, 86.7 → 99.9 %).
 
 **Elements (1):** [`a:glow`](../format/namespaces/a.md#aglow)
 

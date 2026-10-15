@@ -4,7 +4,9 @@ namespace FreeSlate.Docx.Layout;
 /// The characters of a tab's leader (catalog: paragraph.tabs): Word repeats the leader character at its advance rounded
 /// to its 600 dpi device, on a grid from the page's left edge, every one that fits whole between the tab's start and
 /// its end (measured with docx/generated/tabs: the dots of Aptos 12 pt stand every 3.48 pt, not 3.43 pt, the first at
-/// 28 × 3.48 pt; hyphens every 4.08 pt, underscores every 5.52 pt).
+/// 28 × 3.48 pt; hyphens every 4.08 pt, underscores every 5.52 pt). Bold of a font without a bold face steps a dot
+/// further (measured with docx/local/sbl-a, sbl-b: Lucida Sans Unicode and Lucida Console bold from 8 to 36 pt, dots,
+/// hyphens, underscores and middle dots each one dot wider than their natural width, regular ones not).
 /// </summary>
 public static class TabLeader
 {
@@ -25,14 +27,21 @@ public static class TabLeader
         if (!tab.IsTab || Character(tab.Leader) is not { } c)
             return positions;
         var style = tab.Style;
-        var glyphs = style.Font.Data.GlyphsWithFeatures(c.ToString(), style.Features, language: style.Language);
-        var advance = glyphs.Sum(g => g.Advance) * style.Size * style.Scale;
-        var device = Math.Round(advance * 600 / 72) * 72 / 600;
+        var data = style.Font.Data;
+        var glyphs = data.GlyphsWithFeatures(c.ToString(), style.Features, language: style.Language);
+        var advance = glyphs.Sum(g => g.Advance);
+        // On the device: the advance, the tab's start and its end in whole dots (Word's PDF of docx/generated/tabs: the
+        // last hyphen ends at 489.6 pt where the tab ends 0.01 pt before it).
+        double device = Math.Abs(style.Scale - 1) < 1e-6
+            ? DeviceGlyphs.Natural((int)Math.Round(advance * data.UnitsPerEm), data.UnitsPerEm, DeviceGlyphs.PixelSize(style.Size))
+            : Math.Round(advance * style.Size * style.Scale * 600 / 72);
+        if (style.Bold && style.Font.SyntheticBold)
+            device++;
         if (device <= 0)
             return positions;
-        var end = start + tab.Width;
-        for (var k = Math.Ceiling(start / device - 1e-6); (k + 1) * device <= end + 0.01; k++)
-            positions.Add(k * device);
+        var (first, end) = (Math.Round(start * 600 / 72), Math.Round((start + tab.Width) * 600 / 72));
+        for (var k = Math.Ceiling(first / device); (k + 1) * device <= end; k++)
+            positions.Add(k * device * 72 / 600);
         return positions;
     }
 }

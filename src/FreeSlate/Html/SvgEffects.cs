@@ -98,7 +98,11 @@ public static class SvgEffects
             var color = colors.ResolveChild(glow) ?? RgbColor.Black;
             // Around a 3D body (outer effects only) the glow is half as wide: dilated by r/4, σ = r/8 (measured).
             var (dilate, sigma) = text is { } scale ? (0.46 * r * scale.Outer, r * scale.Outer / 6) : own || flat ? (r / 2, r / 6) : (r / 4, r / 8);
-            steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
+            // The glow grows from the shape's whole silhouette, also where its fill is mostly transparent (Word's PDF of
+            // docx/external/libreoffice/extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as
+            // strong as around an opaque one).
+            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"ga\"><feFuncA type=\"linear\" slope=\"255\"/></feComponentTransfer>");
+            steps.Append($"<feMorphology in=\"ga\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
             steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
             steps.Append("<feComposite in2=\"gb\" operator=\"in\" result=\"glow\"/>");

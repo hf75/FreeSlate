@@ -46,6 +46,12 @@ public sealed class DataBinding(DocumentContext context)
         // placeholder text stays, without w:showingPlcHdr the control is empty; docx/external/poi/60316).
         if (value == null || value.Length == 0 && sdtPr.Child("showingPlcHdr") != null)
             return null;
+        // One with a placeholder of the glossary shows that placeholder's text (Word's PDF of docx/external/libreoffice/
+        // extras-ooxmlexport/fdo67013: a header's control bound to an empty title, its own text "Sample Doc 002",
+        // prints "[Type the document title]").
+        if (value.Length == 0 && sdtPr.Child("placeholder")?.Child("docPart").Val() is { Length: > 0 } partName
+            && Placeholders().GetValueOrDefault(partName) is { Length: > 0 } placeholder)
+            return placeholder;
         // Line feeds break the line in a plain text control of several lines (w:text w:multiLine), elsewhere they are
         // dropped, no space in their place (docx/external/libreoffice/extras-ooxmlexport/tdf81507: a description of
         // four lines bound four times, as multiLine 1, multiLine 0, w:text alone and a rich text control).
@@ -109,6 +115,25 @@ public sealed class DataBinding(DocumentContext context)
     }
 
     static readonly Regex Undeclared = new("(?<![\\w.-])([A-Za-z_][\\w.-]*):(?=[A-Za-z_*])", RegexOptions.Compiled);
+
+    /// <summary>The texts of the glossary's building blocks (w:docPart) by their names.</summary>
+    Dictionary<string, string>? placeholders;
+
+    Dictionary<string, string> Placeholders()
+    {
+        if (placeholders != null)
+            return placeholders;
+        placeholders = new Dictionary<string, string>(StringComparer.Ordinal);
+        var package = context.Package;
+        if (package.FirstRelationship(context.MainPart, "glossaryDocument")?.Target is not { } glossary || !package.Exists(glossary))
+            return placeholders;
+        foreach (var part in context.Load(glossary).Descendants(Wml.W + "docPart"))
+        {
+            if (part.Child("docPartPr")?.Child("name").Val() is { Length: > 0 } name)
+                placeholders.TryAdd(name, string.Concat(part.Child("docPartBody")?.Descendants(Wml.W + "t").Select(t => t.Value) ?? []));
+        }
+        return placeholders;
+    }
 
     Dictionary<string, XDocument> Items()
     {

@@ -2505,6 +2505,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!any)
         {
             var style = end > start && start < charStyles.Count && !spacesOnly ? charStyles[start] : mark;
+            // A line of nothing but spaces and tabs that does not end its paragraph takes its largest one's line (Word's
+            // PDF of docx/external/libreoffice/extras-ooxmlexport/tdf137335_whitespaceLineHeight: tabs of 36 and 48 pt and
+            // spaces of 72 pt wrapped before the paragraph's last line make a line 72 pt high, the last one the mark's).
+            if (spacesOnly && end < text.Length && end > start && start < charStyles.Count)
+                style = Enumerable.Range(start, Math.Min(end, charStyles.Count) - start).Select(k => charStyles[k])
+                    .MaxBy(s => { var (a, b) = Metrics(s, Vertical); return a + b; }) ?? style;
             // A raised or lowered mark of its own takes its unscaled size's line (docx/external/libreoffice/core-text/
             // empty-superscript: an empty paragraph with a superscript 10 pt mark 12.2 pt high).
             (above, below) = style.ScriptBase is { } markBase ? WordFonts.LineMetrics(style.Font.Data, markBase, style.LineHeights) : Metrics(style, Vertical);

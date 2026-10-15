@@ -1085,7 +1085,14 @@ areas:
           absolute position tabs (w:ptab) relative to the margins or indents.
         office: >-
           Leaders repeat their character at its advance rounded to Word's 600 dpi device (dots of Aptos 12 pt every
-          3.48 pt), on a grid from the page's left edge, every one that fits between the tab's start and end. Bar tabs
+          3.48 pt), on a grid from the page's left edge, every one that fits between the tab's start and end, both
+          counted in whole dots before the PDF's growth moves them (LibreOffice's extras-ooxmlexport/
+          tdf137335_whitespaceLineHeight: dots of 9 pt from 72 pt, not from 81, 81.6 → 92.8 %; docx/generated/tabs:
+          the last of 93 hyphens ends where the tab does, 0.01 pt behind it; 63 documents with leaders checked). Bold
+          of a font without a bold face steps one dot further and strokes its characters as its text (docx/local/sbl-a,
+          sbl-b: Lucida Sans Unicode and Lucida Console bold from 8 to 36 pt, dots, hyphens, underscores and middle
+          dots; extras-ooxmlexport/testPageref, style-inheritance, fdo69649: 135 to 163 dots a line as Word's, not
+          140 to 141). Bar tabs
           draw a line through the line and the space after the paragraph. Decimal stops align on the decimal separator
           of the regional settings Word runs with, whatever w:decimalSymbol or the text's language say (docx/local/
           dect-*: with a German comma "1,234.5" aligns on its comma, "1.5" and "12.5" end at the stop, within 0.07 pt;
@@ -2429,7 +2436,10 @@ areas:
           (w:picture) binds its picture and
           keeps the one it stores (docx/external/libreoffice/extras-ooxmlexport/sdt-picture-databinding 75.5 to 100 %:
           a node of base64 data printed as text before). An empty node leaves a control showing its placeholder
-          (w:showingPlcHdr) as it is, one without it empty (docx/local/bindempty; poi/60316). A bound control around
+          (w:showingPlcHdr) as it is, one without it empty (docx/local/bindempty; poi/60316), one with a placeholder
+          building block of the glossary (w:placeholder w:docPart) that block's text (Word's PDF of LibreOffice's
+          extras-ooxmlexport/fdo67013: a header's control bound to an empty title prints "[Type the document title]",
+          83.5 → 99.9 %). A bound control around
           table cells shows its node's value in its first cell's first paragraph, in its first run's formatting
           (docx/external/libreoffice/extras-ooxmlexport/paragraph-sdt: the document's title from its core properties,
           41.7 → 94.5 %). Word supplies the cover page properties (store item {55AF091B-3C7A-41E3-B477-F2FDAA23CFDA})
@@ -4539,7 +4549,9 @@ areas:
           spaces never make a line taller or lower, whatever their size or place, and a line of only spaces is the
           paragraph mark's (docx/local/ts-*, tu-*, tv-*: a 45 pt space before, between or after 9 pt words leaves the
           line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not); tabs neither, a paragraph's last line
-          of only tabs is the mark's, a line before it of a tab alone the tab's (docx/local/tabheight: a 24 pt tab
+          of only tabs is the mark's, a line before it of only tabs and spaces as high as the largest of them
+          (LibreOffice's extras-ooxmlexport/tdf137335_whitespaceLineHeight: 36, 48 and 72 pt tabs and spaces wrapped
+          before the mark's line, the baselines at 235.1 and 275.0 pt as Word's; docx/local/tabheight: a 24 pt tab
           alone, twice or between 8 pt letters leaves an 8 pt mark's line 8 pt, an 8 pt tab alone a 24 pt mark's 24 pt;
           tovc-10: a 10 pt tab wrapped past the right indent before 12 pt text keeps its line 10 pt); justified lines squeeze spaces for one more word where that
           changes them less than stretching would (paragraph.basic); automatic hyphenation breaks words as Word does (paragraph.hyphenation); line grids

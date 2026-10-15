@@ -539,7 +539,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 if (piece.IsTab)
                 {
                     if (piece.Leader != null)
-                        svg.Append(LeaderText(piece, x, baseline - piece.Style.Raise - piece.Shift));
+                        svg.Append(LeaderText(piece, placed.Left + piece.X, x - placed.Left - piece.X, baseline - piece.Style.Raise - piece.Shift));
                     continue;
                 }
                 // A note separator: its font's strikeout stroke, 144 pt long, on whole device dots as strikethrough
@@ -1663,17 +1663,25 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return string.Join(' ', shifts.Take(count));
     }
 
-    /// <summary>A tab's leader: its character repeated where <see cref="TabLeader"/> puts it, in the tab's font and color.</summary>
-    string LeaderText(Piece tab, double x, double baseline)
+    /// <summary>
+    /// A tab's leader: its character repeated where <see cref="TabLeader"/> puts it, in the tab's font and color; the
+    /// grid counts from the tab's place on the page before the PDF's growth moves it (Word's PDF of docx/external/
+    /// libreoffice/extras-ooxmlexport/tdf137335_whitespaceLineHeight: dots of 9 pt from 72 pt, not from 81).
+    /// </summary>
+    string LeaderText(Piece tab, double x, double moved, double baseline)
     {
-        var positions = TabLeader.Positions(tab, x);
+        var positions = TabLeader.Positions(tab, x).Select(p => p + moved).ToList();
         if (positions.Count == 0 || TabLeader.Character(tab.Leader) is not { } c)
             return "";
         var style = tab.Style;
         var family = style.Font.Data.Family;
         context.UsedFonts.Add(family);
         var sb = new StringBuilder($"<text x=\"{string.Join(' ', positions.Select(p => Units.Css(p * PxPerPt)))}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"");
-        if (style.Bold || tab.Leader == "heavy") sb.Append(" font-weight=\"700\"");
+        // Bold of a font without a bold face stroked as the text is (docx/local/sbl-a: the dots filled, then stroked a
+        // 35th of the size wide).
+        if (style.Bold && style.Font.SyntheticBold)
+            sb.Append($" stroke=\"{style.Color.ToHex()}\" stroke-width=\"{Px(style.Size / 35)}\" stroke-miterlimit=\"10\"");
+        else if (style.Bold || tab.Leader == "heavy") sb.Append(" font-weight=\"700\"");
         if (style.Italic) sb.Append(" font-style=\"italic\"");
         sb.Append(" style=\"font-kerning:none\">").Append(WebUtility.HtmlEncode(new string(c, positions.Count))).Append("</text>");
         return sb.ToString();
