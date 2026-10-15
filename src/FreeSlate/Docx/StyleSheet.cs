@@ -265,6 +265,20 @@ public sealed class StyleSheet
             {
                 var own = new ParagraphFormat();
                 own.Apply(chain[k].ParagraphProperties);
+                // A style's indent of 0 characters without one in twips beside it makes that indent 0, over the styles
+                // it is based on; in direct formatting 0 characters keep the twips (measured with docx/local/chi-15,
+                // chi-14: leftChars 0 on a base style's left of 2880 begins the lines at the margin, firstLineChars or
+                // hangingChars 0 drop a base style's hanging; the same directly keeps them; docx/external/libreoffice/
+                // extras-ooxmlexport/tdf167721_chUnits2, tdf167721_chUnits3).
+                if (chain[k].ParagraphProperties?.Element(Wml.W + "ind") is { } ind)
+                {
+                    if ((ind.Number("startChars") ?? ind.Number("leftChars")) == 0 && ind.Twips("start") == null && ind.Twips("left") == null)
+                        own.Left = 0;
+                    if ((ind.Number("endChars") ?? ind.Number("rightChars")) == 0 && ind.Twips("end") == null && ind.Twips("right") == null)
+                        own.Right = 0;
+                    if ((ind.Number("hangingChars") ?? ind.Number("firstLineChars")) == 0 && ind.Twips("hanging") == null && ind.Twips("firstLine") == null)
+                        own.FirstLine = 0;
+                }
                 // A style that switches numbering off (w:numId 0) drops the left and first-line indents of the styles
                 // it is based on, numbered or not, for itself and the styles based on it; the right one stays
                 // (measured with docx/local/nzs-15, nzs-14: under a numbered style of left 2000, right 1500, hanging 500

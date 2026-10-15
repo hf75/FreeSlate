@@ -939,8 +939,11 @@ areas:
           characters too; 0 leaves the twips (docx/local/chu-15, chu-14: of 22 pt text under 10.5 pt Normal leftChars
           200 puts the first line 21 pt in and the rest the style's hanging of 72 pt further, hangingChars 100 hangs
           22 pt from a left of 0, firstLineChars 200 indents 44 pt, every line within a dot;
-          docx/external/libreoffice/extras-ooxmlexport/tdf167721_chUnits 50.7 → 99.95 %). Known deviation: styles that
-          mix both kinds at several levels (tdf167721_chUnits2, _chUnits3). Justified lines may squeeze the spaces
+          docx/external/libreoffice/extras-ooxmlexport/tdf167721_chUnits 50.7 → 99.95 %); in a style 0 characters
+          without twips beside them make that indent 0 over its base styles', in direct formatting they keep the
+          inherited twips (docx/local/chi-15, chi-14: leftChars 0 on a base style's left of 2880 begins the lines at the
+          margin, firstLineChars or hangingChars 0 drop a base style's hanging; tdf167721_chUnits2 49.4 → 99.95 %,
+          _chUnits3 51.7 → 99.95 %). Justified lines may squeeze the spaces
           between their words to take one more word: where the spaces shrink
           less than half as much as the spaces of the line without the word would stretch, and by less than a quarter
           (docx/local/compress3: 225 lines of random words alike; compress, compress2: a Russian line taken at 23.6 %,
