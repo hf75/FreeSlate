@@ -552,8 +552,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         else
         {
+            // A single series names the chart; one without a name leaves the default title (scratch/triage/
+            // 2026-10-14_agents AA-2: docx/external/libreoffice/extras-ooxmlexport/chart-size, Word "Diagrammtitel").
+            var named = element == null || model.AllSeries.Count() == 1 ? single?.Name : null;
             var value = element?.Element(Ns.C + "tx")?.Element(Ns.C + "strRef")?.Descendants(Ns.C + "v").FirstOrDefault()?.Value
-                        ?? (element == null || model.AllSeries.Count() == 1 ? single?.Name : null)
+                        ?? (string.IsNullOrEmpty(named) ? null : named)
                         ?? (culture.TwoLetterISOLanguageName == "de" ? "Diagrammtitel" : "Chart Title");
             style = text.ChartStyle(layers);
             var rich2 = new XElement(Ns.C + "rich", new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t", value))));

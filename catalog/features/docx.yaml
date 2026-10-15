@@ -2147,35 +2147,39 @@ areas:
           libreoffice/extras-ooxmlexport/Unsupportedtextfields), SEQ (\c, , \h, \s), SECTION, IF (numbers or text,
           wildcards), SYMBOL (in its font \f and size \s; libreoffice/extras-ooxmlexport/tdf85161: 94 in Symbol prints
           ⊥; a backslash before a field's name does not hide it), DATE, TIME and PRINTDATE (when it prints, in the \@
-          picture or the language's short date and time) and SAVEDATE (when the document was saved), all in the
-          field's language (w:lang), not the computer's: its names, its short date and time and its AM and PM as Word
-          has them, none in most European languages, upper case in English, the Gregorian calendar in all
-          (docx/local/datelang: 18 languages on a German Windows); the page-dependent ones come from a layout before.
-          PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format switches (roman, ROMAN,
-          alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60 ST_NumberFormat
-          formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved results of the others and
-          so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas, FILENAME, FILESIZE,
-          NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word words in the language
-          of its user interface follow the reader's culture, German as measured with docx/local/fielderrors (REF and
-          PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ without a name, \p "oben", "unten",
-          "Seite n"), else English; Word sets error texts in bold in every mode (fielderrors, -14, -12 in modes 15, 14
-          and 12); a field without an instruction shows nothing. A field Word computes shows its result also where the
-          document saved none (no separate character; tdf154478: a PAGEREF of a missing bookmark inside a table of
-          contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of their instruction's first
-          run, not of the saved result, which they keep only with \* MERGEFORMAT (docx/local/fldfmt: of a bold begin,
-          an italic instruction, a red 16 pt saved result and a 9 pt end Word prints the number italic 12 pt;
-          docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %). Fields that set or ask for a
-          bookmark (SET, ASK) print no result (docx/external/libreoffice/extras-ooxmlexport/fdo76163: "Praun et al.
-          2001" saved as a SET's result, 57.4 → 97.3 %). STYLEREF finds the Normal style by its name in Word's user
-          interface, "Standard" in German Word, not by "Normal"; NOTEREF and REF without a bookmark's name print
-          Word's error "Fehler! Es wurde kein Textmarkenname vergeben."; GOTOBUTTON shows its text after the
-          bookmark's name as MACROBUTTON does (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields 71.4
-          → 95.8 %; extras-uiwriter/tdf164620 80.8 → 85.2 %). Without a picture PRINTDATE and SAVEDATE show the short
-          date and the long time of the field's language, to the minute
-          (docx/external/libreoffice/extras-ooxmlexport/tdf148380_printField: "12/10/2026 11:21:00" in en-GB, "3:34:00
-          PM" printed at 15:34:25, 74.1 → 91.6 %; tdf142464_ampm 82.7 → 100 %, fixed-date-field 84.2 → 96.9 %). A
-          locked field (w:fldLock) keeps its saved result (tdf148380_fldLocked 82.1 → 89.1 %). Known deviation:
-          LISTNUM keeps its saved result.
+          picture or the language's short date and time) and SAVEDATE (when it prints too, whatever the document's
+          properties say: docx/local/svd-core, svd-none, saved 2020 or without core properties; a CREATEDATE keeps its
+          result), all in the field's language (w:lang), not the computer's: its names, its short date and time and
+          its AM and PM as Word has them, none in most European languages, upper case in English, the Gregorian
+          calendar in all (docx/local/datelang: 18 languages on a German Windows); the page-dependent ones come from a
+          layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format switches
+          (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60
+          ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved results of
+          the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas, FILENAME,
+          FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word words in the
+          language of its user interface follow the reader's culture, German as measured with docx/local/fielderrors
+          (REF and PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ without a name, \p "oben",
+          "unten", "Seite n"), else English; Word sets error texts in bold in every mode (fielderrors, -14, -12 in
+          modes 15, 14 and 12); a field without an instruction shows nothing. A field Word computes shows its result
+          also where the document saved none (no separate character; tdf154478: a PAGEREF of a missing bookmark inside
+          a table of contents shows the error text). PAGE, NUMPAGES and PAGEREF print in the format of their
+          instruction's first run, not of the saved result, which they keep only with \* MERGEFORMAT
+          (docx/local/fldfmt: of a bold begin, an italic instruction, a red 16 pt saved result and a 9 pt end Word
+          prints the number italic 12 pt; docx/external/libreoffice/writerfilter-dmapper/tdf158360 75.1 → 83.6 %).
+          Fields that set or ask for a bookmark (SET, ASK) print no result
+          (docx/external/libreoffice/extras-ooxmlexport/fdo76163: "Praun et al. 2001" saved as a SET's result, 57.4 →
+          97.3 %). STYLEREF finds the Normal style by its name in Word's user interface, "Standard" in German Word,
+          not by "Normal"; NOTEREF and REF without a bookmark's name print Word's error "Fehler! Es wurde kein
+          Textmarkenname vergeben."; GOTOBUTTON shows its text after the bookmark's name as MACROBUTTON does
+          (docx/external/libreoffice/extras-ooxmlexport/Unsupportedtextfields 71.4 → 95.8 %; extras-uiwriter/tdf164620
+          80.8 → 85.2 %). Without a picture PRINTDATE and SAVEDATE show the short date and the long time of the
+          field's language, to the minute (docx/external/libreoffice/extras-ooxmlexport/tdf148380_printField:
+          "12/10/2026 11:21:00" in en-GB, "3:34:00 PM" printed at 15:34:25, 74.1 → 91.6 %; tdf142464_ampm 82.7 → 100
+          %, fixed-date-field 84.2 → 96.9 %). A locked field (w:fldLock) keeps its saved result (tdf148380_fldLocked
+          82.1 → 89.1 %). A backslash in a date picture takes the character after it as it is, and a switch written
+          against its argument's quote (\@"MMMM d") still takes it (extras-uiwriter/tdf164620: "Wednesday 14 October
+          2026" and "14/10/2026 15:36:19 PM", 85.9 → 95.1 %; tdf148380_modifiedField 89.2 → 94.0 %,
+          pandoc/text_in_shape_format 91.1 → 94.7 %). Known deviation: LISTNUM keeps its saved result.
 
       - id: field.hyperlinks
         title: Hyperlinks
@@ -4049,6 +4053,9 @@ areas:
           (mth-d-sup: x^k 0.27 pt, Cambria Math's 50 units). Delimiters grown past 1.5 times their own height space as
           an inner atom, a thin space before an ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and
           inline); below display level they grow by twice the content's reach from the axis (mti-i-*, mth-i-binom).
+          Scripts and their scripts take the font's 73 and 60 % of their base in whole half points down (Word's PDFs:
+          12 pt 8.5 and 7, 14 pt 10 and 8, 11 pt 8 and 6.5, 20 pt 14.5; docx/generated/equations 89.6 → 91.1 %,
+          docx/external/libreoffice/extras-ooxmlexport/tdf171433_equation 77.5 → 95.0 %, math-literal 84.7 → 90.8 %).
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
 

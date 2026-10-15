@@ -562,12 +562,11 @@ public sealed class FieldEvaluator
     string Date(FieldInline field, List<string> words)
     {
         var culture = LanguageCulture(field.Format.Language) ?? context.Culture;
-        // SAVEDATE shows when the document was last saved, where its properties say (measured: without them Word
-        // shows the time of printing).
+        // SAVEDATE too shows the time Word prints the document, whatever its properties say (measured with
+        // docx/local/svd-core, svd-none: saved 2020-01-02 or without core properties, both print the export time, a
+        // CREATEDATE its result, locked fields theirs; docx/external/libreoffice/extras-ooxmlexport/
+        // tdf148380_modifiedField, pandoc/text_in_shape_format).
         var time = now;
-        if (field.Type == "SAVEDATE" && Pptx.DeckInfo.ReadProperties(context.Package, context.Load).Modified is { } modified
-            && DateTime.TryParse(modified, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var saved))
-            time = saved.ToLocalTime();
         var at = words.IndexOf("\\@");
         // Without a picture PRINTDATE and SAVEDATE show the short date and the long time of the field's language, to the
         // minute (docx/external/libreoffice/extras-ooxmlexport/tdf148380_printField: "12/10/2026 11:21:00" in en-GB,
@@ -596,8 +595,17 @@ public sealed class FieldEvaluator
                 i += 4;
                 continue;
             }
+            // A backslash takes the character after it as it is (docx/external/libreoffice/extras-uiwriter/tdf164620:
+            // "dddd\ dd\ MMMM\ yyyy" prints "Wednesday 14 October 2026", "dd\/MM\/yyyy\ H:mm:ss\ AM/PM"
+            // "14/10/2026 15:36:19 PM").
+            if (!quoted && c == '\\')
+            {
+                if (i + 1 < picture.Length)
+                    sb.Append('\\').Append(picture[++i]);
+                continue;
+            }
             // Separators stay as written, not the culture's.
-            if (!quoted && c is '/' or ':' or '%' or '\\')
+            if (!quoted && c is '/' or ':' or '%')
             {
                 sb.Append('\\').Append(c);
                 continue;
@@ -645,6 +653,13 @@ public sealed class FieldEvaluator
         {
             if (c == '"')
             {
+                // A switch written against its argument's quote is a word of its own (docx/external/libreoffice/
+                // extras-uiwriter/tdf164620: SAVEDATE \@"MMMM\ d', 'yyyy").
+                if (!quoted && sb.Length == 2 && sb[0] == '\\')
+                {
+                    words.Add(sb.ToString());
+                    sb.Clear();
+                }
                 quoted = !quoted;
                 any = true;
                 continue;

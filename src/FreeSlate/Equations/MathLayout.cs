@@ -203,6 +203,14 @@ public sealed class MathLayout
         _ => 1,
     };
 
+    /// <summary>
+    /// The size of a level from its base size: scripts and their scripts take the font's percentages of it in whole
+    /// half points down, as Word sets them (scratch/triage/2026-10-14_agents AB-3, Word's PDFs: Cambria Math's 73 and
+    /// 60 % of 12 pt print 8.5 and 7 pt, of 14 pt 10 and 8, of 11 pt 8 and 6.5, of 20 pt 14.5; docx/generated/
+    /// equations, docx/external/libreoffice/extras-ooxmlexport/2120112713, math-lim, math-font-size).
+    /// </summary>
+    double Sized(double size, Env env) => env.Level is Level.Script or Level.ScriptScript ? Math.Floor(2 * size * Scale(env) + 1e-9) / 2 : size;
+
     /// <summary>Font units at the size of a level (points).</summary>
     double U(int units, double size) => units * size / font.UnitsPerEm;
 
@@ -282,7 +290,7 @@ public sealed class MathLayout
     {
         if (element.Element(M + name) is { } argument && !HasContent(argument))
         {
-            var em = baseSize * Scale(env);
+            var em = Sized(baseSize, env);
             return new SpaceItem { Width = 0.9 * em, Ascent = 0.8 * em };
         }
         return Sequence(Child(element, name), env, baseSize);
@@ -300,7 +308,7 @@ public sealed class MathLayout
     /// <summary>The room of an empty base's placeholder.</summary>
     SpaceItem Placeholder(Env env, double baseSize)
     {
-        var em = baseSize * Scale(env);
+        var em = Sized(baseSize, env);
         return new SpaceItem { Width = 0.92 * em, Ascent = 0.8 * em };
     }
 
@@ -339,7 +347,7 @@ public sealed class MathLayout
         }
         var row = new ListItem();
         var x = 0.0;
-        var em = size * Scale(env);
+        var em = Sized(size, env);
         for (var i = 0; i < atoms.Count; i++)
         {
             // Spaces typed in a run stand as they are, without the spacing of their neighbors' classes.
@@ -393,7 +401,7 @@ public sealed class MathLayout
         // "A = 2πr²" with the 2 inserted).
         var inserted = run.Elements().Where(e => e.Name.LocalName is "ins" or "moveTo").ToList();
         var style = runStyle(run.Element(runProperties) ?? inserted.Select(i => i.Element(runProperties)).FirstOrDefault(p => p != null));
-        var size = style.Size * Scale(env);
+        var size = Sized(style.Size, env);
         var properties = run.Element(M + "rPr");
         var sty = (string?)properties?.Element(M + "sty")?.Attribute(M + "val");
         var scr = (string?)properties?.Element(M + "scr")?.Attribute(M + "val");
@@ -573,7 +581,7 @@ public sealed class MathLayout
     {
         var type = Property(f, "fPr", "type") ?? "bar";
         var color = runStyle(f.Element(M + "fPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         if (type == "lin")
         {
             // Linear: numerator, slash, denominator on the line.
@@ -682,7 +690,7 @@ public sealed class MathLayout
     /// </summary>
     MathItem Attach(MathItem nucleus, MathItem? sup, MathItem? sub, Env env, double baseSize, bool simple)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         double supShift = 0, subShift = 0;
         if (sup != null)
         {
@@ -739,7 +747,7 @@ public sealed class MathLayout
 
     MathItem PreScripts(XElement element, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var nucleus = Sequence(Child(element, "e"), env, baseSize);
         var sup = Argument(element, "sup", env.Sup, baseSize);
         var sub = Argument(element, "sub", env.Sub, baseSize);
@@ -756,7 +764,7 @@ public sealed class MathLayout
 
     MathItem Radical(XElement rad, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(rad.Element(M + "radPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var radicand = Base(rad, env.Crampd, baseSize);
         var display = env.Level == Level.Display;
@@ -893,7 +901,7 @@ public sealed class MathLayout
     /// </summary>
     Atom Nary(XElement nary, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(nary.Element(M + "naryPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(nary, "naryPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x222B;
         var integral = chr is >= 0x222B and <= 0x2233 or >= 0x2A0B and <= 0x2A1C;
@@ -1016,7 +1024,7 @@ public sealed class MathLayout
 
     (MathItem Item, bool Tall) Delimited(XElement d, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(d.Element(M + "dPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var begin = DelimiterChar(d, "begChr", "(");
         var end = DelimiterChar(d, "endChr", ")");
@@ -1079,7 +1087,7 @@ public sealed class MathLayout
 
     MathItem Matrix(XElement m, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var rows = m.Elements(M + "mr").Select(r => r.Elements(M + "e").Select(e => Sequence(e.Elements(), env, baseSize)).ToList()).ToList();
         var columns = rows.Count > 0 ? rows.Max(r => r.Count) : 0;
         var widths = Enumerable.Range(0, columns).Select(c => rows.Max(r => c < r.Count ? r[c].Width : 0)).ToArray();
@@ -1127,7 +1135,7 @@ public sealed class MathLayout
     /// </summary>
     MathItem EquationArray(XElement eqArr, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var rows = new List<ListItem>();
         var cuts = new List<List<double>>();
         foreach (var e in eqArr.Elements(M + "e"))
@@ -1223,7 +1231,7 @@ public sealed class MathLayout
 
     MathItem Accent(XElement acc, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(acc.Element(M + "accPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(acc, "accPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x0302;
         var nucleus = Base(acc, env.Crampd, baseSize);
@@ -1259,7 +1267,7 @@ public sealed class MathLayout
 
     MathItem Bar(XElement bar, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(bar.Element(M + "barPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var top = Property(bar, "barPr", "pos") == "top";
         var nucleus = Sequence(Child(bar, "e"), top ? env.Crampd : env, baseSize);
@@ -1285,7 +1293,7 @@ public sealed class MathLayout
 
     MathItem GroupCharacter(XElement group, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(group.Element(M + "groupChrPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(group, "groupChrPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x23DF;
         var above = Property(group, "groupChrPr", "pos") == "top";
@@ -1315,7 +1323,7 @@ public sealed class MathLayout
 
     MathItem Limit(XElement limit, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var nucleus = Sequence(Child(limit, "e"), env, baseSize);
         var lim = Argument(limit, "lim", limit.Name.LocalName == "limLow" ? env.Sub : env.Sup, baseSize);
         return limit.Name.LocalName == "limLow" ? UnderOver(nucleus, null, lim, size, 0) : UnderOver(nucleus, lim, null, size, 0);
@@ -1337,7 +1345,7 @@ public sealed class MathLayout
 
     MathItem BorderBox(XElement box, Env env, double baseSize)
     {
-        var size = baseSize * Scale(env);
+        var size = Sized(baseSize, env);
         var color = runStyle(box.Element(M + "borderBoxPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var nucleus = Sequence(Child(box, "e"), env, baseSize);
         // Lines of the rule thickness three times their thickness away from the content's ink (measured: Office's

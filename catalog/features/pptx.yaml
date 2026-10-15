@@ -1900,25 +1900,27 @@ areas:
         status: done
         strategy: Automatic layout of title, legend and plot area like Office; manual layouts are fractions of the chart area.
         office: >-
-          Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend
-          sit 6 pt from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may
-          reach 4.5 pt into that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as
-          wide as their entries ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus
-          30 pt and then wrap into balanced rows; rows are one line height plus 5.85 pt. Pies with data labels
-          shrink by 1.785 × label size. A manual plot area layout places the inner plot area (layoutTarget
-          inner) or, by default, the plot area with its axis labels (outer); w and h are sizes (wMode, hMode
-          factor) or far edges (edge). Verified with generated/charts, charts-details and charts-data. Axis titles
-          of 3D charts take their room at their axis's edge and stand centered on the plot area as on flat charts,
-          white in the black chart area of an Office 2007 style's highest level (docx/external/powertools/CU001:
-          "Vehicles" and "Quarter" beside a 3D bar chart).
-          Line keys keep their size at every font size (legends of 7 to 24 pt): a 12 pt key box, the line
-          19.1 pt long about 12.79 pt from the entry's edge, the text at 24.31 pt; square keys scale with the
-          line height. A legend at the side given a size of its own (c:manualLayout w, h) wraps its entries at
-          its width less 4 pt and the key's room and shows k = min(n, ceil(height / tallest entry)) entries in
-          equal slots of height / k, the tallest centered in its slot, all centered across (measured through COM,
-          local/legend-manualsize; LibreOffice's tdf122765 shows 7 of 9). Keys draw markers at most half the font size and lines and marker edges at most 0.375
-          times it wide (local/legacy-legend* decks). A dashed line key makes every key longer: the line from
-          3.05 to 29.31 pt, the text at 31.5 pt (local/legacy-longkey).
+          Measured against COM positions (plot area, legend entries, titles) for 35 charts: title and legend sit 6 pt
+          from the edge, the plot area keeps 11 pt from edges, title and legend; axis labels may reach 4.5 pt into
+          that margin (1.5 pt gap to an axis title). Horizontal legends are 1.2 times as wide as their entries
+          ([key/2][key][key/2][text]) with equal gaps, squeeze to the chart width minus 30 pt and then wrap into
+          balanced rows; rows are one line height plus 5.85 pt. Pies with data labels shrink by 1.785 × label size. A
+          manual plot area layout places the inner plot area (layoutTarget inner) or, by default, the plot area with
+          its axis labels (outer); w and h are sizes (wMode, hMode factor) or far edges (edge). Verified with
+          generated/charts, charts-details and charts-data. Axis titles of 3D charts take their room at their axis's
+          edge and stand centered on the plot area as on flat charts, white in the black chart area of an Office 2007
+          style's highest level (docx/external/powertools/CU001: "Vehicles" and "Quarter" beside a 3D bar chart). A
+          title without text names the chart after its single series, after none without a name: the default title
+          (docx/external/libreoffice/extras-ooxmlexport/chart-size: Word's "Diagrammtitel", 89.8 → 97.3 %; strict 98.9
+          → 99.5 %, extras-layout/tdf137116 76.9 → 79.2 %). Line keys keep their size at every font size (legends of 7
+          to 24 pt): a 12 pt key box, the line 19.1 pt long about 12.79 pt from the entry's edge, the text at 24.31
+          pt; square keys scale with the line height. A legend at the side given a size of its own (c:manualLayout w,
+          h) wraps its entries at its width less 4 pt and the key's room and shows k = min(n, ceil(height / tallest
+          entry)) entries in equal slots of height / k, the tallest centered in its slot, all centered across
+          (measured through COM, local/legend-manualsize; LibreOffice's tdf122765 shows 7 of 9). Keys draw markers at
+          most half the font size and lines and marker edges at most 0.375 times it wide (local/legacy-legend* decks).
+          A dashed line key makes every key longer: the line from 3.05 to 29.31 pt, the text at 31.5 pt
+          (local/legacy-longkey).
 
       - id: chart.dataTable
         title: Data tables
