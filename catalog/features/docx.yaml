@@ -745,7 +745,10 @@ areas:
           "a." reads ".a"), and w:bdo forcing its direction; spaces ending a line take the paragraph's level, at the
           line's end (UAX #9 L1; docx/local/rtt-14, rtt-15: "Final " of a left-to-right run ending a line of a centred,
           right or left aligned right-to-left paragraph stands a space further right than the run would put it;
-          extras-ooxmlexport/FDO76312 85.4 → 92.8 %); lines are reordered between their tabs,
+          extras-ooxmlexport/FDO76312 85.4 → 92.8 %); a right-to-left paragraph beside floating objects lays its lines
+          out in the room they leave from the right, its rightmost part first (docx/local/rtw-14, rtw-15: Hebrew lines
+          beside rectangles at the column's edges and middle 84.4 → 98.4 %, 87.3 → 98.0 %; extras-odfexport/tdf163575
+          86.7 → 94.6 %); lines are reordered between their tabs,
           right-to-left pieces reach the browser whole from their right end (shaped, mirrored brackets) and
           justification widens their spaces. Clusters of several characters (marks, conjuncts, emoji sequences) are
           drawn whole. In a left-to-right paragraph a right-to-left run is an embedding of its own, reversed as a

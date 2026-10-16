@@ -1063,6 +1063,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 for (var attempt = 0; attempt < 400; attempt++)
                 {
                     var r = taken = room(new LineSlot(offset + skip, estimate, textBand.Top, textBand.Bottom, clear));
+                    // A right-to-left paragraph lays its lines out from the right: the room beside the objects mirrored,
+                    // its rightmost part first (Visual mirrors the line back; measured with docx/local/rtw-14, rtw-15:
+                    // Hebrew lines beside rectangles at the column's left and right edges and in its middle;
+                    // docx/external/libreoffice/extras-odfexport/tdf163575).
+                    if (format.Bidi == true)
+                        r = r with { Segments = r.Segments.Select(s => (width - s.End, width - s.Start)).Reverse().ToList() };
                     var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;
                     if (context.CompatibilityMode < 15 && !r.Tight)
                     {
@@ -2940,6 +2946,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (rightToLeft)
         {
             line.Alignment = null;
+            if (line.Cut is { } cut)
+                line.Cut = cut.Select(s => (width - s.End, width - s.Start)).Reverse().ToList();
             if (line.Room is { } room)
                 line.Mirrored = (room.Justification, width - room.End, width - room.Start, room.Width);
         }
