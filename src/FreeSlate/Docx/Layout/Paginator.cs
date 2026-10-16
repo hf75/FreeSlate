@@ -4358,7 +4358,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// margin (with the space before its first paragraph) to the space after its last paragraph (measured with
     /// page-setup, page 4; docx/local/va-1 to va-5 in modes 12 to 15); justified (both), the room left spread evenly
     /// between the paragraphs (va-6: three paragraphs at the top, in the middle and at the bottom;
-    /// docx/external/libreoffice/extras-ooxmlexport/tdf36117_verticalAdjustment).
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf36117_verticalAdjustment). Centered or at the bottom, the page's
+    /// floating objects count down to their bottoms and move with the text, none moving up (measured with docx/local/
+    /// vao-11, vao-14, vao-15: a page frame centred on the page, a text box at the page's top wrapped square, rectangles
+    /// in front of the text 400 and 600 pt down the page or wrapped square below their paragraph move with the three
+    /// lines, the room below the lowest of them shared out; a page-sized rectangle behind the text leaves none; tdf36117).
     /// </summary>
     static void AlignVertically(PageBox page)
     {
@@ -4374,7 +4378,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var text = page.Lines.Where(l => !l.SectionMark).ToList();
         var marked = text.Count < page.Lines.Count && page.Lines[^1].SectionMark;
         var used = text.Max(l => l.Top + l.Line.Height) + (marked ? 0 : page.TrailingSpace) - top;
-        var room = bottom - top - used;
+        if (align != "both")
+        {
+            foreach (var drawing in page.Drawings)
+                used = Math.Max(used, drawing.Y + drawing.Height - top);
+            foreach (var area in page.FloatingTables.Where(e => !e.Story))
+                used = Math.Max(used, area.Bottom - top);
+        }
+        var room = Math.Max(0, bottom - top - used);
         // Where each paragraph of the text begins (not those of tables or notes) and how far it moves down.
         var starts = align == "both" ? page.Lines.Where(l => l.Numbered && l.Line.First && !l.SectionMark).Select(l => l.Top).Distinct().Order().ToList() : [];
         if (align == "both" && starts.Count < 2)
@@ -4395,5 +4406,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         for (var i = 0; i < page.Strokes.Count; i++)
             page.Strokes[i] = page.Strokes[i].Offset(0, Shift(Math.Min(page.Strokes[i].Y1, page.Strokes[i].Y2)));
+        if (align == "both" || room <= 0)
+            return;
+        var moved = Shift(0);
+        for (var i = 0; i < page.Drawings.Count; i++)
+        {
+            var drawing = page.Drawings[i];
+            page.Drawings[i] = drawing with { Y = drawing.Y + moved, Clip = drawing.Clip is { } clip ? clip with { Y = clip.Y + moved } : null };
+        }
+        for (var i = 0; i < page.FloatingTables.Count; i++)
+        {
+            var area = page.FloatingTables[i];
+            if (!area.Story)
+                page.FloatingTables[i] = area with { Top = area.Top + moved, Bottom = area.Bottom + moved, Polygon = area.Polygon?.Select(q => (q.X, q.Y + moved)).ToArray() };
+        }
     }
 }

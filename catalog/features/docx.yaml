@@ -1541,7 +1541,11 @@ areas:
           centers the text from the top margin, with the space before its first paragraph, to the space after its last
           (docx/generated/page-setup, page 4; docx/local/va-1 to va-5 in modes 12 to 15), an empty paragraph that only
           ends the section left out (vb-1 to vb-3); justified (both) it spreads the room left evenly between the
-          paragraphs (va-6; extras-ooxmlexport/tdf36117_verticalAdjustment). A continuous section on paper of another
+          paragraphs (va-6; extras-ooxmlexport/tdf36117_verticalAdjustment); centered or at the bottom the page's
+          floating objects count down to their bottoms and move with the text, never up (docx/local/vao-11, -14, -15:
+          a page frame centred on the page, a text box at the page's top wrapped square, rectangles in front of the
+          text or wrapped below their paragraph; a page-sized one behind the text leaves no room; tdf36117 85.5 →
+          96.2 %, tdf154703_framePrWrapSpacing 90.7 → 100 %). A continuous section on paper of another
           size begins a new page (docx/external/libreoffice/core-doc/header-footer-delete: a Letter section after an
           A4 one on page 3, 66.7 → 100 %). Known deviation: with a frame on the page Word centers otherwise (tdf36117,
           page 5). Section form protection (w:formProt) only guards editing and shows nothing; pages keep their sizes
