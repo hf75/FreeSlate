@@ -1539,13 +1539,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return Scaled(grid);
 
         // A fixed table with a width of its own stretches or shrinks its grid to it in proportion, whatever its cells
-        // say (measured with docx/local/tblwidth-15 and -14: percentages and points, wider and narrower than the grid).
+        // say (measured with docx/local/tblwidth-15 and -14: percentages and points, wider and narrower than the grid);
+        // a nested one wider than its cell's text shrinks to it with its outer lines' halves (measured with
+        // docx/local/np-5: a grid of 400 pt in a cell of 200 pt with margins of 5.4 pt from the text's left to its right
+        // edge; docx/external/libreoffice/writerfilter-dmapper/floattable-nested-3tables, found by agent BE).
         double[] Scaled(double[] widths)
         {
             var sum = widths.Sum();
-            if (Target(table, rows, widthBase ?? available, allowance, gaps, lines) is not { } target || sum <= 0)
-                return widths;
-            return widths.Select(w => w * target / sum).ToArray();
+            if (Target(table, rows, widthBase ?? available, allowance, gaps, lines) is { } target && sum > 0)
+                return widths.Select(w => w * target / sum).ToArray();
+            if (inCell && sum > 0 && sum + allowance > available + 0.01 && available - allowance > 0)
+                return widths.Select(w => w * (available - allowance) / sum).ToArray();
+            return widths;
         }
     }
 

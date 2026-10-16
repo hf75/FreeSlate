@@ -1991,9 +1991,11 @@ areas:
           five cells, 88.3 → 100 %). A nested table's outer lines take their halves beside its columns in the width its cell needs
           (docx/external/libreoffice/filter-ascii/tdf162180: nested columns of 24.23, 43.23 and 54.58 pt between 0.5
           pt lines keep "Approved" and "Central" whole, 68.7 → 98.5 %; extras-ooxmlexport/tdf79272_strictDxa 67.5 →
-          99.7 % with its Strict text directions). Known deviations: a nested table of fixed layout Word narrows to
-          its cell (np-5), ours keeps its grid; for a nested table preferring more than the outer table leaves it Word
-          widens the outer table past its own preferred width (np-6). Cells of tables without any table style (the
+          99.7 % with its Strict text directions). A nested table of fixed layout wider than its cell's text shrinks to it with its outer lines'
+          halves (np-5: a grid of 400 pt in a cell of 200 pt with margins of 5.4 pt from the text's left to its right
+          edge; writerfilter-dmapper/floattable-nested-3tables 83.9 → 91.5 %). Known deviation: for a nested table
+          preferring more than the outer table leaves it Word widens the outer table past its own preferred width
+          (np-6). Cells of tables without any table style (the
           document has no default table style either) have left and right margins of 0.5 pt (docx/local/tblnostyle-12,
           -14, -15). A percentage width is of the column's width, whatever the indent (docx/local/tpi-1 to tpi-6: 100
           % indented -15.9 or 36 pt is 450.8 pt wide, ending as far before or past the right margin, in modes 14 and
