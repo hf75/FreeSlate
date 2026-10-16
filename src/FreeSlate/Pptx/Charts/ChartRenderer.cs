@@ -2032,6 +2032,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation < 0 && a.Axis.Horizontal && a.Labels.Count > 0))
         {
             var angle = -layout.Rotation * Math.PI / 180;
+            // Word sets each label as a box whose top right corner sits on its category: the first category stands
+            // its label's width across from the outer edge, the last its line's height up from the right one (measured
+            // by agent AK in Word's PDFs: powertools/CU004-Chart-Cached-Data-04 and libreoffice/tdf82824 at -45 degrees).
+            if (slide.Presentation.Word && !manual)
+            {
+                var count = Math.Max(1, layout.Categories);
+                var first = outer.X + Width(layout.Labels[0], layout.Style) * Math.Cos(angle);
+                var last = outer.Right - LineHeight(layout.Style) * Math.Sin(angle);
+                left = Math.Max(left, layout.Between ? (first - right / (2 * count)) / (1 - 1.0 / (2 * count)) : first);
+                right = Math.Min(right, layout.Between ? (last - left / (2 * count)) / (1 - 1.0 / (2 * count)) : last);
+                continue;
+            }
             var reach = Width(layout.Labels[0], layout.Style) * Math.Cos(angle) + LineHeight(layout.Style) / 2 * Math.Sin(angle);
             var limit = outer.X - (manual ? 0 : 9) + reach;
             var n = Math.Max(1, layout.Categories);

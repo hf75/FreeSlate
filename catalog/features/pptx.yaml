@@ -1822,7 +1822,10 @@ areas:
           six-word labels wrap, also in a chart 200 pt short; one word wider than its slot turns all labels); date
           axes that label as many dates as fit show all of them, wrapped, where their words fit (LibreOffice's
           bnc889755), and built-in format 17 (mmm-yy) reads "Okt 12" on a German system. Rotated labels sit with the end
-          of their middle line at the category; labels of an axis crossing inside the plot area stay at the
+          of their middle line at the category; in Word's charts labels turned up by -45 degrees are boxes whose top
+          right corner sits on the category, the first category their width across from the outer edge, the last
+          their line's height up from the right one (agent AK in Word's PDFs: powertools/CU004-Chart-Cached-Data-04
+          87.8 → 98.0 %, libreoffice/extras-ooxmlimport/tdf82824 90.1 → 98.8 %); labels of an axis crossing inside the plot area stay at the
           axis. Display units (c:dispUnits: built-in or custom) divide the value labels, and their label
           (c:dispUnitsLbl) shows its own text or the unit's name in the chart's language (German Office:
           Millionen, x 10000), turned a quarter beside the labels with its end at the top of the plot area, in
