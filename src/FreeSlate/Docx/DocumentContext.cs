@@ -24,22 +24,21 @@ public sealed class DocumentContext : IDisposable
     /// before it, at 0x0F000000 at least; the others as they are, equal ones the later on top (measured with
     /// docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one on top; 0x10000000, 0,
     /// 0x0F000005 the unset one above 0x10000000; 0 above 0x0EFFFFFF; 0x1E000000 below 0x1DFFFFFE; LibreOffice's
-    /// extras-ooxmlexport/tdf159158_zOrder_*). Drawings outside a part (VML shapes) keep their own, and so do all of a
-    /// part that holds VML shapes, which Word stacks against DrawingML ones in an order it builds as it meets them
-    /// (docx/local/zo-k, zo-q, zo-v, zo-x: a z-index of 5 under 0x0F000000 alone, over it beside another VML shape or
-    /// after an unset height; not modeled).
+    /// extras-ooxmlexport/tdf159158_zOrder_*), also in parts with VML shapes; those keep their z-index, but where one of
+    /// them has 0 or two shapes of the part stand at the same height, all of them stand above all DrawingML drawings (fits
+    /// all of docx/local/zo-a to zo-x, found by agent BB: a z-index of 5 under 0x0F000000 alone, over it beside another
+    /// shape of 5 or after an unset height; z-index 0 over 0x0F000000; tdf159158_zOrder_zIndexWins). Shapes of VML in
+    /// the fallback of markup compatibility, which shows the DrawingML choice, do not count.
     /// </summary>
     public long StackingOrder(XElement anchor)
     {
         static long? Height(XElement element) => long.TryParse((string?)element.Attribute("relativeHeight"), out var height) ? height : null;
-        if (anchor.Document is not { } document)
+        var shape = anchor.Annotation<Vml.Origin>()?.Shape;
+        if ((shape ?? anchor).Document is not { } document)
             return Height(anchor) ?? 0;
         var orders = stacking.GetValue(document, part =>
         {
             var result = new Dictionary<XElement, long>();
-            XNamespace v = "urn:schemas-microsoft-com:vml";
-            if (part.Descendants().Any(e => e.Name.Namespace == v && ((string?)e.Attribute("style"))?.Contains("z-index", StringComparison.Ordinal) == true))
-                return result;
             var highest = 0L;
             foreach (var element in part.Descendants(Docx.Drawings.Wp + "anchor"))
             {
@@ -49,9 +48,19 @@ public sealed class DocumentContext : IDisposable
                 result[element] = height;
                 highest = Math.Max(highest, height);
             }
+            XNamespace v = "urn:schemas-microsoft-com:vml";
+            XNamespace mc = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+            static long? Z(XElement e) => ((string?)e.Attribute("style"))?.Split(';').Select(s => s.Split(':', 2)).FirstOrDefault(kv => kv.Length == 2 && kv[0].Trim() == "z-index") is { } kv
+                && long.TryParse(kv[1].Trim(), out var z) ? z : null;
+            var shapes = part.Descendants().Where(e => e.Name.Namespace == v && e.Parent?.Name.Namespace == Wml.W && Z(e) != null
+                && !e.Ancestors(mc + "Fallback").Any()).ToList();
+            var values = shapes.Select(e => Z(e)!.Value).Concat(result.Values).ToList();
+            var above = shapes.Count > 0 && result.Count > 0 && (shapes.Any(e => Z(e) == 0) || values.Distinct().Count() < values.Count);
+            foreach (var e in shapes)
+                result[e] = (above ? 1L << 40 : 0) + Math.Abs(Z(e)!.Value);
             return result;
         });
-        return orders.TryGetValue(anchor, out var order) ? order : Height(anchor) ?? 0;
+        return orders.TryGetValue(shape ?? anchor, out var order) ? order : Height(anchor) ?? 0;
     }
 
     /// <summary>

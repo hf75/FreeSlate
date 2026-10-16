@@ -33,6 +33,9 @@ public static class Vml
     /// <summary>Marks any drawing converted from VML, inline or floating.</summary>
     public static readonly XName Source = XNamespace.Get("urn:freeslate:vml") + "source";
 
+    /// <summary>The VML shape a converted floating drawing comes from, which its stacking order counts with (DocumentContext.StackingOrder).</summary>
+    public sealed record Origin(XElement Shape);
+
     /// <summary>
     /// Marks a horizontal rule (o:hr): its share of the column's width, 0 for the style's width; RuleAlign its
     /// alignment (left, center, right), RuleBevel a shaded one. Word draws a rule across o:hrpct of the width of the
@@ -196,6 +199,7 @@ public static class Vml
             new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(el)), new XAttribute("t", Emu(et)), new XAttribute("r", Emu(er)), new XAttribute("b", Emu(eb))),
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic);
+        anchor.AddAnnotation(new Origin(shape));
         if (TurnedSides(content, style, width, height) is { } turned)
             anchor.SetAttributeValue(TurnedBox, string.Join(" ", new[] { turned.L, turned.T, turned.R, turned.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
         return anchor;

@@ -2770,10 +2770,11 @@ areas:
           0x1E000000 and more, counts as unset and stands above every drawing before it, at 0x0F000000 at least, equal
           ones the later on top (docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one
           on top, 0x10000000, 0, 0x0F000005 the unset one above 0x10000000, 0 above 0x0EFFFFFF, 0x1E000000 below
-          0x1DFFFFFE; LibreOffice's extras-ooxmlexport/tdf159158_zOrder_*). Known deviation: VML shapes against
-          DrawingML ones stack by an order Word builds as it meets them (zo-q: z-index 5 under 0x0F000000; zo-v: two of
-          5 over it; zo-x: over it after an unset one; zo-r, zo-s: z-index 0 over it), not modeled: parts holding VML
-          shapes keep the heights as they are. The paragraph's top lies above its own space before (below the space
+          0x1DFFFFFE; LibreOffice's extras-ooxmlexport/tdf159158_zOrder_*), also in parts with VML shapes, which keep
+          their z-index; but where one of them has 0, or two shapes of the part stand at the same height, all VML
+          shapes stand above all DrawingML drawings, by their z-index among themselves (rule found by agent BB, fitting
+          all of zo-a to zo-x: z-index 5 under 0x0F000000 alone, over it beside another of 5 or after an unset height;
+          z-index 0 over it, zo-r, zo-s; extras-ooxmlexport/tdf159158_zOrder_zIndexWins 86.4 → 97.8 %). The paragraph's top lies above its own space before (below the space
           after the paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules,
           within 0.05 pt); an anchor in a part of the paragraph in a later column or page counts from that part and
           its column (extras-layout/shape-anchored-in-follow: a rectangle anchored at the end of a paragraph that goes
