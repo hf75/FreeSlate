@@ -480,10 +480,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             (lines, height) = (rest, rest.Max(p => p.Top + p.Line.Height));
         else
             return "";
-        // Lines of a linked story beyond the box continue in the next one.
-        if (story != null && lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01))
+        // Lines of a linked story beyond the box continue in the next one; a box keeps its first line, however far it
+        // reaches past the box's room (measured with docx/local/lkb-1-*: a first line 0.5 to 5 pt taller than the room
+        // stays, lkb-2-*: the second line 0.5 pt past the bottom inset goes on; docx/external/libreoffice/extras-layout/
+        // tdf152983-1-min, found by agent BH).
+        var firstTop = lines.Count > 0 ? lines.Min(p => p.Top) : 0;
+        if (story != null && lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01))
         {
-            var kept = lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01).ToList();
+            var kept = lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01 || p.Top <= firstTop + 0.01).ToList();
             var over = lines.Except(kept).ToList();
             var shift = over.Min(p => p.Top);
             continued[(story, seq + 1)] = over.Select(p => p with { Top = p.Top - shift }).ToList();

@@ -2958,7 +2958,9 @@ areas:
           mongolianVert and wordArtVert run them down, the first at the left; eaVert, mongolianVert and the WordArt
           kinds set East Asian characters upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6).
           Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the
-          boxes before them, also as shapes of a group (docx/external/libreoffice/extras-ooxmlexport/tdf73499:
+          boxes before them, a box keeping its first line however far it reaches past its room (docx/local/lkb-1-*: a
+          first line 0.5 to 5 pt taller than the room stays, lkb-2-*: the second line 0.5 pt past the bottom inset goes
+          on), also as shapes of a group (docx/external/libreoffice/extras-ooxmlexport/tdf73499:
           "textboxes!" in a group's second shape, 79.9 → 97.5 %). A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that
           does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case
           as in Word, 96.7 %), measured where it begins, and aligns them in its own width
