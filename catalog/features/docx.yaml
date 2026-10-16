@@ -1174,7 +1174,8 @@ areas:
           (docx/local/fb-*: 6 and 12 pt before take its text and the text below it as much lower; fdo78904_fileHang);
           the paragraphs' borders frame it, all the way down where w:h makes it higher than its content, its last
           paragraph's space after inside them (docx/external/libreoffice/extras-ooxmlexport/tdf131420, tdf133702,
-          tdf133924: within 0.1 pt); text wraps around it with its borders, w:hSpace and w:vSpace kept free (not
+          tdf133924: within 0.1 pt), paragraphs of other borders or shading in boxes of their own, the last one reaching
+          down (extras-ooxmlexport/tdf154703_framePr 88.1 → 100 %); text wraps around it with its borders, w:hSpace and w:vSpace kept free (not
           beside it with notBeside, over it with none). A drop cap is a frame of its letter at the start of the next
           paragraph, whose lines go around it; a margin drop cap stands left of the column (docx/local/frames: every
           line as in Word). Frames in headers and footers stand alike, taking no room in their story

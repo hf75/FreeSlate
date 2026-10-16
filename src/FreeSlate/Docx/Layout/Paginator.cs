@@ -663,10 +663,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
             content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
-        // The paragraphs' borders frame the content: their top and bottom lines with their space take room.
-        var frameBorders = Frame.Read(first.Format);
-        var borderTop = frameBorders?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
-        content += borderTop + (frameBorders?.Bottom is { Visible: true } bb ? bb.Space + bb.Total : 0);
+        // The paragraphs' borders frame the content: their top and bottom lines with their space take room. Paragraphs
+        // of the same borders (or, without, shading) share a box, each such group its own, the last one reaching down
+        // to the frame's height (docx/external/libreoffice/extras-ooxmlexport/tdf154703_framePr: a bordered and shaded
+        // paragraph, a shaded one and one of other borders in a frame of exact height, three boxes).
+        var boxes = new List<(int From, int To, Frame? Box)>();
+        for (var k = 0; k < group.Count; k++)
+        {
+            var own = Frame.Read(group[k].Format);
+            if (boxes.Count > 0 && (own == null ? boxes[^1].Box == null : own.Same(boxes[^1].Box)))
+                boxes[^1] = boxes[^1] with { To = k };
+            else
+                boxes.Add((k, k, own));
+        }
+        static double Opening(Frame? box) => box?.Top is { Visible: true } bt ? bt.Space + bt.Total : 0;
+        static double Closing(Frame? box) => box?.Bottom is { Visible: true } bb ? bb.Space + bb.Total : 0;
+        var frameBorders = boxes[0].Box;
+        var borderTop = Opening(frameBorders);
+        content += boxes.Sum(box => Opening(box.Box) + Closing(box.Box));
         var dropCap = properties.Attr("dropCap");
         // The first paragraph's space before stands in the frame, above its lines and borders (measured with
         // docx/local/fb-*: 6 and 12 pt before put the frame's text and the text below it as much lower, after 12 pt
@@ -740,9 +754,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // extras-ooxmlexport/FDO78590, Tdf147485; fdo78904: a picture).
         (double, double)? origin = context.CompatibilityMode < 15 && dropCap is null or "none" ? (x, top - textTop) : null;
         var lineTop = top + spaceTop + borderTop;
+        var boxTops = new double[boxes.Count];
+        var boxBottoms = new double[boxes.Count];
+        boxTops[0] = top + spaceTop;
         for (var k = 0; k < group.Count; k++)
         {
-            if (k > 0)
+            var opening = boxes.FindIndex(box => box.From == k);
+            if (k > 0 && opening > 0)
+            {
+                // A new box: the one before closes below its last line, this one opens below the space between.
+                boxBottoms[opening - 1] = lineTop + Closing(boxes[opening - 1].Box);
+                lineTop = boxBottoms[opening - 1] + Between(group[k - 1], group[k]);
+                boxTops[opening] = lineTop;
+                lineTop += Opening(boxes[opening].Box);
+            }
+            else if (k > 0)
                 lineTop += Between(group[k - 1], group[k]);
             // The paragraph's floating drawings, placed from it in the frame as in the text (docx/external/libreoffice/
             // extras-ooxmlexport/tdf90789: a page-relative VML rectangle in a framed paragraph).
@@ -769,7 +795,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // and 104.45 pt framed from their top to their bottom; extras-layout/tdf124423: two empty paragraphs and their
         // 8 pt after each framed 48.4 pt high; frame-wrap-auto).
         var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
-        frameBorders?.Draw(page, x, frameWidth, first.Format, top + spaceTop, top + Math.Max(given, height), top: true, bottom: true, between: null);
+        boxBottoms[^1] = top + Math.Max(given, height);
+        for (var i = 0; i < boxes.Count; i++)
+            boxes[i].Box?.Draw(page, x, frameWidth, group[boxes[i].From].Format, boxTops[i], boxBottoms[i], top: true, bottom: true, between: null);
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
