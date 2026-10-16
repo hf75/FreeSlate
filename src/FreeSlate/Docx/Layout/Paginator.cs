@@ -248,7 +248,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var forced = new HashSet<Block>(ReferenceEqualityComparer.Instance);
             for (var run = 0; run < 5; run++)
             {
-                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands, forcedBreaks = forced };
+                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands, forcedBreaks = forced, EndnoteContinuation = EndnoteContinuation };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
@@ -910,6 +910,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The floating objects of each page from the run before, which this run's lines go around.</summary>
     Dictionary<int, List<Exclusion>> seeded = [];
 
+    /// <summary>The endnotes' continuation separator (w:endnote type continuationSeparator).</summary>
+    public List<Block>? EndnoteContinuation { get; init; }
+
+    /// <summary>The separator that heads each page the endnotes go on to while they are laid out.</summary>
+    List<Block>? continuedEndnotes;
+
     /// <summary>The height the footnotes of each page with columns took in the run before.</summary>
     Dictionary<int, double> seededBands = [];
 
@@ -1233,11 +1239,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 {
                     // The separator's paragraphs keep off the line grid (see Note).
                     layout.LinePitch = i < (endnoteSeparator?.Count ?? 0) ? null : pitch;
+                    continuedEndnotes = i < (endnoteSeparator?.Count ?? 0) ? null : EndnoteContinuation;
                     if (trailing[i] is TableBlock)
                         PlaceTable(trailing, i);
                     else
                         Place(trailing, i);
                 }
+                continuedEndnotes = null;
                 layout.LinePitch = pitch;
             }
             if (emptyEnd)
@@ -1512,6 +1520,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         flow.Clear();
         if (!blank)
             ContinueNotes();
+        // Endnotes that go on to a page have their continuation separator at its top (found by agent BE in Word's PDFs
+        // of docx/external/libreoffice/core-layout/endnote-cont-separator and inline-endnote-section-delete: a rule
+        // from the left indent to the right margin above the first line of each such page, a line of the separator's
+        // mark high).
+        if (!blank && continuedEndnotes is { Count: > 0 } continuation)
+        {
+            var pitch = layout.LinePitch;
+            layout.LinePitch = null;
+            var (lines, fills, strokes, height) = tables.Blocks(continuation, page.TextWidth, null);
+            layout.LinePitch = pitch;
+            foreach (var line in lines)
+                page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = y + line.Top });
+            foreach (var fill in fills)
+                page.Borders.Add(fill with { X = page.TextLeft + fill.X, Y = y + fill.Y });
+            page.Strokes.AddRange(strokes.Select(s => s.Offset(page.TextLeft, y)));
+            y += height;
+        }
         if (properties.Columns > 1 && seededBands.TryGetValue(page.Number, out var band))
             notesHeight = Math.Max(notesHeight, band);
     }

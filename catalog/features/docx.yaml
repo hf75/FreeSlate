@@ -1862,7 +1862,9 @@ areas:
           Endnotes follow the document's last paragraph under their separator, in the order of their references, or,
           where the settings put them at the end of sections (w:endnotePr/w:pos sectEnd), follow the text of each
           section's last paragraph, an empty section-break paragraph taking no line before them, unless the section
-          has w:noEndnote (then the next section takes them). Their marks follow the format and start of the section
+          has w:noEndnote (then the next section takes them). Each page they go on to begins with their continuation
+          separator, a rule from the left indent to the right margin on a line of its mark's height
+          (core-layout/endnote-cont-separator 83.4 → 97.8 %, inline-endnote-section-delete 84.1 → 98.9 %). Their marks follow the format and start of the section
           of the reference, lower roman by default, counting on through the sections (docx/generated/notes,
           docx/local/fnpages-c, -e). Page and column breaks in notes break only their line
           (docx/external/libreoffice/extras-ooxmlimport/tdf129659: an endnote's address on its next line, 33.3 → 86.3
