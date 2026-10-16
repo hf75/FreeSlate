@@ -9388,7 +9388,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "Text fields show their result, check boxes a box in their size (checked or not), drop-downs the selected entry.",
-      "office": "Text inputs show their result, drop-downs their chosen entry (w:result, else w:default). A check box is a character of the run's font at its size (w:size, else the font size): its advance the font's line height, a square 2.28 pt smaller, 1.08 pt in from its left and above its bottom, in 0.48 pt lines, crossed when checked (docx/local/form-boxes: Arial 8 to 36 pt, fixed sizes; docx/generated/form-fields 94.1 %).",
+      "office": "Text inputs show their result, drop-downs their chosen entry (w:result, else w:default); text inputs of the current date or time (w:type currentDate, currentTime) show it as Word prints in their w:format, not their saved result nor a date field nested in their instruction, and a field nested in another's instruction shows nothing of its own (Word's PDF of docx/external/libreoffice/extras-ww8export/ tdf79435_legacyInputFields: \"10/12/2026 11:42:42 AM\" for currentDate in M/d/yyyy h:mm:ss am/pm, \"12-Oct-26\" for currentTime in d-MMM-yy, 88.4 → 100 %; extras-ooxmlexport/tdf125038_conditionalText3 94.3 → 100 %, tdf81345: no page number of an IF's instruction in the footer). A check box is a character of the run's font at its size (w:size, else the font size): its advance the font's line height, a square 2.28 pt smaller, 1.08 pt in from its left and above its bottom, in 0.48 pt lines, crossed when checked (docx/local/form-boxes: Arial 8 to 36 pt, fixed sizes; docx/generated/form-fields 94.1 %).",
       "elements": [
         "w:calcOnExit",
         "w:checkBox",

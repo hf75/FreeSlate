@@ -1259,6 +1259,12 @@ public sealed partial class ModelReader(DocumentContext context)
             /// <summary>Whether the field is locked (w:fldLock): Word keeps its saved result.</summary>
             public bool Locked;
 
+            /// <summary>
+            /// The instruction of the date or time a legacy text form field shows instead of its saved result (w:textInput
+            /// of w:type currentDate or currentTime, in its w:format), or null.
+            /// </summary>
+            public string? CurrentDate;
+
             /// <summary>Whether the field prints no result (SET, ASK), once its instruction is read.</summary>
             public bool Silent => silent ??= Instruction.ToString().TrimStart().Split(' ', 2)[0].ToUpperInvariant() is "SET" or "ASK";
             bool? silent;
@@ -1716,13 +1722,20 @@ public sealed partial class ModelReader(DocumentContext context)
                             }
                             // A locked field keeps its saved result (docx/external/libreoffice/extras-ooxmlexport/
                             // tdf148380_fldLocked: a SAVEDATE and a PRINTDATE as saved).
-                            field.Frames.Push(new FieldState.Frame(format) { Locked = e.Attr("fldLock") is "1" or "true" or "on" });
+                            // A text form field of the current date or time shows it as Word prints, in its format, not
+                            // its saved result nor a date field nested in its instruction (Word's PDF of docx/external/
+                            // libreoffice/extras-ww8export/tdf79435_legacyInputFields: "10/12/2026 11:42:42 AM" for
+                            // currentDate in M/d/yyyy h:mm:ss am/pm, "12-Oct-26" for currentTime in d-MMM-yy).
+                            var current = e.Child("ffData")?.Child("textInput") is { } input && input.Child("type").Val() is "currentDate" or "currentTime"
+                                ? input.Child("format").Val() is { Length: > 0 } picture ? $"TIME \\@ \"{picture}\"" : input.Child("type").Val() == "currentDate" ? "DATE" : "TIME"
+                                : null;
+                            field.Frames.Push(new FieldState.Frame(format) { Locked = e.Attr("fldLock") is "1" or "true" or "on", CurrentDate = current });
                             break;
                         case "separate" when field.Frames.Count > 0:
                             var frame = field.Frames.Peek();
                             frame.InResult = true;
                             frame.SeparateFormat = format;
-                            if (!frame.Locked && FieldInline.IsPageField(frame.Instruction.ToString()))
+                            if (!frame.Locked && (FieldInline.IsPageField(frame.Instruction.ToString()) || frame.CurrentDate != null))
                                 frame.Cached = [];
                             break;
                         case "end" when field.Frames.Count > 0:
@@ -1762,8 +1775,9 @@ public sealed partial class ModelReader(DocumentContext context)
                             }
                             if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
-                            if (ended.Cached != null)
-                                field.Target(content).Add(new FieldInline(instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat });
+                            // A field nested in another's instruction shows nothing of its own.
+                            if (ended.Cached != null && !field.Hidden)
+                                field.Target(content).Add(new FieldInline(ended.CurrentDate ?? instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat });
                             break;
                     }
                     break;
