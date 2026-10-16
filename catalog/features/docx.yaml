@@ -2119,7 +2119,12 @@ areas:
           are dashed strokes, drawn dash by dash as strokes of their own (the browser's PDF would fill each dash as a
           shape, lighter than Word's stroked dashes; extras-ooxmlexport/tableborder-finedash 69.3 → 81.1 %, tdf61000
           91.7 → 97.7 %); diagonal lines; with cell spacing every cell has its own frame, the cells twice the
-          spacing apart, its content aligned vertically as without spacing, a cell merged down framing its rows and
+          spacing apart, the text after the cell's line and margin, after half the line without a gap (spacing 0);
+          before Word 2013 the first cell's text stands at the table's indent, without one the frame's line centred on
+          the column's edge, an indent of another type than twips taking the style's away (docx/local/tsl-12, -14,
+          -15: spacing 0 and 40 twips, tblInd none, 0 and 720; hk-*s; core-layout/floattable-del-empty 83.6 → 91.1 %,
+          extras-htmlexport/fdo62336 91.7 → 99.9 %, extras-ooxmlexport/tdf106724 92.9 → 100 %, tdf140137: tblInd of
+          type auto), its content aligned vertically as without spacing, a cell merged down framing its rows and
           the gaps between them and counting in the last of them (docx/external/poi/bug57031: a SAS table's two-line
           heading over two header rows of one line), and an autofit table its text fills as wide as the page with all
           frames (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459), a cell's border set to nil or none

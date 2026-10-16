@@ -1161,10 +1161,19 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var gridHoldsGaps = format.Layout == "fixed";
         double CellX(int k) => left0 + x[k] + (gridHoldsGaps ? 0 : k * gap);
         var tableWidth = CellX(columns) - gap + gap + Width(outer.Right) / 2;
+        // Before Word 2013 the first cell's text stands at the indent, the table's frame, gap, the cell's line (half of
+        // it without a gap) and its margin left of it, as at tables without spacing; without an indent the frame's line
+        // is centred on the column's edge (measured with docx/local/tsl-12, tsl-14: tblInd 720 and 0 with spacing 0 and
+        // 40 twips and margins of 5.4 pt put the text at them, without an indent the frame's line about the margin;
+        // tsl-15 at them; docx/local/hk-*s; docx/external/libreoffice/core-layout/floattable-del-empty).
+        var firstCell = rows.Count > 0 && rows[0].Cells.Count > 0 ? rows[0].Cells[0] : null;
+        var legacyInset = firstCell == null ? 0
+            : Width(outer.Left) + gap + Width(firstCell.CellBorders.Left ?? format.Borders.Left) / 2 + Margins(rows[0], firstCell, format).Left;
         var origin0 = format.Justification switch
         {
             "center" => (available - tableWidth) / 2,
             "right" or "end" => available - tableWidth,
+            _ when Legacy => format.Indent is { } legacyIndent ? legacyIndent - legacyInset : -Width(outer.Left) / 2,
             _ => format.Indent ?? 0,
         };
         var frameTop = Width(outer.Top) + gap;
@@ -1197,8 +1206,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     Right = cell.CellBorders.Right ?? (c1 == columns ? format.Borders.Right : format.Borders.InsideV) ?? format.Borders.InsideV,
                 };
                 var margins = Margins(row, cell, format);
-                var textLeft = left + Width(borders.Left) + margins.Left;
-                var textRight = right - Width(borders.Right) - margins.Right;
+                // Without a gap between them the cells' text stands half their side lines in, as in tables without spacing
+                // (measured with docx/local/tsl-12, -14, -15: spacing 0 puts the text 0.24 pt further left than 2 pt do).
+                var lineShare = gap > 0 ? 1 : 0.5;
+                var textLeft = left + Width(borders.Left) * lineShare + margins.Left;
+                var textRight = right - Width(borders.Right) * lineShare - margins.Right;
                 var outerInside = cellInside;
                 cellInside = (-margins.Left, textRight - textLeft + margins.Right);
                 var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left,

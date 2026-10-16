@@ -354,8 +354,11 @@ public sealed class TableFormat
         Style = tblPr.Child("tblStyle").Val() ?? Style;
         Width = TableWidth.Read(tblPr.Child("tblW")) ?? Width;
         Justification = tblPr.Child("jc").Val() ?? Justification;
-        if (TableWidth.Read(tblPr.Child("tblInd")) is { Type: "dxa" } indent)
-            Indent = indent.Value;
+        // An indent of another type than twips takes the table's indent away, its style's too (docx/external/libreoffice/
+        // extras-ooxmlexport/tdf140137: w:type auto over Normal Table's 0, the first cell's text not at the margin
+        // before Word 2013).
+        if (TableWidth.Read(tblPr.Child("tblInd")) is { } indent)
+            Indent = indent.Type == "dxa" ? indent.Value : null;
         if (TableWidth.Read(tblPr.Child("tblCellSpacing")) is { Type: "dxa" } spacing)
             CellSpacing = spacing.Value;
         Margins = Margins.Overlay(CellMargins.Read(tblPr.Child("tblCellMar")));
