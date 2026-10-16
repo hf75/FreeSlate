@@ -920,6 +920,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide };
     }
 
+    /// <summary>The height of a placed drawing with its effect extents above and below it.</summary>
+    static double ExtentHeight(PlacedDrawing drawing)
+    {
+        var effect = drawing.Drawing.Element(Docx.Drawings.Wp + "effectExtent");
+        double Emu(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
+        return drawing.Height + Emu("t") + Emu("b");
+    }
+
     /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
     static (double Min, double Max)? Span((double X, double Y)[] polygon, double top, double bottom)
     {
@@ -3190,10 +3198,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Lines beside floating objects of the page are laid out again in the room the objects leave; the paragraph's
         // own objects, placed after its lines, count where they will stand (not where the run before put them).
         var exclusions = PageExclusions();
+        // From Word 2013 on an object of the paragraph taller than the page's body, its effect extents with it, leaves
+        // the paragraph's first line where it would stand without it and takes the lines after it below it, whatever its
+        // wrapping (measured with docx/local/tlw-15: rectangles of 201 pt, and of 190 pt with a bottom effect extent of
+        // 12 pt, on a body of 200 pt, wrapped square or top and bottom: the first line over them, the second on the next
+        // page; 199 pt, and 190 pt 12 pt apart from the text, wrap; tlw-14, tlw-12 wrap; bhy-*: docx/external/
+        // libreoffice/extras-ooxmlexport/tdf160049_anchorMargin15, a picture of 117.75 pt and 2.25 pt of effect extents
+        // on a body of 118 pt, wrapped through on its left).
+        var tall = new List<Exclusion>();
         foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
         {
-            if (ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { } own)
+            var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
+            if (ExclusionOf(placed) is { } own)
             {
+                if (context.CompatibilityMode >= 15 && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
+                {
+                    own = own with { TopAndBottom = true };
+                    tall.Add(own);
+                }
                 exclusions.RemoveAll(e => e.Source != null && ReferenceEquals(e.Source, own.Source));
                 exclusions.Add(own);
             }
@@ -3214,7 +3236,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 layout.PushedSpace = ownBefore + opening;
                 try
                 {
-                    lines = layout.Layout(paragraph, width, room: slot => Room(exclusions, linesTop, slot, columnLeft, columnWidth));
+                    double? firstOffset = null;
+                    var untall = tall.Count > 0 ? exclusions.Where(e => !tall.Contains(e)).ToList() : exclusions;
+                    lines = layout.Layout(paragraph, width, room: slot =>
+                    {
+                        firstOffset ??= slot.Offset;
+                        return Room(slot.Offset <= firstOffset.Value + 0.01 ? untall : exclusions, linesTop, slot, columnLeft, columnWidth);
+                    });
                     laidAround = true;
                 }
                 finally
