@@ -260,7 +260,20 @@ public sealed class RunStyles(DocumentContext context)
         var revision = format.Revision;
         if (revision != null)
             color = revision.Kind is "moveFrom" or "moveTo" ? Review.Moved : Review.Color(revision.Author);
-        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, font.Data.Table("kern") != null), bold, italic)
+        // Kerning comes from the font's kern table without OpenType features (before Word 2013, in Word 2010's mode
+        // without w:compatSetting enableOpenTypeFeatures), and with them for a font standing in for a family the machine
+        // lacks and for one without GPOS kerning of Latin text where the run asks for no OpenType feature; else from
+        // GPOS (measured with docx/local/ksg-*, ksg2-*, ksg3-*: Segoe UI, whose kern table and GPOS differ in 223 Latin
+        // pairs, Aptos in 320, by their kern tables in modes 12 and 14, by GPOS in mode 15; Segoe UI for "Open Sans;
+        // Arial;sans-serif" by its kern table in mode 15 too; Tahoma, without GPOS kerning of Latin text, by its kern
+        // table in all modes, unkerned with w14:ligatures in mode 15; docx/local/compat14-*: Aptos by GPOS with
+        // enableOpenTypeFeatures; Apache Tika's testWORD_features 89.0 -> 98.7 %, found by agent BH).
+        var openType = context.CompatibilityMode >= 15 || context.CompatibilityMode == 14 && context.CompatSetting("enableOpenTypeFeatures") is "1" or "true" or "on";
+        var features = format.Ligatures is { } ligatures && ligatures != "none" || format.ContextualAlternates == true
+            || format.NumberForm is not (null or "default") || format.NumberSpacing is not (null or "default") || format.StylisticSets is { Length: > 0 };
+        var kernTable = format.Kern is { } kern && kern > 0 && size >= kern && font.Data.HasKernTable
+            && (!openType || context.Fonts.TryResolveFamily(family, bold, italic)?.Data != font.Data || !font.Data.HasGposKerning && !features);
+        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, kernTable || !font.Data.HasGposKerning), bold, italic)
         {
             AutoColor = revision == null && Automatic(format),
             Revision = revision,
@@ -298,7 +311,7 @@ public sealed class RunStyles(DocumentContext context)
             RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
             Override = format.Override,
             Emphasis = format.Emphasis is { } em && em != "none" ? em : null,
-            LegacyKerning = context.CompatibilityMode < 14 && format.Kern is { } kern && kern > 0 && size >= kern,
+            LegacyKerning = kernTable,
             KernFrom = format.Kern is { } kernFrom && kernFrom > 0 ? kernFrom : null,
             Language = slot switch
             {

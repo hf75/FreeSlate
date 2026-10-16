@@ -173,6 +173,47 @@ public sealed class FontData : IDisposable
     /// <summary>The glyph for a character, or 0 when the font has none.</summary>
     public uint GlyphFor(int codepoint) => font.TryGetGlyph((uint)codepoint, out var glyph) ? glyph : 0;
 
+    /// <summary>Whether the font has a 'kern' table.</summary>
+    public bool HasKernTable => kerningPairs != null;
+
+    /// <summary>
+    /// Whether the font's GPOS table kerns Latin text: a 'kern' feature with lookups in the default language system of
+    /// the Latin script, else of the default script (Tahoma kerns only Arabic by GPOS).
+    /// </summary>
+    public bool HasGposKerning => hasGposKerning ??= GposKerningFeature(Table("GPOS"));
+
+    bool? hasGposKerning;
+
+    static bool GposKerningFeature(byte[]? gpos)
+    {
+        if (gpos == null || gpos.Length < 10)
+            return false;
+        int U16(int at) => at >= 0 && at + 2 <= gpos.Length ? BinaryPrimitives.ReadUInt16BigEndian(gpos.AsSpan(at)) : 0;
+        bool Tag(int at, string tag) => at >= 0 && at + 4 <= gpos.Length && gpos[at] == tag[0] && gpos[at + 1] == tag[1] && gpos[at + 2] == tag[2] && gpos[at + 3] == tag[3];
+        var (scripts, features) = (U16(4), U16(6));
+        var script = 0;
+        foreach (var wanted in (string[])["latn", "DFLT"])
+        {
+            for (var i = 0; i < U16(scripts) && script == 0; i++)
+            {
+                if (Tag(scripts + 2 + 6 * i, wanted))
+                    script = scripts + U16(scripts + 2 + 6 * i + 4);
+            }
+            if (script != 0)
+                break;
+        }
+        if (script == 0 || U16(script) == 0)
+            return false;
+        var langSys = script + U16(script);
+        for (var k = 0; k < U16(langSys + 4); k++)
+        {
+            var record = features + 2 + 6 * U16(langSys + 6 + 2 * k);
+            if (Tag(record, "kern") && U16(features + U16(record + 4) + 2) > 0)
+                return true;
+        }
+        return false;
+    }
+
     /// <summary>A glyph's advance in font units.</summary>
     public int GlyphAdvance(uint glyph) => font.GetHorizontalGlyphAdvance(glyph);
 

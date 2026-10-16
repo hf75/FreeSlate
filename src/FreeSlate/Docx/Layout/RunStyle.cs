@@ -202,13 +202,14 @@ public static class WordFonts
     /// <param name="legacy">
     /// A document in a compatibility mode before Word 2010 (14): no OpenType features (ligatures, alternates, number
     /// forms, stylistic sets), kerning only from the font's kern table (w:useAnsiKerningPairs; measured with Word-saved
-    /// compatibility copies: Aptos, which has none, sets wider and breaks lines later).
+    /// compatibility copies; docx/local/compat12-*: Aptos by its kern table).
     /// </param>
-    public static List<string> Features(RunFormat format, double size, bool legacy = false, bool kernTable = true)
+    /// <param name="kernTable">Whether the run kerns by the font's kern table, which the layout applies itself.</param>
+    public static List<string> Features(RunFormat format, double size, bool legacy = false, bool kernTable = false)
     {
         var features = new List<string>();
-        // Kerning before Word 2010 comes from the kern table, which the layout applies itself.
-        var kern = format.Kern is { } threshold && threshold > 0 && size >= threshold && !legacy;
+        // Kerning by the kern table (see RunStyles.Style), and before Word 2010 always, the layout applies itself.
+        var kern = format.Kern is { } threshold && threshold > 0 && size >= threshold && !legacy && !kernTable;
         features.Add(kern ? "kern" : "-kern");
         if (legacy)
         {

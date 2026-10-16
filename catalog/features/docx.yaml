@@ -292,7 +292,7 @@ areas:
           before mode 15 tables put the first cell's text at the indent, or center their left line on the margin where
           no indent is given at all (measured with docx/local/c2-tblpos in modes 11 to 15), and widen percentage
           widths by the outer cells' margins (table.width); before 14 there are no OpenType features and kerning comes
-          from the kern table, every pair of it (docx/local/legkern-*: Times New Roman, Calibri and Arial pairs of
+          (in mode 14 too without w:compatSetting enableOpenTypeFeatures: run.openType) from the kern table, every pair of it (docx/local/legkern-*: Times New Roman, Calibri and Arial pairs of
           Latin, Cyrillic, Greek, quotation marks and superscripts, in modes 11 and 12 as w:useAnsiKerningPairs alike;
           run.openType); before 15 the hyphenation zone counts (paragraph.hyphenation). Each layout option was
           measured alone in Word in modes 15 and 12 (docx/local/compat15-* and compat12-*: 65 options on a document of
@@ -605,7 +605,14 @@ areas:
           w:hint attribute, then is measured and broken into lines by our text engine (engine.lineLayout).
         office: >-
           Widths are the fonts' advances shaped by HarfBuzz at the nominal size (not rounded to the 600 dpi device);
-          GPOS kerning only where w:kern is set and the size reaches its threshold, across runs of the same font,
+          GPOS kerning only where w:kern is set and the size reaches its threshold, the font's kern table instead
+          without OpenType features (before Word 2013, and in mode 14 without w:compatSetting enableOpenTypeFeatures)
+          and, with them, for a font standing in for a missing family and for one whose GPOS does not kern Latin text
+          where the run asks for no OpenType feature (docx/local/ksg-*, ksg2-*, ksg3-*: Segoe UI and Aptos, whose kern
+          tables and GPOS differ in 223 and 320 Latin pairs, by their kern tables in modes 12 and 14, by GPOS in mode
+          15; Segoe UI for "Open Sans;Arial;sans-serif" by its kern table in mode 15 too; Tahoma by its kern table in
+          all modes, unkerned with w14:ligatures in mode 15; compat14-*: Aptos by GPOS with enableOpenTypeFeatures;
+          tika/testWORD_features 89.0 → 98.7 %), across runs of the same font,
           size, features and spacing whatever their colors, decorations or revision ids (docx/local/kr-15, kr-12:
           Times New Roman and Aptos pairs kerned across runs of one letter each, of other w:rsidR, red and black; not
           across 12 and 9 pt or regular and bold; LibreOffice's extras-ooxmlimport/tdf124670 80.0 → 100 %; known
@@ -1633,7 +1640,8 @@ areas:
           the right line ending at 575.52 pt of an A4 page; extras-ooxmlexport/fdo64350: shadows ending 23.88 pt from
           the right and bottom edges). Dashed and dotted lines are stroked dash by dash, as Word's PDF strokes them
           with a dash pattern, which the rasterizer widens to a pixel, each dash a path of its own (as subpaths of one path
-          they lose the ink at their ends; fdo64350, page-borders-export-case-2 63.7 → 86.3 → 100 %). Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
+          they lose the ink at their ends; fdo64350, page-borders-export-case-2 63.7 → 86.3 → 100 %). Lines and gaps are
+          floored to Word's 0.12 pt device dots; double, triple and
           thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the
           corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades;
           shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c:
