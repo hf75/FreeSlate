@@ -1719,9 +1719,12 @@ areas:
           of half the plot's smaller side less 0.163 of the labels' size across (Word's PDFs of LibreOffice's
           extras-layout/tdf137116: 53.71 pt of 63.0 at 10 pt, outside_long_data_label 59.0 of 69.0, tdf134866 99.25
           of 115; local/pielabels slide 4: 142.5 of 163.5; tdf137116 79.2 → 94.3 %, outside_long_data_label 81.9 →
-          99.6 %, pielabels 98.9 → 99.2 %). A plot area placed by hand around the pie (layoutTarget inner) holds
-          the pie with its series' explosion; single exploded slices reach beyond it (tdf146756_bestFit,
-          tdf146487).
+          99.6 %, pielabels 98.9 → 99.2 %). Word keeps that room wherever a series has data labels at all, even
+          ones that show nothing (c:dLbls of every show* 0; scratch/WordProbes/probe_pielabels.py on LibreOffice's
+          extras-ooxmlexport/tdf123873: 64.7 pt in radius with the flags alone or with text properties, a separator
+          or point entries, as with values shown, 75.5 pt without c:dLbls; tdf123873 84.4 → 97.0 %). A plot area
+          placed by hand around the pie (layoutTarget inner) holds the pie with its series' explosion; single
+          exploded slices reach beyond it (tdf146756_bestFit, tdf146487).
 
       - id: chart.area
         title: Area charts
@@ -1941,7 +1944,9 @@ areas:
           (measured through COM, local/legend-manualsize; LibreOffice's tdf122765 shows 7 of 9). Keys draw markers at
           most half the font size and lines and marker edges at most 0.375 times it wide (local/legacy-legend* decks).
           A dashed line key makes every key longer: the line from 3.05 to 29.31 pt, the text at 31.5 pt
-          (local/legacy-longkey).
+          (local/legacy-longkey). In Word a title without c:overlay overlays the plot as with val 1 (scratch/
+          WordProbes/probe_charttitle.py on LibreOffice's extras-ooxmlexport/fdo78474: the pie centred in the whole
+          chart, below the title with val 0; fdo78474 82.2 → 99.6 %, fdo76098 88.9 → 99.8 %).
 
       - id: chart.dataTable
         title: Data tables
@@ -2005,7 +2010,9 @@ areas:
           grid lines are line style 1 in tx1 tinted 75 %; the chart area is unfilled up to level 3 (measured on a
           yellow slide), level 4 fills it white with a frame and tints the plot area 20 %, level 5 has a black
           chart area, a 95 % tx1 plot area and white text (white titles where their paragraphs have a:pPr). Text is 10 pt; titles are bold, 1.2 times the chart's text size (18 pt without
-          one), title paragraphs without a:pPr 18 pt regular whatever the size. The full look needs c14:style (Office
+          one), title paragraphs without a:pPr 18 pt regular whatever the size; in Word title paragraphs whose a:pPr
+          has a:defRPr without a size take 10 pt (probe_charttitle.py: fdo78474's "Sales" 9.96 pt bold, 18 pt
+          without the a:pPr; fdo76098 alike). The full look needs c14:style (Office
           2010) or AppVersion 12 (Office 2007); otherwise (Office 2013 and later, other programs) PowerPoint
           draws axis and grid lines black, level 4 plot areas in the full accent and dark gray edges black
           (local/legacy-* decks).

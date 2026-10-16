@@ -531,8 +531,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return null;
 
         var txPr = element?.Element(Ns.C + "txPr");
+        // In Word a title whose paragraphs carry text properties of their own without a size (a:pPr/a:defRPr) takes the
+        // chart's 10 pt, not a title's 18 pt (measured with scratch/WordProbes/probe_charttitle.py: LibreOffice's
+        // extras-ooxmlexport/fdo78474 "Sales" in Calibri Bold 9.96 pt, 18 pt without the a:pPr; fdo76098 alike).
+        var unsized = legacy != null && slide.Presentation.Word && DefRPr(txPr)?.Attribute("sz") == null
+                      && element?.Element(Ns.C + "tx")?.Element(Ns.C + "rich")?.Elements(Ns.A + "p").ToList() is { Count: > 0 } paragraphs
+                      && paragraphs.All(p => p.Element(Ns.A + "pPr")?.Element(Ns.A + "defRPr") is { } own && own.Attribute("sz") == null);
         var layers = Layers(DefRPr(txPr), "title", legacy != null
-            ? LegacyText("title", 18)
+            ? LegacyText("title", unsized ? 10 : 18)
             : new XElement(Ns.A + "defRPr", new XAttribute("sz", "1400"), new XAttribute("b", "1")));
         if (legacy != null && element == null && chartStyle != null)
         {
@@ -583,7 +589,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             Text = block,
             Box = manual ?? box,
-            Overlay = ChartModel.Flag(element, "overlay", false) || manual != null && !word,
+            // Word lays a title without c:overlay over the plot, as with val 1 (measured with scratch/WordProbes/
+            // probe_charttitle.py: fdo78474's pie centred in the whole chart, below the title with c:overlay val 0).
+            Overlay = ChartModel.Flag(element, "overlay", slide.Presentation.Word && element != null) || manual != null && !word,
             SpPr = element?.Element(Ns.C + "spPr"),
             Room = word ? box : null,
         };
@@ -3963,7 +3971,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // PDFs: LibreOffice's extras-layout/tdf137116 53.71 pt of 63.0 at 10 pt, outside_long_data_label 59.0 of 69.0,
         // tdf134866 99.25 of 115; PowerPoint's local/pielabels slide 4 142.5 of 163.5, measured 142.1).
         var half = Math.Min(plot.W, plot.H) / 2;
-        var available = labelled != null && PlotLayout() == null ? PieLabelShare * half - PieLabelMargin * labelled.Style.Size : half;
+        var labelSize = labelled?.Style.Size;
+        // Word keeps the margin where a series has data labels at all, even labels that show nothing (measured with
+        // docx/local probes of LibreOffice's extras-ooxmlexport/tdf123873, scratch/WordProbes/probe_pielabels.py: its pie
+        // 64.7 pt in radius with series c:dLbls of every show* 0, the flags alone or with text properties, a separator
+        // or point entries, as with values shown, 75.5 pt without c:dLbls; probe_charttitle.py ct-nodl: fdo78474's
+        // pie 32.6 pt with its c:dLbls of flags, 38.85 pt without).
+        if (labelSize == null && slide.Presentation.Word)
+            labelSize = rings.Select(r => r.Element.Element(Ns.C + "dLbls"))
+                .FirstOrDefault(l => l != null && !ChartModel.Flag(l, "delete", false)
+                                     && (doughnut || (ChartModel.Val(l, "dLblPos") ?? "bestFit") is "bestFit" or "outEnd")) is { } silent
+                ? Style(silent.Element(Ns.C + "txPr"), "dataLabel").Size : null;
+        var available = labelSize is { } size && PlotLayout() == null ? PieLabelShare * half - PieLabelMargin * size : half;
         // A plot area placed by hand around the pie itself (layoutTarget inner) holds the pie with its series' explosion,
         // single exploded slices reach beyond it (measured: LibreOffice's tdf146756_bestFit, one slice exploded by 17 %,
         // and tdf146487, all by 8 %).
