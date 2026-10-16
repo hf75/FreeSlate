@@ -411,8 +411,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // and 12, extras-ooxmlexport/fdo68607: the text at the margin, the table 5.4 pt left of it), and the
             // table's own indent further right, which Word 2013 and later ignore (docx/local/fti-12-*, fti-14-*: tblInd
             // 108 and 720 move it 5.4 and 36 pt, from the margin, the page and the text alike, none or 0 not at all;
-            // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038).
-            _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset : 0),
+            // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038); a table in a frame keeps it from then on too
+            // (docx/local/frsb-15: tblInd 360 puts the left line 18 pt right of the margin; frsb-12 the first cell's text;
+            // extras-ooxmlexport/tdf164474).
+            _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset
+                : ((TableBlock)blocks[index]).Table.Format is { Framed: true, Indent: { } framedIndent } ? framedIndent : 0),
         };
         // From the page, Word puts the table on its device's dot left of the position (PowerTools' DB-HeadersFooters-Src/
         // Letterhead: tblpX 1135 twips, 472.92 dots, at 472, its cells' text a dot left of where rounding put it;
@@ -919,6 +922,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
             wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide };
     }
+
+    /// <summary>Whether blocks of the text's flow stand before the one at <paramref name="index"/>: all but frames, also
+    /// tables in frames (floating tables of w:tblpPr count: docx/external/libreoffice/core-layout/
+    /// floattable-next-leaf-in-section, the empty paragraph after one anchored to the text, ending the section, takes
+    /// no line).</summary>
+    static bool FlowBefore(List<Block> blocks, int index) =>
+        blocks.Take(index).Any(b => b is ParagraphBlock { Format.Frame: null } || b is TableBlock { Table.Format.Framed: false });
 
     /// <summary>The height of a placed drawing with its effect extents above and below it.</summary>
     static double ExtentHeight(PlacedDrawing drawing)
@@ -2982,7 +2992,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // first paragraph its space after still shortens) or with text it is a line as any other
         // (docx/external/libreoffice/extras-ooxmlexport/tdf64372_continuousBreaks, tdf170003_bottomSpacing), except at
         // the top of a page a page break began, which the section after it takes (docx/local/pbs-1).
-        if (paragraph is { EndsSection: not null, Format.Frame: null } && (index > 0 && nextContinuous || breakPage && !nextContinuous && page!.Lines.Count == 0)
+        // Text before it means text of the flow: a table in a frame alone before it leaves it a line, and an empty one in
+        // a frame takes none (measured with docx/local/frsb-12, -14, -15: after a table in a frame an empty paragraph
+        // ending the section takes a line, framed as the table's paragraphs none; docx/external/libreoffice/
+        // extras-ooxmlexport/tdf164474).
+        if (paragraph is { EndsSection: not null } && (paragraph.Format.Frame == null || index > 0)
+            && (FlowBefore(blocks, index) && nextContinuous || paragraph.Format.Frame != null || breakPage && !nextContinuous && page!.Lines.Count == 0)
             && paragraph.Label is not { Own.Length: > 0 } && paragraph.Content.All(c => c is BookmarkInline or BookmarkEndInline or PermissionInline))
         {
             foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())

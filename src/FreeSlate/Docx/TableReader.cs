@@ -193,7 +193,7 @@ public sealed partial class ModelReader
         if (model.Format.Floating == null && tableParagraph == null
             && model.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.Frame: { } frame }
             && frame.Attr("yAlign") != "inline")
-            model.Format.Floating = Floating(frame);
+            (model.Format.Floating, model.Format.Framed) = (Floating(frame), true);
         return new TableBlock(tbl, model);
     }
 

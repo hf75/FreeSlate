@@ -340,6 +340,9 @@ public sealed class TableFormat
     public bool BidiVisual;
     public XElement? Floating;
 
+    /// <summary>Whether the table stands in a frame of its cells' paragraphs (w:framePr), floating as the frame would.</summary>
+    public bool Framed;
+
     /// <summary>Whether a floating table may not overlap other floating tables (w:tblOverlap never).</summary>
     public bool NoOverlap;
     public string? Caption, Description;
