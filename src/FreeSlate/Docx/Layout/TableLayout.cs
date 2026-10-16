@@ -2458,6 +2458,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         "center" => (width - box.Width) / 2,
                         _ => Twips("tblpX") - (position.Attr("horzAnchor") == "page" ? edge : 0) - (context.CompatibilityMode < 15 ? box.Inset : 0),
                     };
+                    // It stays inside its cell's lines as drawings do, one wider than the cell at its left line (measured with
+                    // docx/local/fic-14, fic-15: tblpX -426 at the left line, a table of 190 pt at 426 twips ending at the right
+                    // one, of 250 pt at the left; docx/external/libreoffice/core-objectpositioning/floattable-overlap-cell).
+                    if (cellInside is { } inside)
+                        x = Math.Max(inside.Left, Math.Min(x, inside.Right - box.Width));
                     var top = Math.Max(0, ((position.Attr("vertAnchor") ?? "margin") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
                     var tableTop = top;
                     var (linesFrom, fillsFrom, strokesFrom) = (lines.Count, fills.Count, strokes.Count);
