@@ -1625,6 +1625,12 @@ public static class Vml
             if ((string?)stroke?.Attribute(end) is { } arrow && arrow != "none")
                 line.Add(new XElement(Ns.A + name, new XAttribute("type", arrow switch { "block" => "triangle", "classic" => "stealth", "open" => "arrow", var v => v })));
         }
+        // A line with arrowheads is at least 1 pt wide (measured with docx/local/vla-*: lines of no weight, 0.25, 0.75
+        // and 1 pt with block, classic and open heads filled 1 pt wide, 2 pt 2 pt wide, the heads 6 pt long and wide;
+        // without heads 0.75 pt; in modes 11 to 15 and without compatibility settings; docx/external/libreoffice/
+        // extras-ooxmlexport/n751117, found by agent BH).
+        if (weight < 1 && line.Elements().Any(e => e.Name.LocalName is "headEnd" or "tailEnd"))
+            line.SetAttributeValue("w", Emu(1));
         return line;
     }
 

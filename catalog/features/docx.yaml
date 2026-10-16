@@ -4543,7 +4543,10 @@ areas:
           text where it is drawn. Shape types resolve across their part, not only in their w:pict
           (poi/WordWithAttachments: a picture frame type of the first w:object;
           libreoffice/core-objectpositioning/vml-vertical-alignment: triangles); v:stroke on="f" takes the outline off
-          as stroked="f" does (tika/testWPSAttachment). Horizontal rules (o:hr) span o:hrpct of the width of the
+          as stroked="f" does (tika/testWPSAttachment). A line with arrowheads is at least 1 pt wide, its heads 6 pt
+          long and wide up to lines of 2 pt (docx/local/vla-*: lines of no weight, 0.25, 0.75 and 1 pt filled 1 pt
+          wide with block, classic and open heads, of 2 pt 2 pt wide, without heads 0.75 pt; modes 11 to 15 and without
+          compatibility settings alike; extras-ooxmlexport/n751117 88.4 → 100 %). Horizontal rules (o:hr) span o:hrpct of the width of the
           column they stand in (all of it without, whatever width the style gives; the style's width at 0), in cells
           and text boxes too, aligned by o:hralign in their paragraph's text area, each on a line of its own; the line
           is as high as the paragraph mark's with the rule's bottom 2.52 pt above its foot, before Word 2013 where the
