@@ -903,17 +903,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     /// <summary>
     /// Word's sign for a picture it cannot show: on white its broken-picture icon and the message in 1.2 pt Tahoma
-    /// inside four 0.14 pt black lines 0.06 pt in from the edge (docx/external/libreoffice/extras-ooxmlimport/
-    /// linked-picture, extras-ooxmlexport/FileWithInvalidImageLink, tdf115883).
+    /// inside four 0.14 pt black lines centred 0.06 pt in from the edge, which the message's clipping leaves whole
+    /// (docx/external/libreoffice/extras-ooxmlimport/linked-picture, extras-ooxmlexport/FileWithInvalidImageLink,
+    /// tdf115883 77.5 -> 99.8 %, tdf59699, found by agent BM).
     /// </summary>
     static string WordMissingPicture(string message) =>
-        "<div class=\"fs-nolink\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;background:#fff;overflow:hidden;padding:.79pt 3.5pt 0 3.44pt;font:1.2pt/1.45pt Tahoma,'Segoe UI',sans-serif;color:#000;pointer-events:none\">" +
+        "<div class=\"fs-nolink\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:#fff;pointer-events:none\">" +
+        "<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:.79pt 3.5pt 0 3.44pt;font:1.2pt/1.45pt Tahoma,'Segoe UI',sans-serif;color:#000\">" +
+        System.Net.WebUtility.HtmlEncode(message) + "</div>" +
         "<svg style=\"position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible\"><g stroke=\"#000\" stroke-width=\".14pt\">" +
-        "<line x1=\"0\" y1=\".13pt\" x2=\"100%\" y2=\".13pt\"/><line x1=\"0\" y1=\"100%\" x2=\"100%\" y2=\"100%\" transform=\"translate(0 -.17)\"/>" +
-        "<line x1=\".13pt\" y1=\"0\" x2=\".13pt\" y2=\"100%\"/><line x1=\"100%\" y1=\"0\" x2=\"100%\" y2=\"100%\" transform=\"translate(-.17 0)\"/></g>" +
+        "<line x1=\"0\" y1=\".06pt\" x2=\"100%\" y2=\".06pt\"/><line x1=\"0\" y1=\"100%\" x2=\"100%\" y2=\"100%\" transform=\"translate(0 -.08)\"/>" +
+        "<line x1=\".06pt\" y1=\"0\" x2=\".06pt\" y2=\"100%\"/><line x1=\"100%\" y1=\"0\" x2=\"100%\" y2=\"100%\" transform=\"translate(-.08 0)\"/></g>" +
         "<svg x=\".84pt\" y=\".84pt\" width=\"1.68pt\" height=\"1.92pt\" viewBox=\"0 0 4 5\">" +
-        "<rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/><rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg>" +
-        System.Net.WebUtility.HtmlEncode(message) + "</div>";
+        "<rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/><rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg></div>";
 
     string Media(XElement pic, string part)
     {
