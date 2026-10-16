@@ -1632,8 +1632,8 @@ areas:
           right and bottom sides stand a dot further out, as GDI's rectangles end (docx/local/pgb-c: 20 pt at 19.92 pt,
           the right line ending at 575.52 pt of an A4 page; extras-ooxmlexport/fdo64350: shadows ending 23.88 pt from
           the right and bottom edges). Dashed and dotted lines are stroked dash by dash, as Word's PDF strokes them
-          with a dash pattern, which the rasterizer widens to a pixel (fdo64350, page-borders-export-case-2 63.7 →
-          86.3 %). Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
+          with a dash pattern, which the rasterizer widens to a pixel, each dash a path of its own (as subpaths of one path
+          they lose the ink at their ends; fdo64350, page-borders-export-case-2 63.7 → 86.3 → 100 %). Lines and gaps are floored to Word's 0.12 pt device dots; double, triple and
           thin-thick lines with white gaps (thin lines 0.75 pt, gaps 0.75 pt, half the width or the width) nest at the
           corners; dotted and dashed lines run between filled corners; embossed and engraved lines in three shades;
           shadows as black bands of the lines' width (docx/generated/page-borders, docx/local/pgb-a, pgb-b, pgb-c:
