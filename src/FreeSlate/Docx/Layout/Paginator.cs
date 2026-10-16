@@ -55,6 +55,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// splits: its row's at-least height, the whole row where it may not split (RowBox.Split).
     /// </summary>
     public double UnitHeight { get; init; }
+
+    /// <summary>Whether the line is a turned text box's that stands on Word's device (see PageRenderer.TurnedOnDots).</summary>
+    public bool DeviceTurned { get; init; }
 }
 
 /// <summary>A page of the laid-out document.</summary>

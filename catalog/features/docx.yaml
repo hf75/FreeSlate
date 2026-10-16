@@ -4722,9 +4722,18 @@ areas:
           the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before; gxl-*, 24 to 72 pt
           in five fonts: 90 to 100 %, 60 to 75 % before), the text after a tab from the stop's nearest dot, halves
           down (gxt-*: 58 of 60 stops exact, the halves so); so the lines of text boxes that are not turned (40
-          documents of the corpus with text boxes: 83.4 % of the characters within half a dot, 73.1 % before).
-          Known deviation: Word rounds some halves up where the page is wide (1462.5 dots and more) or the margins
-          mirrored (lsm-2418); text in turned text boxes and right to left keeps its exact advances.
+          documents of the corpus with text boxes: 83.4 % of the characters within half a dot, 73.1 % before), and
+          the turned lines of vert and vert270 boxes along the page: from Word 2013 on the box's top on the dot before
+          it and its height in whole dots from there, before the edge the lines start from on a dot (the top on the
+          nearest, the bottom for text up on the one before it) and the room in whole dots on from there, lines down the
+          box stacking from its right edge on the dot before it; the insets in whole dots, aligned lines by their width
+          on the device, baselines on the nearest dot, halves to even, the PDF's growth across and along
+          (docx/local/vtb-*: boxes at 72.00, 72.05 and 72.07 pt, insets of 3.6 and 7.2 pt, every line's start and
+          baseline on Word's dot; vtc-*: a box 385.4 pt high at 72 pt counting text up from 3812 dots in mode 15, from
+          3811 in mode 14; extras-ooxmlimport/btlr-frame-vml 87.3 → 100 %, extras-ooxmlexport/tbrl-frame-vml
+          88.1 → 100 %, tdf103573 88.4 → 99.2 %, layout-flow-alt-alone 90.0 → 100 %, vml-text-vertical-adjust
+          95.2 → 100 %, extras-ooxmlimport/tdf127825 94.3 → 97.9 %). Known deviation: Word rounds some halves up where the page is wide (1462.5 dots and more) or
+          the margins mirrored (lsm-2418); right to left text keeps its exact advances.
 
       - id: engine.pagination
         title: Pagination

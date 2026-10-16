@@ -533,12 +533,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         else
         {
             // Each line turned about its own top left corner, set where its turn puts it.
-            Lines(lines.Select(p => vert switch
+            var turnedLines = lines.Select(p => vert switch
             {
                 "vert270" => p with { Left = x + l + offset + p.Top, Top = y + h - b - p.Left, Angle = -90 },
                 "mongolianVert" or "wordArtVert" => p with { Line = p.Line.Flipped(), Left = x + l + offset + p.Top + p.Line.Height, Top = y + t + p.Left, Angle = 90 },
                 _ => p with { Left = x + w - r - offset - p.Top, Top = y + t + p.Left, Angle = 90 },
-            }), svg, selection, []);
+            });
+            // An unturned box's turned lines stand on Word's device too (see TurnedOnDots).
+            var device = rotation == 0 && vert is "vert" or "vert270" && DevicePlaced;
+            Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.CompatibilityMode < 15)) : turnedLines, svg, selection, [],
+                onPage: device);
         }
         svg.Append(selection);
         if (rotation != 0)
@@ -593,6 +597,88 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return $"<image x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\" preserveAspectRatio=\"none\" href=\"{FreeSlate.Metafiles.Png.DataUri(width, height, rgba)}\"/>";
     }
 
+    /// <summary>
+    /// A turned text box's line (vert, vert270) on Word's device. The box's room stands on whole dots: from Word 2013 on
+    /// its top on the dot before it and its height in whole dots from there; before, the edge a turned line starts from
+    /// on a dot (the top on the nearest, the bottom for text up on the one before it), the room in whole dots on from
+    /// there, and lines down the box stack from its right edge on the dot before it. A line starts at its end of that room,
+    /// the insets in whole dots, or its indent from there, aligned lines as on the page (see OnDots) by their width on
+    /// the device; its baseline stands on the nearest dot from the room's edge, halves to even; its glyphs follow on
+    /// the device and the PDF's growth moves both (measured with docx/local/vtb-cambria, vtb-calibri in mode 15: boxes
+    /// at 72.00, 72.05 and 72.07 pt, 385.40 to 385.43 pt high, insets of 3.6 and 7.2 pt, left, centered and right
+    /// aligned lines in Cambria 18 and Calibri 11, every start and baseline on Word's dot, right aligned Cambria "Right"
+    /// 343 dots wide on the device where its advances make 342; vtc-a14, vtc-f14, vtc-g14 in mode 14: a box 385.4 pt
+    /// high at 72 pt counting text up from 3811 dots, text down from 600, a box 57.09 pt wide from 1075 leftwards;
+    /// docx/external/libreoffice/extras-ooxmlimport/btlr-frame-vml, extras-ooxmlexport/tbrl-frame-vml, tdf103573,
+    /// layout-flow-alt-alone, found by agent BF; extras-ooxmlexport/vml-text-vertical-adjust and extras-ooxmlimport/
+    /// groupshape-sdt: a box's top at 221.67 dots counting text down from 222).
+    /// </summary>
+    static PlacedLine TurnedOnDots(PlacedLine placed, double boxLeft, double boxWidth, double boxTop, double boxHeight, double insetTop,
+        double insetBottom, bool legacy)
+    {
+        if (placed.Line.Pieces.Count == 0)
+            return placed;
+        static double Floor(double points) => Math.Floor(points / Dot + 1e-6);
+        var down = placed.Angle > 0;
+        var height = Math.Round(boxHeight / Dot, MidpointRounding.AwayFromZero);
+        var top = !legacy ? Floor(boxTop) : down ? Math.Round(boxTop / Dot, MidpointRounding.AwayFromZero) : Floor(boxTop + boxHeight) - height;
+        var bottom = top + height;
+        // Before Word 2013 lines down the box stack from its right edge on the dot before it, against where the layout
+        // put them.
+        var edge = down && legacy ? Floor(boxLeft + boxWidth) * Dot - (boxLeft + boxWidth) : 0;
+        // The room along the line in dots from where the line starts: the top for text down, the bottom for text up.
+        var length = height - Math.Round(insetTop / Dot) - Math.Round(insetBottom / Dot);
+        var from = down ? top + Math.Round(insetTop / Dot) : bottom - Math.Round(insetBottom / Dot);
+        static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
+        var first = placed.Line.Pieces.Min(p => p.X);
+        // Where the first glyph stands along the line from the room's start, in points.
+        var along = Snap(placed.Line.Pieces[0].X);
+        if (placed.Line.Alignment is { } aligned)
+        {
+            var (left, right) = (Snap(aligned.Left), length * Dot - Snap(Math.Max(0, length * Dot - aligned.Right)));
+            var content = DeviceWidth(placed) ?? Math.Round(aligned.Width / Dot, MidpointRounding.AwayFromZero) * Dot;
+            along = aligned.Center ? left + Math.Floor(Math.Round((right - left - content) / Dot) / 2) * Dot : right - content;
+        }
+        var start = from * Dot + (down ? along : -along);
+        var baseline = (down ? placed.Left - placed.Line.Baseline : placed.Left + placed.Line.Baseline) + edge;
+        return placed with
+        {
+            Top = down ? start - first : start + first,
+            Left = placed.Left + Snap(baseline) - baseline + edge,
+            DeviceTurned = true,
+        };
+    }
+
+    /// <summary>
+    /// The width of a line's content on Word's device, from its first glyph to the end of its last one but spaces, in
+    /// whole dots, where every piece of it is plain text the device places; else null.
+    /// </summary>
+    static double? DeviceWidth(PlacedLine placed)
+    {
+        var pieces = placed.Line.Pieces;
+        if (pieces.Count == 0 || pieces.Any(p => p.Text.Length > 0 && PlainGlyphs(p) == null))
+            return null;
+        var first = pieces.Min(p => p.X);
+        if (DevicePositions(placed with { Left = -first }, turned: true) is not { } device)
+            return null;
+        var (start, end) = (double.MaxValue, double.MinValue);
+        foreach (var piece in pieces)
+        {
+            if (!device.TryGetValue(piece, out var positions))
+                continue;
+            start = Math.Min(start, piece.X + positions[0]);
+            for (var k = piece.Text.Length - 1; k >= 0; k--)
+            {
+                if (!char.IsWhiteSpace(piece.Text[k]))
+                {
+                    end = Math.Max(end, piece.X + positions[k + 1]);
+                    break;
+                }
+            }
+        }
+        return end > start ? Math.Round((end - start) / Dot) * Dot : null;
+    }
+
     /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front, bool onPage = false)
     {
@@ -600,14 +686,23 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var line in lines)
         {
             var grows = onPage && line.Angle == 0;
+            var turnedBox = onPage && line.DeviceTurned;
             var placed = grows ? OnDots(line, paperSize.Width) : line;
-            onDevice = grows && DevicePlaced ? DevicePositions(placed) : null;
+            // A turned line's glyphs on the device along it from its first one, which TurnedOnDots put on a dot: for text
+            // up the distance counts from there the other way.
+            var down = placed.Angle > 0;
+            var first = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces.Min(p => p.X) : 0;
+            onDevice = grows && DevicePlaced ? DevicePositions(placed)
+                : turnedBox ? DevicePositions(placed with { Left = down ? placed.Top : placed.Top - 2 * first }, turned: true) : null;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
                 svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
             var baseline = placed.Top + placed.Line.Baseline;
             if (grows)
                 baseline += Grow(baseline, paperSize.Height);
+            // A turned line's baseline grows across the page (its x there), its glyphs down or up it (their y).
+            if (turnedBox)
+                baseline += down ? -Grow(placed.Left - placed.Line.Baseline, paperSize.Width) : Grow(placed.Left + placed.Line.Baseline, paperSize.Width);
             if (placed.Angle != 0)
                 svg.Append($"<g transform=\"rotate({Units.Css(placed.Angle)} {Px(placed.Left + placed.PivotX)} {Px(placed.Top + placed.PivotY)})\">");
             // Editable ranges (w:permStart, w:permEnd): gray brackets 0.24 pt thin through the line (measured with
@@ -629,6 +724,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // A run of text moves by where its first glyph stands on the device.
                 if (grows)
                     x += Grow(x + (onDevice != null && onDevice.TryGetValue(piece, out var device) ? device[0] : 0), paperSize.Width);
+                else if (turnedBox)
+                {
+                    var along = piece.X + (onDevice != null && onDevice.TryGetValue(piece, out var turnedDevice) ? turnedDevice[0] : 0);
+                    x += down ? Grow(placed.Top + along, paperSize.Height) : -Grow(placed.Top - along, paperSize.Height);
+                }
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
                 // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
                 // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
@@ -805,10 +905,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// 67,985 characters: 88.5 %, 72.5 % before; the error counted from the line's exact start instead: 84.0 %). Null
     /// for lines without plain text.
     /// </summary>
-    static Dictionary<Piece, double[]>? DevicePositions(PlacedLine placed)
+    /// <param name="turned">Whether the line is a turned text box's (TurnedOnDots), set on the device as any line.</param>
+    static Dictionary<Piece, double[]>? DevicePositions(PlacedLine placed, bool turned = false)
     {
         var line = placed.Line;
-        if (line.Vertical || line.TurnEastAsian || line.Pieces.Count == 0)
+        if (line.Vertical && !turned || line.TurnEastAsian || line.Pieces.Count == 0)
             return null;
         var glyphs = new List<(int Natural, double Nominal, double Width)>();
         var stretches = new List<(int Index, int Start, double Error)>();
