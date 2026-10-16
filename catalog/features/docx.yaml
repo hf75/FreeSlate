@@ -2828,7 +2828,10 @@ areas:
           after the paragraph before), the line's is that of the line holding the anchor (docx/local/anchor-rules,
           within 0.05 pt); an anchor in a part of the paragraph in a later column or page counts from that part and
           its column (extras-layout/shape-anchored-in-follow: a rectangle anchored at the end of a paragraph that goes
-          on in the next page's second column stands there; extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6);
+          on in the next page's second column stands there; extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6), and
+          one anchored after a page or column break of its paragraph takes no room beside the paragraph's first lines
+          (tdf153613_anchoredAfterPgBreak6: a picture wrapped square after "x" and a page break, "x" at the first
+          page's top, 85.3 → 100 %);
           relative to the character counts from the start of the character before the anchor (docx/local/anchor- char,
           within 0.01 pt). In table cells the column and margin across are the cell's text area, the page and its
           margins the cell inside its line, down the page and margins the cell's content, whether layoutInCell is set

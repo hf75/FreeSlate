@@ -1012,6 +1012,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     static bool FlowBefore(List<Block> blocks, int index) =>
         blocks.Take(index).Any(b => b is ParagraphBlock { Format.Frame: null } || b is TableBlock { Table.Format.Framed: false });
 
+    /// <summary>A paragraph's drawings anchored before its first page or column break.</summary>
+    static List<AnchorInline> FirstPartAnchors(ParagraphBlock paragraph)
+    {
+        var anchors = new List<AnchorInline>();
+        foreach (var inline in paragraph.Content)
+        {
+            if (inline is BreakInline { Type: "page" or "column" })
+                break;
+            if (inline is AnchorInline anchor)
+                anchors.Add(anchor);
+        }
+        return anchors;
+    }
+
     /// <summary>The height of a placed drawing with its effect extents above and below it.</summary>
     static double ExtentHeight(PlacedDrawing drawing)
     {
@@ -3323,7 +3337,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // empty; tall-t: one ending above the anchor, which stays, a picture line before it going below it;
         // docx/external/libreoffice/extras-layout/fdo43573-2-min).
         var wasEmpty = columnEmpty;
-        if (!columnEmpty && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
+        // Drawings anchored after a page or column break of the paragraph stand with its later part (see the placing
+        // below), not beside its first lines (found by agent BE in Word's PDF of docx/external/libreoffice/
+        // extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6: a picture wrapped square after "x" and a page break
+        // only on the second page, "x" at the first page's top).
+        var firstPart = FirstPartAnchors(paragraph);
+        if (!columnEmpty && firstPart.Any(anchor =>
                 ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
                 && Pushed(e) is { } top && e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01))
         {
@@ -3336,7 +3355,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the next page with it; af-fit, 180 pt, stays; af-over-none in front of the text, af-over-page and
         // af-over-margin placed from the page or the margin stay; af-over-14 in Word 2010 stays; docx/external/
         // libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
-        else if (!columnEmpty && context.CompatibilityMode >= 15 && paragraph.Content.OfType<AnchorInline>().Any(anchor =>
+        else if (!columnEmpty && context.CompatibilityMode >= 15 && firstPart.Any(anchor =>
                      (string?)anchor.Anchor.Element(Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph" or "line"
                      && PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is var placed && ExclusionOf(placed) != null
                      && placed.Y + placed.Height > Bottom + 0.01))
@@ -3363,7 +3382,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // libreoffice/extras-ooxmlexport/tdf160049_anchorMargin15, a picture of 117.75 pt and 2.25 pt of effect extents
         // on a body of 118 pt, wrapped through on its left).
         var tall = new List<Exclusion>();
-        foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
+        foreach (var anchor in firstPart)
         {
             var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
             if (ExclusionOf(placed) is { } own)
