@@ -938,6 +938,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             && polygon.Elements().Where(p => p.Name.LocalName is "start" or "lineTo").Select(p => (X: Fraction(p, "x"), Y: Fraction(p, "y"))).ToList() is { Count: >= 3 } points)
         {
             var onPage = points.Select(p => (drawing.X + p.X * drawing.Width, drawing.Y + p.Y * drawing.Height)).ToArray();
+            // The polygon turns with its shape, about the extent's centre (found by agent BF in Word's PDF of
+            // docx/external/libreoffice/writerfilter-dmapper/tdf143208_wrapTight: a moon turned by 90 degrees has the
+            // text along its turned outline, 80.5 -> 99.9 %).
+            var xfrm = element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?
+                .Elements().FirstOrDefault(e => e.Name.LocalName is "spPr" or "grpSpPr")?.Element(Ns.A + "xfrm");
+            if (double.TryParse((string?)xfrm?.Attribute("rot"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rot) && rot % 21600000 != 0)
+            {
+                var (cos, sin) = (Math.Cos(rot / 60000 * Math.PI / 180), Math.Sin(rot / 60000 * Math.PI / 180));
+                var (cx, cy) = (drawing.X + drawing.Width / 2, drawing.Y + drawing.Height / 2);
+                onPage = onPage.Select(p => (cx + cos * (p.Item1 - cx) - sin * (p.Item2 - cy), cy + sin * (p.Item1 - cx) + cos * (p.Item2 - cy))).ToArray();
+            }
             return new Exclusion(onPage.Min(p => p.Item1) - dl, onPage.Min(p => p.Item2), onPage.Max(p => p.Item1) + dr, onPage.Max(p => p.Item2), false, side)
             {
                 Polygon = onPage,
