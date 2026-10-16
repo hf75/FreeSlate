@@ -1101,6 +1101,49 @@ public sealed partial class ModelReader(DocumentContext context)
         format.ApplyCharacterUnits(normal, context.Styles.Run(styleId, null, null).Size ?? normal);
     }
 
+    /// <summary>The field begin characters of each story that no end character of the same story closes, by story.</summary>
+    readonly Dictionary<XElement, HashSet<XElement>> unclosed = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// Whether a field's begin character has no end in its story: the body, a header or footer, a note, a comment or a
+    /// text box's content, whose own fields are counted apart.
+    /// </summary>
+    bool Unclosed(XElement begin)
+    {
+        var w = Wml.W;
+        var story = begin.Ancestors().FirstOrDefault(a => a.Name == w + "txbxContent" || a.Name == w + "body" || a.Name == w + "hdr" || a.Name == w + "ftr"
+            || a.Name == w + "footnote" || a.Name == w + "endnote" || a.Name == w + "comment");
+        if (story == null)
+            return false;
+        if (!unclosed.TryGetValue(story, out var open))
+        {
+            open = new HashSet<XElement>(ReferenceEqualityComparer.Instance);
+            var stack = new Stack<XElement>();
+            void Walk(XElement element)
+            {
+                foreach (var child in element.Elements())
+                {
+                    if (child.Name == w + "txbxContent")
+                        continue;
+                    if (child.Name == w + "fldChar")
+                    {
+                        if ((string?)child.Attribute(w + "fldCharType") == "begin")
+                            stack.Push(child);
+                        else if ((string?)child.Attribute(w + "fldCharType") == "end" && stack.Count > 0)
+                            stack.Pop();
+                        continue;
+                    }
+                    Walk(child);
+                }
+            }
+            Walk(story);
+            foreach (var left in stack)
+                open.Add(left);
+            unclosed[story] = open;
+        }
+        return open.Contains(begin);
+    }
+
     ParagraphBlock Paragraph(XElement p, bool number = true)
     {
         var pPr = p.Child("pPr");
@@ -1280,6 +1323,12 @@ public sealed partial class ModelReader(DocumentContext context)
         }
 
         public readonly Stack<Frame> Frames = new();
+
+        /// <summary>
+        /// How many fields begun in the paragraph have no end in their story (see ModelReader.Unclosed): their instruction
+        /// and result print as text.
+        /// </summary>
+        public int Unclosed;
 
         /// <summary>Inside a field's instruction, also that of an outer field (a nested field is part of it).</summary>
         /// <summary>
@@ -1700,6 +1749,8 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "fldChar":
                     switch (e.Attr("fldCharType"))
                     {
+                        case "begin" when Unclosed(e):
+                            break;
                         case "begin":
                             openFields.Add((new(), false));
                             break;
@@ -1712,6 +1763,12 @@ public sealed partial class ModelReader(DocumentContext context)
                     }
                     switch (e.Attr("fldCharType"))
                     {
+                        case "begin" when Unclosed(e):
+                            // A field whose end is not in its story (only in a text box's) shows its instruction and its
+                            // result as text (docx/external/libreoffice/extras-ooxmlimport/tdf152200-bad_fldChar_end:
+                            // " FORMTEXT " and five spaces, found by agent BK).
+                            field.Unclosed++;
+                            break;
                         case "begin":
                             // Legacy form fields show their state: a check box drawn as a box, a drop-down its entry.
                             if (e.Child("ffData") is { } form && !field.Hidden)
@@ -1802,7 +1859,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     // Instruction text after the separate character is part of the result, which Word prints as text
                     // (docx/external/libreoffice/uibase-uno/cond-field-cached-value: a DOCVARIABLE's saved "Sunday" in a
                     // w:instrText of its result, found by agent BK).
-                    else if (field.Frames.Count > 0 && !field.Hidden)
+                    else if ((field.Frames.Count > 0 || field.Unclosed > 0) && !field.Hidden)
                         field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
                     if (openFields.Count > 0 && !openFields[^1].InResult)
                         openFields[^1].Instruction.Append(e.Value);

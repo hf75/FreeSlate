@@ -2500,7 +2500,9 @@ areas:
           with MERGEFORMAT italic 16 pt red, in the body and in headers); REF keeps its bookmark's format
           (extras-ooxmlimport/tdf133647_unicode: Calibri Light). Instruction text after the separate character
           (w:instrText in the result) prints as result text (libreoffice/uibase-uno/cond-field-cached-value: a
-          DOCVARIABLE's saved "Sunday", 26.1 → 100 % with the IF rule above). A STYLEREF with MERGEFORMAT that comes out empty on a
+          DOCVARIABLE's saved "Sunday", 26.1 → 100 % with the IF rule above). A field whose end character is not in its
+          story (only in a text box's) prints its instruction and its result as text (extras-ooxmlimport/
+          tdf152200-bad_fldChar_end: " FORMTEXT " and five spaces, 67.8 → 100 %, found by agent BK). A STYLEREF with MERGEFORMAT that comes out empty on a
           page of its header, also on the way where an empty heading ending a section stood at a page's top before the
           next section took the page, prints in the style's format on every page (docx/local/fsf4-b, fsf4-d, tdh-g;
           extras-ooxmlexport/tdf170602_exportContext); a header's STYLEREF before the first paragraph of its style
@@ -4486,9 +4488,11 @@ areas:
           to the pixel grid, delimiters at their own size too; stretched and large variants as outlines
           (powertools/RP/RP013: the "=" bars one black row; libreoffice/extras-ooxmlexport/math-d: "|" one black
           column). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
-          paragraph mark's where the equation stands alone (docx/local/eq-shaded); a displayed equation reaches at
-          least the math font's ascent with its line gap above the baseline (Cambria Math's 1593 + 353 units: 11.40 pt
-          at 12 pt; libreoffice/extras-ooxmlexport/math-color: twice the characters in place). Word differs from PowerPoint in two
+          paragraph mark's where the equation stands alone (docx/local/eq-shaded); an equation, displayed or inline,
+          reaches at least the math font's ascent with its line gap above the baseline and its descent below (Cambria
+          Math's 1593 + 353 units: 11.40 pt at 12 pt; libreoffice/extras-ooxmlexport/math-color: twice the characters
+          in place; tdf130907: an inline equation's line as high as a displayed one's, 75.8 → 98.9 %, found by agent
+          BM; docx/local/mph-24-*: 76.1 → 89.6 % and more). Word differs from PowerPoint in two
           rules: delimiters grow to the content's height less the shortfall, not twice its reach from the axis
           (docx/local/ppt-math: PowerPoint's own probe equations in Word), and a function's name keeps a thin space
           before an opening delimiter; both draw the hyphen-minus as the minus sign and ∇ and ∂ in italic. Glyphs are

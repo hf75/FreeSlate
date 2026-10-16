@@ -105,14 +105,13 @@ public sealed class MathLayout
     MathItem Finished(MathItem item, bool display, double size)
     {
         item.Ascent += U(table.MathLeading, size);
-        // A displayed equation is at least as high as the math font's ascent with its line gap above the baseline
-        // and its descent below (measured by agent AJ in Word's PDFs of LibreOffice's extras-ooxmlexport/math-color:
-        // seven baselines within 0.08 pt with Cambria Math's 1593 + 353 units above, 11.40 pt at 12 pt, not 11.10).
-        if (display)
-        {
-            item.Ascent = Math.Max(item.Ascent, (font.Ascent + font.LineGap) * size);
-            item.Descent = Math.Max(item.Descent, font.Descent * size);
-        }
+        // An equation is at least as high as the math font's ascent with its line gap above the baseline and its
+        // descent below, displayed or inline (measured by agent AJ in Word's PDFs of LibreOffice's extras-ooxmlexport/
+        // math-color: seven baselines within 0.08 pt with Cambria Math's 1593 + 353 units above, 11.40 pt at 12 pt, not
+        // 11.10; agent BM in tdf130907: an inline equation's line as high as a displayed one's, 22.22 pt apart; docx/local/
+        // mph-24-*: 76.1 -> 89.6 % and more).
+        item.Ascent = Math.Max(item.Ascent, (font.Ascent + font.LineGap) * size);
+        item.Descent = Math.Max(item.Descent, font.Descent * size);
         return item;
     }
 
