@@ -36,6 +36,18 @@ public sealed class StyleSheet
     /// </summary>
     public string? DefaultParagraphStyle { get; }
 
+    /// <summary>
+    /// Whether a table style's font size and justification win over the default paragraph style's in its cells where
+    /// that style gives 12 pt or left alignment itself, a size of the table style's own but 10 pt: before Word 2013,
+    /// unless w:compatSetting overrideTableStyleFontSizeAndJustification says 1 (measured with docx/local/tso-*: a table
+    /// style of 8 pt and centred over Normal of 12 pt sets text of Normal and of a style based on it without a size 8 pt
+    /// and centred in modes 11, 12 and 14, a style of its own size keeps it; Normal of 10, 11 or 14 pt keeps its size,
+    /// aligned right its alignment, aligned left explicitly not; table styles of 9, 11 and 14 pt win, of 10 pt not;
+    /// mode 15, also with the setting 0, and mode 11 with it 1 as styles stack; docx/external/libreoffice/
+    /// extras-ooxmlexport/tdf118812_tableStyles-comprehensive; tdf90906_colAutoB, tsx-*: Table Grid of 10 pt).
+    /// </summary>
+    public bool TableStyleOverridesNormal { get; set; }
+
     /// <summary>The default character style ("Default Paragraph Font").</summary>
     public string? DefaultCharacterStyle { get; }
 
@@ -290,6 +302,9 @@ public sealed class StyleSheet
                 result.Overlay(own);
             }
         }
+        if (TableStyleOverridesNormal && table?.Justification != null && result.Justification is "left" or "start"
+            && chain.LastOrDefault(s => s.ParagraphProperties?.Element(Wml.W + "jc") != null)?.Id == DefaultParagraphStyle)
+            result.Justification = table.Justification;
         if (numbering != null && !numberingUnderStyle)
         {
             var level = new ParagraphFormat();
@@ -310,7 +325,12 @@ public sealed class StyleSheet
         var levels = new List<RunFormat>();
         if (extraLevel != null)
             levels.Add(extraLevel);
-        levels.Add(Level(Chain(ParagraphStyleOf(paragraphStyleId)), s => s.RunProperties));
+        var chain = Chain(ParagraphStyleOf(paragraphStyleId));
+        var paragraphLevel = Level(chain, s => s.RunProperties);
+        if (TableStyleOverridesNormal && extraLevel?.Size is { } tableSize && Math.Abs(tableSize - 10) > 0.01 && paragraphLevel.Size is { } size && Math.Abs(size - 12) < 0.01
+            && chain.LastOrDefault(s => s.RunProperties?.Element(Wml.W + "sz") != null)?.Id == DefaultParagraphStyle)
+            paragraphLevel.Size = null;
+        levels.Add(paragraphLevel);
         var character = Find(characterStyleId) is { Type: "character" } ? characterStyleId : null;
         // Word ignores a character style's highlighting, a color as none (docx/external/libreoffice/extras-ooxmlexport/
         // tdf138345_charStyleHighlight: no yellow behind the style's text; tdf137683_charHighlightTests: a paragraph

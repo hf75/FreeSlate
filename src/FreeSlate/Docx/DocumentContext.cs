@@ -93,6 +93,8 @@ public sealed class DocumentContext : IDisposable
         JoinBodies(Document);
         // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
         Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
+        Styles.TableStyleOverridesNormal = CompatibilityMode < 15
+            && CompatSetting("overrideTableStyleFontSizeAndJustification") is not ("1" or "true" or "on");
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         // Word keeps the default tab stop in 16 bits: 65536 twips are none, 66256 half an inch (measured with

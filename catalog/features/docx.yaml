@@ -2165,7 +2165,14 @@ areas:
           over the ones before; docx/external/libreoffice/extras-ooxmlexport/conditionalstyles-tbllook 26.9 → 100 %),
           switched by w:tblLook, bands skipping the first and last row and column; a conditional format's borders
           apply at its region's edges, its inside lines inside the region; the style's paragraph and run properties
-          sit above the document defaults and under the paragraph style (docx/generated/tables); the row properties of
+          sit above the document defaults and under the paragraph style (docx/generated/tables), except that before
+          Word 2013, unless w:compatSetting overrideTableStyleFontSizeAndJustification says 1, the style's font size
+          wins over Normal's where Normal gives 12 pt and the style's size is not 10 pt, and its alignment over
+          Normal's left (docx/local/tso-*: a style of 8 pt and centred over Normal of 12 pt makes text of Normal and of
+          styles based on it without a size 8 pt and centred in modes 11, 12 and 14, styles of their own size keep it;
+          Normal of 10, 11 or 14 pt and aligned right keeps them; table styles of 9, 11 and 14 pt win, of 10 pt not,
+          tsx-*; mode 15 and the setting 1 as styles stack; extras-ooxmlexport/tdf118812_tableStyles-comprehensive
+          81.6 → 99.7 %, tdf90906_colAutoB of 10 pt as before); the row properties of
           the formats of whole rows (w:trPr) under the row's own, so a first-row format's w:tblHeader repeats the
           first row where w:tblLook asks for first-row formatting (docx/local/hc-1, hc-0; docx/external/libreoffice/
           core-ooxml-pass/fdo78904_fileHang). The first-row format covers the first row and the header rows
