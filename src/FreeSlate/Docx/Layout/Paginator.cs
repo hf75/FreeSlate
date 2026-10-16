@@ -1053,6 +1053,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
         List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
+        // The paragraphs this run lays out ask it whether their page breaks go unseen (a story's run in between asks
+        // its own).
+        var outer = layout.BreakUnseen;
+        layout.BreakUnseen = BreakUnseen;
+        try
+        {
+            return PaginateRun(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+        }
+        finally
+        {
+            layout.BreakUnseen = outer;
+        }
+    }
+
+    List<PageBox> PaginateRun(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes,
+        List<(int Section, List<Block> Blocks)>? endnotes, List<Block>? endnoteSeparator)
+    {
         this.footnotes = footnotes;
         // The pages of this run so far, which the fields of a header look back into (STYLEREF).
         if (layout.Evaluator != null)

@@ -1513,7 +1513,10 @@ areas:
           paragraph that ends a section goes unseen where the next section goes on on the same page (docx/local/pb14*,
           pb12*: "A", a page break holding a continuous section break and "B" on one page, in mode 15 on two;
           docx/external/libreoffice/extras-uiwriter/tdf131963), unless w:splitPgBreakAndParaMark moves the mark and
-          the section break after it (pbsp14*, pbsp12*). Blank pages have no header or footer, count in NUMPAGES but
+          the section break after it (pbsp14*, pbsp12*); a line of nothing but such a break is the paragraph mark's,
+          not the break's (docx/local/ubk-12, ubk-14: an 18 pt break with an 11 pt mark at 1.5 lines makes an 11 pt
+          line's, an 11 pt break with an 18 pt mark an 18 pt one's; extras-ooxmlexport/090716_Studentische_Arbeit_VWS
+          88.2 → 98.4 %). Blank pages have no header or footer, count in NUMPAGES but
           not in SECTIONPAGES. A document whose first section begins on an even page begins at page 2, without a blank
           page before it (docx/external/libreoffice/core-header_footer/tdf135216_evenOddFooter: four pages numbered 2
           to 5, the first with the even footer, 32.8 → 96.4 %; extras-ooxmlexport/A019_min: margins mirrored as on an

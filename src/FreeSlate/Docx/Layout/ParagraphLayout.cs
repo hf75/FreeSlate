@@ -404,6 +404,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The paragraph's own space before, which its first line keeps below floating objects that push it down.</summary>
     public double PushedSpace { get; set; }
 
+    /// <summary>Whether a page break in a paragraph goes unseen (Paginator.BreakUnseen), its line then the mark's.</summary>
+    public Func<ParagraphBlock, bool>? BreakUnseen { get; set; }
+
+    /// <summary>Whether the paragraph being laid out has its page breaks unseen.</summary>
+    bool unseenBreak;
+
     /// <summary>
     /// A style's parts of a line above and below the baseline: in vertical lines 1/32 of the size more (1.3 times that
     /// for East Asian fonts, as their lines are), half above and half below (measured with docx/local/vertical3,
@@ -906,6 +912,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
             width = Math.Max(cell, Math.Floor(width / cell + 1e-6) * cell);
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
+        unseenBreak = BreakUnseen?.Invoke(paragraph) == true;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
@@ -2552,7 +2559,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
         if (!any)
         {
-            var style = end > start && start < charStyles.Count && !spacesOnly ? charStyles[start] : mark;
+            // A line of nothing but a page break that goes unseen takes the mark's (measured with docx/local/ubk-12, ubk-14:
+            // a break of 18 pt with an 11 pt mark at 1.5 lines makes an 11 pt line's, one of 11 pt with an 18 pt mark an
+            // 18 pt one's; docx/external/libreoffice/extras-ooxmlexport/090716_Studentische_Arbeit_VWS).
+            var style = end > start && start < charStyles.Count && !spacesOnly && !(unseenBreak && text[start] == '\f') ? charStyles[start] : mark;
             // A line of nothing but spaces and tabs that does not end its paragraph takes its largest one's line (Word's
             // PDF of docx/external/libreoffice/extras-ooxmlexport/tdf137335_whitespaceLineHeight: tabs of 36 and 48 pt and
             // spaces of 72 pt wrapped before the paragraph's last line make a line 72 pt high, the last one the mark's).
