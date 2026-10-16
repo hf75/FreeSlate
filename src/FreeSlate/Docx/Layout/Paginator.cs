@@ -1136,6 +1136,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
         sections.Add((current, lastSection));
+        foreach (var (_, own) in sections)
+        {
+            foreach (var part in own.Headers.Values.Concat(own.Footers.Values))
+                storyOwners.TryAdd(part, own);
+        }
         // A section without a header or footer of a type has the previous section's (ISO/IEC 29500 17.10.5).
         for (var s = 1; s < sections.Count; s++)
         {
@@ -1537,12 +1542,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
     }
 
+    /// <summary>The section whose header and footer references name each story first.</summary>
+    readonly Dictionary<string, SectionProperties> storyOwners = new(StringComparer.Ordinal);
+
     StoryBox StoryOf(string part, PageBox on, PageFields? fields, bool header)
     {
         var s = on.Section;
         var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
+        // Tables of a header or footer a section has from one before it are as wide as in that one's text, from the
+        // margin of the page's (measured with docx/local/ifw-*: a table of 100 % in a footer of a section 468 pt wide,
+        // floating or not, 468 pt wide from the left margin of the next section, 252 pt wide, where its own footer of
+        // the same content has it 252 pt wide; paragraphs, tabs and alignment follow the page's margins;
+        // docx/external/libreoffice/extras-uiwriter/tdf157131, found by agent BG).
+        var tableWidth = storyOwners.GetValueOrDefault(part) is { } owner && !ReferenceEquals(owner, s) ? Math.Max(1, TextArea(owner, on.DisplayNumber).Width) : width;
         var anchors = new List<CellAnchor>();
         // The drawings of floating tables standing on the page, already placed from its top.
         var fixedAnchors = new List<CellAnchor>();
@@ -1655,7 +1669,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (block is TableBlock { Table.Format.Floating: { } position } floating)
             {
                 double Twips(string name) => position.Twips(name) ?? 0;
-                var laid = tables.Layout(floating.Table, width, fields);
+                var laid = tables.Layout(floating.Table, tableWidth, fields);
                 var height = laid.Rows.Sum(r => r.Height) + (laid.Rows.Count > 0 ? laid.Rows[^1].BottomBorderWidth : 0);
                 var (spanLeft, span) = position.Attr("horzAnchor") switch
                 {
@@ -1785,7 +1799,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             else if (block is TableBlock table)
             {
                 y += first ? 0 : after;
-                var laid = tables.Layout(table.Table, width, fields);
+                var laid = tables.Layout(table.Table, tableWidth, fields);
                 var tableTop = y;
                 foreach (var row in laid.Rows)
                 {
