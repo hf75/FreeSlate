@@ -2468,8 +2468,16 @@ areas:
           calendar in all (docx/local/datelang: 18 languages on a German Windows); the page-dependent ones come from a
           layout before. PAGE, NUMPAGES and SECTIONPAGES of headers and footers carry the number format switches
           (roman, ROMAN, alphabetic, ALPHABETIC, Arabic, ArabicDash, Ordinal, CardText, OrdText, Hex) and about 60
-          ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word keeps the saved results of
-          the others and so does the layout: document properties (AUTHOR, TITLE, DOCPROPERTY), formulas, FILENAME,
+          ST_NumberFormat formats; NUMPAGES counts blank pages (docx/local/hf-parity). Word computes IF only where it
+          updates a story's fields when it prints: always in headers and footers, in the body where it has a field of
+          the kinds above beside it (docx/local/iff-*: a body's IF 1 = 1 keeps its saved "maybe" in modes 11 to 15 and
+          without one, a header's prints "yes"; ifg-*: with a PAGEREF, REF, SEQ, DATE, NUMPAGES, PAGE or STYLEREF in
+          the body it prints "yes" there too, with a header's PAGE not; extras-ooxmlimport/tdf125038c). Headers and
+          footers, their text boxes too, show DOCPROPERTY as the property is when Word prints, Word's error ("Error!
+          Unknown document property name.", "Fehler! Unbekannter Name für Dokument-Eigenschaft.") where the package
+          has none of that name or it is empty (docx/local/dpp-*: custom and core properties, a missing one, an empty
+          subject; extras-odfexport/tdf151100 71.9 → 100 %). Word keeps the saved results of the others and so does
+          the layout: document properties (AUTHOR, TITLE, DOCPROPERTY in the body: dpp-body-*), formulas, FILENAME,
           FILESIZE, NUMWORDS, NUMCHARS, USERNAME, DOCVARIABLE, MERGEFIELD, QUOTE, CREATEDATE. Texts Word words in the
           language of its user interface follow the reader's culture, German as measured with docx/local/fielderrors
           (REF and PAGEREF to a missing bookmark, STYLEREF without such a paragraph, SEQ without a name, \p "oben",
@@ -2490,7 +2498,9 @@ areas:
           print in the paragraph style's format, in the saved result's only with \* MERGEFORMAT, their errors in the
           style's bold (docx/local/fsf-15, fsf-12, fsf2-*, fsf5-15: a saved result italic 16 pt red prints plain 10 pt,
           with MERGEFORMAT italic 16 pt red, in the body and in headers); REF keeps its bookmark's format
-          (extras-ooxmlimport/tdf133647_unicode: Calibri Light). A STYLEREF with MERGEFORMAT that comes out empty on a
+          (extras-ooxmlimport/tdf133647_unicode: Calibri Light). Instruction text after the separate character
+          (w:instrText in the result) prints as result text (libreoffice/uibase-uno/cond-field-cached-value: a
+          DOCVARIABLE's saved "Sunday", 26.1 → 100 % with the IF rule above). A STYLEREF with MERGEFORMAT that comes out empty on a
           page of its header, also on the way where an empty heading ending a section stood at a page's top before the
           next section took the page, prints in the style's format on every page (docx/local/fsf4-b, fsf4-d, tdh-g;
           extras-ooxmlexport/tdf170602_exportContext); a header's STYLEREF before the first paragraph of its style

@@ -124,7 +124,7 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
     /// <summary>The fields whose result the layout computes (catalog: field.evaluation); the others show their saved result.</summary>
     public static bool IsPageField(string instruction) => TypeOf(instruction) is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF"
         or "STYLEREF" or "SEQ" or "SECTION" or "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE" or "IF" or "REF" or "SYMBOL" or "NOTEREF" or "LISTNUM"
-        or "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE" or "";
+        or "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE" or "DOCPROPERTY" or "";
 
     /// <summary>The paragraph numbering fields, which number the paragraphs they stand in (catalog: field.evaluation).</summary>
     public static bool IsAutoNumber(string instruction) => TypeOf(instruction) is "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE";
@@ -1799,6 +1799,11 @@ public sealed partial class ModelReader(DocumentContext context)
                         if (open.InstructionFormat == null && e.Value.Trim().Length > 0)
                             open.InstructionFormat = format;
                     }
+                    // Instruction text after the separate character is part of the result, which Word prints as text
+                    // (docx/external/libreoffice/uibase-uno/cond-field-cached-value: a DOCVARIABLE's saved "Sunday" in a
+                    // w:instrText of its result, found by agent BK).
+                    else if (field.Frames.Count > 0 && !field.Hidden)
+                        field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
                     if (openFields.Count > 0 && !openFields[^1].InResult)
                         openFields[^1].Instruction.Append(e.Value);
                     break;

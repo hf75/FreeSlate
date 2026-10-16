@@ -21,6 +21,60 @@ public sealed class FieldEvaluator
 
     string T(string english, string germanText) => german ? germanText : english;
 
+    /// <summary>Whether the body has a field that Word updates when it prints, which updates its IF fields too.</summary>
+    bool bodyUpdates;
+
+    /// <summary>The document's properties by Word's DOCPROPERTY names: the core and extended ones that hold text, the custom ones.</summary>
+    Dictionary<string, string?>? properties;
+
+    /// <summary>A custom property of a type the layout does not show (dates, booleans ...), which keeps the saved result.</summary>
+    const string Unread = "\u0001";
+
+    /// <summary>
+    /// A document property's text for DOCPROPERTY, Word's error where the document has none of that name or it is empty;
+    /// null (the saved result) for the built-in ones the layout does not know at print time (dates, counts, security).
+    /// </summary>
+    string? DocumentProperty(string name)
+    {
+        properties ??= Properties();
+        if (properties.TryGetValue(name, out var value))
+            return value == Unread ? null : string.IsNullOrEmpty(value) ? T("Error! Unknown document property name.", "Fehler! Unbekannter Name für Dokument-Eigenschaft.") : value;
+        return name.ToUpperInvariant() is "BYTES" or "CHARACTERS" or "CHARACTERSWITHSPACES" or "CREATETIME" or "LASTPRINTED" or "LASTSAVEDTIME"
+            or "LINES" or "PAGES" or "PARAGRAPHS" or "REVISIONNUMBER" or "SECURITY" or "TOTALEDITINGTIME" or "WORDS" or "ODMADOCID"
+            ? null
+            : T("Error! Unknown document property name.", "Fehler! Unbekannter Name für Dokument-Eigenschaft.");
+    }
+
+    /// <summary>The package's core, extended and custom properties by Word's names (see <see cref="DocumentProperty"/>).</summary>
+    Dictionary<string, string?> Properties()
+    {
+        var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var package = context.Package;
+        System.Xml.Linq.XElement? Part(string type) =>
+            package.FirstRelationship("/", type)?.Target is { } part && package.Exists(part) ? context.Load(part).Root : null;
+        static string? Child(System.Xml.Linq.XElement? root, string name) => root?.Elements().FirstOrDefault(e => e.Name.LocalName == name)?.Value;
+        var core = Part("core-properties");
+        foreach (var (word, element) in new[] { ("Title", "title"), ("Subject", "subject"), ("Author", "creator"), ("Keywords", "keywords"),
+                     ("Comments", "description"), ("Category", "category"), ("LastSavedBy", "lastModifiedBy") })
+            result[word] = Child(core, element);
+        var app = Part("extended-properties");
+        foreach (var (word, element) in new[] { ("Company", "Company"), ("Manager", "Manager"), ("HyperlinkBase", "HyperlinkBase"),
+                     ("Template", "Template"), ("NameofApplication", "Application") })
+            result[word] = Child(app, element);
+        if (Part("custom-properties") is { } custom)
+        {
+            foreach (var property in custom.Elements().Where(e => e.Name.LocalName == "property"))
+            {
+                if ((string?)property.Attribute("name") is not { } name)
+                    continue;
+                var value = property.Elements().FirstOrDefault();
+                result[name] = value?.Name.LocalName is "lpwstr" or "lpstr" or "bstr" or "i1" or "i2" or "i4" or "i8" or "int" or "ui1" or "ui2"
+                    or "ui4" or "ui8" or "uint" or "r4" or "r8" or "decimal" ? value.Value : Unread;
+            }
+        }
+        return result;
+    }
+
     /// <summary>Whether a result is one of Word's error texts (which Word sets in bold).</summary>
     public static bool IsError(string value) => value.StartsWith("Error! ", StringComparison.Ordinal) || value.StartsWith("Fehler! ", StringComparison.Ordinal);
     readonly Dictionary<FieldInline, string> sequences = new(ReferenceEqualityComparer.Instance);
@@ -127,6 +181,7 @@ public sealed class FieldEvaluator
                 if (inline is not FieldInline field)
                     continue;
                 paragraphOf[field] = paragraph;
+                bodyUpdates |= field.Type is not ("IF" or "SYMBOL" or "DOCPROPERTY" or "");
                 sections[field] = section;
                 if (field.Type == "SEQ")
                     sequences[field] = Sequence(field, counters) ?? T("Error! No sequence specified.", "Fehler! Es wurde keine Folge festgelegt.");
@@ -247,8 +302,20 @@ public sealed class FieldEvaluator
                 return StyleReference(words, field, on);
             case "DATE" or "TIME" or "PRINTDATE" or "SAVEDATE":
                 return Date(field, words);
-            case "IF":
+            // Word computes IF where it updates the fields of the story when it prints: always in headers and footers, in
+            // the body where it has a field of the kinds Word updates then (measured with docx/local/iff-*: a body's IF
+            // keeps its saved "maybe" in modes 11 to 15 and without one, a header's prints "yes"; ifg-*: with a PAGEREF,
+            // REF, SEQ, DATE, NUMPAGES, PAGE or STYLEREF beside it the body's prints "yes" too, with a header's PAGE not;
+            // docx/external/libreoffice/extras-ooxmlimport/tdf125038c, found by agent BK).
+            case "IF" when on != null || bodyUpdates:
                 return Condition(words);
+            // Headers and footers show a document property as it is when Word prints, Word's error where the package has
+            // none of that name or it is empty; the body keeps the result Word saved (measured with docx/local/dpp-*: a
+            // saved "Stale" in the body whatever the property, in a header a custom property's and the core title's
+            // value, the error in bold for a missing custom property and an empty subject; docx/external/libreoffice/
+            // extras-odfexport/tdf151100, found by agent BL).
+            case "DOCPROPERTY" when on != null && words.Count > 1:
+                return DocumentProperty(words[1]);
             case "REF" when words.Count > 1 && !words[1].StartsWith('\\'):
                 // REF: the bookmark's text, or with \n the number of its paragraph.
                 if (!bookmarks.TryGetValue(words[1], out var marked))

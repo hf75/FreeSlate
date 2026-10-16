@@ -247,6 +247,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return ShapeOf(drawing, page);
         var (pitch, extra, cell, snap) = (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell);
         (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell) = (null, 0, null, null);
+        // Their fields are a header's or footer's, which Word updates when it prints (see FieldEvaluator.Value).
+        storyPage = page;
         try
         {
             return ShapeOf(drawing, page);
@@ -254,8 +256,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         finally
         {
             (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell) = (pitch, extra, cell, snap);
+            storyPage = null;
         }
     }
+
+    /// <summary>The page whose header or footer drawing is being drawn, for its text boxes' fields (PageFields.On).</summary>
+    PageBox? storyPage;
 
     string ShapeOf(PlacedDrawing drawing, PageBox page)
     {
@@ -524,7 +530,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
         var (areaWidth, areaHeight) = vert != null ? (h - t - b, w - l - r) : (w - l - r, h - t - b);
-        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix, On = storyPage };
         List<PlacedLine> lines;
         List<FillRect> fills = [];
         List<Stroke> strokes = [];
