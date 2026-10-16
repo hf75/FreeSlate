@@ -378,6 +378,19 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public double? GridCell { get; set; }
 
     /// <summary>
+    /// The cell of a character grid of snapToChars (the Normal style's size and w:charSpace / 4096), null otherwise. The
+    /// cells fill the width they are laid out in, as many whole ones as fit stretched to it, East Asian characters one
+    /// each; a paragraph's last line of Latin text stands centered in the whole cells it needs from its start, however
+    /// the paragraph is aligned and whether or not it snaps to the grid (measured with docx/local/cglc-snap0: lines of
+    /// Calibri 11 left and right aligned and centered, on cells of 11 pt, each centered in 9, 8, 6 and 2 cells from the
+    /// margin; cgl-*: cells of 20.265 pt before Word 2013, whose lines shrink to whole cells, 20.51 pt across 451.3 pt
+    /// from Word 2013 on, of 12 pt and 12.2 pt; gbx-snap-*: in a text box 185.6 pt wide cells of 20.62 pt in both;
+    /// full lines and lines with Japanese at their start; docx/external/libreoffice/extras-ooxmlexport/tdf91261: cells
+    /// of 21.265 pt, w:snapToGrid off alike, found by agent BG).
+    /// </summary>
+    public double? SnapCell { get; set; }
+
+    /// <summary>
     /// Whether the paragraphs being laid out run down the page (vertical text in sections and table cells): their
     /// lines are thicker (see <see cref="Metrics"/>) and text set across them takes a horizontal line's height.
     /// </summary>
@@ -911,13 +924,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         if (GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
             width = Math.Max(cell, Math.Floor(width / cell + 1e-6) * cell);
+        double? snapCell = SnapCell is { } nominal && nominal > 0.01 ? width / Math.Max(1, Math.Floor(width / nominal + 1e-6)) : null;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         unseenBreak = BreakUnseen?.Invoke(paragraph) == true;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
         levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
-        var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
+        var advances = Advances(text, charStyles, CharacterExtra + (CharacterExtraEastAsian && snapCell != null ? snapCell.Value - SnapCell!.Value : 0),
+            CharacterExtraEastAsian);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
         if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
@@ -1461,7 +1476,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
-                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45);
+                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45, snapCell);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -3014,8 +3029,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="doubled">What justification adds at a boundary between East Asian and Latin text after a character.</param>
     /// <param name="edge">The paragraph's own right edge, which centered and right aligned lines a tab stop took past it align by.</param>
     /// <param name="spaceShare">What a space takes beyond the other characters of a line spread between all of them, in its own width.</param>
+    /// <param name="snapCell">The cell of a character grid of snapToChars the paragraph snaps to (see <see cref="SnapCell"/>).</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45)
+        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45, double? snapCell = null)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -3068,6 +3084,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             "right" or "end" => room,
             _ => 0,
         };
+        // On a character grid of snapToChars a paragraph's last line of Latin text stands centered in the whole cells
+        // it needs from its start, however the paragraph is aligned (see SnapCell).
+        if (snapCell is { } cell && cell > 0.01 && line.Last && lastTab < 0 && end > line.Pieces[0].X && !line.Pieces.Any(p => p.Text.Any(EastAsian)))
+        {
+            var width = end - line.Pieces[0].X;
+            shift = Math.Max(0, (Math.Ceiling(width / cell - 1e-6) * cell - width) / 2);
+            foreach (var piece in line.Pieces)
+                piece.X += shift;
+            return;
+        }
         if (shift > 0)
         {
             foreach (var piece in line.Pieces)

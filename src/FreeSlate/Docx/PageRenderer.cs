@@ -208,6 +208,26 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     string Drawing(PlacedDrawing drawing, PageBox page)
     {
+        // The text boxes of headers and footers keep off the body's grid, as their stories do (measured with docx/local/
+        // gbx-*: a footer box's line at its top inset and ascent, at its left inset, under pitches of 18 pt of type
+        // lines and snapToChars, where the body's box has its lines on the pitch and centered in the grid's cells;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf91261).
+        if (layout is not { } grid || drawing.Part != page.Header && drawing.Part != page.Footer)
+            return ShapeOf(drawing, page);
+        var (pitch, extra, cell, snap) = (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell);
+        (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell) = (null, 0, null, null);
+        try
+        {
+            return ShapeOf(drawing, page);
+        }
+        finally
+        {
+            (grid.LinePitch, grid.CharacterExtra, grid.GridCell, grid.SnapCell) = (pitch, extra, cell, snap);
+        }
+    }
+
+    string ShapeOf(PlacedDrawing drawing, PageBox page)
+    {
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
         // WordArt: a text box whose body has a text warp bends its text as PowerPoint does, so the slide renderer
         // draws it, in its runs' fonts, fills, outlines and effects, instead of the text box's layout; the warp fills
@@ -392,6 +412,22 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks,
         Drawing.Theme? theme)
     {
+        // As the box lays its text out (see TextBox): its whole width, not whole cells of the character grid.
+        var cell = blocks.Paragraphs.GridCell;
+        blocks.Paragraphs.GridCell = null;
+        try
+        {
+            return FitToTextIn(drawing, text, body, shape, page, blocks, theme);
+        }
+        finally
+        {
+            blocks.Paragraphs.GridCell = cell;
+        }
+    }
+
+    static PlacedDrawing FitToTextIn(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks,
+        Drawing.Theme? theme)
+    {
         var autofit = body.Element(Ns.A + "spAutoFit") != null;
         var unwrapped = (string?)body.Attribute("wrap") == "none";
         // Vertical text that fits its shape makes it as wide as its lines are thick, its insets and outline beside them,
@@ -457,8 +493,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
             // upright (measured with docx/local/vertical6).
-            var (vertical, turn, alignIn, textColor) = (layout!.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor);
+            var (vertical, turn, alignIn, textColor, cell) = (layout!.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor, layout.GridCell);
             (layout.Vertical, layout.TurnEastAsian) = (vert != null, vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl");
+            // A text box's lines keep its whole width before Word 2013 too, which the body's shrink to whole cells of the
+            // character grid (measured with docx/local/gbx-both-14: right aligned text ends at the right inset of a box
+            // 185.6 pt wide under cells of 20.265 pt, as in gbx-both-15).
+            layout.GridCell = null;
             // Automatic text takes the color of the shape's style (fontRef; see ParagraphLayout.TextColor).
             layout.TextColor = drawings?.Colors.ResolveChild(shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "fontRef"));
             // Text that does not wrap aligns in the box all the same (docx/external/libreoffice/extras-ooxmlexport/
@@ -473,7 +513,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             finally
             {
-                (layout.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor) = (vertical, turn, alignIn, textColor);
+                (layout.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor, layout.GridCell) = (vertical, turn, alignIn, textColor, cell);
             }
         }
         else if (story != null && continued.Remove((story, seq), out var rest))
