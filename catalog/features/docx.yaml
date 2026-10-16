@@ -1779,7 +1779,7 @@ areas:
           text, as Word draws their layer first (openxml-sdk/complex0, 2010). Drawings of headers and footers that text
           goes around keep the body's text off them as the body's own do (by agent AE: LibreOffice's
           core-layout/table-fly-overlap, a header picture wrapped square from 34.25 to 164.75 pt with the body below
-          it; known deviation: our body's tables pass beside it in mode 14). Floating tables of headers and footers
+          it). Floating tables of headers and footers
           stand as in the body and take no room in the story; those anchored to its text make it reach as far as they
           do, the paragraph they are anchored to going below them where they begin above it, the story's other text
           over them; the body's text goes around those anchored to the page, and a table of the body below one that
@@ -4902,8 +4902,12 @@ areas:
           exclusions. A table does not stand beside the floating objects and frames before it: it begins below every
           one its part on the page would overlap, from Word 2013 on whatever their wrapping and also below those
           anchored after it on the page (tbo-*: a shape anchored after a table over its last or first row, wrapped
-          square or top and bottom; openxml-sdk/Document), before only those kept free above and below
-          (docx/local/fx-1 to fx-13, ft-1 to ft-8: below a 40 pt shape wrapped square or top and bottom, also one
+          square or top and bottom; openxml-sdk/Document), before only those kept free above and below and those that
+          leave it less than half its width right of them, their own boxes over it (tfh-*-14: below a shape wrapped
+          square at the column's right, in the header or the body, that leaves 50, 65 or 85 % of a full-width table
+          left of it; core-layout/table-fly-overlap 88.5 → 100 %, found by agent BI; table-fly-overlap-spacing: a
+          picture only its distance over a narrow table leaves it; docx/local/fx-1 to fx-13, ft-1 to ft-8: below a
+          40 pt shape wrapped square or top and bottom, also one
           beside a 70-row table's last rows on the page, and below frames not beside text, anchored to the text or the
           page; a shape right of the table and one without wrapping leave it;
           docx/external/tika/testWORD_tableInRunInsideParagraph, docx/external/libreoffice/core-ooxml-pass/

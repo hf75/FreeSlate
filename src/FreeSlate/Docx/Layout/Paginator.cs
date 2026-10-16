@@ -1005,7 +1005,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
         }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide };
+            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide, DistanceLeft = el + dl, DistanceRight = er + dr };
     }
 
     /// <summary>Whether blocks of the text's flow stand before the one at <paramref name="index"/>: all but frames, also
@@ -2376,11 +2376,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>
     /// A table does not stand beside the floating objects and frames placed before it: it begins below those its part
     /// on the page would overlap, from Word 2013 on whatever their wrapping, before only those kept free above and
-    /// below and those that leave it less than half its width beside them (measured with docx/local/fx-1 to fx-11 and ft-1 to ft-5: below a
+    /// below and those that leave it less than half its width right of them (measured with docx/local/fx-1 to fx-11 and ft-1 to ft-5: below a
     /// 40 pt shape wrapped square or top and bottom, also one beside a 70-row table's last rows on the page, and below a
     /// frame not beside text; a shape right of the table, one without wrapping and in mode 14 one wrapped square leave
     /// it, 340 pt beside it; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang; extras-ooxmlexport/tdf162746:
-    /// in mode 12 below a header's floating table that leaves 5 pt). From Word 2013 on also below the objects anchored
+    /// in mode 12 below a header's floating table that leaves 5 pt; tfh-*-14: below a shape wrapped square at the column's
+    /// right, in the header or the body, that leaves 50, 65 or 85 % of a full-width table left of it; core-layout/
+    /// table-fly-overlap, found by agent BI; core-layout/table-fly-overlap-spacing: a picture whose own box ends right
+    /// of a narrow table, only its distance over it, leaves it). From Word 2013 on also below the objects anchored
     /// after it on the page, where the run before placed them (docx/local/tbo-*: a shape anchored in the paragraph
     /// after a table or later, over its last or first row, wrapped square or top and bottom; one without wrapping
     /// leaves it; openxml-sdk/Document: a cover page's text box over the last row of a table above a chart, the cover
@@ -2411,7 +2414,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 && !source.Ancestors().Any(a => ReferenceEquals(a, element)))
             : [];
         var floats = placed.Concat(later).Concat(page.FloatingTables.Where(e => !Beside(e)))
-            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom || Math.Max(e.Left - from, to - e.Right) < box.Width / 2) && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
+            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom
+                         || to - e.Right < box.Width / 2 && e.Left + e.DistanceLeft < to - 0.01 && e.Right - e.DistanceRight > from + 0.01)
+                        && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
         for (var moved = true; moved;)
         {
             moved = false;
