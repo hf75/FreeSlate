@@ -2800,6 +2800,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A turned VML shape by its swapped box or its turned outline (see Vml.TurnedBox), with its effect extents.
             var turned = Docx.Vml.TurnedSides(element);
             x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + Effect("l"), (turned?.R ?? 0) + Effect("r"));
+            // Before Word 2013 a drawing aligned left or right on the page stands in the margin beside the text, its
+            // right edge at the left margin or its left edge at the right margin, as far as the page lets it, whatever
+            // its effect extent (measured with docx/local/pgr-14, pgr2-12-*, pgr2-14-*: rectangles of 30, 61.5 and 100 pt,
+            // right margins of 70.85 and 36 pt, effect extents of 0 to 3 pt and distances of 0 and 9 pt; on the page
+            // from Word 2013 on, pgr-15, pgr2-15-*; docx/external/libreoffice/extras-ooxmlexport/tdf113183, found by
+            // agent BG).
+            if (legacy && fromH == "page" && cell?.Text == null
+                && positionH?.Element(Docx.Drawings.Wp + "align")?.Value.Trim() is "left" or "right")
+                x = positionH.Element(Docx.Drawings.Wp + "align")!.Value.Trim() == "left"
+                    ? Math.Max(0, page.TextLeft - w) : Math.Min(page.TextLeft + page.TextWidth, s.PageWidth - w);
             var positionV = element.Element(Docx.Drawings.Wp + "positionV");
             var (y0, yh) = ((string?)positionV?.Attribute("relativeFrom")) switch
             {

@@ -2805,7 +2805,11 @@ areas:
           cells with layoutInCell.
         office: >-
           Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name,
-          at a percentage of it, or at wp:simplePos; behind or in front of the text by behindDoc and relativeHeight
+          at a percentage of it, or at wp:simplePos (before Word 2013 one aligned left or right on the page stands in
+          the margin beside the text, its right edge at the left margin or its left edge at the right margin, as far as
+          the page lets it, whatever its effect extent: docx/local/pgr-14, pgr2-12-*, pgr2-14-*, rectangles of 30 to
+          100 pt and right margins of 70.85 and 36 pt; on the page from Word 2013 on, pgr-15, pgr2-15-*;
+          extras-ooxmlexport/tdf113183 81.3 → 99.9 %); behind or in front of the text by behindDoc and relativeHeight
           (docx/generated/drawings), taken through the part in document order: a relativeHeight of 0 or 1, or of
           0x1E000000 and more, counts as unset and stands above every drawing before it, at 0x0F000000 at least, equal
           ones the later on top (docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one
