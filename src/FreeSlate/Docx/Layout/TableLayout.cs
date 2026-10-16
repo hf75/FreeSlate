@@ -1017,10 +1017,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         // from its paragraph or line in the cell, the page and the column for the rest (measured with
                         // docx/local/cig-noin14, cig-noin12: 150 pt right of the column's left edge, the paragraph's top;
                         // docx/external/libreoffice/extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, tdf129888dml:
-                        // a page-relative line in mode 14); one aligned across stays in the cell (tdf162551: aligned left
-                        // of the page at the cell's text).
-                        if (!InCell(anchor.Anchor.Anchor) && anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null)
+                        // a page-relative line in mode 14); one aligned across stands so in the page's frames too
+                        // (docx/local/lica-12, lica-14: aligned left from the column, the margin and the page at the margin
+                        // and left of it, not in the cell; tdf162541) but where it is placed from its line, then in the
+                        // cell (tdf162551: aligned left of the page at the cell's text, centered on its line).
+                        var placement = anchor.Anchor.Anchor;
+                        if (!InCell(placement) && (placement.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null
+                            || (string?)placement.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") != "line"))
                         {
+                            // Placed from its paragraph, it counts from the row's top, whichever paragraph of the cell it
+                            // is in (measured with docx/local/lic-12, lic-14: drawings 20 pt below the first and the third
+                            // paragraph of a cell under a 3 pt top line and a 10 pt margin both 20 pt below the row's top;
+                            // lic-15 from their paragraphs; docx/external/libreoffice/extras-ooxmlexport/
+                            // tdf135595_HFtableWrap_c12, found by agent BE).
+                            if ((string?)anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph")
+                                moved = moved with { ParagraphTop = 0 };
                             part.Anchors.Add(moved);
                             continue;
                         }
