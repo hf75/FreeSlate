@@ -2131,7 +2131,9 @@ areas:
           the column's edge, an indent of another type than twips taking the style's away (docx/local/tsl-12, -14,
           -15: spacing 0 and 40 twips, tblInd none, 0 and 720; hk-*s; core-layout/floattable-del-empty 83.6 → 91.1 %,
           extras-htmlexport/fdo62336 91.7 → 99.9 %, extras-ooxmlexport/tdf106724 92.9 → 100 %, tdf140137: tblInd of
-          type auto), its content aligned vertically as without spacing, a cell merged down framing its rows and
+          type auto); a fixed table's grid holds the gaps where it has no width of its own (tdf123104), one of a width
+          of its own takes them from that width (tsl-* c: 300 pt with 2 pt spacing, cells of 143.9 pt; tblwidth2-14, -15
+          95.3 → 100 %), its content aligned vertically as without spacing, a cell merged down framing its rows and
           the gaps between them and counting in the last of them (docx/external/poi/bug57031: a SAS table's two-line
           heading over two header rows of one line), and an autofit table its text fills as wide as the page with all
           frames (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459), a cell's border set to nil or none

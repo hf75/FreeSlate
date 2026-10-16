@@ -1157,8 +1157,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             x[k + 1] = x[k] + grid[k];
         var left0 = Width(outer.Left) / 2 + gap;
         // A fixed table's grid columns hold the gaps between its cells (docx/external/libreoffice/extras-ooxmlexport/
-        // tdf123104: cells 1.5 pt narrower than their grid columns, the table as wide as its grid).
-        var gridHoldsGaps = format.Layout == "fixed";
+        // tdf123104: cells 1.5 pt narrower than their grid columns, the table as wide as its grid), one of a width of
+        // its own takes them from that width as autofit tables do (measured with docx/local/tsl-12, -14, -15: 300 pt
+        // with spacing of 2 pt between the frame's lines' middles, cells of 143.9 pt).
+        var gridHoldsGaps = format.Layout == "fixed" && !sized;
         double CellX(int k) => left0 + x[k] + (gridHoldsGaps ? 0 : k * gap);
         var tableWidth = CellX(columns) - gap + gap + Width(outer.Right) / 2;
         // Before Word 2013 the first cell's text stands at the indent, the table's frame, gap, the cell's line (half of
