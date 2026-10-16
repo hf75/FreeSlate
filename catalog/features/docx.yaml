@@ -3731,7 +3731,9 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx picture.effects (done). Grayscale, washout, brightness and contrast,
-          cropping; Verified against Word with docx/generated/pictures (99.6 %).
+          cropping, a cropped TIFF by its own pixels, as Word's PDF holds it (libreoffice/tif-crop: 2815 by 2456 of
+          a 1-bit TIFF's 3495 by 4958 pixels, which the rasterizer samples from their own grid, 87.8 → 100 %);
+          Verified against Word with docx/generated/pictures (99.6 %).
 
       - id: picture.artistic
         title: Artistic effects and picture corrections

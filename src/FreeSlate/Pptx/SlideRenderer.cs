@@ -1662,7 +1662,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (image == null || blipFill == null)
             return Fill.None;
         // The blip's color effects and tiling come with the fill; the picture itself is the SVG or the bitmap.
-        return FillReader.Read(blipFill, slide.Colors, _ => image, slide.ImageSizes(part)) is PictureFill fill ? fill : Fill.None;
+        if (FillReader.Read(blipFill, slide.Colors, _ => image, slide.ImageSizes(part)) is not PictureFill fill)
+            return Fill.None;
+        // Word's PDF holds a cropped TIFF's own pixels (see PresentationContext.CroppedImage).
+        if (slide.Presentation.Word && svg == null && embed != null && fill.Tiling == null && fill.SourceRect is var (l, t, r, b)
+            && l >= 0 && t >= 0 && r >= 0 && b >= 0 && l + t + r + b > 0 && slide.Presentation.CroppedImage(part, embed, fill.SourceRect) is { } cut)
+            fill = fill with { Image = cut, SourceRect = (0, 0, 0, 0) };
+        return fill;
     }
 
     /// <summary>Path fill modes of preset geometries that shade the fill (e.g. the top of a cylinder).</summary>

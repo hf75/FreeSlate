@@ -207,6 +207,40 @@ public sealed class PresentationContext : IDisposable
         return uri;
     }
 
+    /// <summary>
+    /// A TIFF picture cut to its source rectangle (the fractions cropped off each side) as PNG data URI, or null for
+    /// other pictures: Word's PDF holds only the cropped pixels, which the rasterizer samples from their own grid (found
+    /// by agent BF in Word's PDF of docx/external/libreoffice/tif-crop: 2815 by 2456 of a 1-bit TIFF's 3495 by 4958
+    /// pixels, 87.8 -> 100 %).
+    /// </summary>
+    public string? CroppedImage(string sourcePart, string relationshipId, (double L, double T, double R, double B) crop)
+    {
+        var rel = Package.Relationship(sourcePart, relationshipId);
+        if (rel is not { External: false } || !Package.Exists(rel.Target))
+            return null;
+        var key = $"{rel.Target}#{crop.L},{crop.T},{crop.R},{crop.B}";
+        if (images.TryGetValue(key, out var cached))
+            return cached;
+        string? uri = null;
+        var bytes = Package.ReadBytes(rel.Target);
+        if (Html.Tiff.IsTiff(bytes) && Html.Tiff.Decode(bytes) is { } decoded)
+        {
+            var (width, height, rgba) = decoded;
+            var (x0, y0) = ((int)Math.Round(width * crop.L), (int)Math.Round(height * crop.T));
+            var (x1, y1) = (width - (int)Math.Round(width * crop.R), height - (int)Math.Round(height * crop.B));
+            if (x1 > x0 && y1 > y0)
+            {
+                var (cw, ch) = (x1 - x0, y1 - y0);
+                var cut = new byte[cw * ch * 4];
+                for (var row = 0; row < ch; row++)
+                    System.Buffer.BlockCopy(rgba, ((y0 + row) * width + x0) * 4, cut, row * cw * 4, cw * 4);
+                uri = Metafiles.Png.DataUri(cw, ch, cut);
+            }
+        }
+        images[key] = uri;
+        return uri;
+    }
+
     /// <summary>EMF (a header record, type 1) or WMF (placeable, or a memory or disk metafile header).</summary>
     static bool IsMetafile(byte[] data) =>
         data is [0x01, 0x00, 0x00, 0x00, ..] or [0xD7, 0xCD, 0xC6, 0x9A, ..] or [0x01 or 0x02, 0x00, 0x09, 0x00, ..];
