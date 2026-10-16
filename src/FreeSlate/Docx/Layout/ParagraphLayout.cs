@@ -2944,6 +2944,30 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 line.Mirrored = (room.Justification, width - room.End, width - room.Start, room.Width);
         }
         var pieces = line.Pieces;
+        // Spaces ending the line take the paragraph's level, at the line's end (UAX #9 L1; measured with docx/local/
+        // rtt-14, rtt-15: "Final " of a left-to-right run ending a line of a centred, right or left aligned right-to-left
+        // paragraph stands a space further right than its run alone would put it; docx/external/libreoffice/
+        // extras-ooxmlexport/FDO76312): pieces of nothing but them change level, a run that ends with them keeps its
+        // text where it stands without them.
+        var baseLevel = (byte)(rightToLeft ? 1 : 0);
+        var trailing = new HashSet<Piece>(ReferenceEqualityComparer.Instance);
+        Piece? ending = null;
+        var endingWidth = 0.0;
+        for (var k = pieces.Count - 1; k >= 0 && !pieces[k].IsTab; k--)
+        {
+            var piece = pieces[k];
+            if (piece.Text.Length == 0)
+                continue;
+            if (piece.Text.All(c => c == ' '))
+            {
+                trailing.Add(piece);
+                continue;
+            }
+            var spaces = piece.Text.Length - piece.Text.TrimEnd(' ').Length;
+            if (spaces > 0 && piece.Level % 2 != baseLevel && piece.Advances.Length == piece.Text.Length)
+                (ending, endingWidth) = (piece, piece.Advances.Skip(piece.Advances.Length - spaces).Sum());
+            break;
+        }
         for (var i = 0; i < pieces.Count;)
         {
             if (pieces[i].IsTab)
@@ -2959,11 +2983,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var segment = pieces.GetRange(i, j - i);
             var (start, end) = (segment[0].X, segment[^1].X + segment[^1].Width);
             var x = rightToLeft ? width - end : start;
-            foreach (var k in Bidi.Reorder(segment.Select(p => p.Level).ToList()))
+            foreach (var k in Bidi.Reorder(segment.Select(p => trailing.Contains(p) ? baseLevel : p.Level).ToList()))
             {
                 segment[k].X = x;
                 x += segment[k].Width;
             }
+            if (ending != null && segment.Contains(ending))
+                ending.X += rightToLeft ? endingWidth : -endingWidth;
             i = j;
         }
     }
