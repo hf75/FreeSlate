@@ -609,7 +609,10 @@ public sealed partial class ModelReader(DocumentContext context)
             // and the defaults say (measured with docx/local/fsep-*: before 12, after 0, 10 and 20 pt, double spacing
             // all put the separator 16.2 pt above the note's baseline; docx/external/pandoc/golden/notes); text
             // paragraphs of a separator keep theirs (libreoffice/extras-ooxmlexport/tdf123262_textFootnoteSeparators).
-            if (type is "separator" or "continuationSeparator")
+            // A separator of several paragraphs keeps the spacing of its line's paragraph too (found by agent BE in
+            // Word's PDFs: docx/external/libreoffice/extras-ooxmlexport/testFootnote, a separator and an empty
+            // paragraph at 1.5 lines and 10 pt after, the line 17.3 pt higher; tdf123262, three paragraphs).
+            if (type is "separator" or "continuationSeparator" && blocks.Count == 1)
             {
                 foreach (var paragraph in blocks.OfType<ParagraphBlock>().Where(p => p.Element.Descendants().Any(e => e.Name.LocalName is "separator" or "continuationSeparator")))
                 {

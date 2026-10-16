@@ -1817,7 +1817,9 @@ areas:
           room of an empty one, space after included (docx/local/fnempty-*; powertools/WC/WC064-Footnote); a
           separator's paragraphs stand at single spacing without space before or after, whatever they and the defaults
           say (docx/local/fsep-*: the separator 16.2 pt above the note's baseline with before 12, after 0, 10 and 20
-          pt or double spacing; pandoc/golden/notes). Footnotes beneath the text of a section that ends the document
+          pt or double spacing; pandoc/golden/notes), where the separator has that paragraph alone; one of several
+          paragraphs keeps its spacing like the others (docx/external/libreoffice/extras-ooxmlexport/testFootnote:
+          the line's paragraph and an empty one at 1.5 lines and 10 pt after, 85.1 -> 97.3 %; tdf123262). Footnotes beneath the text of a section that ends the document
           come before its endnotes before Word 2013, which follow under their separator below them, from Word 2013
           on after them (docx/local/fbt-14, fbt-15; docx/external/libreoffice/extras-ooxmlexport/fdo79062: three
           footnotes, then the endnotes, 36.0 → 83.2 → 94.9 %).
