@@ -431,6 +431,30 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "center" => frameTop + (frameHeight - height) / 2,
             _ => frameTop + Twips("tblpY"),
         });
+        // A table anchored to the page or the margin whose rows of its first page would reach past the page's bottom
+        // moves up to end there with them: as many rows as fit between the paragraph after it and the bottom margin
+        // (measured with docx/local/fpb-*: rows of 100 pt at tblpY 300 pt move up to 192 pt, six of them on the page,
+        // at 500 pt three to 492 pt, one at 750 pt to 692 pt, rows of 283.5 pt at 640.85 pt two to 225 pt; at 100 and
+        // at 450 pt they stay; anchored to the margin alike; in modes 12, 14 and 15, where the rows then break at the
+        // bottom margin; docx/external/libreoffice/extras-ooxmlexport/tdf99140: text down to 368 pt leaves one row,
+        // ending at the page's bottom, found by agent BG).
+        if (anchor is "page" or "margin")
+        {
+            var (rows, part) = (0, 0.0);
+            foreach (var row in box.Rows)
+            {
+                if (textTop + part + row.Height + row.BottomBorderWidth > Bottom + 0.01)
+                    break;
+                part += row.Height;
+                rows++;
+            }
+            if (rows > 0)
+            {
+                var end = part + box.Rows[rows - 1].BottomBorderWidth;
+                if (top + end > page!.Height + 0.01)
+                    top = page.Height - end;
+            }
+        }
         // A table that may not overlap others (w:tblOverlap never) moves with its distances off a floating table before
         // it on the page that it would overlap: right of it where it fits in its horizontal anchor's span, else below
         // it, its distance left then counting from its place (measured with docx/local/tc-5: beside a table at the
