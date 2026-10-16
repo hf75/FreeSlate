@@ -1738,6 +1738,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // docx/local/arf-15).
                 if (noteMark && FreeSlate.Text.Bidi.Classify(shown.Value) is FreeSlate.Text.Bidi.Type.R or FreeSlate.Text.Bidi.Type.AL)
                     style = styles.Style(format, WordSlot.ComplexScript, lower, complex: false);
+                if (noteMark)
+                    style = style with { NoteMark = true };
                 if (shown.Value == '\\' && YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
                     && !style.Font.Data.EastAsian)
                     shown = new Rune('\u00A5');

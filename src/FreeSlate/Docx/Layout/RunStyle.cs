@@ -16,6 +16,9 @@ public sealed record RunStyle(
     bool Bold,
     bool Italic)
 {
+    /// <summary>Whether the text is a note's mark, in the text or at the note's start (w:footnoteReference, w:footnoteRef).</summary>
+    public bool NoteMark { get; init; }
+
     public string? Underline { get; init; }
     public RgbColor? UnderlineColor { get; init; }
 

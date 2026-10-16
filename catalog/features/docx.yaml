@@ -4692,7 +4692,11 @@ areas:
           natural width in whole dots at the font's pixel size (its design width with its kerning scaled, up from 0.46
           of a dot), a dot less or more where the error against the exact advances would pass 1.5 dots after the next
           glyph, the line in stretches of 1024 dots at whose ends the error comes back within half a dot; a stretch
-          starts on the nearest dot, its error counted from there, at the line's start, after a tab or an object;
+          starts on the nearest dot, its error counted from there, at the line's start, after a tab or an object, at a
+          note's mark of another size or height than the text beside it and after it, where other runs of another size
+          or height go on (67 documents of the corpus: 82.9 % of 389,256 characters within half a dot, 81.9 % when
+          every such run starts a stretch; extras-ooxmlexport/sdt-2-run 82.2 → 100 %, extras-ooxmlimport/n782061
+          87.6 → 100 %, bnc773061 92.6 → 98.3 %);
           justified spaces are as much wider in whole dots, the error deciding which take a dot more. Its PDF writes
           the device's advances per run against the glyphs' widths: as character spacing where the first seven glyphs
           need what the first needs within 0.01 pt (14,496 runs of extras-ooxmlexport's PDFs: 99.8 %), otherwise as
@@ -4701,7 +4705,7 @@ areas:
           Word's PDFs). Character spacing (w:spacing) adds its whole dots to the natural width (docx/local/gxs-a,
           gxs-k: 5 to 20 and -5 to -10 twips in Times New Roman, Calibri and Arial, kerned and not: 97.8 and 92.6 % of
           the characters within half a dot, 22.6 % before; LibreOffice's extras-ooxmlexport/tdf154369 86.9 → 99.2 %),
-          kern table pairs before Word 2010 count as kerning. Ours alike for text of one glyph per character without
+          kern table pairs count as kerning (run.openType). Ours alike for text of one glyph per character without
           scaling or synthetic bold
           (adv-*: 92 to 98 % of the characters within half a dot of Word's PDF, 46 to 59 % before; 103 documents of
           the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before; gxl-*, 24 to 72 pt

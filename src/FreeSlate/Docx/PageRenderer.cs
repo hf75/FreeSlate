@@ -825,10 +825,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var nominal = NominalPositions(piece);
             // Word writes runs one after the other as one run of its PDF where they are alike (SameRun).
             pieces.Add((piece, glyphs.Count, previous != null && piece.Link == previous.Link && SameRun(piece.Style, previous.Style)));
-            // A run of another size or height starts a stretch of its own (Word's PDFs of PowerTools'
-            // WC/WC034-Endnotes-Before and RC/RC007-Endnotes-Before: the text after a superscript endnote reference on
-            // the dot nearest to its place, 43 → 75 % of the characters within half a dot; the corpus sample alike).
-            var resync = previousPiece is { } last
+            // A note's mark of another size or height than the text beside it starts a stretch of its own, and so does
+            // that text; other runs of another size or height go on from where the run before ended on the device
+            // (found with agents BG and BH in Word's PDFs: 67 documents of the corpus, 81.9 -> 82.9 % of 389,256
+            // characters within half a dot; LibreOffice's extras-ooxmlexport/sdt-2-run, 22 pt after five spaces of
+            // 11 pt, 82.2 -> 100 %; extras-ooxmlimport/n782061, "bar" raised 1 pt after "foo", 87.6 -> 100 %;
+            // extras-ooxmlexport/fdo79062, the text after an endnote's own superscript mark on the dot nearest to its
+            // place; fdo77725, the text after a mark's superscript space not).
+            var resync = previousPiece is { } last && (last.Style.NoteMark || piece.Style.NoteMark)
                 && (Math.Abs(last.Style.Size - piece.Style.Size) > 1e-6 || Math.Abs(last.Style.Raise - piece.Style.Raise) > 1e-6);
             previousPiece = piece;
             previous = piece;
