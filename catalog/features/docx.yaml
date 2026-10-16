@@ -927,7 +927,9 @@ areas:
           bidirectional control, which ends Word's shaping run (Persian words with a right-to-left mark after their
           prefix, 29 of 30 as wide as shaped apart). The browser, which shapes right-to-left text whole, does the same.
           docx/external/libreoffice/extras-uiwriter/tdf104649 and powertools/RP/RP051-Arabic then break 95 % of their
-          lines as Word does (65 and 54 % before).
+          lines as Word does (65 and 54 % before). Across runs a word's letters join as their joining types say: a
+          right-joining letter (alef, dal, reh, waw …) or hamza ends the joining, the next run's first letter taking
+          its initial or isolated form (extras-ooxmlimport/tdf87533_bidi 89.2 → 93.4 %, found by agent BI).
 
       - id: run.animated
         title: Animated text

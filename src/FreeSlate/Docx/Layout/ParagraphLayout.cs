@@ -2145,6 +2145,33 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         c is >= '\u0620' and <= '\u065F' or '\u0670' or >= '\u0671' and <= '\u06D3' or '\u06D5' or >= '\u06FA' and <= '\u06FC' or '\u06FF'
             or >= '\u0710' and <= '\u074F' or >= '\u0750' and <= '\u077F' or >= '\u07CA' and <= '\u07F5' or >= '\u08A0' and <= '\u08C9';
 
+    /// <summary>Arabic letters that join only the letter before them (ArabicShaping.txt type R: alef, dal, reh, waw ...).</summary>
+    static bool RightJoiningOnly(char c) => c is '\u0622' or '\u0623' or '\u0624' or '\u0625' or '\u0627' or '\u0629' or '\u062F' or '\u0630'
+        or '\u0631' or '\u0632' or '\u0648' or '\u0671' or '\u0672' or '\u0673' or '\u0675' or '\u0676' or '\u0677'
+        or >= '\u0688' and <= '\u0699' or '\u06C0' or >= '\u06C3' and <= '\u06CB' or '\u06CD' or '\u06CF' or '\u06D2'
+        or '\u06D3' or '\u06D5' or '\u06EE' or '\u06EF';
+
+    /// <summary>
+    /// Whether the letters on either side of a run boundary (before <paramref name="boundary"/>) join: both take part in
+    /// joining and the first joins the letter after it, which right-joining Arabic letters (alef, dal, reh, waw ...)
+    /// and the hamza do not; marks between them are transparent (found by agent BI in Word's PDF of LibreOffice's
+    /// extras-ooxmlimport/tdf87533_bidi: a run beginning after a reh in its initial form, not a medial one).
+    /// </summary>
+    internal static bool JoinsAcross(string text, int boundary)
+    {
+        static bool Mark(char c) => CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark;
+        if (boundary <= 0 || boundary >= text.Length || !Joining(text[boundary - 1]) || !Joining(text[boundary]))
+            return false;
+        var before = boundary - 1;
+        while (before > 0 && Mark(text[before]) && Joining(text[before - 1]))
+            before--;
+        var after = boundary;
+        while (after + 1 < text.Length && Mark(text[after]) && Joining(text[after + 1]))
+            after++;
+        var (left, right) = (text[before], text[after]);
+        return !RightJoiningOnly(left) && left is not ('\u0621' or '\u0674' or '\u06DD') && right is not ('\u0621' or '\u0674' or '\u06DD');
+    }
+
     static double[] Advances(string text, List<RunStyle> charStyles, double extra = 0, bool eastAsianOnly = false)
     {
         var advances = new double[text.Length];
@@ -2160,8 +2187,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var piece = text[start..i];
                 // An Arabic word over several runs is shaped joined, as Word sets it (docx/external/powertools/RP/
                 // RP051-Arabic: "ال" and "ملاحة" in two runs one word 25.5 pt wide, not 32.7 pt of a final lam).
-                var before = start > 0 && Joining(text[start - 1]) && Joining(text[start]) ? text[(start - 1)..start] : null;
-                var after = i < text.Length && Joining(text[i - 1]) && Joining(text[i]) ? text[i..(i + 1)] : null;
+                var before = JoinsAcross(text, start) ? text[(start - 1)..start] : null;
+                var after = JoinsAcross(text, i) ? text[i..(i + 1)] : null;
                 var glyphs = style.Font.Data.GlyphsWithFeatures(piece, style.Features, language: style.Language, before: before, after: after);
                 var firstOfCluster = new HashSet<int>();
                 for (var k = 0; k < glyphs.Length; k++)
@@ -2339,8 +2366,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Style = charStyles[pieceStart],
                     X = x,
                     Start = pieceStart,
-                    JoinsBefore = pieceStart > 0 && Joining(text[pieceStart - 1]) && Joining(text[pieceStart]),
-                    JoinsAfter = i < text.Length && i > pieceStart && Joining(text[i - 1]) && Joining(text[i]),
+                    JoinsBefore = JoinsAcross(text, pieceStart),
+                    JoinsAfter = i > pieceStart && JoinsAcross(text, i),
                     Advances = pieceAdvances,
                     Lead = leads.GetValueOrDefault(pieceStart),
                     IsLabel = pieceStart < labelEnd,
