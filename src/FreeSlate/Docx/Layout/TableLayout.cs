@@ -2306,6 +2306,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var first = true;
         // Floating tables in the cell, which the text after them goes around, and how far down they reach.
         var around = new List<Paginator.Exclusion>();
+        // The floating tables of the cell, with their distances.
+        var cellTables = new List<Paginator.Exclusion>();
         var floated = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var floatBottom = 0.0;
         var extent = 0.0;
@@ -2478,6 +2480,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     if (cellInside is { } inside)
                         x = Math.Max(inside.Left, Math.Min(x, inside.Right - box.Width));
                     var top = Math.Max(0, ((position.Attr("vertAnchor") ?? "margin") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
+                    // One that may not overlap others (w:tblOverlap never) goes below a floating table of the cell before it
+                    // that it would overlap, where it stands across (found by agent BE in Word's PDF of docx/external/
+                    // libreoffice/writerfilter-dmapper/floattable-nested-cellstart: the second of two tables at tblpY 0
+                    // below the first, at the same x, in mode 12).
+                    if (floating.Table.Format.NoOverlap)
+                    {
+                        var height = box.Rows.Sum(r => r.Height) + (box.Rows.Count > 0 ? box.Rows[^1].BottomBorderWidth : 0);
+                        for (var tries = 0; tries < 8; tries++)
+                        {
+                            var (l, t, r, bottom) = (x - Twips("leftFromText"), top - Twips("topFromText"), x + box.Width + Twips("rightFromText"), top + height + Twips("bottomFromText"));
+                            if (cellTables.FirstOrDefault(e => e.Left < r - 0.01 && e.Right > l + 0.01 && e.Top < bottom - 0.01 && e.Bottom > t + 0.01) is not { } other)
+                                break;
+                            top = other.Bottom + Twips("topFromText");
+                        }
+                    }
                     var tableTop = top;
                     var (linesFrom, fillsFrom, strokesFrom) = (lines.Count, fills.Count, strokes.Count);
                     foreach (var row in box.Rows)
@@ -2500,6 +2517,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     floated.UnionWith(strokes.Skip(strokesFrom));
                     around.Add(new Paginator.Exclusion(x - Twips("leftFromText"), tableTop - Twips("topFromText"), x + box.Width + Twips("rightFromText"),
                         top + Twips("bottomFromText"), false, "bothSides"));
+                    cellTables.Add(around[^1]);
                     floatBottom = Math.Max(floatBottom, top);
                     break;
                 }

@@ -2258,7 +2258,9 @@ areas:
           and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points of the lines). A table taller
           than the rest of the page goes on at the top of the next page's body at the same place across, its rows
           split at a line of each cell as in the text (in Word 2013 and before alike), header rows repeated, the line
-          below the last row of a page closing each part; the paragraph after it begins at the top of its last page
+          below the last row of a page closing each part, a row of at least its height taller than a page's body ending at the bottom margin at
+          the top of a page, the rest of its height gone (core-layout/floattable-in-text-section: rows of 283.5 pt on a
+          body of 166 pt, 87.2 → 100 %); the paragraph after it begins at the top of its last page
           (docx/local/floatsplit-*: anchored to the text exactly as in Word; docx/external/
           libreoffice/core-layout/floattable-3pages, floattable-rowsplit, fdo68607 over 8 pages); one anchored to the
           text whose first row does not fit goes to the next page with its paragraph and stands where it would at it,
@@ -2292,7 +2294,9 @@ areas:
           (writerfilter-dmapper/floattable-footnote-redline). A table with w:tblOverlap never moves off a floating
           table before it on the page that it would overlap: right of it where it fits in its horizontal anchor's
           span, both distances kept, else below it, its distance left then counting from its place (docx/local/tc-5,
-          td-*; core-objectpositioning/floattable-tbl-overlap). A floating table in a cell is laid out as the tables
+          td-*; core-objectpositioning/floattable-tbl-overlap); in a cell below it, at its own place across
+          (writerfilter-dmapper/floattable-nested-cellstart 85.4 → 99.8 %, writerfilter-ooxml/floattable-leak
+          85.4 → 99.3 %). A floating table in a cell is laid out as the tables
           nested there, keeping its cells' margins in older modes as well
           (docx/external/libreoffice/writerfilter-dmapper/floattable-hidemark, mode 12: 43.8 → 71.4 %). Before Word
           2013 the first cell's text stands at the position whether the table has an indent of 0 or none, and the

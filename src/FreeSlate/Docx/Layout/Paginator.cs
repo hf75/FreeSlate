@@ -577,6 +577,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     Draw(least.Head);
                     row = least.Tail;
                 }
+                // A row of at least its height taller than a page's body ends at the bottom margin at the top of a page,
+                // the rest of its height gone, the next row on the next page (found by agent BE in Word's PDF of
+                // docx/external/libreoffice/core-layout/floattable-in-text-section: rows of at least 283.5 pt on a body
+                // of 166 pt, mode 15, each on a page of its own, cut at the margin).
+                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01) && !row.Exact && row.Height + row.BottomBorderWidth > Bottom - page.BodyTop + 0.01
+                    && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, force: true, dropRest: true) is { } cut)
+                {
+                    row = cut.Head;
+                    break;
+                }
                 else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01 || unbroken && emptyPage))
                     break;
                 // A table anchored to the text that begins on the next page goes there with its paragraph and stands
