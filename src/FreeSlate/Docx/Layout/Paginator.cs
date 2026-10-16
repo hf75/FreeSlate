@@ -532,7 +532,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), partTop - Twips("topFromText"),
                 x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides")
-                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText") });
+                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null });
         }
         var split = false;
         // Before Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
@@ -620,7 +620,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         else
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
                 x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
-                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText") });
+                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null });
         if (split)
         {
             y = page!.BodyTop;
@@ -949,6 +949,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a floating table's of the header or footer.</summary>
         public bool Story { get; init; }
+
+        /// <summary>The block a floating table stands with (the one after it), whose space after counts against it before Word 2013.</summary>
+        public Block? Anchor { get; init; }
 
         /// <summary>Whether the area is a text frame's standing with the text (w:vAnchor text), not on the page.</summary>
         public bool WithText { get; init; }
@@ -3398,6 +3401,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 exclusions.Add(own);
             }
         }
+        // Before Word 2013 a paragraph's space after counts against the floating table it stands with (the one before
+        // it): where it reaches the table, the paragraph goes below it (measured with docx/local/fla-16-*-14: an empty
+        // paragraph and "Anchor", 13.8 pt high with 8 pt after, above a table 16 pt below their top go below it; without
+        // space after, or with the table 24 pt down, they stay; from Word 2013 on, fla-*-15, they stay; LibreOffice's
+        // core-text/floattable-overlap and floattable-wrap-empty-para-legacy, found by agents BK and BM; uitest/
+        // tdf124675: a later paragraph of two lines keeps its first above the table).
+        var raisedAfter = 0.0;
+        if (context.CompatibilityMode < 15 && SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) is var spaceAfter and > 0.01)
+        {
+            for (var i = 0; i < exclusions.Count; i++)
+            {
+                if (!exclusions[i].Frame && !exclusions[i].Story && ReferenceEquals(exclusions[i].Anchor, paragraph))
+                {
+                    exclusions[i] = exclusions[i] with { Top = exclusions[i].Top - spaceAfter };
+                    raisedAfter = spaceAfter;
+                }
+            }
+        }
         // Whether the lines were broken beside floating objects, which another column or page may not have.
         var laidAround = false;
         if (exclusions.Count > 0)
@@ -3584,6 +3605,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
             if (context.CompatibilityMode >= 15 && k == lines.Count - 1 && (notesHeight > 0.01 || notesNeeded > 0.01))
                 fitHeight = Math.Max(fitHeight, line.Height + SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null));
+            // Before Word 2013 a last line that the paragraph's space after took below a floating table needs room for
+            // that space too (measured with docx/local/fas-160-14: a line fitting below the table only without its 8 pt
+            // after goes to the next page, fas-0-14 without space after stays; LibreOffice's core-text/
+            // floattable-wrap-empty-para-legacy).
+            if (raisedAfter > 0 && k == lines.Count - 1 && line.Skip > 0.01)
+                fitHeight = Math.Max(fitHeight, line.Height + raisedAfter);
             // A line a floating object pushes down has to fit below it, else it goes to the next column or page, with
             // the paragraph's own objects (measured with docx/local/anchorpush-*: a paragraph whose full-width object
             // leaves it no room on the page moves to the next with it, and the lines above keep their places).

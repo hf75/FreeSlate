@@ -2252,7 +2252,14 @@ areas:
           the text going on below them (LibreOffice's core-text/floattable-negative-vert-offset: tblpY -269 puts the
           line before the table below it, 33 → 100 % of the lines; floattable-anchor-next-page: 1.2 pt of overlap
           suffice, 71 → 100 %; writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first,
-          empty line where it is). One that ends the document, no paragraph after it, stands in the text
+          empty line where it is). Before Word 2013 the space after of the paragraph it stands with (the one after it)
+          counts too: where the paragraph's line clears the table but its space after reaches it, the paragraph goes
+          below the table and needs room there for that space as well, else the next page; later paragraphs keep their
+          lines above (uitest/tdf124675) (docx/local/fla-16-*-14: an empty paragraph and "Anchor",
+          13.8 pt high with 8 pt after, 16 pt above the table go below it; without space after or with the table 24
+          pt down they stay; fla-*-15 stay from Word 2013 on; fas-160-14: room below for the line but not its space
+          after, the next page; core-text/floattable-overlap 65.9 → 100 %, floattable-wrap-empty-para-legacy 75.8 →
+          100 %, writerfilter-dmapper/floattable-outer-nonsplit-inner 33.4 → 98.4 %, found by agents BK and BM). One that ends the document, no paragraph after it, stands in the text
           (extras-ooxmlimport/table_width: at the body's top, not at its tblpY of 513 pt). Their outer left edge
           stands w:tblpX from their column, the margin or the page, from the page on the device's dot left of it
           (PowerTools' DB-HeadersFooters-Src/Letterhead: tblpX 1135 twips, 472.92 dots, at 472;
