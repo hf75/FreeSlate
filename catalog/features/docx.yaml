@@ -2247,7 +2247,10 @@ areas:
           (extras-ooxmlexport/fdo68607: a title text box above the table; extras-layout/tdf116256). In a table cell a
           floating table stands in the cell's text area (tblpX from its left, the margin as the text, the page from
           the cell's left edge, tblpXSpec right at its right), tblpY below the next paragraph's top or the content's
-          top, not above the cell, and the cell's text after it wraps around it; the cell is as high as it reaches
+          top, not above the cell, and the cell's text after it wraps around it, the table kept inside the cell's
+          lines, one wider than the cell at its left line (docx/local/fic-14, fic-15, nfc-*: tblpX -426 and 3000
+          twips, widths of 2000 to 5000 in cells of 4000; core-objectpositioning/floattable-overlap-cell 89.6 → 93.3
+          %, extras-layout/tdf170477 97.7 → 99.8 %); the cell is as high as it reaches
           (docx/ local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15; core-layout/floattable-del-empty, extras-layout/
           tdf170477, writerfilter-dmapper/floattable-nested-layout); without vertAnchor tblpY counts from the
           content's top, and one without a vertical position not anchored to the text stands in the text as other
