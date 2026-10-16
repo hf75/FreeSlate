@@ -740,7 +740,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 }
                 // East Asian characters turned against the line are drawn from their outlines.
                 var turned = placed.Line.TurnEastAsian && piece.Text.Any(ParagraphLayout.EastAsian);
-                var browser = !turned && (piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor);
+                // Outlined letters (w:outline) too, as Word's PDF draws them: paths, whose thin strokes the rasterizer
+                // widens to a pixel, unlike a stroke of text (found by agent BG in Word's PDF of docx/external/libreoffice/
+                // extras-ooxmlimport/tdf154370: 34 glyph paths, white, stroked 0.14 pt, 85.0 -> 95.7 %).
+                var browser = !turned && !(piece.Style.Hollow && !piece.Style.Font.Data.IsColor)
+                    && (piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor);
                 // Hyperlinks wrap their text (catalog: field.hyperlinks); bookmarks are anchors in the page.
                 if (piece.Link != null)
                     svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");

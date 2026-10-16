@@ -662,7 +662,8 @@ areas:
           the OS/2 strikeout position and size, double strikethrough that line moved up and down by its thickness.
           Emboss: gray (#999999) copy in place, black copy 1.92 pt up-left, the text 0.96 pt up-left; imprint the same
           down-right; shadow a #C0C0C0 copy a 24th of the size down-right; outline hollow letters stroked 0.14 pt
-          (white over a shadow). Run borders take their lines and space (floored to dots) beside the text in the line,
+          (white over a shadow), drawn as paths as Word's PDF draws them, whose thin strokes the rasterizer widens to
+          a pixel (extras-ooxmlimport/tdf154370 85.0 → 95.7 %). Run borders take their lines and space (floored to dots) beside the text in the line,
           and above and below it, the line taller by twice both outside its spacing (docx/local/rbd-*: 0.5 to 3 pt
           with 0 and 4 pt of space, Calibri 11 and Arial 12; powertools/HC033 66.7 → 100 % of the lines), neighbouring
           runs with one border sharing a frame over the font's height. Super- and subscripts take the font's OS/2
