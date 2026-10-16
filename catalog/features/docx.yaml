@@ -1153,7 +1153,9 @@ areas:
           except on a line an earlier stop took further. From Word 2013 on a left stop past the column's edge moves
           the tab to the next line, where it fills the line; centered, right and decimal stops past it align at the
           indent, or at the edge where an earlier stop took the line there (docx/generated/tabs, docx/local/tab-rules,
-          tab-break). Centered and decimal text that would reach past the line's end ends there (tv-c, tv-d). A tab
+          tab-break), also after a space at the paragraph's start (docx/local/lke-sp: " " alone on the first line of a
+          box 15.2 pt wide before a tab to 36 pt), not after a tab that filled a line (dts-31680). Centered and decimal
+          text that would reach past the line's end ends there (tv-c, tv-d). A tab
           goes to the next line together with the word after it where that word does not fit after it (docx/local/lw-6
           to lw-10; engine.lineLayout). An absolute position tab (w:ptab) aligns what follows it at the left edge, the
           middle or the right edge of the margins or indents, as a stop of that alignment there would
@@ -2970,11 +2972,18 @@ areas:
           eaVert run the lines down, the first at the right; vert270 runs them up, the first at the left;
           mongolianVert and wordArtVert run them down, the first at the left; eaVert, mongolianVert and the WordArt
           kinds set East Asian characters upright; vertical lines are thicker (paragraph.bidi; docx/local/vertical6).
-          Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the lines of the story that do not fit the
-          boxes before them, a box keeping its first line however far it reaches past its room (docx/local/lkb-1-*: a
-          first line 0.5 to 5 pt taller than the room stays, lkb-2-*: the second line 0.5 pt past the bottom inset goes
-          on), also as shapes of a group (docx/external/libreoffice/extras-ooxmlexport/tdf73499:
-          "textboxes!" in a group's second shape, 79.9 → 97.5 %). A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that
+          Linked text boxes (wps:txbx id, wps:linkedTxbx id and seq) show the story's text that does not fit the
+          boxes before them, laid out again at their own width, in the chain's order whatever order their layers draw
+          them in (docx/local/lke-sp: the rest of a paragraph broken in a box 15.2 pt wide as one line of a tab and a
+          picture in the next, 135.6 pt wide; lke-txt: "e one" of a word broken there). A box keeps its first line
+          however far it reaches past its room (lkb-1-*: a first line 0.5 to 5 pt taller than the room stays, lkb-2-*:
+          the second line 0.5 pt past the bottom inset goes on), unless it has no room at all inside its insets and
+          outline: then no box shows that line (lkc-*: 0.55 pt keeps "Line one", 0.5 pt loses it; lkd-*: a picture's
+          line alike); the chain's last box shows all the rest past its room (lkf-1: three lines in a box for one).
+          LibreOffice's extras-layout/tdf152983-1-min: a footer's chain, its first box 3.55 pt high with 7.2 pt insets,
+          its picture a line down the second box, drawn first, 81.8 → 92.2 %. Also as shapes of a group
+          (docx/external/libreoffice/extras-ooxmlexport/tdf73499: "textboxes!" in a group's second shape, 79.9 → 97.5
+          %). A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that
           does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case
           as in Word, 96.7 %), measured where it begins, and aligns them in its own width
           (docx/external/libreoffice/extras-ooxmlexport/ testWordArtWithinDraingtool: WordArt right aligned in such a

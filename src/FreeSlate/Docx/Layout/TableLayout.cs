@@ -2350,7 +2350,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // HTML auto spacing is 14 pt between a cell's blocks, none at its top and bottom (measured with
                     // docx/local/autospace-cells-15 and -14).
                     var autoSpacing = !context.AddsSpacing;
-                    var before = !spaced && previous == style ? 0
+                    var before = !spaced && previous == style || paragraph.ResumeAt != null ? 0
                         : paragraph.Format.BeforeAuto == true && autoSpacing ? (first || b > 0 && blocks[b - 1] is ParagraphBlock prior && ListPair(prior, paragraph) ? 0 : 14)
                         : paragraph.Format.Before ?? 0;
                     var following = b + 1 < blocks.Count
@@ -2399,8 +2399,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         }
                     }
                     var laid = around.Any(f => f.Bottom > linesTop)
-                        ? paragraphs.Layout(paragraph, width, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width))
-                        : paragraphs.Layout(paragraph, width, fields);
+                        ? paragraphs.Layout(paragraph, width, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width), from: paragraph.ResumeAt ?? 0)
+                        : paragraphs.Layout(paragraph, width, fields, from: paragraph.ResumeAt ?? 0);
                     foreach (var line in laid)
                     {
                         y += line.Skip;

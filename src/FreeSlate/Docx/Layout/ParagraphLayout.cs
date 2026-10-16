@@ -244,6 +244,9 @@ public sealed class Line
     public bool First { get; init; }
     public bool Last { get; set; }
 
+    /// <summary>The paragraph the line is of (set by <see cref="ParagraphLayout.Layout"/>).</summary>
+    public ParagraphBlock? Paragraph { get; set; }
+
     /// <summary>Where the line's text begins in its paragraph's text.</summary>
     public int TextStart { get; init; }
 }
@@ -907,6 +910,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null, int from = 0)
     {
         var laid = LayoutLines(paragraph, width, fields, room, from);
+        foreach (var line in laid)
+            line.Paragraph = paragraph;
         // The markup view marks the lines of a paragraph whose formatting changed and the last line of one whose mark
         // changed; the formatting change's balloon hangs from the first line.
         if (laid.Count > 0 && (paragraph.Change != null || paragraph.MarkRevision != null))
@@ -1194,8 +1199,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (to > limit + 0.005)
                     {
                         // A tab whose stop lies past the right margin starts the next line; at a line's start it fills
-                        // the line and its text follows on the next (measured with docx/local/tab-break).
-                        if (HasContent(text, lineStart, i))
+                        // the line and its text follows on the next (measured with docx/local/tab-break); a space before
+                        // it at the paragraph's start keeps the first line for itself (docx/local/lke-sp: " ", a tab and a
+                        // picture in a box 15.2 pt wide, the tab and the picture on one line of the next linked box), one
+                        // after a tab that filled a line not (dts-31680: " " between tabs to stops past the margin).
+                        if (HasContent(text, lineStart, i) || first && i > lineStart)
                         {
                             end = i;
                             lastFit = i;

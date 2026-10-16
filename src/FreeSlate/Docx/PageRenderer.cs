@@ -61,11 +61,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             drawn.AddRange(upright.Drawings);
         // The page background, drawings behind the text, the text, then inline drawings and the drawings in front.
         var front = new List<PlacedDrawing>();
+        // Linked text boxes take their story in the chain's order (wps:txbx, then wps:linkedTxbx by seq), whatever order
+        // their layers draw them in: the boxes of a chain on the page are made in that order first (docx/external/
+        // libreoffice/extras-layout/tdf152983-1-min: a footer's linked box behind the text shows the picture its
+        // story's first box, in front of the text, has no room for).
+        var made = new Dictionary<PlacedDrawing, string>(ReferenceEqualityComparer.Instance);
+        if (drawings != null && blocks != null)
+        {
+            foreach (var drawing in ChainOrder(drawn))
+                made[drawing] = Drawing(drawing, page);
+        }
         if (drawings != null)
         {
             svg.Append(drawings.Background(page.PaperWidth, page.PaperHeight));
             foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
-                svg.Append(Drawing(drawing, page));
+                svg.Append(made.Remove(drawing, out var html) ? html : Drawing(drawing, page));
         }
         var textStart = svg.Length;
         svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
@@ -111,7 +121,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (drawings != null)
         {
             foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
-                svg.Append(Drawing(drawing, page));
+                svg.Append(made.Remove(drawing, out var html) ? html : Drawing(drawing, page));
         }
         foreach (var (text, x, y, w, h) in page.Alternatives)
             svg.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(text)}\" style=\"left:{Px(x)}px;top:{Px(y)}px;width:{Px(w)}px;height:{Px(h)}px\"></div>");
@@ -123,6 +133,27 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             svg.Append("</div>");
         svg.Append("</section>\n");
         return svg.ToString();
+    }
+
+    /// <summary>
+    /// The text boxes of the chains of linked text boxes that have their first box on the page, in each chain's order:
+    /// the box of the story (wps:txbx, place 0), then those that continue it (wps:linkedTxbx by seq).
+    /// </summary>
+    static IEnumerable<PlacedDrawing> ChainOrder(List<PlacedDrawing> drawn)
+    {
+        static (string Id, int Seq)? Place(PlacedDrawing drawing)
+        {
+            var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
+            if ((string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") is { } id)
+                return (id, 0);
+            if (shape?.Element(Drawings.Wps + "linkedTxbx") is { } linked && (string?)linked.Attribute("id") is { } story)
+                return (story, int.TryParse((string?)linked.Attribute("seq"), out var seq) ? seq : 0);
+            return null;
+        }
+        return drawn.Select(d => (Drawing: d, Place: Place(d))).Where(c => c.Place != null)
+            .GroupBy(c => (c.Drawing.Part, c.Place!.Value.Id))
+            .Where(g => g.Count() > 1 && g.Any(c => c.Place!.Value.Seq == 0))
+            .SelectMany(g => g.OrderBy(c => c.Place!.Value.Seq).Select(c => c.Drawing));
     }
 
     /// <summary>A drawing laid out on a page of vertical text (turned), upright on the page where its middle turns to.</summary>
@@ -462,8 +493,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return drawing;
     }
 
-    /// <summary>The lines of linked text boxes that did not fit the boxes before, by the story's id and the next box's place.</summary>
-    readonly Dictionary<(string Id, int Seq), List<PlacedLine>> continued = [];
+    /// <summary>
+    /// The text of linked text boxes that did not fit the boxes before, by the story's id and the next box's place: the
+    /// paragraph it goes on in from the first line the box before had no room for, then the blocks after it.
+    /// </summary>
+    readonly Dictionary<(string Id, int Seq), List<Block>> continued = [];
+
+    /// <summary>
+    /// A story's blocks from one of its lines on: the line's paragraph from the line's text, then the blocks after it;
+    /// null where the line is not of one of the blocks' paragraphs (a table's).
+    /// </summary>
+    static List<Block>? Resumed(List<Block> blocks, Line line)
+    {
+        var index = blocks.FindIndex(b => ReferenceEquals(b, line.Paragraph));
+        return index < 0 ? null : [((ParagraphBlock)blocks[index]) with { ResumeAt = line.TextStart }, .. blocks.Skip(index + 1)];
+    }
 
     /// <summary>
     /// A shape's text box content laid out like body text in the shape's rectangle less its insets, at the top,
@@ -489,6 +533,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var linked = shape?.Element(Drawings.Wps + "linkedTxbx");
         var story = (string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") ?? (string?)linked?.Attribute("id");
         var seq = linked != null && int.TryParse((string?)linked.Attribute("seq"), out var place) ? place : 0;
+        // A linked box lays out the rest of its story at its own width (measured with docx/local/lke-sp: the rest of a
+        // paragraph broken in a box 15.2 pt wide goes on as one line of a tab and a picture in the next, 135.6 pt wide;
+        // lke-txt: "e one" of a word broken there on one line).
+        if (text is not { Count: > 0 } && story != null && linked != null && continued.Remove((story, seq), out var rest))
+            text = rest;
         if (text is { Count: > 0 })
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
@@ -516,8 +565,6 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 (layout.Vertical, layout.TurnEastAsian, layout.AlignIn, layout.TextColor, layout.GridCell) = (vertical, turn, alignIn, textColor, cell);
             }
         }
-        else if (story != null && continued.Remove((story, seq), out var rest))
-            (lines, height) = (rest, rest.Max(p => p.Top + p.Line.Height));
         else
             return "";
         // Lines of a linked story beyond the box continue in the next one; a box keeps its first line, however far it
@@ -525,15 +572,25 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // stays, lkb-2-*: the second line 0.5 pt past the bottom inset goes on; docx/external/libreoffice/extras-layout/
         // tdf152983-1-min, found by agent BH).
         var firstTop = lines.Count > 0 ? lines.Min(p => p.Top) : 0;
-        if (story != null && lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01))
+        // A box without room inside its insets and outline loses its first line: no box shows it, the next goes on with
+        // the line after it (measured with docx/local/lkc-*: boxes of a 0.5 pt outline 0.55 pt and more higher than their
+        // insets keep "Line one", 0.5 pt and less lose it; lkd-pic-*: a line of a picture alike).
+        var lost = story != null && lines.Count > 0 && areaHeight <= 0.01;
+        // The last box of a chain shows the rest of its story, however far it reaches past the box (measured with
+        // docx/local/lkf-1: a second box with room for one line shows three; extras-layout/tdf152983-1-min: a picture's
+        // line 4.3 pt past the bottom inset).
+        var last = story != null && shape?.Document is { } part && !part.Descendants(Drawings.Wps + "linkedTxbx").Any(l =>
+            (string?)l.Attribute("id") == story && int.TryParse((string?)l.Attribute("seq"), out var later) && later > seq);
+        if (story != null && !last && (lost || lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01)))
         {
-            var kept = lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01 || p.Top <= firstTop + 0.01).ToList();
-            var over = lines.Except(kept).ToList();
-            var shift = over.Min(p => p.Top);
-            continued[(story, seq + 1)] = over.Select(p => p with { Top = p.Top - shift }).ToList();
+            var kept = lost ? [] : lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01 || p.Top <= firstTop + 0.01).ToList();
+            var over = lines.Except(kept).Where(p => !lost || p.Top > firstTop + 0.01).ToList();
+            var shift = over.Count > 0 ? over.Min(p => p.Top) : double.MaxValue;
+            if (over.Count > 0 && Resumed(text!, over.Where(p => p.Top <= shift + 0.01).MinBy(p => p.Left)!.Line) is { } resumed)
+                continued[(story, seq + 1)] = resumed;
             (lines, height) = (kept, kept.Count > 0 ? kept.Max(p => p.Top + p.Line.Height) : 0);
-            fills = fills.Where(f => f.Y < shift).ToList();
-            strokes = strokes.Where(s => s.Y1 < shift).ToList();
+            fills = lost ? [] : fills.Where(f => f.Y < shift).ToList();
+            strokes = lost ? [] : strokes.Where(s => s.Y1 < shift).ToList();
         }
         // Text taller than its box begins at its top, whatever its anchor (docx/external/libreoffice/extras-ooxmlexport/
         // tdf131922_LanguageInGroupShape: five lines centered in a box for four, from the top inset; fdo83057).

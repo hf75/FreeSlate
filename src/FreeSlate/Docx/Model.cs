@@ -148,6 +148,12 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
 
     /// <summary>The paragraph's list number or bullet (catalog: numbering.counting), or null.</summary>
     public ListLabel? Label { get; init; }
+
+    /// <summary>
+    /// Where the paragraph goes on in a linked text box (the Line.TextStart of the first line the box before had no room
+    /// for), laid out from there without its space before; null for the whole paragraph.
+    /// </summary>
+    public int? ResumeAt { get; init; }
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
