@@ -1327,7 +1327,10 @@ areas:
           their pitch (docx/local/cjv-*, cjx-*: Microsoft YaHei lines of ideographs and "ABC def ghi" 0.5 and 2 pt
           wider in turn, the spaces up to 1.5 times their width, then the boundaries' 3 pt up to 6, then every gap
           alike; dst4-s68 85.2 → 90.4 %, cjkx-spaces-both 95.9 → 99.5 %; pandoc/instrText_hyperlink 87.7 → 95.9 %,
-          nested_instrText 87.2 → 91.7 %, empty_field 93.9 → 97.8 %); before, every gap alike (cgw14-lat). Before Word
+          nested_instrText 87.2 → 91.7 %, empty_field 93.9 → 97.8 %); before, every gap alike (cgw14-lat). A
+          justified line of nothing but inline objects spreads between them where lines spread around East Asian text;
+          beside Latin text objects take nothing (docx/local/ojx-ea, ojx-lat: five rectangles 13.2 pt apart with SimSun
+          as the document's East Asian font, none without; tika/testWPSAttachment 71.8 → 95.7 %). Before Word
           2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
           descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts
           at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by

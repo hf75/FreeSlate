@@ -3382,9 +3382,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // letter in mode 15, dst6-*: 0.6 in modes 11 to 14; dst5-kern, dst5-lig and docx/generated/paragraph-alignment:
         // spaces only; docx/external/libreoffice/extras-ooxmlexport/para-adjust-distribute).
         var everyCharacter = jc is "distribute" or "thaiDistribute" && (lineSpaces <= 0 || !movable.Any(p => p.Text.Length > 0 && Shaped(p.Style)));
+        // A line of nothing but inline objects spreads between them where lines spread around East Asian text (measured
+        // with docx/local/ojx-ea, ojx-lat: five rectangles 13.2 pt apart with SimSun as the document's East Asian font,
+        // none without; beside Latin text objects take nothing; tika/testWPSAttachment: OLE icons 85.69 pt apart).
+        var objectsOnly = spread == Spread.EastAsian && movable.All(p => p.Drawing != null || p.Text.Length == 0) && movable.Count(p => p.Drawing != null) >= 2;
         if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
-                || everyCharacter)
-            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0 && !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
+                || everyCharacter || objectsOnly)
+            && Distribute(movable, free, spread == Spread.All || everyCharacter || objectsOnly, line.Hanging > 0 && !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
             return;
         // The spaces between words share the free width: not those that end the line, nor those it begins with
         // (measured with docx/local/jls-*: one to three spaces before a justified paragraph's first word, and one after
