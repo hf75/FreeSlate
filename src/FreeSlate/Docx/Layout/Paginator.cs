@@ -408,6 +408,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             _ => (textTop, 0.0),
         };
         var odd = page!.DisplayNumber % 2 == 1;
+        // A table in a frame (TableReader) after paragraphs framed alike goes on below them (see PlaceFrame).
+        var tableFrame = ((TableBlock)blocks[index]).Table is { Format.Framed: true } framedTable
+            && framedTable.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.Frame: { } cellFrame }
+            ? cellFrame : null;
         // Older modes put the first cell's text at the left edge and the last cell's at the right one, the table out
         // by the inset (measured with docx/local/ftx-14-*, -15-*: left 6.0 pt left of the margin, right 6.0 pt past it
         // with cell margins of 115 twips, 5.64 with 108, centered alike; poi/Bug54771b).
@@ -468,6 +472,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     top = page.Height - end;
             }
         }
+        if (tableFrame != null && Stacks(tableFrame, index))
+            top = frameStack!.Value.Bottom;
         // A table that may not overlap others (w:tblOverlap never) moves with its distances off a floating table before
         // it on the page that it would overlap: right of it where it fits in its horizontal anchor's span, else below
         // it, its distance left then counting from its place (measured with docx/local/tc-5: beside a table at the
@@ -659,6 +665,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
                     Banded = banded,
                 });
+        frameStack = tableFrame != null && !split ? (tableFrame, page!, top + height, index + 1) : null;
         if (split)
         {
             y = page!.BodyTop;
@@ -699,6 +706,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// frame of its letter at the start of the paragraph after it, a margin drop cap left of the column.
     /// </summary>
     /// <returns>The index of the first block after the frame.</returns>
+    /// <summary>
+    /// The frame (w:framePr) the blocks placed last stand in: its properties, page and the bottom of what it holds so
+    /// far, and the block that may go on in it (see PlaceFrame, PlaceFloatingTable).
+    /// </summary>
+    (XElement Properties, PageBox Page, double Bottom, int Next)? frameStack;
+
+    /// <summary>Whether a block of frame properties <paramref name="frame"/> at <paramref name="index"/> goes on in the frame placed last.</summary>
+    bool Stacks(XElement frame, int index) =>
+        frameStack is { } stack && stack.Next == index && ReferenceEquals(stack.Page, page) && XNode.DeepEquals(stack.Properties, frame);
+
     int PlaceFrame(List<Block> blocks, int index)
     {
         var first = (ParagraphBlock)blocks[index];
@@ -810,13 +827,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             "center" => frameTop + (frameHeight - height) / 2,
             _ => frameTop + Twips("y"),
         };
+        // Paragraphs framed as a table before them go on below it in that frame, and a table framed as paragraphs
+        // before it below them (measured with LibreOffice's extras-ooxmlexport/fdo60957-2: "F", a table and "H" framed
+        // alike, 5103 by 1565 twips, one below the other: F's baseline 120.5 pt, the table from 122.66 to 133.46, H's
+        // baseline 142.82; ours all at the frame's top before).
+        var stacked = Stacks(properties, index);
+        if (stacked)
+            top = frameStack!.Value.Bottom;
         // Lines above a frame standing with the text that reach into it or its w:vSpace go below it, the frame keeping
         // its place, and the text goes on below them (measured with docx/local/fi-2, fi-3, fj-2: the paragraph before
         // two frames centered with vSpace 187 and notBeside goes below both, the second standing below the first after
         // that paragraph; docx/external/libreoffice/extras-ooxmlexport/tdf105035_framePrB).
         var vSpace = Twips("vSpace");
         var withText = VerticalAnchor(properties) == "text";
-        if (withText && properties.Attr("wrap") == "notBeside" && dropCap is null or "none")
+        if (withText && properties.Attr("wrap") == "notBeside" && dropCap is null or "none" && !stacked)
             Lower(top - vSpace, top + height + vSpace, left, width);
         // The frame's lines, its paragraphs' borders around the whole frame. In compatibility modes before 15 Word
         // draws the inline shapes of a frame at its left edge and as far down from the page's top as the frame stands
@@ -885,9 +909,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
-        if (properties.Attr("wrap") != "none")
+        if (properties.Attr("wrap") != "none" && !stacked)
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
                 properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText, DropCap = dropCap == "drop" });
+        frameStack = dropCap is null or "none" ? (properties, page!, top + content, end) : null;
         return end;
     }
 

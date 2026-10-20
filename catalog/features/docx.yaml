@@ -5083,10 +5083,12 @@ areas:
           floating table placed as the frame would be, its indent (w:tblInd) kept from Word 2013 on too, the empty
           paragraph ending the section after it a line of the text where it is not framed, none where it is as the
           table's paragraphs (docx/local/frsb-12, -14, -15: tblInd 360 18 pt right of the margin in mode 15, the first
-          cell's text there before; known deviation: a framed one with text stands below the table in its frame in
-          Word, frsb-* b; lb-1 to lb-4: at the margin's outside top;
+          cell's text there before; a framed one with text stands below the table in its frame, frsb-* b; lb-1 to
+          lb-4: at the margin's outside top;
           docx/external/libreoffice/extras-ooxmlexport/tdf164474 54.0 → 91.3 → 100 %, tdf104394_lostTextbox,
-          extras-ooxmlimport/tdf75573_lostTable 84.7 → 95.4 %), not in a cell, where frames do not apply
+          extras-ooxmlimport/tdf75573_lostTable 84.7 → 95.4 %); paragraphs and tables framed alike one after the
+          other stand one below the other in that frame (extras-ooxmlexport/fdo60957-2: "F", a table and "H" in a
+          frame of 5103 by 1565 twips, 55.9 → 100 %), not in a cell, where frames do not apply
           (extras-ooxmlexport/fdo77887, extras-layout/fdo48718-1: a table framed 113.3 pt from the page's top in a
           floating table's cell stays in it), nor framed in line with the text (w:yAlign inline,
           extras-ooxmlexport/n780853). A table that fits beside a floating table it would stand across moves into the
