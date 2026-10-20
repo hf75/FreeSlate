@@ -264,9 +264,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // The pages each object stood on run by run, and the paragraphs that begin a page for it.
             var history = new Dictionary<XElement, List<int>>(ReferenceEqualityComparer.Instance);
             var forced = new HashSet<Block>(ReferenceEqualityComparer.Instance);
+            // Where each drawing of the body that text goes around stood, run by run, and those held where they stood
+            // first (see pinned).
+            var placements = new Dictionary<XElement, List<(int Page, double X, double Y)>>(ReferenceEqualityComparer.Instance);
+            var pins = new Dictionary<XElement, (int Page, double X, double Y)>(ReferenceEqualityComparer.Instance);
             for (var run = 0; run < 5; run++)
             {
-                var paginator = new Paginator(context, layout, reader) { seeded = known, seededBands = bands, forcedBreaks = forced, EndnoteContinuation = EndnoteContinuation };
+                var paginator = new Paginator(context, layout, reader)
+                {
+                    seeded = known, seededBands = bands, forcedBreaks = forced, pinned = pins, EndnoteContinuation = EndnoteContinuation,
+                };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
@@ -279,6 +286,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var bandsKept = foundBands.Count == bands.Count && foundBands.All(b => bands.TryGetValue(b.Key, out var old) && Math.Abs(old - b.Value) < 0.01);
                 if ((found.Values.All(e => e.Count == 0) || Same(known, found)) && bandsKept)
                     break;
+                // A drawing that goes back and forth on its page, pushing the lines above its paragraph down and so its
+                // paragraph and itself, stays where it stood first, from where its paragraph stood without it: Word moves
+                // the lines below it, not the drawing (measured with docx/local/np-c14, np-c15: a rectangle 42.55 pt
+                // above its paragraph over the line before stays where that paragraph first stood, the line below it, the
+                // paragraph after the line; LibreOffice's extras-layout/fdo43573-2-min). Before Word 2013 the paragraph's
+                // other drawings that went back and forth with it stay too, from Word 2013 on they stand from the
+                // paragraph where it ends up (np-a14: a rectangle 42.55 pt below the paragraph at 128.0, np-a15 at 209.03).
+                foreach (var placedPage in result)
+                {
+                    foreach (var drawing in placedPage.Drawings.Where(d => d.Part == context.MainPart && ExclusionOf(d) != null))
+                    {
+                        if (!placements.TryGetValue(drawing.Drawing, out var stood))
+                            placements[drawing.Drawing] = stood = [];
+                        stood.Add((placedPage.Number, drawing.X, drawing.Y));
+                    }
+                }
+                foreach (var (source, stood) in placements)
+                {
+                    if (stood.Count < 3 || pins.ContainsKey(source))
+                        continue;
+                    var (a, b, c) = (stood[^3], stood[^2], stood[^1]);
+                    if (a.Page == b.Page && b.Page == c.Page && Math.Abs(a.Y - c.Y) < 0.01 && Math.Abs(b.Y - c.Y) > 0.01
+                        && (context.CompatibilityMode < 15 || Above(source)))
+                        pins[source] = stood.First(s => s.Page == c.Page);
+                }
                 // An object that goes back and forth between two pages pushes its own paragraph off the first of them
                 // when it wraps text there: Word puts the paragraph on the second and leaves the first without the object
                 // (docx/external/openxml-sdk/Document: a cover page's text box placed from the page, anchored after a
@@ -1069,6 +1101,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// text on (Paginate), which Word leaves on the next page, the page before without them.
     /// </summary>
     HashSet<Block> forcedBreaks = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Whether a drawing is placed above its paragraph or line, a negative offset from it.</summary>
+    static bool Above(XElement anchor) =>
+        anchor.Element(Docx.Drawings.Wp + "positionV") is { } position && (string?)position.Attribute("relativeFrom") is "paragraph" or "line"
+        && double.TryParse(position.Element(Docx.Drawings.Wp + "posOffset")?.Value, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var offset) && offset < 0;
+
+    /// <summary>Drawings held where they stood first on a page, the run before going back and forth (see Paginate).</summary>
+    Dictionary<XElement, (int Page, double X, double Y)> pinned = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
@@ -2887,6 +2928,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     PlacedDrawing Placed(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
+        CellAnchor? cell, double? character)
+    {
+        var placed = Unpinned(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        return pinned.TryGetValue(anchor.Anchor, out var pin) && pin.Page == page.Number ? placed with { X = pin.X, Y = pin.Y } : placed;
+    }
+
+    PlacedDrawing Unpinned(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell, double? character)
     {
         var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.CompatibilityMode < 15);
