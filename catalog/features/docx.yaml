@@ -899,8 +899,11 @@ areas:
           facing the viewer (a perspective camera draws as the front view in Word too); the glyphs' counters are holes
           the bevel runs into (docx/local/text-3d: bevels, depth with a contour, metal, perspective, 78 %). A gradient
           outline spans the piece as its fill does (docx/external/libreoffice/extras-ooxmlexport/tdf80526_word_wrap
-          93.9 → 97.3 %). Known deviation: double compound outlines and their dashes (TextEffects_TextOutline 63.9 →
-          53.8 % once its gradient lies on the text). Known deviations: Word's bevels are smoother at sharp corners
+          93.9 → 97.3 %). A dashed outline repeats its pattern in units of its exact width (docx/local/wae-text: 2 pt
+          dashed 8:6 pt). Known deviation: double compound outlines and their dashes (TextEffects_TextOutline 63.9 →
+          53.8 % once its gradient lies on the text); the browser starts a dashed outline where the font's contours
+          start, Word at each contour's topmost point (docx/local/wae-text; WordArt's are drawn as Word's, see
+          drawing.textBoxes). Known deviations: Word's bevels are smoother at sharp corners
           and lit somewhat differently; a document draws its first 400 characters of 12 pt (fewer of larger ones) of
           3D text as bodies, the rest flat, as each 48 pt character takes 85 to 420 KB of markup
           (docx/external/libreoffice/writerfilter-dmapper/fdo78333-1-minimized: a page of it ran out of memory).
@@ -3012,10 +3015,22 @@ areas:
           is (LibreOffice's core-doc/text-box-word-wrap: a header box saved 34.95 pt wide, 103.1 pt with its text, at
           the page's right edge). WordArt, a text box
           whose body has a text warp (a:prstTxWarp other than textNoShape), bends its runs as PowerPoint does (pptx
-          text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets,
-          whatever the outline (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6
-          or 20 pt, 99.8 %; docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %,
-          tdf125885_WordArt3 27.1 → 96.2 %, tdf152896_WordArt_color_darken 9.2 → 95.7 %). A box's empty last paragraph
+          text.warp), in their fonts, sizes, fills, outlines and effects, into the shape less the body's insets and
+          half the shape's own outline, drawn or not (its a:ln or its theme line), whatever the text's outline
+          (docx/local/wordartbox: an H in textPlain fills its shape to insets of 0, 7.2 and 3.6 or 20 pt, 99.8 %;
+          wal-*: 1 and 3 pt in from shape outlines of 2 and 6 pt, with or without fill, a theme line's alike;
+          docx/external/libreoffice/tdf152840_WordArt_non_accent_color 30.2 → 98.2 %, tdf125885_WordArt3 27.1 → 96.2 %,
+          tdf152896_WordArt_color_darken 9.2 → 95.7 %). Its lines stand as far apart as Word lays them out, unrounded:
+          Word's own line height for the paragraph's line spacing and its space before and after (docx/local/wap-1:
+          Arial 20 pt single, at 1.15 and 1.5 lines, exactly and at least 30 pt, with 10 pt after the first or before
+          the second paragraph, within 0.2 pt; tdf125885_WordArt 89.5 → 99.6 %); text converted from old WordArt
+          (bodyPr fromWordArt) keeps the slide renderer's lines and whole-pixel baselines its warps were measured
+          with (docx/local/vwa-*; extras-ooxmlexport/Tdf147485). Each glyph contour of an outline starts at its
+          topmost on-curve point, the leftmost of equals, taken before the warp, where Word starts the outline's
+          dashes (docx/local/wad-*: O, A, H, S and a heart whose lobes are equally high; wae-slant, wae-wave;
+          tdf125885_WordArt2 80.7 → 100 %). Shadows and glow lie behind a copy of the bent glyphs, the glyphs
+          unfiltered on top, as a page's runs (a filtered path prints as a picture; extras-ooxmlexport/fdo80897:
+          hollow WordArt with a shadow, 89.9 → 92.6 %). A box's empty last paragraph
           after a table takes its line and space after, where a cell's takes none (docx/local/tbxtbl-a, -b, -d;
           powertools/WC/WC050-Table-in-Text-Box). The shading of a box's last paragraph reaches down to its bottom
           inset where the text with its space after leaves room below it (docx/local/grr-h, grr-k, grr-l, grr-n; not
@@ -3480,7 +3495,10 @@ areas:
         office: >-
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
-          w:clrSchemeMapping; drawn as pptx line.dash (done). Dashed and dotted lines; Verified against Word with
+          w:clrSchemeMapping; drawn as pptx line.dash (done), except that Word repeats a pattern in units of the
+          line's exact width, not of its width in whole pixels (docx/local/wae-box, wae-box2: lines of 0.25, 0.5,
+          0.75, 1, 1.25, 2, 2.5 and 4 pt dashed 1:0.75, 2:1.5, 3:2.25, 1:1, 3.75:1.25, 8:6, 20:7.5 and 12:4 pt in
+          Word's PDF; round dots 3:4 pt on a 1 pt line). Dashed and dotted lines; Verified against Word with
           docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
 
       - id: line.joinCap

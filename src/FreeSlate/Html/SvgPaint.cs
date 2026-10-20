@@ -19,6 +19,17 @@ public sealed class SvgPaint
     /// </summary>
     public bool PrintedPictures { get; init; }
 
+    /// <summary>
+    /// Whether dash patterns repeat in units of the line's exact width (Word: docx/local/wae-box and wae-box2 print
+    /// lines of 0.25, 0.5, 0.75, 1, 1.25, 2, 2.5 and 4 pt dashed 1:0.75, 2:1.5, 3:2.25, 1:1, 3.75:1.25, 8:6, 20:7.5 and
+    /// 12:4 pt) rather than of its width in whole pixels (PowerPoint, see <see cref="Dashes.Unit"/>).
+    /// </summary>
+    public bool ExactDashes { get; init; }
+
+    /// <summary>The unit of an outline's dash pattern in pixels (see <see cref="ExactDashes"/>).</summary>
+    public double DashUnit(Outline outline) =>
+        ExactDashes && outline.WidthEmu > 0 ? Units.ToPx(outline.WidthEmu) : Dashes.Unit(Math.Max(Units.ToPx(outline.WidthEmu), 0.5));
+
     /// <summary>fill/fill-opacity attributes for a shape box of w × h pixels whose origin lies at <paramref name="origin"/> on the slide.</summary>
     /// <param name="outline">The shape's outline as path data in the box, for gradients that follow it (path="shape").</param>
     /// <param name="offset">Where the w × h box lies in the shape's coordinates: a gradient spans the bounds of the path
@@ -114,7 +125,7 @@ public sealed class SvgPaint
             // before the line, where its cap begins (measured with generated/lines-dash: a 0.5:2 pattern on a round
             // 4 pt line repeats every 3 widths; dots on an ellipse lie on [0, 1) widths, on a line on [-½, ½)).
             var round = outline.Cap == "rnd";
-            var unit = Dashes.Unit(width);
+            var unit = DashUnit(outline);
             var lengths = new double[dash.Length + dash.Length % 2];
             for (var i = 0; i < dash.Length; i += 2)
             {

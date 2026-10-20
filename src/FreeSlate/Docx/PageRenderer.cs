@@ -268,12 +268,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
         // WordArt: a text box whose body has a text warp bends its text as PowerPoint does, so the slide renderer
         // draws it, in its runs' fonts, fills, outlines and effects, instead of the text box's layout; the warp fills
-        // the shape less the body's insets (measured with docx/local/wordartbox: an H in textPlain fills a shape with
-        // insets of 0, 7.2 and 3.6 pt or 20 pt exactly to them, whatever its outline; PowerPoint's warp ignores them).
+        // the shape less the body's insets and half its own outline (measured with docx/local/wordartbox: an H in
+        // textPlain fills a shape with insets of 0, 7.2 and 3.6 pt or 20 pt exactly to them, whatever the text's outline;
+        // wal-*: 1 and 3 pt in from a shape outline of 2 and 6 pt, with or without fill, its theme line's alike;
+        // PowerPoint's warp ignores them).
         if (blocks != null && shape != null && drawing.Text is { Count: > 0 } words && Warped(drawing.Body) is { } warped
             && WordArt(words, warped) is { } art)
         {
-            var (l, t, r, b) = WarpInsets(warped);
+            var (l, t, r, b) = WarpInsets(warped, shape, context.Theme);
             return drawings!.Render(drawing with { Text = null }) + drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b));
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
@@ -311,7 +313,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // WordArt in a group bends its text in its shape's place.
             if (Warped(child.Element(Drawings.Wps + "bodyPr")) is { } childWarp && WordArt(childText, childWarp) is { } childArt)
             {
-                var (l, t, r, b) = WarpInsets(childWarp);
+                var (l, t, r, b) = WarpInsets(childWarp, child, context.Theme);
                 var box = new PlacedDrawing(new XElement(Drawings.Wp + "anchor", new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XElement(child)))),
                     drawing.Part, rect.X, rect.Y, rect.W, rect.H) { Behind = drawing.Behind, Order = drawing.Order };
                 html += drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b));
@@ -332,31 +334,74 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     static XElement? Warped(XElement? body) =>
         (string?)body?.Element(Ns.A + "prstTxWarp")?.Attribute("prst") is { } warp && warp != "textNoShape" ? body : null;
 
-    /// <summary>The insets of a WordArt text box's body, in points (Word's defaults 7.2 and 3.6 pt).</summary>
-    static (double L, double T, double R, double B) WarpInsets(XElement body)
+    /// <summary>
+    /// The insets of a WordArt text box's body (Word's defaults 7.2 and 3.6 pt) and half the shape's own outline (its
+    /// a:ln or its theme line's width), in points.
+    /// </summary>
+    static (double L, double T, double R, double B) WarpInsets(XElement body, XElement? shape, Drawing.Theme? theme)
     {
         double Inset(string name, double fallback) => double.TryParse((string?)body.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
-        return (Inset("lIns", 7.2), Inset("tIns", 3.6), Inset("rIns", 7.2), Inset("bIns", 3.6));
+        static double? Width(XElement? ln) =>
+            double.TryParse((string?)ln?.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var lw) ? lw / 12700 : null;
+        var themed = shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "lnRef") is { } lnRef
+            && int.TryParse((string?)lnRef.Attribute("idx"), out var idx) && idx > 0 ? theme?.LineStyle(idx) : null;
+        var outline = (Width(shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln")) ?? Width(themed) ?? 0) / 2;
+        return (Inset("lIns", 7.2) + outline, Inset("tIns", 3.6) + outline, Inset("rIns", 7.2) + outline, Inset("bIns", 3.6) + outline);
     }
 
     XElement? WordArt(List<Block> text, XElement body)
     {
         var paragraphs = new List<XElement>();
+        // Text converted from old WordArt keeps the slide renderer's lines, which its warps were measured with.
+        var converted = (string?)body.Attribute("fromWordArt") is "1" or "true";
         foreach (var paragraph in text.OfType<ParagraphBlock>())
         {
             var align = paragraph.Format.Justification switch { "center" => "ctr", "right" or "end" => "r", "both" or "distribute" => "just", _ => "l" };
-            var p = new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", align)));
+            var pPr = new XElement(Ns.A + "pPr", new XAttribute("algn", align));
+            var p = new XElement(Ns.A + "p", pPr);
+            var runs = new List<RunStyle>();
             foreach (var run in paragraph.Content.OfType<TextInline>())
             {
                 if (run.Text.Length > 0 && styles!.Style(run.Format, WordSlot.Ascii) is { Hidden: false } style)
+                {
                     p.Add(new XElement(Ns.A + "r", WordArtRun(style), new XElement(Ns.A + "t", run.Text)));
+                    runs.Add(style);
+                }
             }
+            if (runs.Count > 0 && !converted)
+                pPr.Add(WordArtSpacing(paragraph.Format, runs));
             paragraphs.Add(p);
         }
         if (!paragraphs.Any(p => p.Element(Ns.A + "r") != null))
             return null;
         return new XElement(Drawings.Wps + "txbx3D", new XElement(Ns.A + "bodyPr", body.Attributes(), body.Elements().Select(e => new XElement(e))),
             new XElement(Ns.A + "lstStyle"), paragraphs);
+    }
+
+    /// <summary>
+    /// A WordArt paragraph's spacing as Word lays its lines out before it bends them: its own line height for the
+    /// paragraph's line spacing, given as the share of the slide renderer's single line (1.2 times the largest size),
+    /// and its space before and after (measured with docx/local/wap-1: two paragraphs of Arial 20 pt in textPlain
+    /// stand about 22.9 pt apart single, 1.15 and 1.5 times that at auto 276 and 360, 30 pt at exactly and at least
+    /// 30 pt, and 10 pt more with 10 pt after the first or before the second; docx/external/libreoffice/
+    /// tdf125885_WordArt: Courier New Bold 14 pt at 1.15 lines in textDoubleWave1).
+    /// </summary>
+    static IEnumerable<XElement> WordArtSpacing(ParagraphFormat format, List<RunStyle> runs)
+    {
+        var natural = runs.Max(r => r.Metrics.Above) + runs.Max(r => r.Metrics.Below);
+        var value = format.Line ?? 240;
+        var height = (format.LineRule ?? "auto") switch
+        {
+            "exact" => value / 20,
+            "atLeast" => Math.Max(value / 20, natural),
+            _ => natural * value / 240,
+        };
+        yield return new XElement(Ns.A + "lnSpc", new XElement(Ns.A + "spcPct",
+            new XAttribute("val", (long)Math.Round(height / (1.2 * runs.Max(r => r.Size)) * 100000))));
+        if (format.Before is { } before && before > 0)
+            yield return new XElement(Ns.A + "spcBef", new XElement(Ns.A + "spcPts", new XAttribute("val", (long)Math.Round(before * 100))));
+        if (format.After is { } after && after > 0)
+            yield return new XElement(Ns.A + "spcAft", new XElement(Ns.A + "spcPts", new XAttribute("val", (long)Math.Round(after * 100))));
     }
 
     static XElement WordArtRun(RunStyle style)

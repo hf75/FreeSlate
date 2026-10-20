@@ -412,13 +412,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         Drawing.Geometry.GeometryDefinition definition, (double L, double T, double W, double H) box, bool fromWordArt, double width)
     {
         var offset = anchor switch { "ctr" => (height - layout.Height) / 2, "b" => height - layout.Height, _ => 0 };
+        // Word bends the lines of its own WordArt where it laid them out, not on whole pixels: snapped baselines,
+        // stretched with the glyphs, would stand up to 0.75 pt of layout apart from Word's (docx/local/wap-1: Arial
+        // 20 pt lines 23 pt apart drawn 23.25 pt apart, 3.6 times that in the shape). Text converted from old WordArt
+        // keeps the pixels its lines were measured with (docx/local/vwa-*).
+        double Baseline(double at) => slide.Presentation.Word && !fromWordArt ? at : Snap(at);
         var glyphs = new List<TextWarp.Glyph>();
         var owners = new List<TextStyle>();
         var selection = new StringBuilder();
         for (var lineIndex = 0; lineIndex < layout.Lines.Count; lineIndex++)
         {
             var line = layout.Lines[lineIndex];
-            var baseline = top + Snap(offset + line.Baseline);
+            var baseline = top + Baseline(offset + line.Baseline);
             foreach (var run in line.Runs)
             {
                 if (string.IsNullOrWhiteSpace(run.Text))
@@ -436,7 +441,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     {
                         var x = position + g.OffsetX * style.Size * PxPerPt;
                         var y = baseline * PxPerPt - g.OffsetY * style.Size * PxPerPt;
-                        glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale), lineIndex, baseline * PxPerPt));
+                        glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale, slide.Presentation.Word), lineIndex, baseline * PxPerPt));
                         owners.Add(style);
                     }
                     position += (FontData.MasterUnits(g.Advance * style.Size) + FontData.MasterUnits(g.Kerning * style.Size)) * PxPerPt + spacing;
@@ -457,7 +462,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // the top of its line box (measured with eight fonts on circles, 12 to 72 pt); and its line box.
         var lines = layout.Lines.Select(l =>
         {
-            var baseline = (top + Snap(offset + l.Baseline)) * PxPerPt;
+            var baseline = (top + Baseline(offset + l.Baseline)) * PxPerPt;
             return new TextWarp.Line(baseline, (l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8)) * PxPerPt,
                 baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt);
         }).ToList();
@@ -480,9 +485,20 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 ? Paint.Fill(paint, box.W, box.H, defs, 0, (box.L, box.T))
                 : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
             var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
-            var filter = style.Effects is { } effects
-                ? SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]))
-                : null;
+            var scale = SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]);
+            // On a printed page (Word) shadows and glow lie behind a copy of the glyphs and the glyphs themselves stay
+            // unfiltered on top, as a page's runs do (PageRenderer.WithEffects): a filtered path is printed as a
+            // picture (docx/external/libreoffice/extras-ooxmlexport/fdo80897: hollow WordArt with a shadow).
+            if (style.Effects is { } own && slide.Presentation.Word
+                && SvgEffects.Filter(own, Colors, 0, 0, new StringBuilder(), boundingBox: true, text: scale, parts: SvgEffects.Parts.Shape) == null
+                && SvgEffects.Filter(own, Colors, 0, 0, defs, boundingBox: true, text: scale, parts: SvgEffects.Parts.Outer) is { } outer)
+            {
+                var id = Paint.NewId("wa");
+                svg.Append($"<use href=\"#{id}\" filter=\"url(#{outer})\"/><path id=\"{id}\" d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}/>");
+                i = j;
+                continue;
+            }
+            var filter = style.Effects is { } effects ? SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: scale) : null;
             svg.Append($"<path d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}/>");
             i = j;
         }

@@ -63,14 +63,14 @@ public static class Dashes
     /// The square caps of a dashed line: PowerPoint ends its dashes flat and gives only the ends of an open figure a
     /// cap, its start always (the pattern starts with a dash) and its end where the end lies within a dash (measured
     /// with generated/lines-dash: the dashes keep their full length, the first one reaches half a width before the
-    /// line). <paramref name="paint"/> holds the stroke's paint attributes for a solid line with flat caps.
+    /// line). <paramref name="paint"/> holds the stroke's paint attributes for a solid line with flat caps, <paramref
+    /// name="unit"/> the pattern's unit in pixels.
     /// </summary>
-    public static string SquareEnds(EvaluatedPath path, Outline outline, double widthPx, string paint)
+    public static string SquareEnds(EvaluatedPath path, Outline outline, double widthPx, string paint, double unit)
     {
         var pattern = Pattern(outline);
         if (pattern is not { Length: > 0 })
             return "";
-        var unit = Unit(widthPx);
         var svg = new StringBuilder();
         foreach (var (points, closed) in CompoundLines.Flatten(path.Segments))
         {

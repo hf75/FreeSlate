@@ -313,7 +313,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
             if (dashed && outline!.Cap == "sq")
                 strokeTarget.Append(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
-                    paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp));
+                    paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp, paint.DashUnit(outline)));
             if (compound)
                 strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
         }

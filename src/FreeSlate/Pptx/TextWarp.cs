@@ -301,12 +301,39 @@ public static class TextWarp
         return (minX, minY, maxX, maxY);
     }
 
-    /// <summary>Glyph outline path data (font units, y down; M, L, Q, C, Z) as contours in pixels, curves and long lines subdivided.</summary>
-    public static List<List<(double X, double Y)>> Contours(string outline, double originX, double originY, double scale)
+    /// <summary>
+    /// Glyph outline path data (font units, y down; M, L, Q, C, Z) as contours in pixels, curves and long lines
+    /// subdivided; with <paramref name="fromTop"/> each contour starts at its topmost on-curve point, the leftmost of
+    /// equals, where Word starts a text outline's dashes (measured with docx/local/wad-*: O, A, H, S and a heart of
+    /// Segoe UI Symbol, its two lobes equally high, start at the top of each contour, the heart at its left lobe, holes
+    /// alike; wae-slant, wae-wave: the point is taken before the warp; wae-text: plain text's outlines start alike).
+    /// </summary>
+    public static List<List<(double X, double Y)>> Contours(string outline, double originX, double originY, double scale, bool fromTop = false)
     {
         var contours = new List<List<(double X, double Y)>>();
         var tokens = System.Text.RegularExpressions.Regex.Matches(outline, "[MLQCZ]|-?\\d*\\.?\\d+(?:e[-+]?\\d+)?");
         List<(double X, double Y)>? current = null;
+        // The contour's on-curve points: where it starts and where each segment ends.
+        var ends = new List<int>();
+        void Finish()
+        {
+            if (current is not { Count: > 2 })
+                return;
+            var at = 0;
+            foreach (var e in fromTop ? ends : [])
+            {
+                if (current[e].Y < current[at].Y - 1e-9 || Math.Abs(current[e].Y - current[at].Y) <= 1e-9 && current[e].X < current[at].X)
+                    at = e;
+            }
+            if (at > 0)
+            {
+                // A contour back at its first point drops the repeat, which would end up within it.
+                var closed = Math.Abs(current[^1].X - current[0].X) < 1e-9 && Math.Abs(current[^1].Y - current[0].Y) < 1e-9;
+                var points = closed ? current.GetRange(0, current.Count - 1) : current;
+                current = [.. points.Skip(at), .. points.Take(at)];
+            }
+            contours.Add(current);
+        }
         var command = 'M';
         var index = 0;
         double Next() => double.Parse(tokens[index++].Value, CultureInfo.InvariantCulture);
@@ -327,7 +354,7 @@ public static class TextWarp
                 index++;
                 if (command == 'Z')
                 {
-                    if (current is { Count: > 2 }) contours.Add(current);
+                    Finish();
                     current = null;
                     continue;
                 }
@@ -335,12 +362,15 @@ public static class TextWarp
             switch (command)
             {
                 case 'M':
-                    if (current is { Count: > 2 }) contours.Add(current);
+                    Finish();
                     current = [Point()];
+                    ends.Clear();
+                    ends.Add(0);
                     command = 'L';
                     break;
                 case 'L':
                     Line(Point());
+                    ends.Add(current!.Count - 1);
                     break;
                 case 'Q':
                 {
@@ -352,6 +382,7 @@ public static class TextWarp
                         var u = 1 - t;
                         current.Add((u * u * p0.X + 2 * u * t * p1.X + t * t * p2.X, u * u * p0.Y + 2 * u * t * p1.Y + t * t * p2.Y));
                     }
+                    ends.Add(current.Count - 1);
                     break;
                 }
                 case 'C':
@@ -365,6 +396,7 @@ public static class TextWarp
                         current.Add((u * u * u * p0.X + 3 * u * u * t * p1.X + 3 * u * t * t * p2.X + t * t * t * p3.X,
                             u * u * u * p0.Y + 3 * u * u * t * p1.Y + 3 * u * t * t * p2.Y + t * t * t * p3.Y));
                     }
+                    ends.Add(current.Count - 1);
                     break;
                 }
                 default:
@@ -372,7 +404,7 @@ public static class TextWarp
                     break;
             }
         }
-        if (current is { Count: > 2 }) contours.Add(current);
+        Finish();
         return contours;
     }
 
