@@ -514,7 +514,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 ? Paint.Fill(paint, box.W, box.H, defs, 0, (box.L, box.T))
                 : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
             var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
-            var scale = SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]);
+            // A VML WordArt shape's effects keep the shape's sizes (measured with docx/local/vps-wa-plain, vps-wa-4: its
+            // shadow 2 pt off by default and 4 pt where it says so, not scaled with the text).
+            SvgEffects.TextScale? scale = style.Effects?.Attribute(TextWarp.ShapeEffects) != null ? null : SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]);
+            // A scaled or skewed shadow of VML WordArt is a transformed copy of its glyphs behind them, about the
+            // shape's corner or side (docx/local/vps-*; LibreOffice's extras-ooxmlexport/fdo78300: a perspective shadow
+            // half as high and skewed left under "Homer was sleeping").
+            if (fromWordArt && slide.Presentation.Word && style.Effects is { } skewed && SvgEffects.Shadow(skewed, Colors, box.W, box.H, defs) is { } copy)
+                svg.Append($"<g transform=\"translate({Units.Css(box.L)},{Units.Css(box.T)})\"><g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">" +
+                           $"<path transform=\"translate({Units.Css(-box.L)},{Units.Css(-box.T)})\" d=\"{TextWarp.PathData(contours)}\"{fill}/></g></g></g>");
             // On a printed page (Word) shadows and glow lie behind a copy of the glyphs and the glyphs themselves stay
             // unfiltered on top, as a page's runs do (PageRenderer.WithEffects): a filtered path is printed as a
             // picture (docx/external/libreoffice/extras-ooxmlexport/fdo80897: hollow WordArt with a shadow).

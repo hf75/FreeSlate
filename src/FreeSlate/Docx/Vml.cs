@@ -461,6 +461,8 @@ public static class Vml
         var outline = line != null && line.Element(Ns.A + "noFill") == null
             && double.TryParse((string?)line.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var emu) ? Math.Max(0, emu / EmuPerPoint) : 0;
         var (dx, dy) = (0.0, 0.0);
+        const double Pixel = 0.75;
+        static double Up(double v) => Math.Ceiling(v - 1e-6);
         if (ShadowOf(shape, type) is { } shadow)
         {
             var (x, y) = ShadowOffset((string?)shadow.Attribute("offset"), (2, 2));
@@ -470,11 +472,24 @@ public static class Vml
                 var (x2, y2) = ShadowOffset((string?)shadow.Attribute("offset2"), (-2, -2));
                 (dx, dy) = (Math.Max(dx, Math.Abs(x2)), Math.Max(dy, Math.Abs(y2)));
             }
+            // A perspective shadow takes the room of its box and the shape's together, after the shape and on whole
+            // pixels across, what it reaches out on the left too (measured with docx/local/vps-*: a 100 by 20 pt shape
+            // whose shadow is skewed by 0.7071 and halved about a bottom corner, 2 pt off, puts the text after it
+            // 114.75 pt on, the shadow 12.14 pt left of the shape; skewed the other way 116.25 pt; LibreOffice's
+            // extras-ooxmlexport/fdo78300).
+            if (Perspective(shadow) is { } skew)
+            {
+                var (ox, oy) = ((0.5 + skew.OriginX) * width, (0.5 + skew.OriginY) * height);
+                var corners = new[] { (0.0, 0.0), (width, 0.0), (0.0, height), (width, height) }
+                    .Select(c => (X: ox + skew.Xx * (c.Item1 - ox) + skew.Xy * (c.Item2 - oy) + x, Y: oy + skew.Yx * (c.Item1 - ox) + skew.Yy * (c.Item2 - oy) + y))
+                    .ToList();
+                var across = Math.Max(width, corners.Max(c => c.X)) - Math.Min(0, corners.Min(c => c.X));
+                var down = Math.Max(height, corners.Max(c => c.Y)) - Math.Min(0, corners.Min(c => c.Y));
+                (dx, dy) = (Up(across / Pixel) * Pixel - width, down - height);
+            }
         }
         if (outline <= 0)
             return (dx, dy);
-        const double Pixel = 0.75;
-        static double Up(double v) => Math.Ceiling(v - 1e-6);
         return ((Up(width / Pixel) + 2 * Up(outline / Pixel / 2) + Up(dx / Pixel)) * Pixel - width,
             (Up(height / Pixel) + Up(outline / Pixel) + Up(dy / Pixel)) * Pixel - height);
     }
@@ -1740,8 +1755,38 @@ public static class Vml
         if (Fraction((string?)shadow.Attribute("opacity")) is { } alpha && alpha < 1)
             srgb.Add(new XElement(Ns.A + "alpha", new XAttribute("val", (long)Math.Round(alpha * 100000))));
         var direction = (Math.Atan2(y, x) * 180 / Math.PI + 360) % 360;
-        return new XElement(Ns.A + "outerShdw", new XAttribute("blurRad", 0), new XAttribute("dist", Emu(Math.Sqrt(x * x + y * y))),
+        var result = new XElement(Ns.A + "outerShdw", new XAttribute("blurRad", 0), new XAttribute("dist", Emu(Math.Sqrt(x * x + y * y))),
             new XAttribute("dir", (long)Math.Round(direction * 60000)), new XAttribute("algn", "tl"), new XAttribute("rotWithShape", 0), srgb);
+        // A perspective shadow (type perspective, matrix sxx, sxy, syx, syy about origin) as DrawingML's scaled and
+        // skewed shadow about the corner or side its origin names (measured with docx/local/vps-doc: matrix ",46340f,,.5"
+        // about the bottom left corner draws the shape half as high, its top 14.14 pt left, 2 pt off).
+        if (Perspective(shadow) is { } skew)
+        {
+            static long Degrees(double tangent) => (long)Math.Round(Math.Atan(tangent) * 180 / Math.PI * 60000);
+            var horizontal = skew.OriginX < -0.25 ? "l" : skew.OriginX > 0.25 ? "r" : "";
+            var vertical = skew.OriginY < -0.25 ? "t" : skew.OriginY > 0.25 ? "b" : "";
+            result.SetAttributeValue("sx", (long)Math.Round(skew.Xx * 100000));
+            result.SetAttributeValue("sy", (long)Math.Round(skew.Yy * 100000));
+            result.SetAttributeValue("kx", Degrees(skew.Xy));
+            result.SetAttributeValue("ky", Degrees(skew.Yx));
+            result.SetAttributeValue("algn", vertical + horizontal is { Length: > 0 } corner ? corner : "ctr");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// A perspective shadow's transform (v:shadow type perspective: matrix "sxx,sxy,syx,syy,px,py", fixed-point "f" or
+    /// plain numbers, empty ones 1, 0, 0, 1; origin as fractions of the shape from its middle), or null for other
+    /// shadows. The perspective terms px and py are left out.
+    /// </summary>
+    static (double Xx, double Xy, double Yx, double Yy, double OriginX, double OriginY)? Perspective(XElement shadow)
+    {
+        if ((string?)shadow.Attribute("type") != "perspective" || (string?)shadow.Attribute("matrix") is not { } matrix)
+            return null;
+        var parts = matrix.Split(',');
+        double Part(int i, double fallback) => Fraction(parts.ElementAtOrDefault(i)?.Trim()) ?? fallback;
+        var (ox, oy) = Pair((string?)shadow.Attribute("origin"));
+        return (Part(0, 1), Part(1, 0), Part(2, 0), Part(3, 1), ox, oy);
     }
 
     /// <summary>Two VML fractions ("0.5,0.5", "50%,0"), 0 where missing.</summary>

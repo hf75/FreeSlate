@@ -657,7 +657,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         // "February 2013" in red outlined 2 pt in dark blue, "Pay $12 Dues!" in orange outlined in VML's default 0.75 pt
         // of black).
         var outline = spPr.Element(Ns.A + "ln") is { } ln && ln.Element(Ns.A + "noFill") == null ? new XElement(ln) : null;
-        var effects = spPr.Element(Ns.A + "effectLst") is { } shadow ? new XElement(shadow) : null;
+        var effects = spPr.Element(Ns.A + "effectLst") is { } shadow ? new XElement(shadow.Name, shadow.Attributes(), shadow.Nodes(), new XAttribute(Pptx.TextWarp.ShapeEffects, 1)) : null;
         foreach (var paint in spPr.Elements().Where(c => c.Name.LocalName is "solidFill" or "gradFill" or "pattFill" or "blipFill" or "noFill" or "ln" or "effectLst").ToList())
             paint.Remove();
         spPr.Add(new XElement(Ns.A + "noFill"), new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill")));

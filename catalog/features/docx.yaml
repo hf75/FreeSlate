@@ -4705,7 +4705,13 @@ areas:
           tinting (within 3 of 255 of Word's pixels); pattern fills as their 8 × 8 bitmap, a point a bit, tiled from
           the page's corner; double and triple lines (linestyle), line opacity, shadows (v:shadow: an unblurred copy
           at its offset, 2 pt right and down by default, in its color and opacity, a double shadow's second in color2
-          at offset2 behind it). Word 97 borders (w10:bordertop, borderleft, borderbottom, borderright) frame the
+          at offset2 behind it; a perspective shadow, type perspective, scaled and skewed by its matrix about its
+          origin, also on WordArt's glyphs; an inline shape with one takes the room of its box and the shadow's
+          together after it, on whole pixels across, what the shadow reaches out on the left too: docx/local/vps-*,
+          a 100 by 20 pt shape with matrix ",46340f,,.5" about its bottom left corner puts the text after it
+          114.75 pt on, skewed the other way 116.25 pt; LibreOffice's extras-ooxmlexport/fdo78300, whose WordArt in a
+          text box that does not wrap Word also moves 10.5 pt right, not reproduced); WordArt's shadows keep the shape's
+          sizes, not its text's (vps-wa-plain, vps-wa-4: 2 and 4 pt off; extras-ooxmlexport/fdo78663 91.6 → 95.5 %). Word 97 borders (w10:bordertop, borderleft, borderbottom, borderright) frame the
           shape outside, width/8 pt each floored to Word's 0.12 pt dots, double lines three times that, dotted and
           dashed ones dashed (docx/local/vml-border). w10:anchorlock only locks the anchor while editing. A floating
           shape's shadow widens its extent on its side, which alignment counts (docx/local/sa-v*: a shape centered at
