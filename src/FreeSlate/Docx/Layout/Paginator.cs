@@ -1053,6 +1053,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         public XElement? Source { get; init; }
 
         public double DistanceLeft { get; init; }
+
+        /// <summary>A wrap polygon's distances from the text above and below it (distT, distB), see Room.</summary>
+        public double DistanceTop { get; init; }
+        public double DistanceBottom { get; init; }
         public double DistanceRight { get; init; }
 
         /// <summary>Whether the area is a text frame's (w:framePr).</summary>
@@ -1112,8 +1116,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var (cx, cy) = (drawing.X + drawing.Width / 2, drawing.Y + drawing.Height / 2);
                 onPage = onPage.Select(p => (cx + cos * (p.Item1 - cx) - sin * (p.Item2 - cy), cy + sin * (p.Item1 - cx) + cos * (p.Item2 - cy))).ToArray();
             }
-            return new Exclusion(onPage.Min(p => p.Item1) - dl, onPage.Min(p => p.Item2), onPage.Max(p => p.Item1) + dr, onPage.Max(p => p.Item2), false, side)
+            return new Exclusion(onPage.Min(p => p.Item1) - dl, onPage.Min(p => p.Item2) - dt, onPage.Max(p => p.Item1) + dr, onPage.Max(p => p.Item2) + db, false, side)
             {
+                DistanceTop = dt,
+                DistanceBottom = db,
                 Polygon = onPage,
                 DistanceLeft = dl,
                 DistanceRight = dr,
@@ -1227,7 +1233,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A wrap polygon keeps free what of it lies beside the line's text.
             if (e.Polygon != null)
             {
-                if (Span(e.Polygon, top + slot.TextTop, top + slot.TextBottom) is not { } span)
+                // Its distances above and below widen the line's band (found by agents AG and CD in Word's PDFs: LibreOffice's
+                // extras-ooxmlexport/tdf143219ContourWrap_glow_rotate, wrapped through 8.95 pt above and 9 pt below, 19 line
+                // starts within 0.2 pt).
+                if (Span(e.Polygon, top + slot.TextTop - e.DistanceBottom, top + slot.TextBottom + e.DistanceTop) is not { } span)
                     continue;
                 (l, r) = (span.Min - e.DistanceLeft - columnLeft, span.Max + e.DistanceRight - columnLeft);
             }

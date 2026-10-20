@@ -3000,7 +3000,9 @@ areas:
           Square wrapping keeps the box with the effect extents and the wrap distances free, top and bottom the whole
           width; tight and through wrapping keep free what of the wrap polygon (21600ths of the extent, turned with the
           shape about the extent's centre: writerfilter-dmapper/tdf143208_wrapTight, a moon turned by 90 degrees,
-          80.5 → 99.9 %; extras-ooxmlimport/tdf143219_ContourWrap_rotate 78.6 → 99.8 %) lies beside each line's text, from its ascent to its descent, with the left and right distances; text goes to both
+          80.5 → 99.9 %; extras-ooxmlimport/tdf143219_ContourWrap_rotate 78.6 → 99.8 %) lies beside each line's text, from its ascent to its descent, with the left and right distances, the line's band widened by the
+          distances above and below (extras-ooxmlexport/tdf143219ContourWrap_glow_rotate: wrapped through 8.95 pt
+          above and 9 pt below, 74.0 → 82.5 %, the rest its glow); text goes to both
           sides, the left or right one or the larger (wrapText); before Word 2013 an object wrapped "left" that
           leaves no room left of it has the lines beside it on its right, one wrapped "right" at the right edge none
           on its left (docx/local/wsd-14, wsd2-14; from Word 2013 on both below them, wsd-15;
