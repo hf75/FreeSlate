@@ -1313,7 +1313,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 bool Takes(double contentEndX) => contentEndX <= limit + 0.005
                     || squeezing && Squeezes(contentEndX - limit, innerSpaces, limit - shortEnd, shortSpaces);
                 // The automatic space after the content's last character goes where the line ends there.
-                var fits = Takes(contentX - EndSpace(contentEnd - 1));
+                // With punctuation compression a closing mark ending the content may hang half its width past the end:
+                // where that alone is enough, rather than the spaces squeezing for it; where they may not squeeze for all
+                // of it, it hangs half and they squeeze for the rest (measured with docx/local/cpv-b-c: Latin words and
+                // "可从页看起，" in lines 0.5 pt apart, the comma 5.8 pt over hangs half, 6.3 to 7.8 pt over it stands
+                // inside, the nine spaces squeezed by up to 24 %, 8.3 to 12.8 pt over it hangs half again).
+                var endX = contentX - EndSpace(contentEnd - 1);
+                var halfMark = compressing && segments.Count <= 1 && contentEnd > i ? HalfMark(text, advances, charStyles, contentEnd - 1) : 0;
+                var fits = !(halfMark > 0 && endX > limit + 0.005 && endX - halfMark <= limit + 0.005) && Takes(endX);
+                if (!fits && halfMark > 0 && Takes(endX - halfMark))
+                    (fits, halfHangAt) = (true, contentEnd - 1);
                 if (!fits && compressing && segments.Count <= 1 && contentEnd > i
                     && CompressesPunctuation(text, advances, charStyles, lineStart, i, contentEnd, contentX - EndSpace(contentEnd - 1) - limit,
                         limit - shortEnd, context.CompatibilityMode >= 15) is { } compressed)
@@ -2964,6 +2973,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         '\uFF08' or '\u300A' or '\u3010' or '\u300E' or '\u3008' or '\u3014' or '\u300C' => -1,
         _ => 0,
     };
+
+    /// <summary>Half the width of a full-width closing mark that punctuation compression lets hang (see Squeezable), else 0.</summary>
+    static double HalfMark(string text, double[] advances, List<RunStyle> styles, int k) =>
+        Squeezable(text[k]) > 0 && k < styles.Count && advances[k] >= 0.9 * styles[k].Size ? advances[k] / 2 : 0;
 
     /// <summary>
     /// Whether a justified line with punctuation compression (w:characterSpacingControl compressPunctuation) takes the

@@ -1329,7 +1329,9 @@ areas:
           their fonts' win ascents and descents (ec-none); w:adjustRightInd changed nothing in Word's printout
           (ea-adjust). Punctuation compression (w:characterSpacingControl compressPunctuation) lets a justified line
           take the character that does not fit: a closing mark ending it hangs half its width past the end where that
-          is enough, the line stretching to its middle; else the line's full-width East Asian punctuation squeezes
+          is enough, the line stretching to its middle (rather than its spaces squeezing for it; where they may squeeze
+          for all of it, it stands inside; else it hangs half and they squeeze for the rest: docx/local/cpv-b-c, Latin
+          words and "可从页看起，" in lines 0.5 pt apart); else the line's full-width East Asian punctuation squeezes
           alike, ，。、；：！ and closing brackets on their right, opening ones on their left (？, quotes, ・, … and ～
           not), each by half its width at most, from Word 2013 on each by no more than 32 times what each gap of the
           line without the character would stretch, before by half a mark in all; left aligned lines take nothing
