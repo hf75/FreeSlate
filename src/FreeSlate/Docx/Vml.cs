@@ -198,11 +198,39 @@ public static class Vml
             extent,
             new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(el)), new XAttribute("t", Emu(et)), new XAttribute("r", Emu(er)), new XAttribute("b", Emu(eb))),
             Wrap(shape.Element(W10 + "wrap")),
-            docPr, graphic);
+            docPr, graphic,
+            shape.Name == V + "group" ? null : RelativeSize(style, "width", true), shape.Name == V + "group" ? null : RelativeSize(style, "height", false));
         anchor.AddAnnotation(new Origin(shape));
         if (TurnedSides(content, style, width, height) is { } turned)
             anchor.SetAttributeValue(TurnedBox, string.Join(" ", new[] { turned.L, turned.T, turned.R, turned.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
         return anchor;
+    }
+
+    /// <summary>
+    /// A size relative to the page or its margins (mso-width-percent, mso-height-percent in tenths of a percent, of the
+    /// page unless mso-width-relative or mso-height-relative say otherwise) as DrawingML's wp14:sizeRelH or
+    /// wp14:sizeRelV, which the layout resolves; null without one (measured with docx/local/vrr-pct-page,
+    /// vrr-pct-margin, vrr-pct-center: 50 % and 30 % of the page and of the margins, 92 % and 94 % of the page centred;
+    /// docx/external/libreoffice/extras-ooxmlimport/n779627b); groups keep their size (extras-ooxmlimport/n751077: a group of the
+    /// page's width and the margins' height drawn as its style gives it).
+    /// </summary>
+    static XElement? RelativeSize(Dictionary<string, string> style, string dimension, bool horizontal)
+    {
+        if (!double.TryParse(style.GetValueOrDefault($"mso-{dimension}-percent"), NumberStyles.Float, CultureInfo.InvariantCulture, out var tenths) || tenths <= 0)
+            return null;
+        var from = style.GetValueOrDefault($"mso-{dimension}-relative") switch
+        {
+            "margin" => "margin",
+            "left-margin-area" => "leftMargin",
+            "right-margin-area" => "rightMargin",
+            "top-margin-area" => "topMargin",
+            "bottom-margin-area" => "bottomMargin",
+            "inner-margin-area" => "insideMargin",
+            "outer-margin-area" => "outsideMargin",
+            _ => "page",
+        };
+        return new XElement(Drawings.Wp14 + (horizontal ? "sizeRelH" : "sizeRelV"), new XAttribute("relativeFrom", from),
+            new XElement(Drawings.Wp14 + (horizontal ? "pctWidth" : "pctHeight"), (long)Math.Round(tenths * 100)));
     }
 
     /// <summary>What alignment counts of a turned shape beyond its box (see <see cref="TurnedBox"/>); null unless turned.</summary>
@@ -940,12 +968,17 @@ public static class Vml
                 (string?)shape.Attribute("coordorigin") ?? (string?)type?.Attribute("coordorigin"), Formulas(shape, type, width, height)) is { } custom)
             return custom;
         var geometry = new XElement(Ns.A + "prstGeom", new XAttribute("prst", preset ?? "rect"), new XElement(Ns.A + "avLst"));
-        if (preset == "roundRect" && (string?)shape.Attribute("arcsize") is { } arc)
+        if (preset == "roundRect" && (shape.Attribute("arcsize") != null || shape.Name.LocalName == "roundrect"))
         {
-            // VML's arcsize is a fraction of the shorter side's half; DrawingML's adjustment the same in 1/50000.
-            var fraction = arc.EndsWith('f') && double.TryParse(arc[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f / 65536
-                : double.TryParse(arc.TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out var p) ? p / (arc.EndsWith('%') ? 100 : 1) : 0.1667;
-            geometry.Element(Ns.A + "avLst")!.Add(new XElement(Ns.A + "gd", new XAttribute("name", "adj"), new XAttribute("fmla", $"val {(long)Math.Round(fraction * 50000)}")));
+            // Word rounds the corners by arcsize times the shorter side, not half of it as the VML spec says, a
+            // v:roundrect 0.2 of it without an arcsize (measured with docx/local/vrr-arc: 200 by 100 pt with 0.25,
+            // 2637f, 0.5 and none have corners of 25, 4.02, 50 and 20 pt; docx/external/libreoffice/extras-ooxmlimport/
+            // n779627b); DrawingML's adjustment is the same share in 1/100000.
+            var arc = (string?)shape.Attribute("arcsize");
+            var fraction = arc == null ? 0.2
+                : arc.EndsWith('f') && double.TryParse(arc[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f / 65536
+                : double.TryParse(arc.TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out var p) ? p / (arc.EndsWith('%') ? 100 : 1) : 0.2;
+            geometry.Element(Ns.A + "avLst")!.Add(new XElement(Ns.A + "gd", new XAttribute("name", "adj"), new XAttribute("fmla", $"val {(long)Math.Round(Math.Clamp(fraction, 0, 0.5) * 100000)}")));
         }
         return geometry;
     }

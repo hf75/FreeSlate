@@ -3417,13 +3417,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // paragraph and "Anchor", 13.8 pt high with 8 pt after, above a table 16 pt below their top go below it; without
         // space after, or with the table 24 pt down, they stay; from Word 2013 on, fla-*-15, they stay; LibreOffice's
         // core-text/floattable-overlap and floattable-wrap-empty-para-legacy, found by agents BK and BM; uitest/
-        // tdf124675: a later paragraph of two lines keeps its first above the table).
+        // tdf124675: a later paragraph of two lines keeps its first above the table). So does it against any drawing
+        // wrapped top and bottom (docx/local/saw-14-*: "Second" and an empty paragraph with 10 pt after, 2 pt above a
+        // rectangle anchored in the paragraph before, go below it, 12 pt above it they stay; in mode 15 they stay,
+        // saw-15-*; docx/external/libreoffice/extras-ooxmlexport/shape-theme-preservation).
         var raisedAfter = 0.0;
         if (context.CompatibilityMode < 15 && SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) is var spaceAfter and > 0.01)
         {
             for (var i = 0; i < exclusions.Count; i++)
             {
-                if (!exclusions[i].Frame && !exclusions[i].Story && ReferenceEquals(exclusions[i].Anchor, paragraph))
+                if (!exclusions[i].Frame && !exclusions[i].Story
+                    && (ReferenceEquals(exclusions[i].Anchor, paragraph) || exclusions[i].Source != null && exclusions[i].TopAndBottom))
                 {
                     exclusions[i] = exclusions[i] with { Top = exclusions[i].Top - spaceAfter };
                     raisedAfter = spaceAfter;
