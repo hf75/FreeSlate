@@ -673,14 +673,16 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         if (art.Value.Length == 0)
             return;
         var guides = adjustments.Select(a => new XElement(Ns.A + "gd", new XAttribute("name", adjustments.Count == 1 ? "adj" : a.Name.LocalName), new XAttribute("fmla", "val " + a.Value)));
-        // Plain lines at VML's pitch, GDI's height (36 pt the size of the text body's runs).
-        var pitch = warp == "textPlain" && lines.Length > 1
+        // Lines at VML's pitch, GDI's height (36 pt the size of the text body's runs), plain or bent (docx/external/
+        // libreoffice/extras-ooxmlexport/fdo74110: three lines of Arial in textInflateTop 1.117 em apart, not 1.2).
+        var pitch = lines.Length > 1
             ? new XElement(Ns.A + "lnSpc", new XElement(Ns.A + "spcPts", new XAttribute("val", (long)Math.Round((font.WinAscent + font.WinDescent) * 3600))))
             : null;
         shape.Add(new XElement(Ns.P + "txBody",
             new XElement(Ns.A + "bodyPr", new XAttribute("wrap", "none"), new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0), new XAttribute("bIns", 0),
                 new XAttribute("anchor", "ctr"), new XAttribute("fromWordArt", 1),
-                new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", warp), new XElement(Ns.A + "avLst", guides), art.Element(Pptx.TextWarp.OwnPaths))),
+                new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", warp), art.Attribute("trim") != null ? new XAttribute(Pptx.TextWarp.Trimmed, 1) : null,
+                    new XElement(Ns.A + "avLst", guides), art.Element(Pptx.TextWarp.OwnPaths))),
             lines.Select(line => new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr"), pitch),
                 line.Length == 0
                     ? new XElement(Ns.A + "endParaRPr", new XAttribute("lang", "en-US"), new XAttribute("sz", 3600))

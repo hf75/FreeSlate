@@ -1376,9 +1376,10 @@ areas:
           tdf160518_useWord2013TrackBottomHyphenation; powertools/HC048-Excerpt in mode 14 87.5 → 93.7 %). The hyphen
           at a line's end kerns with the letter before it
           (docx/external/libreoffice/extras-ooxmlexport/tdf160518_useWord2013TrackBottomHyphenation: "differ-" in
-          kerned Times New Roman 49 pt, the hyphen 0.98 pt left). Known deviation: with
-          useWord2013TrackBottomHyphenation 0 Word breaks that line anew without its hyphen
-          (extras-ooxmlexport/tdf165354 41.4 → 78.1 %), here it keeps the hyphen. Known deviations: Word's own
+          kerned Times New Roman 49 pt, the hyphen 0.98 pt left). With useWord2013TrackBottomHyphenation 0 (Word 2016
+          and later) a column's last line that would end with an automatic hyphen breaks anew before that word instead
+          (extras-ooxmlexport/tdf165354 83.4 → 96.1 %: page 1 ends "except that it has an", "atmosphere" begins page
+          2, where "an at-" would have fitted). Known deviations: Word's own
           dictionaries may allow other places than the patterns (it leaves un-characteristically whole); other
           languages are not hyphenated.
 
@@ -4619,12 +4620,18 @@ areas:
           times the shorter side, not half of it as the VML spec says, 0.2 of it without one: docx/local/vrr-arc;
           LibreOffice's extras-ooxmlimport/n779627b), sizes in percent of the page or a margin (mso-width-percent,
           mso-height-percent, mso-width-relative, mso-height-relative, as wp14:sizeRelH and wp14:sizeRelV:
-          docx/local/vrr-pct-*; groups keep their size, extras-ooxmlimport/n751077), ovals, lines, polylines
+          docx/local/vrr-pct-*; groups too, their coordinates mapped onto the box: docx/local/vgp-pct, vgp-pctw,
+          vgp-pcth, vgp-n751 in modes 11, 12 and 15; a group sized in percent both ways one of whose text boxes changed
+          its height to fit its text stretches its children's bounds, the fitted boxes as high as their text, onto the
+          box, from the corner its coordinates gave the bounds or as aligned: vgp-pct-fit, vgq-fitinner, vgq-fit-center,
+          vgq-fit-left0; not where no box changed, vgq-nofit, vgq-fitsame; one way only, vgq-fitw, is left as it is;
+          extras-ooxmlimport/n751077 70.6 → 96.4 %), ovals, lines, polylines
           (v:polyline: their points' box with the path through them, closed where it ends where it began;
           LibreOffice's tdf112450_vml_polyline 58.5 → 94.2 %), preset
           shapes by o:spt, paths as custom geometries, groups (v:group: the children in its coordorigin and coordsize,
-          nested, either's second number 0 or 1000 where left out: libreoffice/extras-ooxmlexport/vml-text-vertical-
-          adjust, extras-ooxmlimport/groupshape-sdt, coordorigin "9201"; a shape's path counts from its own
+          nested, either number 0 or 1000 where left out: libreoffice/extras-ooxmlexport/vml-text-vertical-adjust,
+          extras-ooxmlimport/groupshape-sdt, coordorigin "9201"; ",1440" in docx/local/vgp-pct-org and n751077; a
+          shape's path counts from its own
           coordorigin: dml-groupshape-polygon 0 → 100 %, extras-ooxmlimport/ink 5.5 → 99.6 %), pictures (v:imagedata
           with crop, grayscale, bilevel, and gain and blacklevel as a luminance of contrast gain − 1 and brightness
           twice the black level: libreoffice/watermark, extras-ooxmlexport/pictureWatermark, washed out 5.5 → 100 %),
@@ -4761,7 +4768,14 @@ areas:
           the ink both ways, so the shape shrinks to the ink's share about its turned center (docx/local/vwa-f-*:
           "DRAFT" and "Typeface" in Arial, Segoe UI, Cambria, Verdana, Georgia and Arial Black, vwa-calibri,
           vwa-calibri2, vwa-times2, vwa-segoe3: within 0.1 pt; fdo77727 76.0 → 97.8 %); trimmed text (trim) fits its
-          ink to the shape (vwa-plain). A family the machine lacks is drawn in Arial, as GDI maps it
+          ink to the shape (vwa-plain). Bent lines lie GDI's height apart too (extras-ooxmlexport/fdo74110: three lines
+          of textInflateTop 1.117 em apart, not PowerPoint's 1.2 em, 87.4 → 90.6 %; docx/local/vwa-inflate 84.7 →
+          97.1 %). Trimmed text centres each line by its ink between shape-bound paths, spaces before and after it
+          inked over their advance (docx/local/wtu-*: "11" and "rr" under "HHHHHH" with their ink's middle on the
+          shape's in textPlain and textSlantUp; wts-*, wtu-*-lead1, -lead3: "HH" one and three spaces after it 8.6 and
+          21.9 pt further left, before it as far right; vwa-slant 88.7 → 99.3 %; extras-ooxmlexport/
+          testWordArtWithinDraingtool, "program and ", 87.0 → 94.5 %); untrimmed text keeps its advances
+          (vwa-calibri2). A family the machine lacks is drawn in Arial, as GDI maps it
           (libreoffice/extras-uiwriter/watermark: DejaVu Sans Light, 55.1 → 99.3 %; extras-ooxmlexport/watermark-font
           45.0 → 68.2 %), also one only in Office's cloud font cache, which GDI does not see
           (extras-ooxmlexport/fdo74110: "Noto Sans" in Arial, 48.1 → 87.4 %). Picture watermarks are VML pictures. WordArt is kerned only where its text path says

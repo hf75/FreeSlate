@@ -1355,14 +1355,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// docx/local/hyph-d): from Word 2013 on, unless the document allows hyphens at the bottom
     /// (w:compatSetting allowHyphenationAtTrackBottom; docx/external/libreoffice/extras-ooxmlexport/
     /// tdf160518_allowHyphenationAtTrackBottom: "at-" ends page 1; tdf160518_useWord2013TrackBottomHyphenation moves
-    /// the line, as without the setting; powertools/HC048-Excerpt: in mode 14 "termi-" ends a page). Known deviation:
-    /// with useWord2013TrackBottomHyphenation 0 Word breaks that line anew without its hyphen (tdf165354), here it
-    /// keeps the hyphen.
+    /// the line, as without the setting; powertools/HC048-Excerpt: in mode 14 "termi-" ends a page). With
+    /// useWord2013TrackBottomHyphenation 0 the line
+    /// breaks anew instead (<see cref="HyphenBreaksAnew"/>).
     /// </summary>
     bool HyphenMoves => hyphenMoves ??= context.CompatibilityMode >= 15 && context.CompatSetting("allowHyphenationAtTrackBottom") is not ("1" or "true")
         && context.CompatSetting("useWord2013TrackBottomHyphenation") is not ("0" or "false");
 
     bool? hyphenMoves;
+
+    /// <summary>
+    /// Whether a column's last line that would end with an automatic hyphen breaks anew before that word, from Word 2016
+    /// on (w:compatSetting useWord2013TrackBottomHyphenation 0, mode 15, unless allowHyphenationAtTrackBottom;
+    /// LibreOffice's extras-ooxmlexport/tdf165354: page 1 ends "except that it has an" and "atmosphere" begins page 2,
+    /// where "an at-" would have fitted).
+    /// </summary>
+    bool HyphenBreaksAnew => context.CompatibilityMode >= 15 && context.CompatSetting("allowHyphenationAtTrackBottom") is not ("1" or "true")
+        && context.CompatSetting("useWord2013TrackBottomHyphenation") is "0" or "false";
 
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
@@ -3500,6 +3509,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             laidWidth = width;
             return around.Count > 0;
         }
+        // The lines from line k on with that line broken before the word it would hyphenate, beside the page's objects.
+        List<Line> Unhyphenated(int k)
+        {
+            var (columnLeft, columnWidth, linesTop) = (left, width, y);
+            var around = PageExclusions().Where(e => e.Left < columnLeft + columnWidth - 0.01 && e.Right > columnLeft + 0.01 && e.Bottom > linesTop + 0.01).ToList();
+            return around.Count > 0
+                ? layout.Layout(paragraph, width, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart, unhyphenated: true)
+                : layout.Layout(paragraph, width, from: lines[k].TextStart, unhyphenated: true);
+        }
         // Lines no page break may come before (Bound) or after (Binds), which form units with their neighbours
         // (keptNotes), on pages of one column: a paragraph's lines where it keeps them together, its second and last
         // under widow control, its first after a paragraph kept with it, its last where it is kept with the next.
@@ -3613,6 +3631,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var notesNeeded = NotesHeight(line.Notes);
             var limit = keptNotes is { } unitBefore ? Math.Min(page!.BodyBottom - unitBefore.Height, bodyEnd ?? double.MaxValue) : Bottom - notesNeeded;
             var split = false;
+            // A column's last line breaks anew without its automatic hyphen (HyphenBreaksAnew).
+            if (line.AutoHyphenated && k + 1 < lines.Count && HyphenBreaksAnew && y + (moved ? 0 : line.Skip) is var lineTop
+                && lineTop + line.FitHeight <= limit + 0.01 && lineTop + line.Height + lines[k + 1].FitHeight > limit + 0.01)
+            {
+                lines = [.. lines.Take(k), .. Unhyphenated(k)];
+                line = lines[k];
+            }
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
             var fitHeight = line.Hyphenated && k + 1 < lines.Count && HyphenMoves ? line.Height + lines[k + 1].FitHeight : line.FitHeight;

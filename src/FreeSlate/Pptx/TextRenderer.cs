@@ -449,6 +449,35 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 selection.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\">{WebUtility.HtmlEncode(text)}</text>");
             }
         }
+        // VML WordArt that trims its text centres each line by its ink, spaces before and after it inked over their
+        // advance (measured with docx/local/wtu-*: "11" and "rr" under "HHHHHH" with their ink's middle on the shape's,
+        // in textPlain and textSlantUp; wts-*, wtu-*-lead1, -lead3: "HH" with one and three spaces after it 8.6 and 21.9
+        // pt further left, before it as far right; docx/external/libreoffice/extras-ooxmlexport/
+        // testWordArtWithinDraingtool: "program and "); untrimmed text keeps its advances (vwa-calibri2: "Air" over
+        // "plane" in Calibri). Lines along paths (arches) are left as they are.
+        if (fromWordArt && slide.Presentation.Word && warp.Attribute(TextWarp.Trimmed) != null && !TextWarp.FollowsPaths(definition))
+        {
+            for (var l = 0; l < layout.Lines.Count; l++)
+            {
+                var line = layout.Lines[l];
+                var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == l && glyphs[i].Contours.Any(c => c.Count > 0)).ToList();
+                if (line.Align != "ctr" || members.Count == 0 || line.Runs.Count == 0)
+                    continue;
+                var points = members.SelectMany(i => glyphs[i].Contours).SelectMany(c => c).ToList();
+                var (inkStart, inkEnd) = (points.Min(p => p.X), points.Max(p => p.X));
+                var (first, last) = (line.Runs.MinBy(r => r.X)!, line.Runs.MaxBy(r => r.X + r.Width)!);
+                if (first.Text.Length > 0 && char.IsWhiteSpace(first.Text[0]))
+                    inkStart = Math.Min(inkStart, (left + first.X) * PxPerPt);
+                if (last.Text.Length > 0 && char.IsWhiteSpace(last.Text[^1]))
+                    inkEnd = Math.Max(inkEnd, (left + last.X + last.Width) * PxPerPt);
+                var shift = (left + line.Runs.Min(r => r.X) + line.Width / 2) * PxPerPt - (inkStart + inkEnd) / 2;
+                foreach (var contour in members.SelectMany(i => glyphs[i].Contours))
+                {
+                    for (var k = 0; k < contour.Count; k++)
+                        contour[k] = (contour[k].X + shift, contour[k].Y);
+                }
+            }
+        }
         var adjustments = warp.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
             .Select(gd => new Drawing.Geometry.Guide(gd.Str("name") ?? "", gd.Str("fmla") ?? "val 0")).ToList() ?? [];
         // Each line's alignment with the free space before and after it in the text box (pixels, insets included).

@@ -34,6 +34,9 @@ public static class TextWarp
     /// </summary>
     public static readonly XName OwnPaths = XNamespace.Get("urn:freeslate:warp") + "paths";
 
+    /// <summary>A warp of VML WordArt whose text path trims its text to the ink (v:textpath trim): its lines aligned by their ink.</summary>
+    public static readonly XName Trimmed = XNamespace.Get("urn:freeslate:warp") + "trim";
+
     /// <summary>A warp's definition (a:prstTxWarp): its own guide paths, else its preset's.</summary>
     public static GeometryDefinition? Definition(XElement warp) =>
         warp.Element(OwnPaths) is { } own ? GeometryDefinition.Parse(own)

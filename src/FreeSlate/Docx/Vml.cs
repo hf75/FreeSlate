@@ -217,7 +217,7 @@ public static class Vml
             new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(el)), new XAttribute("t", Emu(et)), new XAttribute("r", Emu(er)), new XAttribute("b", Emu(eb))),
             Wrap(shape.Element(W10 + "wrap")),
             docPr, graphic,
-            shape.Name == V + "group" ? null : RelativeSize(style, "width", true), shape.Name == V + "group" ? null : RelativeSize(style, "height", false));
+            RelativeSize(style, "width", true), RelativeSize(style, "height", false));
         anchor.AddAnnotation(new Origin(shape));
         if (TurnedSides(content, style, width, height) is { } turned)
             anchor.SetAttributeValue(TurnedBox, string.Join(" ", new[] { turned.L, turned.T, turned.R, turned.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
@@ -229,8 +229,9 @@ public static class Vml
     /// page unless mso-width-relative or mso-height-relative say otherwise) as DrawingML's wp14:sizeRelH or
     /// wp14:sizeRelV, which the layout resolves; null without one (measured with docx/local/vrr-pct-page,
     /// vrr-pct-margin, vrr-pct-center: 50 % and 30 % of the page and of the margins, 92 % and 94 % of the page centred;
-    /// docx/external/libreoffice/extras-ooxmlimport/n779627b); groups keep their size (extras-ooxmlimport/n751077: a group of the
-    /// page's width and the margins' height drawn as its style gives it).
+    /// docx/external/libreoffice/extras-ooxmlimport/n779627b); groups too, their coordinates mapped onto the box
+    /// (docx/local/vgp-pct, vgp-pctw, vgp-pcth, vgp-n751: rectangles where coordsize puts them in 80 % of the page's width
+    /// and half its height, in modes 11, 12 and 15; PageRenderer.Stretched for groups whose text boxes fit their text).
     /// </summary>
     static XElement? RelativeSize(Dictionary<string, string> style, string dimension, bool horizontal)
     {
@@ -543,12 +544,14 @@ public static class Vml
     /// </summary>
     static XElement Group(XElement group, Dictionary<string, XElement> types, double width, double height, bool top, (long X, long Y, long W, long H)? place = null)
     {
-        // A value may leave its second number out, which then is the default's (docx/external/libreoffice/
-        // extras-ooxmlexport/vml-text-vertical-adjust: an inner group's coordorigin "9201", its y 0).
+        // A value may leave either number out, which then is the default's (docx/external/libreoffice/
+        // extras-ooxmlexport/vml-text-vertical-adjust: an inner group's coordorigin "9201", its y 0; docx/local/vgp-pct-org,
+        // extras-ooxmlimport/n751077: ",1440" begins at x 0).
         static (long A, long B) Pair(string? value, (long A, long B) fallback)
         {
             var parts = (value ?? "").Split(',');
-            if (parts.Length is < 1 or > 2 || !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var a))
+            var a = fallback.A;
+            if (parts.Length is < 1 or > 2 || parts[0].Trim().Length > 0 && !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out a))
                 return fallback;
             if (parts.Length == 1 || parts[1].Trim().Length == 0)
                 return (a, fallback.B);

@@ -472,6 +472,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var originals = drawing.Drawing.Descendants(Drawings.Wps + "wsp").ToList();
         var copies = clone.Descendants(Drawings.Wps + "wsp").ToList();
         var children = new List<(XElement Shape, List<Block> Text)>();
+        var fits = new List<(XElement Copy, XElement Original, List<Block> Text, XElement Body)>();
+        var resized = false;
         foreach (var (child, text) in drawing.ChildText!)
         {
             var index = originals.IndexOf(child);
@@ -485,9 +487,84 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 || !double.TryParse((string?)ext.Attribute("cy"), NumberStyles.Float, CultureInfo.InvariantCulture, out var cy) || cy <= 0)
                 continue;
             var fitted = FitToText(new PlacedDrawing(child, drawing.Part, rect.X, rect.Y, rect.W, rect.H), text, body, child, page, blocks!, context.Theme);
-            ext.SetAttributeValue("cy", (long)Math.Round(fitted.Height * cy / rect.H));
+            var height = (long)Math.Round(fitted.Height * cy / rect.H);
+            resized |= height != (long)Math.Round(cy);
+            fits.Add((copy, child, text, body));
+            ext.SetAttributeValue("cy", height);
         }
-        return drawing with { Drawing = clone, ChildText = children };
+        var placed = drawing with { Drawing = clone, ChildText = children };
+        return resized && drawing.Drawing.Attribute(Vml.Source) != null ? Stretched(placed, fits, page) ?? placed : placed;
+    }
+
+    /// <summary>
+    /// A VML group sized in percent both ways (mso-width-percent, mso-height-percent) one of whose text boxes changed
+    /// its height to fit its text: Word gathers the group about its children and stretches their bounds onto the
+    /// percent box, the fitted boxes as high as their text at the new scale; a group placed by an offset keeps the
+    /// corner its coordinates gave the bounds, an aligned one aligns the box (measured with docx/local/vgp-pct-fit,
+    /// vgq-fitinner, vgq-fit-center, vgq-fit-left0: rectangles 200 units wide 158.65 pt wide where the children span 600
+    /// of the group's 1000 units across 476 pt, a box fitted to a 24 pt line 35 pt high ending the bounds at the box's
+    /// bottom; vgq-nofit, vgq-fitsame: no stretch where no box fits or the fitted one keeps its height in the group's
+    /// units; vgq-fit-plain: none without percent sizes; docx/external/libreoffice/extras-ooxmlimport/n751077: text boxes
+    /// 1800 to 11492 units across the page's 612 pt). Only one way in percent (vgq-fitw) is left as it is. Null where
+    /// this does not apply.
+    /// </summary>
+    PlacedDrawing? Stretched(PlacedDrawing drawing, List<(XElement Copy, XElement Original, List<Block> Text, XElement Body)> fits, PageBox page)
+    {
+        if (drawing.Drawing.Element(Drawings.Wp14 + "sizeRelH") == null || drawing.Drawing.Element(Drawings.Wp14 + "sizeRelV") == null
+            || drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wpg + "wgp") is not { } group
+            || group.Element(Drawings.Wpg + "grpSpPr")?.Element(Ns.A + "xfrm") is not { } xfrm
+            || fits.Any(r => r.Copy.Parent != group))
+            return null;
+        static double Value(XElement? e, string name) =>
+            double.TryParse((string?)e?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0;
+        var (chOff, chExt) = (xfrm.Element(Ns.A + "chOff"), xfrm.Element(Ns.A + "chExt"));
+        var (ox, oy, cw, ch) = (Value(chOff, "x"), Value(chOff, "y"), Value(chExt, "cx"), Value(chExt, "cy"));
+        var boxes = group.Elements()
+            .Select(e => (Element: e, Xfrm: e.Name == Drawings.Wpg + "grpSp" ? e.Element(Drawings.Wpg + "grpSpPr")?.Element(Ns.A + "xfrm") : e.Descendants(Ns.A + "xfrm").FirstOrDefault()))
+            .Where(b => b.Element.Name != Drawings.Wpg + "grpSpPr" && b.Xfrm?.Element(Ns.A + "off") != null && b.Xfrm.Element(Ns.A + "ext") != null)
+            .Select(b => (b.Element, Off: b.Xfrm!.Element(Ns.A + "off")!, Ext: b.Xfrm.Element(Ns.A + "ext")!)).ToList();
+        if (cw <= 0 || ch <= 0 || boxes.Count == 0)
+            return null;
+        var (left, top) = (boxes.Min(b => Value(b.Off, "x")), boxes.Min(b => Value(b.Off, "y")));
+        var right = boxes.Max(b => Value(b.Off, "x") + Value(b.Ext, "cx"));
+        if (right - left <= 0)
+            return null;
+        var sx = drawing.Width / (right - left);
+        // The fitted boxes as high as their text at their new width.
+        var heights = new Dictionary<XElement, double>();
+        foreach (var (copy, original, text, body) in fits)
+        {
+            var width = Value(copy.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext"), "cx") * sx;
+            heights[copy] = FitToText(new PlacedDrawing(original, drawing.Part, drawing.X, drawing.Y, width, drawing.Height), text, body, original, page, blocks!, context.Theme).Height;
+        }
+        // Down, the scale at which the lowest bottom reaches the box's.
+        var sy = double.PositiveInfinity;
+        foreach (var (element, off, ext) in boxes)
+        {
+            var y = Value(off, "y") - top;
+            var (units, points) = heights.TryGetValue(element, out var fitted) ? (y, fitted) : (y + Value(ext, "cy"), 0.0);
+            if (units > 0)
+                sy = Math.Min(sy, (drawing.Height - points) / units);
+        }
+        if (!(sy > 0) || double.IsInfinity(sy))
+            return null;
+        var span = (long)Math.Round(drawing.Height / sy);
+        if (span <= 0)
+            return null;
+        // In whole units, as the renderer reads them.
+        sy = drawing.Height / span;
+        foreach (var (copy, fitted) in heights)
+            copy.Element(Drawings.Wps + "spPr")!.Element(Ns.A + "xfrm")!.Element(Ns.A + "ext")!.SetAttributeValue("cy", (long)Math.Round(fitted / sy));
+        chOff?.SetAttributeValue("x", (long)Math.Round(left));
+        chOff?.SetAttributeValue("y", (long)Math.Round(top));
+        chExt?.SetAttributeValue("cx", (long)Math.Round(right - left));
+        chExt?.SetAttributeValue("cy", span);
+        var (x, y0) = (drawing.X, drawing.Y);
+        if (drawing.Drawing.Element(Drawings.Wp + "positionH")?.Element(Drawings.Wp + "posOffset") != null)
+            x += (left - ox) * drawing.Width / cw;
+        if (drawing.Drawing.Element(Drawings.Wp + "positionV")?.Element(Drawings.Wp + "posOffset") != null)
+            y0 += (top - oy) * drawing.Height / ch;
+        return drawing with { X = x, Y = y0 };
     }
 
     /// <summary>The fitting of <see cref="Fitted"/>, which the paginator applies too before text wraps around the box.</summary>

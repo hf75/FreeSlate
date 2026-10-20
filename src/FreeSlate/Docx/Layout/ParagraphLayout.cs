@@ -108,6 +108,9 @@ public sealed class Line
     /// <summary>Whether the line ends with the hyphen of a word broken at its end (automatic or soft hyphenation).</summary>
     public bool Hyphenated { get; set; }
 
+    /// <summary>Whether that hyphen is automatic hyphenation's (w:autoHyphenation), not a soft hyphen.</summary>
+    public bool AutoHyphenated { get; set; }
+
     /// <summary>The width of punctuation that hangs past the line's end (paragraph.eastAsian), which alignment leaves out.</summary>
     public double Hanging { get; set; }
 
@@ -910,9 +913,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// objects stand beside the paragraph; null for the whole column.
     /// </param>
     /// <param name="from">Where in the paragraph's text the lines begin (Line.TextStart): its rest in another column.</param>
-    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null, int from = 0)
+    /// <param name="unhyphenated">Whether the first line breaks before a word it would hyphenate automatically.</param>
+    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null, int from = 0,
+        bool unhyphenated = false)
     {
-        var laid = LayoutLines(paragraph, width, fields, room, from);
+        var laid = LayoutLines(paragraph, width, fields, room, from, unhyphenated);
         foreach (var line in laid)
             line.Paragraph = paragraph;
         // The markup view marks the lines of a paragraph whose formatting changed and the last line of one whose mark
@@ -927,7 +932,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return laid;
     }
 
-    List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from = 0)
+    List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from = 0,
+        bool unhyphenated = false)
     {
         var format = paragraph.Format;
         if (GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
@@ -1308,7 +1314,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // lines break so only where they would end further than the hyphenation zone from their end: 0.25
                     // in from Word 2013 on, whatever w:hyphenationZone says (zones of 0, 0.25 and 1 in break alike),
                     // w:hyphenationZone before.
-                    if (hyphens != null && (hyphenLimit <= 0 || hyphenatedLines < hyphenLimit))
+                    if (hyphens != null && (hyphenLimit <= 0 || hyphenatedLines < hyphenLimit) && !(unhyphenated && lineStart == from))
                     {
                         var lineEnd = x;
                         for (var k = end; k > lineStart && text[k - 1] == ' '; k--)
@@ -2379,6 +2385,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 if (hyphen || automatic)
                     line.Hyphenated = true;
+                if (automatic)
+                    line.AutoHyphenated = true;
                 var piece = new Piece
                 {
                     Text = hyphen ? text[pieceStart..(i - 1)] + "-" : automatic ? text[pieceStart..i] + "-" : text[pieceStart..i],
