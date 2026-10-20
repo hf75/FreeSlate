@@ -3212,6 +3212,32 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 i = j;
             }
         }
+        // A left-to-right embedding (w:dir ltr) in a right-to-left paragraph reads as one, its levels two up (UAX #9 X3;
+        // LibreOffice's extras-ooxmlexport/tdf119143: an Arabic paragraph from "يتكلّم" on in such an embedding, its
+        // brackets around Latin text and its numbers placed as in it).
+        if (rightToLeft)
+        {
+            for (var i = 0; i < text.Length && i < styles.Count;)
+            {
+                if (!styles[i].LeftToRightEmbedding || text[i] is '\t' or '\n' or '\f' or '\v')
+                {
+                    i++;
+                    continue;
+                }
+                var j = i;
+                while (j < text.Length && j < styles.Count && styles[j].LeftToRightEmbedding && text[j] is not ('\t' or '\n' or '\f' or '\v'))
+                    j++;
+                // Its neutrals resolve as UAX #9 says, whatever their runs' direction, an explicit formatting character
+                // in it standing as the embedding's own direction (Word's PDF of tdf119143: the comma after a stray
+                // U+202C left to right between Arabic words).
+                var from = i;
+                var embedded = string.Concat(text[from..j].Select(ch => ch is >= '‪' and <= '‮' or >= '⁦' and <= '⁩' ? 'a' : ch));
+                var inner = Bidi.Levels(embedded, false);
+                for (var k = 0; k < inner.Length; k++)
+                    levels[from + k] = (byte)(inner[k] + 2);
+                i = j;
+            }
+        }
         var baseLevel = rightToLeft ? 1 : 0;
         for (var i = 0; i < text.Length && i < styles.Count; i++)
         {

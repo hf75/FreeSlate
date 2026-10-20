@@ -754,7 +754,11 @@ areas:
           runs reading right to left, those of other runs left to right also in right-to-left paragraphs, a list
           number's as the paragraph (Word's PDFs of extras-ooxmlexport/fdo43093b: "$" stays after its "M", 82.6 → 97.8 %;
           extras-ooxmlimport/tdf129659: "Lemberg." keeps its period at its end, 85.8 → 91.1 %; docx/local/rtlnum-e:
-          "a." reads ".a"), and w:bdo forcing its direction; spaces ending a line take the paragraph's level, at the
+          "a." reads ".a"), and w:bdo forcing its direction; a w:dir ltr in a right-to-left paragraph is an embedding
+          two levels up whose text reads as UAX #9 says in it, its neutrals of the embedding's direction whatever their
+          runs', an explicit formatting character in it standing as that direction (Word's PDF of extras-ooxmlexport/
+          tdf119143: an Arabic paragraph from "يتكلّم" on in such an embedding, its runs left to right, the comma after a
+          stray U+202C too, 78.6 → 97.2 %); spaces ending a line take the paragraph's level, at the
           line's end (UAX #9 L1; docx/local/rtt-14, rtt-15: "Final " of a left-to-right run ending a line of a centred,
           right or left aligned right-to-left paragraph stands a space further right than the run would put it;
           extras-ooxmlexport/FDO76312 85.4 → 92.8 %); a right-to-left paragraph beside floating objects lays its lines

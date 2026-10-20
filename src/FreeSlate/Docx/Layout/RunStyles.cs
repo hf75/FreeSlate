@@ -310,6 +310,7 @@ public sealed class RunStyles(DocumentContext context)
             Solid = TextEffects.Solid(format),
             RightToLeft = format.RightToLeft == true || format.Embedding == "rtl",
             Override = format.Override,
+            LeftToRightEmbedding = format.Embedding == "ltr",
             Emphasis = format.Emphasis is { } em && em != "none" ? em : null,
             LegacyKerning = kernTable,
             KernFrom = format.Kern is { } kernFrom && kernFrom > 0 ? kernFrom : null,

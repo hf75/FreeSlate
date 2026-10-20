@@ -84,6 +84,9 @@ public sealed record RunStyle(
     /// <summary>The direction a w:bdo around the run forces on it ("rtl", "ltr"), or null.</summary>
     public string? Override { get; init; }
 
+    /// <summary>Whether the run is inside a left-to-right embedding (w:dir ltr), which reads left to right as a whole.</summary>
+    public bool LeftToRightEmbedding { get; init; }
+
     /// <summary>
     /// Kerning from the font's kern table instead of GPOS (documents before Word 2010), every pair of it, Cyrillic,
     /// Greek and characters outside the ANSI code pages too (catalog: settings.compatibility).
@@ -121,7 +124,8 @@ public sealed record RunStyle(
         || Font == other.Font && Size == other.Size && Bold == other.Bold && Italic == other.Italic && Features.SequenceEqual(other.Features)
            && Spacing == other.Spacing && Scale == other.Scale && Raise == other.Raise && ScriptBase == other.ScriptBase
            && ScriptShift == other.ScriptShift && Caps == other.Caps && SmallCaps == other.SmallCaps && Language == other.Language
-           && RightToLeft == other.RightToLeft && Override == other.Override && LegacyKerning == other.LegacyKerning
+           && RightToLeft == other.RightToLeft && Override == other.Override && LeftToRightEmbedding == other.LeftToRightEmbedding
+           && LegacyKerning == other.LegacyKerning
            && KernFrom == other.KernFrom && FitText == other.FitText && FitTextId == other.FitTextId && Hidden == other.Hidden
            && Border == other.Border && LineHeights == other.LineHeights && Emphasis == other.Emphasis;
 }
