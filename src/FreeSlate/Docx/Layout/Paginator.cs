@@ -3099,7 +3099,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
             // A turned VML shape by its swapped box or its turned outline (see Vml.TurnedBox), with its effect extents.
             var turned = Docx.Vml.TurnedSides(element);
-            x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + Effect("l"), (turned?.R ?? 0) + Effect("r"));
+            // Another VML shape with its line (Vml.LineReachBox), in whole pixels from its box's corner: its left and
+            // top pixel the first its line touches, its right and bottom the first past it (measured with
+            // docx/local/vlh-*: 75 pt squares with lines of 0.75 and 3 pt 1 and 2 px from the page's right and bottom
+            // edges; vlg-*: a 100 x 50 pt rectangle with a 3 pt line 2.67 and 2.33 pt; LibreOffice's
+            // extras-ooxmlimport/n820504: a plaque centered on the page 0.375 pt right and 1.5 pt down of its box's
+            // place, 89.8 → 99.8 %; core-objectpositioning/vml-vertical-alignment).
+            static double Pixels(double points, bool up) => (up ? Math.Ceiling(points / 0.75 - 0.01) : Math.Floor(points / 0.75 + 0.01)) * 0.75;
+            var line = Docx.Vml.LineReach(element);
+            var (lineL, lineR) = line is { } across && positionH?.Element(Docx.Drawings.Wp + "align") != null
+                ? (Pixels(across.L, up: true), Pixels(w + across.R, up: true) - w) : (0, 0);
+            x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + Effect("l") + lineL, (turned?.R ?? 0) + Effect("r") + lineR);
             // Before Word 2013 a drawing aligned left or right on the page stands in the margin beside the text, its
             // right edge at the left margin or its left edge at the right margin, as far as the page lets it, whatever
             // its effect extent (measured with docx/local/pgr-14, pgr2-12-*, pgr2-14-*: rectangles of 30, 61.5 and 100 pt,
@@ -3123,7 +3133,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
             };
-            y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t"), (turned?.B ?? 0) + Effect("b"));
+            var (lineT, lineB) = line is { } down && positionV?.Element(Docx.Drawings.Wp + "align") != null
+                ? (Pixels(down.T, up: true), Pixels(h + down.B, up: true) - h) : (0, 0);
+            y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t") + lineT, (turned?.B ?? 0) + Effect("b") + lineB);
+            // Before Word 2013 such a shape aligned one way and placed by an offset the other stands that way as far
+            // past its offset as the offset is past the first pixel its line touches, counted from where the offset
+            // counts from (measured with docx/local/vld-12, vld-14, vld-none: a triangle with a 3 pt line top aligned
+            // 100 pt right of the page 104.75 pt right, not aligned at 100 pt, in mode 15 at 100 pt; vle-*: 100 to
+            // 101.25 pt in steps of 0.25 pt, rectangles and triangles; vlj-12: 100 pt down from the page 101 pt down with
+            // a 0.75 pt line, 101.75 pt with a 3 pt line, shapes in percent of the margins; n820504's plaque centered
+            // across 36 pt down 39.75 pt down; extras-ooxmlexport/docxopenhyperlinkbox: a text box in percent 0 pt below
+            // its paragraph's top at 70.85 pt 0.75 pt below it).
+            if (legacy && line is { } reach)
+            {
+                if (positionH?.Element(Docx.Drawings.Wp + "posOffset") != null && positionV?.Element(Docx.Drawings.Wp + "align") != null)
+                    x = x0 + 2 * (x - x0) - Pixels(x - x0 - reach.L, up: false);
+                if (positionV?.Element(Docx.Drawings.Wp + "posOffset") != null && positionH?.Element(Docx.Drawings.Wp + "align") != null)
+                    y = y0 + 2 * (y - y0) - Pixels(y - y0 - reach.T, up: false);
+            }
             // In a cell a drawing that text goes around, aligned or placed by a percentage on the page or its margins,
             // stands at the cell's inside left and its content's top, the alignment and the percentage unseen (measured
             // with docx/local/cdr-pagec, cdr-pagecf: centered on the page at the cell's left line; cdr-pager: right of

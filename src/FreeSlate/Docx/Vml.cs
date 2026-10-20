@@ -71,6 +71,27 @@ public static class Vml
     public static (double L, double T, double R, double B)? TurnedSides(XElement anchor) =>
         ((string?)anchor.Attribute(TurnedBox))?.Split(' ').Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray() is [var l, var t, var r, var b] ? (l, t, r, b) : null;
 
+    /// <summary>
+    /// Marks a shape that is not turned with how far its line reaches beyond its box, left, above, right and below (pt),
+    /// as Word counts it where it places the shape (Paginator rounds it to pixels): every corner mitered, whatever its
+    /// join, where the miter is no longer than twice the stroke's miter limit (8) times half the line, and half the
+    /// line further across or down where the miter reaches past half the line that way; a longer one half the line
+    /// out from the corner (vli-3 to vli-5: an apex 1.5 pt high for a 2 pt line); a line thinner than 0.75 pt
+    /// as one of 0.75 pt (measured with docx/local/vlb-*, vlc-*: rectangles with lines of 0.75 to 6 pt half the line
+    /// out, round joins as mitered ones, triangles with apexes of 10 to 90 degrees and lines of 1 to 8 pt their miter
+    /// and half the line up; vlg-*: a diamond's corners likewise, a triangle's base corners only across; vli-*:
+    /// miters of 13 and 15 times half the line count, 17 to 25 not, 17 with miterlimit 20; LibreOffice's
+    /// extras-ooxmlimport/n820504: a plaque's freeform outline with corners up to 59 times).
+    /// </summary>
+    public static readonly XName LineReachBox = XNamespace.Get("urn:freeslate:vml") + "lineReach";
+
+    /// <summary>A converted line's VML miter limit (v:stroke miterlimit), where it has one (see LineReachBox).</summary>
+    static readonly XName MiterLimit = XNamespace.Get("urn:freeslate:vml") + "miterLimit";
+
+    /// <summary>A shape's line beyond its box (see LineReachBox), or null.</summary>
+    public static (double L, double T, double R, double B)? LineReach(XElement anchor) =>
+        ((string?)anchor.Attribute(LineReachBox))?.Split(' ').Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray() is [var l, var t, var r, var b] ? (l, t, r, b) : null;
+
     /// <summary>The shape types of a part by their ids, the first of each id (Types).</summary>
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, XElement>> PartTypes = new();
 
@@ -163,6 +184,11 @@ public static class Vml
             return null;
         var room = shape.Name == V + "group" || signature != null ? (0, 0) : Room(shape, type, content, width, height);
         var overhang = shape.Name == V + "group" && style.GetValueOrDefault("position") != "absolute" ? Overhang(content, width, height) : default;
+        // Not where the shape is sized in percent, which takes its line out of the share in ways not measured through
+        // (docx/local/vlj-*: a rectangle 40 % of the margins wide 2 px narrower with a 0.75 pt line, centered, 5 px with
+        // a 3 pt one placed by an offset; extras-ooxmlexport/docxopenhyperlinkbox: a text box 1.5 px narrower).
+        var reach = style.GetValueOrDefault("position") == "absolute" && RelativeSize(style, "width", true) == null && RelativeSize(style, "height", false) == null
+            ? Reach(content, width, height) : null;
         var picture = content.Name.Namespace == Drawings.Pic || signature != null;
         if (shape.Name != V + "group" && Bordered(content, shape, width, height) is { } framed)
             (content, width, height) = framed;
@@ -222,6 +248,8 @@ public static class Vml
         anchor.AddAnnotation(new Origin(shape));
         if (TurnedSides(content, style, width, height) is { } turned)
             anchor.SetAttributeValue(TurnedBox, string.Join(" ", new[] { turned.L, turned.T, turned.R, turned.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
+        else if (reach is { } line)
+            anchor.SetAttributeValue(LineReachBox, string.Join(" ", new[] { line.L, line.T, line.R, line.B }.Select(v => v.ToString("R", CultureInfo.InvariantCulture))));
         return anchor;
     }
 
@@ -563,13 +591,96 @@ public static class Vml
     /// </summary>
     static (double L, double T, double R, double B) Overhang(XElement group, double width, double height)
     {
+        var (minX, minY, maxX, maxY) = (0.0, 0.0, width, height);
+        foreach (var (_, figures) in Outlines(group, width, height))
+        {
+            foreach (var (x, y) in figures.SelectMany(f => f.Points))
+                (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
+        }
+        return (Math.Max(0, -minX), Math.Max(0, -minY), Math.Max(0, maxX - width), Math.Max(0, maxY - height));
+    }
+
+    /// <summary>
+    /// How far the lines of a converted shape or group (a wps:wsp, pic:pic or wpg:wgp of <paramref name="width"/> by
+    /// <paramref name="height"/> pt) reach beyond its box on each side as Word counts them (see LineReachBox), in
+    /// points; null where none of its shapes has a line.
+    /// </summary>
+    static (double L, double T, double R, double B)? Reach(XElement content, double width, double height)
+    {
+        var (minX, minY, maxX, maxY) = (0.0, 0.0, width, height);
+        void Add(double x, double y) => (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
+        static (double X, double Y) Unit((double X, double Y) from, (double X, double Y) to)
+        {
+            var length = Math.Sqrt((to.X - from.X) * (to.X - from.X) + (to.Y - from.Y) * (to.Y - from.Y));
+            return ((to.X - from.X) / length, (to.Y - from.Y) / length);
+        }
+        var any = false;
+        foreach (var (properties, figures) in Outlines(content, width, height))
+        {
+            if (properties.Element(Ns.A + "ln") is not { } ln || ln.Element(Ns.A + "noFill") != null)
+                continue;
+            var half = Math.Max(0.75, ((double?)ln.Attribute("w") ?? 9525) / 12700) / 2;
+            var limit = 2 * ((double?)ln.Attribute(MiterLimit) ?? 8);
+            foreach (var (outline, closed, stroked) in figures)
+            {
+                if (!stroked)
+                    continue;
+                // The corners where the outline turns, repeated points left out.
+                var points = new List<(double X, double Y)>();
+                foreach (var p in outline)
+                {
+                    if (points.Count == 0 || Math.Abs(p.X - points[^1].X) > 1e-9 || Math.Abs(p.Y - points[^1].Y) > 1e-9)
+                        points.Add(p);
+                }
+                if (closed && points.Count > 1 && Math.Abs(points[0].X - points[^1].X) <= 1e-9 && Math.Abs(points[0].Y - points[^1].Y) <= 1e-9)
+                    points.RemoveAt(points.Count - 1);
+                var n = points.Count;
+                if (n < 2)
+                    continue;
+                any = true;
+                for (var i = 0; i < n; i++)
+                {
+                    var b = points[i];
+                    var (hasBefore, hasAfter) = (closed || i > 0, closed || i < n - 1);
+                    var u1 = hasBefore ? Unit(points[(i - 1 + n) % n], b) : Unit(b, points[(i + 1) % n]);
+                    var u2 = hasAfter ? Unit(b, points[(i + 1) % n]) : u1;
+                    // The line's sides at the corner, then its miter where it turns.
+                    foreach (var (ux, uy) in new[] { u1, u2 })
+                    {
+                        Add(b.X - uy * half, b.Y + ux * half);
+                        Add(b.X + uy * half, b.Y - ux * half);
+                    }
+                    var cross = u1.X * u2.Y - u1.Y * u2.X;
+                    var dot = u1.X * u2.X + u1.Y * u2.Y;
+                    if (!hasBefore || !hasAfter || Math.Abs(cross) < 1e-12 || dot <= -1 + 1e-12)
+                        continue;
+                    var k = (cross > 0 ? -1 : 1) * half / (1 + dot);
+                    var (dx, dy) = (k * (-u1.Y - u2.Y), k * (u1.X + u2.X));
+                    var miter = Math.Sqrt(dx * dx + dy * dy);
+                    if (miter > limit * half)
+                        Add(b.X + dx / miter * half, b.Y + dy / miter * half);
+                    else
+                        Add(b.X + dx + (Math.Abs(dx) > half * 1.001 ? Math.Sign(dx) * half : 0), b.Y + dy + (Math.Abs(dy) > half * 1.001 ? Math.Sign(dy) * half : 0));
+                }
+            }
+        }
+        return any ? (Math.Max(0, -minX), Math.Max(0, -minY), Math.Max(0, maxX - width), Math.Max(0, maxY - height)) : null;
+    }
+
+    /// <summary>
+    /// The outlines of a converted shape or group (a wps:wsp, pic:pic or wpg:wgp of <paramref name="width"/> by
+    /// <paramref name="height"/> pt), by shape: its properties (spPr) and its paths' figures flattened in points of the
+    /// box, closed or open, stroked or not.
+    /// </summary>
+    static List<(XElement Properties, List<(List<(double X, double Y)> Points, bool Closed, bool Stroked)> Figures)> Outlines(XElement content, double width, double height)
+    {
         static double Number(XElement? e, string name) =>
             double.TryParse((string?)e?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0;
-        var (minX, minY, maxX, maxY) = (0.0, 0.0, width, height);
+        var shapes = new List<(XElement, List<(List<(double X, double Y)>, bool, bool)>)>();
         // A group's shapes, their points mapped to the outermost group's box by toTop.
-        void Walk(XElement container, Func<double, double, (double X, double Y)> toTop)
+        void Walk(IEnumerable<XElement> children, Func<double, double, (double X, double Y)> toTop)
         {
-            foreach (var child in container.Elements())
+            foreach (var child in children)
             {
                 var properties = child.Element(Drawings.Wps + "spPr") ?? child.Element(Drawings.Pic + "spPr") ?? child.Element(Drawings.Wpg + "grpSpPr");
                 if (properties?.Element(Ns.A + "xfrm") is not { } xfrm)
@@ -589,7 +700,7 @@ public static class Vml
                     var (chOffX, chOffY) = (Number(xfrm.Element(Ns.A + "chOff"), "x"), Number(xfrm.Element(Ns.A + "chOff"), "y"));
                     var (chExtX, chExtY) = (Number(xfrm.Element(Ns.A + "chExt"), "cx"), Number(xfrm.Element(Ns.A + "chExt"), "cy"));
                     if (chExtX > 0 && chExtY > 0)
-                        Walk(child, (x, y) => Place((x - chOffX) * extX / chExtX, (y - chOffY) * extY / chExtY));
+                        Walk(child.Elements(), (x, y) => Place((x - chOffX) * extX / chExtX, (y - chOffY) * extY / chExtY));
                     continue;
                 }
                 FreeSlate.Drawing.Geometry.GeometryDefinition? definition = null;
@@ -605,23 +716,31 @@ public static class Vml
                 if (definition == null)
                     continue;
                 // The evaluator's pixels are its EMU / 9525: the box in 9525ths gives the points in the child's units.
+                var figures = new List<(List<(double X, double Y)>, bool, bool)>();
                 foreach (var path in FreeSlate.Drawing.Geometry.GeometryEvaluator.Evaluate(definition, extX * 9525, extY * 9525, adjustments).Paths)
                 {
-                    foreach (var (points, _) in FreeSlate.Html.CompoundLines.Flatten(path.Segments))
-                    {
-                        foreach (var (x, y) in points.Select(p => Place(p.X, p.Y)))
-                            (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
-                    }
+                    foreach (var (points, closed) in FreeSlate.Html.CompoundLines.Flatten(path.Segments))
+                        figures.Add((points.Select(p => Place(p.X, p.Y)).ToList(), closed, path.Stroke));
                 }
+                shapes.Add((properties, figures));
             }
         }
-        if (group.Element(Drawings.Wpg + "grpSpPr")?.Element(Ns.A + "xfrm") is { } outer
-            && Number(outer.Element(Ns.A + "chExt"), "cx") is > 0 and var chW && Number(outer.Element(Ns.A + "chExt"), "cy") is > 0 and var chH)
+        if (content.Name == Drawings.Wpg + "wgp")
         {
-            var (chX, chY) = (Number(outer.Element(Ns.A + "chOff"), "x"), Number(outer.Element(Ns.A + "chOff"), "y"));
-            Walk(group, (x, y) => ((x - chX) * width / chW, (y - chY) * height / chH));
+            if (content.Element(Drawings.Wpg + "grpSpPr")?.Element(Ns.A + "xfrm") is { } outer
+                && Number(outer.Element(Ns.A + "chExt"), "cx") is > 0 and var chW && Number(outer.Element(Ns.A + "chExt"), "cy") is > 0 and var chH)
+            {
+                var (chX, chY) = (Number(outer.Element(Ns.A + "chOff"), "x"), Number(outer.Element(Ns.A + "chOff"), "y"));
+                Walk(content.Elements(), (x, y) => ((x - chX) * width / chW, (y - chY) * height / chH));
+            }
         }
-        return (Math.Max(0, -minX), Math.Max(0, -minY), Math.Max(0, maxX - width), Math.Max(0, maxY - height));
+        else if (content.Elements().FirstOrDefault(e => e.Name.LocalName == "spPr")?.Element(Ns.A + "xfrm") is { } own
+                 && Number(own.Element(Ns.A + "ext"), "cx") is > 0 and var cx && Number(own.Element(Ns.A + "ext"), "cy") is > 0 and var cy)
+        {
+            var (x0, y0) = (Number(own.Element(Ns.A + "off"), "x"), Number(own.Element(Ns.A + "off"), "y"));
+            Walk([content], (x, y) => ((x - x0) * width / cx, (y - y0) * height / cy));
+        }
+        return shapes;
     }
 
     /// <summary>
@@ -1802,6 +1921,9 @@ public static class Vml
         };
         if (dash != null)
             line.Add(new XElement(Ns.A + "prstDash", new XAttribute("val", dash)));
+        // The stroke's miter limit, for how far its corners reach where Word places the shape (see LineReachBox).
+        if (double.TryParse((string?)stroke?.Attribute("miterlimit"), NumberStyles.Float, CultureInfo.InvariantCulture, out var limit) && limit > 0)
+            line.SetAttributeValue(MiterLimit, limit.ToString("R", CultureInfo.InvariantCulture));
         foreach (var (end, name) in new[] { ("startarrow", "headEnd"), ("endarrow", "tailEnd") })
         {
             if ((string?)stroke?.Attribute(end) is { } arrow && arrow != "none")

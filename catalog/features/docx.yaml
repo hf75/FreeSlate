@@ -4827,7 +4827,19 @@ areas:
           dashed ones dashed (docx/local/vml-border). w10:anchorlock only locks the anchor while editing. A floating
           shape's shadow widens its extent on its side, which alignment counts (docx/local/sa-v*: a shape centered at
           the page's top with a shadow 80 pt left and 36 pt up stands 40 pt right and 36 pt down;
-          docx/external/libreoffice/extras-ooxmlexport/testOuterShdw); mso-wrap-distance-* keep wrapped text away (9
+          docx/external/libreoffice/extras-ooxmlexport/testOuterShdw). A floating shape that is not turned aligns with
+          its line, in whole 0.75 pt pixels from its box's corner, its left and top pixel the first its line touches,
+          its right and bottom the first past it: half the line out, at corners the miter, whatever the join, where it
+          is no longer than twice the miter limit (8) times half the line, and half the line further where it reaches
+          past half the line across or down, a longer one half the line out from the corner; a line under 0.75 pt as
+          one of 0.75 pt; before Word 2013 a shape aligned one way and placed by an offset the other stands that way as
+          far past its offset as the offset is past the first pixel its line touches (docx/local/vlb-*, vlc-*, vld-*,
+          vle-*, vlg-*, vli-*: rectangles, diamonds and triangles of 10 to 90 degrees with lines of 0.75 to 8 pt aligned
+          on every side, offsets in steps of 0.25 pt in modes 12, 14 and 15, miter limits; LibreOffice's
+          extras-ooxmlimport/n820504 89.8 → 99.8 %, core-objectpositioning/vml-vertical-alignment 81.0 → 100 %; known
+          deviation: a shape without a line aligns by its box, Word's by its height in whole pixels, vlh-1, vlh-2;
+          one sized in percent by its box too, Word's narrower by its line, vlj-*). mso-wrap-distance-* keep wrapped
+          text away (9
           pt left and right, none above and below by default); a text box with mso-fit-shape-to-text is as high as its
           text where it is drawn. Shape types resolve across their part, not only in their w:pict
           (poi/WordWithAttachments: a picture frame type of the first w:object;
