@@ -38,13 +38,14 @@ public sealed class StyleSheet
 
     /// <summary>
     /// Whether a table style's font size and justification win over the default paragraph style's in its cells where
-    /// that style gives 12 pt or left alignment itself, a size of the table style's own but 10 pt: before Word 2013,
-    /// unless w:compatSetting overrideTableStyleFontSizeAndJustification says 1 (measured with docx/local/tso-*: a table
-    /// style of 8 pt and centred over Normal of 12 pt sets text of Normal and of a style based on it without a size 8 pt
-    /// and centred in modes 11, 12 and 14, a style of its own size keeps it; Normal of 10, 11 or 14 pt keeps its size,
-    /// aligned right its alignment, aligned left explicitly not; table styles of 9, 11 and 14 pt win, of 10 pt not;
-    /// mode 15, also with the setting 0, and mode 11 with it 1 as styles stack; docx/external/libreoffice/
-    /// extras-ooxmlexport/tdf118812_tableStyles-comprehensive; tdf90906_colAutoB, tsx-*: Table Grid of 10 pt).
+    /// that style gives 12 pt or left alignment itself, a size of the table style's (or the document default's where it
+    /// gives none, TableReader) but 10 pt: where the compatibility settings leave overrideTableStyleFontSizeAndJustification
+    /// off (DocumentContext; measured with docx/local/tso-*: a table style of 8 pt and centred over Normal of 12 pt sets
+    /// text of Normal and of a style based on it without a size 8 pt and centred in modes 11, 12 and 14, a style of its
+    /// own size keeps it; Normal of 10, 11 or 14 pt keeps its size, aligned right its alignment, aligned left explicitly
+    /// not; table styles of 9, 11 and 14 pt win, of 10 pt not; mode 15 and mode 11 with the setting 1 as styles stack;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf118812_tableStyles-comprehensive; tdf90906_colAutoB, tsx-*:
+    /// Table Grid of 10 pt).
     /// </summary>
     public bool TableStyleOverridesNormal { get; set; }
 

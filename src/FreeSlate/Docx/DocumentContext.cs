@@ -102,8 +102,7 @@ public sealed class DocumentContext : IDisposable
         JoinBodies(Document);
         // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
         Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
-        Styles.TableStyleOverridesNormal = CompatibilityMode < 15
-            && CompatSetting("overrideTableStyleFontSizeAndJustification") is not ("1" or "true" or "on");
+        Styles.TableStyleOverridesNormal = TableStyleOverridesNormal();
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
         // Word keeps the default tab stop in 16 bits: 65536 twips are none, 66256 half an inch (measured with
@@ -179,6 +178,27 @@ public sealed class DocumentContext : IDisposable
 
     /// <summary>Whether one of the layout options of the compatibility settings (w:compat) is on.</summary>
     public bool Compat(string option) => Settings.Child("compat").Child(option).OnOff() == true;
+
+    /// <summary>
+    /// Whether table styles' font sizes and justification win over Normal's (StyleSheet.TableStyleOverridesNormal): the
+    /// compatibility settings read in order, compatibilityMode 15 and later switching
+    /// overrideTableStyleFontSizeAndJustification on, each of its own entries setting it, the last one counting
+    /// (measured with docx/local/tsq-*: 0 after mode 15 lets the table style win as mode 11 does, 0 before it not;
+    /// 1, 1, 0 after mode 15 wins, 0, 0, 1 not; w:uiCompat97To2003 changes nothing; tso-A-11s1: 1 before mode 11
+    /// stacks the styles; docx/external/libreoffice/extras-ooxmlexport/tdf118947_tableStyle).
+    /// </summary>
+    bool TableStyleOverridesNormal()
+    {
+        var stacked = false;
+        foreach (var setting in Settings.Child("compat")?.Elements(Wml.W + "compatSetting") ?? [])
+        {
+            if (setting.Attr("name") == "compatibilityMode")
+                stacked |= int.TryParse(setting.Attr("val"), out var mode) && mode >= 15;
+            else if (setting.Attr("name") == "overrideTableStyleFontSizeAndJustification")
+                stacked = setting.Attr("val") is "1" or "true" or "on";
+        }
+        return !stacked;
+    }
 
     /// <summary>The value of a named setting of w:compat (w:compatSetting), or null.</summary>
     public string? CompatSetting(string name) =>

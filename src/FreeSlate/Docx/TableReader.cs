@@ -37,6 +37,12 @@ public sealed partial class ModelReader
         var styleId = tblPr.Child("tblStyle").Val();
         var chain = context.Styles.Chain(styleId is { } id && context.Styles.Find(id) is { Type: "table" } ? id : context.Styles.DefaultTableStyle)
             .Where(s => s.Type == "table").ToList();
+        // A table style of its own that wins over Normal (StyleSheet.TableStyleOverridesNormal) has the document
+        // default's size where it gives none (docx/local/tsq-m11: a style without a size over Normal of 12 pt and
+        // docDefaults of 8 pt sets 8 pt; tsr-d10: docDefaults of 10 pt keep Normal's 12; tsr-none, tsr-normal: a
+        // table without a style or of the default table style keeps Normal's).
+        var defaultSize = context.Styles.TableStyleOverridesNormal && styleId is { } own && own != context.Styles.DefaultTableStyle
+            && context.Styles.Find(own) is { Type: "table" };
         foreach (var style in chain)
             model.Format.Apply(style.TableProperties);
         model.Format.Styled = chain.Count > 0;
@@ -115,6 +121,8 @@ public sealed partial class ModelReader
                     paragraph.Overlay(Read(style.ParagraphProperties));
                     run.Overlay(ReadRun(style.RunProperties));
                 }
+                if (defaultSize)
+                    run.Size ??= context.Styles.DefaultRun.Size ?? 10;
                 foreach (var condition in cell.Conditions)
                 {
                     foreach (var style in chain)
