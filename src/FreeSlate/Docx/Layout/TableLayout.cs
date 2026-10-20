@@ -326,9 +326,17 @@ public sealed class RowBox
             // with docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of 306 and 363 pt each at the
             // top of the next part, their lines with them; core-layout/floattable-in-inlinetable).
             var cutTop = rest != null ? rest.Top - rest.Carry : 0;
+            // A nested table's line or shading reaching past the cut goes on on the other side of it, cut there
+            // (LibreOffice's core-text/floattable-anchor-height: the middle and the inner table's sides on every page they
+            // go on to, not one line through them past the first page's end).
             foreach (var fill in cell.Fills)
             {
-                if (rest == null || fill.Y < cutTop - 0.01)
+                if (rest != null && fill.Y < cutTop - 0.01 && fill.Y + fill.Height > cutTop + 0.01)
+                {
+                    headPart.Fills.Add(fill with { Height = cutTop - fill.Y });
+                    tailPart.Fills.Add(fill with { Y = cutTop - offset, Height = fill.Y + fill.Height - cutTop });
+                }
+                else if (rest == null || fill.Y < cutTop - 0.01)
                     headPart.Fills.Add(fill);
                 else
                 {
@@ -342,7 +350,13 @@ public sealed class RowBox
             }
             foreach (var stroke in cell.Strokes)
             {
-                if (rest == null || Math.Min(stroke.Y1, stroke.Y2) < cutTop - 0.01)
+                var (from, to) = (Math.Min(stroke.Y1, stroke.Y2), Math.Max(stroke.Y1, stroke.Y2));
+                if (rest != null && Math.Abs(stroke.X1 - stroke.X2) < 0.01 && from < cutTop - 0.01 && to > cutTop + 0.01)
+                {
+                    headPart.Strokes.Add(stroke with { Y1 = from, Y2 = cutTop });
+                    tailPart.Strokes.Add(stroke with { Y1 = cutTop - offset, Y2 = to - offset });
+                }
+                else if (rest == null || from < cutTop - 0.01)
                     headPart.Strokes.Add(stroke);
                 else
                     tailPart.Strokes.Add(stroke.Offset(0, -offset));
