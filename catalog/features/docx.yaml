@@ -819,8 +819,9 @@ areas:
           moves below the floating objects of the side it clears (an object on the left half of the column is on the
           left; docx/local/br-clear 99.8 %). Tabs go to the tab stops; w:sym characters are drawn from their symbol
           font. A line breaking at a soft hyphen shows a hyphen, which has to fit; a no-break hyphen prints the font's
-          hyphen kept with the next character; date blocks show today's day, weekday, month, month name and year in
-          the run's language, else the regional one (docx/local/run-content 96.6 %). w:lastRenderedPageBreak and
+          hyphen kept with the next character; date blocks show the printing day's day, weekday, month, month name
+          and year in the regional format, whatever the run's language (docx/local/run-content 96.6 %; dlg-15: runs
+          in en-US, fr-FR, ja-JP and de-DE alike; powertools/CA/CA007-DayLong "Montag"). w:lastRenderedPageBreak and
           w16se:symEx (its fallback character is taken) draw nothing of their own. Line feeds and carriage returns
           kept in w:t show as spaces (CR LF as one), tabs as tabs (docx/local/wtcontrol;
           docx/external/libreoffice/extras-uiwriter/tdf134021: table cells ending in a line feed stay one line high).

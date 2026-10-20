@@ -1971,18 +1971,14 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 }
                 case "dayShort" or "dayLong" or "monthShort" or "monthLong" or "yearShort" or "yearLong":
-                    // Date blocks show today's date in the run's language, else the regional one: 11, Sonntag, 10,
-                    // Oktober, 26, 2026 (measured with docx/local/run-content).
+                    // Date blocks show the date the document is printed in the regional format, whatever the run's
+                    // language: 11, Sonntag, 10, Oktober, 26, 2026 (measured with docx/local/run-content; dlg-15: runs in
+                    // en-US, fr-FR, ja-JP and de-DE alike "Dienstag", "Oktober"; docx/external/powertools/CA/
+                    // CA007-DayLong: "Montag" in en-US).
                     if (!field.Hidden)
                     {
                         var culture = context.Culture;
-                        try
-                        {
-                            if (format.Language is { Length: > 0 } language)
-                                culture = System.Globalization.CultureInfo.GetCultureInfo(language);
-                        }
-                        catch (System.Globalization.CultureNotFoundException) { }
-                        var today = DateTime.Now;
+                        var today = context.Printed ?? DateTime.Now;
                         var shown = e.Name.LocalName switch
                         {
                             "dayShort" => today.Day.ToString(culture),
