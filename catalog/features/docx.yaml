@@ -1326,8 +1326,17 @@ areas:
           justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
           descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts
           at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by
-          their fonts' win ascents and descents (ec-none); punctuation compression (w:characterSpacingControl) and
-          w:adjustRightInd changed nothing in Word's printout (ec-*, ea-adjust). Before Word 2013 ideographic spaces
+          their fonts' win ascents and descents (ec-none); w:adjustRightInd changed nothing in Word's printout
+          (ea-adjust). Punctuation compression (w:characterSpacingControl compressPunctuation) lets a justified line
+          take the character that does not fit: a closing mark ending it hangs half its width past the end where that
+          is enough, the line stretching to its middle; else the line's full-width East Asian punctuation squeezes
+          alike, ，。、；：！ and closing brackets on their right, opening ones on their left (？, quotes, ・, … and ～
+          not), each by half its width at most, from Word 2013 on each by no more than 32 times what each gap of the
+          line without the character would stretch, before by half a mark in all; left aligned lines take nothing
+          (docx/local/cpq-*, cpr-*, cps-a, cpt-*, cpu-*: Microsoft YaHei lines of 10 to 36 characters with 1 to 5 marks 1
+          to 16 pt over, at 12 and 10.5 pt, in modes 15 and 14: with two commas a line of 20 characters takes 9.3 pt, not
+          9.4, of 30 8.3, not 8.4; LibreOffice's extras-ooxmlexport/tdf142407 69.3 → 75.3 %, pandoc/nested_instrText
+          81.4 → 86.7 %, docx/local/cjkx-one-both 84.5 → 100 %). Before Word 2013 ideographic spaces
           (U+3000) at a line's end trail it as spaces do, hanging past the edge (docx/local/isp-both-12: "tttest（"
           justified to the margin, the twelve ideographic spaces after it past it; tdf128375). Known deviation: from
           Word 2013 on an opening bracket followed by ideographic spaces goes to the next line with them (isp-both),

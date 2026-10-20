@@ -114,6 +114,15 @@ public sealed class Line
     /// <summary>The width of punctuation that hangs past the line's end (paragraph.eastAsian), which alignment leaves out.</summary>
     public double Hanging { get; set; }
 
+    /// <summary>Whether the line took its last character by squeezing its East Asian punctuation (see ParagraphLayout.CompressesPunctuation).</summary>
+    public bool PunctuationSqueezed { get; set; }
+
+    /// <summary>
+    /// Whether the hanging punctuation is a closing mark's half, punctuation compression's (see
+    /// ParagraphLayout.CompressesPunctuation): justification stretches the gap before it too.
+    /// </summary>
+    public bool HangsHalf { get; set; }
+
     /// <summary>A copy of the line with less room above its text, its height and baseline <paramref name="by"/> less.</summary>
     public Line Trimmed(double by)
     {
@@ -1028,6 +1037,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!styles.EastAsianDefaults)
             hanging = string.Concat(hanging.Where(c => c < '\u2E80'));
         var hangAt = -1;
+        // Where a closing mark hangs half its width past the line's end and whether the line squeezes its punctuation
+        // (see CompressesPunctuation).
+        var (halfHangAt, punctuationSqueezed) = (-1, false);
         var hyphens = Hyphenation(text, charStyles, format);
         var zone = context.Settings.Child("hyphenationZone").Twips("val") ?? 18;
         var hyphenLimit = (int)(context.Settings.Child("consecutiveHyphenLimit").Number("val") ?? 0);
@@ -1062,6 +1074,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // aligned lines take no word that does not fit (docx/local/jc-left); not before Word 2013 (measured with
         // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed).
         var squeezing = Justified(format) && context.CompatibilityMode >= 15;
+        // So may justified lines with punctuation compression (w:characterSpacingControl compressPunctuation) by
+        // squeezing their East Asian punctuation, in every mode (see CompressesPunctuation).
+        var compressing = Justified(format) && context.Settings.Child("characterSpacingControl").Val() == "compressPunctuation";
         // The width of the content from a place to its next break opportunity, without the spaces there.
         double FirstWord(int from)
         {
@@ -1299,6 +1314,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     || squeezing && Squeezes(contentEndX - limit, innerSpaces, limit - shortEnd, shortSpaces);
                 // The automatic space after the content's last character goes where the line ends there.
                 var fits = Takes(contentX - EndSpace(contentEnd - 1));
+                if (!fits && compressing && segments.Count <= 1 && contentEnd > i
+                    && CompressesPunctuation(text, advances, charStyles, lineStart, i, contentEnd, contentX - EndSpace(contentEnd - 1) - limit,
+                        limit - shortEnd, context.CompatibilityMode >= 15) is { } compressed)
+                {
+                    fits = true;
+                    (halfHangAt, punctuationSqueezed) = compressed;
+                }
                 // A word that does not fit the segment beside a floating object continues in the next segment.
                 if (!fits && segment + 1 < segments.Count)
                 {
@@ -1407,8 +1429,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 (line.Limit, line.Natural) = (limit, endBreak == "line");
             if (hangAt >= lineStart && hangAt < end && !HasContent(text, hangAt + 1, end))
                 line.Hanging = advances[hangAt];
+            else if (halfHangAt >= lineStart && halfHangAt < end && !HasContent(text, halfHangAt + 1, end))
+                (line.Hanging, line.HangsHalf) = (advances[halfHangAt] / 2, true);
+            line.PunctuationSqueezed = punctuationSqueezed;
             DropEndSpace(line, text, end);
             hangAt = -1;
+            (halfHangAt, punctuationSqueezed) = (-1, false);
             var hyphenatedBefore = hyphenatedLines;
             hyphenatedLines = autoHyphenAt == end ? hyphenatedLines + 1 : 0;
             autoHyphenAt = -1;
@@ -2927,6 +2953,111 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         }
     }
 
+    /// <summary>
+    /// The side of an East Asian punctuation mark that punctuation compression squeezes: 1 the right of commas, stops,
+    /// colons, semicolons, exclamation marks and closing brackets, -1 the left of opening brackets, 0 none (measured with
+    /// docx/local/cpt-marks: ，。、；：！ and ）》】』〉〕」 on the right, （《【『〈〔「 on the left; ？, quotes, ・, … and ～ not).
+    /// </summary>
+    static int Squeezable(char c) => c switch
+    {
+        '\uFF0C' or '\u3002' or '\u3001' or '\uFF1B' or '\uFF1A' or '\uFF01' or '\uFF09' or '\u300B' or '\u3011' or '\u300F' or '\u3009' or '\u3015' or '\u300D' => 1,
+        '\uFF08' or '\u300A' or '\u3010' or '\u300E' or '\u3008' or '\u3014' or '\u300C' => -1,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Whether a justified line with punctuation compression (w:characterSpacingControl compressPunctuation) takes the
+    /// content from <paramref name="from"/> to <paramref name="end"/> that reaches <paramref name="overflow"/> points past
+    /// its end: a closing mark ending it hangs half its width past the end, and the line's other full-width East Asian
+    /// punctuation (Squeezable; not an opening bracket that begins the line) squeezes alike by the rest, each by half its
+    /// width at most; from Word 2013 on each by no more than 32 times what each gap of the line without the content would
+    /// stretch to fill its <paramref name="free"/> room, before by half a mark in all (measured with docx/local/cpq-*,
+    /// cpr-*, cps-a, cpt-*, cpu-*: Microsoft YaHei lines of 10 to 36 characters with 1 to 5 marks 1 to 16 pt over, at 12
+    /// and 10.5 pt, in modes 15 and 14: with two commas a line of 20 characters takes 9.3 pt, not 9.4, of 30 8.3, not
+    /// 8.4; a stop ending a line 1 pt over hangs, the line stretching by 5 pt; left aligned lines take nothing).
+    /// </summary>
+    /// <returns>Where a mark hangs half (-1 for none) and whether marks squeeze; null where the line does not take it.</returns>
+    static (int HalfHang, bool Squeezed)? CompressesPunctuation(string text, double[] advances, List<RunStyle> styles, int lineStart, int from,
+        int end, double overflow, double free, bool modern)
+    {
+        bool Full(int k) => k < styles.Count && advances[k] >= 0.9 * styles[k].Size;
+        var halfHang = -1;
+        if (Squeezable(text[end - 1]) > 0 && Full(end - 1))
+        {
+            halfHang = end - 1;
+            overflow -= advances[end - 1] / 2;
+        }
+        if (overflow <= 0.005)
+            return (halfHang, false);
+        var (count, capacity) = (0, double.MaxValue);
+        for (var k = lineStart; k < end; k++)
+        {
+            var side = Squeezable(text[k]);
+            if (k == halfHang || side == 0 || side < 0 && k == lineStart || !Full(k))
+                continue;
+            count++;
+            capacity = Math.Min(capacity, advances[k] / 2);
+        }
+        if (count == 0 || overflow / count > capacity + 0.005)
+            return null;
+        // The gaps between the characters of the line without the content, which justification would stretch.
+        var shortEnd = from;
+        while (shortEnd > lineStart && text[shortEnd - 1] == ' ')
+            shortEnd--;
+        var gaps = shortEnd - lineStart - 1;
+        if (modern ? gaps <= 0 || overflow / count > 32 * free / gaps + 1e-6 : overflow > capacity + 0.005)
+            return null;
+        return (halfHang, true);
+    }
+
+    /// <summary>
+    /// Squeezes a line's East Asian punctuation alike by <paramref name="amount"/> in all (see CompressesPunctuation): a
+    /// closing mark's advance, the advance before an opening one; not a last mark that hangs.
+    /// </summary>
+    /// <returns>Whether the line had punctuation to squeeze.</returns>
+    static bool SqueezePunctuation(List<Piece> pieces, double amount, bool hangs)
+    {
+        var chars = new List<(Piece Piece, int Index)>();
+        foreach (var piece in pieces)
+        {
+            if (piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null || piece.Combined != null || piece.Across != null)
+            {
+                chars.Add((piece, -1));
+                continue;
+            }
+            for (var k = 0; k < piece.Text.Length; k++)
+                chars.Add((piece, k));
+        }
+        var count = chars.Count;
+        while (count > 0 && chars[count - 1].Index >= 0 && chars[count - 1].Piece.Text[chars[count - 1].Index] == ' ')
+            count--;
+        if (hangs && count > 0)
+            count--;
+        var marks = new List<(Piece Piece, int Index)>();
+        for (var n = 0; n < count; n++)
+        {
+            var (piece, index) = chars[n];
+            if (index < 0 || piece.Advances[index] < 0.9 * piece.Style.Size)
+                continue;
+            var side = Squeezable(piece.Text[index]);
+            if (side > 0)
+                marks.Add((piece, index));
+            else if (side < 0 && n > 0 && chars[n - 1].Index >= 0)
+                marks.Add(chars[n - 1]);
+        }
+        if (marks.Count == 0)
+            return false;
+        foreach (var (piece, index) in marks)
+            piece.Advances[index] -= amount / marks.Count;
+        var x = pieces[0].X;
+        foreach (var piece in pieces)
+        {
+            piece.X = x;
+            x += piece.Width;
+        }
+        return true;
+    }
+
     /// <summary>Characters justification treats as East Asian: ideographs, kana, East Asian punctuation and full-width forms.</summary>
     internal static bool EastAsian(char c) => c >= '\u2E80' && (c < '\uA000' || c is >= '\uF900' and <= '\uFAFF' or >= '\uFE30' and <= '\uFE4F' or >= '\uFF00' and <= '\uFFEF');
 
@@ -3201,11 +3332,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             return;
         }
         var justified = jc is "both" or "lowKashida" or "mediumKashida" or "highKashida" or "distribute" or "thaiDistribute";
+        if (justified && line.PunctuationSqueezed && free < 0 && SqueezePunctuation(movable, -free, line.Hanging > 0))
+            return;
         // The last line of a justified paragraph keeps its natural spacing, unless it took a word by squeezing.
         var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
-        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, true, doubled, ideographicTrails, spaceShare))
+        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, !line.HangsHalf, doubled, ideographicTrails, spaceShare))
             return;
         if (!justify || Math.Abs(free) < 1e-9)
             return;
@@ -3222,7 +3355,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var everyCharacter = jc is "distribute" or "thaiDistribute" && (lineSpaces <= 0 || !movable.Any(p => p.Text.Length > 0 && Shaped(p.Style)));
         if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
                 || everyCharacter)
-            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0, doubled, ideographicTrails, spaceShare))
+            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0 && !line.HangsHalf, doubled, ideographicTrails, spaceShare))
             return;
         // The spaces between words share the free width: not those that end the line, nor those it begins with
         // (measured with docx/local/jls-*: one to three spaces before a justified paragraph's first word, and one after
