@@ -3243,9 +3243,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
             // docx/local/breakmark2-*: all of it after paragraphs without space after).
             Top.Leading => Math.Max(0, Gap(before) - pendingAfter),
-            // Before Word 2013 a page break before keeps the space before (measured with docx/local/sptm-11, -12, -14:
-            // 18 pt; -15 none; python-docx/sty-known-styles).
-            Top.Break when brokeBefore && context.CompatibilityMode < 15 => before,
+            // Before Word 2013 a page break before keeps what the space before has more than the space after the
+            // paragraph before it (measured with docx/local/sptm-11, -12, -14: 18 pt after none; sbk-*: 14 pt, also
+            // beforeAutospacing, after 0, 6 and 20 pt keep 14, 8 and 0 in modes 11, 12 and 14; -15 none;
+            // python-docx/sty-known-styles; LibreOffice's extras-ooxmlexport/fdo81492).
+            Top.Break when brokeBefore && context.CompatibilityMode < 15 => Math.Max(0, Gap(before) - pendingAfter),
             _ => 0,
         };
         balanced = false;

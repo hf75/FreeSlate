@@ -2854,15 +2854,18 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// A line may end after a hyphen or an en dash whatever stands before it, digits, punctuation or a space, and after
     /// the hyphen U+2010 from Word 2013 on (measured with docx/local/hyphbreak-15 and -12: "10-" | "08", "1)-" | "08",
     /// "1 -" | "08"; not after a slash, plus sign, underscore, period or comma between digits, nor a non-breaking
-    /// hyphen; docx/external/poi/bug65649: "ТЕРм10-08-" | "001-02" in a narrow cell).
+    /// hyphen; docx/external/poi/bug65649: "ТЕРм10-08-" | "001-02" in a narrow cell), also before Latin characters that
+    /// may not begin a line (docx/local/hkn-*: "ametur-" | "%…", before ) . ; ! ] ° ? , : alike, in modes 14 and 15,
+    /// with and without w:useAltKinsokuLineBreakRules; docx/external/libreoffice/extras-ooxmlexport/fdo81492).
     /// </summary>
     void BreakAfterHyphens(string text, bool[] breaks, LineBreaker.Kinsoku rules, int labelEnd)
     {
         for (var i = labelEnd; i + 1 < text.Length; i++)
         {
-            // Not after a non-breaking hyphen, a hyphen with a word joiner (docx/external/powertools/RP/RP038).
+            // Not after a non-breaking hyphen, a hyphen with a word joiner (docx/external/powertools/RP/RP038), nor
+            // before East Asian characters kinsoku keeps off a line's start.
             if ((text[i] is '-' or '\u2013' || text[i] == '\u2010' && context.CompatibilityMode >= 15)
-                && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v' or '\u2060') && !rules.NotFirst.Contains(text[i + 1]))
+                && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v' or '\u2060') && !(text[i + 1] >= '\u2E80' && rules.NotFirst.Contains(text[i + 1])))
                 breaks[i] = true;
         }
     }
