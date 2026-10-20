@@ -1641,9 +1641,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The section whose header and footer references name each story first.</summary>
     readonly Dictionary<string, SectionProperties> storyOwners = new(StringComparer.Ordinal);
 
-    StoryBox StoryOf(string part, PageBox on, PageFields? fields, bool header)
+    /// <param name="marginInStory">Where the bottom margin begins in the footer (0: at its top), for its own drawings placed
+    /// from it that push its lines; null: they push none.</param>
+    StoryBox StoryOf(string part, PageBox on, PageFields? fields, bool header, double? marginInStory = null)
     {
         var s = on.Section;
+        // A footer's own drawings placed from the bottom margin push its lines where the footer reaches above the
+        // margin, whose top is then the footer's own (see storyMarginTop): laid out so first, kept where the footer
+        // then does reach above it (measured with docx/local/fbq-6-square: a rule 20 pt below the top of a footer of six
+        // lines over a margin of 56.7 pt, its text beside it; LibreOffice's extras-layout/tdf164905: the footer's text
+        // below a rule wrapped square across its width 20.25 pt down, the footer 64.8 pt high, the body ending above it).
+        if (!header && marginInStory == null
+            && reader!.Story(part).OfType<ParagraphBlock>().Any(p => p.Content.OfType<AnchorInline>().Any(MarginPushes))
+            && StoryOf(part, on, fields, header, 0) is { } reaching && reaching.Top < s.PageHeight - s.Bottom - 0.01)
+            return reaching;
         var box = new StoryBox();
         var left = on.TextLeft;
         var width = on.TextWidth;
@@ -1864,6 +1875,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     if ((string?)own.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") == "paragraph"
                         && ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width)) is { } area && area.Bottom > linesTop + 0.01)
                         around.Add(area);
+                    else if (marginInStory is { } storyMargin && MarginPushes(own))
+                    {
+                        storyMarginTop = storyMargin;
+                        try
+                        {
+                            if (ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width)) is { } margined && margined.Bottom > linesTop + 0.01)
+                                around.Add(margined);
+                        }
+                        finally
+                        {
+                            storyMarginTop = null;
+                        }
+                    }
                 }
                 var laid = around.Count > 0
                     ? layout.Layout(paragraph, width, fields, room: slot => Room(around, linesTop, slot, left, width))
@@ -1955,6 +1979,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>Where the bottom margin begins for the drawings of the footer being laid out (see StoryOf), else null.</summary>
     [ThreadStatic] static double? storyMarginTop;
+
+    /// <summary>Whether a drawing is placed from the bottom margin and text goes around it.</summary>
+    static bool MarginPushes(AnchorInline anchor) =>
+        (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") == "bottomMargin"
+        && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { Name.LocalName: not "wrapNone" };
 
     /// <summary>A header or footer laid out: its lines, table fills and strokes, and where its content begins and ends.</summary>
     /// <summary>

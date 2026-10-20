@@ -2886,8 +2886,11 @@ areas:
           extras-ooxmlexport/tdf113183 81.3 → 99.9 %; a footer's drawing placed from the bottom margin counts it from
           the footer's top where the footer reaches above the margin: docx/local/fbq-6-none, a rule 20 pt below the
           top of a footer of six lines over a margin of 56.7 pt, fbq-1-none 20 pt below the margin's top under one
-          line; known deviation: such a drawing wrapped square pushes the footer's own lines down in Word, fbq-6-square,
-          extras-layout/tdf164905, not here); behind or in front of the text by behindDoc and relativeHeight
+          line; such a drawing that text goes around pushes the footer's own lines where the footer then reaches above
+          the margin, from the footer's top: extras-layout/tdf164905, the footer's text below a rule wrapped square
+          across its width 20.25 pt down, the footer 64.8 pt high, 83.3 → 96.1 %; known deviation: Word wraps three
+          lines beside fbq-6-square's rule, two here, and one beside fbq-1-square's rule below the margin's top, none
+          here); behind or in front of the text by behindDoc and relativeHeight
           (docx/generated/drawings), taken through the part in document order: a relativeHeight of 0 or 1, or of
           0x1E000000 and more, counts as unset and stands above every drawing before it, at 0x0F000000 at least, equal
           ones the later on top (docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one
