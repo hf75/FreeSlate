@@ -4914,7 +4914,11 @@ areas:
           the corpus: 88.5 %, 72.5 % before; docx/generated/*, Aptos kerned: 77.8 %, 37.5 % before; gxl-*, 24 to 72 pt
           in five fonts: 90 to 100 %, 60 to 75 % before), the text after a tab from the stop's nearest dot, halves
           down (gxt-*: 58 of 60 stops exact, the halves so); so the lines of text boxes that are not turned (40
-          documents of the corpus with text boxes: 83.4 % of the characters within half a dot, 73.1 % before), and
+          documents of the corpus with text boxes: 83.4 % of the characters within half a dot, 73.1 % before), the
+          edge of a box with a left inset of 7.2 pt or more with its halves down (docx/local/tbd-*, tbe-*: a box at
+          1887.5 dots has its text with insets of 144 and 288 twips on dots 1947 and 2007 in modes 11 to 15;
+          extras-ooxmlexport/tdf91260 90.0 → 100 %; known deviation: with narrower insets Word puts some halves up,
+          1512.5, 1887.5 and 1892.5 dots, others down, 472.5 dots, rule unknown), and
           the turned lines of vert and vert270 boxes along the page: from Word 2013 on the box's top on the dot before
           it and its height in whole dots from there, before the edge the lines start from on a dot (the top on the
           nearest, the bottom for text up on the one before it) and the room in whole dots on from there, lines down the

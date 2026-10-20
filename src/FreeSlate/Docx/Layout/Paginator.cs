@@ -26,6 +26,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>A line of a header or footer, whose inline drawings lie behind the body's text (PageRenderer).</summary>
     public bool Story { get; init; }
 
+    /// <summary>The left inset of the text box the line stands in, which decides where its edge's half dots go (PageRenderer.OnDots).</summary>
+    public double? BoxInset { get; init; }
+
     /// <summary>The space after the line's paragraph where the line ends it, in table cells (RowBox.Split).</summary>
     public double After { get; init; }
 

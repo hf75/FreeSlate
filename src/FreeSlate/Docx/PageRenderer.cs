@@ -765,7 +765,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             Fills(placed, strokes.Select(s => s.Offset(left, top)), svg);
             // An unturned box's lines stand on Word's device as the body's do (docx/external/libreoffice/
             // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments).
-            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
+            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top, BoxInset = l }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
         }
         else
         {
@@ -1408,8 +1408,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         // In whole twips first, so that halves stay halves.
         static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
+        // A text box's edge with a left inset of 7.2 pt or more has its half dots go down (measured with docx/local/tbd-*,
+        // tbe-*: a box at 1887.5 dots has its text with left insets of 144 and 288 twips on dots 1947 and 2007, in modes 11
+        // to 15; LibreOffice's extras-ooxmlexport/tdf91260: 1947.5 dots on 1947). Narrower insets keep halves to even,
+        // which Word does not always (rule unknown): it puts 0, 12 and 72 twips beside that box on 1888, 1893 and 1918 and
+        // a box at 1512.5 dots on 1513, but boxes at 472.5 dots without an inset on 472 (extras-ooxmlexport/
+        // tdf153613_textboxAfterPgBreak3, writerfilter-dmapper/textbox-textline).
+        static double BoxSnap(double points, double inset)
+        {
+            var dots = Math.Round(points * 20) * 5 / 12;
+            return (Math.Abs(dots - Math.Floor(dots) - 0.5) < 1e-6 && inset >= 7.2 - 1e-6 ? Math.Floor(dots) : Math.Round(dots, MidpointRounding.ToEven)) * Dot;
+        }
         var start = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces[0].X : 0;
-        var shift = Snap(placed.Left) - placed.Left + Snap(start) - start;
+        var shift = (placed.BoxInset is { } inset ? BoxSnap(placed.Left, inset) : Snap(placed.Left)) - placed.Left + Snap(start) - start;
         // Centered and right aligned lines: the room's edges each on a dot (the left one as lines start, the right one
         // where it stands on the page), the content's width in whole dots, half the room left over rounded down
         // (measured with docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of
