@@ -82,7 +82,8 @@ public sealed class StyleSheet
     /// 1.16 lines and 8 pt after, a heading keeps its 16 pt bold; lsk-2: with a template attached that cannot be found
     /// nothing changes; docx/external/libreoffice/extras-ooxmlexport/tdf61000).
     /// </param>
-    public StyleSheet(XDocument? document, bool fromTemplate = false)
+    /// <param name="effects">Word 2010's copy of the styles (stylesWithEffects.xml), for its Normal Table.</param>
+    public StyleSheet(XDocument? document, bool fromTemplate = false, XDocument? effects = null)
     {
         var root = document?.Root;
         if (root == null)
@@ -171,6 +172,18 @@ public sealed class StyleSheet
                     Element = last.Element,
                 };
             }
+        }
+        // A styles part without a default table style takes Word's Normal Table where Word 2010's copy of the styles
+        // has it (measured with docx/local/swe-tbl: cells with 5.4 pt margins, the table's edge outdented by them, as
+        // with the style in styles.xml, swe-own*; swe-none without it: none; its other styles do not count, swe-font,
+        // swe-pstyle, swe-tstyle; LibreOffice's core-ooxml-pass/liststyle-gridbefore).
+        if (DefaultTableStyle == null
+            && effects?.Root?.Elements(Wml.W + "style").FirstOrDefault(e => e.Attr("type") == "table" && e.Attr("default") is "1" or "true" or "on"
+                && string.Equals(e.Child("name").Val(), "Normal Table", StringComparison.OrdinalIgnoreCase)) is { } normalTable
+            && (normalTable.Attr("styleId") ?? "TableNormal") is var tableId && !styles.ContainsKey(tableId))
+        {
+            styles[tableId] = BuiltInNormalTable(tableId, true);
+            DefaultTableStyle = tableId;
         }
         DefaultParagraphStyle ??= IdByName("Normal", "paragraph");
     }

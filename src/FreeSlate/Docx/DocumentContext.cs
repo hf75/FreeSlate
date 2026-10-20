@@ -101,7 +101,8 @@ public sealed class DocumentContext : IDisposable
         Document = Load(MainPart);
         JoinBodies(Document);
         // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
-        Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null);
+        Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null,
+            Related("stylesWithEffects"));
         Styles.TableStyleOverridesNormal = TableStyleOverridesNormal();
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts());
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
