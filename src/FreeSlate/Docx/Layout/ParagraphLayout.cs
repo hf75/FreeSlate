@@ -2430,8 +2430,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // Spaces never make a line taller or lower, whatever their size, where they stand or how they are formatted;
         // a line of nothing but spaces is the paragraph mark's (measured with docx/local/ts-*, tu-*, tv-*: a 45 pt space
         // before, between or after 9 pt words leaves the line 9 pt, in modes 12, 14 and 15; a 45 pt "x" or no-break
-        // space does not; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw).
-        static bool Spaces(Piece p) => Blank(p) && p.Text.Length > 0 && p.Text.All(c => c == ' ') && !p.IsLabel;
+        // space does not; docx/external/libreoffice/extras-ooxmlexport/testOuterShdw). So do the en, em, four-per-em
+        // and ideographic spaces, not the others (wsp-15, wsp-12: 45 pt U+2002, U+2003, U+2005 and U+3000 at a 9 pt
+        // line's start, middle or end leave it 9 pt; U+00A0, U+2000, U+2001, U+2004, U+2006 to U+200A, U+202F and
+        // U+205F make it 45 pt; docx/external/libreoffice/extras-layout/tdf153136).
+        static bool Spaces(Piece p) => Blank(p) && p.Text.Length > 0 && p.Text.All(c => c is ' ' or '\u2002' or '\u2003' or '\u2005' or '\u3000') && !p.IsLabel;
         // Tabs neither: a paragraph's last line of nothing but tabs is the mark's too (measured with docx/local/
         // tabheight: a 24 pt tab, alone, twice or between 8 pt letters, leaves an 8 pt mark's line 8 pt, an 8 pt tab
         // alone a 24 pt mark's 24 pt; docx/external/powertools/RA001-Tracked-Revisions-01), a line before it of a tab

@@ -4857,7 +4857,10 @@ areas:
           libreoffice/extras-ooxmlexport/tdf123054, tdf142404_tabOverMarginC15); trailing spaces hang past the end;
           spaces never make a line taller or lower, whatever their size or place, and a line of only spaces is the
           paragraph mark's (docx/local/ts-*, tu-*, tv-*: a 45 pt space before, between or after 9 pt words leaves the
-          line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not); tabs neither, a paragraph's last line
+          line 9 pt in modes 12 to 15, a 45 pt "x" or no-break space does not), nor do the en, em, four-per-em and
+          ideographic spaces, where the other spaces count (wsp-15, wsp-12: U+2002, U+2003, U+2005 and U+3000 as
+          U+0020; U+00A0, U+2000, U+2001, U+2004, U+2006 to U+200A, U+202F and U+205F make the line 45 pt; LibreOffice's
+          extras-layout/tdf153136 77.6 → 97.6 %); tabs neither, a paragraph's last line
           of only tabs is the mark's, a line before it of only tabs and spaces as high as the largest of them
           (LibreOffice's extras-ooxmlexport/tdf137335_whitespaceLineHeight: 36, 48 and 72 pt tabs and spaces wrapped
           before the mark's line, the baselines at 235.1 and 275.0 pt as Word's; docx/local/tabheight: a 24 pt tab
