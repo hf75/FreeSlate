@@ -3477,10 +3477,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             brokeBefore = true;
             (left, width) = Column(column);
         }
-        else if (forcedBreaks.Contains(blocks[index]) && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
+        // A paragraph pushed off the page its drawing goes back and forth on (see Paginate) begins the next column, a
+        // new page in a section of one column (LibreOffice's extras-layout/fdo43573-2-min: two columns, the second of
+        // the page filled as in Word, not left empty).
+        else if (forcedBreaks.Contains(blocks[index]) && (section.Columns > 1 ? !columnEmpty : !(columnEmpty && column == 0 && page!.Lines.Count == 0)))
         {
-            NewPage(section);
-            top = Top.Break;
+            NextColumn(natural: true);
             (left, width) = Column(column);
         }
 

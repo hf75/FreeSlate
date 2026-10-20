@@ -5047,7 +5047,8 @@ areas:
           its paragraph off the first, leaves its paragraph at the top of the second and the first without itself and
           without the paragraph's other objects (openxml-sdk/Complex01, Strict01 page 4: no stale exclusion; Strict01
           65.5 → 76.0 % of the lines; Document: a cover's two text boxes, one over a chart, one over the table above
-          it; Complex01 84.5 → 89.0 %); from Word 2013 an object that wraps text and moves with its paragraph takes
+          it; Complex01 84.5 → 89.0 %), in a section of columns at the top of the next column (LibreOffice's
+          extras-layout/fdo43573-2-min: two columns, the second filled, 81.3 → 82.8 %); from Word 2013 an object that wraps text and moves with its paragraph takes
           the paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text
           at least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front
           of the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
