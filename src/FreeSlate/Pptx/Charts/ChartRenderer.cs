@@ -1988,6 +1988,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             if (!layout.Axis.IsValue && !layout.Axis.Horizontal && layout.Rotation == 0 && layout.Levels.Count == 0)
                 WrapVerticalLabels(layout, axes, outer.W, previous.H);
+            if (slide.Presentation.Word)
+                WrapTurnedLabels(layout, outer.H / 2);
             edges.Add(layout.Axis.Position);
             var extent = LabelExtent(layout);
             var bleed = layout.Titled ? -TitlePaddingY : manual ? 0 : LabelBleed;
@@ -2162,6 +2164,23 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         layout.DateSkip = Math.Max(30, (int)Math.Ceiling(flat / Math.Max(1e-9, day) / 30) * 30);
         layout.Rotation = 0;
+    }
+
+    /// <summary>
+    /// Category labels of a horizontal axis turned a quarter by their own rotation wrap at half the outer plot area's
+    /// height, in Word (measured with docx/local/tlb-*, tlc-*: a Calibri 9 label beside charts 150 to 550 pt high, 288
+    /// and 432 pt wide, breaks where a line would pass half the chart's height less 10.1 to 12.7 pt, the plot area's 11
+    /// pt margins; docx/external/libreoffice/extras-layout/xaxis-labelbreak).
+    /// </summary>
+    void WrapTurnedLabels(AxisLayout layout, double limit)
+    {
+        if (layout.Axis.IsValue || !layout.Axis.Horizontal || layout.Levels.Count > 0 || layout.Names.Count == 0 || limit <= 0
+            || layout.Axis.TxPr?.Element(Ns.A + "bodyPr").Long("rot") is not (-5400000 or 5400000))
+            return;
+        var style = layout.Style;
+        var wrapped = layout.Names.Select(name => name.Split('\n').SelectMany(line => WrapWords(line, style, limit)).ToList()).ToList();
+        layout.Labels = wrapped.Select(lines => string.Join("\n", lines)).ToList();
+        layout.MaxLabelWidth = wrapped.Max(lines => lines.Max(line => Width(line, style)));
     }
 
     /// <summary>
@@ -2612,7 +2631,22 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 // with the rotated box keeping the usual gap below the axis.
                 var anchorY = bottom + CategoryLabelGap * s + lineHeight / 2 * Math.Cos(angle);
                 svg.Append($"<g transform=\"translate({Px(p)} {Px(anchorY)}) rotate({Units.Css(layout.Rotation)})\">");
-                svg.Append(text.Label(label, style, layout.Rotation < 0 ? -w : 0, CenteredBaseline(style, 0)));
+                if (label.Contains('\n'))
+                {
+                    // Wrapped labels (WrapTurnedLabels): the lines centered on each other, the longest one ending at
+                    // the anchor, the block's middle at the category (measured: Word's docx/local/tlb-183, three lines
+                    // 11 pt apart, their middles within 0.1 pt).
+                    var lines = label.Split('\n');
+                    var block = lines.Max(line => Width(line, style));
+                    for (var k = 0; k < lines.Length; k++)
+                    {
+                        var lineWidth = Width(lines[k], style);
+                        var x = layout.Rotation < 0 ? -block + (block - lineWidth) / 2 : (block - lineWidth) / 2;
+                        svg.Append(text.Label(lines[k], style, x, CenteredBaseline(style, 0) + (k - (lines.Length - 1) / 2.0) * lineHeight));
+                    }
+                }
+                else
+                    svg.Append(text.Label(label, style, layout.Rotation < 0 ? -w : 0, CenteredBaseline(style, 0)));
                 svg.Append("</g>");
                 continue;
             }

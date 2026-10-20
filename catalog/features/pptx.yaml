@@ -1843,7 +1843,12 @@ areas:
           outer plot area's width less half the first and half the last value label, keep the lines that fit
           their category's height with an ellipsis after the last (centered without it), and stand as blocks
           as wide as their longest line beside the axis, their lines centered (measured: bar charts 200 to
-          950 pt wide with 9 to 24 pt labels and value labels of several widths or none; local probes). A plot
+          950 pt wide with 9 to 24 pt labels and value labels of several widths or none; local probes). In Word
+          category labels of a horizontal axis turned a quarter by their own rotation (bodyPr rot ±5400000) wrap at
+          half the outer plot area's height, their lines centered on each other, the block's middle at the category
+          (docx/local/tlb-*, tlc-*: a Calibri 9 label beside charts 150 to 550 pt high and 288 or 432 pt wide breaks
+          where a line would pass half the height less 10.1 to 12.7 pt; LibreOffice's extras-layout/xaxis-labelbreak
+          22.8 → 92.6 %). A plot
           area placed by hand wraps them at half the chart's width less those overhangs and keeps all labels
           inside the chart: it moves left until the value label at its right edge is 6 pt inside, then gives
           up width on the left to the labels beside it (LibreOffice's tdf48041: 60.8 to 90.2 %). Not yet: the
