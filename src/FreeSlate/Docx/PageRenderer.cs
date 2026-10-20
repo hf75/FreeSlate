@@ -453,8 +453,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// A text box's shape sized to its text (measured with docx/local/textboxes): a shape that resizes to fit
-    /// (a:spAutoFit) as high as its text and insets, a box that does not wrap (wrap none) at least as wide as its
-    /// longest line.
+    /// (a:spAutoFit) as high as its text and insets, a box that does not wrap (wrap none) as wide as its longest
+    /// line and insets.
     /// </summary>
     PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page) =>
         FitToText(drawing, text, body, shape, page, blocks!, context.Theme);
@@ -571,12 +571,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     internal static PlacedDrawing FitToText(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, TableLayout blocks,
         Drawing.Theme? theme)
     {
+        // Once: insets that grow with the shape are those of the size it had (see FitToTextIn).
+        if (drawing.FittedToText)
+            return drawing;
         // As the box lays its text out (see TextBox): its whole width, not whole cells of the character grid.
         var cell = blocks.Paragraphs.GridCell;
         blocks.Paragraphs.GridCell = null;
         try
         {
-            return FitToTextIn(drawing, text, body, shape, page, blocks, theme);
+            return FitToTextIn(drawing, text, body, shape, page, blocks, theme) with { FittedToText = true };
         }
         finally
         {
@@ -611,10 +614,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // width (docx/external/libreoffice/extras-ooxmlexport/testWordArtWithinDraingtool: WordArt right aligned in a
         // box that does not wrap stood 100,000 pt to the right).
         var (lines, _, _, height) = blocks.Blocks(text, unwrapped ? 1e5 : Math.Max(1, drawing.Width - l - r), fields, unaligned: unwrapped);
+        // The shape is as wide as its longest line and the insets it had, narrower or wider than it was, its left kept,
+        // whether or not it fits its height to the text (measured with docx/local/vws-*: "Hi" in a box 114 pt wide 9.4 pt
+        // wide, a line of 132.1 pt 132.1 pt wide, VML's mso-wrap-style:none and DrawingML's wrap none alike; an ellipse
+        // 140 pt wide around "Hi" 50.4 pt wide, its text rectangle's 41 pt of insets kept; LibreOffice's
+        // extras-layout/shape-anchored-in-follow).
         if (unwrapped)
         {
             var longest = lines.Select(p => p.Line.Pieces.Count > 0 ? p.Left + p.Line.Pieces[^1].X + p.Line.Pieces[^1].Width : 0).DefaultIfEmpty(0).Max();
-            drawing = drawing with { Width = Math.Max(drawing.Width, longest + l + r) };
+            drawing = drawing with { Width = longest > 0 ? longest + l + r : Math.Max(drawing.Width, l + r) };
         }
         if (autofit)
             drawing = drawing with { Height = height + t + b };

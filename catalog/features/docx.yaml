@@ -3050,8 +3050,12 @@ areas:
           its picture a line down the second box, drawn first, 81.8 → 92.2 %. Also as shapes of a group
           (docx/external/libreoffice/extras-ooxmlexport/tdf73499: "textboxes!" in a group's second shape, 79.9 → 97.5
           %). A shape that resizes to fit (a:spAutoFit) is as high as its text and insets; a box that
-          does not wrap (wrap none) keeps its lines whole and widens to the longest (docx/local/textboxes: every case
-          as in Word, 96.7 %), measured where it begins, and aligns them in its own width
+          does not wrap (wrap none) keeps its lines whole and becomes as wide as the longest and its insets, narrower
+          or wider than it was, whether or not it fits its height (docx/local/textboxes: every case as in Word, 96.7
+          %; vws-*: "Hi" in a box 114 pt wide 9.4 pt wide, a line of 132.1 pt 132.1 pt wide, an ellipse 140 pt wide
+          50.4 pt around "Hi", its text rectangle's insets those of its first size; VML's mso-wrap-style:none alike,
+          LibreOffice's extras-layout/shape-anchored-in-follow 85.7 → 88.9 %, extras-ooxmlimport/n758883 95.2 → 100
+          %), measured where it begins, and aligns them in its own width
           (docx/external/libreoffice/extras-ooxmlexport/ testWordArtWithinDraingtool: WordArt right aligned in such a
           box 5.6 → 88.3 %, tdf80526_word_wrap 7.1 → 93.9 %, tika/testWORD_2006ml 87.1 → 91.3 %), aligned as it then
           is (LibreOffice's core-doc/text-box-word-wrap: a header box saved 34.95 pt wide, 103.1 pt with its text, at

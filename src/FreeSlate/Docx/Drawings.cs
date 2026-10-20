@@ -51,6 +51,9 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
     /// </summary>
     public (double X, double Y, double Width, double Height)? Clip { get; init; }
 
+    /// <summary>Whether the drawing is sized to its text already (PageRenderer.FitToText), which it is only once.</summary>
+    public bool FittedToText { get; init; }
+
     /// <summary>The text box's body properties (insets, vertical anchor) of the shape (wps:bodyPr).</summary>
     public XElement? Body => Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")?.Element(Drawings.Wps + "bodyPr");
 }

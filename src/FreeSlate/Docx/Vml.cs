@@ -890,7 +890,10 @@ public static class Vml
                 (_, "top-to-bottom") => "mongolianVert",
                 _ => null,
             };
-            wsp.Add(new XElement(Drawings.Wps + "bodyPr",
+            // Text that does not wrap (mso-wrap-style:none) makes the shape as wide as its lines, as DrawingML's wrap none
+            // (measured with docx/local/vws-vml-*; LibreOffice's extras-layout/shape-anchored-in-follow).
+            var unwrapped = Style((string?)shape.Attribute("style")).GetValueOrDefault("mso-wrap-style") == "none";
+            wsp.Add(new XElement(Drawings.Wps + "bodyPr", unwrapped ? new XAttribute("wrap", "none") : null,
                 new XAttribute("lIns", Emu(Inset(0, 7.2))), new XAttribute("tIns", Emu(Inset(1, 3.6))),
                 new XAttribute("rIns", Emu(Inset(2, 7.2))), new XAttribute("bIns", Emu(Inset(3, 3.6))), new XAttribute("anchor", anchor),
                 vertical != null ? new XAttribute("vert", vertical) : null,
