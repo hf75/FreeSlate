@@ -2298,7 +2298,13 @@ areas:
           the text going on below them (LibreOffice's core-text/floattable-negative-vert-offset: tblpY -269 puts the
           line before the table below it, 33 → 100 % of the lines; floattable-anchor-next-page: 1.2 pt of overlap
           suffice, 71 → 100 %; writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first,
-          empty line where it is). Before Word 2013 the space after of the paragraph it stands with (the one after it)
+          empty line where it is). Lines before it that reach only into its distance above it (topFromText), by more
+          than a point and before Word 2013 with their paragraph's space after for its last line, go beside it where
+          it leaves room, the table staying where it stood for them, else below it (docx/local/ftb-*: three lines
+          before a table 150 pt wide at tblpY 1 with topFromText 300, 567 and 1134 twips have their last one, two and
+          three lines beside it, with 43 twips the last one before Word 2013 by its 8 pt after, none from Word 2013 on;
+          a table 450 pt wide takes them below itself alike; LibreOffice's extras-ooxmlexport/table-floating-margins
+          71.6 → 100 %). Before Word 2013 the space after of the paragraph it stands with (the one after it)
           counts too: where the paragraph's line clears the table but its space after reaches it, the paragraph goes
           below the table and needs room there for that space as well, else the next page; later paragraphs keep their
           lines above (uitest/tdf124675) (docx/local/fla-16-*-14: an empty paragraph and "Anchor",

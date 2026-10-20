@@ -265,7 +265,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
                 // bottom stand beside it); those standing with the text move the lines they reach themselves (Lower).
-                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(p.FloatingTables.Where(e => e.Frame && !e.WithText)).ToList());
+                var found = result.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>()
+                    .Concat(p.FloatingTables.Where(e => e.Frame && !e.WithText || e.Banded != null)).ToList());
                 // Footnotes of later columns of a page take room from its earlier columns too: the page is laid out
                 // again with the room they took.
                 var foundBands = result.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
@@ -500,8 +501,30 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // it, and below each table after); its distance from the text counts for nothing there, nor does an overlap of
         // less than a point (writerfilter-dmapper/floattable-redline: tblpY -17 twips leaves the page's first, empty
         // line where it is; extras-layout/tdf167540: tblpY 1 twip, 43 twips from the text).
-        if (anchor == "text" && !columnEmpty && y + pendingAfter - top > 1)
-            Lower(Math.Min(top, y - 0.02), top + height + Twips("bottomFromText"), left, width);
+        // The lines before it reach into its distance above it too, their paragraph's space after counting before Word
+        // 2013, less than a point of it counting for nothing: they go beside the table where it leaves them room, the
+        // table staying where it stood for them, else below it (measured with docx/local/ftb-*: three lines before a table
+        // 150 pt wide at tblpY 1 with topFromText 300, 567 and 1134 twips have their last one, two and three lines beside
+        // it, with 43 twips the last one by its paragraph's 8 pt after before Word 2013; a table 450 pt wide takes them
+        // below itself alike; LibreOffice's extras-ooxmlexport/table-floating-margins).
+        Block? banded = null;
+        if (anchor == "text")
+        {
+            var block = blocks[index];
+            var reach = y + (context.CompatibilityMode < 15 ? pendingAfter : 0) - (top - Twips("topFromText"));
+            if (seeded.TryGetValue(page!.Number, out var prior) && prior.FirstOrDefault(e => ReferenceEquals(e.Banded, block)) is { } kept)
+            {
+                top = kept.Top + Twips("topFromText");
+                banded = block;
+            }
+            else if (!columnEmpty && y + pendingAfter - top > 1)
+                Lower(Math.Min(top, y - 0.02), top + height + Twips("bottomFromText"), left, width);
+            else if (!columnEmpty && reach > 1
+                     && Math.Max(x - Twips("leftFromText") - left, left + width - (x + tableWidth + Twips("rightFromText"))) >= ParagraphLayout.MinimumSegment)
+                banded = block;
+            else if (!columnEmpty && reach > 1)
+                Lower(Math.Min(top - Twips("topFromText"), y - 0.02), top + height + Twips("bottomFromText"), left, width);
+        }
         // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
         // that does not fit below the rows before it on the page goes on at the top of the next page's body, where
         // the table stands at the same place across, its header rows repeated; the line below the last row of a page
@@ -541,7 +564,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), partTop - Twips("topFromText"),
                 x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides")
-                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null });
+                {
+                    DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
+                    Banded = Math.Abs(partTop - top) < 0.01 ? banded : null,
+                });
         }
         var split = false;
         // Before Word 2013 a table anchored to the page or the margin breaks on its first page where it would at the
@@ -629,7 +655,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         else
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
                 x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
-                { DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null });
+                {
+                    DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
+                    Banded = banded,
+                });
         if (split)
         {
             y = page!.BodyTop;
@@ -1040,6 +1069,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a text frame's standing with the text (w:vAnchor text), not on the page.</summary>
         public bool WithText { get; init; }
+
+        /// <summary>The floating table whose area it is, where the lines before it go around it (see PlaceFloatingTable), else null.</summary>
+        public Block? Banded { get; init; }
 
         /// <summary>
         /// Whether text goes right of the area where its wrapText "left" leaves no room left of it (before Word 2013;
@@ -3578,6 +3610,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     exclusions[i] = exclusions[i] with { Top = exclusions[i].Top - spaceAfter };
                     raisedAfter = spaceAfter;
                 }
+                // So does the space after of the paragraph right before a table whose distance above it the lines before it
+                // go around, for its last line (docx/local/ftb-12-narrow: 8 pt after the last line reaching 43 twips above
+                // the table put that line beside it, the line before it not).
+                else if (exclusions[i].Banded is { } table && index + 1 < blocks.Count && ReferenceEquals(blocks[index + 1], table)
+                         && y + lines.Sum(l => l.Height) is var linesBottom && exclusions[i].Top >= linesBottom - 0.01
+                         && exclusions[i].Top < linesBottom + spaceAfter - 1)
+                    exclusions[i] = exclusions[i] with { Top = linesBottom - 0.1 };
             }
         }
         // Whether the lines were broken beside floating objects, which another column or page may not have.

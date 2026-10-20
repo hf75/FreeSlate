@@ -496,7 +496,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// segments beside objects wrapped along their polygons take text from 9 pt (tv-*, tw-*: 10 pt take empty lines
     /// and 12.75 "a", 8 pt none, not so in mode 15, tr-3; docx/external/libreoffice/core-text/fly-minimal-wrap).
     /// </summary>
-    const double MinimumSegment = 18, MinimumTightSegment = 9;
+    internal const double MinimumSegment = 18, MinimumTightSegment = 9;
 
     /// <summary>How far into the column a line taken past the right indent by a tab reaches before Word 2013 (22 in).</summary>
     const double MaximumLine = 1584;
