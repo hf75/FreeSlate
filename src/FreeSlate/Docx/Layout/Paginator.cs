@@ -1937,10 +1937,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Floating drawings of headers and footers (watermarks among them) stand on the page like the body's.
         // Those of floating tables on the page stand where their tables do, not again below the story's top
         // (docx/external/libreoffice/extras-ooxmlexport/tdf105688: a picture in a header table placed from the page).
-        foreach (var anchor in anchors.Select(a => a.Offset(0, top)).Concat(fixedAnchors))
-            box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings));
+        // A footer that reaches above the bottom margin moves the margin's top up to its own for its drawings (measured
+        // with docx/local/fbq-6-*: a rule 20 pt below the bottom margin's top stands 20 pt below the top of a footer of six
+        // lines over a margin of 56.7 pt, of one line 20 pt below the margin's; LibreOffice's extras-layout/tdf164905).
+        storyMarginTop = header ? null : Math.Min(s.PageHeight - s.Bottom, box.Top);
+        try
+        {
+            foreach (var anchor in anchors.Select(a => a.Offset(0, top)).Concat(fixedAnchors))
+                box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings));
+        }
+        finally
+        {
+            storyMarginTop = null;
+        }
         return box;
     }
+
+    /// <summary>Where the bottom margin begins for the drawings of the footer being laid out (see StoryOf), else null.</summary>
+    [ThreadStatic] static double? storyMarginTop;
 
     /// <summary>A header or footer laid out: its lines, table fills and strokes, and where its content begins and ends.</summary>
     /// <summary>
@@ -2860,7 +2874,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "paragraph" => (paragraphTop, 0.0),
                 "line" => (lineTop, 0.0),
                 "topMargin" => (0.0, s.Top),
-                "bottomMargin" => (s.PageHeight - s.Bottom, s.Bottom),
+                "bottomMargin" => storyMarginTop is { } marginTop ? (marginTop, s.PageHeight - marginTop) : (s.PageHeight - s.Bottom, s.Bottom),
                 "insideMargin" => odd ? (0.0, s.Top) : (s.PageHeight - s.Bottom, s.Bottom),
                 "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),

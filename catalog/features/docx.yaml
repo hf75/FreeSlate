@@ -861,8 +861,13 @@ areas:
         strategy: Combined characters, horizontal-in-vertical text, two lines in one and emphasis marks.
         office: >-
           Emphasis marks (w:em) over every character but spaces, measured at 12 pt: a dot (U+FF0E) or comma (U+3001)
-          in the run's font 0.33 em in and 1.01 em above the baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em
-          above, a dot below (SimSun) 0.3 em in and 0.38 em below. Two lines in one (w:eastAsianLayout w:combine): the
+          in the run's font starting 0.17 em before the character's middle and 1.01 em above the baseline, a ring
+          (U+02DA, Batang) 0.157 em before it and 0.29 em above, a dot below (SimSun) 0.205 em before it and 0.38 em
+          below (LibreOffice's extras-ooxmlexport/em: over Calibri letters as over ideographs); the line makes room for
+          them outside its spacing, a quarter of the text's single line height above it or below it for the dot below
+          (docx/local/emr-*: Calibri 11, 16 and 24 pt lines 3.36, 4.92 and 7.32 pt lower, the line after an underDot
+          one as much lower, at single and 1.15 spacing, modes 12 and 15; Times New Roman 11 3.12; em 69.1 → 93.4 %).
+          Two lines in one (w:eastAsianLayout w:combine): the
           text's halves in half size above one another, between full-size brackets (docx/local/ruby). Text across the
           line (w:eastAsianLayout w:vert, horizontal in vertical text) is a little line of its own turned a quarter
           counterclockwise against its line, in any text direction (horizontal text too): along the line it takes the
@@ -2876,7 +2881,11 @@ areas:
           the margin beside the text, its right edge at the left margin or its left edge at the right margin, as far as
           the page lets it, whatever its effect extent: docx/local/pgr-14, pgr2-12-*, pgr2-14-*, rectangles of 30 to
           100 pt and right margins of 70.85 and 36 pt; on the page from Word 2013 on, pgr-15, pgr2-15-*;
-          extras-ooxmlexport/tdf113183 81.3 → 99.9 %); behind or in front of the text by behindDoc and relativeHeight
+          extras-ooxmlexport/tdf113183 81.3 → 99.9 %; a footer's drawing placed from the bottom margin counts it from
+          the footer's top where the footer reaches above the margin: docx/local/fbq-6-none, a rule 20 pt below the
+          top of a footer of six lines over a margin of 56.7 pt, fbq-1-none 20 pt below the margin's top under one
+          line; known deviation: such a drawing wrapped square pushes the footer's own lines down in Word, fbq-6-square,
+          extras-layout/tdf164905, not here); behind or in front of the text by behindDoc and relativeHeight
           (docx/generated/drawings), taken through the part in document order: a relativeHeight of 0 or 1, or of
           0x1E000000 and more, counts as unset and stands above every drawing before it, at 0x0F000000 at least, equal
           ones the later on top (docx/local/zo-a to zo-g, modes 12 and 15: 0x05000000, 0, 0x06000000 put the unset one

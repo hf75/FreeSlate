@@ -2589,6 +2589,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             above = Math.Max(above, a + boxed + (shifts ? Math.Min(0, lift) : 0));
             // Text effects reach beyond the text; the line makes room for them outside its spacing.
             var (reachAbove, reachBelow) = TextEffects.Reach(piece.Style.Effects, piece.Style.Size);
+            // So do emphasis marks: a quarter of the text's single line height above it (dot, comma, circle) or below it
+            // (underDot), outside the spacing too (measured with docx/local/emr-*: Calibri 11, 16 and 24 pt lines 3.36,
+            // 4.92 and 7.32 pt lower, the line after an underDot one as much lower, at single and 1.15 spacing, in modes
+            // 12 and 15; Times New Roman 11 3.12; LibreOffice's extras-ooxmlexport/em).
+            if (piece.Style.Emphasis is { } emphasis)
+            {
+                if (emphasis == "underDot")
+                    reachBelow += (a + b) / 4;
+                else
+                    reachAbove += (a + b) / 4;
+            }
             raised = Math.Max(raised, a + boxed + lift + reachAbove);
             any = true;
             // A list number's ascent counts, its descent not (measured with docx/local/num-rules: a 16 pt number

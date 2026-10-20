@@ -1925,19 +1925,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// East Asian emphasis marks over (or under) every character but spaces (w:em, catalog: run.eastAsian), measured
-    /// with docx/local/ruby at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font 0.33 em in from the
-    /// character's start and 1.01 em above its baseline, a ring (U+02DA, Batang) 0.34 em in and 0.29 em above, a dot
-    /// below (U+FF0E, SimSun) 0.3 em in and 0.38 em below.
+    /// with docx/local/ruby at 12 pt: a dot (U+FF0E) or comma (U+3001) in the run's font starting 0.17 em before the
+    /// character's middle and 1.01 em above its baseline, a ring (U+02DA, Batang) 0.157 em before it and 0.29 em above,
+    /// a dot below (U+FF0E, SimSun) 0.205 em before it and 0.38 em below (LibreOffice's extras-ooxmlexport/em: over
+    /// Calibri 11 letters 2.53 to 8.82 pt wide as over ideographs).
     /// </summary>
     string EmphasisMarks(Piece piece, string emphasis, double x, double baseline)
     {
         var style = piece.Style;
         var (mark, family, dx, dy) = emphasis switch
         {
-            "comma" => ("\u3001", (string?)null, 0.33, -1.01),
-            "circle" => ("\u02DA", "Batang", 0.34, -0.29),
-            "underDot" => ("\uFF0E", "SimSun", 0.3, 0.38),
-            _ => ("\uFF0E", null, 0.33, -1.01),
+            "comma" => ("\u3001", (string?)null, -0.17, -1.01),
+            "circle" => ("\u02DA", "Batang", -0.157, -0.29),
+            "underDot" => ("\uFF0E", "SimSun", -0.205, 0.38),
+            _ => ("\uFF0E", null, -0.17, -1.01),
         };
         var markStyle = family != null && context.Fonts.TryResolveTypeface(family, false, false) is { } font ? style with { Font = font } : style;
         var sb = new StringBuilder();
@@ -1946,7 +1947,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             if (char.IsLowSurrogate(piece.Text[k]) || char.IsWhiteSpace(piece.Text[k]) || piece.Advances[k] <= 0)
                 continue;
-            sb.Append(TextAt(mark, markStyle, x + positions[k] + dx * style.Size, baseline + dy * style.Size));
+            var advance = k + 1 < positions.Length ? positions[k + 1] - positions[k] : piece.Advances[k];
+            sb.Append(TextAt(mark, markStyle, x + positions[k] + advance / 2 + dx * style.Size, baseline + dy * style.Size));
         }
         return sb.ToString();
     }
