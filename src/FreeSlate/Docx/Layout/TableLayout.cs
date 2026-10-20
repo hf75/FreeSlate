@@ -237,8 +237,12 @@ public sealed class RowBox
             // A row of a nested table goes on whole where its at-least height does not fit (measured with docx/external/
             // libreoffice/writerfilter-dmapper/floattable-nested: an inner row of 85 pt with a line of text moves to the
             // next page, as rows of the table itself do).
+            // So do the cells of the nested tables a line stands in (LibreOffice's writerfilter-dmapper/
+            // floattable-hidemark: a line of a floating table's cell with a 6.75 pt bottom margin, its bottom 1.6 pt
+            // above the page's, goes on to the next page in mode 12).
             var margin = MarginBelowCut ? cell.BottomMargin : 0;
-            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin > available + 0.01).MinBy(l => l.Top);
+            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin + (MarginBelowCut ? l.CarryBelow : 0) > available + 0.01)
+                .MinBy(l => l.Top);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
             // from Word 2013 on (measured with docx/local/rs3-*: three lines with two above the cut, or one, go on, four
             // split two and two; before, rows split at any line).
@@ -353,9 +357,11 @@ public sealed class RowBox
             // The continuation holds its nested rows whole, as high as their fills reach, so that it splits again where
             // its page cannot hold them (floattable-bad-fly-pos: four pages).
             // It grows down to the drawings that went on with it that text goes around, as the row does (tpq-tbl-15-*:
-            // the picture's bottom 1.9 pt above the line after the table).
+            // the picture's bottom 1.9 pt above the line after the table), and to the bottom margins of the nested cells
+            // whose lines went on (LibreOffice's writerfilter-dmapper/floattable-hidemark: the paragraph after the
+            // table 6.75 pt lower).
             if (tailPart.Lines.Count > 0)
-                tailHeight = Math.Max(tailHeight, Math.Max(tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After),
+                tailHeight = Math.Max(tailHeight, Math.Max(tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After + l.CarryBelow),
                     Math.Max(tailPart.Fills.Count > 0 ? tailPart.Fills.Max(f => f.Y + f.Height) : 0,
                         tailPart.Anchors.Max(a => a.Reach) ?? 0)) + cell.BottomMargin);
             head.Cells.Add(headPart);
@@ -2727,7 +2733,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             // tdf170381-split-float-table-in-normal-table: an empty centered row of a nested table that goes on on the
             // next page goes there whole, its top line too).
             foreach (var line in cell.Lines)
-                lines.Add(line with { Left = left + line.Left, Top = top + line.Top, Carry = cell.ContentTop + cell.Lowered + line.Carry });
+                lines.Add(line with
+                {
+                    Left = left + line.Left, Top = top + line.Top, Carry = cell.ContentTop + cell.Lowered + line.Carry,
+                    CarryBelow = cell.BottomMargin + line.CarryBelow,
+                });
             foreach (var fill in cell.Fills)
                 borders.Add(fill with { X = left + fill.X, Y = top + fill.Y });
             strokes.AddRange(cell.Strokes.Select(s => s.Offset(left, top)));

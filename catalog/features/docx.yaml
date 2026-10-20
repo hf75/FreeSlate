@@ -2078,7 +2078,12 @@ areas:
           margins puts its text 5 pt down; docx/external/poi/60329). A row fits where it and the line that closes the
           table below it fit (docx/local/tblbottom-*). Rows that do not fit split at a line of each cell, a
           paragraph's last line fitting with its space after, before Word 2013 with its cell's bottom margin too
-          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on); header rows, rows of
+          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on), and with the bottom
+          margins of the nested tables' cells it stands in, which the rest ends with in every mode (LibreOffice's
+          writerfilter-dmapper/floattable-hidemark: a line of a floating table's cell with 6.75 pt at the bottom whose
+          bottom is 1.6 pt above the page's goes on in mode 12, the paragraph after the table 6.75 pt below the rest's
+          last line, 71.0 → 92.6 %; docx/local/sr-3: the rest of a nested row cut in two ends 11.5 pt lower, as
+          in Word); header rows, rows of
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,

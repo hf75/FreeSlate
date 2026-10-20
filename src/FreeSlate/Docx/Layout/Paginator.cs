@@ -51,6 +51,12 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     public double Carry { get; init; }
 
     /// <summary>
+    /// The bottom margins of the nested tables' cells the line stands in, which a cut at the line leaves room for before
+    /// Word 2013 as it does for the cell's own (RowBox.Split).
+    /// </summary>
+    public double CarryBelow { get; init; }
+
+    /// <summary>
     /// What the space before a paragraph's first line has more than the space after the paragraph above it, in table
     /// cells, which the line keeps at the top of a split row's continuation (RowBox.Split).
     /// </summary>
