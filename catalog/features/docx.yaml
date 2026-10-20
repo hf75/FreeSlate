@@ -4548,8 +4548,13 @@ areas:
           a function's argument x centered with x's correction, 89.1 → 98.2 %), not at the end of an n-ary's operand
           (math-nary: an equation ending in a sum over x centered as without x's correction, 83.8 → 92.2 %); a
           superscript also moves by its letter's top right math kern (mth-d-sup: x^k 0.27 pt, Cambria Math's 50
-          units). Delimiters grown past 1.5 times their own height space as an inner atom, a thin space before an
-          ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and inline); below display level they
+          units). Delimiters grown past 1.5 times their own height space as an inner atom on both sides, a thin
+          space before an ordinary atom (mti-*: 1.7 to 1.85 pt in Cambria Math 11, displayed and inline) and after an
+          ordinary or closing one (mtl-*: "x", "(a)" and a closing angle bracket 3/18 em before (x over y), none
+          before (1); after "+", "=" and "," as before an opening one; math-d 76.7 → 99.4 %). A function (m:func)
+          spaces as an inner atom against what follows it and its argument is a box whose last letter keeps its
+          italic correction (mtf-*: "sin t" then x, (1), "," or "cos u" 3/18 em apart, x with t's correction too;
+          a closing delimiter none, "+" and "=" as after a letter); below display level they
           grow by twice the content's reach from the axis (mti-i-*, mth-i-binom). Scripts and their scripts take the
           font's 73 and 60 % of their base in whole half points down (Word's PDFs: 12 pt 8.5 and 7, 14 pt 10 and 8, 11
           pt 8 and 6.5, 20 pt 14.5; docx/generated/equations 89.6 → 91.1 %,

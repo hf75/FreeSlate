@@ -87,6 +87,9 @@ public sealed class MathLayout
 
         /// <summary>A function's name: at least a thin space follows it, also before an opening delimiter.</summary>
         public bool FunctionName { get; init; }
+
+        /// <summary>The end of a box set in the row (a function's argument): an italic letter keeps its correction.</summary>
+        public bool Closes { get; init; }
     }
 
     /// <summary>
@@ -245,12 +248,14 @@ public sealed class MathLayout
                 return [Nary(element, env, Size(element))];
             case "d":
             {
-                // After delimiters grown well past their own size the group spaces as an inner atom: a thin space
-                // before an ordinary atom (measured with docx/local/mti-*, mth-*: ")" grown to 1.8 times its height
-                // and more before "x" 1.7 to 1.85 pt in Cambria Math 11, displayed and inline; grown to 1.3 times or
-                // not at all none).
+                // With delimiters grown well past their own size the group spaces as an inner atom on both sides: a
+                // thin space before an ordinary atom (measured with docx/local/mti-*, mth-*: ")" grown to 1.8 times
+                // its height and more before "x" 1.7 to 1.85 pt in Cambria Math 11, displayed and inline; grown to 1.3
+                // times or not at all none) and after an ordinary or closing one (mtl-*: "x", "(a)" and a closing
+                // angle bracket before (x over y) 3/18 em apart, before (1) none; after "+", "=" and "," as before (1);
+                // docx/external/libreoffice/extras-ooxmlexport/math-d).
                 var (delimited, tall) = Delimited(element, env, Size(element));
-                return [new Atom(delimited, AtomClass.Open) { Right = tall ? AtomClass.Inner : AtomClass.Close }];
+                return [new Atom(delimited, tall ? AtomClass.Inner : AtomClass.Open) { Right = tall ? AtomClass.Inner : AtomClass.Close }];
             }
             case "m":
                 return [new Atom(Matrix(element, env, Size(element)), AtomClass.Ord)];
@@ -399,7 +404,7 @@ public sealed class MathLayout
             // over a 6.96 pt wide, docx/local/mth-d-close); not at the end of an n-ary's operand (closes).
             // A space after the letter takes it too (docx/local/msp-a, msp2-a: "a b" and "x ,y" 0.21 and 0.36 pt).
             if (atoms[i].Class == AtomClass.Ord && atoms[i].Item is GlyphItem { Italic: > 0 } letter && !IsSpace(atoms[i])
-                && (i + 1 == atoms.Count ? closes : atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct
+                && (i + 1 == atoms.Count ? closes : atoms[i].Closes || atoms[i + 1].Class is AtomClass.Bin or AtomClass.Rel or AtomClass.Open or AtomClass.Close or AtomClass.Punct
                     || atoms[i + 1].Item is not GlyphItem || IsSpace(atoms[i + 1])))
                 x += letter.Italic;
         }
@@ -1387,6 +1392,11 @@ public sealed class MathLayout
         else
             foreach (var element in Child(func, "e"))
                 atoms.AddRange(Atoms(element, env, size));
+        // The function spaces as an inner atom against what follows it, its argument a box of its own, whose last
+        // letter keeps its italic correction (measured with docx/local/mtf-*: "sin t" then x, (1), "," or "cos u"
+        // 3/18 em apart, x with t's correction too; a closing delimiter none, "+" and "=" as after an ordinary atom;
+        // mtl-*-op).
+        atoms[^1] = atoms[^1] with { Right = AtomClass.Inner, Closes = true };
         return atoms;
     }
 
