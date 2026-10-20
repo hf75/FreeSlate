@@ -1933,7 +1933,10 @@ areas:
           its axis labels (outer); w and h are sizes (wMode, hMode factor) or far edges (edge). Verified with
           generated/charts, charts-details and charts-data. Axis titles of 3D charts take their room at their axis's
           edge and stand centered on the plot area as on flat charts, white in the black chart area of an Office 2007
-          style's highest level (docx/external/powertools/CU001: "Vehicles" and "Quarter" beside a 3D bar chart). A
+          style's highest level (docx/external/powertools/CU001: "Vehicles" and "Quarter" beside a 3D bar chart).
+          Axis titles wrap at 0.8 of the chart's width; in Word an unturned title of a vertical axis at 0.2 of it, its
+          padding included (docx/local/atl-*: Calibri 10 titles beside charts 288 to 576 pt wide break where a line
+          would pass 0.2 of the width less 6 pt; docx/external/libreoffice/extras-layout/tdf134146). A
           title without text names the chart after its single series, after none without a name: the default title
           (docx/external/libreoffice/extras-ooxmlexport/chart-size: Word's "Diagrammtitel", 89.8 → 97.3 %; strict 98.9
           → 99.5 %, extras-layout/tdf137116 76.9 → 79.2 %). Line keys keep their size at every font size (legends of 7

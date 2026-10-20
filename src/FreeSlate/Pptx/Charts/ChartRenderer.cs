@@ -1121,14 +1121,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var rich = element.Element(Ns.C + "tx")?.Element(Ns.C + "rich")
                    ?? new XElement(Ns.C + "rich", new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t",
                        culture.TwoLetterISOLanguageName == "de" ? "Achsentitel" : "Axis Title"))));
-        var layout = text.ChartRich(rich, layers, width * 0.8, wrap: true);
-        var style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
         var rot = rich.Element(Ns.A + "bodyPr").Long("rot") ?? element.Element(Ns.C + "txPr")?.Element(Ns.A + "bodyPr").Long("rot");
         var rotation = rot is { } r && r != -60000000 ? r / 60000.0 : axis.Horizontal ? 0 : -90;
+        var vertical = Math.Abs(Math.Abs(rotation) - 90) < 1;
+        // Word wraps an unturned title of a vertical axis at a fifth of the chart's width, its padding included
+        // (measured with docx/local/atl-*: titles in Calibri 10 beside charts of 288 to 576 pt break where their lines
+        // would pass 0.2 of the width less 6 pt; docx/external/libreoffice/extras-layout/tdf134146).
+        var wrapWidth = slide.Presentation.Word && !axis.Horizontal && !vertical ? width * 0.2 - 2 * TitlePaddingX : width * 0.8;
+        var layout = text.ChartRich(rich, layers, wrapWidth, wrap: true);
+        var style = layout.Lines.SelectMany(l => l.Runs).FirstOrDefault()?.Style ?? text.ChartStyle(layers);
         var block = new TextBlock { Layout = layout, Style = style };
         var along = block.Width + 2 * TitlePaddingX;
         var across = Math.Max(1, layout.Lines.Count) * LineHeight(style) + 2 * TitlePaddingY;
-        var vertical = Math.Abs(Math.Abs(rotation) - 90) < 1;
         return new AxisTitle
         {
             Text = block,
