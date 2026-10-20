@@ -2062,7 +2062,11 @@ areas:
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,
           docx/local/rs3-*), and a paragraph kept with the next one goes on with the next one's first line
-          (docx/local/spg2-15, spg3-15; in older modes it stays, spg2-12, spg3-12, -14); the part before the cut ends
+          (docx/local/spg2-15, spg3-15; in older modes it stays, spg2-12, spg3-12, -14), as does a paragraph whose
+          drawing that text goes around, laid out in the cell, would reach past the cut, from Word 2013 on, the rest
+          as high as that drawing (docx/local/tpq-tbl-15-*: a 92 pt picture 1 to 50 pt past the page's bottom takes its
+          paragraph to the next page, as in the body; tpq-tbl-14-*: before, it stays; LibreOffice's extras-layout/
+          tdf172156 82.7 → 99.4 %); the part before the cut ends
           below its cells' content, a paragraph's last line with its space after, and their bottom margin where the
           page has room for it, not at the page's end (docx/local/spg-*, spgf-*: 0, 6 and 18 pt after 25 pt above the
           page's end; rowmar-11 to -14); a paragraph that begins the rest keeps what its space before has more than

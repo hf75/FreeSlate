@@ -35,10 +35,14 @@ public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double
     /// <summary>Where the drawing is anchored in its line, for positions relative to the character.</summary>
     public double? CharacterX { get; init; }
 
+    /// <summary>How far down a drawing laid out in the cell that text goes around reaches (TableLayout.Reach), else null.</summary>
+    public double? Reach { get; init; }
+
     public CellAnchor Offset(double dx, double dy) => this with
     {
         ParagraphTop = ParagraphTop + dy,
         LineTop = LineTop + dy,
+        Reach = Reach + dy,
         CharacterX = CharacterX + dx,
         Text = Text is { } t ? (t.Left + dx, t.Width) : null,
         Cell = Cell is { } c ? (c.Left + dx, c.Width) : null,
@@ -133,6 +137,12 @@ public sealed class RowBox
     /// </summary>
     public bool MarginBelowCut { get; init; }
 
+    /// <summary>
+    /// Whether a paragraph whose drawing that text goes around would reach past a cut goes on with it, as from Word 2013
+    /// on (see Split).
+    /// </summary>
+    public bool AnchorsReach { get; init; }
+
     /// <summary>The height of the lines at the row's top, above its content.</summary>
     public double TopWidth { get; init; }
 
@@ -158,7 +168,7 @@ public sealed class RowBox
         var delta = PageTopWidth - TopWidth;
         var copy = new RowBox
         {
-            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, AnchorsReach = AnchorsReach, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -255,6 +265,21 @@ public sealed class RowBox
                 if (kept > 0)
                     rest = cell.Lines[kept];
             }
+            // From Word 2013 on a paragraph whose drawing that text goes around, laid out in the cell, would reach past the
+            // cut goes on with it (measured with docx/local/tpq-tbl-15-*: a 92 pt picture 1 to 50 pt past the page's
+            // bottom takes its paragraph to the next page, as in the body, tpq-body-15-*; before, tpq-tbl-14-*, the
+            // picture stays; LibreOffice's extras-layout/tdf172156).
+            if (AnchorsReach)
+            {
+                foreach (var anchor in cell.Anchors)
+                {
+                    if (anchor.Reach is not { } reach || reach - cell.Lowered + margin <= available + 0.01)
+                        continue;
+                    var k = cell.Lines.FindIndex(l => l.Line.First && l.Top >= anchor.ParagraphTop - 0.01);
+                    if (k >= 0 && (rest == null || cell.Lines[k].Top < rest.Top))
+                        rest = cell.Lines[k];
+                }
+            }
             if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
                 return null;
             // Content cut in two goes on at the top of the continuation, whatever the cell's alignment (measured with
@@ -311,9 +336,12 @@ public sealed class RowBox
             }
             // The continuation holds its nested rows whole, as high as their fills reach, so that it splits again where
             // its page cannot hold them (floattable-bad-fly-pos: four pages).
+            // It grows down to the drawings that went on with it that text goes around, as the row does (tpq-tbl-15-*:
+            // the picture's bottom 1.9 pt above the line after the table).
             if (tailPart.Lines.Count > 0)
                 tailHeight = Math.Max(tailHeight, Math.Max(tailPart.Lines.Max(l => l.Top + l.Line.Height + l.After),
-                    tailPart.Fills.Count > 0 ? tailPart.Fills.Max(f => f.Y + f.Height) : 0) + cell.BottomMargin);
+                    Math.Max(tailPart.Fills.Count > 0 ? tailPart.Fills.Max(f => f.Y + f.Height) : 0,
+                        tailPart.Anchors.Max(a => a.Reach) ?? 0)) + cell.BottomMargin);
             head.Cells.Add(headPart);
             tail.Cells.Add(tailPart);
         }
@@ -462,7 +490,7 @@ public sealed class RowBox
     {
         var copy = new RowBox
         {
-            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, AnchorsReach = AnchorsReach, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -916,6 +944,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
                 MarginBelowCut = !Modern,
+                AnchorsReach = Modern,
             };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)
@@ -2429,7 +2458,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                     {
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
-                        anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x });
+                        var reaches = floats && InCell(anchor.Anchor) ? Reach(anchor, paragraphTop, lineTop, fields) : null;
+                        anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x, Reach = reaches is { Wraps: true } wrapped ? wrapped.Bottom : null });
                         // A cell's row grows down to its drawings that text goes around, whether or not they are laid
                         // out in the cell, not to those in front of or behind the text; vertical alignment moves the
                         // content with all of them (measured with docx/local/cig-*: a 40 pt shape wrapped square or top
