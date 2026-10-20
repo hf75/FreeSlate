@@ -2147,7 +2147,11 @@ areas:
           borders and shading to the top of the next part, and that part is as high as they reach, splitting again
           where its page cannot hold it (docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of
           306, 363 and 170 pt on four pages, 61.7 → 88.3 %; core-layout/floattable-in-inlinetable,
-          floattable-in-inltbl-in-sect 59.7 → 90.6 %; extras-uiwriter/tdf133982 94.0 → 96.8 %). In tables with cell
+          floattable-in-inltbl-in-sect 59.7 → 90.6 %; extras-uiwriter/tdf133982 94.0 → 96.8 %), a nested row cut at
+          its first line whole with its top line, however its cell's alignment lowered the line, the line staying
+          below the rows above it too to close their part (extras-layout/tdf170381-split-float-table-in-normal-table:
+          an empty centered inner row goes on on page 2 with its line, which also ends page 1's rows, 88.9 → 100 %;
+          floattable-bad-fly-pos → 100 %). In tables with cell
           spacing an at-least height lies between the row's largest top and bottom margins as in other tables, and a
           fixed table's grid columns hold the gaps between its cells (tdf123104: a row of 49.5 pt at least with
           margins of 3.75 pt 57 pt high, cells 1.5 pt narrower than their grid columns, 65.0 → 100 %). Drawings in

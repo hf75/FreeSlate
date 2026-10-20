@@ -327,7 +327,14 @@ public sealed class RowBox
                 if (rest == null || fill.Y < cutTop - 0.01)
                     headPart.Fills.Add(fill);
                 else
+                {
                     tailPart.Fills.Add(fill with { Y = fill.Y - offset });
+                    // The line at the top of the nested row the cut is at closes the rows above it too, as a table's
+                    // own line does where it breaks (LibreOffice's extras-layout/tdf170381-split-float-table-in-normal-table:
+                    // the inner line under the page's last inner row and over the next page's first).
+                    if (rest.Carry > 0 && fill.Y < cutTop + 0.01 && fill.Height <= rest.Carry + 0.01)
+                        headPart.Fills.Add(fill);
+                }
             }
             foreach (var stroke in cell.Strokes)
             {
@@ -2715,8 +2722,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 strokes.Add(new Stroke(left + from, top + row.TopWidth, left + to, top + height, down.Width, down.Color, Dash(down)));
             if (up is { Visible: true })
                 strokes.Add(new Stroke(left + to, top + row.TopWidth, left + from, top + height, up.Width, up.Color, Dash(up)));
+            // What a nested row's line carries counts what the cell's alignment lowered it by too, so that a cut at a
+            // centered cell's line takes the row's top line along (LibreOffice's extras-layout/
+            // tdf170381-split-float-table-in-normal-table: an empty centered row of a nested table that goes on on the
+            // next page goes there whole, its top line too).
             foreach (var line in cell.Lines)
-                lines.Add(line with { Left = left + line.Left, Top = top + line.Top, Carry = cell.ContentTop + line.Carry });
+                lines.Add(line with { Left = left + line.Left, Top = top + line.Top, Carry = cell.ContentTop + cell.Lowered + line.Carry });
             foreach (var fill in cell.Fills)
                 borders.Add(fill with { X = left + fill.X, Y = top + fill.Y });
             strokes.AddRange(cell.Strokes.Select(s => s.Offset(left, top)));
