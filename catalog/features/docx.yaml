@@ -4617,7 +4617,9 @@ areas:
           times the shorter side, not half of it as the VML spec says, 0.2 of it without one: docx/local/vrr-arc;
           LibreOffice's extras-ooxmlimport/n779627b), sizes in percent of the page or a margin (mso-width-percent,
           mso-height-percent, mso-width-relative, mso-height-relative, as wp14:sizeRelH and wp14:sizeRelV:
-          docx/local/vrr-pct-*; groups keep their size, extras-ooxmlimport/n751077), ovals, lines, preset
+          docx/local/vrr-pct-*; groups keep their size, extras-ooxmlimport/n751077), ovals, lines, polylines
+          (v:polyline: their points' box with the path through them, closed where it ends where it began;
+          LibreOffice's tdf112450_vml_polyline 58.5 → 94.2 %), preset
           shapes by o:spt, paths as custom geometries, groups (v:group: the children in its coordorigin and coordsize,
           nested, either's second number 0 or 1000 where left out: libreoffice/extras-ooxmlexport/vml-text-vertical-
           adjust, extras-ooxmlimport/groupshape-sdt, coordorigin "9201"; a shape's path counts from its own

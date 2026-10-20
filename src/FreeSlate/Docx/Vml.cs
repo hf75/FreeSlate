@@ -136,6 +136,24 @@ public static class Vml
             style["margin-top"] = $"{Math.Min(y1, y2).ToString(CultureInfo.InvariantCulture)}pt";
             style.TryAdd("position", "absolute");
         }
+        // A polyline (v:polyline) is its points' box with the path through them, closed where it ends where it began
+        // (docx/external/libreoffice/tdf112450_vml_polyline: an open line of three corners and two closed polygons).
+        if (shape.Name == V + "polyline" && Points((string?)shape.Attribute("points")) is { Count: >= 2 } points)
+        {
+            var (minX, minY) = (points.Min(p => p.X), points.Min(p => p.Y));
+            width = Math.Max(points.Max(p => p.X) - minX, 0.01);
+            height = Math.Max(points.Max(p => p.Y) - minY, 0.01);
+            style["margin-left"] = $"{minX.ToString(CultureInfo.InvariantCulture)}pt";
+            style["margin-top"] = $"{minY.ToString(CultureInfo.InvariantCulture)}pt";
+            style.TryAdd("position", "absolute");
+            static long Unit(double points) => (long)Math.Round(points * 100);
+            var closed = points.Count > 2 && Math.Abs(points[^1].X - points[0].X) < 0.01 && Math.Abs(points[^1].Y - points[0].Y) < 0.01;
+            var corners = (closed ? points.Take(points.Count - 1) : points).Select(p => $"{Unit(p.X - minX)},{Unit(p.Y - minY)}").ToList();
+            shape = new XElement(shape);
+            shape.SetAttributeValue("path", "m" + corners[0] + "l" + string.Join(",", corners.Skip(1)) + (closed ? "xe" : "e"));
+            shape.SetAttributeValue("coordsize", $"{Math.Max(1, Unit(width))},{Math.Max(1, Unit(height))}");
+            shape.SetAttributeValue("coordorigin", "0,0");
+        }
         // Only v:shape takes a type (AG_Type); other elements' type attributes count for nothing (docx/external/
         // libreoffice/extras-ooxmlexport/n705956-2: a v:rect of a type with a red fill prints white).
         var type = shape.Name == V + "shape" && (string?)shape.Attribute("type") is { } reference && types.TryGetValue(reference.TrimStart('#'), out var t) ? t : null;
@@ -1803,6 +1821,15 @@ public static class Vml
             "em" => n * 12,
             _ => n * 0.75,
         };
+    }
+
+    /// <summary>The points of a polyline's points attribute ("x1,y1,x2,y2 …", lengths with or without units).</summary>
+    static List<(double X, double Y)>? Points(string? value)
+    {
+        var numbers = (value ?? "").Split([',', ' '], StringSplitOptions.RemoveEmptyEntries).Select(Length).ToList();
+        if (numbers.Count < 4 || numbers.Any(n => n == null))
+            return null;
+        return Enumerable.Range(0, numbers.Count / 2).Select(i => (numbers[2 * i]!.Value, numbers[2 * i + 1]!.Value)).ToList();
     }
 
     static (double X, double Y) Point(string? value)
