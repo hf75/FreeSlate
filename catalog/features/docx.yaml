@@ -4744,7 +4744,11 @@ areas:
           hangs from the top of its line (of its paragraph's space before on the first line), pictures stand on the
           baseline; an outlined shape takes the room of its box in whole 0.75 pt pixels, its outline and its shadow's
           offset right of and below it; spaces between drawings do not make their line taller
-          (docx/local/vml-inline*). Fills and lines as Word draws them (docx/local/vml-fx, vml-angles, vml-pattern): a
+          (docx/local/vml-inline*); an inline group stands in by what its shapes reach out beyond its box on the left
+          and takes the room of it (Word's PDF of LibreOffice's extras-ooxmlexport/fdo73215: a canvas whose elbow
+          connector loops out on the left stands 9.75 pt right of the indent, the connector's line from 0.25 pt right
+          of it, ours by the connector's geometry 9.92 pt, 67.1 → 96.5 %; above, right and below alike, not
+          measured). Fills and lines as Word draws them (docx/local/vml-fx, vml-angles, vml-pattern): a
           gradient runs, at the focus 0 Word writes by default, from color2 at the start of its angle (0: the top, 90:
           the left, 45: the top left corner, the angle applying in the shape stretched to a square) to the fill color,
           at focus 100 % the other way, at 50 % from the fill color to color2 in the middle and back, at -50 % the

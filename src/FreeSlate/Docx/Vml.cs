@@ -162,6 +162,7 @@ public static class Vml
         if (content == null)
             return null;
         var room = shape.Name == V + "group" || signature != null ? (0, 0) : Room(shape, type, content, width, height);
+        var overhang = shape.Name == V + "group" && style.GetValueOrDefault("position") != "absolute" ? Overhang(content, width, height) : default;
         var picture = content.Name.Namespace == Drawings.Pic || signature != null;
         if (shape.Name != V + "group" && Bordered(content, shape, width, height) is { } framed)
             (content, width, height) = framed;
@@ -179,8 +180,8 @@ public static class Vml
                 rule ? new XAttribute(Rule, double.TryParse((string?)shape.Attribute(O + "hrpct"), NumberStyles.Float, CultureInfo.InvariantCulture, out var pct) && pct >= 0 ? pct / 1000 : 1) : null,
                 rule ? new XAttribute(RuleAlign, (string?)shape.Attribute(O + "hralign") ?? "left") : null,
                 rule && !picture && (string?)shape.Attribute(O + "hrnoshade") is not ("t" or "true" or "1") ? new XAttribute(RuleBevel, 1) : null,
-                extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0),
-                    new XAttribute("r", Emu(room.Right)), new XAttribute("b", Emu(room.Bottom))), docPr, graphic);
+                extent, new XElement(Drawings.Wp + "effectExtent", new XAttribute("l", Emu(overhang.L)), new XAttribute("t", Emu(overhang.T)),
+                    new XAttribute("r", Emu(Math.Max(room.Right, overhang.R))), new XAttribute("b", Emu(Math.Max(room.Bottom, overhang.B)))), docPr, graphic);
 
         var z = long.TryParse(style.GetValueOrDefault("z-index"), out var zi) ? zi : 0;
         // A shadow widens the shape's extent on its side as DrawingML's effect extent does, which alignment counts
@@ -550,6 +551,77 @@ public static class Vml
         group.Add(new XElement(Drawings.Wps + "wsp", new XElement(Drawings.Wps + "cNvSpPr"), copy, new XElement(Drawings.Wps + "bodyPr")));
         group.Add(new XElement(content));
         return group;
+    }
+
+    /// <summary>
+    /// How far the geometry of a converted group's shapes (a wpg:wgp of <paramref name="width"/> by
+    /// <paramref name="height"/> pt) reaches beyond its box on each side, in points: Word sets an inline group in by
+    /// what reaches out on the left and gives it room for it (Word's PDF of LibreOffice's extras-ooxmlexport/fdo73215,
+    /// found by agent BK: a canvas whose elbow connector loops out on the left stands 9.75 pt right of the indent, the
+    /// connector's line from 0.25 pt right of it; Word's connector, one unit of 0.0525 pt wide taken as a twip, loops
+    /// out 9 pt, ours by its geometry 9.92 pt; above, right and below alike, not measured).
+    /// </summary>
+    static (double L, double T, double R, double B) Overhang(XElement group, double width, double height)
+    {
+        static double Number(XElement? e, string name) =>
+            double.TryParse((string?)e?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0;
+        var (minX, minY, maxX, maxY) = (0.0, 0.0, width, height);
+        // A group's shapes, their points mapped to the outermost group's box by toTop.
+        void Walk(XElement container, Func<double, double, (double X, double Y)> toTop)
+        {
+            foreach (var child in container.Elements())
+            {
+                var properties = child.Element(Drawings.Wps + "spPr") ?? child.Element(Drawings.Pic + "spPr") ?? child.Element(Drawings.Wpg + "grpSpPr");
+                if (properties?.Element(Ns.A + "xfrm") is not { } xfrm)
+                    continue;
+                var (offX, offY) = (Number(xfrm.Element(Ns.A + "off"), "x"), Number(xfrm.Element(Ns.A + "off"), "y"));
+                var (extX, extY) = (Number(xfrm.Element(Ns.A + "ext"), "cx"), Number(xfrm.Element(Ns.A + "ext"), "cy"));
+                var (sin, cos) = Math.SinCos(Number(xfrm, "rot") / 60000 * Math.PI / 180);
+                var (flipX, flipY) = ((string?)xfrm.Attribute("flipH") is "1" or "true", (string?)xfrm.Attribute("flipV") is "1" or "true");
+                // A point of the child's box: flipped and turned about its middle, as DrawingML does.
+                (double X, double Y) Place(double x, double y)
+                {
+                    var (dx, dy) = ((flipX ? extX - x : x) - extX / 2, (flipY ? extY - y : y) - extY / 2);
+                    return toTop(offX + extX / 2 + dx * cos - dy * sin, offY + extY / 2 + dx * sin + dy * cos);
+                }
+                if (child.Name == Drawings.Wpg + "grpSp")
+                {
+                    var (chOffX, chOffY) = (Number(xfrm.Element(Ns.A + "chOff"), "x"), Number(xfrm.Element(Ns.A + "chOff"), "y"));
+                    var (chExtX, chExtY) = (Number(xfrm.Element(Ns.A + "chExt"), "cx"), Number(xfrm.Element(Ns.A + "chExt"), "cy"));
+                    if (chExtX > 0 && chExtY > 0)
+                        Walk(child, (x, y) => Place((x - chOffX) * extX / chExtX, (y - chOffY) * extY / chExtY));
+                    continue;
+                }
+                FreeSlate.Drawing.Geometry.GeometryDefinition? definition = null;
+                List<FreeSlate.Drawing.Geometry.Guide>? adjustments = null;
+                if (properties.Element(Ns.A + "prstGeom") is { } preset)
+                {
+                    definition = FreeSlate.Drawing.Geometry.PresetGeometries.Get((string?)preset.Attribute("prst") ?? "rect");
+                    adjustments = preset.Element(Ns.A + "avLst")?.Elements(Ns.A + "gd")
+                        .Select(gd => new FreeSlate.Drawing.Geometry.Guide((string?)gd.Attribute("name") ?? "", (string?)gd.Attribute("fmla") ?? "val 0")).ToList();
+                }
+                else if (properties.Element(Ns.A + "custGeom") is { } custom)
+                    definition = FreeSlate.Drawing.Geometry.GeometryDefinition.Parse(custom);
+                if (definition == null)
+                    continue;
+                // The evaluator's pixels are its EMU / 9525: the box in 9525ths gives the points in the child's units.
+                foreach (var path in FreeSlate.Drawing.Geometry.GeometryEvaluator.Evaluate(definition, extX * 9525, extY * 9525, adjustments).Paths)
+                {
+                    foreach (var (points, _) in FreeSlate.Html.CompoundLines.Flatten(path.Segments))
+                    {
+                        foreach (var (x, y) in points.Select(p => Place(p.X, p.Y)))
+                            (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
+                    }
+                }
+            }
+        }
+        if (group.Element(Drawings.Wpg + "grpSpPr")?.Element(Ns.A + "xfrm") is { } outer
+            && Number(outer.Element(Ns.A + "chExt"), "cx") is > 0 and var chW && Number(outer.Element(Ns.A + "chExt"), "cy") is > 0 and var chH)
+        {
+            var (chX, chY) = (Number(outer.Element(Ns.A + "chOff"), "x"), Number(outer.Element(Ns.A + "chOff"), "y"));
+            Walk(group, (x, y) => ((x - chX) * width / chW, (y - chY) * height / chH));
+        }
+        return (Math.Max(0, -minX), Math.Max(0, -minY), Math.Max(0, maxX - width), Math.Max(0, maxY - height));
     }
 
     /// <summary>
