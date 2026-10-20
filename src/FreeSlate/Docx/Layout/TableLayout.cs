@@ -1885,6 +1885,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return widths;
     }
 
+    /// <summary>A width in points rounded up to whole twips.</summary>
+    static double Twips(double points) => Math.Ceiling(points * 20 - 1e-6) / 20;
+
     /// <summary>
     /// The columns' minima and maxima, the cells' margins in them, their preferred widths and the minima of their own
     /// cells' contents alone (Natural, before preferred widths fix them and cells across several columns widen them:
@@ -1922,8 +1925,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (cell.Format.NoWrap && cell.Format.Width is not { Type: "dxa", Value: > 0 })
                     cmin = cmax;
                 // Word measures content at most 22 inches wide, its longest line (measured with docx/local/tbl-features:
-                // a column beside one with a very long paragraph gets 52.8 pt, 51.2 pt without the limit).
-                cmax = Math.Min(cmax, 1584);
+                // a column beside one with a very long paragraph gets 52.8 pt, 51.2 pt without the limit), rounded up
+                // to whole twips (docx/external/pandoc/golden/tables_separated_with_rawblock: Aptos 12's "a", 127.5
+                // twips, makes a column of 344 twips with its margins, the next cell's text at 1761 twips, dot 734).
+                cmax = Twips(Math.Min(cmax, 1584));
+                cmin = Twips(cmin);
                 cmin += m.Left + m.Right;
                 cmax += m.Left + m.Right;
                 var pref = cell.Format.Width?.Resolve(space) is { } p && p > 0 ? p : (double?)null;

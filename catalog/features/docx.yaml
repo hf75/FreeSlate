@@ -1952,7 +1952,9 @@ areas:
         office: >-
           Fixed tables use the grid; autofit tables are recomputed as Word does (measured with docx/local/tbl-autofit
           in Courier New, ten cases within 0.15 pt): each column's minimum (its widest unbreakable content) and
-          maximum (its content unwrapped, at most 22 inches) with the cells' margins, where narrower than half the
+          maximum (its content unwrapped, at most 22 inches), rounded up to whole twips (docx/external/pandoc/golden/
+          tables_separated_with_rawblock: Aptos 12's "a", 127.5 twips, makes a column of 344 twips with its margins,
+          the next cell's text at 1761 twips, dot 734; 88.5 → 100 %), with the cells' margins, where narrower than half the
           line beside them that half (docx/local/cellborder), inline pictures with their width; a preferred cell width
           fixes its column; where the maxima fit the columns take them (stretched in proportion to them for a wider
           table width), where the minima fit each gets its minimum and a share of the rest in proportion to max - min;
