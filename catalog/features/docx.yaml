@@ -2922,7 +2922,12 @@ areas:
           holding a text box that does not wrap (wrap none, as WordArt's) gets its effect extents anew, whatever the
           document says: none left and above, on the right and below its widest outline and 0.05 pt, at least
           0.49 pt (docx/local/ge-*, gh-*; Tdf147485: 9 pt stored on both sides, drawn at its line's start); with text
-          boxes that wrap the stored extents hold (tdf149546).
+          boxes that wrap the stored extents hold (tdf149546). Before Word 2013 the paragraph mark after a field's
+          result wider than its line (a complex or simple field's, a hyperlink's, an OLE object, which is an EMBED
+          field) goes to a line of its own, after a drawing alone it stands past the line's end (docx/local/owf-11,
+          owf-12, owf-14: a rectangle 456.3 pt wide in a 451.3 pt column; owf-15 and wio-*: the mark beside it; Apache
+          POI's WordWithAttachments: an OLE object 468 pt wide in a 467.75 pt column, not one 467.75 pt wide, 82.4 →
+          90.9 %).
 
       - id: drawing.anchor
         title: Floating objects and their position

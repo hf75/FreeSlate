@@ -1103,6 +1103,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         string? clear = null;     // the w:clear of the break that ended the line before
         var remeasured = false;   // whether the line is laid out again with its own height (see below)
         var grown = false;        // whether the line is laid out again with the height it grew to (see below)
+        var markWraps = false;    // whether the paragraph mark goes to a line of its own (see below)
         while (true)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
@@ -1492,6 +1493,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 if (segments.Count > 1 || segments.Count == 1 && (segments[0].Start > naturalStart + 0.01 || segments[0].End < naturalLimit - 0.01))
                     line.Cut = segments.Select(s => (Math.Abs(s.Start - naturalStart) < 0.01 ? Math.Min(left, naturalStart) : s.Start, s.End)).ToList();
             }
+            // Before Word 2013 the mark after a field's result wider than its line goes to the next line, where after a
+            // drawing alone it stands past the line's end (measured with docx/local/owf-11, owf-12, owf-14: a rectangle
+            // 456.3 pt wide in a 451.3 pt column as a complex or simple field's result or in a hyperlink; owf-15 and
+            // wio-*: the mark beside it; Apache POI's WordWithAttachments: an OLE object, an EMBED field, 468 pt wide in
+            // a column of 467.75 pt, not one 467.75 pt wide).
+            markWraps = context.CompatibilityMode < 15 && end >= text.Length && endBreak == null && x > limit + 0.005
+                && objects.TryGetValue(text.Length - 1, out var lastObject) && lastObject.InField;
             lines.Add(line);
             first = false;
             clear = endBreak == "line" && clears.TryGetValue(end - 1, out var side) ? side : null;
@@ -1504,7 +1512,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // A paragraph that ends with a break has an empty last line, after a column break in the next column or page
         // (measured with docx/local/breakmark3-cx-*, breakmark4-cl-*, -c2-*: in all compatibility modes); one that
         // ends with a page break too where its mark goes to the next page.
-        if ((lines[^1].EndBreak is "line" or "column" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length)
+        if ((lines[^1].EndBreak is "line" or "column" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length
+            || markWraps)
             lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0, width - right));
         lines[^1].Last = true;
 

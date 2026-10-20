@@ -15,6 +15,12 @@ public sealed record DrawingInline(XElement Drawing, string Part, RunFormat Form
 
     /// <summary>The box the drawing takes in the line: its extent with the effect extents around it, in points.</summary>
     public (double Width, double Height) Box => Drawings.Box(Drawing);
+
+    /// <summary>
+    /// Whether the drawing is a field's result (a complex or a simple field's, a hyperlink's) or an OLE object, which is
+    /// a field of its own (EMBED): before Word 2013 the paragraph mark after one wider than its line goes to the next.
+    /// </summary>
+    public bool InField { get; init; }
 }
 
 /// <summary>A floating drawing anchored at its run (w:drawing/wp:anchor, catalog: drawing.anchor); it takes no room in the line.</summary>

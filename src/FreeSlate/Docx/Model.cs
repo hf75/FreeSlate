@@ -354,6 +354,12 @@ public sealed partial class ModelReader(DocumentContext context)
     /// </summary>
     readonly List<(System.Text.StringBuilder Instruction, bool InResult)> openFields = [];
 
+    /// <summary>How many simple fields (w:fldSimple) and hyperlinks (w:hyperlink) are around the runs being read.</summary>
+    int simpleFields;
+
+    /// <summary>Whether the runs being read are in a field: a complex or a simple field, a hyperlink.</summary>
+    bool InField => simpleFields > 0 || openFields.Count > 0;
+
     /// <summary>The directions of the w:bdo and w:dir around the runs being read, or null.</summary>
     string? bidiOverride, bidiEmbedding;
 
@@ -1450,7 +1456,9 @@ public sealed partial class ModelReader(DocumentContext context)
                     var saved = (link, tocLink);
                     link = target ?? link;
                     tocLink |= openFields.Any(f => f.InResult && FieldInline.TypeOf(f.Instruction.ToString()) == "TOC");
+                    simpleFields++;
                     ReadInlines(e, paragraphStyle, content, field);
+                    simpleFields--;
                     (link, tocLink) = saved;
                     break;
                 }
@@ -1539,7 +1547,9 @@ public sealed partial class ModelReader(DocumentContext context)
                     });
                     break;
                 case "fldSimple":
+                    simpleFields++;
                     ReadInlines(e, paragraphStyle, content, field);
+                    simpleFields--;
                     break;
                 case "sdt":
                     if (e.Child("sdtContent") is { } sdtContent)
@@ -2006,7 +2016,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (context.CompatibilityMode >= 14 && Drawings.TurnedAcross(d))
                                 d.SetAttributeValue(Drawings.SwappedTurn, "1");
                             if (d.Name == Drawings.Wp + "inline")
-                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
+                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField });
                             // A hidden floating drawing (wp:docPr hidden) is gone, the text not wrapping around it either
                             // (docx/external/libreoffice/extras-ooxmlexport/tdf162527_hidden_image, tdf169802_hidden_shape:
                             // a picture and a rectangle wrapped tight, eleven full lines).
@@ -2024,7 +2034,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         var text = TextBox(d);
                         var children = ChildTextBoxes(d);
                         if (d.Name == Drawings.Wp + "inline")
-                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children });
+                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField || e.Name.LocalName == "object" });
                         else
                             field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
                     }
