@@ -2821,7 +2821,9 @@ areas:
           struck deletions and change bars follows Word's simple and all markup views.
         office: >-
           Printed as Word exports without markup by default: insertions and moved-to text stay, deletions and moved-
-          from text are left out, deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows
+          from text are left out, though deleted text still counts in the widths of autofit tables (Word's PDF of
+          extras-ooxmlexport/testTrackChangesDeletedTableCell: its columns where the deleted "ABCD" puts them in the
+          markup view, 89.4 → 99.5 %), deleted table rows (w:trPr/w:del) disappear, a table of nothing but deleted rows
           with them, a paragraph whose mark is deleted or moved away (w:moveFrom) joins the next, also across such a
           table, across the marks of ranges between them (moveFromRangeEnd, bookmarks, comments) and across the edges
           of content controls not bound to data (RP018-MoveFrom-MoveTo-CC 20 → 100 % of the lines, libreoffice/

@@ -39,6 +39,12 @@ public sealed class RunFormat
     public RevisionMark? Revision;
     public FormatChange? Change;
 
+    /// <summary>
+    /// Whether the run is tracked deleted text outside the markup view: hidden, but autofit tables measure it
+    /// (TableLayout, ParagraphLayout.Widths).
+    /// </summary>
+    public bool Deleted;
+
     /// <summary>w:color: hex RGB or "auto", with its theme color and tint or shade.</summary>
     public string? Color, ThemeColor, ThemeTint, ThemeShade;
 

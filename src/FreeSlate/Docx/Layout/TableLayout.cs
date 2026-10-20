@@ -2028,7 +2028,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             {
                 case ParagraphBlock paragraph:
                 {
-                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true, empty: false);
+                    // Tracked deleted text counts, shown or not (measured in Word's PDF of LibreOffice's extras-ooxmlexport/
+                    // testTrackChangesDeletedTableCell: the columns where its deleted "ABCD" puts them in the markup view).
+                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true, empty: false, deleted: true);
                     min = Math.Max(min, pmin);
                     max = Math.Max(max, pmax);
                     // Floating drawings that text goes around count with their width and effect extents, not their

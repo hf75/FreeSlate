@@ -1649,11 +1649,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="empty">Whether a paragraph without content needs its indents; in table cells it needs nothing
     /// (measured with docx/local/agr-text, agr-firsttext: an empty paragraph indented 144 pt from the left or by 14.4 pt
     /// on its first line beside "x" leaves both columns as without the indents).</param>
-    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false, bool empty = true)
+    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false, bool empty = true, bool deleted = false)
     {
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
+        measuringDeleted = deleted;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        measuringDeleted = false;
         if (!empty && text.Length == 0)
             return (0, 0);
         var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
@@ -1761,6 +1763,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
     /// <summary>The paragraph's text with a style per character: tabs \t, line breaks \n, page breaks \f, column breaks \v.</summary>
     /// <returns>The text, a style per character and how many characters the list number and its suffix take.</returns>
+    /// <summary>Whether Flatten takes tracked deleted text too (see RunFormat.Deleted).</summary>
+    bool measuringDeleted;
+
     (string Text, List<RunStyle> Styles, int LabelLength) Flatten(ParagraphBlock paragraph, PageFields? fields)
     {
         var text = new System.Text.StringBuilder();
@@ -1791,7 +1796,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 value = Kashidas(value, paragraph.Format.Justification == "mediumKashida" ? 2 : 3);
             if (link != null)
                 links[text.Length] = (link, value.Length);
-            if (format.Vanish == true)
+            if (format.Vanish == true && !(measuringDeleted && format.Deleted))
             {
                 // Hidden text is not printed (Word's PDF export leaves it out); its formatting change keeps its balloon.
                 if (format.Change is { } hiddenChange)
@@ -2058,6 +2063,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // takes the color of its shape's style (measured with docx/local/fref-colors, -colors14, -normal, -defaults:
         // fontRef lt1, red and accent2 color text without a color of its own, also of color auto, highlighted too; a
         // color of the run, its styles or the document defaults wins, paragraph or run shading gives auto's black).
+        // Tracked deleted text counts where autofit tables measure their cells, as words of their own (see
+        // RunFormat.Deleted).
+        if (measuringDeleted)
+        {
+            foreach (var deleted in paragraph.Deleted ?? [])
+                AddText(text.Length > 0 ? " " + deleted.Text : deleted.Text, deleted.Format);
+        }
         var behind = Shading.Color(paragraph.Format.Shading) ?? Background;
         for (var k = 0; k < list.Count; k++)
         {

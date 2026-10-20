@@ -139,6 +139,12 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// <summary>The section this paragraph ends (its w:pPr/w:sectPr), or null.</summary>
     public SectionProperties? EndsSection { get; init; }
 
+    /// <summary>
+    /// The paragraph's tracked deleted text outside the markup view, which is not shown but counts where autofit tables
+    /// measure their cells (see RunFormat.Deleted), or null.
+    /// </summary>
+    public List<TextInline>? Deleted { get; init; }
+
     /// <summary>Whether anything of the paragraph's content shows: not hidden, not a bookmark or permission mark.</summary>
     public bool Shows => Content.Any(i => i is not (BookmarkInline or BookmarkEndInline or PermissionInline) && i.Format.Vanish != true);
 
@@ -1201,6 +1207,8 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         var content = new List<Inline>();
         var field = new FieldState();
+        var outerDeleted = deletedText;
+        var deleted = deletedText = [];
         // A paragraph of nothing but equations shows them as a display equation, as in an m:oMathPara, whatever the
         // paragraph's justification (measured with docx/local/dmath-*: one or two m:oMath alone or after a bookmark
         // centered with limits above and below as in an m:oMathPara, in left and right aligned paragraphs too, m:defJc
@@ -1215,6 +1223,7 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         else
             ReadInlines(p, styleId, content, field);
+        deletedText = outerDeleted;
         // A first line or hanging indent in characters counts the characters of the paragraph's first run, its size
         // and its character spacing, the spacing twice where the document balances single- and double-byte widths
         // (measured with docx/local/chu2-15, chu2-14, chu2-grid, chu2-bal: firstLineChars 200 of 14 pt runs in a style
@@ -1240,6 +1249,7 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
             Label = label,
+            Deleted = deleted.Count > 0 ? deleted : null,
         };
     }
 
@@ -1468,6 +1478,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     // others numbered 1 and 3; docx/external/libreoffice/extras-ooxmlexport/tdf141660).
                     foreach (var deleted in e.Descendants().Where(x => x.Name == Wml.W + "footnoteReference" || x.Name == Wml.W + "endnoteReference"))
                         NextNoteMark(deleted.Name.LocalName == "endnoteReference");
+                    // Its text stays as hidden text that the widths of autofit tables count (see RunFormat.Deleted).
+                    deleting = true;
+                    foreach (var run in e.Elements(Wml.W + "r"))
+                        Run(run, paragraphStyle, content, field);
+                    deleting = false;
                     break;
                 case "commentRangeStart" or "commentRangeEnd" when context.Markup && e.Attr("id") is { } commentId:
                     if (e.Name.LocalName == "commentRangeStart")
@@ -1714,6 +1729,13 @@ public sealed partial class ModelReader(DocumentContext context)
         return saved ?? field.Format;
     }
 
+    /// <summary>
+    /// Whether the runs read are tracked deleted text outside the markup view, and the paragraph's deleted text read so
+    /// far (see ParagraphBlock.Deleted).
+    /// </summary>
+    bool deleting;
+    List<TextInline>? deletedText;
+
     void Run(XElement r, string? paragraphStyle, List<Inline> content, FieldState field)
     {
         var direct = new RunFormat();
@@ -1740,6 +1762,13 @@ public sealed partial class ModelReader(DocumentContext context)
                 format.Change = new FormatChange(context.Describe.Run(r.Child("rPr"), rPrChange.Child("rPr")), context.Author(rPrChange.Attr("author")));
         }
         format.Origin = (direct, characterStyle, tableRun, format);
+        if (deleting)
+        {
+            (format.Vanish, format.Deleted) = (true, true);
+            foreach (var deleted in r.Elements(Wml.W + "delText"))
+                deletedText?.Add(new TextInline(Text(deleted).Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format));
+            return;
+        }
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)
