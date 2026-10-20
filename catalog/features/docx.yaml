@@ -4992,7 +4992,9 @@ areas:
         office: >-
           Lines break at UAX #14 opportunities with Word's kinsoku, and at every space before a character that is not
           East Asian, also before periods, closing brackets and quotes, slashes and percent signs (docx/local/
-          spacebreak: 19 characters), after every hyphen and en dash whatever stands before it, digits, punctuation
+          spacebreak: 19 characters), after an em dash but not before it (docx/local/emd-*, eme-*: "order—" ends a
+          line, "order—even" goes on whole where "order" alone would fit, after digits alike, in modes 12 and 15;
+          LibreOffice's writerfilter-dmapper/floattable-hidemark), after every hyphen and en dash whatever stands before it, digits, punctuation
           or a space, and whatever Latin character follows, also one kinsoku keeps off a line's start, after the
           hyphen U+2010 from Word 2013 on, not after slashes, plus signs, underscores or non-breaking hyphens
           (docx/local/hyphbreak-15, -12: 19 cases; hkn-*: "ametur-" | "%…", before ) . ; ! ] ° ? , : alike, with and

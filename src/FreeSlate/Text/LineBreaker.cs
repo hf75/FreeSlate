@@ -57,8 +57,11 @@ public static class LineBreaker
                 result[i] = next is not (' ' or '\t') && !(rules != null && (next == ' ' || c == ' ' && NoBreakSpaceBefore(text, i)));
             else if (c is '-' or '‐' or '–' && i > 0 && char.IsLetter(text[i - 1]) && char.IsLetterOrDigit(next))
                 result[i] = true;
-            else if (c == '—' || next == '—')
-                result[i] = next is not (' ' or '\t');
+            // An em dash takes a break after it, not before it (measured with docx/local/emd-*, eme-*: lines end with
+            // "order—" and "1234—", or "order—even" goes on whole where "order" alone would fit, in modes 12 and 15;
+            // LibreOffice's writerfilter-dmapper/floattable-hidemark), nor between two (UAX #14 LB17).
+            else if (c == '—')
+                result[i] = next is not (' ' or '\t' or '—');
             else if (IsIdeographic(c) || IsIdeographic(next) || rules != null && (IsEastAsian(c) || IsEastAsian(next)))
                 result[i] = next is not (' ' or '\t');
         }
