@@ -4577,6 +4577,15 @@ areas:
           font's 73 and 60 % of their base in whole half points down (Word's PDFs: 12 pt 8.5 and 7, 14 pt 10 and 8, 11
           pt 8 and 6.5, 20 pt 14.5; docx/generated/equations 89.6 → 91.1 %,
           docx/external/libreoffice/extras-ooxmlexport/tdf171433_equation 77.5 → 95.0 %, math-literal 84.7 → 90.8 %).
+          A base that is a single character under or over limits (m:limUpp, m:limLow) or after prescripts (m:sPre),
+          however nested, takes its scripts as that character does, not by the stack's height, the character's
+          italic correction before the superscript; the stack is as wide as the character without it (docx/local/
+          mls-*, mlt-*: x with 6 above, 3 below, a over b above or below, or both, with and without prescripts, its
+          scripts 4.56 pt up and 2.64 down as x alone in Cambria Math 12, inline and displayed; x over y with 6 above
+          takes its scripts by the stack's height). Prescripts follow the space after scripts, the base right after
+          them (mls-inl: "5" over "4" 0.5 pt on, x a digit's advance after them; LibreOffice's
+          extras-ooxmlexport/math-subscripts 62.2 → 90.6 %). Known deviation: a fraction as an upper limit stands
+          2.2 pt lower than Word's (mlt-*).
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
 

@@ -726,7 +726,25 @@ public sealed class MathLayout
         var sup = element.Name.LocalName is "sSup" or "sSubSup" ? Argument(element, "sup", env.Sup, baseSize) : null;
         var sub = element.Name.LocalName is "sSub" or "sSubSup" ? Argument(element, "sub", env.Sub, baseSize) : null;
         // A scripted delimiter still opens on its left and closes on its right.
-        return new Atom(Attach(nucleus, sup, sub, env, baseSize, nucleus is GlyphItem || empty), cls) { Right = right };
+        return new Atom(Attach(nucleus, sup, sub, env, baseSize, nucleus is GlyphItem || empty || Stacked(element.Element(M + "e"))), cls) { Right = right };
+    }
+
+    /// <summary>
+    /// Whether a base is a single character under or over limits (limUpp, limLow) or after prescripts (sPre), however
+    /// nested: scripts after it sit as after that character, not by the stack's height (measured with
+    /// docx/local/mls-*, mlt-*: x with 6 above, 3 below, a over b above or below, or both, and with prescripts, its
+    /// scripts 4.56 pt up and 2.64 down as on x alone in Cambria Math 12, inline and displayed; x over y with 6 above
+    /// takes its scripts by the stack's height; LibreOffice's extras-ooxmlexport/math-subscripts).
+    /// </summary>
+    static bool Stacked(XElement? argument)
+    {
+        static List<XElement> Parts(XElement? e) =>
+            e?.Elements().Where(c => c.Name.Namespace == M && c.Name.LocalName is not ("argPr" or "ctrlPr")).ToList() ?? [];
+        static bool Character(XElement? e) => Parts(e) is [{ } run] && run.Name == M + "r"
+            && string.Concat(run.Elements(M + "t").Select(t => t.Value)) is { Length: > 0 } text
+            && (text.Length == 1 || text.Length == 2 && char.IsSurrogatePair(text[0], text[1]));
+        return Parts(argument) is [{ } only] && only.Name.LocalName is "limUpp" or "limLow" or "sPre"
+            && (Character(only.Element(M + "e")) || Stacked(only.Element(M + "e")));
     }
 
     /// <summary>
@@ -801,12 +819,18 @@ public sealed class MathLayout
         var nucleus = Sequence(Child(element, "e"), env, baseSize);
         var sup = Argument(element, "sup", env.Sup, baseSize);
         var sub = Argument(element, "sub", env.Sub, baseSize);
-        var attached = (ListItem)Attach(new SpaceItem { Ascent = nucleus.Ascent, Descent = nucleus.Descent }, sup, sub, env, baseSize, false);
+        var simple = nucleus is GlyphItem || Stacked(element.Element(M + "e"));
+        var attached = (ListItem)Attach(new SpaceItem { Ascent = nucleus.Ascent, Descent = nucleus.Descent }, sup, sub, env, baseSize, simple);
+        // Half the space after scripts goes before the prescripts, the nucleus right after them (measured with
+        // docx/local/mls-inl, mlt-inl: "5" over "4" 0.44 pt further on than with the space between, x 4.92 pt after them,
+        // a digit's advance in Cambria Math 8.52).
+        var space = U(table.SpaceAfterScript, size);
         var width = Math.Max(sup.Width, sub.Width);
         var result = new ListItem();
         foreach (var (item, _, y) in attached.Children.Skip(1))
-            result.Add(item, width - item.Width, y);
-        result.Add(nucleus, width + U(table.SpaceAfterScript, size) / 2, 0);
+            result.Add(item, space + width - item.Width, y);
+        result.Add(nucleus, space + width, 0);
+        result.Italic = nucleus.Italic;
         return result;
     }
 
@@ -1384,9 +1408,13 @@ public sealed class MathLayout
     MathItem Limit(XElement limit, Env env, double baseSize)
     {
         var size = Sized(baseSize, env);
-        var nucleus = Sequence(Child(limit, "e"), env, baseSize);
+        // The base's last letter keeps its italic correction for scripts after the stack, outside its width (measured
+        // with docx/local/mls-*: x with 6 above as wide as x, its superscript 0.48 pt further on than its subscript).
+        var nucleus = Sequence(Child(limit, "e"), env, baseSize, closes: false);
         var lim = Argument(limit, "lim", limit.Name.LocalName == "limLow" ? env.Sub : env.Sup, baseSize);
-        return limit.Name.LocalName == "limLow" ? UnderOver(nucleus, null, lim, size, 0) : UnderOver(nucleus, lim, null, size, 0);
+        var stack = limit.Name.LocalName == "limLow" ? UnderOver(nucleus, null, lim, size, 0) : UnderOver(nucleus, lim, null, size, 0);
+        stack.Italic = nucleus.Italic;
+        return stack;
     }
 
     IEnumerable<Atom> Function(XElement func, Env env, double size)
