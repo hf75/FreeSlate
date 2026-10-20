@@ -4618,7 +4618,17 @@ areas:
           scripts 4.56 pt up and 2.64 down as x alone in Cambria Math 12, inline and displayed; x over y with 6 above
           takes its scripts by the stack's height). Prescripts follow the space after scripts, the base right after
           them (mls-inl: "5" over "4" 0.5 pt on, x a digit's advance after them; LibreOffice's
-          extras-ooxmlexport/math-subscripts 62.2 → 90.6 %). Known deviation: a fraction as an upper limit stands
+          extras-ooxmlexport/math-subscripts 62.2 → 90.6 %). A subscript moves by its letter's bottom right math kern
+          at the subscript's top (sdx-*, sbu-c11: gamma_20 0.41 pt left in Cambria Math 11, its kern -68 units; f_k
+          0.38 pt), and a script's own first glyph adds its corner's kern: a superscript's bottom left at the letter's
+          top, a subscript's top left at the letter's bottom (math-subscripts: e^x 0.24 pt further than e's kern, x's
+          65 units at 8.5 pt, 90.6 → 91.5 %; msk-*: digits have none). A run at a size other than its construct's (the control properties', m:ctrlPr) is set as text:
+          its glyphs keep their plain forms in scripts and limits and have no italic correction, and as a base it is
+          a box whose depth and height count, without math kerns, the shifts at the construct's size (docx/local/
+          sbt-*, sbu-*, sbv-*: gamma at 11 pt under a ctrlPr of 12 pt its subscript 4.08 pt down, its depth 2.16 and
+          SubscriptBaselineDropMin at 12 pt, under 10 pt 3.74, a superscript right after its advance; subscripts,
+          superscripts, prescripts, fractions, limits, n-ary limits and radicals take plain digits; LibreOffice's
+          extras-uiwriter/tdf66405 88.4 → 99.9 %). Known deviation: a fraction as an upper limit stands
           2.2 pt lower than Word's (mlt-*).
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
@@ -4640,10 +4650,16 @@ areas:
           before it. m:lMargin and m:rMargin narrow the room of display equations, also without m:dispDef, which
           center in it (mathset-d). The equations of one m:oMathPara stand on one line one after the other. m:preSp,
           m:postSp, m:interSp, m:intraSp and m:smallFrac changed nothing in Word's printout (mathset-d). Spaces typed
-          in an equation keep their widths, without their neighbors' spacing, but after a comma one space goes, two
-          make a space of two ems and an operator after them is unary (docx/local/msp2-a at 11 pt: "x, y" as "x,y",
-          "x,  y" 21.98 and "x,  +y" 22.10 pt from the comma's end, three spaces as typed; LibreOffice's
-          extras-ooxmlexport/math-mso2k7).
+          in an equation keep their widths, and the spacing of the classes around them stays beside them (docx/local/
+          mrs-*, mrt-a at 11 pt: "x= y", "x =y", "x = y", "x+ y", "x ⋅ y", "x → y", "x ≤ y" and "x; y" a thick,
+          medium or thin space more than the spaces; "x (y)" none; LibreOffice's extras-ooxmlexport/2120112713: "= "
+          before "{"), but after a comma one space goes, two make a space of two ems and an operator after them is
+          unary (docx/local/msp2-a at 11 pt: "x, y" as "x,y", "x,  y" 21.98 and "x,  +y" 22.10 pt from the comma's
+          end, three spaces as typed; LibreOffice's extras-ooxmlexport/math-mso2k7), and a colon's spaces take its thin
+          space's place. A colon is punctuation, no space before it and a thin one after it ("x:y", "a:=b", "f:A→B",
+          "x:(y)"), after a typed space the ratio U+2236, a relation, in the space's place ("x :y", "x : y"); an
+          exclamation mark spaces as an inner atom after it ("n!x" thin, "n!+1" medium, "n!=m" thick, "(n!)" and "n!!"
+          none; docx/local/mru-a). Known deviation: Word sets no thin space between "!" and a comma.
 
   - id: vml
     title: Legacy VML content

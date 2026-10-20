@@ -235,7 +235,7 @@ public sealed class MathLayout
         switch (element.Name.LocalName)
         {
             case "r":
-                return Run(element, env);
+                return Run(element, env, construct: size);
             case "f":
                 return [new Atom(Fraction(element, env, Size(element)), AtomClass.Inner)];
             case "sSup" or "sSub" or "sSubSup":
@@ -373,6 +373,16 @@ public sealed class MathLayout
                 });
             }
         }
+        // A colon after a typed space is the ratio, a relation, in the space's place (measured with docx/local/mrt-a,
+        // mru-a: "x :y" and "x : y" print U+2236 a thick space after x, "x: y" a colon and its space).
+        for (var i = 1; i < atoms.Count; i++)
+        {
+            if (atoms[i] is { Class: AtomClass.Punct, Item: GlyphItem { Text: ":" } colon } && IsSpace(atoms[i - 1]))
+            {
+                atoms[i] = new Atom(Glyph(0x2236, colon.Size, colon.Color, ":", colon.Character?.Level ?? 0), AtomClass.Rel);
+                atoms.RemoveAt(--i);
+            }
+        }
         for (var i = 0; i < atoms.Count; i++)
         {
             if (atoms[i].Class != AtomClass.Bin)
@@ -390,9 +400,11 @@ public sealed class MathLayout
         var x = 0.0;
         for (var i = 0; i < atoms.Count; i++)
         {
-            // Spaces typed in a run stand as they are, without the spacing of their neighbors' classes.
+            // Spaces typed in a run stand as they are, see Across for the spacing of the classes around them.
             if (i > 0 && !IsSpace(atoms[i - 1]) && !IsSpace(atoms[i]))
                 x += Math.Max(Spacing(atoms[i - 1].Right, atoms[i].Class, env), atoms[i - 1].FunctionName ? 3 : 0) * em / 18;
+            else if (i > 0 && IsSpace(atoms[i]) != IsSpace(atoms[i - 1]))
+                x += Across(i);
             row.Add(atoms[i].Item, x, 0);
             x += atoms[i].Item.Width;
             // An italic letter before an operator, a relation, a bracket, punctuation or a construct (scripts, a
@@ -412,6 +424,26 @@ public sealed class MathLayout
         // The last letter's correction is in the width already where the row closes a box.
         row.Italic = atoms.Count > 0 && !(closes && atoms[^1].Class == AtomClass.Ord && atoms[^1].Item is GlyphItem { Italic: > 0 }) ? atoms[^1].Item.Italic : 0;
         return row;
+
+        // The spacing of the classes of the atoms around typed spaces stays beside them, after the left one where it
+        // is not ordinary, else before the right one (measured with docx/local/mrs-*, mrt-a at 11 pt: "x= y", "x =y",
+        // "x = y", "x+ y", "x ⋅ y", "x → y", "x ≤ y" and "x; y" a thick, medium or thin space more than the spaces;
+        // "x (y)", "( x)" none; LibreOffice's extras-ooxmlexport/2120112713: "= " before "{"), but for a comma's spaces
+        // (see above) and a colon's ("x: y" without the colon's thin space).
+        double Across(int i)
+        {
+            var entering = IsSpace(atoms[i]);
+            var left = i - 1;
+            while (left >= 0 && IsSpace(atoms[left]))
+                left--;
+            var right = i;
+            while (right < atoms.Count && IsSpace(atoms[right]))
+                right++;
+            if (left < 0 || right >= atoms.Count || atoms[left] is { Class: AtomClass.Punct, Item: GlyphItem { Text: "," or ":" } }
+                || (atoms[left].Right != AtomClass.Ord) != entering)
+                return 0;
+            return Math.Max(Spacing(atoms[left].Right, atoms[right].Class, env), atoms[left].FunctionName ? 3 : 0) * em / 18;
+        }
     }
 
     static bool IsSpace(Atom atom) => atom.Item is GlyphItem { Text: " " or " " };
@@ -441,7 +473,8 @@ public sealed class MathLayout
     // ------------------------------------------------------------------ runs
 
     /// <param name="markers">Whether "&amp;" marks an alignment point (in the rows of an equation array).</param>
-    IEnumerable<Atom> Run(XElement run, Env env, bool markers = false)
+    /// <param name="construct">The size of the construct the run is in (its control properties'), if known.</param>
+    IEnumerable<Atom> Run(XElement run, Env env, bool markers = false, double? construct = null)
     {
         // Text inserted or moved here in a tracked change (w:ins, w:moveTo inside the m:r) is printed with the run's,
         // deleted text (w:del, w:moveFrom) is not (docx/external/powertools/RP/RP014-Inserted-Math-Control-Char:
@@ -455,6 +488,13 @@ public sealed class MathLayout
         var normal = On((string?)properties?.Element(M + "nor")?.Attribute(M + "val"), properties?.Element(M + "nor") != null);
         var literal = properties?.Element(M + "lit") != null;
         var text = string.Concat(run.Elements().SelectMany(e => e.Name == M + "t" ? [e] : inserted.Contains(e) ? e.Elements(M + "t") : []).Select(t => t.Value));
+        // A run at a size other than its construct's is set as text: its glyphs keep their plain forms in scripts and
+        // limits and have no italic correction (measured with docx/local/sbt-*, sbu-*, sbv-*: runs at 11 pt under a
+        // ctrlPr of 12 or 10 pt, or at 12 under 11, in subscripts, superscripts, prescripts, fractions, limits, n-ary
+        // limits and radicals; a superscript right after the advance of such a gamma, "=" right after a subscript k;
+        // a script at its construct's size takes the ssty forms; LibreOffice's extras-uiwriter/tdf66405).
+        var textLike = construct is { } constructSize && Math.Abs(style.Size - constructSize) > 0.01;
+        var level = textLike ? 0 : ScriptLevel(env);
         var atoms = new List<Atom>();
         foreach (var rune in text.EnumerateRunes())
         {
@@ -476,10 +516,15 @@ public sealed class MathLayout
             // Normal text (m:nor) is set in the run's text font where it has the character (docx/external/
             // libreoffice/extras-ooxmlimport/tdf170171: "+" in Arial between Cambria Math's "0;" and "∞").
             var glyph = normal && style.Font is { } textFont && textFont != font && textFont.GlyphFor(value) is var plain and not 0
-                ? TextGlyph(textFont, plain, value, size, style.Color, ScriptLevel(env))
-                : Glyph(cp, size, style.Color, char.ConvertFromUtf32(value), ScriptLevel(env));
+                ? TextGlyph(textFont, plain, value, size, style.Color, level)
+                : Glyph(cp, size, style.Color, char.ConvertFromUtf32(value), level);
+            if (textLike)
+                glyph.Italic = 0;
             var cls = literal || normal ? AtomClass.Ord : ClassOf(value);
-            atoms.Add(new Atom(glyph, cls));
+            // An exclamation mark closes on its left and spaces as an inner atom on its right (measured with
+            // docx/local/mru-a, mrt-a: "n!x" a thin space, "n!+1" a medium one, "n!=m" a thick one, "(n!)" and "n!!"
+            // none; Word's "n!,m" no thin space before the comma).
+            atoms.Add(new Atom(glyph, cls) { Right = cls == AtomClass.Close && value == '!' ? AtomClass.Inner : cls });
         }
         return atoms;
     }
@@ -615,10 +660,12 @@ public sealed class MathLayout
         '=' or '<' or '>' or 0x2260 or 0x2264 or 0x2265 or 0x2248 or 0x2261 or 0x223C or 0x2243 or 0x2245 or 0x221D or 0x2208 or 0x2209
             or 0x220B or 0x2282 or 0x2283 or 0x2286 or 0x2287 or 0x2190 or 0x2192 or 0x2194 or 0x21D0 or 0x21D2 or 0x21D4 or 0x21A6 or 0x2225
             or 0x22A5 or 0x226A or 0x226B or 0x227A or 0x227B or 0x2254 or 0x2255 or 0x2259 or 0x225C or 0x225D or 0x227C or 0x227D
-            or 0x2266 or 0x2267 or 0x2A7D or 0x2A7E or ':' or 0x2223 or 0x2224 or 0x22A2 or 0x22A8 => AtomClass.Rel,
+            or 0x2266 or 0x2267 or 0x2A7D or 0x2A7E or 0x2236 or 0x2223 or 0x2224 or 0x22A2 or 0x22A8 => AtomClass.Rel,
         '(' or '[' or '{' or 0x27E8 or 0x2308 or 0x230A or 0x27E6 or 0x2329 => AtomClass.Open,
         ')' or ']' or '}' or 0x27E9 or 0x2309 or 0x230B or 0x27E7 or 0x232A or '!' => AtomClass.Close,
-        ',' or ';' => AtomClass.Punct,
+        // A colon is punctuation (measured with docx/local/mrt-a, mru-a: "x:y", "a:=b", "f:A→B", "x:(y)" no space before
+        // it, a thin space after it; see Row for a colon after a space).
+        ',' or ';' or ':' => AtomClass.Punct,
         // The axis ellipsis spaces as an inner atom, a thin space before punctuation (measured with docx/local/msp-a:
         // "x+⋯,y" and "x+…,y" with 1.82 pt more than the glyphs' widths before the comma at 11 pt).
         0x22EF => AtomClass.Inner,
@@ -725,9 +772,23 @@ public sealed class MathLayout
         var right = baseAtoms.Count == 1 ? baseAtoms[0].Right : AtomClass.Ord;
         var sup = element.Name.LocalName is "sSup" or "sSubSup" ? Argument(element, "sup", env.Sup, baseSize) : null;
         var sub = element.Name.LocalName is "sSub" or "sSubSup" ? Argument(element, "sub", env.Sub, baseSize) : null;
+        var boxed = Boxed(nucleus, env, baseSize);
         // A scripted delimiter still opens on its left and closes on its right.
-        return new Atom(Attach(nucleus, sup, sub, env, baseSize, nucleus is GlyphItem || empty || Stacked(element.Element(M + "e"))), cls) { Right = right };
+        return new Atom(Attach(nucleus, sup, sub, env, baseSize, !boxed && (nucleus is GlyphItem || empty || Stacked(element.Element(M + "e"))), boxed), cls)
+        {
+            Right = right,
+        };
     }
+
+    /// <summary>
+    /// Whether a base is a single glyph at a size other than its construct's (the control properties'): its scripts
+    /// sit by its height and depth as by a box's, however far it reaches (measured with docx/local/sbu-*, sbv-*: gamma
+    /// at 11 pt under a ctrlPr of 12 pt its subscript 4.08 pt down, its depth 2.16 and SubscriptBaselineDropMin at 12 pt,
+    /// at 12 pt under 11 pt 4.08, at 11 pt under 10 pt 3.74; at the construct's size 2.42 and 2.30 down by
+    /// SubscriptShiftDown; LibreOffice's extras-uiwriter/tdf66405).
+    /// </summary>
+    bool Boxed(MathItem nucleus, Env env, double baseSize) =>
+        (nucleus is ListItem { Children: [(var only, _, _)] } ? only : nucleus) is GlyphItem glyph && Math.Abs(glyph.Size - Sized(baseSize, env)) > 0.01;
 
     /// <summary>
     /// Whether a base is a single character under or over limits (limUpp, limLow) or after prescripts (sPre), however
@@ -754,9 +815,10 @@ public sealed class MathLayout
     /// reaches above the font's ascent (below its descent) also relative to its top (bottom; measured: Office
     /// scripts "(a+b)" with ordinary parentheses and an accented letter like a letter, a fraction and tall
     /// parentheses by their height); the two at least SubSuperscriptGapMin apart; the superscript after the
-    /// nucleus's italic correction, SpaceAfterScript after both.
+    /// nucleus's italic correction, SpaceAfterScript after both. A boxed nucleus (see Boxed) counts by its top and
+    /// bottom however far it reaches.
     /// </summary>
-    MathItem Attach(MathItem nucleus, MathItem? sup, MathItem? sub, Env env, double baseSize, bool simple)
+    MathItem Attach(MathItem nucleus, MathItem? sup, MathItem? sub, Env env, double baseSize, bool simple, bool boxed = false)
     {
         var size = Sized(baseSize, env);
         double supShift = 0, subShift = 0;
@@ -764,14 +826,14 @@ public sealed class MathLayout
         {
             supShift = U(env.Cramped ? table.SuperscriptShiftUpCramped : table.SuperscriptShiftUp, size);
             supShift = Math.Max(supShift, sup.Descent + U(table.SuperscriptBottomMin, size));
-            if (!simple && nucleus.Ascent > font.Ascent * size)
+            if (!simple && (boxed || nucleus.Ascent > font.Ascent * size))
                 supShift = Math.Max(supShift, nucleus.Ascent - U(table.SuperscriptBaselineDropMax, size));
         }
         if (sub != null)
         {
             subShift = U(table.SubscriptShiftDown, size);
             subShift = Math.Max(subShift, sub.Ascent - U(table.SubscriptTopMax, size));
-            if (!simple && nucleus.Descent > font.Descent * size)
+            if (!simple && (boxed || nucleus.Descent > font.Descent * size))
                 subShift = Math.Max(subShift, nucleus.Descent + U(table.SubscriptBaselineDropMin, size));
         }
         if (sup != null && sub != null)
@@ -799,19 +861,45 @@ public sealed class MathLayout
             // A letter's top right math kern at the superscript's bottom moves it further (measured with
             // docx/local/mth-d-sup, msk-*: x^2, r^2 and A^2 54, 53 and -44 units right of the italic correction in
             // Cambria Math 11, its kerns 50, 55 and -40 at that height; e, f and k 13 to 22 units more than theirs).
-            var kern = nucleus is GlyphItem glyph && glyph.Font == font
-                ? U(table.Kern(glyph.Glyph, 0, (int)Math.Round((supShift - sup.Descent) * font.UnitsPerEm / glyph.Size)), glyph.Size) : 0;
+            // The superscript's own bottom left kern at the letter's top adds to it (measured with
+            // docx/external/libreoffice/extras-ooxmlexport/math-subscripts: e^x 0.24 pt further than e's kern, x's 65
+            // units at 8.5 pt; msk-*: digits have none).
+            var kern = 0.0;
+            if (!boxed && nucleus is GlyphItem glyph && glyph.Font == font)
+            {
+                kern = U(table.Kern(glyph.Glyph, 0, (int)Math.Round((supShift - sup.Descent) * font.UnitsPerEm / glyph.Size)), glyph.Size);
+                if (FirstGlyph(sup) is { } first && first.Font == font)
+                    kern += U(table.Kern(first.Glyph, 3, (int)Math.Round((nucleus.Ascent - supShift) * font.UnitsPerEm / first.Size)), first.Size);
+            }
             result.Add(sup, nucleus.Width + nucleus.Italic + kern, -supShift);
             end = Math.Max(end, nucleus.Width + nucleus.Italic + kern + sup.Width);
         }
         if (sub != null)
         {
-            result.Add(sub, nucleus.Width, subShift);
-            end = Math.Max(end, nucleus.Width + sub.Width);
+            // A letter's bottom right math kern at the subscript's top moves it (measured with docx/local/sbu-c11,
+            // sbu-noc, sbt-12, sbv-ss-same: the subscript of gamma 0.41 pt left in Cambria Math 11, its kern -68 units
+            // at that height).
+            var kern = 0.0;
+            if (!boxed && nucleus is GlyphItem glyph && glyph.Font == font)
+            {
+                kern = U(table.Kern(glyph.Glyph, 2, (int)Math.Round((sub.Ascent - subShift) * font.UnitsPerEm / glyph.Size)), glyph.Size);
+                if (FirstGlyph(sub) is { } first && first.Font == font)
+                    kern += U(table.Kern(first.Glyph, 1, (int)Math.Round((subShift - nucleus.Descent) * font.UnitsPerEm / first.Size)), first.Size);
+            }
+            result.Add(sub, nucleus.Width + kern, subShift);
+            end = Math.Max(end, nucleus.Width + kern + sub.Width);
         }
         result.Width = end + after;
         return result;
     }
+
+    /// <summary>The glyph a script begins with, also first in its row (at its start, on its baseline), or null.</summary>
+    static GlyphItem? FirstGlyph(MathItem item) => item switch
+    {
+        GlyphItem glyph => glyph,
+        ListItem { Children: [(var first, 0, 0), ..] } => FirstGlyph(first),
+        _ => null,
+    };
 
     MathItem PreScripts(XElement element, Env env, double baseSize)
     {
@@ -819,8 +907,9 @@ public sealed class MathLayout
         var nucleus = Sequence(Child(element, "e"), env, baseSize);
         var sup = Argument(element, "sup", env.Sup, baseSize);
         var sub = Argument(element, "sub", env.Sub, baseSize);
-        var simple = nucleus is GlyphItem || Stacked(element.Element(M + "e"));
-        var attached = (ListItem)Attach(new SpaceItem { Ascent = nucleus.Ascent, Descent = nucleus.Descent }, sup, sub, env, baseSize, simple);
+        var boxed = Boxed(nucleus, env, baseSize);
+        var simple = !boxed && (nucleus is GlyphItem || Stacked(element.Element(M + "e")));
+        var attached = (ListItem)Attach(new SpaceItem { Ascent = nucleus.Ascent, Descent = nucleus.Descent }, sup, sub, env, baseSize, simple, boxed);
         // Half the space after scripts goes before the prescripts, the nucleus right after them (measured with
         // docx/local/mls-inl, mlt-inl: "5" over "4" 0.44 pt further on than with the space between, x 4.92 pt after them,
         // a digit's advance in Cambria Math 8.52).
@@ -1228,7 +1317,7 @@ public sealed class MathLayout
             var markers = new List<int>();
             foreach (var element in e.Elements())
             {
-                var elementAtoms = element.Name == M + "r" ? Run(element, env, markers: true) : Atoms(element, env, baseSize);
+                var elementAtoms = element.Name == M + "r" ? Run(element, env, markers: true, construct: baseSize) : Atoms(element, env, baseSize);
                 foreach (var atom in elementAtoms)
                 {
                     if (atom.Marker)
