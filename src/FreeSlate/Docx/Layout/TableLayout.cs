@@ -1518,6 +1518,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var grid = new double[columns];
         for (var k = 0; k < columns; k++)
             grid[k] = k < table.Grid.Count ? table.Grid[k] : 0;
+        // An autofit table whose grid lists fewer columns than its rows use lays each row out by its cells' widths from
+        // the left, a grid line where the first row ending a cell there puts it, the last where the widest row ends,
+        // the other rows' last cells stretched to it (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/
+        // tdf59274: a grid of 4 columns for spans of 11, rows of 7348, 3016 and 9048 twips all 9048 wide, their inner
+        // lines where their cells end); one without a grid lays its columns out by their content (LibreOffice's
+        // writerfilter-dmapper/floattable-then-table).
+        if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0 && table.Grid.Count is > 0 and var listed && listed < columns
+            && Edges(table, columns, available) is { } edges)
+            return Scaled(edges);
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
             return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps, lines), lines);
         if (grid.All(w => w > 0))
@@ -1592,6 +1601,52 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 return widths.Select(w => w * (available - allowance) / sum).ToArray();
             return widths;
         }
+    }
+
+    /// <summary>
+    /// Grid columns from the rows' cell widths laid end to end from the left (see Grid): each line where the first row
+    /// ending a cell there puts it, the last where the widest row ends, lines no row ends a cell at shared out between
+    /// their neighbours; null where a row has a cell without a width or columns before its cells.
+    /// </summary>
+    static double[]? Edges(TableModel table, int columns, double available)
+    {
+        var bounds = new double?[columns + 1];
+        bounds[0] = 0;
+        var end = 0.0;
+        foreach (var row in table.Rows)
+        {
+            if (row.Format.GridBefore > 0)
+                return null;
+            var x = 0.0;
+            foreach (var cell in row.Cells)
+            {
+                if (cell.Format.Width?.Resolve(available) is not { } w || w <= 0 || cell.Column + cell.Format.GridSpan > columns)
+                    return null;
+                x += w;
+                var at = cell.Column + cell.Format.GridSpan;
+                if (at < columns)
+                    bounds[at] ??= x;
+            }
+            end = Math.Max(end, x);
+        }
+        bounds[columns] = end;
+        var widths = new double[columns];
+        var previous = 0.0;
+        for (var k = 1; k <= columns; k++)
+        {
+            if (bounds[k] is not { } line)
+            {
+                var next = k + 1;
+                while (bounds[next] == null)
+                    next++;
+                line = previous + (bounds[next]!.Value - previous) / (next - k + 1);
+            }
+            line = Math.Max(line, previous);
+            bounds[k] = line;
+            widths[k - 1] = line - previous;
+            previous = line;
+        }
+        return widths;
     }
 
     /// <summary>

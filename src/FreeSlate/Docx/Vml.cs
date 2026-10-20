@@ -755,6 +755,37 @@ public static class Vml
             new XAttribute("contrast", (long)Math.Round(Math.Clamp(contrast, -1, 1) * 100000)));
     }
 
+    /// <summary>The chains of linked VML text boxes of a part: each box's chain (its first box's id) and place in it.</summary>
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, (string Id, int Seq)>> Chains = new();
+
+    /// <summary>A text box's place in its chain of linked boxes (mso-next-textbox), or null where it is in none.</summary>
+    static (string Id, int Seq)? Linked(XElement shape)
+    {
+        if (shape.Document is not { } document || (string?)shape.Attribute("id") is not { } own)
+            return null;
+        var chains = Chains.GetValue(document, part =>
+        {
+            var next = new Dictionary<string, string>();
+            foreach (var box in part.Descendants(V + "textbox"))
+            {
+                if (box.Parent is { } owner && (string?)owner.Attribute("id") is { } id
+                    && Style((string?)box.Attribute("style")).GetValueOrDefault("mso-next-textbox") is { } target
+                    && target.Trim().TrimStart('#') is { Length: > 0 } to && to != id)
+                    next.TryAdd(id, to);
+            }
+            var followers = next.Values.ToHashSet();
+            var places = new Dictionary<string, (string Id, int Seq)>();
+            foreach (var head in next.Keys.Where(id => !followers.Contains(id)))
+            {
+                var (at, seq) = (head, 0);
+                while (places.TryAdd(at, (head, seq)) && next.TryGetValue(at, out var to))
+                    (at, seq) = (to, seq + 1);
+            }
+            return places;
+        });
+        return chains.TryGetValue(own, out var place) ? place : null;
+    }
+
     /// <summary>The DrawingML content of a shape: a picture for pictures alone, else a shape.</summary>
     static XElement? Content(XElement shape, XElement? type, double width, double height)
     {
@@ -811,7 +842,14 @@ public static class Vml
         }
         else if (shape.Element(V + "textbox")?.Element(Wml.W + "txbxContent") is { } content)
         {
-            wsp.Add(new XElement(Drawings.Wps + "txbx", new XElement(content)));
+            // Linked text boxes (mso-next-textbox): the first box of a chain holds the story, the boxes its links lead to
+            // show what does not fit the boxes before, in the links' order whatever theirs in the document; a box linked
+            // to itself ends its chain, as one linked to none does (LibreOffice's extras-ooxmlexport/
+            // tdf87348_linkedTextboxes: four chains of two to five boxes, their followers before them in the document).
+            var link = Linked(shape);
+            wsp.Add(link is { Seq: > 0 } follower
+                ? new XElement(Drawings.Wps + "linkedTxbx", new XAttribute("id", follower.Id), new XAttribute("seq", follower.Seq))
+                : new XElement(Drawings.Wps + "txbx", link is { } head ? new XAttribute("id", head.Id) : null, new XElement(content)));
             var inset = ((string?)shape.Element(V + "textbox")!.Attribute("inset") ?? "").Split(',');
             double Inset(int i, double fallback) => i < inset.Length && Length(inset[i].Trim()) is { } v ? v : fallback;
             var anchor = Style((string?)shape.Attribute("style")).GetValueOrDefault("v-text-anchor") switch { "middle" => "ctr", "bottom" => "b", _ => "t" };

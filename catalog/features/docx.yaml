@@ -2016,7 +2016,12 @@ areas:
           100 %). A fixed table's grid that lists fewer columns than its rows use Word builds from the cells' widths,
           those of one column first, then what spanning cells leave to theirs (Word's PDF of
           docx/external/libreoffice/extras-ooxmlimport/n780645: grid columns of 2029 and 7469 twips beside a row of
-          five cells, 88.3 → 100 %). A nested table's outer lines take their halves beside its columns in the width its cell needs
+          five cells, 88.3 → 100 %); an autofit table with such a grid lays its rows' cells end to end from the left, each
+          grid line where the first row ending a cell there puts it, the last where the widest row ends, the others'
+          last cells stretched to it (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/tdf59274: a grid of
+          4 columns for spans of 11, rows of 7348, 3016 and 9048 twips all 9048 wide, 42.1 → 99.5 %; one line of a
+          row 2.45 pt short of the row below's goes to it in Word, not here; one without any grid column lays its columns out by
+          their content, LibreOffice's writerfilter-dmapper/floattable-then-table). A nested table's outer lines take their halves beside its columns in the width its cell needs
           (docx/external/libreoffice/filter-ascii/tdf162180: nested columns of 24.23, 43.23 and 54.58 pt between 0.5
           pt lines keep "Approved" and "Central" whole, 68.7 → 98.5 %; extras-ooxmlexport/tdf79272_strictDxa 67.5 →
           99.7 % with its Strict text directions). A nested table of fixed layout wider than its cell's text shrinks to it with its outer lines'
@@ -3028,6 +3033,10 @@ areas:
           the second line 0.5 pt past the bottom inset goes on), unless it has no room at all inside its insets and
           outline: then no box shows that line (lkc-*: 0.55 pt keeps "Line one", 0.5 pt loses it; lkd-*: a picture's
           line alike); the chain's last box shows all the rest past its room (lkf-1: three lines in a box for one).
+          VML text boxes chain by their links (v:textbox style mso-next-textbox:#id): the first box of a chain holds
+          the story, the boxes its links lead to continue it in the links' order, whatever theirs in the document; a
+          box linked to itself or to none ends its chain (LibreOffice's extras-ooxmlexport/tdf87348_linkedTextboxes:
+          four chains of two to five boxes, followers before their first box in the document, 66.2 → 98.8 %).
           LibreOffice's extras-layout/tdf152983-1-min: a footer's chain, its first box 3.55 pt high with 7.2 pt insets,
           its picture a line down the second box, drawn first, 81.8 → 92.2 %. Also as shapes of a group
           (docx/external/libreoffice/extras-ooxmlexport/tdf73499: "textboxes!" in a group's second shape, 79.9 → 97.5
