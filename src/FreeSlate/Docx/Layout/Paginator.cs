@@ -840,7 +840,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
         if (properties.Attr("wrap") != "none")
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
-                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText });
+                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText, DropCap = dropCap == "drop" });
         return end;
     }
 
@@ -946,6 +946,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>Whether the area is a text frame's (w:framePr).</summary>
         public bool Frame { get; init; }
+
+        /// <summary>Whether the area is a drop cap's (w:framePr w:dropCap drop), whose room moves the first line beside it (LineRoom.DropCap).</summary>
+        public bool DropCap { get; init; }
 
         /// <summary>Whether the area is a floating table's of the header or footer.</summary>
         public bool Story { get; init; }
@@ -1096,6 +1099,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // right at its bottom, ub-6).
         var nextBottom = double.MaxValue;
         var (beside, tight) = (false, true);
+        double? dropCap = null;
         foreach (var e in exclusions)
         {
             // Objects beside the column leave it alone, also those kept free above and below (measured with
@@ -1115,6 +1119,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
             beside = true;
             tight &= e.Polygon != null;
+            if (e.DropCap)
+                dropCap = Math.Max(dropCap ?? 0, r);
             // Objects kept free above and below, and after a break with w:clear those of the side it clears (an
             // object on the left half of the column is on the left), take the whole line: it moves below them.
             var center = (e.Left + e.Right) / 2 - columnLeft;
@@ -1156,7 +1162,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Where the line tries again when its room is too narrow: below the first object beside it to end.
         if (skipTo == 0 && nextBottom < double.MaxValue)
             skipTo = nextBottom;
-        return new LineRoom(segments, skipTo) { Tight = beside && tight };
+        return new LineRoom(segments, skipTo) { Tight = beside && tight, DropCap = dropCap };
     }
 
     List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,

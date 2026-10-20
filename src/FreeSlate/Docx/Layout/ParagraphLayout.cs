@@ -259,6 +259,9 @@ public sealed record LineRoom(List<(double Start, double End)> Segments, double 
 {
     /// <summary>Whether only objects wrapped tightly or through (along their wrap polygons) stand beside the line.</summary>
     public bool Tight { get; init; }
+
+    /// <summary>The right edge of the room a drop cap beside the line takes, from the column's left, or null.</summary>
+    public double? DropCap { get; init; }
 }
 
 /// <summary>
@@ -1065,6 +1068,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             var startX = left + (first ? firstLine - labelShift : 0);
             var limit = width - right;
+            // The left indent as the hanging first line's tab stop (see the drop cap below).
+            var tabLeft = left;
             var (naturalStart, naturalLimit) = (startX, limit);
             // Floating objects beside the line: its segments within the indents, or it moves down where they leave it
             // none (see MinimumSegment). Before Word 2013 a line beside objects wrapped square stays where the column
@@ -1090,15 +1095,29 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     if (format.Bidi == true)
                         r = r with { Segments = r.Segments.Select(s => (width - s.End, width - s.Start)).Reverse().ToList() };
                     var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;
+                    // Beside a drop cap the first line starts at the cap's room or its own start, whichever is further,
+                    // a first-line indent past the room; before Word 2013 a first line indented or hanging moves by the
+                    // room's whole width (measured with docx/local/dcn-*: a three-line cap 49.3 pt wide with hSpace before
+                    // text unindented, at left 36 pt, numbered or hanging 18 pt at left 36 or 72 pt, or indented 18 pt
+                    // first; mode 15 puts the hanging lines at the room, 18 pt indented 18 pt past it, modes before it
+                    // every first line indented or hanging 49.3 pt right of its own start, the hanging indent's tab stop
+                    // with it (dcn-b-12, c-12, g-12: the text after "1." 18 pt after it); docx/external/libreoffice/
+                    // extras-ooxmlexport/tdf109308_dropCapNumbered).
+                    var dropCap = first ? r.DropCap : null;
+                    var legacyShift = dropCap is { } shiftBy && context.CompatibilityMode < 15 && Math.Abs(firstLine) > 0.01 ? shiftBy : 0;
+                    var indentX = dropCap is not { } capEdge ? startX
+                        : context.CompatibilityMode >= 15 ? firstLine > 0.01 ? Math.Max(capEdge, left) + firstLine : startX
+                        : startX + legacyShift;
+                    tabLeft = left + legacyShift;
                     if (context.CompatibilityMode < 15 && !r.Tight)
                     {
                         var enough = r.Segments.Where(s => s.End - s.Start >= minimum).ToList();
-                        segments = enough.Select(s => Indented(s, startX, limit, width)).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
+                        segments = enough.Select(s => Indented(s, indentX, limit, width)).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
                         none = segments.Count == 0 && enough.Count > 0;
                     }
                     else
                     {
-                        segments = r.Segments.Select(s => Indented(s, startX, limit, width)).Where(s => s.Item2 - s.Item1 >= minimum).ToList();
+                        segments = r.Segments.Select(s => Indented(s, indentX, limit, width)).Where(s => s.Item2 - s.Item1 >= minimum).ToList();
                         if (r.Segments.Count != 1 || r.Segments[0].End - r.Segments[0].Start < width - 0.01)
                         {
                             var word = FirstWord(lineStart);
@@ -1175,7 +1194,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         lastFit = i;
                         break;
                     }
-                    var to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out var stop);
+                    var to = TabStop(format, x, text, i, charStyles, advances, tabLeft, first ? firstLine : 0, limit, out var stop);
                     // A custom stop at or past the right indent holds: from Word 2013 on where it is not past the
                     // column's edge, the line then reaching up to that edge; before where it is past it too, the line
                     // then reaching 22 in (measured with docx/local/tov-a to tov-i, tovc-1 to tovc-12: left, right,
@@ -1192,7 +1211,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     {
                         limit = context.CompatibilityMode < 15 ? MaximumLine : Math.Max(width, ownLimit);
                         extended = true;
-                        to = TabStop(format, x, text, i, charStyles, advances, left, first ? firstLine : 0, limit, out stop);
+                        to = TabStop(format, x, text, i, charStyles, advances, tabLeft, first ? firstLine : 0, limit, out stop);
                     }
                     if (extended && context.CompatibilityMode >= 15 && (stop?.Position ?? to) > ownLimit + 0.005)
                         (overTabs ??= []).Add(i);
@@ -1355,7 +1374,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (lastFit < 0)
                 lastFit = end;
 
-            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, left, first ? firstLine : 0, mark, labelEnd, limit, jumps);
+            var line = BuildLine(text, charStyles, advances, lineStart, end, startX, format, tabLeft, first ? firstLine : 0, mark, labelEnd, limit, jumps);
             // A line a stop past the indent took further is justified up to its new end where it wraps, not where it
             // ends in a line break (measured with docx/local/tov-g, jz-a to jz-d: "a b c" after a left stop past the
             // indent keeps its spaces before a line break in modes 14 and 15, after a stop inside the indents it fills
