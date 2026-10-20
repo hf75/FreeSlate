@@ -3423,11 +3423,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // libreoffice/extras-ooxmlexport/tdf160049_anchorMargin15, a picture of 117.75 pt and 2.25 pt of effect extents
         // on a body of 118 pt, wrapped through on its left).
         var tall = new List<Exclusion>();
+        var owned = new Dictionary<AnchorInline, Exclusion>(ReferenceEqualityComparer.Instance);
         foreach (var anchor in firstPart)
         {
             var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
             if (ExclusionOf(placed) is { } own)
             {
+                owned[anchor] = own;
                 if (context.CompatibilityMode >= 15 && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
                 {
                     own = own with { TopAndBottom = true };
@@ -3461,8 +3463,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Whether the lines were broken beside floating objects, which another column or page may not have.
         var laidAround = false;
-        if (exclusions.Count > 0)
+        void LayAround()
         {
+            if (exclusions.Count == 0)
+                return;
             var linesTop = y;
             var bottom = linesTop + lines.Sum(l => l.Height);
             if (exclusions.Any(e => e.Top < Math.Max(bottom, linesTop + 1) && e.Bottom > linesTop))
@@ -3490,6 +3494,29 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 if (opening > 0 && lines.Count > 0 && lines[0].Skip > 0.01)
                     boxTop = linesTop + lines[0].Skip - opening;
+            }
+        }
+        LayAround();
+        // An object anchored in a line that goes on in another column or page stands with the paragraph's part there,
+        // the lines before it not beside it (LibreOffice's extras-layout/shape-anchored-in-follow: a rectangle anchored
+        // late in a paragraph that fills three columns stands on the next page, the first column's lines go straight
+        // on below the 81 pt it is placed down from the paragraph's top).
+        if (laidAround && owned.Count > 0)
+        {
+            var (top, fit) = (y, 0);
+            while (fit < lines.Count && top + lines[fit].Height <= Bottom + 0.01)
+                top += lines[fit++].Height;
+            var later = lines.Skip(fit).SelectMany(l => l.Anchors ?? []).Where(owned.ContainsKey).ToList();
+            if (later.Count > 0)
+            {
+                foreach (var anchor in later)
+                {
+                    exclusions.Remove(owned[anchor]);
+                    tall.Remove(owned[anchor]);
+                }
+                lines = layout.Layout(paragraph, width);
+                laidAround = false;
+                LayAround();
             }
         }
         var firstLineTop = (Page: page!, Top: y);
