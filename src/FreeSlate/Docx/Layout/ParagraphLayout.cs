@@ -1548,7 +1548,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         EndBreak = g == lastGroup ? line.EndBreak : null, Hanging = g == lastGroup ? line.Hanging : 0 };
                     part.Pieces.AddRange(groups[g]);
                     Align(part, format, segmentEnd, segmentStart, expandBreaks, Doubled, characters, segmentEnd, IdeographicTrails,
-                        context.CompatibilityMode < 15 ? 0.6 : 0.45);
+                        context.CompatibilityMode < 15 ? 0.6 : 0.45, phased: context.CompatibilityMode >= 15);
                 }
                 continue;
             }
@@ -1562,7 +1562,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
-                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45, snapCell);
+                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45, snapCell, context.CompatibilityMode >= 15);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -3080,11 +3080,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// Calibri with Yu Mincho): the free width goes in equal parts after every East Asian character and before every
     /// one, after every space (the letters of a Latin word stay together), and after every character of a distributed
     /// line; a space gets 0.45 of its own width more, and the automatic space between East Asian and Latin text
-    /// doubles. The last character of the line and the spaces after it take none.
+    /// doubles. The last character of the line and the spaces after it take none. From Word 2013 on a line with less
+    /// room than those extras widens its spaces first, then the boundaries, the gaps between ideographs keeping their
+    /// pitch (measured with docx/local/cjv-*, cjx-*: Microsoft YaHei lines of ideographs and "ABC def ghi" 0.5 and 2 pt
+    /// wider in turn, the spaces up to 1.5 times their width, then the boundaries' 3 pt up to 6, then every gap alike;
+    /// dst4-s68: a distributed Latin line's letters keep their pitch; pandoc/instrText_hyperlink: ideographs 12 pt apart,
+    /// spaces 5.38 pt); before, it spreads every gap alike (docx/local/cgw14-lat).
     /// </summary>
     /// <returns>Whether the line was justified so (false where nothing can take the width).</returns>
     static bool Distribute(List<Piece> pieces, double free, bool all, bool hangs, Func<Piece, int, double>? doubled, bool ideographicTrails = false,
-        double spaceShare = 0.45)
+        double spaceShare = 0.45, bool phased = false)
     {
         var chars = new List<(Piece Piece, int Index)>();
         foreach (var piece in pieces)
@@ -3108,25 +3113,36 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (hangs && count > 0)
             count--;
         var gaps = new List<(int N, double Fixed)>();
-        var fixedTotal = 0.0;
+        var (spaceTotal, boundaryTotal) = (0.0, 0.0);
+        var spaceExtras = new Dictionary<int, double>();
         for (var n = 0; n + 1 < count; n++)
         {
             var (c, next) = (At(n), At(n + 1));
             if (!all && !(c == ' ' || EastAsian(c) || EastAsian(next)))
                 continue;
-            var extra = 0.0;
+            var (space, boundary) = (0.0, 0.0);
             if (c == ' ' && chars[n].Index >= 0)
-                extra += spaceShare * chars[n].Piece.Advances[chars[n].Index];
+                space = spaceShare * chars[n].Piece.Advances[chars[n].Index];
             if (doubled != null && chars[n].Index >= 0)
-                extra += doubled(chars[n].Piece, chars[n].Index);
-            gaps.Add((n, extra));
-            fixedTotal += extra;
+                boundary = doubled(chars[n].Piece, chars[n].Index);
+            gaps.Add((n, space + boundary));
+            spaceExtras[n] = space;
+            (spaceTotal, boundaryTotal) = (spaceTotal + space, boundaryTotal + boundary);
         }
         if (gaps.Count == 0)
             return false;
-        if (fixedTotal > free)
-            (fixedTotal, gaps) = (0, gaps.Select(g => (g.N, 0.0)).ToList());
-        var share = (free - fixedTotal) / gaps.Count;
+        // The spaces' extras fill first, then the boundaries', each in its part; what is left goes to every gap alike.
+        // Before Word 2013 extras the line has no room for go.
+        if (phased)
+        {
+            var spaceScale = spaceTotal > 0 ? Math.Min(1, free / spaceTotal) : 0;
+            var boundaryScale = boundaryTotal > 0 ? Math.Clamp((free - spaceTotal) / boundaryTotal, 0, 1) : 0;
+            gaps = gaps.Select(g => (g.N, spaceExtras[g.N] * spaceScale + (g.Fixed - spaceExtras[g.N]) * boundaryScale)).ToList();
+        }
+        else if (spaceTotal + boundaryTotal > free)
+            gaps = gaps.Select(g => (g.N, 0.0)).ToList();
+        var fixedTotal = gaps.Sum(g => g.Fixed);
+        var share = Math.Max(0, free - fixedTotal) / gaps.Count;
         foreach (var (n, extra) in gaps)
         {
             var (piece, index) = chars[n];
@@ -3273,7 +3289,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="spaceShare">What a space takes beyond the other characters of a line spread between all of them, in its own width.</param>
     /// <param name="snapCell">The cell of a character grid of snapToChars the paragraph snaps to (see <see cref="SnapCell"/>).</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45, double? snapCell = null)
+        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45, double? snapCell = null, bool phased = false)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -3351,7 +3367,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
-        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, !line.HangsHalf, doubled, ideographicTrails, spaceShare))
+        if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
             return;
         if (!justify || Math.Abs(free) < 1e-9)
             return;
@@ -3368,7 +3384,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var everyCharacter = jc is "distribute" or "thaiDistribute" && (lineSpaces <= 0 || !movable.Any(p => p.Text.Length > 0 && Shaped(p.Style)));
         if (free > 0 && (spread == Spread.All || spread == Spread.EastAsian && movable.Where(p => p.Drawing == null).Sum(p => p.Text.Count(EastAsian)) >= 2
                 || everyCharacter)
-            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0 && !line.HangsHalf, doubled, ideographicTrails, spaceShare))
+            && Distribute(movable, free, spread == Spread.All || everyCharacter, line.Hanging > 0 && !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
             return;
         // The spaces between words share the free width: not those that end the line, nor those it begins with
         // (measured with docx/local/jls-*: one to three spaces before a justified paragraph's first word, and one after

@@ -1322,8 +1322,13 @@ areas:
           kerned or takes ligatures, then among their spaces (docx/local/dst-*, dst2-*, dst4-*: a space 0.44 of its
           width more than a letter, before Word 2013 0.6, dst6-*; dst5-kern, dst5-lig,
           docx/generated/paragraph-alignment: spaces only;
-          docx/external/libreoffice/extras-ooxmlexport/para-adjust-distribute 75.2 to 100 %). Before Word 2013
-          justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
+          docx/external/libreoffice/extras-ooxmlexport/para-adjust-distribute 75.2 to 100 %). From Word 2013 on a
+          line with less room than those extras widens its spaces first, then the boundaries, the other gaps keeping
+          their pitch (docx/local/cjv-*, cjx-*: Microsoft YaHei lines of ideographs and "ABC def ghi" 0.5 and 2 pt
+          wider in turn, the spaces up to 1.5 times their width, then the boundaries' 3 pt up to 6, then every gap
+          alike; dst4-s68 85.2 → 90.4 %, cjkx-spaces-both 95.9 → 99.5 %; pandoc/instrText_hyperlink 87.7 → 95.9 %,
+          nested_instrText 87.2 → 91.7 %, empty_field 93.9 → 97.8 %); before, every gap alike (cgw14-lat). Before Word
+          2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
           descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts
           at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by
           their fonts' win ascents and descents (ec-none); w:adjustRightInd changed nothing in Word's printout
