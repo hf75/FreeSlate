@@ -4522,7 +4522,14 @@ areas:
           m:oMathPara would, whatever the paragraph's justification; text or a space beside them keeps them inline
           (docx/local/dmath-*: one and two equations, left and right aligned paragraphs, m:defJc left; libreoffice/
           extras-ooxmlexport/math-*: math-escaping, math-placeholders, ooxmlimport/tdf169843 0 → 100 % of the lines;
-          pandoc/golden/mark_math). The highlight of an equation's runs lies behind all of it over its lines, inline
+          pandoc/golden/mark_math).
+          An n-ary operator that grows with its operand (m:grow), other than an integral, takes the first variant of
+          the math font at least as tall as the operand less a small tolerance, displayed or inline (docx/local/
+          mng-*-s-*: sums over x, a fraction, nested fractions and those in parentheses in Cambria Math 12, every size
+          as Word's; mnb-*, mnl-*: binomials in parentheses 1.909 to 1.926 em tall keep the 1.91 em size, limits or
+          not, which bounds the tolerance to 0.016 to 0.143 em, 0.08 taken; libreoffice/extras-ooxmlexport/tdf133030
+          57.5 → 93.4 %, EquationAsScientificNumbering and math-bold-italic as before). Known deviation: integrals with m:grow keep their size, Word's
+          rule for them not found (mng-*-n-*: smaller variants than the operand's height in four of eight cases). The highlight of an equation's runs lies behind all of it over its lines, inline
           and displayed (mark_math). Glyphs that are their character's in the math font (its math alphabets, the
           script forms by the ssty feature) are printed as text, as Word's PDFs hold them, which the rasterizer fits
           to the pixel grid, delimiters at their own size too; stretched and large variants as outlines

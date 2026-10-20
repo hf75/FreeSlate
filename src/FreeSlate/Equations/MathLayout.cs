@@ -961,11 +961,20 @@ public sealed class MathLayout
         var display = env.Level == Level.Display;
         var glyph = font.GlyphFor(chr);
         var op = GlyphOf(glyph, size, color, char.ConvertFromUtf32(chr));
-        if (display)
+        var operand = Base(nary, env, baseSize, closes: false);
+        // The display size: the first variant at least 1.5 × DisplayOperatorMinHeight tall (measured: Office's display
+        // ∑ and ∫ in Cambria Math are their third sizes, 1.91 and 2.15 em). An operator that grows with its operand
+        // (m:grow, not an integral) takes the first variant at least as tall as the operand less a tolerance,
+        // displayed or inline (measured with docx/local/mng-*-s-*: sums over x, a fraction, nested fractions and those
+        // in parentheses in Cambria Math 12, every size as Word's; mnb-*, mnl-*: binomials in parentheses 1.909 to
+        // 1.926 em tall keep 1.91 em, with limits alike; the tolerance lies between 0.016 and 0.143 em, 0.08 taken;
+        // LibreOffice's extras-ooxmlexport/tdf133030, EquationAsScientificNumbering, math-bold-italic; integrals
+        // grow by a rule not found, mng-*-n-*, and keep their size).
+        var minimum = display ? U(table.DisplayOperatorMinHeight, size) * 1.5 : 0;
+        if (!integral && nary.Element(M + "naryPr")?.Element(M + "grow") is { } grow && On((string?)grow.Attribute(M + "val"), true))
+            minimum = Math.Max(minimum, operand.Ascent + operand.Descent - 0.08 * size);
+        if (minimum > 0)
         {
-            // The display size: the first variant at least 1.5 × DisplayOperatorMinHeight tall (measured: Office's
-            // display ∑ and ∫ in Cambria Math are their third sizes, 1.91 and 2.15 em).
-            var minimum = U(table.DisplayOperatorMinHeight, size) * 1.5;
             foreach (var (variant, advance) in table.Variants(glyph, true))
             {
                 op = GlyphOf(variant, size, color, char.ConvertFromUtf32(chr));
@@ -1043,7 +1052,6 @@ public sealed class MathLayout
                 ? Math.Max(centered.Width, scriptsEnd) + Math.Max(gap, U(table.SpaceAfterScript, size))
                 : centered.Width + gap;
         }
-        var operand = Base(nary, env, baseSize, closes: false);
         if (nary.Element(M + "e") != null)
             result.Add(operand, operandX, 0);
         result.Italic = operand.Italic;
