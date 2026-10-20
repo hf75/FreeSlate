@@ -2133,7 +2133,10 @@ areas:
           layoutInCell 0 take part as well; before, they stand as drawings of the text, from their line in the cell,
           from the row's top where placed from their paragraph, whichever paragraph of the cell it is (docx/local/lic-12,
           lic-14: 20 pt below the first and the third paragraph of a cell under a 3 pt line and a 10 pt margin both 20
-          pt below the row's top; extras-ooxmlexport/tdf135595_HFtableWrap_c12 84.1 → 98.9 %), and from the page and
+          pt below the row's top; extras-ooxmlexport/tdf135595_HFtableWrap_c12 84.1 → 98.9 %; in a row going on over
+          pages from the top of the row's part on their paragraph's page: core-objectpositioning/
+          tdf154863-img-move-crash, seven pictures each its offset below the top margin, 79.3 → 83.0 %; Word then sets
+          the part's text below some of them, not reproduced), and from the page and
           the column for the rest, aligned across too (lica-12, lica-14: aligned left from the column, the margin and
           the page at the margin and left of it; tdf162541_notLayoutInCell_paraLeft 11.2 → 50 %), and the table goes
           below them (cig-noin, -noin14, -noin12; docx/external/libreoffice/extras-ooxmlexport/tdf129888dml,

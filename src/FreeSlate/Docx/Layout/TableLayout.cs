@@ -38,6 +38,15 @@ public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double
     /// <summary>How far down a drawing laid out in the cell that text goes around reaches (TableLayout.Reach), else null.</summary>
     public double? Reach { get; init; }
 
+    /// <summary>
+    /// Whether the drawing is placed from the top of its row's part on the page, not from its paragraph (ParagraphTop
+    /// 0, see Rows): that top stays where the cell's content moves in the row or goes on in another part.
+    /// </summary>
+    public bool FromRowTop { get; init; }
+
+    /// <summary>The anchor with its cell's content <paramref name="dy"/> points further down in its row's part.</summary>
+    public CellAnchor Moved(double dy) => FromRowTop ? Offset(0, dy) with { ParagraphTop = ParagraphTop } : Offset(0, dy);
+
     public CellAnchor Offset(double dx, double dy) => this with
     {
         ParagraphTop = ParagraphTop + dy,
@@ -96,7 +105,7 @@ public sealed class CellPart
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
         moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
-        moved.Anchors.AddRange(Anchors.Select(a => a.Offset(0, dy)));
+        moved.Anchors.AddRange(Anchors.Select(a => a.Moved(dy)));
         return moved;
     }
 
@@ -107,7 +116,7 @@ public sealed class CellPart
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
         moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
-        moved.Anchors.AddRange(Anchors.Select(a => a.Offset(0, dy)));
+        moved.Anchors.AddRange(Anchors.Select(a => a.Moved(dy)));
         return moved;
     }
 }
@@ -332,7 +341,7 @@ public sealed class RowBox
                 if (rest == null || anchor.LineTop < rest.Top)
                     headPart.Anchors.Add(anchor);
                 else
-                    tailPart.Anchors.Add(anchor.Offset(0, -offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
+                    tailPart.Anchors.Add(anchor.Moved(-offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
             }
             // The continuation holds its nested rows whole, as high as their fills reach, so that it splits again where
             // its page cannot hold them (floattable-bad-fly-pos: four pages).
@@ -1058,9 +1067,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             // is in (measured with docx/local/lic-12, lic-14: drawings 20 pt below the first and the third
                             // paragraph of a cell under a 3 pt top line and a 10 pt margin both 20 pt below the row's top;
                             // lic-15 from their paragraphs; docx/external/libreoffice/extras-ooxmlexport/
-                            // tdf135595_HFtableWrap_c12, found by agent BE).
+                            // tdf135595_HFtableWrap_c12, found by agent BE). In a row going on over pages it counts from
+                            // the top of the row's part on its paragraph's page (LibreOffice's core-objectpositioning/
+                            // tdf154863-img-move-crash: seven pictures in a cell of four pages and more, mode 12, each its
+                            // offset below the top margin of its paragraph's page).
                             if ((string?)anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph")
-                                moved = moved with { ParagraphTop = 0 };
+                                moved = moved with { ParagraphTop = 0, FromRowTop = true };
                             part.Anchors.Add(moved);
                             continue;
                         }
