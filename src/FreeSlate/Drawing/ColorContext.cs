@@ -107,11 +107,16 @@ public sealed class ColorContext(Theme theme, IReadOnlyDictionary<string, string
         return color;
     }
 
+    /// <summary>
+    /// A transform in HSL: a saturation it raises above 1 stays so, the channels it then takes past 0 and 1 cut after
+    /// it (measured with Word, docx/local/smc-a: F79646 with satMod 120, 175 and 250 % fills FF9434, FF9004 and FF8900,
+    /// 70AD47 6EB73D, 68D321 and 61FA00, 4472C4 376ED1, 1464F4 and 0057FF; LibreOffice's tdf156902_GlowOnGroup).
+    /// </summary>
     static RgbColor Hsl(RgbColor c, Func<double, double, double, (double H, double S, double L)> change)
     {
         var (h, s, l) = c.ToHsl();
         var (nh, ns, nl) = change(h, s, l);
-        return RgbColor.FromHsl(nh, ns, nl, c.A);
+        return RgbColor.FromHsl(nh, ns, nl, c.A, unclamped: true);
     }
 
     static RgbColor Linear(RgbColor c, Func<double, double> change)

@@ -43,10 +43,11 @@ public readonly record struct RgbColor(double R, double G, double B, double A = 
         return (h * 60, s, l);
     }
 
-    public static RgbColor FromHsl(double h, double s, double l, double a = 1)
+    /// <param name="unclamped">Whether a saturation above 1 stays, the channels then past 0 and 1.</param>
+    public static RgbColor FromHsl(double h, double s, double l, double a = 1, bool unclamped = false)
     {
         h = ((h % 360) + 360) % 360 / 360;
-        s = Math.Clamp(s, 0, 1);
+        s = unclamped ? Math.Max(0, s) : Math.Clamp(s, 0, 1);
         l = Math.Clamp(l, 0, 1);
         if (s < 1e-12)
             return new RgbColor(l, l, l, a);

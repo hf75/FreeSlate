@@ -12848,7 +12848,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `color.transforms` (done).",
-      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.transforms (done). Theme colors with lumMod, lumOff, tint, shade and alpha; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping; drawn as pptx color.transforms (done). Theme colors with lumMod, lumOff, tint, shade and alpha; Verified against Word with docx/generated/graphics (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks). A saturation that satMod or satOff raise above 1 stays so, the channels it takes past 0 and 1 cut after the transform (docx/local/smc-a: F79646 with satMod 120, 175 and 250 % fills FF9434, FF9004 and FF8900, 70AD47 6EB73D, 68D321 and 61FA00, 4472C4 376ED1, 1464F4 and 0057FF; LibreOffice's extras-ooxmlexport/tdf159158_zOrder_* +1.2 %; PowerPoint's decks with theme satMod alike, sa_colors 98.7 %). Known deviation: gray 808080 with satOff 50 % fills BF4000 in Word, BF4040 here.",
       "elements": [
         "a:alpha",
         "a:alphaMod",
