@@ -29,6 +29,12 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>The left inset of the text box the line stands in, which decides where its edge's half dots go (PageRenderer.OnDots).</summary>
     public double? BoxInset { get; init; }
 
+    /// <summary>
+    /// The box of the turned frame (w:framePr with w:textDirection tbRl or btLr) the line stands in, its top from the
+    /// line's, from which PageRenderer puts the line on Word's device as a turned text box's (TurnedOnDots).
+    /// </summary>
+    public (double Left, double Width, double TopOffset, double Height)? TurnedFrame { get; init; }
+
     /// <summary>The space after the line's paragraph where the line ends it, in table cells (RowBox.Split).</summary>
     public double After { get; init; }
 
@@ -699,7 +705,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // running up from the bottom, as text boxes turn theirs (docx/external/libreoffice/writerfilter-dmapper/
         // frame-direction: frames 44.35 pt wide and 820 pt high).
         var turn = first.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? first.Format.TextDirection : null;
-        var laid = group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth)).ToList();
+        var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth)).ToList());
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
             content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
@@ -797,6 +803,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var boxTops = new double[boxes.Count];
         var boxBottoms = new double[boxes.Count];
         boxTops[0] = top + spaceTop;
+        // A turned frame's paragraphs: where each begins across the frame and where its first glyph stands along it.
+        var parts = new List<(double Start, double Glyph)>();
         for (var k = 0; k < group.Count; k++)
         {
             var opening = boxes.FindIndex(box => box.From == k);
@@ -817,12 +825,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 foreach (var anchor in group[k].Content.OfType<AnchorInline>())
                     page.Drawings.Add(PlaceAnchor(anchor, page, lineTop, lineTop, x, frameWidth));
             }
+            parts.Add((lineTop - top, laid[k].Count > 0 ? GlyphStart(laid[k][0], group[k].Format, properties.Twips("h") ?? 0) : 0));
             foreach (var line in laid[k])
             {
                 var placed = turn switch
                 {
-                    "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - top), top) { Angle = 90 },
-                    "btLr" => new PlacedLine(line, x + (lineTop - top), top + height) { Angle = -90 },
+                    "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - top), top) { Angle = 90, TurnedFrame = (x, frameWidth, 0, height) },
+                    "btLr" => new PlacedLine(line, x + (lineTop - top), top + height) { Angle = -90, TurnedFrame = (x, frameWidth, -height, height) },
                     _ => new PlacedLine(line, x, lineTop) { InlineOrigin = origin },
                 };
                 page.Lines.Add(placed);
@@ -835,9 +844,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // and 104.45 pt framed from their top to their bottom; extras-layout/tdf124423: two empty paragraphs and their
         // 8 pt after each framed 48.4 pt high; frame-wrap-auto).
         var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
-        boxBottoms[^1] = top + Math.Max(given, height);
+        boxBottoms[^1] = top + (turn != null ? frameWidth : Math.Max(given, height));
         for (var i = 0; i < boxes.Count; i++)
-            boxes[i].Box?.Draw(page, x, frameWidth, group[boxes[i].From].Format, boxTops[i], boxBottoms[i], top: true, bottom: true, between: null);
+        {
+            if (turn != null && boxes[i].Box is { } turnedBox)
+                DrawTurned(turnedBox, page.Shading, page.Borders, turn, x, frameWidth, top, height, boxTops[i] - top, boxBottoms[i] - top,
+                    parts.GetRange(boxes[i].From, boxes[i].To - boxes[i].From + 1));
+            else
+                boxes[i].Box?.Draw(page, x, frameWidth, group[boxes[i].From].Format, boxTops[i], boxBottoms[i], top: true, bottom: true, between: null);
+        }
         // The frame keeps free its side borders too (they stand outside its width, as paragraph borders do).
         var outerLeft = frameBorders?.Left is { Visible: true } fl ? 1.4 + fl.Space + fl.Total : 0;
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
@@ -845,6 +860,70 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
                 properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText, DropCap = dropCap == "drop" });
         return end;
+    }
+
+    /// <summary>
+    /// A turned frame's paragraph borders and shading, laid out along its lines and turned with them (measured with
+    /// LibreOffice's extras-ooxmlexport/fdo76979: a btLr header frame 42.55 by 85.05 pt framed across its width and 3.13
+    /// pt past both its ends, as far as side borders stand out; each paragraph's shading across its own lines, from the
+    /// border at the lines' end to 2.52 pt before its first glyph, the mark of an empty centered paragraph in the middle).
+    /// </summary>
+    /// <param name="length">The frame's height, its lines' length.</param>
+    /// <param name="boxTop">The box's top across the frame, from its edge where its lines begin; <paramref name="boxBottom"/> alike.</param>
+    /// <param name="parts">Each paragraph's start across the frame and its first glyph along its lines.</param>
+    static void DrawTurned(Frame frame, List<FillRect> shadings, List<FillRect> borders, string turn, double x, double frameWidth, double frameTop,
+        double length, double boxTop, double boxBottom, List<(double Start, double Glyph)> parts)
+    {
+        var (localShading, localBorders) = (new List<FillRect>(), new List<FillRect>());
+        frame.Draw(localShading, localBorders, 0, length, boxTop, boxBottom, top: true, bottom: true, between: null);
+        var shaded = new List<FillRect>();
+        foreach (var fill in localShading)
+        {
+            for (var k = 0; k < parts.Count; k++)
+            {
+                var from = k == 0 ? fill.Y : Math.Max(fill.Y, parts[k].Start);
+                var to = k + 1 < parts.Count ? Math.Min(fill.Y + fill.Height, parts[k + 1].Start) : fill.Y + fill.Height;
+                var start = Math.Max(fill.X, parts[k].Glyph - 2.52);
+                if (to > from + 0.01 && fill.X + fill.Width > start + 0.01)
+                    shaded.Add(fill with { X = start, Y = from, Width = fill.X + fill.Width - start, Height = to - from });
+            }
+        }
+        // Down (tbRl) the lines stack from the right edge and run down from the top; up (btLr) from the left edge and up
+        // from the bottom.
+        FillRect Turn(FillRect r) => turn == "tbRl"
+            ? r with { X = x + frameWidth - (r.Y + r.Height), Y = frameTop + r.X, Width = r.Height, Height = r.Width }
+            : r with { X = x + r.Y, Y = frameTop + length - (r.X + r.Width), Width = r.Height, Height = r.Width };
+        shadings.AddRange(shaded.Select(Turn));
+        borders.AddRange(localBorders.Select(Turn));
+    }
+
+    /// <summary>Where a line's first glyph stands along it: its first piece, else its mark where its paragraph aligns it.</summary>
+    static double GlyphStart(Line line, ParagraphFormat format, double length) =>
+        line.Pieces.Count > 0 ? line.Pieces.Min(p => p.X)
+        : format.Justification switch
+        {
+            "center" => ((format.Left ?? 0) + length - (format.Right ?? 0)) / 2,
+            "right" or "end" => length - (format.Right ?? 0),
+            _ => format.Left ?? 0,
+        };
+
+    /// <summary>
+    /// The lines of a turned frame laid out as vertical lines, as a turned text box's are (thicker; see PageRenderer.TextBox,
+    /// measured with docx/local/vertical6; LibreOffice's extras-ooxmlexport/tdf154703_framePrTextDirection: a tbRl
+    /// frame's 12 pt line with its baseline 12/64 pt deeper, on Word's dot 1692).
+    /// </summary>
+    T Turned<T>(bool turned, Func<T> lay)
+    {
+        var vertical = layout.Vertical;
+        layout.Vertical = vertical || turned;
+        try
+        {
+            return lay();
+        }
+        finally
+        {
+            layout.Vertical = vertical;
+        }
     }
 
     /// <summary>
@@ -1707,7 +1786,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // (see PlaceFrame; docx/external/libreoffice/extras-ooxmlexport/fdo76979: a header's frame of btLr text
                 // 42.55 by 85 pt, bordered and shaded black, beside the body).
                 var turn = framed.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? framed.Format.TextDirection : null;
-                var laid = group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, fields)).ToList();
+                var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, fields)).ToList());
                 var content = 0.0;
                 for (var k = 0; k < group.Count; k++)
                     content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
@@ -1746,16 +1825,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     _ => areaTop + Twips("y"),
                 };
                 var lineTop = frameTop + spaceTop + borderTop;
+                var parts = new List<(double Start, double Glyph)>();
                 for (var k = 0; k < group.Count; k++)
                 {
                     if (k > 0)
                         lineTop += Between(group[k - 1], group[k]);
+                    parts.Add((lineTop - frameTop, laid[k].Count > 0 ? GlyphStart(laid[k][0], group[k].Format, frameHeight) : 0));
                     foreach (var line in laid[k])
                     {
                         (onPage ? placed : box.Lines).Add(turn switch
                         {
-                            "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - frameTop), frameTop) { Angle = 90 },
-                            "btLr" => new PlacedLine(line, x + (lineTop - frameTop), frameTop + frameHeight) { Angle = -90 },
+                            "tbRl" => new PlacedLine(line, x + frameWidth - (lineTop - frameTop), frameTop) { Angle = 90, TurnedFrame = (x, frameWidth, 0, frameHeight) },
+                            "btLr" => new PlacedLine(line, x + (lineTop - frameTop), frameTop + frameHeight)
+                            {
+                                Angle = -90, TurnedFrame = (x, frameWidth, -frameHeight, frameHeight),
+                            },
                             _ => new PlacedLine(line, x, lineTop),
                         });
                         lineTop += line.Height;
@@ -1763,8 +1847,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 var frameBox = onPage ? fixedBox : box;
                 var given = properties.Twips("h") is { } fh && fh > 0 ? fh : 0;
-                frameBorders?.Draw(frameBox.Shading, frameBox.Borders, x, frameWidth, frameTop + spaceTop, frameTop + Math.Max(given, frameHeight),
-                    top: true, bottom: true, between: null);
+                if (turn != null && frameBorders != null)
+                    DrawTurned(frameBorders, frameBox.Shading, frameBox.Borders, turn, x, frameWidth, frameTop, frameHeight, spaceTop, frameWidth, parts);
+                else
+                    frameBorders?.Draw(frameBox.Shading, frameBox.Borders, x, frameWidth, frameTop + spaceTop, frameTop + Math.Max(given, frameHeight),
+                        top: true, bottom: true, between: null);
                 // The body's text goes around a frame standing on the page, as around a floating table there (measured
                 // with docx/local/fh-1: a header's frame on the top margin in mode 15 puts the body's first line beside it).
                 if (onPage && properties.Attr("wrap") != "none")

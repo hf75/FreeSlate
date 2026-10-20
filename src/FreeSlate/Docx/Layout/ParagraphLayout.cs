@@ -932,6 +932,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         return laid;
     }
 
+    /// <summary>
+    /// In vertical lines the curly quotation marks take a whole em each, their glyphs at its start (measured with
+    /// docx/local/vqt-*: ‘ ’ “ ” of Corbel and Calibri 18 a full 18 pt in tbRl and btLr frames and in vert, vert270 and
+    /// eaVert boxes, in modes 12 and 15, across 3.94 to 7.11 pt; the ellipsis, the middle dot and the apostrophe keep
+    /// theirs; LibreOffice's writerfilter-dmapper/frame-direction: "King’s" in turned frames).
+    /// </summary>
+    void VerticalQuotes(string text, List<RunStyle> charStyles, double[] advances)
+    {
+        if (!Vertical)
+            return;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] is '\u2018' or '\u2019' or '\u201C' or '\u201D')
+                advances[i] = charStyles[i].Size + charStyles[i].Spacing;
+        }
+    }
+
     List<Line> LayoutLines(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from = 0,
         bool unhyphenated = false)
     {
@@ -955,6 +972,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         AutoSpace(text, charStyles, advances, format, autoSpaced, styles.EastAsianDefaults);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
+        VerticalQuotes(text, charStyles, advances);
         // A horizontal rule of a share of the width takes the width it is drawn with (Vml.Rule).
         foreach (var (index, drawing) in objects)
             advances[index] = RuleShare(drawing) is > 0 and var share ? share * (ColumnWidth?.Invoke() ?? width - (format.Left ?? 0) - (format.Right ?? 0)) : drawing.Box.Width;
@@ -1610,6 +1628,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             KernPunctuation(text, charStyles, advances);
         BorderRoom(text, charStyles, advances);
         FitText(text, charStyles, advances);
+        VerticalQuotes(text, charStyles, advances);
         // Pictures and boxes take their width where asked, as in Layout (a frame as wide as a picture and a word would
         // else break the word: docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang).
         if (pictures)

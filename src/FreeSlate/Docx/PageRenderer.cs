@@ -923,8 +923,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var line in lines)
         {
             var grows = onPage && line.Angle == 0;
-            var turnedBox = onPage && line.DeviceTurned;
-            var placed = grows ? OnDots(line, paperSize.Width) : line;
+            // A turned frame's lines stand on Word's device as a turned text box's (measured with LibreOffice's
+            // extras-ooxmlexport/tdf154703_framePrTextDirection: a tbRl frame's line from the right edge's dot before it,
+            // its baseline on dot 1692; fdo76979: a btLr header frame's 12 pt line at 528.22 pt).
+            var placed = grows ? OnDots(line, paperSize.Width)
+                : onPage && line.TurnedFrame is { } frame && DevicePlaced
+                    ? TurnedOnDots(line, frame.Left, frame.Width, line.Top + frame.TopOffset, frame.Height, 0, 0, context.CompatibilityMode < 15)
+                    : line;
+            var turnedBox = onPage && placed.DeviceTurned;
             // A turned line's glyphs on the device along it from its first one, which TurnedOnDots put on a dot: for text
             // up the distance counts from there the other way.
             var down = placed.Angle > 0;

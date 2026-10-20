@@ -1251,7 +1251,16 @@ areas:
           (w:textDirection tbRl) or up (btLr) lays it out along that height, turned a quarter: its first line at the
           right running down from the top, or at the left running up from the bottom
           (docx/external/libreoffice/writerfilter-dmapper/frame-direction: frames 44.35 pt wide and 820 pt high, 45.9
-          → 72.8 %; extras-ooxmlexport/tdf154703_framePrTextDirection 57.4 → 70.7 %). A framed paragraph's floating
+          → 72.8 %; extras-ooxmlexport/tdf154703_framePrTextDirection 57.4 → 70.7 %), its lines as a turned text box's:
+          vertical lines on Word's device from the frame's edges (drawing.textBoxes; tdf154703_framePrTextDirection: a
+          tbRl frame's 12 pt line from the right edge's dot before it, its baseline 12/64 pt deeper, 70.7 → 100 %);
+          its paragraphs' borders frame it turned, across its width and 3.13 pt past both its ends as side borders
+          stand out, each paragraph's shading across its own lines from the border at their end to 2.52 pt before its
+          first glyph, an empty centered paragraph's mark in the middle (extras-ooxmlexport/fdo76979: a btLr header
+          frame 42.55 by 85.05 pt, 72.1 → 99.7 %). In vertical lines the curly quotation marks take a whole em
+          (docx/local/vqt-*: ‘ ’ “ ” 18 pt wide at 18 pt in tbRl and btLr frames and vert, vert270 and eaVert boxes,
+          3.94 to 7.11 pt across; the ellipsis, the middle dot and the apostrophe keep their widths; frame-direction
+          "King’s", 78.6 → 95.2 %). A framed paragraph's floating
           drawings are placed from it in the frame as in the text
           (docx/external/libreoffice/extras-ooxmlexport/tdf90789, tdf90789-2: a page-relative VML rectangle in a
           framed paragraph, 52.7 → 97.1 % and 65.0 → 98.4 %). A frame of one paragraph without a width is as wide as
