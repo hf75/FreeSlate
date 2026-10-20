@@ -200,7 +200,7 @@ public static class References
         try
         {
             var pages = word.ExportPdf(source, pdf, password, Repo.Markup(deck));
-            var files = PdfPages.Rasterize(pdf, dir, DocumentScale);
+            var files = RasterizeReference(pdf, dir);
             if (files.Count == 0)
             {
                 Console.WriteLine($"  skipped     {deck} (no pages)");
@@ -223,6 +223,27 @@ public static class References
                     File.Delete(partial);
             }
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Rasterizes Word's PDF of a document, its premultiplied pictures first brought to straight alpha in a copy
+    /// (<see cref="PdfImages"/>); the PDF itself stays as Word wrote it.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    static List<string> RasterizeReference(string pdf, string dir)
+    {
+        if (PdfImages.Unpremultiplied(pdf) is not { } straight)
+            return PdfPages.Rasterize(pdf, dir, DocumentScale);
+        var copy = Path.Combine(Path.GetTempPath(), $"fidelity-{Guid.NewGuid():N}.pdf");
+        File.WriteAllBytes(copy, straight);
+        try
+        {
+            return PdfPages.Rasterize(copy, dir, DocumentScale);
+        }
+        finally
+        {
+            File.Delete(copy);
         }
     }
 
