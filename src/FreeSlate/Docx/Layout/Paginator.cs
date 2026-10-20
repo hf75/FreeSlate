@@ -635,6 +635,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // w:doNotBreakWrappedTables keeps the table whole where it stands (docx/external/libreoffice/
         // writerfilter-dmapper/do-not-break-wrapped-tables).
         var breaks = !context.Compat("doNotBreakWrappedTables");
+        // A table anchored to the text in a section of columns does not break: where it does not fit below its place it
+        // goes to the next page whole with its paragraph (LibreOffice's core-layout/floattable-multi-col: three rows in
+        // two columns, the third reaching past the bottom margin, on page 2 at its place from "anchor").
+        var movesWhole = section.Columns > 1 && anchor == "text" && breaks && top + height > Limit() + 0.01 && !(columnEmpty && page!.Lines.Count == 0);
         foreach (var source in box.Rows)
         {
             var row = source;
@@ -643,9 +647,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // cannot split at the top of a page overflows (measured with docx/local/floatsplit-*: anchored to the text
             // or the page, its first row of lines or of one long paragraph; docx/external/libreoffice/core-layout/
             // floattable-rowsplit, floattable-table-row-keep).
-            while (breaks && rowTop + row.Height + row.BottomBorderWidth > Limit() + 0.01)
+            while (breaks && (rowTop + row.Height + row.BottomBorderWidth > Limit() + 0.01 || movesWhole))
             {
-                if (Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, onPage == 0) is { } parts)
+                if (!movesWhole && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, onPage == 0) is { } parts)
                 {
                     Draw(parts.Head);
                     row = parts.Tail;
@@ -683,6 +687,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 rowTop = partTop = samePlace ? top : page!.BodyTop + (withText ? top - textTop : 0);
                 onPage = 0;
                 split = true;
+                movesWhole = false;
                 if (!row.Header)
                 {
                     foreach (var header in headers)
