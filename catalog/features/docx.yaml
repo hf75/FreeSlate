@@ -2475,13 +2475,20 @@ areas:
           it, the table before keeps its bottom line
           (docx/external/libreoffice/core-layout/floattable-not-wrapped-by-table). Floating tables in a cell stay
           where they are placed whatever the cell's vertical alignment, the cell's text lowered by the room below the
-          lowest of text and tables (docx/local/nfv-*: vAlign center and bottom with vertAnchor page and text). Known
+          lowest of text and tables (docx/local/nfv-*: vAlign center and bottom with vertAnchor page and text). From
+          Word 2013 on, where w:compatSetting allowTextAfterFloatingTableBreak says so, the text after a floating table
+          that breaks over pages goes on beside and below its first part, each further part waiting for the next page
+          the text or a break begins, at its top, the text beside it there, its header rows repeated; parts the text
+          does not reach take pages of their own (docx/local/atf-*: a table of two rows on a body of 166 pt with the
+          paragraph after it, six paragraphs, a page break, a header row, three rows, a table placed from the page, the
+          document ending after one line; mode 14 and documents without the setting begin the text beside the last
+          part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages 55.1 → 100 %). Known
           deviations: a table centered on the margin stands about 5 pt further right in Word; of two floating tables
           after each other in a cell Word sets the second below the first before Word 2013, beside it from then on
           (docx/local/ng-3 to ng-5), ours at its paragraph; a line centered beside a floating table centers in its
           segment in Word (nf-4); tables anchored to the page that do not fit, which Word 2013 begins on the next page
-          (docx/local/floatsplit-15p-*); the compatibility setting allowTextAfterFloatingTableBreak (text after the
-          table beside its first part; docx/external/libreoffice/writerfilter-dmapper/floattable-wrap-on-all-pages).
+          (docx/local/floatsplit-15p-*); a line reaching about a point into the top of a table placed from the page
+          keeps the column's whole width in Word, ours goes beside the table (docx/local/atf-pg0, atf-pg1, atf-page).
 
       - id: table.cells
         title: Cell alignment, text direction and header cells

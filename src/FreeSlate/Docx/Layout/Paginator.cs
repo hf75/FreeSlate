@@ -421,6 +421,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// paragraph after it (vertAnchor text), the top margin or the page, or aligns (w:tblpYSpec); text wraps around it
     /// on both sides, kept w:leftFromText, w:rightFromText, w:topFromText and w:bottomFromText away.
     /// </summary>
+    /// <summary>The parts of floating tables that wait for the next page, the text going on beside them (see PlaceFloatingTable).</summary>
+    readonly Queue<Action> floatingRests = new();
+
     void PlaceFloatingTable(List<Block> blocks, int index, XElement position, TableBox box, double left, double width)
     {
         double Twips(string name) => position.Twips(name) ?? 0;
@@ -637,76 +640,107 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // goes to the next page whole with its paragraph (LibreOffice's core-layout/floattable-multi-col: three rows in
         // two columns, the third reaching past the bottom margin, on page 2 at its place from "anchor").
         var movesWhole = section.Columns > 1 && anchor == "text" && breaks && top + height > Limit() + 0.01 && !(columnEmpty && page!.Lines.Count == 0);
-        foreach (var source in box.Rows)
+        // From Word 2013 on, where the document allows text after a floating table's break, the text after the table
+        // goes on beside and below its first part, each further part waiting for the next page the text or a break
+        // begins, at its top, the text beside it there, its header rows repeated; parts the text does not reach take
+        // pages of their own (measured with docx/local/atf-*: a table of two rows on a page with a body of 166 pt,
+        // the paragraph after it beside and below its first row on page 1 and beside its second at the top of page 2;
+        // six paragraphs after it, a page break after it, a table placed from the page, a header row and three rows
+        // alike; the document ending after one line, a page of its own for the second row; in mode 14 and without the
+        // setting the text begins beside the last part; LibreOffice's writerfilter-dmapper/floattable-wrap-on-all-pages).
+        var waits = context.Profile.TextAfterFloatingTableBreak;
+        var waited = false;
+        // The rows from the one at from on, the first of them held, the rest of a row the page before broke, at the
+        // top of the page.
+        void Rows(int from, RowBox? held)
         {
-            var row = source;
-            // A row that does not fit splits at a line of each cell as in a table in the text, in Word 2013 and before
-            // alike (also one that may not split where no row of the page is before it), else moves on; a row that
-            // cannot split at the top of a page overflows (measured with docx/local/floatsplit-*: anchored to the text
-            // or the page, its first row of lines or of one long paragraph; docx/external/libreoffice/core-layout/
-            // floattable-rowsplit, floattable-table-row-keep).
-            while (breaks && (rowTop + row.Height + row.BottomBorderWidth > Limit() + 0.01 || movesWhole))
+            for (var r = from; r < box.Rows.Count; r++)
             {
-                if (!movesWhole && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, onPage == 0) is { } parts)
+                var row = r == from && held != null ? Continue(held) : box.Rows[r];
+                // A row that does not fit splits at a line of each cell as in a table in the text, in Word 2013 and before
+                // alike (also one that may not split where no row of the page is before it), else moves on; a row that
+                // cannot split at the top of a page overflows (measured with docx/local/floatsplit-*: anchored to the text
+                // or the page, its first row of lines or of one long paragraph; docx/external/libreoffice/core-layout/
+                // floattable-rowsplit, floattable-table-row-keep).
+                while (breaks && (rowTop + row.Height + row.BottomBorderWidth > Limit() + 0.01 || movesWhole))
                 {
-                    Draw(parts.Head);
-                    row = parts.Tail;
+                    if (!movesWhole && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, onPage == 0) is { } parts)
+                    {
+                        Draw(parts.Head);
+                        row = parts.Tail;
+                    }
+                    // A row of at least height that such a table puts below the margin on a page without text before it
+                    // keeps one line of each cell there and goes on at the next page (docx/external/powertools/
+                    // DB-HeadersFooters-Src/Footer: a row of 45.35 pt at the page's foot cut after its first line, 9.24 pt,
+                    // its text at its top); rows of exact height reach past the margin whole (flb-*).
+                    else if (unbroken && emptyPage && onPage == 0 && !row.Exact && !row.CantSplit && !row.Header && Least(row) is { } least)
+                    {
+                        Draw(least.Head);
+                        row = least.Tail;
+                    }
+                    // A row of at least its height taller than a page's body ends at the bottom margin at the top of a page,
+                    // the rest of its height gone, the next row on the next page (found by agent BE in Word's PDF of
+                    // docx/external/libreoffice/core-layout/floattable-in-text-section: rows of at least 283.5 pt on a body
+                    // of 166 pt, mode 15, each on a page of its own, cut at the margin).
+                    else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01) && !row.Exact && row.Height + row.BottomBorderWidth > Bottom - page.BodyTop + 0.01
+                        && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, force: true, dropRest: true) is { } cut)
+                    {
+                        row = cut.Head;
+                        break;
+                    }
+                    else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01 || unbroken && emptyPage))
+                        break;
+                    // A table anchored to the text that begins on the next page goes there with its paragraph and stands
+                    // where it would at it (measured with docx/local/fn-1, fn-2, fn-4: tblpY -289 and 289 twips put it as
+                    // far above and below the next page's top margin, in modes 14 and 15; docx/external/libreoffice/
+                    // core-layout/floattable-next-leaf-in-section).
+                    var withText = last == null && anchor == "text";
+                    var samePlace = last == null && unbroken;
+                    if (last != null)
+                        Close(last);
+                    if (waits && last != null)
+                    {
+                        var (at, rest) = (r, row);
+                        floatingRests.Enqueue(() =>
+                        {
+                            rowTop = partTop = page!.BodyTop;
+                            Rows(at, rest);
+                        });
+                        waited = true;
+                        return;
+                    }
+                    NewPage(section);
+                    rowTop = partTop = samePlace ? top : page!.BodyTop + (withText ? top - textTop : 0);
+                    row = Continue(row);
                 }
-                // A row of at least height that such a table puts below the margin on a page without text before it
-                // keeps one line of each cell there and goes on at the next page (docx/external/powertools/
-                // DB-HeadersFooters-Src/Footer: a row of 45.35 pt at the page's foot cut after its first line, 9.24 pt,
-                // its text at its top); rows of exact height reach past the margin whole (flb-*).
-                else if (unbroken && emptyPage && onPage == 0 && !row.Exact && !row.CantSplit && !row.Header && Least(row) is { } least)
-                {
-                    Draw(least.Head);
-                    row = least.Tail;
-                }
-                // A row of at least its height taller than a page's body ends at the bottom margin at the top of a page,
-                // the rest of its height gone, the next row on the next page (found by agent BE in Word's PDF of
-                // docx/external/libreoffice/core-layout/floattable-in-text-section: rows of at least 283.5 pt on a body
-                // of 166 pt, mode 15, each on a page of its own, cut at the margin).
-                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01) && !row.Exact && row.Height + row.BottomBorderWidth > Bottom - page.BodyTop + 0.01
-                    && Limit() - rowTop > row.TopWidth + 1 && row.Split(Limit() - rowTop - row.BottomBorderWidth, force: true, dropRest: true) is { } cut)
-                {
-                    row = cut.Head;
-                    break;
-                }
-                else if (onPage == 0 && (split || rowTop <= page!.BodyTop + 0.01 || unbroken && emptyPage))
-                    break;
-                // A table anchored to the text that begins on the next page goes there with its paragraph and stands
-                // where it would at it (measured with docx/local/fn-1, fn-2, fn-4: tblpY -289 and 289 twips put it as
-                // far above and below the next page's top margin, in modes 14 and 15; docx/external/libreoffice/
-                // core-layout/floattable-next-leaf-in-section).
-                var withText = last == null && anchor == "text";
-                var samePlace = last == null && unbroken;
-                if (last != null)
-                    Close(last);
-                NewPage(section);
-                rowTop = partTop = samePlace ? top : page!.BodyTop + (withText ? top - textTop : 0);
-                onPage = 0;
-                split = true;
-                movesWhole = false;
-                if (!row.Header)
-                {
-                    foreach (var header in headers)
-                        Draw(header);
-                    onPage = 0;
-                }
-                if (row.Header || headers.Count == 0)
-                    row = row.AtPageTop();
+                Draw(row);
             }
-            Draw(row);
+            if (last != null)
+                Close(last);
+            else
+                page!.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
+                    x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
+                    {
+                        DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
+                        Banded = banded,
+                    });
         }
-        if (last != null)
-            Close(last);
-        else
-            page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), top - Twips("topFromText"),
-                x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
-                {
-                    DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
-                    Banded = banded,
-                });
-        frameStack = tableFrame != null && !split ? (tableFrame, page!, top + height, index + 1) : null;
+        // A part going on at the top of a page: its header rows first.
+        RowBox Continue(RowBox row)
+        {
+            onPage = 0;
+            split = true;
+            movesWhole = false;
+            if (!row.Header)
+            {
+                foreach (var header in headers)
+                    Draw(header);
+                onPage = 0;
+            }
+            return row.Header || headers.Count == 0 ? row.AtPageTop() : row;
+        }
+        Rows(0, null);
+        frameStack = tableFrame != null && !split && !waited ? (tableFrame, page!, top + height, index + 1) : null;
         if (split)
         {
             y = page!.BodyTop;
@@ -1490,6 +1524,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (pages.Count == 0)
             NewPage(lastSection, firstOfSection: true);
+        // The parts of floating tables the text did not reach take pages of their own (see PlaceFloatingTable).
+        for (var extra = 0; extra < 100 && floatingRests.Count > 0; extra++)
+            NewPage(section);
         PlaceNotes();
         // Notes that go on past the last page of text fill pages of their own.
         for (var extra = 0; extra < 20 && (carried != null || deferredNotes.Count > 0); extra++)
@@ -1758,6 +1795,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (properties.Columns > 1 && settled.NoteBands.TryGetValue(page.Number, out var band))
             notesHeight = Math.Max(notesHeight, band);
+        // The next parts of floating tables the text went on beside stand at the top of the new page (see
+        // PlaceFloatingTable).
+        for (var waiting = blank ? 0 : floatingRests.Count; waiting > 0; waiting--)
+            floatingRests.Dequeue()();
     }
 
     /// <summary>

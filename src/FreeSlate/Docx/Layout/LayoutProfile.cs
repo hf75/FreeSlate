@@ -294,6 +294,13 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool KeepsWrappedTablesWhole { get; } = context.Compat("doNotBreakWrappedTables");
 
     /// <summary>
+    /// Whether the text after a floating table that breaks over pages goes on beside and below its first part, each
+    /// further part at the top of the next page: w:compatSetting allowTextAfterFloatingTableBreak, from Word 2013 on
+    /// (see Paginator.PlaceFloatingTable).
+    /// </summary>
+    public bool TextAfterFloatingTableBreak { get; } = mode >= 15 && context.CompatSetting("allowTextAfterFloatingTableBreak") is "1" or "true" or "on";
+
+    /// <summary>
     /// Whether a table goes below every floating object and frame it would overlap, whatever their wrapping, also those
     /// anchored after it on the page: from Word 2013 on; before only below those kept free above and below and those
     /// that leave it less than half its width right of them (see Paginator.BelowFloats).
