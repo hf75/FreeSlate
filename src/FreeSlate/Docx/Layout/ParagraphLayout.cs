@@ -2649,7 +2649,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
             var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : Metrics(piece.Style, Vertical);
-            var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
+            var lift = TopLift(piece, format);
             // Lowered text takes as much less of the ascent, raised text of the descent (measured with
             // docx/local/lowr-*: "Base" in 12 pt Arial with 48 pt lowered 12 pt has its baseline 33 pt below the line's
             // top, 45 pt less 12, lowered 60 pt the 12 pt text's own; 48 pt raised 12 pt leaves the 12 pt text's
@@ -2781,10 +2781,64 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
             }
         }
+        if (format.TextAlignment == "top")
+        {
+            var shown = line.Pieces.Where(p => !p.IsTab && p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Across == null).ToList();
+            // Lowered text aligned by its top goes down only as far as it reaches past its line gap (see TopLift).
+            foreach (var piece in shown)
+                piece.Shift += TopLift(piece, format) - (NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift);
+            if (shown.Count > 0 && shown.All(p => p.Style.Font.Data == shown[0].Style.Font.Data && Math.Abs(p.Style.Size - shown[0].Style.Size) < 0.01))
+            {
+                var down = TopDeviceShift(shown[0].Style);
+                foreach (var piece in shown)
+                    piece.Shift -= down;
+            }
+        }
         line.RaisedAbove = Math.Max(0, raised - above);
         line.LoweredBelow = Math.Max(0, lowered - below);
         line.RubyAbove = Math.Max(0, rubyRaised - above);
         return line;
+    }
+
+    /// <summary>
+    /// How far a piece is raised (w:position, less a subscript's shift): where characters align their tops
+    /// (w:textAlignment top) lowered text first takes up its font's line gap, going down and making its line taller
+    /// only by what it is lowered more (measured with docx/local/lowr-18, lowr-19, lowr-20: 12 pt Arial lowered 6 pt
+    /// makes the line 19.4 pt high, 13.8 + 6 less Arial's 0.39 pt gap).
+    /// </summary>
+    double TopLift(Piece piece, ParagraphFormat format)
+    {
+        var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
+        if (format.TextAlignment != "top" || lift >= 0)
+            return lift;
+        var (above, _) = WordFonts.LineMetrics(piece.Style.Font.Data, piece.Style.Size, piece.Style.LineHeights);
+        var gap = Math.Max(0, above - WordFonts.Ascent(piece.Style.Font.Data) * piece.Style.Size);
+        return Math.Min(0, lift + gap);
+    }
+
+    /// <summary>
+    /// How much lower a line of one font and size whose characters align their tops (w:textAlignment top) has its
+    /// baseline than aligned by baselines, in points: Word sets it on its 600 dpi device the font's whole-pixel ascent as
+    /// GDI realizes it (its VDMX record at the size's whole pixels per em, else its win ascent or, with
+    /// USE_TYPO_METRICS, its typo ascent rounded) and the rounded line gap below the line's top, less one pixel
+    /// (measured with docx/local/tat-top against tat-base: Arial 12 two pixels higher, Times New Roman 12, Calibri 11
+    /// and Verdana 9 alike, Cambria 12, Georgia 14 and Aptos 12 one pixel higher, Segoe UI 10 two, Courier New 12 four,
+    /// Nyala 11 six lower, here seven; East Asian fonts alike, MS Mincho 12 and Yu Gothic 11; LibreOffice's
+    /// extras-ooxmlexport/tdf140668: Nyala 11 lowered 0.5 pt).
+    /// </summary>
+    static double TopDeviceShift(RunStyle style)
+    {
+        var font = style.Font.Data;
+        if (font.EastAsian)
+            return 0;
+        const double PerPoint = 600.0 / 72;
+        var ppem = (int)Math.Round(style.Size * PerPoint, MidpointRounding.AwayFromZero);
+        var (above, _) = WordFonts.LineMetrics(font, style.Size, style.LineHeights);
+        var ascent = WordFonts.Ascent(font) * style.Size * PerPoint;
+        var gap = Math.Max(0, above * PerPoint - ascent);
+        var gdiAscent = font.Typo is { Use: true } typo ? (int)Math.Round(typo.Ascender * ppem, MidpointRounding.AwayFromZero) : font.GdiMetrics(ppem).Ascent;
+        var shift = Math.Round(gap, MidpointRounding.AwayFromZero) + gdiAscent - 1 - Math.Round(gap + ascent, MidpointRounding.AwayFromZero);
+        return shift / PerPoint;
     }
 
     /// <summary>

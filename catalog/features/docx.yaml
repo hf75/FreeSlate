@@ -707,9 +707,9 @@ areas:
           lines), except that lowering moves nothing on a line of nothing but drawings that is not exactly so high
           (docx/local/c2mt-a, -c, -e: an equation of 13.25 pt alone in its paragraph lowered 2 to 6 pt stands as
           unlowered, the lines below too; c2mt-d: raised 2 pt its line grows; extras-odfexport/2_MathType3). Known
-          deviation: where characters align their tops, centers or bottoms (w:textAlignment)
-          lowered text keeps its whole ascent; Word lets the font's line gap take up the lowering there (lowr-18:
-          12 pt lowered 6 pt make the line 5.6 pt higher). Fit text (w:fitText):
+          deviation: where characters align their centers or bottoms (w:textAlignment) lowered text keeps its whole
+          ascent (aligned by their tops the line gap takes up the lowering first, paragraph.eastAsian). Fit text
+          (w:fitText):
           neighboring runs with one id fit together into the width; wider text is scaled horizontally to it, narrower
           text spreads with equal gaps between its characters, the last ending at the width (docx/local/fittext,
           fittext2). Known deviation: Word also narrows spread characters, to between (n - 1)/n of their width (very
@@ -1344,7 +1344,15 @@ areas:
           2013 justified lines do not squeeze their spaces for one more word. East Asian fonts are their win ascent and
           descent high and 15 % of that more above and below, each rounded to the font's units (ea-pitch: nine fonts
           at 10.5, 12 and 16 pt within 0.003 em). w:textAlignment top, center and bottom align a line's characters by
-          their fonts' win ascents and descents (ec-none); w:adjustRightInd changed nothing in Word's printout
+          their fonts' win ascents and descents (ec-none). Aligned by their tops, a line of one font and size has its
+          baseline where Word's 600 dpi device puts it: the font's whole-pixel ascent as GDI realizes it (its VDMX
+          record at the size's whole pixels per em, else its win or, with USE_TYPO_METRICS, typo ascent rounded) and
+          the rounded line gap below the line's top, less one pixel (docx/local/tat-top against tat-base: Arial 12 two
+          pixels higher, Times New Roman 12, Calibri 11 and Verdana 9 alike, Cambria 12, Georgia 14 and Aptos 12 one
+          higher, Segoe UI 10 two, Courier New 12 four, East Asian fonts alike; Nyala 11 six lower, here seven), and
+          lowered text first takes up its font's line gap, going down and growing its line only by the rest (lowr-12,
+          -15, -18, -19, -22: 84.7 to 94.3 → 94.0 to 100 %; LibreOffice's extras-ooxmlexport/tdf140668, Nyala 11
+          lowered 0.5 pt, 88.9 → 95.0 %); w:adjustRightInd changed nothing in Word's printout
           (ea-adjust). Punctuation compression (w:characterSpacingControl compressPunctuation) lets a justified line
           take the character that does not fit: a closing mark ending it hangs half its width past the end where that
           is enough, the line stretching to its middle (rather than its spaces squeezing for it; where they may squeeze
