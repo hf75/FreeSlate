@@ -3103,7 +3103,14 @@ areas:
           from Word 2013 on they stand from where the paragraph ends up (docx/local/np-c14, np-c15: a rectangle 42.55
           pt above its paragraph over the line before at 42.9 pt, below the 72 pt margin in mode 15, the line below it;
           np-a14: a rectangle 42.55 pt below the paragraph at 128.0, np-a15 at 209.03; all np-* 95.1 → 100 % in mode
-          14, 60.8 → 100 % in mode 15). Across, a drawing
+          14, 60.8 → 100 % in mode 15); so does one wrapped top and bottom that reaches over the line before its
+          paragraph by however little, text or empty (docx/local/npo-*, npe-*: rectangles 0.5 to 5 pt above their
+          paragraph over the line before, in modes 14 and 15; LibreOffice's extras-layout/fdo43573-2-min: a picture
+          0.91 pt above an empty paragraph, the empty one before it below the picture, page 12 45.9 → 99.8 %). Known
+          deviation: from Word 2013 on a line of 1.5 lines spacing the drawing reaches by 0.9 or 5 pt stays above it,
+          ours goes below it (npe-15-0p9-s, npe-15-5-s). Objects that go back and forth between pages count from the
+          layout that knows the objects of the pages before, not from the first (fdo43573-2-min: a picture below its
+          paragraph at the bottom of page 12's left column stays there). Across, a drawing
           sized relative to the inside or outside margin (wp14:sizeRelH) takes the width of the margin on the other
           side than the one it stands in (docx/local/srm-in, srm-out: margins of 127.6 and 72 pt, the inside 72 pt
           wide at the left of odd pages, 127.6 pt at the right of even ones, the outside the other way round;

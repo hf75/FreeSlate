@@ -272,8 +272,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             List<PageBox> result = [];
             // The pages each object stood on run by run (see Settled.ForcedBreaks).
             var history = new Dictionary<XElement, List<int>>(ReferenceEqualityComparer.Instance);
-            // Where each drawing of the body that text goes around stood, run by run (see Settled.Pins).
+            // Where each drawing of the body that text goes around stood, run by run (see Settled.Pins), and in the
+            // last run that placed it.
             var placements = new Dictionary<XElement, List<(int Page, double X, double Y)>>(ReferenceEqualityComparer.Instance);
+            var lastStood = new Dictionary<XElement, (int Run, int Page, double X, double Y)>(ReferenceEqualityComparer.Instance);
             for (var run = 0; run < 5; run++)
             {
                 var paginator = new Paginator(context, layout, reader) { settled = settled, EndnoteContinuation = EndnoteContinuation };
@@ -288,8 +290,27 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var foundBands = result.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
                 var bandsKept = foundBands.Count == settled.NoteBands.Count
                                 && foundBands.All(b => settled.NoteBands.TryGetValue(b.Key, out var old) && Math.Abs(old - b.Value) < 0.01);
-                if ((found.Values.All(e => e.Count == 0) || Same(settled.Floats, found)) && bandsKept)
+                // A drawing above its paragraph that this run found over lines before it stays where it stood before
+                // they went below it, the lines going below it in the next run: where the run before put it on the same
+                // page, else where it stands now, until its paragraph stands on another page; the first run knows no
+                // objects of the pages yet (see reaching).
+                var reaching = new List<(XElement Source, (int Page, double X, double Y) Stands)>();
+                foreach (var (source, now) in run > 0 ? paginator.reaching : [])
+                {
+                    if (settled.Pins.TryGetValue(source, out var pinned) && pinned.Page == now.Page)
+                        continue;
+                    reaching.Add((source, lastStood.TryGetValue(source, out var before) && before.Run == run - 1 && before.Page == now.Page
+                        ? (before.Page, before.X, before.Y) : now));
+                }
+                foreach (var placedPage in result)
+                {
+                    foreach (var drawing in placedPage.Drawings.Where(d => d.Part == context.MainPart && ExclusionOf(d) != null))
+                        lastStood[drawing.Drawing] = (run, placedPage.Number, drawing.X, drawing.Y);
+                }
+                if ((found.Values.All(e => e.Count == 0) || Same(settled.Floats, found)) && bandsKept && reaching.Count == 0)
                     break;
+                foreach (var (source, stands) in reaching)
+                    settled.Pins[source] = stands;
                 // A drawing that goes back and forth on its page, pushing the lines above its paragraph down and so its
                 // paragraph and itself, stays where it stood first, from where its paragraph stood without it: Word moves
                 // the lines below it, not the drawing (measured with docx/local/np-c14, np-c15: a rectangle 42.55 pt
@@ -319,7 +340,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // when it wraps text there: Word puts the paragraph on the second and leaves the first without the object
                 // (docx/external/openxml-sdk/Document: a cover page's text box placed from the page, anchored after a
                 // chart, on the page after the chart; Complex01, Strict01 page 4).
-                foreach (var (page, exclusions) in found)
+                // The first run places the objects knowing none of those before them, so the history begins with the
+                // second (LibreOffice's extras-layout/fdo43573-2-min: a picture below its paragraph at the bottom of page
+                // 12's left column stands higher on page 12 in the first run, on page 13 in the second and where Word
+                // has it in the third; the paragraph stays in the column).
+                foreach (var (page, exclusions) in run > 0 ? found : [])
                 {
                     foreach (var source in exclusions.Select(e => e.Source).OfType<XElement>())
                     {
@@ -1166,6 +1191,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         anchor.Element(Docx.Drawings.Wp + "positionV") is { } position && (string?)position.Attribute("relativeFrom") is "paragraph" or "line"
         && double.TryParse(position.Element(Docx.Drawings.Wp + "posOffset")?.Value, System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out var offset) && offset < 0;
+
+    /// <summary>
+    /// The drawings of this run placed above their paragraphs, wrapped top and bottom, over lines before them on the
+    /// page, where they stand: Word leaves them there and takes the lines below them (measured with docx/local/npo-*,
+    /// npe-*: a rectangle 0.5 to 5 pt above its paragraph over the line before, of text or empty, stays where the
+    /// paragraph stood, the line below it, in modes 14 and 15; LibreOffice's extras-layout/fdo43573-2-min: a picture
+    /// 0.91 pt above an empty paragraph, the empty one before it below the picture). Settled as pins (Settled.Pins).
+    /// </summary>
+    readonly Dictionary<XElement, (int Page, double X, double Y)> reaching = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>A table's own drawings held where its first layout put them, the table below them (see PlaceTable).</summary>
     readonly Dictionary<XElement, (int Page, double X, double Y)> heldInTable = new(ReferenceEqualityComparer.Instance);
@@ -3891,6 +3925,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (ExclusionOf(placed) is { } own)
                 {
                     owned[anchor] = own;
+                    if (own.TopAndBottom && Above(anchor.Anchor) && page!.Lines.Any(l => !l.Story && l.Left > left - 0.01 && l.Left < left + width - 0.01
+                            && l.Top < own.Bottom - 0.01 && l.Top + l.Line.Height > own.Top + 0.01))
+                        reaching.TryAdd(anchor.Anchor, (page.Number, placed.X, placed.Y));
                     if ((context.Profile.TallDrawingsTakeLines || new DrawingBox(placed.Drawing).Tight)
                         && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
                     {
