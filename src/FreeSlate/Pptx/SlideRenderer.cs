@@ -1455,7 +1455,27 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             chOff.Long("x") ?? x,
             chOff.Long("y") ?? y,
             groupFill ?? placement.GroupFill);
-        html.Append($"<div class=\"grp\"{Accessibility(group, isSlide, part)}>");
+        // In Word the group's own effects (its grpSpPr's a:effectLst) work on all of it: a glow grows from the union
+        // of its shapes, behind them all (Word's PDF of LibreOffice's tdf156902_GlowOnGroup: a 36 pt glow around a
+        // triangle with an oval inside it; docx/local/ggl-group: two rectangles 12 pt apart glow as each with the glow
+        // would, but for the gap's corners). PowerPoint draws none (external/poi/60810 slide 22: a group's 18 pt glow
+        // and its shadow). The filter takes the group's layer, whose origin is its parent's.
+        var filter = "";
+        if (slide.Presentation.Word && spPr?.Element(Ns.A + "effectLst") is { HasElements: true } effects)
+        {
+            var turn = ToPx(placement.Transform.Then(rotFlip));
+            var corners = new[] { (X: bx, Y: by), (X: bx + bw, Y: by), (X: bx, Y: by + bh), (X: bx + bw, Y: by + bh) }
+                .Select(p => (X: turn.A * Units.ToPx(p.X) + turn.C * Units.ToPx(p.Y) + turn.E, Y: turn.B * Units.ToPx(p.X) + turn.D * Units.ToPx(p.Y) + turn.F)).ToList();
+            var (left, top) = (corners.Min(p => p.X), corners.Min(p => p.Y));
+            var defs = new StringBuilder();
+            if (SvgEffects.Filter(effects, slide.Colors, Units.ToPx(bw), Units.ToPx(bh), defs,
+                    region: (left, top, corners.Max(p => p.X) - left, corners.Max(p => p.Y) - top)) is { } id)
+            {
+                html.Append($"<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>{defs}</defs></svg>");
+                filter = $" style=\"filter:url(#{id})\"";
+            }
+        }
+        html.Append($"<div class=\"grp\"{filter}{Accessibility(group, isSlide, part)}>");
         RenderTree(group, part, html, child, isSlide);
         html.Append("</div>");
     }
