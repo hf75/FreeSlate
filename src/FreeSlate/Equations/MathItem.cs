@@ -97,8 +97,14 @@ public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
             svg.Append($"<text aria-hidden=\"true\" x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" font-family=\"'{System.Net.WebUtility.HtmlEncode(family)}'\" font-size=\"{N4(glyph.Size * pxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
             if (glyph.Color.A < 0.999)
                 svg.Append($" fill-opacity=\"{N4(glyph.Color.A)}\"");
-            // A script form is the font's ssty alternate of the level (Chrome applies the feature as the layout did).
-            var features = plain != glyph.Glyph ? $";font-feature-settings:'ssty' {level}" : "";
+            // A script form is the font's ssty alternate of the level. Math fonts have the feature for the OpenType
+            // script math only (Cambria Math), which HarfBuzz shapes with where the language's private subtag asks for
+            // it; without it Chrome draws the plain forms (its PDFs of docx/local/mrd-inl: a subscript 2 and a script
+            // x as glyphs 2870 and 3051, Word's, with the tag, 884 and 1876 without).
+            var script = plain != glyph.Glyph;
+            if (script)
+                svg.Append(" lang=\"und-x-hbscmath\"");
+            var features = script ? $";font-feature-settings:'ssty' {level}" : "";
             svg.Append($" style=\"font-kerning:none;user-select:none{features}\">{System.Net.WebUtility.HtmlEncode(character)}</text>");
             text.Append(glyph.Text ?? character);
             return;

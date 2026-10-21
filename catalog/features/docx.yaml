@@ -4653,7 +4653,10 @@ areas:
           rule for them not found (mng-*-n-*: smaller variants than the operand's height in four of eight cases). The highlight of an equation's runs lies behind all of it over its lines, inline
           and displayed (mark_math). Glyphs that are their character's in the math font (its math alphabets, the
           script forms by the ssty feature) are printed as text, as Word's PDFs hold them, which the rasterizer fits
-          to the pixel grid, delimiters at their own size too; stretched and large variants as outlines
+          to the pixel grid, delimiters at their own size too, the script forms in the language und-x-hbscmath, whose
+          private subtag has HarfBuzz shape with the font's OpenType script math, the only one Cambria Math has ssty
+          for (Chrome's PDFs of docx/local/mrd-inl: a subscript 2 and a script x in Word's forms, glyphs 2870 and
+          3051, the plain ones without); stretched and large variants as outlines
           (powertools/RP/RP013: the "=" bars one black row; libreoffice/extras-ooxmlexport/math-d: "|" one black
           column). A line's height is the equation's ascent and descent and the spacing's extra of the text fonts, the
           paragraph mark's where the equation stands alone (docx/local/eq-shaded); an equation, displayed or inline,
