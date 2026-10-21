@@ -3741,6 +3741,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     exclusions[i] = exclusions[i] with { Top = linesBottom - 0.1 };
             }
         }
+        // Before Word 2013 a paragraph whose floating table (the one standing with it) reaches beside its first line has
+        // that line below the page frames over the column's edges it meets, wrapped around or not (measured with
+        // docx/local/fwa-g-14, fwa-l-14, fwa-n-14, fwa-p-14, fwa-r-14: a frame 109.75 pt wide over the right or the left
+        // margin, its text 8.5 pt high 13.25 pt below the paragraph's top, and a table 28.8 pt below it: the empty or
+        // "Text" 36 pt line below the frame; fwa-a-14: without the table, fwa-q-14: the table below the line, fwa-k-14,
+        // fwa-h-14: a frame inside the column, fwa-g-15: in mode 15, beside it; LibreOffice's extras-ooxmlexport/
+        // tdf164500_framePrBeforeTable2, found by agent CC).
+        if (context.CompatibilityMode < 15 && lines.Count > 0
+            && exclusions.Any(e => !e.Frame && !e.Story && ReferenceEquals(e.Anchor, paragraph) && e.Top < y + lines[0].Height - 0.01))
+        {
+            for (var i = 0; i < exclusions.Count; i++)
+            {
+                var e = exclusions[i];
+                if (e is { Frame: true, WithText: false, DropCap: false, TopAndBottom: false } && (e.Left < left - 0.01 || e.Right > left + width + 0.01)
+                    && e.Top < y + lines[0].Height - 0.01 && e.Bottom > y + 0.01)
+                    exclusions[i] = e with { TopAndBottom = true };
+            }
+        }
         // Whether the lines were broken beside floating objects, which another column or page may not have.
         var laidAround = false;
         void LayAround()
