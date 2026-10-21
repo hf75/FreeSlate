@@ -220,6 +220,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether the section before ended with balanced columns, whose height holds their last space after.</summary>
     bool balanced;
 
+    /// <summary>
+    /// The space after the paragraph that holds the section break above: the empty one that holds it alone, else the
+    /// last paragraph of text (see SpaceAbove).
+    /// </summary>
+    double sectionBreakAfter;
+
     /// <summary>Whether lines or rows of the current section stand on a page already (a continuous section's first
     /// page is the one it begins on).</summary>
     bool sectionShown = true;
@@ -3583,6 +3589,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // style still counts for contextual spacing (measured with docx/local/secb-b, secb-e in modes 12, 14 and 15:
             // a heading with 24 pt before 18 pt down below 6 pt after, at the top after one of its style with contextual
             // spacing; docx/external/libreoffice/extras-ooxmlexport/tdf170602_exportContext).
+            sectionBreakAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
             if (columnEmpty && nextContinuous || !nextContinuous)
             {
                 pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
@@ -4395,6 +4402,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         pendingAfter = SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null);
         pendingOwnAfter = OwnAfter(paragraph);
+        if (paragraph.EndsSection != null)
+            sectionBreakAfter = pendingAfter;
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).
         lines[^1].BarExtension = pendingAfter;
         if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
@@ -5045,11 +5054,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             Top.Document => new(between, excess, before, false),
             Top.Section => new(between, excess, excess, false),
-            // Below the space after the paragraph above, which a continuous section begins below (balanced columns
-            // hold it in their height), what the space before has more than that space after (measured with
-            // page-setup: the heading of the three-column section stands level with the other columns, its 8 pt before
-            // already in the 8 pt after above; docx/local/colsp-*).
-            Top.Continuous => new(between, excess, excess, false),
+            // A continuous section begins below the space after the last paragraph of text above (balanced columns
+            // hold it in their height, before Word 2013 sharing it out where its paragraph holds the break, see
+            // Balance); its first paragraph adds what its space before has more than the space after of the
+            // paragraph that holds the section break, the empty one holding it alone or that one of text, from the
+            // longest column whatever column that paragraph ends in (measured with docx/local/hbt-*: one-line
+            // paragraphs of 3, 0 and 12 pt after in two balanced columns or one column, an empty paragraph of no space
+            // after holding the break, then one of 12, 12 and 3 pt before beginning a section of one, two or three
+            // columns, 15, 12 and 15 pt apart, in modes 12 and 15, 16 pt for 8 and 8; hbt-ba, -bb: 0 and 3 pt after,
+            // the empty paragraph 12 and 6 pt after, 6 and 4 pt before, 0 and 3 pt apart; hbt-bt: the break in the
+            // paragraph of 3 pt after, 12 pt before, 12 pt apart; colsp-e: 12, 12 and 6, 12 apart; hbu-*: the last
+            // paragraph above in the shorter of two columns, 12 and 30 pt before in full below the longer, in modes 14
+            // and 15; docx/generated/page-setup: a heading of 8 pt before at the top of three columns, the break in
+            // the paragraph of 8 pt after above; openxml-sdk/complex0: Heading3 15 pt below the heading balanced above
+            // it; LibreOffice's extras-ooxmlexport/tdf90697_complexBreaksHeaders: an empty line of 3.1 pt before below
+            // columns ended by column breaks).
+            Top.Continuous => new(between, excess, context.Profile.AddsSpacing ? before : Math.Max(0, before - sectionBreakAfter), false),
             // After a break that begins the paragraph, what its space before has more than the space after the
             // paragraph before it (measured with docx/external/libreoffice/extras-ooxmlexport/
             // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
