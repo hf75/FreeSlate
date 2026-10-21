@@ -668,7 +668,12 @@ areas:
           line's start gets the cap, and its end when it lies within a dash. Measured with
           generated/lines-dash (five custom patterns at 1.5, 4 and 8 pt on lines, rectangles and ellipses
           with flat, round and square caps): 89.7 %, the rest a pixel at the ends of the dashes and the drift
-          of PowerPoint's curves along ellipses.
+          of PowerPoint's curves along ellipses. Word starts the pattern elsewhere in its documents' drawings: on a
+          rectangle that is not turned, which it writes as a PDF rectangle, at the bottom left corner along the
+          bottom, on every other figure at its first point (measured by agent BK on Word's PDFs; LibreOffice's
+          extras-ooxmlexport/fdo73247, a rectangle turned 33 degrees, from its top left corner to the right, 89.2 →
+          97.1 %; textbox_picturefill 91.4 → 96.5 %, LineStyle_DashType 98.0 → 99.5 %, shape-theme-preservation
+          96.7 → 100 %).
 
       - id: line.joinCap
         title: Joins and caps

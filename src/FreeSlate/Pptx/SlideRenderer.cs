@@ -279,9 +279,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
             var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path)) : " stroke=\"none\"";
-            // A dashed outline starts its pattern where PowerPoint does (catalog: line.dash).
+            // A dashed outline starts its pattern where PowerPoint does, in a Word document where Word does (catalog:
+            // line.dash).
             var dashed = stroke != " stroke=\"none\"" && Dashes.IsDashed(outline);
-            var strokeData = dashed ? Dashes.StartAtClosingSegment(path).Data : path.Data;
+            var strokeData = !dashed ? path.Data
+                : slide.Presentation.Word ? Dashes.WordStart(path, axisAligned).Data : Dashes.StartAtClosingSegment(path).Data;
             var strokeTarget = strokesLast ? strokes : paths;
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
@@ -322,8 +324,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
             var crisp = axisAligned ? " shape-rendering=\"crispEdges\"" : "";
-            // Starting at the bottom left corner, where PowerPoint starts a dash pattern on a rectangle (Dashes).
-            paths.Append($"<path d=\"M{Units.Css(-half)} {Units.Css(ph + half)}V{Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}Z\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin, closed: true)}{crisp}/>");
+            // Starting at the bottom left corner, where PowerPoint starts a dash pattern on a rectangle, running up, in
+            // Word along the bottom where the rectangle is not turned (Dashes).
+            var outset = slide.Presentation.Word && axisAligned
+                ? $"M{Units.Css(-half)} {Units.Css(ph + half)}H{Units.Css(pw + half)}V{Units.Css(-half)}H{Units.Css(-half)}Z"
+                : $"M{Units.Css(-half)} {Units.Css(ph + half)}V{Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}Z";
+            paths.Append($"<path d=\"{outset}\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin, closed: true)}{crisp}/>");
         }
 
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
@@ -599,7 +605,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 if (path.Fill != "none" && fill is not NoFill)
                     fillOnly.Append($"<path d=\"{path.Data}\"{paint.Fill(Shade(fill, path.Fill), pw, ph, defs, rotation, origin)} stroke=\"none\"/>");
                 if (path.Stroke && outline is { Visible: true })
-                    lineOnly.Append($"<path d=\"{(Dashes.IsDashed(outline) ? Dashes.StartAtClosingSegment(path).Data : path.Data)}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path))}/>");
+                {
+                    var data = !Dashes.IsDashed(outline) ? path.Data
+                        : slide.Presentation.Word ? Dashes.WordStart(path, axisAligned).Data : Dashes.StartAtClosingSegment(path).Data;
+                    lineOnly.Append($"<path d=\"{data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path))}/>");
+                }
             }
             lineOnly.Append(ends);
             var graph = new EffectDag(slide.Colors, pw, ph, defs,

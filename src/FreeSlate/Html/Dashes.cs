@@ -60,6 +60,63 @@ public static class Dashes
     }
 
     /// <summary>
+    /// The path as Word lays a dash pattern along it (measured by agent BK on Word's PDFs: a rectangle that is not
+    /// turned, which Word writes as a PDF rectangle, from its bottom left corner along its bottom; LibreOffice's
+    /// extras-ooxmlexport/fdo73247, a rectangle turned 33 degrees, from its first point, the top left corner, to the
+    /// right; LineStyle_DashType 98.0 -> 99.5 %, textbox_picturefill 91.4 -> 96.5 %): with <paramref name="upright"/>
+    /// a closed figure of four corners whose sides run across and down from its bottom left corner along its bottom,
+    /// every other figure from its first point, as its geometry gives it.
+    /// </summary>
+    public static EvaluatedPath WordStart(EvaluatedPath path, bool upright)
+    {
+        if (!upright)
+            return path;
+        var segments = new List<PathSegment>();
+        foreach (var (figure, closed) in Figures(path.Segments))
+        {
+            if (closed && Rectangle(figure) is var (left, top, right, bottom))
+            {
+                segments.Add(new PathSegment('M', [left, bottom]));
+                segments.Add(new PathSegment('L', [right, bottom]));
+                segments.Add(new PathSegment('L', [right, top]));
+                segments.Add(new PathSegment('L', [left, top]));
+                segments.Add(new PathSegment('Z', []));
+            }
+            else
+                segments.AddRange(figure);
+        }
+        return path with { Segments = segments };
+    }
+
+    /// <summary>The bounds of a figure of straight sides running across and down through four corners, or null.</summary>
+    static (double Left, double Top, double Right, double Bottom)? Rectangle(List<PathSegment> figure)
+    {
+        var points = new List<(double X, double Y)>();
+        foreach (var segment in figure)
+        {
+            if (segment.Command == 'Z')
+                continue;
+            if (segment.Command is not ('M' or 'L') || segment.End is not { } end)
+                return null;
+            if (points.Count == 0 || Math.Abs(points[^1].X - end.X) > 1e-6 || Math.Abs(points[^1].Y - end.Y) > 1e-6)
+                points.Add(end);
+        }
+        if (points.Count == 5 && Math.Abs(points[0].X - points[4].X) <= 1e-6 && Math.Abs(points[0].Y - points[4].Y) <= 1e-6)
+            points.RemoveAt(4);
+        if (points.Count != 4)
+            return null;
+        for (var i = 0; i < 4; i++)
+        {
+            var (a, b) = (points[i], points[(i + 1) % 4]);
+            if (Math.Abs(a.X - b.X) > 1e-6 && Math.Abs(a.Y - b.Y) > 1e-6)
+                return null;
+        }
+        var (left, right) = (points.Min(p => p.X), points.Max(p => p.X));
+        var (top, bottom) = (points.Min(p => p.Y), points.Max(p => p.Y));
+        return right - left > 1e-6 && bottom - top > 1e-6 ? (left, top, right, bottom) : null;
+    }
+
+    /// <summary>
     /// The square caps of a dashed line: PowerPoint ends its dashes flat and gives only the ends of an open figure a
     /// cap, its start always (the pattern starts with a dash) and its end where the end lies within a dash (measured
     /// with generated/lines-dash: the dashes keep their full length, the first one reaches half a width before the
