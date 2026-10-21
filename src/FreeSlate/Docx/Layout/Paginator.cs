@@ -3697,7 +3697,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // 12 pt, on a body of 200 pt, wrapped square or top and bottom: the first line over them, the second on the next
         // page; 199 pt, and 190 pt 12 pt apart from the text, wrap; tlw-14, tlw-12 wrap; bhy-*: docx/external/
         // libreoffice/extras-ooxmlexport/tdf160049_anchorMargin15, a picture of 117.75 pt and 2.25 pt of effect extents
-        // on a body of 118 pt, wrapped through on its left).
+        // on a body of 118 pt, wrapped through on its left), before only where it is wrapped through or tight
+        // (docx/local/bwr-14-*: a square of 117.75 pt with those effect extents wrapped through on its left leaves the
+        // line over it, behind the text or in front of it, wrapped square it does not, nor one of 100 pt;
+        // tdf160049_anchorMargin14).
         var tall = new List<Exclusion>();
         var owned = new Dictionary<AnchorInline, Exclusion>(ReferenceEqualityComparer.Instance);
         foreach (var anchor in firstPart)
@@ -3706,7 +3709,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (ExclusionOf(placed) is { } own)
             {
                 owned[anchor] = own;
-                if (context.CompatibilityMode >= 15 && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
+                if ((context.CompatibilityMode >= 15 || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
+                    && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
                 {
                     own = own with { TopAndBottom = true };
                     tall.Add(own);

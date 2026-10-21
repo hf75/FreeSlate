@@ -5169,7 +5169,10 @@ areas:
           it and takes the lines after it below it, whatever its wrapping (docx/local/tlw-15: rectangles of 201 pt and
           of 190 pt with a 12 pt bottom effect extent on a body of 200 pt, wrapped square or top and bottom; 199 pt and
           190 pt with 12 pt distB wrap, tlw-14, tlw-12 wrap; bhy-*: extras-ooxmlexport/tdf160049_anchorMargin15 88.1
-          → 97.6 %, a picture of 117.75 pt with 2.25 pt of effect extents on a body of 118 pt); lines are broken into the segments
+          → 97.6 %, a picture of 117.75 pt with 2.25 pt of effect extents on a body of 118 pt), before Word 2013 only
+          one wrapped through or tight (docx/local/bwr-14-*: a square of 117.75 pt with those effect extents wrapped
+          through on its left, behind the text or in front of it, leaves the line over it, wrapped square not, nor one
+          of 100 pt; tdf160049_anchorMargin14 87.1 → 99.1 %); lines are broken into the segments
           beside the objects, words that do not fit a segment continue in the next one, each segment aligned in its own
           room, justified ones but the paragraph's last (docx/local/jf-*: justified, centred and right aligned lines
           beside a frame and rectangles wrapped square or tight, every segment within 0.2 pt; LibreOffice's
