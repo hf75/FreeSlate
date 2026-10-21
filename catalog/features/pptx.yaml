@@ -1866,7 +1866,9 @@ areas:
           Multi-level categories
           (c:multiLvlStrRef) put every outer level in a row of its own, the label gap below the categories,
           each name centered over its group with lines along the group edges from the axis through the row;
-          with c:noMultiLvlLbl the names join their group's first label as further lines. Labels may hold line
+          with c:noMultiLvlLbl the names join their group's first label as further lines; beside a vertical axis on
+          the left the outer levels take columns of their own, the names turned (measured in Word, docx chart.axes).
+          Labels may hold line
           breaks and align in their slot (c:lblAlgn l, r: flush with its edge). Date axes (c:dateAx) count
           days, months or years from the first date to the last (c:baseTimeUnit, else by the closest dates),
           every point in the slot of its date, empty units keeping their place, labels every major unit

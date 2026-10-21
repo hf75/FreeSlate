@@ -23,6 +23,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     const double LabelBleed = 4.5;            // axis labels may reach this far past the plot area's outer edge
     const double ValueLabelGap = 0.922;       // × s between vertical axis labels and the plot area
     const double CategoryLabelGap = 0.624;    // × s between the axis and horizontal labels
+    // Outer category levels beside a vertical axis on the left take a column each beyond the categories' own labels,
+    // the names turned to read upwards (measured with Word's docx/local/mlv-*: Calibri at 6 to 18 pt, Arial and Times
+    // New Roman at 12 pt, within 0.2 pt): from the labels LevelPad, then per level LevelGap line heights, the line
+    // and LevelPad again; the outermost column ends LevelBleed past the plot area's outer edge.
+    const double LevelPad = 0.78, LevelGap = 0.764, LevelBleed = 6;
     const double LabelCenterShift = 0.054;    // × s: labels sit this much higher than their centered line box
     const double LegendRowPadding = 5.85;     // added to L per legend row
     const double LegendKey = 0.45;            // × L, square legend keys
@@ -1992,7 +1997,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 WrapTurnedLabels(layout, outer.H / 2);
             edges.Add(layout.Axis.Position);
             var extent = LabelExtent(layout);
-            var bleed = layout.Titled ? -TitlePaddingY : manual ? 0 : LabelBleed;
+            var bleed = layout.Titled ? -TitlePaddingY : manual ? 0 : VerticalLevels(layout) > 0 ? LevelBleed : LabelBleed;
             // A category axis's labels keep their distance by c:lblOffset (see AxisLabelOffset); a value axis with a
             // display unit label gives it a column of its own beside its labels.
             var gapScale = AxisLabelOffset(layout);
@@ -2259,12 +2264,20 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // Outer category levels add a row each, the label gap apart (measured: 7.5 pt between 12 pt rows).
         var levels = layout.Levels.Count * (lineHeight + CategoryLabelGap * layout.Style.Size);
         if (layout.Rotation == 0)
-            return horizontal ? lines * lineHeight + levels : layout.MaxLabelWidth;
+            return horizontal ? lines * lineHeight + levels : layout.MaxLabelWidth + VerticalLevels(layout);
         var a = Math.Abs(layout.Rotation) * Math.PI / 180;
         return horizontal
             ? layout.MaxLabelWidth * Math.Sin(a) + lines * lineHeight * Math.Cos(a) + levels
             : layout.MaxLabelWidth * Math.Cos(a) + lines * lineHeight * Math.Sin(a);
     }
+
+    /// <summary>The columns of the outer category levels beside a vertical axis on the left (see <see cref="LevelPad"/>), or 0.</summary>
+    static double VerticalLevels(AxisLayout layout) =>
+        layout.Levels.Count > 0 && layout.Axis.Position == "l" && layout.Rotation == 0 && !layout.Axis.Horizontal
+            ? LevelPad + layout.Levels.Count * LevelColumn(layout.Style)
+            : 0;
+
+    static double LevelColumn(TextStyle style) => (LevelGap + 1) * LineHeight(style) + LevelPad;
 
     /// <summary>Labels "next to" an axis that crosses inside the plot area are drawn there and take no room at the edge.</summary>
     static bool LabelsInside(AxisLayout layout, List<AxisLayout> axes)
@@ -2706,6 +2719,44 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         if (layout.Levels.Count > 0 && layout.Axis.Position is "b" or "t" && layout.Rotation == 0)
             svg.Append(CategoryLevels(layout, layout.Axis.Position == "b" ? bottom : top, gapScale));
+        if (VerticalLevels(layout) > 0 && !layout.Inside)
+            svg.Append(VerticalCategoryLevels(layout, left));
+        return svg.ToString();
+    }
+
+    /// <summary>
+    /// The outer levels of multi-level categories beside a vertical axis on the left: a column per level beyond the
+    /// categories' own labels (see <see cref="LevelPad"/>), each name turned to read upwards, its descent towards the
+    /// axis, centered on its group, and lines along the group edges from the axis through the level's column
+    /// (measured with Word's docx/local/mlv-*; LibreOffice's extras-layout/tdf126244: 2011 and 2012 under FIRST LEVEL).
+    /// </summary>
+    string VerticalCategoryLevels(AxisLayout layout, double axis)
+    {
+        var svg = new StringBuilder();
+        var style = layout.Style;
+        var lineHeight = LineHeight(style);
+        var outline = AxisOutline(layout.Axis);
+        var edge = axis - ValueLabelGap * style.Size - layout.MaxLabelWidth - LevelPad;
+        foreach (var level in layout.Levels)
+        {
+            var baseline = edge - LevelGap * lineHeight - Descent(style);
+            edge -= LevelColumn(style);
+            foreach (var (start, end, name) in level)
+            {
+                var middle = (layout.Boundary(start) + layout.Boundary(end)) / 2;
+                svg.Append($"<g transform=\"translate({Px(baseline)} {Px(middle)}) rotate(-90)\">");
+                svg.Append(text.Label(name, style, -Width(name, style) / 2, 0));
+                svg.Append("</g>");
+            }
+            if (outline is { Visible: true })
+            {
+                foreach (var boundary in level.Select(g => g.Start).Append(layout.Categories).Distinct())
+                {
+                    var y = layout.Boundary(boundary);
+                    svg.Append(GridLine(outline, axis, y, edge, y));
+                }
+            }
+        }
         return svg.ToString();
     }
 
