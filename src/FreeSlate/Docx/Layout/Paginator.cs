@@ -1171,21 +1171,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     Exclusion? ExclusionOf(PlacedDrawing drawing)
     {
         var element = drawing.Drawing;
-        var wrap = element.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
-        if (wrap == null || wrap.Name.LocalName == "wrapNone")
+        var box = new DrawingBox(element);
+        if (!box.Wraps)
             return null;
-        double Emu(XElement e, string name) => double.TryParse((string?)e.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
-        double Fraction(XElement e, string name) => Emu(e, name) * 12700 / 21600;
-        var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
-        var (el, et, er, eb) = effect != null ? (Emu(effect, "l"), Emu(effect, "t"), Emu(effect, "r"), Emu(effect, "b")) : (0, 0, 0, 0);
-        var (dl, dt, dr, db) = (Emu(element, "distL"), Emu(element, "distT"), Emu(element, "distR"), Emu(element, "distB"));
-        var side = (string?)wrap.Attribute("wrapText") ?? "bothSides";
+        var (el, et, er, eb) = box.Effect;
+        var (dl, dt, dr, db) = box.Distance;
+        var side = box.Side;
         var otherSide = side == "left" && context.Profile.WrapsLeftOnOtherSide;
         // Tight and through wrapping follow the wrap polygon, in 21600ths of the drawing's extent (measured with
         // docx/generated/wrap-types: text beside an oval and a triangle starts the right distance from the polygon).
-        if (wrap.Name.LocalName is "wrapTight" or "wrapThrough"
-            && wrap.Element(Docx.Drawings.Wp + "wrapPolygon") is { } polygon
-            && polygon.Elements().Where(p => p.Name.LocalName is "start" or "lineTo").Select(p => (X: Fraction(p, "x"), Y: Fraction(p, "y"))).ToList() is { Count: >= 3 } points)
+        if (box.Polygon is { } points)
         {
             var onPage = points.Select(p => (drawing.X + p.X * drawing.Width, drawing.Y + p.Y * drawing.Height)).ToArray();
             // The polygon turns with its shape, about the extent's centre (found by agent BF in Word's PDF of
@@ -1211,7 +1206,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
         }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            wrap.Name.LocalName == "wrapTopAndBottom", side) { Source = element, OtherSide = otherSide, DistanceLeft = el + dl, DistanceRight = er + dr };
+            box.TopAndBottom, side) { Source = element, OtherSide = otherSide, DistanceLeft = el + dl, DistanceRight = er + dr };
     }
 
     /// <summary>Whether blocks of the text's flow stand before the one at <paramref name="index"/>: all but frames, also
@@ -1238,16 +1233,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The height of a placed drawing with its effect extents above and below it.</summary>
     static double ExtentHeight(PlacedDrawing drawing)
     {
-        var (top, bottom) = EffectDown(drawing.Drawing);
+        var (_, top, _, bottom) = new DrawingBox(drawing.Drawing).Effect;
         return drawing.Height + top + bottom;
-    }
-
-    /// <summary>A drawing's effect extents above and below it (wp:effectExtent t and b) in points.</summary>
-    static (double Top, double Bottom) EffectDown(XElement drawing)
-    {
-        var effect = drawing.Element(Docx.Drawings.Wp + "effectExtent");
-        double Emu(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
-        return (Emu("t"), Emu("b"));
     }
 
     /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
@@ -2181,7 +2168,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether a drawing is placed from the bottom margin and text goes around it.</summary>
     static bool MarginPushes(AnchorInline anchor) =>
         (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") == "bottomMargin"
-        && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { Name.LocalName: not "wrapNone" };
+        && new DrawingBox(anchor.Anchor).Wraps;
 
     /// <summary>A header or footer laid out: its lines, table fills and strokes, and where its content begins and ends.</summary>
     /// <summary>
@@ -2973,7 +2960,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     static PlacedDrawing Clear(PlacedDrawing drawing, IReadOnlyList<PlacedDrawing> before, double pageWidth, (double BodyBottom, double PageHeight)? legacy = null)
     {
         static bool Forbids(PlacedDrawing d) => (string?)d.Drawing.Attribute("allowOverlap") is "0" or "false";
-        static bool Background(PlacedDrawing d) => d.Behind && d.Drawing.Element(Docx.Drawings.Wp + "wrapNone") != null;
+        static bool Background(PlacedDrawing d) => d.Behind && new DrawingBox(d.Drawing).Wrap?.Name.LocalName == "wrapNone";
         if (Background(drawing))
             return drawing;
         var withText = legacy is { } &&
@@ -3019,7 +3006,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // 10 pt above and 15 pt below cut it there, those across not; ccl-14 not cut, ccl-none and ccl-behind unwrapped
         // not; docx/external/powertools/WC/WC048-Text-Box-in-Cell).
         if (context.Profile.CellsCutWrappedDrawings && cell?.Inside is { } inside && cell.Content is { } content
-            && anchor.Anchor.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
+            && new DrawingBox(anchor.Anchor).Wraps)
             placed = placed with { Clip = (inside.Left, content.Top, Math.Max(0, inside.Right - inside.Left), content.Height) };
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return Held(placed);
@@ -3056,15 +3043,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // tdf160049_anchorMargin15).
         PlacedDrawing Held(PlacedDrawing drawing)
         {
+            var box = new DrawingBox(anchor.Anchor);
             if (!context.Profile.KeepsDrawingsInMargins || cell != null || anchor.Part != context.MainPart
                 || (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is not ("paragraph" or "line")
-                || anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is not { } wrapping
-                || wrapping.Name.LocalName == "wrapNone")
+                || !box.Wraps)
                 return drawing;
-            var (above, below) = EffectDown(anchor.Anchor);
+            var (_, above, _, below) = DrawingBox.Outward(box.Effect);
             var s = page.Section;
-            var lowest = s.PageHeight - s.Bottom - Math.Max(0, below) - drawing.Height;
-            return drawing with { Y = Math.Max(Math.Min(drawing.Y, lowest), s.Top + Math.Max(0, above)), HeldUp = drawing.Y > lowest + 0.01 };
+            var lowest = s.PageHeight - s.Bottom - below - drawing.Height;
+            return drawing with { Y = Math.Max(Math.Min(drawing.Y, lowest), s.Top + above), HeldUp = drawing.Y > lowest + 0.01 };
         }
     }
 
@@ -3073,12 +3060,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var element = anchor.Anchor;
         var alignedAcross = false;
-        var (w, h) = Docx.Drawings.Extent(element);
+        var box = new DrawingBox(element);
+        var (w, h) = box.Extent;
+        // The effect extents count outward only, for sizes relative to the page or the margins and for alignment.
+        var effect = DrawingBox.Outward(box.Effect);
         var s = page.Section;
-        // EMU, or a universal measure (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: a simple
-        // position of 10cm 5cm).
-        double Emu(string? value) => double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700
-            : value != null && Wml.Universal(value.Trim()) is { } measure ? measure : 0;
         // Sizes relative to the page or its margins (wp14:sizeRelH, wp14:sizeRelV; 0 % keeps the extent): shapes take
         // them as they are, pictures only both together, scaled evenly to fit them (measured with
         // docx/local/size-rel-shape and docx/local/size-rel), each less the effect extents across it (measured with
@@ -3119,9 +3105,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 (_, true) => page.TextWidth,
                 (_, false) => s.PageHeight - s.Top - s.Bottom,
             };
-            var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
-            double Side(string side) => Math.Max(0, Emu((string?)effect?.Attribute(side)));
-            return Math.Max(0, frame * share / 100000 - (horizontal ? Side("l") + Side("r") : Side("t") + Side("b")));
+            return Math.Max(0, frame * share / 100000 - (horizontal ? effect.Left + effect.Right : effect.Top + effect.Bottom));
         }
         var (relativeWidth, relativeHeight) = (Relative("sizeRelH", "pctWidth", true), Relative("sizeRelV", "pctHeight", false));
         if (element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Pic + "pic") != null)
@@ -3137,8 +3121,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         double x, y;
         if ((string?)element.Attribute("simplePos") is "1" or "true" && element.Element(Docx.Drawings.Wp + "simplePos") is { } simple)
         {
-            x = Emu((string?)simple.Attribute("x"));
-            y = Emu((string?)simple.Attribute("y"));
+            x = DrawingBox.Points((string?)simple.Attribute("x"));
+            y = DrawingBox.Points((string?)simple.Attribute("y"));
         }
         else
         {
@@ -3178,8 +3162,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // relative to the page or the margins too (relsz-3, -4, -5, -7: centered and right aligned with their
             // effect extents, the whole as wide as the share; docx/external/libreoffice/extras-ooxmlimport/
             // groupshape-relsize, powertools/DB-GlossaryDocuments/FooterContent-built).
-            var effects = element.Element(Docx.Drawings.Wp + "effectExtent");
-            double Effect(string side) => Math.Max(0, Emu((string?)effects?.Attribute(side)));
             // A turned VML shape by its swapped box or its turned outline (see Vml.TurnedBox), with its effect extents.
             var turned = Docx.Vml.TurnedSides(element);
             // Another VML shape with its line (Vml.LineReachBox), in whole pixels from its box's corner: its left and
@@ -3192,7 +3174,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var line = Docx.Vml.LineReach(element);
             var (lineL, lineR) = line is { } across && positionH?.Element(Docx.Drawings.Wp + "align") != null
                 ? (Pixels(across.L, up: true), Pixels(w + across.R, up: true) - w) : (0, 0);
-            x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + Effect("l") + lineL, (turned?.R ?? 0) + Effect("r") + lineR);
+            x = Position(positionH, x0, xw, w, odd, horizontal: true, (turned?.L ?? 0) + effect.Left + lineL, (turned?.R ?? 0) + effect.Right + lineR);
             // Before Word 2013 a drawing aligned left or right on the page stands in the margin beside the text, its
             // right edge at the left margin or its left edge at the right margin, as far as the page lets it, whatever
             // its effect extent (measured with docx/local/pgr-14, pgr2-12-*, pgr2-14-*: rectangles of 30, 61.5 and 100 pt,
@@ -3218,7 +3200,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
             var (lineT, lineB) = line is { } down && positionV?.Element(Docx.Drawings.Wp + "align") != null
                 ? (Pixels(down.T, up: true), Pixels(h + down.B, up: true) - h) : (0, 0);
-            y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + Effect("t") + lineT, (turned?.B ?? 0) + Effect("b") + lineB);
+            y = Position(positionV, y0, yh, h, odd, horizontal: false, (turned?.T ?? 0) + effect.Top + lineT, (turned?.B ?? 0) + effect.Bottom + lineB);
             // Before Word 2013 such a shape aligned one way and placed by an offset the other stands that way as far
             // past its offset as the offset is past the first pixel its line touches, counted from where the offset
             // counts from (measured with docx/local/vld-12, vld-14, vld-none: a triangle with a 3 pt line top aligned
@@ -3240,13 +3222,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // the page and 2.5 % down at the cell's top left; docx/external/powertools/WC/WC048-Text-Box-in-Cell); one
             // without wrapping keeps its place (docx/external/libreoffice/extras-ooxmlimport/tdf97038: a picture behind
             // the text right and at the top of the cell's room).
-            var wrapsInCell = cell != null && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom");
+            var wrapsInCell = cell != null && box.Wraps;
             if (wrapsInCell && cell?.Cell != null && fromH is "page" or "leftMargin" or "rightMargin" or "insideMargin" or "outsideMargin"
                 && positionH?.Element(Docx.Drawings.Wp + "posOffset") == null)
-                x = x0 + Effect("l");
+                x = x0 + effect.Left;
             if (wrapsInCell && cell?.Content != null && (string?)positionV?.Attribute("relativeFrom") is not ("paragraph" or "line")
                 && positionV?.Element(Docx.Drawings.Wp + "posOffset") == null)
-                y = y0 + Effect("t");
+                y = y0 + effect.Top;
             // There it also stays within the cell: across between the inner edges of its side lines, ending at the right
             // one or else beginning at the left one, and down not above its content's top (measured with
             // docx/local/ccl-col, ccl-left, ccl-up in modes 15 and 14: 150 pt boxes 120 pt right of and 50 pt left of the
@@ -3255,15 +3237,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (wrapsInCell && cell?.Inside is { } inside)
                 x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
             if (wrapsInCell && cell?.Content is { } within)
-                y = Math.Max(y, within.Top + Effect("t"));
+                y = Math.Max(y, within.Top + effect.Top);
             // A drawing that the text wraps around and that stands down from its paragraph or line stays on the page
             // across: past the right edge it ends there, past the left edge it begins there, wider than the page at its
             // left edge (measured with docx/local/clp-*: a 200 pt rectangle 450 pt right of the column or 500 pt right of
             // the page, wrapped square or top and bottom, ends at the page's edge, in modes 14 and 15; one 150 pt left of
             // the column begins at the page's edge, one of 700 pt there too; without wrapping or placed down from the
             // margin or the page it stays past the edge; docx/external/libreoffice/extras-ooxmlexport/tdf170908_delText).
-            if (cell == null && (string?)positionV?.Attribute("relativeFrom") is null or "paragraph" or "line"
-                && element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
+            if (cell == null && (string?)positionV?.Attribute("relativeFrom") is null or "paragraph" or "line" && box.Wraps)
             {
                 x = Math.Max(0, Math.Min(x, s.PageWidth - w));
                 // Before Word 2013 it stays on the page down too: above the page's top it begins there, past its bottom
@@ -3281,9 +3262,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             && Docx.Drawings.Extent(element) is var (anchorWidth, anchorHeight) && anchorWidth > 0 && anchorHeight > 0)
         {
             if (relativeWidth != null)
-                w *= Emu((string?)own.Attribute("cx")) / anchorWidth;
+                w *= DrawingBox.Points((string?)own.Attribute("cx")) / anchorWidth;
             if (relativeHeight != null)
-                h *= Emu((string?)own.Attribute("cy")) / anchorHeight;
+                h *= DrawingBox.Points((string?)own.Attribute("cy")) / anchorHeight;
         }
         return new PlacedDrawing(element, anchor.Part, x, y, w, h)
         {
@@ -3300,13 +3281,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // round puts a shape 40 % of the margin wide at offset 0 1 pt right, 20 % high too 1 pt down; a shape of its
             // own size stands at the offset).
             if (position?.Element(Docx.Drawings.Wp + "posOffset")?.Value is { } offset)
-                return origin + Emu(offset) + ((horizontal ? relativeWidth : relativeHeight) != null || !horizontal && alignedAcross ? before : 0);
+                return origin + DrawingBox.Points(offset) + ((horizontal ? relativeWidth : relativeHeight) != null || !horizontal && alignedAcross ? before : 0);
             // A percentage places the extent with its effect extent before it, sized relative or not (measured with
             // docx/local/pcp-*: 20 % of the page across and 10 % down with 10 pt of effect extent left and top, from the
             // page and the margin, 10 pt right and down; docx/external/libreoffice/extras-ooxmlexport/
             // content-control-shape).
             if (position?.Element(Docx.Drawings.Wp14 + (horizontal ? "pctPosHOffset" : "pctPosVOffset"))?.Value is { } percent)
-                return origin + size * Emu(percent) * 12700 / 100000 + before;
+                return origin + size * DrawingBox.Points(percent) * 12700 / 100000 + before;
             var whole = before + extent + after;
             // Inside is the left or the top of the area on odd pages, the right or the bottom on even ones, whichever
             // margin the area is (measured with docx/local/vio-*: relative to the top and the bottom margin, the
@@ -3764,7 +3745,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // of 1.5 lines not; docx/external/libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
         else if (!columnEmpty && context.Profile.HeldDrawingsTakeParagraph && firstPart.Any(anchor =>
                      PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is { HeldUp: true } placed && ExclusionOf(placed) != null
-                     && placed.Y - Math.Max(0, EffectDown(placed.Drawing).Top) < y + LineBottom(anchor) - 0.01))
+                     && placed.Y - Math.Max(0, new DrawingBox(placed.Drawing).Effect.Top) < y + LineBottom(anchor) - 0.01))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -3811,7 +3792,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (ExclusionOf(placed) is { } own)
                 {
                     owned[anchor] = own;
-                    if ((context.Profile.TallDrawingsTakeLines || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
+                    if ((context.Profile.TallDrawingsTakeLines || new DrawingBox(placed.Drawing).Tight)
                         && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
                     {
                         own = own with { TopAndBottom = true };
@@ -4356,8 +4337,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // stays where the line was planned, as in mode 15; docx/external/libreoffice/extras-uiwriter/tdf98987). Only
             // the paragraph's own wrapped drawings so move it, and the indent is no push (extras-layout/tdf123651: an
             // unwrapped arrow of an indented paragraph whose lines other floats push stays where it was planned).
-            static bool Wrapped(AnchorInline a) => a.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { } w
-                && w.Name.LocalName != "wrapNone";
+            static bool Wrapped(AnchorInline a) => new DrawingBox(a.Anchor).Wraps;
             if (context.Profile.PushedLinesMoveDrawings && inLine && linePushes.TryGetValue(anchor, out var push) && !Wrapped(anchor)
                 && paragraph.Content.OfType<AnchorInline>().Any(Wrapped))
             {

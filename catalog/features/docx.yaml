@@ -3093,7 +3093,10 @@ areas:
         priority: P0
         difficulty: 5
         status: done
-        strategy: Square, tight and through wrapping along the wrap polygon, top and bottom, with wrap distances (engine.floats).
+        strategy: >-
+          Square, tight and through wrapping along the wrap polygon, top and bottom, with wrap distances
+          (engine.floats); a drawing's extent, effect extents, distances, wrapping and wrap polygon are read in one
+          place for the page's floats, the drawings in cells, the margins that hold drawings and the alignment.
         office: >-
           Square wrapping keeps the box with the effect extents and the wrap distances free, top and bottom the whole
           width; tight and through wrapping keep free what of the wrap polygon (21600ths of the extent, turned with the

@@ -360,8 +360,11 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool HonorsLayoutInCell { get; } = mode < 15;
 
     /// <summary>
-    /// Whether floating drawings take their places as Word 2010 does: aligned drawings across the column with their
-    /// effect extents, page-placed ones in cells and off the page as before Word 2013 (see Paginator.Anchored).
+    /// Whether floating drawings take their places as before Word 2013: alignments in the column count from the
+    /// paragraph's indents, an aligned drawing placed down by an offset standing its effect extent lower; one aligned
+    /// left or right on the page stands in the margin beside the text; a VML shape aligned one way and placed by an
+    /// offset the other moves on by its line's reach; one that text goes around, placed from its paragraph or line,
+    /// stays on the page down too (see Paginator.Anchored).
     /// </summary>
     public bool AnchorsAsWord2010 { get; } = mode < 15;
 

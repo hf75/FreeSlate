@@ -2044,12 +2044,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // core-exportdata-ooxml-pass/textframe-in-shape).
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                     {
-                        if (anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is not { } wrap
-                            || wrap.Name.LocalName == "wrapNone" || (string?)anchor.Anchor.Attribute("layoutInCell") is "0" or "false")
+                        var box = new DrawingBox(anchor.Anchor);
+                        if (!box.Wraps || (string?)anchor.Anchor.Attribute("layoutInCell") is "0" or "false")
                             continue;
-                        var effect = anchor.Anchor.Element(Docx.Drawings.Wp + "effectExtent");
-                        double Emu(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
-                        var wide = Docx.Drawings.Extent(anchor.Anchor).Width + Emu("l") + Emu("r");
+                        var wide = box.Extent.Width + box.Effect.Left + box.Effect.Right;
                         min = Math.Max(min, wide);
                         max = Math.Max(max, wide);
                     }
@@ -2145,9 +2143,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (CellTop(element, paragraphTop, lineTop) is not { } top)
             return null;
         var (_, height) = CellDrawingSize(anchor, fields);
-        var wrap = element.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
-        var wraps = wrap != null && wrap.Name.LocalName != "wrapNone";
-        return (top + height + Emu(element.Element(Docx.Drawings.Wp + "effectExtent"), "b") + (wraps ? Emu(element, "distB") : 0), wraps);
+        var box = new DrawingBox(element);
+        var wraps = box.Wraps;
+        return (top + height + DrawingBox.Outward(box.Effect).Bottom + (wraps ? DrawingBox.Outward(box.Distance).Bottom : 0), wraps);
     }
 
     /// <summary>
@@ -2160,8 +2158,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     {
         var vertical = element.Element(Docx.Drawings.Wp + "positionV");
         var from = (string?)vertical?.Attribute("relativeFrom");
-        var wraps = element.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom");
-        var least = Emu(element.Element(Docx.Drawings.Wp + "effectExtent"), "t");
+        var box = new DrawingBox(element);
+        var wraps = box.Wraps;
+        var least = DrawingBox.Outward(box.Effect).Top;
         if (vertical?.Element(Docx.Drawings.Wp + "posOffset") is { } offset)
         {
             if (Number(offset.Value) is not { } dy)
@@ -2176,8 +2175,6 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     static double? Number(string? value) =>
         double.TryParse(value?.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : null;
-
-    static double Emu(System.Xml.Linq.XElement? e, string name) => Math.Max(0, Number((string?)e?.Attribute(name)) ?? 0);
 
     /// <summary>
     /// The section's text area and paper, of which drawings sized relative to the page or its margins take their share
@@ -2194,9 +2191,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     (double Width, double Height) CellDrawingSize(AnchorInline anchor, PageFields? fields)
     {
         var element = anchor.Anchor;
-        var (w, h) = Docx.Drawings.Extent(element);
+        var box = new DrawingBox(element);
+        var (w, h) = box.Extent;
         var data = element.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
-        var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
+        var effect = DrawingBox.Outward(box.Effect);
         double? Relative(string name, string percent, bool horizontal)
         {
             if (element.Element(Docx.Drawings.Wp14 + name) is not { } relative
@@ -2210,7 +2208,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 (_, true) => PageArea.TextWidth,
                 (_, false) => PageArea.TextHeight,
             };
-            return Math.Max(0, frame * share / 100000 - (horizontal ? Emu(effect, "l") + Emu(effect, "r") : Emu(effect, "t") + Emu(effect, "b")));
+            return Math.Max(0, frame * share / 100000 - (horizontal ? effect.Left + effect.Right : effect.Top + effect.Bottom));
         }
         if (data?.Element(Docx.Drawings.Pic + "pic") == null && data?.Elements().FirstOrDefault()?.Name.LocalName is not ("wgp" or "wpc"))
             (w, h) = (Relative("sizeRelH", "pctWidth", true) ?? w, Relative("sizeRelV", "pctHeight", false) ?? h);
@@ -2250,17 +2248,17 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     Paginator.Exclusion? CellExclusion(AnchorInline anchor, double paragraphTop, double width, double edge, PageFields? fields)
     {
         var element = anchor.Anchor;
-        var wrap = element.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
-        if (wrap == null || wrap.Name.LocalName == "wrapNone")
+        var box = new DrawingBox(element);
+        if (!box.Wraps)
             return null;
-        var effect = element.Element(Docx.Drawings.Wp + "effectExtent");
+        var (effect, distance) = (DrawingBox.Outward(box.Effect), DrawingBox.Outward(box.Distance));
         var vertical = element.Element(Docx.Drawings.Wp + "positionV");
         var horizontal = element.Element(Docx.Drawings.Wp + "positionH");
         if ((string?)vertical?.Attribute("relativeFrom") is "line" or "character" || CellTop(element, paragraphTop, paragraphTop) is not { } top)
             return null;
         var (w, h) = CellDrawingSize(anchor, fields);
         var from = (string?)horizontal?.Attribute("relativeFrom");
-        var (before, after) = (Emu(effect, "l"), Emu(effect, "r"));
+        var (before, after) = (effect.Left, effect.Right);
         double x;
         if (Number(horizontal?.Element(Docx.Drawings.Wp + "posOffset")?.Value) is { } dx && from != "character")
             x = (from == "page" ? -edge : 0) + dx;
@@ -2272,9 +2270,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return null;
         if (cellInside is { } inside)
             x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
-        return new Paginator.Exclusion(x - before - Emu(element, "distL"), top - Emu(effect, "t") - Emu(element, "distT"),
-            x + w + after + Emu(element, "distR"), top + h + Emu(effect, "b") + Emu(element, "distB"),
-            wrap.Name.LocalName == "wrapTopAndBottom", (string?)wrap.Attribute("wrapText") ?? "bothSides");
+        return new Paginator.Exclusion(x - before - distance.Left, top - effect.Top - distance.Top,
+            x + w + after + distance.Right, top + h + effect.Bottom + distance.Bottom, box.TopAndBottom, box.Side);
     }
 
     /// <summary>A cell's blocks laid out in its text width: lines with tops from the content's top, and the height.</summary>

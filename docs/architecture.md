@@ -113,11 +113,13 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   paragraphs with their runs and resolved formatting (`StyleSheet`, `Formats`, `Numbering`), tables, drawings,
   fields, content controls; imported content goes through `HtmlImport` and `RtfImport`. Without markup it reads the
   document with all tracked changes accepted; with markup it keeps them, marked (`Review`).
-- `Layout/RunStyles` turns run formatting into styles with Word's font metrics; `Layout/ParagraphLayout` sets
+- `Layout/LayoutProfile` names what the compatibility mode and the layout options change, read once per document;
+  `Layout/RunStyles` turns run formatting into styles with Word's font metrics; `Layout/ParagraphLayout` sets
   paragraphs into lines by Word's rules (line heights, spacing, tabs, justification, kinsoku, bidi, vertical text);
   `Layout/TableLayout` sizes and lays out tables; `Layout/Paginator` breaks the body into pages: sections, columns,
-  headers and footers, notes, floating objects and text wrapping, page borders (`PageBorders`, `ArtBorders`);
-  `Layout/FieldEvaluator` computes the fields Word recomputes when it prints.
+  headers and footers, notes, floating objects and text wrapping (`DrawingBox`: a drawing's extent, effect extents,
+  distances and wrapping), page borders (`PageBorders`, `ArtBorders`); `Layout/FieldEvaluator` computes the fields
+  Word recomputes when it prints.
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
   (`PageRenderer.Markup`, `Describe`).
