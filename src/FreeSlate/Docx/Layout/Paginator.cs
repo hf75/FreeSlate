@@ -3740,22 +3740,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // tdf160049_anchorMargin14).
         var tall = new List<Exclusion>();
         var owned = new Dictionary<AnchorInline, Exclusion>(ReferenceEqualityComparer.Instance);
-        foreach (var anchor in firstPart)
+        void Own()
         {
-            var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
-            if (ExclusionOf(placed) is { } own)
+            foreach (var anchor in firstPart)
             {
-                owned[anchor] = own;
-                if ((context.CompatibilityMode >= 15 || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
-                    && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
+                var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
+                if (ExclusionOf(placed) is { } own)
                 {
-                    own = own with { TopAndBottom = true };
-                    tall.Add(own);
+                    owned[anchor] = own;
+                    if ((context.CompatibilityMode >= 15 || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
+                        && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
+                    {
+                        own = own with { TopAndBottom = true };
+                        tall.Add(own);
+                    }
+                    exclusions.RemoveAll(e => e.Source != null && ReferenceEquals(e.Source, own.Source));
+                    exclusions.Add(own);
                 }
-                exclusions.RemoveAll(e => e.Source != null && ReferenceEquals(e.Source, own.Source));
-                exclusions.Add(own);
             }
         }
+        Own();
         // Before Word 2013 a paragraph's space after counts against the floating table it stands with (the one before
         // it): where it reaches the table, the paragraph goes below it (measured with docx/local/fla-16-*-14: an empty
         // paragraph and "Anchor", 13.8 pt high with 8 pt after, above a table 16 pt below their top go below it; without
@@ -3822,8 +3826,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var opening = frame != null && !bare && !continues && frame.Top is { Visible: true } line ? line.Space + line.Total : 0;
                 // At a column's top, where the paragraph's space before was dropped, a first line pushed below its own
                 // objects has it below them, no longer beginning the column (measured with docx/local/psk-15, psk-14: 12
-                // pt below a rectangle wrapped top and bottom at the page's top after a page break before; efd-15:
-                // wrapped top and bottom after a page break before); below other objects not
+                // pt below a rectangle wrapped top and bottom at the page's top after a page break before, and after the
+                // page before filled; efd-15: wrapped top and bottom after a page break before); below other objects not
                 // (docx/external/libreoffice/core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none: a
                 // page's first line below another paragraph's shape at the top margin; writerfilter-dmapper/
                 // framepr-pagebreak-style, extras-layout/tdf170846_1, _2: below frames).
@@ -4104,7 +4108,28 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 NextColumn(natural: true);
                 (left, width) = Column(column);
                 OpenPart();
-                var relaid = Relayout(k);
+                bool relaid;
+                // A paragraph whose first line its own objects push past the column's end goes on in the next with
+                // them: they stand from its top there, the line below them with its space before (measured with
+                // docx/local/psk-15, psk-14: a rectangle wrapped top and bottom 40 pt high at the next page's top, the
+                // line 12 pt below it).
+                if (k == 0 && owned.Count > 0)
+                {
+                    paragraphTop = (page!, y);
+                    firstLineTop = (page!, y);
+                    exclusions = PageExclusions();
+                    tall.Clear();
+                    owned.Clear();
+                    Own();
+                    lines = layout.Layout(paragraph, width);
+                    laidAround = false;
+                    LayAround();
+                    if (pushedBox)
+                        partTop = boxTop;
+                    (laidAt, laidWidth, relaid) = ((page!, column), width, laidAround);
+                }
+                else
+                    relaid = Relayout(k);
                 line = lines[k];
                 here = 0;
                 hereAtTop = true;

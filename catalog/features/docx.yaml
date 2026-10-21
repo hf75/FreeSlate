@@ -2394,7 +2394,9 @@ areas:
           and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points of the lines), at a column's top,
           where the space before was dropped, all of it below the paragraph's own objects (docx/local/psk-15, psk-14:
           12 pt below a rectangle wrapped top and bottom after a page break before; efd-15 96.1 → 100 % on those
-          pages), below others not (core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none). A table taller
+          pages), below others not (core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none); a paragraph
+          whose first line its own objects push past the column's end goes on in the next with them, placed from its top
+          there, the line below them with that space (psk-15, psk-14 after a full page: 45.7 and 25.1 → 100 %). A table taller
           than the rest of the page goes on at the top of the next page's body at the same place across, its rows
           split at a line of each cell as in the text (in Word 2013 and before alike), header rows repeated, the line
           below the last row of a page closing each part, a row of at least its height taller than a page's body ending at the bottom margin at
