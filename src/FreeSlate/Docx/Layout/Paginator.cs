@@ -3496,6 +3496,20 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(left, y)));
     }
 
+    /// <summary>
+    /// A part of a paragraph in one column or page as its drawings stand from it: the page, the part's top (for the
+    /// paragraph's first part its own top where its first line stands as planned, else that line's) and the column.
+    /// </summary>
+    readonly record struct ParagraphPart(PageBox Page, double Top, double Left, double Width);
+
+    /// <summary>
+    /// What a floating drawing anchored in a paragraph stands from (see PlaceAnchor): the part of the paragraph its
+    /// anchor's line is in, that line's top before floating objects pushed it down, the anchor's place across, how far
+    /// those objects pushed the line down and where its room begins after them, and whether the line holds nothing
+    /// (for drawings text does not go around, see LayoutProfile.PushedLinesMoveDrawings).
+    /// </summary>
+    readonly record struct AnchorFrame(ParagraphPart Part, double LineTop, double Character, double Push, double? RoomStart, bool EmptyLine);
+
     void Place(List<Block> blocks, int index)
     {
         var paragraph = (ParagraphBlock)blocks[index];
@@ -3983,16 +3997,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Lines of this paragraph in the current column, and whether it began the column there.
         var here = 0;
         var hereAtTop = columnEmpty;
-        (PageBox Page, double Top, double Left, double Width)? anchorAt = null;
-        var lineTops = new Dictionary<AnchorInline, (PageBox Page, double Top, double X)>(ReferenceEqualityComparer.Instance);
-        // How far floating objects pushed each anchor's line down and where its room begins after them, and how far
-        // they pushed the paragraph's first line down (for drawings text does not go around, see PlaceAnchor below).
-        var linePushes = new Dictionary<AnchorInline, (double Skip, double? Start, bool Empty)>(ReferenceEqualityComparer.Instance);
-        (PageBox Page, double Skip)? firstPush = null;
-        // The part of the paragraph in each column or page (its first line's top there, the column), and the part each
-        // anchor's line stands in.
-        (PageBox Page, double Top, double Left, double Width)? partAt = null;
-        var lineParts = new Dictionary<AnchorInline, (PageBox Page, double Top, double Left, double Width)>(ReferenceEqualityComparer.Instance);
+        // What the paragraph's drawings stand from: its first part with how far floating objects pushed its first line
+        // down, its part in the column or page being filled, and each anchor's frame (see AnchorFrame).
+        (ParagraphPart Part, double Push)? paragraphStart = null;
+        ParagraphPart? currentPart = null;
+        var anchorFrames = new Dictionary<AnchorInline, AnchorFrame>(ReferenceEqualityComparer.Instance);
         var boxPage = page!;
         // The lines on this page that floating objects cut, for the paragraph's shading (Frame.Draw).
         var cuts = new List<(double Top, double Bottom, List<(double Start, double End)> Segments)>();
@@ -4188,19 +4197,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // Where the first line stands as planned the paragraph begins above it; moved to another column or page,
             // it begins with the line.
             var planned = page == paragraphTop.Page && page == firstLineTop.Page && Math.Abs(y - skip - firstLineTop.Top) < 0.01;
-            anchorAt ??= (page!, planned ? paragraphTop.Top : y, left, width);
-            firstPush ??= (page!, planned ? skip : 0);
-            if (partAt is not { } part || !ReferenceEquals(part.Page, page) || Math.Abs(part.Left - left) > 0.01)
-                partAt = ReferenceEquals(anchorAt.Value.Page, page) && Math.Abs(anchorAt.Value.Left - left) < 0.01 ? anchorAt : (page!, y, left, width);
+            paragraphStart ??= (new ParagraphPart(page!, planned ? paragraphTop.Top : y, left, width), planned ? skip : 0);
+            if (currentPart is not { } part || !ReferenceEquals(part.Page, page) || Math.Abs(part.Left - left) > 0.01)
+                currentPart = ReferenceEquals(paragraphStart.Value.Part.Page, page) && Math.Abs(paragraphStart.Value.Part.Left - left) < 0.01
+                    ? paragraphStart.Value.Part : new ParagraphPart(page!, y, left, width);
             // A drawing placed from its line stands where the line stood before floating objects pushed it down, as the
             // room around it was measured (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top,
             // textbox-textline: text boxes wider than the column at their line's top, the text below them).
             foreach (var anchor in line.Anchors ?? [])
-            {
-                lineTops[anchor] = (page!, y - skip, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0));
-                lineParts[anchor] = partAt!.Value;
-                linePushes[anchor] = (skip, line.Start, line.Pieces.Count == 0);
-            }
+                anchorFrames[anchor] = new AnchorFrame(currentPart!.Value, y - skip, left + (line.AnchorX?.GetValueOrDefault(anchor) ?? 0), skip, line.Start,
+                    line.Pieces.Count == 0);
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
                 line = line.Trimmed(trim);
             flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
@@ -4217,7 +4223,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y)
             {
                 Numbered = format.SuppressLineNumbers != true,
-                HangTop = k == 0 && anchorAt?.Page == page ? Math.Min(y, anchorAt.Value.Top) : null,
+                HangTop = k == 0 && paragraphStart?.Part.Page == page ? Math.Min(y, paragraphStart.Value.Part.Top) : null,
                 SectionMark = paragraph.EndsSection != null && !paragraph.Shows,
             });
             if (k == 0)
@@ -4316,7 +4322,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         foreach (var bookmark in paragraph.Content.OfType<BookmarkInline>())
         {
-            var (bookmarkPage, bookmarkTop, bookmarkLeft, _) = anchorAt ?? (page!, y, left, width);
+            var (bookmarkPage, bookmarkTop, bookmarkLeft, _) = paragraphStart?.Part ?? new ParagraphPart(page!, y, left, width);
             bookmarkPage.Bookmarks.Add((bookmark.Name, bookmarkLeft, bookmarkTop));
         }
         // Floating drawings anchored in the paragraph, placed relative to its page, column, paragraph or line.
@@ -4326,9 +4332,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // (measured with docx/external/libreoffice/extras-layout/shape-anchored-in-follow: a rectangle anchored at
             // the end of a paragraph going on in the second column of the next page stands 92 pt right of that column
             // and 81 pt below the paragraph's top there).
-            var (anchorPage, anchorTop, columnLeft, columnWidth) = lineParts.TryGetValue(anchor, out var own) ? own : anchorAt ?? (page!, y, left, width);
-            var inLine = lineTops.TryGetValue(anchor, out var at) && at.Page == anchorPage;
-            var (lineTop, character) = inLine ? (at.Top, at.X) : (anchorTop, columnLeft);
+            var inLine = anchorFrames.TryGetValue(anchor, out var at);
+            var (anchorPage, anchorTop, columnLeft, columnWidth) = inLine ? at.Part : paragraphStart?.Part ?? new ParagraphPart(page!, y, left, width);
+            var (lineTop, character) = inLine ? (at.LineTop, at.Character) : (anchorTop, columnLeft);
             // Before Word 2013 a drawing that text does not go around stands from the paragraph's first line and its own
             // line where the floating objects text goes around pushed them: down, and right for the column and the
             // character (measured with docx/local/np-*: in modes 12 and 14 an unwrapped rectangle 28.35 pt from the
@@ -4338,7 +4344,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // the paragraph's own wrapped drawings so move it, and the indent is no push (extras-layout/tdf123651: an
             // unwrapped arrow of an indented paragraph whose lines other floats push stays where it was planned).
             static bool Wrapped(AnchorInline a) => new DrawingBox(a.Anchor).Wraps;
-            if (context.Profile.PushedLinesMoveDrawings && inLine && linePushes.TryGetValue(anchor, out var push) && !Wrapped(anchor)
+            if (context.Profile.PushedLinesMoveDrawings && inLine && !Wrapped(anchor)
                 && paragraph.Content.OfType<AnchorInline>().Any(Wrapped))
             {
                 // Down only where one of them covers the paragraph's top, which then moves (docx/local/np2-a, -c: a
@@ -4346,16 +4352,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // 20 pt above takes it below; np2-b: one wrapped square beside the line takes it right all the same).
                 var plannedTop = anchorTop;
                 var covered = paragraph.Content.OfType<AnchorInline>().Where(Wrapped)
-                    .Select(a => ExclusionOf(PlaceAnchor(a, anchorPage, plannedTop, at.Top, columnLeft, columnWidth)))
+                    .Select(a => ExclusionOf(PlaceAnchor(a, anchorPage, plannedTop, at.LineTop, columnLeft, columnWidth)))
                     .Any(e => e is { } area && area.Top <= plannedTop + 0.01 && area.Bottom > plannedTop + 0.01);
-                if (covered && firstPush is { } first && first.Page == anchorPage)
-                    anchorTop += first.Skip;
+                if (covered && paragraphStart is { } first && first.Part.Page == anchorPage)
+                    anchorTop += first.Push;
                 if (covered)
-                    lineTop += push.Skip;
+                    lineTop += at.Push;
                 var indent = Math.Max(0, (format.Left ?? 0) + (lines.FirstOrDefault()?.First == true ? format.FirstLine ?? 0 : 0));
-                if (push.Start is { } start && start > indent + 0.01)
+                if (at.RoomStart is { } start && start > indent + 0.01)
                 {
-                    if (push.Empty)
+                    if (at.EmptyLine)
                         character = Math.Max(character, columnLeft + start);
                     (columnLeft, columnWidth) = (columnLeft + start - indent, Math.Max(0, columnWidth - start + indent));
                 }

@@ -2976,7 +2976,8 @@ areas:
         strategy: >-
           Positioned relative to page, margin, column, paragraph, line or character, by offset or alignment, sized
           relative to the page or margins; behind or in front of text, stacked by relativeHeight, kept inside table
-          cells with layoutInCell.
+          cells with layoutInCell. Each anchor keeps one frame of what it stands from: its paragraph's part in the
+          column or page, its line's top before floating objects pushed the line down, its place across.
         office: >-
           Floating drawings stand at their offset from, or aligned in, the frame wp:positionH and wp:positionV name,
           at a percentage of it, or at wp:simplePos (before Word 2013 one aligned left or right on the page stands in
