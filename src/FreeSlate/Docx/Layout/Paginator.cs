@@ -4494,8 +4494,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     var b = BreakBefore(i, columnStart);
                     // Where the rules of page breaks cannot hold in the column, a greater height is tried (measured
                     // with docx/local/kcs-3-4: the last two lines of a paragraph stand together in the first of three
-                    // columns, not one in each); the page's height breaks them as it must.
-                    if (b < 0 && bottom < Bottom - columnTop - 0.001)
+                    // columns, not one in each); the page's height breaks them as it must, and before Word 2013 so does
+                    // any height where the section's columns begin at the page's top (see BalanceBreaksAtPageTop).
+                    if (b < 0 && bottom < Bottom - columnTop - 0.001 && !BalanceBreaksHere())
                         return null;
                     if (b < 0)
                         b = i;
@@ -4556,6 +4557,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         column = 0;
         balanced = true;
     }
+
+    /// <summary>
+    /// Whether balancing breaks a paragraph where it must, at any height, where the rules of page breaks find no place
+    /// for a column's end, as they do at the top of a page: before Word 2013 where the section's columns begin at the
+    /// page's top (measured with docx/local/hbs-*, mode 12: a heading or text of two lines in a section of two
+    /// columns holding nothing else, at the page's top, has one line in each column, widow control on or off, the
+    /// heading kept with the next or not, the columns equally wide or not; below other text, hbs-below, and in mode 15,
+    /// hbs-m15, both stay in the first column; a paragraph of four lines keeps its last two together, hbs-four; one of
+    /// two whose rest would take two lines in the narrow column stays whole, hbs-three; openxml-sdk/complex0: the
+    /// heading "Format Columns: Line Between" with "Between" at the top of the narrow column of page 3).
+    /// </summary>
+    bool BalanceBreaksHere() => context.Profile.BalanceBreaksAtPageTop && columnTop <= page!.BodyTop + 0.01;
 
     /// <summary>
     /// Balances columns of different widths (w:cols with w:equalWidth 0) as Balance does, a paragraph that goes on in
@@ -4642,7 +4655,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     if (used > 0 && used + gap + line.FitHeight > bottom + 0.001)
                     {
                         var b = BreakBefore(placed, (g, number + j, count), columnStart);
-                        if (b < 0 && bottom < Bottom - columnTop - 0.001)
+                        if (b < 0 && bottom < Bottom - columnTop - 0.001 && !BalanceBreaksHere())
                             return null;
                         if (b < 0)
                             b = placed.Count;

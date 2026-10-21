@@ -1669,7 +1669,11 @@ areas:
           docx/local/colsect-h, -i) by height in whole lines: the columns are as high as the least multiple of the
           section's least line height that holds all lines, each filled as far as that height lets it with widow,
           keep-with-next and keep-together rules (a height at which they cannot hold is not taken: the last two lines
-          of a paragraph stand together in the first of three columns, docx/local/kcs-3-4); the first column holds the
+          of a paragraph stand together in the first of three columns, docx/local/kcs-3-4; before Word 2013, where the
+          section's columns begin at the page's top, a paragraph they find no place to break breaks where it must:
+          docx/local/hbs-*, mode 12, a heading or text of two lines alone in two columns has one line in each, widow
+          control on or off, kept with the next or not, the columns equally wide or not, below other text and in mode 15
+          not; openxml-sdk/complex0 page 3 63 → 84 %); the first column holds the
           space before its first paragraph, a column's last line needs its text but not the extra space of multiple
           line spacing below it, nor the space after its paragraph (docx/local/cb-*, cbx-*, cbs-*: ten 13.6 pt lines
           below 13.5 pt go 5/5, below 13.6 pt 4/6; cbp-*: four paragraphs of four lines with A after move two lines

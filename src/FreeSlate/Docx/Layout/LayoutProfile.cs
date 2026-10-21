@@ -235,6 +235,13 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool BalancesColumns { get; } = !(mode < 15 && context.Compat("noColumnBalance"));
 
     /// <summary>
+    /// Whether balancing the columns of a section that begins at the page's top breaks a paragraph where it must
+    /// where the rules of page breaks find no place for a column's end, as at the top of a page: before Word 2013
+    /// (see Paginator.BalanceBreaksHere).
+    /// </summary>
+    public bool BalanceBreaksAtPageTop { get; } = mode < 15;
+
+    /// <summary>
     /// Whether a line that ends with a hyphen goes on with the line after it rather than end a column (measured with
     /// docx/local/hyph-d): from Word 2013 on, unless the document allows hyphens at the bottom
     /// (w:compatSetting allowHyphenationAtTrackBottom; docx/external/libreoffice/extras-ooxmlexport/
