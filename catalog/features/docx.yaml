@@ -4725,6 +4725,13 @@ areas:
           bars within 3.3 font units of Word's, at 12 pt within 0.1 pt; mrd-disp, mrd-inl: x_2 and a^2 take the larger
           variant only displayed, (x+1), x/y; LibreOffice's extras-ooxmlexport/math-color-ctrlpr 75.0 → 98.4 %,
           docx/local/mph-24-rad 89.7 → 96.9 %).
+          A box (m:borderBox) draws its lines in the overbar's rule thickness, the overbar's gap away from the
+          content: from its ink above and below, from its advance with the last letter's italic correction beside it;
+          a hidden side drops its gap along with its line, the other lines ending at the content's edge there; a
+          horizontal strike-through runs through the middle of the content's ink, not on the axis (docx/local/mbx-48:
+          boxes in Cambria Math 48 pt around c, b and y with all sides, each side hidden and a horizontal strike,
+          within 5 font units of Word's; LibreOffice's extras-ooxmlexport/math-color-ctrlpr 98.4 → 99.5 %, c with
+          hideTop; math-overstrike 92.3 → 94.2 %, every side hidden and a strike through "abc").
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
 

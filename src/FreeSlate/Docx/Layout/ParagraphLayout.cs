@@ -840,7 +840,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 : default,
             Wml.W + "rPr")
         {
-            DelimitersByHeight = true,
+            Word = true,
             IntegralLimits = MathSetting("intLim") ?? "subSup",
             NaryLimits = MathSetting("naryLim") ?? "undOvr",
         };

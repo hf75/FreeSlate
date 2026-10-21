@@ -35,8 +35,11 @@ public sealed class MathLayout
         this.runProperties = runProperties ?? A + "rPr";
     }
 
-    /// <summary>Whether delimiters grow to the content's height (Word) rather than twice its reach from the axis (PowerPoint).</summary>
-    public bool DelimitersByHeight { get; init; }
+    /// <summary>
+    /// Whether the equation is Word's, which differs from PowerPoint's where measured: delimiters grow to the content's
+    /// height rather than twice its reach from the axis, radicals and boxes as Word sets them (Radical, BorderBox).
+    /// </summary>
+    public bool Word { get; init; }
 
     /// <summary>Where integrals and the other n-ary operators put their limits when m:limLoc does not say (subSup, undOvr).</summary>
     public string IntegralLimits { get; init; } = "subSup";
@@ -939,12 +942,18 @@ public sealed class MathLayout
         // the gap above it (measured with docx/local/mre-d48, mre-i48: square roots in Cambria Math 48 pt of x, t, +, i,
         // 4, b, y, j, an infinity and a times sign, displayed and inline, the bars within 3.3 font units of Word's;
         // mrd-disp, mrd-inl: x_2 and a^2 with the larger variant only displayed, (x+1), x/y; LibreOffice's
-        // extras-ooxmlexport/math-color-ctrlpr).
-        var ascent = Math.Max(radicand.Ascent, U(table.FlattenedAccentBaseHeight, size));
-        var descent = Math.Max(radicand.Descent, 0);
-        var surd = Stretched(0x221A, ascent + descent + gap + thickness, size, color, vertically: true);
+        // extras-ooxmlexport/math-color-ctrlpr). PowerPoint's, not measured, as OpenType has it: the sign for the
+        // radicand itself, the room left over half above the radicand (Word's rule took 0.6 to 2.5 % off the
+        // corpus' PowerPoint decks with radicals).
+        var (ascent, descent) = Word
+            ? (Math.Max(radicand.Ascent, U(table.FlattenedAccentBaseHeight, size)), Math.Max(radicand.Descent, 0))
+            : (radicand.Ascent, radicand.Descent);
+        var target = ascent + descent + gap + thickness;
+        var surd = Stretched(0x221A, target, size, color, vertically: true);
         var height = surd.Ascent + surd.Descent;
-        var top = Math.Max((ascent - descent + height) / 2 + thickness, ascent + gap + thickness);
+        var top = Word
+            ? Math.Max((ascent - descent + height) / 2 + thickness, ascent + gap + thickness)
+            : ascent + gap + thickness + Math.Max(0, height - target) / 2;
         var result = new ListItem();
         var x = 0.0;
         if (Property(rad, "radPr", "degHide") is not ("on" or "1" or "true") && rad.Element(M + "deg")?.Elements().Any() == true)
@@ -1228,7 +1237,7 @@ public sealed class MathLayout
         // instead of twice its reach in displayed equations (measured with docx/local/ppt-math, the same equations in
         // Word), below display level twice the reach as well (docx/local/mti-i-*, mth-i-binom: an inline fraction in
         // parentheses grown to their third size, an inline binomial to their second, within 0.25 pt).
-        var target = (DelimitersByHeight && env.Level == Level.Display ? ascent + descent : 2 * Math.Max(ascent - axis, descent + axis)) - U(630, size);
+        var target = (Word && env.Level == Level.Display ? ascent + descent : 2 * Math.Max(ascent - axis, descent + axis)) - U(630, size);
         MathItem Fence(string? chr)
         {
             if (string.IsNullOrEmpty(chr))
@@ -1534,27 +1543,34 @@ public sealed class MathLayout
         var size = Sized(baseSize, env);
         var color = runStyle(box.Element(M + "borderBoxPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var nucleus = Sequence(Child(box, "e"), env, baseSize);
-        // Lines of the rule thickness three times their thickness away from the content's ink (measured: Office's
-        // boxes around a letter, a fraction and an equation).
+        // Word draws lines of the rule thickness the overbar's gap away from the content: from its ink above and
+        // below, from its advance (the last letter's italic correction with it) beside it. A hidden side takes its gap
+        // along, the other lines ending at the content's edge there; the horizontal strike-through runs through the
+        // middle of the content's ink (measured with docx/local/mbx-48: boxes in Cambria Math 48 pt around c, b and y
+        // with all sides, each side hidden, a horizontal strike, within 5 units of Word's; LibreOffice's
+        // extras-ooxmlexport/math-color-ctrlpr: c with hideTop, its sides up to c's top; math-overstrike).
+        // PowerPoint keeps three rule thicknesses all round, hidden sides too, and strikes on the axis (measured:
+        // its boxes around a letter, a fraction and an equation; local/math2: E = mc^2 about 5 px inside at 18 pt).
         var thickness = U(table.OverbarRuleThickness, size);
-        var gap = 3 * thickness;
-        var (w, a, d) = (nucleus.Width + 2 * gap, nucleus.Ascent + gap, nucleus.Descent + gap);
+        var gap = Word ? U(table.OverbarVerticalGap, size) : 3 * thickness;
         bool Hidden(string side) => On(Property(box, "borderBoxPr", side), false);
+        var (top, bottom, left, right) = (!Hidden("hideTop"), !Hidden("hideBot"), !Hidden("hideLeft"), !Hidden("hideRight"));
+        double Margin(bool shown) => shown || !Word ? gap + thickness : 0;
+        var (a, d) = (nucleus.Ascent + Margin(top), nucleus.Descent + Margin(bottom));
+        var outer = Margin(left) + nucleus.Width + Margin(right);
         var result = new ListItem();
-        result.Add(nucleus, thickness + gap, 0);
-        var outer = w + 2 * thickness;
-        if (!Hidden("hideTop")) result.Add(new RuleItem { Color = color, Width = outer, Ascent = a + thickness, Descent = -a }, 0, 0);
-        if (!Hidden("hideBot")) result.Add(new RuleItem { Color = color, Width = outer, Ascent = -d, Descent = d + thickness }, 0, 0);
-        if (!Hidden("hideLeft")) result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a + thickness, Descent = d + thickness }, 0, 0);
-        if (!Hidden("hideRight")) result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a + thickness, Descent = d + thickness }, thickness + w, 0);
-        // Strike-throughs: horizontal on the axis, vertical through the middle.
+        result.Add(nucleus, Margin(left), 0);
+        if (top) result.Add(new RuleItem { Color = color, Width = outer, Ascent = a, Descent = -(a - thickness) }, 0, 0);
+        if (bottom) result.Add(new RuleItem { Color = color, Width = outer, Ascent = -(d - thickness), Descent = d }, 0, 0);
+        if (left) result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a, Descent = d }, 0, 0);
+        if (right) result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a, Descent = d }, outer - thickness, 0);
         if (On(Property(box, "borderBoxPr", "strikeH"), false))
         {
-            var axis = U(table.AxisHeight, size);
-            result.Add(new RuleItem { Color = color, Width = outer, Ascent = axis + thickness / 2, Descent = -(axis - thickness / 2) }, 0, 0);
+            var middle = Word ? (nucleus.Ascent - nucleus.Descent) / 2 : U(table.AxisHeight, size);
+            result.Add(new RuleItem { Color = color, Width = outer, Ascent = middle + thickness / 2, Descent = -(middle - thickness / 2) }, 0, 0);
         }
         if (On(Property(box, "borderBoxPr", "strikeV"), false))
-            result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a + thickness, Descent = d + thickness }, (outer - thickness) / 2, 0);
+            result.Add(new RuleItem { Color = color, Width = thickness, Ascent = a, Descent = d }, (outer - thickness) / 2, 0);
         result.Width = outer;
         return result;
     }
