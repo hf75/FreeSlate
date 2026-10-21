@@ -1030,11 +1030,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "lockedCanvas") is { } canvas)
         {
             var group = FromCanvas(canvas);
-            // The shapes' own boxes, width and height swapped about their centers when turned by 45 to 135 degrees
-            // (or 225 to 315), as Office bounds groups; those in groups mapped through their groups (docx/external/
-            // libreoffice/extras-ooxmlimport/fdo43641: a rectangle and a connector in a group of the canvas reaching
-            // past them, the box around the two stretched over the frame, not the group's; tdf143476_lockedCanvas_
-            // position: text turned by 308 degrees reaching 438366 EMU high, the top of its group's child space).
+            // The shapes' own boxes, a turned shape's its geometry's as turned (flipped first); those in groups mapped
+            // through their groups (docx/external/libreoffice/extras-ooxmlimport/fdo43641: a rectangle and a
+            // connector in a group of the canvas reaching past them, the box around the two stretched over the frame,
+            // not the group's; docx/local/lcv-*, lcw-*: two shapes stretched over frames of other sizes and shapes,
+            // offset, in a stretching group, the canvas's own transform unused; a rectangle turned by 30, 60, 90 and
+            // 308 degrees by its turned corners, an ellipse turned by 45 by its curve, a text box's text not counted).
             static List<(double X, double Y, double W, double H)> Boxes(XElement container)
             {
                 var result = new List<(double X, double Y, double W, double H)>();
@@ -1043,11 +1044,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     var x = (e.Element(Ns.P + "spPr") ?? e.Element(Ns.P + "grpSpPr"))?.Element(Ns.A + "xfrm") ?? e.Element(Ns.P + "xfrm");
                     if (x?.Element(Ns.A + "ext") == null)
                         continue;
-                    var (bx, by, bw, bh, turn, _, _) = ReadTransform(x);
+                    var (bx, by, bw, bh, turn, flipH, flipV) = ReadTransform(x);
                     if (e.Name.LocalName != "grpSp")
                     {
-                        var swapped = ((turn % 180) + 180) % 180 is >= 45 and < 135;
-                        result.Add(swapped ? (bx + (bw - bh) / 2, by + (bh - bw) / 2, bh, bw) : (bx, by, bw, bh));
+                        result.Add(Math.Abs(Math.IEEERemainder(turn, 360)) < 1e-9 ? (bx, by, bw, bh) : TurnedBounds(SpPr(e), bx, by, bw, bh, turn, flipH, flipV));
                         continue;
                     }
                     var (chOff, chExt) = (x.Element(Ns.A + "chOff"), x.Element(Ns.A + "chExt"));
@@ -1578,6 +1578,30 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return geometry;
         }
         return (PresetGeometries.Get("rect")!, []);
+    }
+
+    /// <summary>
+    /// The box around a turned shape's geometry (its paths flattened, flipped, then turned about the box's center), its
+    /// box's turned corners where it draws none; in EMU, as the box.
+    /// </summary>
+    static (double X, double Y, double W, double H) TurnedBounds(XElement? spPr, double x, double y, double w, double h, double turn, bool flipH, bool flipV)
+    {
+        var (definition, adjustments) = Geometry(spPr) ?? (PresetGeometries.Get("rect")!, Array.Empty<Guide>());
+        // The evaluator takes EMU and gives pixels.
+        var points = GeometryEvaluator.Evaluate(definition, w, h, adjustments).Paths
+            .SelectMany(p => CompoundLines.Flatten(p.Segments)).SelectMany(f => f.Points)
+            .Select(p => (p.X * Units.EmuPerPixel, p.Y * Units.EmuPerPixel)).ToList();
+        if (points.Count == 0)
+            points = [(0, 0), (w, 0), (w, h), (0, h)];
+        var (sin, cos) = Math.SinCos(turn * Math.PI / 180);
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var (px, py) in points)
+        {
+            var (dx, dy) = ((flipH ? w - px : px) - w / 2, (flipV ? h - py : py) - h / 2);
+            var (tx, ty) = (x + w / 2 + dx * cos - dy * sin, y + h / 2 + dx * sin + dy * cos);
+            (minX, minY, maxX, maxY) = (Math.Min(minX, tx), Math.Min(minY, ty), Math.Max(maxX, tx), Math.Max(maxY, ty));
+        }
+        return (minX, minY, maxX - minX, maxY - minY);
     }
 
     /// <summary>The preset or custom geometry among the children of <paramref name="parent"/>, or null.</summary>
