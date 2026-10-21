@@ -27,10 +27,22 @@ public static class NumberFormat
             code = "mmm yy";
         var sections = Sections(string.IsNullOrWhiteSpace(code) ? "General" : code);
 
-        // Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus.
+        // Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus. Sections
+        // with conditions ([<>0], [>=100]) take the numbers that meet them, the next section the others, the minus kept
+        // (measured with docx/local/csx-val: [<>0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t"; LibreOffice's
+        // extras-layout/tdf138773).
         string section;
         var minus = false;
-        if (value < 0 && sections.Count >= 2)
+        if (Condition(sections[0]) is { } first)
+        {
+            var second = sections.Count >= 2 ? Condition(sections[1]) : null;
+            section = first(value) ? sections[0]
+                : sections.Count >= 2 && (second == null || second(value)) ? sections[1]
+                : sections.Count >= 3 ? sections[2] : sections[^1];
+            minus = value < 0;
+            value = Math.Abs(value);
+        }
+        else if (value < 0 && sections.Count >= 2)
         {
             section = sections[1];
             value = -value;
@@ -88,6 +100,32 @@ public static class NumberFormat
         }
         sections.Add(current.ToString());
         return sections;
+    }
+
+    /// <summary>A section's condition ([&lt;&gt;0], [&gt;=100]) among its leading brackets, else null.</summary>
+    static Func<double, bool>? Condition(string section)
+    {
+        var i = 0;
+        while (i < section.Length && char.IsWhiteSpace(section[i]))
+            i++;
+        while (i < section.Length && section[i] == '[' && section.IndexOf(']', i) is var end and > 0)
+        {
+            var token = section[(i + 1)..end].Trim();
+            var op = token.StartsWith("<=") || token.StartsWith(">=") || token.StartsWith("<>") ? token[..2]
+                : token.Length > 0 && token[0] is '<' or '>' or '=' ? token[..1] : null;
+            if (op != null && double.TryParse(token[op.Length..], NumberStyles.Float, CultureInfo.InvariantCulture, out var bound))
+                return op switch
+                {
+                    "<=" => v => v <= bound,
+                    ">=" => v => v >= bound,
+                    "<>" => v => v != bound,
+                    "<" => v => v < bound,
+                    ">" => v => v > bound,
+                    _ => v => v == bound,
+                };
+            i = end + 1;
+        }
+        return null;
     }
 
     /// <summary>Removes [colors] and [conditions]; [$currency-locale] becomes the quoted currency text.</summary>

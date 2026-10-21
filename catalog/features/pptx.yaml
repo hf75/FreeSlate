@@ -1892,7 +1892,18 @@ areas:
           by 2). Checked with generated/charts-data, charts-details (99.2 %) and a label offset probe (99.6 %).
           The sides of category and value axes follow the chart type whatever c:axPos says: a bar chart's
           category axis is vertical (LibreOffice's tdf48041 saves it at b, PowerPoint shows the categories on
-          the left).
+          the left). A value axis deleted beside another of its direction takes that one's scale, which spans the
+          series of both; where both are deleted they take the first's; both shown, each keeps its own (measured in
+          Word with docx/local/csx-*: columns on the primary axes, a line on secondary ones: with the secondary value
+          axis deleted the primary one runs to 4500 for line values up to 3861, with the primary deleted the secondary
+          one to 2500 for columns up to 1925; LibreOffice's extras-layout/tdf138773 78.6 → 83.1 %). A series has as
+          many categories as values, more cached category names unseen (csx-*: a line of 13 values with 15 cached
+          categories at the 13 places of the columns). A label shown on every n-th category only (c:tickLblSkip) has
+          n slots before the labels turn, and the first and the last labelled of categories between ticks stay
+          within the outer plot area as midCat labels do (csx-orig: "2000-01" and "2012-13f" over 13 slots of
+          20.3 pt labelled every second one flat, each 10 pt inside the chart, 16.5 → 89.8 %). Number formats with
+          conditions ([<>0], [>=100]) give the numbers that meet them their section, the others the next (csx-val:
+          [<>0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t", 33.6 → 70.7 %).
 
       - id: chart.labels
         title: Data labels

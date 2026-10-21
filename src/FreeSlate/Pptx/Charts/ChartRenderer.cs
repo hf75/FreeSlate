@@ -146,6 +146,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public AxisScale Scale { get; set; }
         public List<string> Labels { get; set; } = [];
 
+        /// <summary>The value axis whose scale this deleted one takes (see AxisChart), else null.</summary>
+        public AxisLayout? ScaledWith { get; set; }
+
+        /// <summary>The groups whose values the scale spans, where they are more than its own (see AxisChart), else null.</summary>
+        public List<ChartGroup>? RangeGroups { get; set; }
+
         /// <summary>The category labels before they wrap at a vertical axis (see WrapVerticalLabels).</summary>
         public List<string> Names { get; set; } = [];
 
@@ -1613,7 +1619,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var crossing = axes.FirstOrDefault(a => a.Axis.Id == layout.Axis.CrossAxisId);
             layout.Between = crossing?.Axis.CrossBetween != "midCat";
             var series = layout.Groups.SelectMany(g => g.Series).ToList();
-            layout.Categories = series.Count == 0 ? 0 : series.Max(s => Math.Max(s.Values.Count, s.Categories.Count));
+            // As many categories as the series have values, more category names unseen (measured with docx/local/csx-*:
+            // a line of 13 values with 15 cached categories at the 13 places of the columns beside it, its category axis
+            // shown or not; LibreOffice's extras-layout/tdf138773).
+            layout.Categories = series.Count == 0 ? 0 : series.Max(s => s.Values.Count > 0 ? s.Values.Count : s.Categories.Count);
             var withNames = series.FirstOrDefault(s => s.Categories.Count > 0);
             var names = withNames?.Categories ?? [];
             // Numeric categories (dates on a date axis) take the axis's number format, else their own (catalog:
@@ -1654,6 +1663,22 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             layout.Names = layout.Labels;
         }
 
+        // A value axis deleted beside another of its direction takes that one's scale, which spans the series of both;
+        // where both are deleted they take the first's (measured with docx/local/csx-*: columns on the primary axes, a
+        // line on secondary ones, LibreOffice's extras-layout/tdf138773: with the secondary value axis deleted the
+        // primary one runs to 4500 for line values up to 3861, with the primary one deleted the secondary to 2500 for
+        // columns up to 1925 and a line up to 1287, with both deleted the line on the columns' 0 to 2500; both shown,
+        // each its own).
+        foreach (var direction in axes.Where(a => a.Axis.IsValue && a.Groups.All(g => !g.IsScatter)).GroupBy(a => a.Axis.Horizontal))
+        {
+            var pair = direction.ToList();
+            if (pair.Count != 2 || pair.All(a => a.Visible))
+                continue;
+            var (leader, follower) = pair[1].Visible ? (pair[1], pair[0]) : (pair[0], pair[1]);
+            leader.RangeGroups = [.. leader.Groups, .. follower.Groups];
+            follower.ScaledWith = leader;
+        }
+
         // A plot area placed by hand with its labels replaces the automatic one (measured: the labels fit inside it).
         if (ManualOuterPlot() is { } placed)
             outer = placed;
@@ -1690,9 +1715,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             // A horizontal value axis divides the plot area's width before the labels beside it take their room, also
             // where the plot area is placed by hand (measured: bar charts with category labels of a third or half the
             // chart's width; LibreOffice's tdf48041).
-            foreach (var layout in axes.Where(a => a.Axis.IsValue))
+            foreach (var layout in axes.Where(a => a.Axis.IsValue && a.ScaledWith == null))
                 ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H,
                     layout.Axis.Horizontal && ex == null ? outer.W : ex == null && inner == null ? outer.H : null);
+            foreach (var layout in axes.Where(a => a.ScaledWith != null))
+                (layout.Scale, layout.Labels, layout.MaxLabelWidth) = (layout.ScaledWith!.Scale, layout.ScaledWith.Labels, layout.ScaledWith.MaxLabelWidth);
             if (inner != null)
             {
                 // A plot area placed by hand still turns category labels that do not fit (measured: −45° in a
@@ -2044,6 +2071,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             left = Math.Max(left, outer.X + Width(layout.Labels[0], layout.Style) / 2);
             right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
         }
+        // So do the first and the last labelled of categories between ticks, centered on their slots (measured with
+        // docx/local/csx-*: "2000-01" 33.4 pt wide over slots of 20.3 pt and "2012-13f", the 13th of categories labelled
+        // every second one, each 10 pt inside the chart; LibreOffice's extras-layout/tdf138773).
+        foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation == 0 && a.Axis.Horizontal && !a.Axis.IsValue && a.Between
+                                               && !a.Axis.Reversed && a.DateStep == null && a.Categories > 0 && a.Labels.Count >= a.Categories))
+        {
+            var slot = previous.W / layout.Categories;
+            var skip = Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
+            var last = (layout.Categories - 1) / skip * skip;
+            double Wide(string label) => label.Split('\n').Max(line => Width(line, layout.Style));
+            left = Math.Max(left, outer.X + Wide(layout.Labels[0]) / 2 - slot / 2);
+            right = Math.Min(right, outer.Right - Wide(layout.Labels[last]) / 2 + (layout.Categories - last - 0.5) * slot);
+        }
 
         // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge. Date
         // axes choose their labels for the width without that reach (see FitDays).
@@ -2246,7 +2286,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             return 0;
         var dates = layout.DateStep != null || threeD && layout.Groups.Any(g => g.TimeUnit != null);
         var needed = layout.MaxLabelWidth + (dates ? layout.Style.Size : 0);
-        return needed > length / layout.Categories ? -45 : 0;
+        // A label shown on every n-th category only (c:tickLblSkip) has n slots (measured with docx/local/csx-*: "2012-13f"
+        // flat under 13 categories of 20.3 pt labelled every second one; LibreOffice's extras-layout/tdf138773 turned
+        // where two slots are narrower).
+        var skip = Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
+        return needed > length * skip / layout.Categories ? -45 : 0;
     }
 
     /// <summary>The groups of an outer category level: from each named category to the next one (or the end).</summary>
@@ -2324,7 +2368,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // A 100 % axis only where every group on it stacks to 100 %; mixed with others, the fractions are plotted as
         // values (measured: LibreOffice's stacked-non-stacked-mix-y-axis, a 100 % area at 1 beside columns up to 7).
         var percent = layout.Groups.Count > 0 && layout.Groups.All(g => g.PercentStacked);
-        foreach (var group in layout.Groups)
+        foreach (var group in layout.RangeGroups ?? layout.Groups)
         {
             foreach (var (lo, hi) in Ranges(group, layout.Axis))
             {
