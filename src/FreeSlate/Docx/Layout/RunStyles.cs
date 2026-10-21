@@ -197,11 +197,6 @@ public sealed class RunStyles(DocumentContext context)
 
     static readonly double[] MacSizes = [7, 9, 10, 12, 14, 18, 24, 36, 48, 60, 72];
 
-    bool? macSmallCaps;
-    LineHeights? lineHeights;
-
-    bool MacSmallCaps => macSmallCaps ??= context.CompatibilityMode < 15 && context.Compat("mwSmallCaps");
-
     bool? eastAsianDefaults;
 
     /// <summary>
@@ -212,11 +207,6 @@ public sealed class RunStyles(DocumentContext context)
     /// </summary>
     public bool EastAsianDefaults => eastAsianDefaults ??=
         context.FontTable.Resolve(context.Fonts, Family(context.Styles.DefaultRun, WordSlot.EastAsia), false, false).Data.EastAsian;
-
-    /// <summary>How the document takes line heights from fonts (w:noLeading, w:suppressTopSpacingWP; before Word 2013 only).</summary>
-    public LineHeights LineHeights => lineHeights ??= context.CompatibilityMode >= 15 ? LineHeights.Word
-        : context.Compat("suppressTopSpacingWP") ? LineHeights.WordPerfect
-        : context.Compat("noLeading") ? LineHeights.NoLeading : LineHeights.Word;
 
     RunStyle Create(RunFormat format, WordSlot slot, bool smallCapital, bool complex)
     {
@@ -245,15 +235,15 @@ public sealed class RunStyles(DocumentContext context)
         {
             var superscript = vertical == "superscript";
             scriptSize = Math.Round(size * 2 * (superscript ? data.SuperscriptSize : data.SubscriptSize), MidpointRounding.AwayFromZero) / 2;
-            var (above, below) = WordFonts.LineMetrics(data, size, LineHeights);
+            var (above, below) = WordFonts.LineMetrics(data, size, context.Profile.LineHeights);
             var shift = superscript
                 ? Math.Min(data.SuperscriptOffset * size, above - WordFonts.Ascent(data) * scriptSize)
-                : Math.Min(data.SubscriptOffset * size, below - WordFonts.LineMetrics(data, scriptSize, LineHeights).Below);
+                : Math.Min(data.SubscriptOffset * size, below - WordFonts.LineMetrics(data, scriptSize, context.Profile.LineHeights).Below);
             scriptShift = (superscript ? 1 : -1) * Math.Round(Math.Max(0, shift) * 2, MidpointRounding.AwayFromZero) / 2;
         }
         var raise = (format.Position ?? 0) + scriptShift;
         if (smallCapital)
-            scriptSize = MacSmallCaps ? MacSmallCapsSize(scriptSize) : SmallCapsSize(scriptSize);
+            scriptSize = context.Profile.MacSmallCaps ? MacSmallCapsSize(scriptSize) : SmallCapsSize(scriptSize);
         // Tracked changes in the markup view (catalog: review.revisions, measured with docx/local/markup-a): insertions
         // underlined and deletions struck through in their author's color, moved text dark green, underlined twice
         // where it is and struck through twice where it was.
@@ -268,19 +258,19 @@ public sealed class RunStyles(DocumentContext context)
         // Arial;sans-serif" by its kern table in mode 15 too; Tahoma, without GPOS kerning of Latin text, by its kern
         // table in all modes, unkerned with w14:ligatures in mode 15; docx/local/compat14-*: Aptos by GPOS with
         // enableOpenTypeFeatures; Apache Tika's testWORD_features 89.0 -> 98.7 %, found by agent BH).
-        var openType = context.CompatibilityMode >= 15 || context.CompatibilityMode == 14 && context.CompatSetting("enableOpenTypeFeatures") is "1" or "true" or "on";
+        var openType = context.Profile.OpenTypeKerning;
         var features = format.Ligatures is { } ligatures && ligatures != "none" || format.ContextualAlternates == true
             || format.NumberForm is not (null or "default") || format.NumberSpacing is not (null or "default") || format.StylisticSets is { Length: > 0 };
         var kernTable = format.Kern is { } kern && kern > 0 && size >= kern && font.Data.HasKernTable
             && (!openType || context.Fonts.TryResolveFamily(family, bold, italic)?.Data != font.Data || !font.Data.HasGposKerning && !features);
-        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.CompatibilityMode < 14, kernTable || !font.Data.HasGposKerning), bold, italic)
+        return new RunStyle(font, scriptSize, color, WordFonts.Features(format, size, context.Profile.NoOpenTypeFeatures, kernTable || !font.Data.HasGposKerning), bold, italic)
         {
             AutoColor = revision == null && Automatic(format),
             Revision = revision,
             Change = format.Change,
             CharacterStyle = format.Style,
             Source = format.Source,
-            LineHeights = LineHeights,
+            LineHeights = context.Profile.LineHeights,
             Underline = revision?.Kind switch { "ins" => "single", "moveTo" => "double", _ => format.Underline is { } u && u != "none" ? u : null },
             UnderlineColor = revision?.Kind is "ins" or "moveTo" ? null : format.UnderlineColor is { Length: 6 } uc ? RgbColor.FromHex(uc) : null,
             Strike = revision?.Kind == "del" || format.Strike == true && revision?.Kind != "moveFrom",

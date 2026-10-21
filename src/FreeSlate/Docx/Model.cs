@@ -1238,7 +1238,7 @@ public sealed partial class ModelReader(DocumentContext context)
         if (format.FirstLineChars is { } characters && characters != 0
             && content.OfType<TextInline>().FirstOrDefault(t => t.Text.Length > 0)?.Format is { Size: { } runSize } first)
         {
-            var spacing = (first.Spacing ?? 0) * (context.Compat("balanceSingleByteDoubleByteWidth") ? 2 : 1);
+            var spacing = (first.Spacing ?? 0) * (context.Profile.BalanceSpaces ? 2 : 1);
             format.ApplyCharacterUnits(context.Styles.Run(context.Styles.DefaultParagraphStyle, null, null).Size ?? 10, runSize + spacing);
         }
         foreach (var anchor in content.OfType<AnchorInline>())
@@ -2009,7 +2009,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             var text = TextBox(d);
                             var children = ChildTextBoxes(d);
                             // From Word 2010 on a drawing turned across its line swaps its box's sides (Drawings.Box).
-                            if (context.CompatibilityMode >= 14 && Drawings.TurnedAcross(d))
+                            if (context.Profile.TurnedDrawingsSwapSides && Drawings.TurnedAcross(d))
                                 d.SetAttributeValue(Drawings.SwappedTurn, "1");
                             if (d.Name == Drawings.Wp + "inline")
                                 field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField });

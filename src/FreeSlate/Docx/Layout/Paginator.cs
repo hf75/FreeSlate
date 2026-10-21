@@ -311,7 +311,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         continue;
                     var (a, b, c) = (stood[^3], stood[^2], stood[^1]);
                     if (a.Page == b.Page && b.Page == c.Page && Math.Abs(a.Y - c.Y) < 0.01 && Math.Abs(b.Y - c.Y) > 0.01
-                        && (context.CompatibilityMode < 15 || Above(source)))
+                        && (!context.Profile.DrawingsFollowMovedParagraph || Above(source)))
                         pins[source] = stood.First(s => s.Page == c.Page);
                 }
                 // An object that goes back and forth between two pages pushes its own paragraph off the first of them
@@ -456,7 +456,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Older modes put the first cell's text at the left edge and the last cell's at the right one, the table out
         // by the inset (measured with docx/local/ftx-14-*, -15-*: left 6.0 pt left of the margin, right 6.0 pt past it
         // with cell margins of 115 twips, 5.64 with 108, centered alike; poi/Bug54771b).
-        var (inset, rightInset) = context.CompatibilityMode < 15 ? box.TextInsets : (0, 0);
+        var (inset, rightInset) = context.Profile.FloatingTablesByText ? box.TextInsets : (0, 0);
         var x = position.Attr("tblpXSpec") switch
         {
             "left" => frameLeft - inset,
@@ -472,7 +472,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // fti-15-*; docx/external/libreoffice/extras-ooxmlimport/tdf97038); a table in a frame keeps it from then on too
             // (docx/local/frsb-15: tblInd 360 puts the left line 18 pt right of the margin; frsb-12 the first cell's text;
             // extras-ooxmlexport/tdf164474).
-            _ => frameLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset
+            _ => frameLeft + Twips("tblpX") + (context.Profile.FloatingTablesByText ? (((TableBlock)blocks[index]).Table.Format.Indent ?? 0) - inset
                 : ((TableBlock)blocks[index]).Table.Format is { Framed: true, Indent: { } framedIndent } ? framedIndent : 0),
         };
         // From the page, Word puts the table on its device's dot left of the position (PowerTools' DB-HeadersFooters-Src/
@@ -558,7 +558,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (anchor == "text")
         {
             var block = blocks[index];
-            var reach = y + (context.CompatibilityMode < 15 ? pendingAfter : 0) - (top - Twips("topFromText"));
+            var reach = y + (context.Profile.SpaceAfterMeetsFloats ? pendingAfter : 0) - (top - Twips("topFromText"));
             if (seeded.TryGetValue(page!.Number, out var prior) && prior.FirstOrDefault(e => ReferenceEquals(e.Banded, block)) is { } kept)
             {
                 top = kept.Top + Twips("topFromText");
@@ -598,7 +598,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // page's top, whatever the table's vertAnchor; placed from its line or the page as said, nie-e, nie-f;
             // docx/external/libreoffice/extras-ooxmlexport/missing-path, extras-uiwriter/tdf78727).
             foreach (var anchor in anchors)
-                page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.Cell == null && context.CompatibilityMode < 15 ? anchor.ParagraphTop - textTop : anchor.ParagraphTop,
+                page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.Cell == null && context.Profile.HonorsLayoutInCell ? anchor.ParagraphTop - textTop : anchor.ParagraphTop,
                     anchor.LineTop, x - box.Left, page.TextWidth, anchor, anchor.CharacterX));
             rowTop += row.Height;
             last = row;
@@ -625,7 +625,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // From Word 2013 on one standing above the text's top breaks that much above the bottom margin (measured with
         // docx/local/fm-a15, fm-e15: 60 rows at tblpY -345 twips from the margin, 50 on the first page, 51 at the text's
         // top; docx/external/libreoffice/extras-layout/tdf109053).
-        var shift = anchor is not ("page" or "margin") ? 0 : context.CompatibilityMode < 15 ? textTop - top : Math.Max(0, textTop - top);
+        var shift = anchor is not ("page" or "margin") ? 0 : context.Profile.PageTablesBreakAsText ? textTop - top : Math.Max(0, textTop - top);
         double Limit() => Bottom - (split ? 0 : shift);
         // From Word 2013 on a table anchored to the page or the margin whose first row does not fit above the bottom
         // margin stays where it stands on a page without text before it, its row reaching past the margin, and goes
@@ -633,11 +633,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // (measured with docx/local/flb-spec, flb-below, flb-cross: rows of 20 pt at the page's foot, at 740 and at
         // 705 pt with the bottom margin at 720 pt, after a paragraph; docx/external/powertools/DB-HeadersFooters-Src/
         // Footer: the table first on its page at the page's foot).
-        var unbroken = context.CompatibilityMode >= 15 && anchor is "page" or "margin";
+        var unbroken = !context.Profile.PageTablesBreakAsText && anchor is "page" or "margin";
         var emptyPage = columnEmpty && page!.Lines.Count == 0;
         // w:doNotBreakWrappedTables keeps the table whole where it stands (docx/external/libreoffice/
         // writerfilter-dmapper/do-not-break-wrapped-tables).
-        var breaks = !context.Compat("doNotBreakWrappedTables");
+        var breaks = !context.Profile.KeepsWrappedTablesWhole;
         // A table anchored to the text in a section of columns does not break: where it does not fit below its place it
         // goes to the next page whole with its paragraph (LibreOffice's core-layout/floattable-multi-col: three rows in
         // two columns, the third reaching past the bottom margin, on page 2 at its place from "anchor").
@@ -897,7 +897,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // 72 pt at -22.25 pt, two rectangles both there, in a frame 49.8 pt below its paragraph at 49.8 pt, in a frame
         // without a position at the page's top; pictures where they stand; docx/external/libreoffice/
         // extras-ooxmlexport/FDO78590, Tdf147485; fdo78904: a picture).
-        (double, double)? origin = context.CompatibilityMode < 15 && dropCap is null or "none" ? (x, top - textTop) : null;
+        (double, double)? origin = context.Profile.FrameShapesAtFrameEdge && dropCap is null or "none" ? (x, top - textTop) : null;
         var lineTop = top + spaceTop + borderTop;
         var boxTops = new double[boxes.Count];
         var boxBottoms = new double[boxes.Count];
@@ -1083,7 +1083,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// core-layout/floattable-deleted-anchor).
     /// </summary>
     string VerticalAnchor(XElement properties, string anchor = "vAnchor") =>
-        context.CompatibilityMode < 15 && (properties.Twips(anchor == "vAnchor" ? "y" : "tblpY") ?? 0) == 0
+        context.Profile.UnplacedFramesAtParagraph && (properties.Twips(anchor == "vAnchor" ? "y" : "tblpY") ?? 0) == 0
             && (properties.Attr(anchor == "vAnchor" ? "yAlign" : "tblpYSpec") is null or "inline"
                 // A frame's w:y 0 is no position whatever w:yAlign beside it says (measured with docx/local/fxa-c,
                 // -d: y 0 and yAlign bottom at the paragraph in mode 14, with vAnchor margin too, on the top margin
@@ -1180,7 +1180,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (el, et, er, eb) = effect != null ? (Emu(effect, "l"), Emu(effect, "t"), Emu(effect, "r"), Emu(effect, "b")) : (0, 0, 0, 0);
         var (dl, dt, dr, db) = (Emu(element, "distL"), Emu(element, "distT"), Emu(element, "distR"), Emu(element, "distB"));
         var side = (string?)wrap.Attribute("wrapText") ?? "bothSides";
-        var otherSide = side == "left" && context.CompatibilityMode < 15;
+        var otherSide = side == "left" && context.Profile.WrapsLeftOnOtherSide;
         // Tight and through wrapping follow the wrap polygon, in 21600ths of the drawing's extent (measured with
         // docx/generated/wrap-types: text beside an oval and a triangle starts the right distance from the polygon).
         if (wrap.Name.LocalName is "wrapTight" or "wrapThrough"
@@ -1463,7 +1463,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // (docx/external/libreoffice/extras-ooxmlexport/fdo79062: three footnotes, then the endnotes' separator);
                 // from Word 2013 on below the endnotes (measured with docx/local/fbt-14, fbt-15: the footnote above the
                 // endnote in mode 14, below it in mode 15).
-                if (context.CompatibilityMode < 15 && page?.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText"
+                if (context.Profile.FootnotesAboveEndnotes && page?.Section.Element.Child("footnotePr").Child("pos").Val() == "beneathText"
                     && (pageNotes.Count > 0 || carriedHere != null))
                 {
                     y = PlaceNotes();
@@ -1492,7 +1492,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // A continuous section break balances the columns above it, before Word 2013 unless w:noColumnBalance
             // (measured with docx/local/colsect-h, -i: mode 12 leaves the lines in the first column, mode 15 balances).
             if (s + 1 < sections.Count && sections[s + 1].Properties.Start == "continuous" && section.Columns > 1
-                && !(context.CompatibilityMode < 15 && context.Compat("noColumnBalance")))
+                && context.Profile.BalancesColumns)
                 Balance();
             CloseColumns();
         }
@@ -1563,29 +1563,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         paragraph is { EndsSection: not null, Format.Frame: null } && k > 0 && k == lines.Count - 1
         && lines[k].Pieces.All(p => p.Drawing == null && !p.IsLabel && string.IsNullOrWhiteSpace(p.Text));
 
-    /// <summary>
-    /// Whether a line that ends with a hyphen goes on with the line after it rather than end a column (measured with
-    /// docx/local/hyph-d): from Word 2013 on, unless the document allows hyphens at the bottom
-    /// (w:compatSetting allowHyphenationAtTrackBottom; docx/external/libreoffice/extras-ooxmlexport/
-    /// tdf160518_allowHyphenationAtTrackBottom: "at-" ends page 1; tdf160518_useWord2013TrackBottomHyphenation moves
-    /// the line, as without the setting; powertools/HC048-Excerpt: in mode 14 "termi-" ends a page). With
-    /// useWord2013TrackBottomHyphenation 0 the line
-    /// breaks anew instead (<see cref="HyphenBreaksAnew"/>).
-    /// </summary>
-    bool HyphenMoves => hyphenMoves ??= context.CompatibilityMode >= 15 && context.CompatSetting("allowHyphenationAtTrackBottom") is not ("1" or "true")
-        && context.CompatSetting("useWord2013TrackBottomHyphenation") is not ("0" or "false");
-
-    bool? hyphenMoves;
-
-    /// <summary>
-    /// Whether a column's last line that would end with an automatic hyphen breaks anew before that word, from Word 2016
-    /// on (w:compatSetting useWord2013TrackBottomHyphenation 0, mode 15, unless allowHyphenationAtTrackBottom;
-    /// LibreOffice's extras-ooxmlexport/tdf165354: page 1 ends "except that it has an" and "atmosphere" begins page 2,
-    /// where "an at-" would have fitted).
-    /// </summary>
-    bool HyphenBreaksAnew => context.CompatibilityMode >= 15 && context.CompatSetting("allowHyphenationAtTrackBottom") is not ("1" or "true")
-        && context.CompatSetting("useWord2013TrackBottomHyphenation") is "0" or "false";
-
     /// <summary>The number of the last chapter heading placed (section.pageNumbers).</summary>
     string chapter = "";
 
@@ -1622,7 +1599,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         layout.CharacterExtra = properties.Element.Child("docGrid") is { } charGrid && charGrid.Attr("type") is "linesAndChars" or "snapToChars"
             ? (charGrid.Number("charSpace") ?? 0) / 4096 : 0;
         layout.CharacterExtraEastAsian = properties.Element.Child("docGrid")?.Attr("type") == "snapToChars";
-        layout.GridCell = context.CompatibilityMode < 15 && properties.Element.Child("docGrid") is { } cellGrid && cellGrid.Attr("type") is "linesAndChars" or "snapToChars"
+        layout.GridCell = context.Profile.CharacterGridCells && properties.Element.Child("docGrid") is { } cellGrid && cellGrid.Attr("type") is "linesAndChars" or "snapToChars"
             ? (context.Styles.Run(null, null, null).Size ?? 10) + (cellGrid.Number("charSpace") ?? 0) / 4096 : null;
         layout.SnapCell = properties.Element.Child("docGrid") is { } snapGrid && snapGrid.Attr("type") == "snapToChars"
             ? (context.Styles.Run(null, null, null).Size ?? 10) + (snapGrid.Number("charSpace") ?? 0) / 4096 : null;
@@ -2010,7 +1987,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     "left" or "inside" => spanLeft,
                     "right" or "outside" => spanLeft + span - laid.Width,
                     "center" => spanLeft + (span - laid.Width) / 2,
-                    _ => spanLeft + Twips("tblpX") + (context.CompatibilityMode < 15 ? (floating.Table.Format.Indent ?? 0) - laid.TextInsets.Left : 0),
+                    _ => spanLeft + Twips("tblpX") + (context.Profile.FloatingTablesByText ? (floating.Table.Format.Indent ?? 0) - laid.TextInsets.Left : 0),
                 };
                 var onPage = VerticalAnchor(position, "vertAnchor") is "page" or "margin";
                 var (areaTop, areaHeight) = VerticalAnchor(position, "vertAnchor") switch
@@ -2056,7 +2033,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // HTML auto spacing counts here as in the body: 14 pt, none before the first paragraph (docx/external/
                 // libreoffice/extras-ooxmlexport/fdo80997: a header of auto spacing 14 pt above the body, a footer's
                 // text 14 pt above the page's bottom).
-                var storyBefore = paragraph.Format.BeforeAuto == true && !context.AddsSpacing ? first ? 0 : 14 : paragraph.Format.Before ?? 0;
+                var storyBefore = paragraph.Format.BeforeAuto == true && !context.Profile.AddsSpacing ? first ? 0 : 14 : paragraph.Format.Before ?? 0;
                 y += first ? storyBefore : context.Between(after, storyBefore);
                 var frame = Frame.Read(paragraph.Format);
                 var continues = frame != null && frame.Same(previousFrame);
@@ -2407,7 +2384,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // docx/local/fau-both, fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt
         // below the separator's paragraph; fau-note: the separator's own paragraph without it; docx/external/
         // libreoffice/extras-ooxmlexport/tdf104354_firstParaInSection).
-        if (blocks?.LastOrDefault() is ParagraphBlock { Format.AfterAuto: true } && !context.AddsSpacing && lines.Count > 0)
+        if (blocks?.LastOrDefault() is ParagraphBlock { Format.AfterAuto: true } && !context.Profile.AddsSpacing && lines.Count > 0)
             height += 14;
         return noteBoxes[(id, width)] = new NoteBox(lines, fills, strokes, height);
     }
@@ -2421,7 +2398,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     double SeparatorHeight => footnotes == null ? 0
         : (footnotes.ContainsKey("separator") ? Note("separator").Height : 0)
-          + (context.CompatibilityMode < 15 && footnotes.ContainsKey("continuationNotice") ? Note("continuationNotice").Height : 0);
+          + (context.Profile.CountsContinuationNotice && footnotes.ContainsKey("continuationNotice") ? Note("continuationNotice").Height : 0);
 
     /// <summary>
     /// The height footnotes need below the text (catalog: note.footnotes): their content in the text width, and the
@@ -2688,12 +2665,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         bool Beside(Exclusion e) => !e.Frame && !e.Story && (Math.Max(e.Left - columnLeft, columnLeft + columnWidth - e.Right) >= box.Width - 0.01
             || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01);
         var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
-        var later = context.CompatibilityMode >= 15 && seeded.TryGetValue(page.Number, out var before)
+        var later = context.Profile.TablesBelowAllFloats && seeded.TryGetValue(page.Number, out var before)
             ? before.Where(e => e.Source is { } source && !e.Frame && !placed.Any(p => ReferenceEquals(p.Source, source))
                 && !source.Ancestors().Any(a => ReferenceEquals(a, element)))
             : [];
         var floats = placed.Concat(later).Concat(page.FloatingTables.Where(e => !Beside(e)))
-            .Where(e => (context.CompatibilityMode >= 15 || e.TopAndBottom
+            .Where(e => (context.Profile.TablesBelowAllFloats || e.TopAndBottom
                          || to - e.Right < box.Width / 2 && e.Left + e.DistanceLeft < to - 0.01 && e.Right - e.DistanceRight > from + 0.01)
                         && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
         for (var moved = true; moved;)
@@ -2816,7 +2793,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // all of them and not after one between them (measured with docx/local/hk-*: in modes 11, 12 and 14 a header
         // row with room for no row below it stays and repeats on the next page; of two the first stays alone and the
         // second goes on with the table; docx/external/poi/bug57031).
-        if (headers.Count > 0 && !columnEmpty && context.CompatibilityMode >= 15
+        if (headers.Count > 0 && !columnEmpty && context.Profile.HeaderRowsGoOn
             && (headers.Count < box.Rows.Count ? !Takes(box.Rows[headers.Count], y + headersHeight) : !Fits(headers[^1], y + headersHeight - headers[^1].Height)))
         {
             NextColumn(natural: true);
@@ -2913,7 +2890,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     bool BelowOwnDrawings(TableBox box, double left, bool followed)
     {
-        if (context.CompatibilityMode >= 15 || box.Rows.Count == 0)
+        if (!context.Profile.HonorsLayoutInCell || box.Rows.Count == 0)
             return false;
         var (lines, fills, borders, strokes) = (new List<PlacedLine>(), new List<FillRect>(), new List<FillRect>(), new List<Stroke>());
         var anchors = new List<CellAnchor>();
@@ -2969,7 +2946,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     PlacedDrawing PlaceAnchor(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell = null, double? character = null, IReadOnlyList<PlacedDrawing>? before = null) =>
         Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character), before ?? page.Drawings, page.Section.PageWidth,
-            context.CompatibilityMode < 15 ? (page.BodyBottom, page.Section.PageHeight) : null);
+            context.Profile.OverlapStepsDown ? (page.BodyBottom, page.Section.PageHeight) : null);
 
     /// <summary>
     /// A floating drawing that may not overlap the drawings placed before it, or that one of them may not overlap
@@ -3034,14 +3011,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     PlacedDrawing Unpinned(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell, double? character)
     {
-        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.CompatibilityMode < 15);
+        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.Profile.AnchorsAsWord2010);
         placed = placed with { Order = context.StackingOrder(anchor.Anchor) };
         // From Word 2013 on the shapes of a drawing in a cell that text goes around are cut at the cell's inside, between
         // the inner edges of its side lines and from its content's top to its bottom, its text box's text not (measured
         // with docx/local/cdr-pager, ccl-mar, ccl-thick, ccl-col: a 387 pt box in a 200 pt cell ends at it, margins of
         // 10 pt above and 15 pt below cut it there, those across not; ccl-14 not cut, ccl-none and ccl-behind unwrapped
         // not; docx/external/powertools/WC/WC048-Text-Box-in-Cell).
-        if (context.CompatibilityMode >= 15 && cell?.Inside is { } inside && cell.Content is { } content
+        if (context.Profile.CellsCutWrappedDrawings && cell?.Inside is { } inside && cell.Content is { } content
             && anchor.Anchor.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
             placed = placed with { Clip = (inside.Left, content.Top, Math.Max(0, inside.Right - inside.Left), content.Height) };
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
@@ -3079,7 +3056,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // tdf160049_anchorMargin15).
         PlacedDrawing Held(PlacedDrawing drawing)
         {
-            if (context.CompatibilityMode < 15 || cell != null || anchor.Part != context.MainPart
+            if (!context.Profile.KeepsDrawingsInMargins || cell != null || anchor.Part != context.MainPart
                 || (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is not ("paragraph" or "line")
                 || anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is not { } wrapping
                 || wrapping.Name.LocalName == "wrapNone")
@@ -3649,7 +3626,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // paragraph before it (measured with docx/local/sptm-11, -12, -14: 18 pt after none; sbk-*: 14 pt, also
             // beforeAutospacing, after 0, 6 and 20 pt keep 14, 8 and 0 in modes 11, 12 and 14; -15 none;
             // python-docx/sty-known-styles; LibreOffice's extras-ooxmlexport/fdo81492).
-            Top.Break when brokeBefore && context.CompatibilityMode < 15 => Math.Max(0, Gap(before) - pendingAfter),
+            Top.Break when brokeBefore && context.Profile.PageBreakKeepsSpaceBefore => Math.Max(0, Gap(before) - pendingAfter),
             _ => 0,
         };
         balanced = false;
@@ -3785,7 +3762,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // 71.5 pt and more go, below a line of 20 pt text one of 60 pt; efi-15: one of 68 pt with 3 pt of effect extent
         // above it goes, with 4 pt of distance from the text stays, 12 pt of space after take one of 65 pt along, a line
         // of 1.5 lines not; docx/external/libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
-        else if (!columnEmpty && context.CompatibilityMode >= 15 && firstPart.Any(anchor =>
+        else if (!columnEmpty && context.Profile.HeldDrawingsTakeParagraph && firstPart.Any(anchor =>
                      PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is { HeldUp: true } placed && ExclusionOf(placed) != null
                      && placed.Y - Math.Max(0, EffectDown(placed.Drawing).Top) < y + LineBottom(anchor) - 0.01))
         {
@@ -3798,7 +3775,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // libreoffice/extras-layout/fdo43573-2-min, mode 14: a picture 2.7 pt below an empty paragraph moved to the right
         // column stands where it stood in the left; so do drawings that go back and forth, np-a14, np-a15). So does its
         // box.
-        if (!wasEmpty && columnEmpty && context.CompatibilityMode >= 15)
+        if (!wasEmpty && columnEmpty && context.Profile.DrawingsFollowMovedParagraph)
             paragraphTop = (page!, y);
         if (frame != null && !bare && !wasEmpty && columnEmpty)
         {
@@ -3834,7 +3811,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (ExclusionOf(placed) is { } own)
                 {
                     owned[anchor] = own;
-                    if ((context.CompatibilityMode >= 15 || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
+                    if ((context.Profile.TallDrawingsTakeLines || placed.Drawing.Elements().Any(e => e.Name.LocalName is "wrapThrough" or "wrapTight"))
                         && ExtentHeight(placed) > page!.BodyBottom - page.BodyTop + 0.01)
                     {
                         own = own with { TopAndBottom = true };
@@ -3856,7 +3833,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // rectangle anchored in the paragraph before, go below it, 12 pt above it they stay; in mode 15 they stay,
         // saw-15-*; docx/external/libreoffice/extras-ooxmlexport/shape-theme-preservation).
         var raisedAfter = 0.0;
-        if (context.CompatibilityMode < 15 && SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) is var spaceAfter and > 0.01)
+        if (context.Profile.SpaceAfterMeetsFloats && SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) is var spaceAfter and > 0.01)
         {
             for (var i = 0; i < exclusions.Count; i++)
             {
@@ -3882,7 +3859,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // "Text" 36 pt line below the frame; fwa-a-14: without the table, fwa-q-14: the table below the line, fwa-k-14,
         // fwa-h-14: a frame inside the column, fwa-g-15: in mode 15, beside it; LibreOffice's extras-ooxmlexport/
         // tdf164500_framePrBeforeTable2, found by agent CC).
-        if (context.CompatibilityMode < 15 && lines.Count > 0
+        if (context.Profile.FramesLowerTableParagraphs && lines.Count > 0
             && exclusions.Any(e => !e.Frame && !e.Story && ReferenceEquals(e.Anchor, paragraph) && e.Top < y + lines[0].Height - 0.01))
         {
             for (var i = 0; i < exclusions.Count; i++)
@@ -3917,7 +3894,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // (docx/external/libreoffice/core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none: a
                 // page's first line below another paragraph's shape at the top margin; writerfilter-dmapper/
                 // framepr-pagebreak-style, extras-layout/tdf170846_1, _2: below frames).
-                var dropped = columnEmpty && top == Top.Break && !(brokeBefore && context.CompatibilityMode < 15) && lines.Count > 0
+                var dropped = columnEmpty && top == Top.Break && !(brokeBefore && context.Profile.PageBreakKeepsSpaceBefore) && lines.Count > 0
                               && owned.Values.Any(e => e.Top < linesTop + lines[0].Height - 0.01 && e.Bottom > linesTop + 0.01);
                 layout.PushedSpace = (dropped ? Gap(before) : ownBefore) + opening;
                 try
@@ -4120,8 +4097,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var notesNeeded = NotesHeight(line.Notes);
             var limit = keptNotes is { } unitBefore ? Math.Min(page!.BodyBottom - unitBefore.Height, bodyEnd ?? double.MaxValue) : Bottom - notesNeeded;
             var split = false;
-            // A column's last line breaks anew without its automatic hyphen (HyphenBreaksAnew).
-            if (line.AutoHyphenated && k + 1 < lines.Count && HyphenBreaksAnew && y + (moved ? 0 : line.Skip) is var lineTop
+            // A column's last line breaks anew without its automatic hyphen (LayoutProfile.HyphenBreaksAnew).
+            if (line.AutoHyphenated && k + 1 < lines.Count && context.Profile.HyphenBreaksAnew && y + (moved ? 0 : line.Skip) is var lineTop
                 && lineTop + line.FitHeight <= limit + 0.01 && lineTop + line.Height + lines[k + 1].FitHeight > limit + 0.01)
             {
                 lines = [.. lines.Take(k), .. Unhyphenated(k)];
@@ -4129,12 +4106,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
             // A line that ends with a hyphen does not end a column: it goes on with the line after it (measured with
             // docx/local/hyph-d).
-            var fitHeight = line.Hyphenated && k + 1 < lines.Count && HyphenMoves ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
+            var fitHeight = line.Hyphenated && k + 1 < lines.Count && context.Profile.HyphenMoves ? line.Height + lines[k + 1].FitHeight : line.FitHeight;
             // Above footnotes a paragraph's last line needs its whole height and the paragraph's space after, from Word
             // 2013 on (measured with docx/local/fbn-*, fbm-*, fbo-*: a line of 24.15 pt with 10 pt after fits where
             // 34.15 pt are left above the notes, not 33 pt, without notes where 16.1 pt are; mode 14 as without;
             // docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
-            if (context.CompatibilityMode >= 15 && k == lines.Count - 1 && (notesHeight > 0.01 || notesNeeded > 0.01))
+            if (context.Profile.NotesNeedSpaceAfter && k == lines.Count - 1 && (notesHeight > 0.01 || notesNeeded > 0.01))
                 fitHeight = Math.Max(fitHeight, line.Height + SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null));
             // Before Word 2013 a last line that the paragraph's space after took below a floating table needs room for
             // that space too (measured with docx/local/fas-160-14: a line fitting below the table only without its 8 pt
@@ -4381,7 +4358,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // unwrapped arrow of an indented paragraph whose lines other floats push stays where it was planned).
             static bool Wrapped(AnchorInline a) => a.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { } w
                 && w.Name.LocalName != "wrapNone";
-            if (context.CompatibilityMode < 15 && inLine && linePushes.TryGetValue(anchor, out var push) && !Wrapped(anchor)
+            if (context.Profile.PushedLinesMoveDrawings && inLine && linePushes.TryGetValue(anchor, out var push) && !Wrapped(anchor)
                 && paragraph.Content.OfType<AnchorInline>().Any(Wrapped))
             {
                 // Down only where one of them covers the paragraph's top, which then moves (docx/local/np2-a, -c: a
@@ -4541,7 +4518,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Before Word 2013 the space after the paragraph that ends the section is shared out among the columns, where the
         // paragraph has text (docx/external/libreoffice/extras-ooxmlimport/tdf103931: an empty one alone in its section
         // keeps it whole).
-        var shared = context.CompatibilityMode < 15 && items[^1].Block is { EndsSection: not null } && !page.Lines[items[^1].Index].SectionMark;
+        var shared = context.Profile.SharesSectionEndSpace && items[^1].Block is { EndsSection: not null } && !page.Lines[items[^1].Index].SectionMark;
         var bottom = columnTop;
         for (var i = 0; i < items.Count; i++)
         {
@@ -4937,7 +4914,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// pbsp14*, pbsp12*; extras-ooxmlexport/tdf97648_relativeWidth).
     /// </summary>
     bool BreakUnseen(ParagraphBlock paragraph) =>
-        context.CompatibilityMode < 15 && !context.Compat("splitPgBreakAndParaMark") && paragraph.EndsSection != null && nextContinuous;
+        context.Profile.ContinuousSectionsHidePageBreaks && paragraph.EndsSection != null && nextContinuous;
 
     BreakInline? LeadingBreak(ParagraphBlock paragraph)
     {
@@ -4954,7 +4931,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var rest = paragraph.Content.Skip(k + 1).ToList();
         if (rest.Any(i => i is TextInline { Text.Length: > 0 } or DrawingInline))
             return leading;
-        return context.CompatibilityMode < 15 && context.Compat("splitPgBreakAndParaMark") ? leading : null;
+        return context.Profile.SplitPageBreak ? leading : null;
     }
 
     /// <summary>
@@ -5000,8 +4977,6 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The lines of paragraphs in keep chains and the width they were laid out at.</summary>
     readonly Dictionary<ParagraphBlock, (double Width, List<Line> Lines)> keptLines = new(ReferenceEqualityComparer.Instance);
 
-    bool? suppressTopSpacing, suppressSpacingAtTop;
-
     /// <summary>
     /// How much less room the first line on a page has above its text (catalog: settings.compatibility): where the
     /// document says w:suppressTopSpacing, an exact line has its baseline 9.6 pt below its top and an at-least line
@@ -5013,14 +4988,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     double TopTrim(Line line, ParagraphFormat format)
     {
-        suppressTopSpacing ??= context.Compat("suppressTopSpacing");
-        suppressSpacingAtTop ??= context.CompatibilityMode < 15 && context.Compat("suppressSpacingAtTopOfPage");
         var rule = format.LineRule ?? "auto";
-        if (suppressTopSpacing == true && rule is "exact")
+        if (context.Profile.SuppressTopSpacing && rule is "exact")
             return line.Baseline - 9.6;
-        if (suppressTopSpacing == true && rule is "atLeast")
+        if (context.Profile.SuppressTopSpacing && rule is "atLeast")
             return (format.Line ?? 240) / 20 - 9.6;
-        if (suppressSpacingAtTop == true && (rule is "atLeast" || rule is "auto" && layout.LinePitch != null && format.SnapToGrid != false))
+        if (context.Profile.SuppressSpacingAtTop && (rule is "atLeast" || rule is "auto" && layout.LinePitch != null && format.SnapToGrid != false))
             return line.Baseline - line.Above - line.RaisedAbove;
         return 0;
     }
@@ -5057,7 +5030,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // w:doNotUseHTMLParagraphAutoSpacing, the paragraph's own space before (measured with docx/local/c2-html). An
         // item after an item of its list has none, not after a table that ends with one (Word's PDF of
         // docx/external/libreoffice/extras-ooxmlexport/tdf132807: the item after a table 14 pt below it).
-        if (paragraph.Format.BeforeAuto == true && !context.AddsSpacing)
+        if (paragraph.Format.BeforeAuto == true && !context.Profile.AddsSpacing)
             return first || !afterTable && prior != null && TableLayout.ListPair(prior, paragraph) ? 0 : 14;
         return paragraph.Format.Before ?? 0;
     }
@@ -5079,7 +5052,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The space after a paragraph; contextual spacing drops it before a paragraph of the same style.</summary>
     double SpaceAfter(ParagraphBlock paragraph, ParagraphBlock? next) =>
         paragraph.Format.ContextualSpacing == true && next != null && SameStyle(paragraph, next) ? 0
-        : paragraph.Format.AfterAuto == true && !context.AddsSpacing && next != null && TableLayout.ListPair(paragraph, next) ? 0
+        : paragraph.Format.AfterAuto == true && !context.Profile.AddsSpacing && next != null && TableLayout.ListPair(paragraph, next) ? 0
         : OwnAfter(paragraph);
 
     /// <summary>
@@ -5093,7 +5066,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>A paragraph's space after, contextual spacing aside: HTML auto spacing (w:afterAutospacing) 14 pt.</summary>
     double OwnAfter(ParagraphBlock paragraph) =>
-        paragraph.Format.AfterAuto == true && !context.AddsSpacing ? 14 : paragraph.Format.After ?? 0;
+        paragraph.Format.AfterAuto == true && !context.Profile.AddsSpacing ? 14 : paragraph.Format.After ?? 0;
 
     bool SameStyle(ParagraphBlock a, ParagraphBlock b) =>
         context.Styles.ParagraphStyleOf(a.Format.Style) == context.Styles.ParagraphStyleOf(b.Format.Style);

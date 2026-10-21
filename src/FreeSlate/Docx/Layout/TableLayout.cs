@@ -594,9 +594,6 @@ public sealed class TableBox
 /// </summary>
 public sealed class TableLayout(DocumentContext context, ParagraphLayout paragraphs)
 {
-    /// <summary>Whether contextual spacing works in cells (see <see cref="Content(List{Block}, double, PageFields?, string?, string?)"/>).</summary>
-    bool? contextual;
-
     /// <summary>
     /// The left and right cell margin of tables without any table style (see <see cref="TableFormat.Styled"/>): 0.5 pt,
     /// measured with docx/local/tblnostyle-12, -14 and -15 for lines of 0 to 6 pt.
@@ -605,12 +602,6 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     /// <summary>The paragraph layout the cells' text is laid out with.</summary>
     public ParagraphLayout Paragraphs => paragraphs;
-
-    bool? modern;
-
-    /// <summary>Whether the document lays tables out as Word 2013 does (compatibility mode 15 and later).</summary>
-    bool Modern => modern ??= context.Settings.Child("compat")?.Elements(Wml.W + "compatSetting")
-        .FirstOrDefault(e => e.Attr("name") == "compatibilityMode")?.Attr("val") is { } v && int.TryParse(v, out var mode) && mode >= 15;
 
     /// <summary>Whether a table nested in a cell is being laid out.</summary>
     bool inCell;
@@ -626,7 +617,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// so the tables of text boxes (core-text/fly-minimal-wrap: a table in a text box in mode 14 has its text at the
     /// box's text).
     /// </summary>
-    bool Legacy => !Modern && !inCell;
+    bool Legacy => context.Profile.TablesIndentedByText && !inCell;
 
     /// <summary>Stands for no paragraph where contextual spacing compares paragraph styles.</summary>
     public const string NoParagraph = "\0";
@@ -685,7 +676,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // in the body; ygc-12-adj, -15-adj: two pitches in the cell too; docx/external/libreoffice/extras-uiwriter/
         // tdf128375).
         var pitch = paragraphs.LinePitch;
-        if (!context.Compat("adjustLineHeightInTable"))
+        if (!context.Profile.AdjustsLineHeightInTables)
             paragraphs.LinePitch = null;
         TableBox box;
         try
@@ -979,8 +970,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
-                MarginBelowCut = !Modern,
-                AnchorsReach = Modern,
+                MarginBelowCut = context.Profile.CellMarginBelowCut,
+                AnchorsReach = context.Profile.AnchorsReachPastCut,
             };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)
@@ -2240,7 +2231,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// its row in mode 15; in modes 14 and 12 it stands in the column, the table below it).
     /// </summary>
     bool InCell(System.Xml.Linq.XElement anchor) =>
-        context.CompatibilityMode >= 15 || (string?)anchor.Attribute("layoutInCell") is not ("0" or "false");
+        !context.Profile.HonorsLayoutInCell || (string?)anchor.Attribute("layoutInCell") is not ("0" or "false");
 
     /// <summary>
     /// The inside of the cell being laid out, between the inner edges of its side lines, relative to its text's left:
@@ -2462,7 +2453,6 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         Paginator.Frame? previousFrame = null;
         var boxTop = 0.0;
         FillRect? lastShading = null;
-        contextual ??= !(context.CompatibilityMode < 15 && context.Compat("allowSpaceOfSameStyleInTable"));
         for (var b = 0; b < blocks.Count; b++)
         {
             var block = blocks[b];
@@ -2477,10 +2467,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 case ParagraphBlock paragraph:
                 {
                     var style = StyleOf(paragraph);
-                    var spaced = paragraph.Format.ContextualSpacing != true || contextual == false;
+                    var spaced = paragraph.Format.ContextualSpacing != true || !context.Profile.ContextualSpacingInCells;
                     // HTML auto spacing is 14 pt between a cell's blocks, none at its top and bottom (measured with
                     // docx/local/autospace-cells-15 and -14).
-                    var autoSpacing = !context.AddsSpacing;
+                    var autoSpacing = !context.Profile.AddsSpacing;
                     var before = !spaced && previous == style || paragraph.ResumeAt != null ? 0
                         : paragraph.Format.BeforeAuto == true && autoSpacing ? (first || b > 0 && blocks[b - 1] is ParagraphBlock prior && ListPair(prior, paragraph) ? 0 : 14)
                         : paragraph.Format.Before ?? 0;
@@ -2540,7 +2530,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         // Widow control holds where rows split from Word 2013 on (docx/local/rs3-*14, rs3-*12).
                         lines.Add(new PlacedLine(line, 0, y)
                         {
-                            Widow = (paragraph.Format.WidowControl ?? true) && context.CompatibilityMode >= 15,
+                            Widow = (paragraph.Format.WidowControl ?? true) && context.Profile.SplitRowsKeepLines,
                             Lead = !first && lines.Count == firstLine ? Math.Max(0, before - flowAfter) : 0,
                         });
                         y += line.Height;
@@ -2590,7 +2580,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     if (paragraph.Format.Frame == null)
                         flowAfter = after;
                     if (lines.Count > firstLine)
-                        lines[^1] = lines[^1] with { After = after, Keep = paragraph.Format.KeepNext == true && context.CompatibilityMode >= 15 };
+                        lines[^1] = lines[^1] with { After = after, Keep = paragraph.Format.KeepNext == true && context.Profile.SplitRowsKeepLines };
                     previous = style;
                     first = false;
                     break;
@@ -2620,7 +2610,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         "left" or "inside" => 0,
                         "right" or "outside" => width - box.Width,
                         "center" => (width - box.Width) / 2,
-                        _ => Twips("tblpX") - (position.Attr("horzAnchor") == "page" ? edge : 0) - (context.CompatibilityMode < 15 ? box.Inset : 0),
+                        _ => Twips("tblpX") - (position.Attr("horzAnchor") == "page" ? edge : 0) - (context.Profile.FloatingTablesByText ? box.Inset : 0),
                     };
                     // It stays inside its cell's lines as drawings do, one wider than the cell at its left line (measured with
                     // docx/local/fic-14, fic-15: tblpX -426 at the left line, a table of 190 pt at 426 twips ending at the right

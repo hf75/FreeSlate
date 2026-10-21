@@ -286,7 +286,8 @@ areas:
         status: done
         strategy: >-
           One switch per option in the layout engine, each measured in Word with a generated document that differs
-          only in that option. Mode 15 comes first: it is what current Word writes.
+          only in that option; the options and every rule the compatibility mode changes are read once per document
+          into one profile of named switches. Mode 15 comes first: it is what current Word writes.
         office: >-
           Word lays a document out in its compatibility mode (w:compatSetting compatibilityMode, 12 without one):
           before mode 15 tables put the first cell's text at the indent, or center their left line on the margin where

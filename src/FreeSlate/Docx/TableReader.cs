@@ -218,7 +218,7 @@ public sealed partial class ModelReader
         // Without a vertical anchor a frame stands from the margin, before Word 2013 with the text where it has no
         // vertical position either (as Paginator.VerticalAnchor).
         Set("vertAnchor", frame.Attr("vAnchor")
-            ?? (context.CompatibilityMode < 15 && (frame.Twips("y") ?? 0) == 0 && frame.Attr("yAlign") is null or "inline" ? "text" : "margin"));
+            ?? (context.Profile.UnplacedFramesAtParagraph && (frame.Twips("y") ?? 0) == 0 && frame.Attr("yAlign") is null or "inline" ? "text" : "margin"));
         Set("tblpX", frame.Attr("x"));
         Set("tblpY", frame.Attr("y"));
         Set("tblpXSpec", frame.Attr("xAlign"));

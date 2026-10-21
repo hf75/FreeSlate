@@ -321,46 +321,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The run styles the layout measures with.</summary>
     public RunStyles Styles => styles;
 
-    bool? noSpaceRaiseLower, splitPageBreak, exactFromTop, yenBackslash, balanceSpaces;
-
-    /// <summary>
-    /// Whether a backslash in Japanese text (w:lang w:eastAsia ja) shows as a yen sign, unless its font is an East Asian
-    /// one: w:doNotLeaveBackslashAlone (measured with docx/local/c2-backslash and c3-yen: Arial, Times New Roman and
-    /// Courier New change, MS Mincho, MS Gothic, Yu Gothic, Meiryo, SimSun and Malgun Gothic keep the backslash).
-    /// </summary>
-    bool YenBackslash => yenBackslash ??= context.Compat("doNotLeaveBackslashAlone");
-
-    /// <summary>Whether spaces beside spaces and East Asian characters take half an em (w:balanceSingleByteDoubleByteWidth, see <see cref="Balance"/>).</summary>
-    bool BalanceSpaces => balanceSpaces ??= context.Compat("balanceSingleByteDoubleByteWidth");
-
-    /// <summary>
-    /// Whether raised and lowered text (w:position) stays out of the line height: w:noSpaceRaiseLower, which Word
-    /// follows before Word 2013 only (catalog: settings.compatibility, measured with docx/local/c2-legacy*: text 6 pt
-    /// up and down in modes 11 to 14).
-    /// </summary>
-    bool NoSpaceRaiseLower => noSpaceRaiseLower ??= context.CompatibilityMode < 15 && context.Compat("noSpaceRaiseLower");
-
-    /// <summary>
-    /// Whether ideographic spaces (U+3000) at a line's end trail it as spaces do, hanging past the edge: before Word 2013
-    /// (measured with docx/local/isp-both-12: "tttest（" justified to the margin, twelve ideographic spaces past it,
-    /// "）" on the next line; docx/external/libreoffice/extras-uiwriter/tdf128375).
-    /// </summary>
-    bool IdeographicTrails => context.CompatibilityMode < 15;
-
     /// <summary>Whether a character trails a line's content at its end.</summary>
-    bool Trails(char c) => c == ' ' || IdeographicTrails && c == (char)0x3000;
-
-    /// <summary>
-    /// Whether the paragraph mark after a page break that ends its paragraph goes to the next page, an empty line
-    /// there: w:splitPgBreakAndParaMark, before Word 2013 only (measured with docx/local/compat12-* and c2-legacy*).
-    /// </summary>
-    bool SplitPageBreak => splitPageBreak ??= context.CompatibilityMode < 15 && context.Compat("splitPgBreakAndParaMark");
-
-    /// <summary>
-    /// Whether exact line heights put the text at their top instead of centering it: w:noExtraLineSpacing (measured
-    /// with docx/local/c2-exact* and c3-exact, in every mode).
-    /// </summary>
-    bool ExactFromTop => exactFromTop ??= context.Compat("noExtraLineSpacing");
+    bool Trails(char c) => c == ' ' || context.Profile.IdeographicTrails && c == (char)0x3000;
 
     /// <summary>
     /// The line pitch of the section's document grid (w:docGrid type lines, linesAndChars or snapToChars), which lines
@@ -871,10 +833,6 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The Word 6 numbering of the paragraph's list number (NumberingLevel.Legacy), or null.</summary>
     (double Indent, double Space)? legacyLabel;
 
-    /// <summary>Whether the tab after a list number passes the hanging indent for a custom stop after it (see TabStop).</summary>
-    bool NumberTabSkipsIndent => numberTabSkipsIndent ??= context.CompatibilityMode < 15 && context.Compat("doNotUseIndentAsNumberingTabStop");
-    bool? numberTabSkipsIndent;
-
     /// <summary>Where absolute position tabs count from in the paragraph being laid out: its margins' and its indents' edges.</summary>
     (double MarginLeft, double MarginRight, double IndentLeft, double IndentRight) positionalArea;
 
@@ -1033,8 +991,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // in zh-CN hangs with SimSun as that font, with none it goes down with its ideograph whatever the room left;
         // extras-odfexport/tdf130314), Latin commas and periods without (fdo63164-1).
         var hanging = format.OverflowPunctuation != false && format.Kinsoku != false
-            && (context.CompatibilityMode < 15 || Justified(format))
-            && (HasEastAsian(text) || context.CompatibilityMode < 15 && HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
+            && (context.Profile.PunctuationHangsAnywhere || Justified(format))
+            && (HasEastAsian(text) || context.Profile.PunctuationHangsAnywhere && HasEastAsianLanguage(paragraph)) ? rules.Hanging : "";
         if (!styles.EastAsianDefaults)
             hanging = string.Concat(hanging.Where(c => c < '\u2E80'));
         var hangAt = -1;
@@ -1056,7 +1014,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             for (var k = from; k < to; k++)
             {
                 var hyphen = k > from ? HyphenWidth(charStyles[k - 1]) : 0;
-                if (context.CompatibilityMode < 15)
+                if (context.Profile.HyphenTakesNextLetter)
                     hyphen = Math.Max(hyphen, advances[k]);
                 if (k > from && hyphens![k] && px + hyphen <= lineLimit + 0.005)
                     best = k;
@@ -1075,7 +1033,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // aligned lines take no word that does not fit (docx/local/jc-left); not before Word 2013 (measured with
         // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed);
         // not lines of left-to-right text with kashida justification (see KashidaShare).
-        var squeezing = Justified(format) && context.CompatibilityMode >= 15 && KashidaShare(format) == null;
+        var squeezing = Justified(format) && context.Profile.SqueezesJustifiedLines && KashidaShare(format) == null;
         // So may justified lines with punctuation compression (w:characterSpacingControl compressPunctuation) by
         // squeezing their East Asian punctuation, in every mode (see CompressesPunctuation).
         var compressing = Justified(format) && context.Settings.Child("characterSpacingControl").Val() == "compressPunctuation";
@@ -1139,7 +1097,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // docx/external/libreoffice/extras-odfexport/tdf163575).
                     if (format.Bidi == true)
                         r = r with { Segments = r.Segments.Select(s => (width - s.End, width - s.Start)).Reverse().ToList() };
-                    var minimum = r.Tight && context.CompatibilityMode < 15 ? MinimumTightSegment : MinimumSegment;
+                    var minimum = r.Tight && context.Profile.WrapRoomBeforeIndent ? MinimumTightSegment : MinimumSegment;
                     // Beside a drop cap the first line starts at the cap's room or its own start, whichever is further,
                     // a first-line indent past the room; before Word 2013 a first line indented or hanging moves by the
                     // room's whole width (measured with docx/local/dcn-*: a three-line cap 49.3 pt wide with hSpace before
@@ -1149,12 +1107,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // with it (dcn-b-12, c-12, g-12: the text after "1." 18 pt after it); docx/external/libreoffice/
                     // extras-ooxmlexport/tdf109308_dropCapNumbered).
                     var dropCap = first ? r.DropCap : null;
-                    var legacyShift = dropCap is { } shiftBy && context.CompatibilityMode < 15 && Math.Abs(firstLine) > 0.01 ? shiftBy : 0;
+                    var legacyShift = dropCap is { } shiftBy && context.Profile.DropCapShiftsFirstLine && Math.Abs(firstLine) > 0.01 ? shiftBy : 0;
                     var indentX = dropCap is not { } capEdge ? startX
-                        : context.CompatibilityMode >= 15 ? firstLine > 0.01 ? Math.Max(capEdge, left) + firstLine : startX
+                        : !context.Profile.DropCapShiftsFirstLine ? firstLine > 0.01 ? Math.Max(capEdge, left) + firstLine : startX
                         : startX + legacyShift;
                     tabLeft = left + legacyShift;
-                    if (context.CompatibilityMode < 15 && !r.Tight)
+                    if (context.Profile.WrapRoomBeforeIndent && !r.Tight)
                     {
                         var enough = r.Segments.Where(s => s.End - s.Start >= minimum).ToList();
                         segments = enough.Select(s => Indented(s, indentX, limit, width)).Where(s => s.Item2 - s.Item1 > 0.005).ToList();
@@ -1252,13 +1210,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     var ownLimit = width - right;
                     if (!extended && stop != null && !positional.ContainsKey(i) && stop.Position >= limit - 0.005
                         && segments.Count <= 1 && Math.Abs(limit - ownLimit) < 0.01
-                        && (context.CompatibilityMode < 15 || stop.Position <= Math.Max(width, ownLimit) + 0.005))
+                        && (context.Profile.TabStopsPastEdge || stop.Position <= Math.Max(width, ownLimit) + 0.005))
                     {
-                        limit = context.CompatibilityMode < 15 ? MaximumLine : Math.Max(width, ownLimit);
+                        limit = context.Profile.TabStopsPastEdge ? MaximumLine : Math.Max(width, ownLimit);
                         extended = true;
                         to = TabStop(format, x, text, i, charStyles, advances, tabLeft, first ? firstLine : 0, limit, out stop);
                     }
-                    if (extended && context.CompatibilityMode >= 15 && (stop?.Position ?? to) > ownLimit + 0.005)
+                    if (extended && !context.Profile.TabStopsPastEdge && (stop?.Position ?? to) > ownLimit + 0.005)
                         (overTabs ??= []).Add(i);
                     if (to > limit + 0.005)
                     {
@@ -1331,7 +1289,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     (fits, halfHangAt) = (true, contentEnd - 1);
                 if (!fits && compressing && segments.Count <= 1 && contentEnd > i
                     && CompressesPunctuation(text, advances, charStyles, lineStart, i, contentEnd, contentX - EndSpace(contentEnd - 1) - Fit(),
-                        Fit() - shortEnd, context.CompatibilityMode >= 15) is { } compressed)
+                        Fit() - shortEnd, context.Profile.CompressionByGaps) is { } compressed)
                 {
                     fits = true;
                     (halfHangAt, punctuationSqueezed) = compressed;
@@ -1374,8 +1332,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         var lineEnd = x;
                         for (var k = end; k > lineStart && text[k - 1] == ' '; k--)
                             lineEnd -= advances[k - 1];
-                        var justified = Justified(format) && context.CompatibilityMode >= 15;
-                        var threshold = context.CompatibilityMode >= 15 ? 18 : zone;
+                        var justified = Justified(format) && context.Profile.SqueezesJustifiedLines;
+                        var threshold = context.Profile.FixedHyphenationZone ? 18 : zone;
                         if ((justified || Fit() - lineEnd > threshold + 0.005) && Hyphenate(i, contentEnd, x, Fit() + (justified ? 0.23 * spaces : 0)) is { } at)
                         {
                             end = at;
@@ -1460,7 +1418,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (room != null)
             {
                 // The line's height decides where the next one stands beside the objects.
-                Space([line], format, Pitch(format), ExactFromTop);
+                Space([line], format, Pitch(format), context.Profile.ExactFromTop);
                 // A line moved below objects for the height its paragraph mark gives stands where it fits with its own
                 // (docx/external/libreoffice/uitest/tdf124675: a line just above a floating table, its mark taller).
                 if (skip > 0.01 && !remeasured && line.Height < estimate - 0.01
@@ -1479,7 +1437,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // wrapped top and bottom, anchored before or after it; beside one leaving it room enough it stays; in
                 // mode 14 it stays over the shape; openxml-sdk/Document: a cover page's text box over a chart's lower
                 // half).
-                if (context.CompatibilityMode >= 15 && !grown && line.Height > estimate + 0.01 && taken != null
+                if (context.Profile.TallLinesClearObjects && !grown && line.Height > estimate + 0.01 && taken != null
                     && room(new LineSlot(offset + skip, line.Height, line.Baseline - line.Above, line.Baseline + line.Below, clear)) is { } whole
                     && !SameRoom(whole, taken))
                 {
@@ -1503,7 +1461,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // 456.3 pt wide in a 451.3 pt column as a complex or simple field's result or in a hyperlink; owf-15 and
             // wio-*: the mark beside it; Apache POI's WordWithAttachments: an OLE object, an EMBED field, 468 pt wide in
             // a column of 467.75 pt, not one 467.75 pt wide).
-            markWraps = context.CompatibilityMode < 15 && end >= text.Length && endBreak == null && x > limit + 0.005
+            markWraps = context.Profile.MarkWrapsAfterWideFields && end >= text.Length && endBreak == null && x > limit + 0.005
                 && objects.TryGetValue(text.Length - 1, out var lastObject) && lastObject.InField;
             lines.Add(line);
             first = false;
@@ -1517,12 +1475,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // A paragraph that ends with a break has an empty last line, after a column break in the next column or page
         // (measured with docx/local/breakmark3-cx-*, breakmark4-cl-*, -c2-*: in all compatibility modes); one that
         // ends with a page break too where its mark goes to the next page.
-        if ((lines[^1].EndBreak is "line" or "column" || lines[^1].EndBreak is "page" && SplitPageBreak) && lineStart >= text.Length
+        if ((lines[^1].EndBreak is "line" or "column" || lines[^1].EndBreak is "page" && context.Profile.SplitPageBreak) && lineStart >= text.Length
             || markWraps)
             lines.Add(BuildLine(text, charStyles, advances, text.Length, text.Length, left, format, left, 0, mark, 0, width - right));
         lines[^1].Last = true;
 
-        var expandBreaks = !context.Compat("doNotExpandShiftReturn");
+        var expandBreaks = context.Profile.ExpandsLineBreaks;
         // How justification may spread a line between characters (measured with docx/local/cjk-justify-lines,
         // cjk-justify-western and docx/generated/paragraph-alignment): justified lines with East Asian text where the
         // document's default East Asian font is one (elsewhere their spaces only, East Asian text not at all);
@@ -1561,8 +1519,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     var part = new Line { First = line.First && g == 0, Last = line.Last && g == lastGroup, Natural = line.Natural,
                         EndBreak = g == lastGroup ? line.EndBreak : null, Hanging = g == lastGroup ? line.Hanging : 0 };
                     part.Pieces.AddRange(groups[g]);
-                    Align(part, format, segmentEnd, segmentStart, expandBreaks, Doubled, characters, segmentEnd, IdeographicTrails,
-                        context.CompatibilityMode < 15 ? 0.6 : 0.45, phased: context.CompatibilityMode >= 15);
+                    Align(part, format, segmentEnd, segmentStart, expandBreaks, Doubled, characters, segmentEnd, context.Profile.IdeographicTrails,
+                        context.Profile.DistributedSpaceShare, phased: context.Profile.PhasedDistribution);
                 }
                 continue;
             }
@@ -1576,7 +1534,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
-                IdeographicTrails, context.CompatibilityMode < 15 ? 0.6 : 0.45, snapCell, context.CompatibilityMode >= 15);
+                context.Profile.IdeographicTrails, context.Profile.DistributedSpaceShare, snapCell, context.Profile.PhasedDistribution);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -1643,7 +1601,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 (line.AnchorX ??= new(ReferenceEqualityComparer.Instance))[anchor] = CharacterX(line, index - 1);
             }
         }
-        Space(lines, format, Pitch(format), ExactFromTop);
+        Space(lines, format, Pitch(format), context.Profile.ExactFromTop);
         if (format.Tabs?.Where(t => t.Align == "bar").Select(t => t.Position).ToList() is { Count: > 0 } bars)
         {
             foreach (var line in lines)
@@ -1837,7 +1795,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             // A list number's spaces keep their width (docx/external/libreoffice/extras-ooxmlexport/chtoutline: "第 1 章"
             // in Cambria's spaces).
-            if (BalanceSpaces && !number && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
+            if (context.Profile.BalanceSpaces && !number && value.Contains(' ') && styles.Style(format, WordSlot.EastAsia).Font.Data.EastAsian)
             {
                 for (var k = 0; k < value.Length; k++)
                 {
@@ -1879,7 +1837,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     style = styles.Style(format, WordSlot.ComplexScript, lower, complex: false);
                 if (noteMark)
                     style = style with { NoteMark = true };
-                if (shown.Value == '\\' && YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
+                if (shown.Value == '\\' && context.Profile.YenBackslash && format.LanguageEastAsia?.StartsWith("ja", StringComparison.OrdinalIgnoreCase) == true
                     && !style.Font.Data.EastAsian)
                     shown = new Rune('\u00A5');
                 // A character the font lacks is drawn and measured in Word's fallback font; marks, joiners and
@@ -2390,7 +2348,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // w:doNotUseIndentAsNumberingTabStop before Word 2013 the number's tab takes any custom stop after it
             // first (measured with docx/local/numtabind-*: modes 14, 12 and 11, not 15).
             var custom = format.Tabs?.FirstOrDefault(t => t.Position > x + 0.005 && t.Align != "bar");
-            if (custom == null || custom.Position > left && !(label && NumberTabSkipsIndent))
+            if (custom == null || custom.Position > left && !(label && context.Profile.NumberTabSkipsIndent))
                 return left;
         }
         foreach (var t in format.Tabs ?? [])
@@ -2616,7 +2574,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (piece.Drawing is { } rule && rule.Drawing.Attribute(Vml.Rule) != null)
             {
                 var (markAbove, markBelow) = Metrics(mark, Vertical);
-                if (context.CompatibilityMode < 15 && end < text.Length)
+                if (context.Profile.RulesSizeTheirLines && end < text.Length)
                 {
                     above = Math.Max(above, rule.Box.Height + 2.52);
                     below = Math.Max(below, 2.52);
@@ -2647,7 +2605,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // PDFs of docx/local/c2mt-a, -c, -e: an equation of 13.25 pt alone in its paragraph lowered 2, 4 or 6 pt
                 // stands where it does unlowered, the lines below too; c2mt-d: raised 2 pt the line grows; LibreOffice's
                 // extras-odfexport/2_MathType3; on exact lines extras-ooxmlimport/tdf119200 lowers them).
-                var drawingLift = NoSpaceRaiseLower ? 0
+                var drawingLift = context.Profile.NoSpaceRaiseLower ? 0
                     : onlyDrawings && format.LineRule != "exact" ? Math.Max(0, piece.Style.Raise) : piece.Style.Raise;
                 piece.Lift = drawingLift;
                 above = Math.Max(above, drawing.Box.Height + Math.Min(0, drawingLift));
@@ -2714,7 +2672,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // by 2 pt rectangle too wide for the line between 36 pt words makes a line 2 pt high, at 1.15 lines too; dl-c14,
         // dl-d14: a 40 by 20 pt one between line breaks a line of the 36 pt font; in mode 15 both the mark's; LibreOffice's
         // extras-ooxmlexport/128197_compat14).
-        if (drawings && !texts && context.CompatibilityMode < 15 && end < text.Length)
+        if (drawings && !texts && context.Profile.DrawingLinesWithoutMark && end < text.Length)
         {
             if (end > start && text[end - 1] is '\n' or '\v' && end - 1 < charStyles.Count)
             {
@@ -2773,7 +2731,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // A mark raised or lowered (w:position) moves its line as such text does, a superscript or subscript one not
             // (docx/external/powertools/HC061-Hyperlink-in-Field: empty cells of a table style raising its text 3 pt as
             // high as those with text).
-            var markLift = NoSpaceRaiseLower ? 0 : style.Raise;
+            var markLift = context.Profile.NoSpaceRaiseLower ? 0 : style.Raise;
             (raised, lowered) = (above + markLift, below - markLift);
             if (format.TextAlignment is not ("top" or "center" or "bottom"))
                 (above, below) = (above + Math.Min(0, markLift), Math.Max(0, below - Math.Max(0, markLift)));
@@ -2809,7 +2767,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var shown = line.Pieces.Where(p => !p.IsTab && p.Drawing == null && p.Equation == null && p.CheckBox == null && p.Across == null).ToList();
             // Lowered text aligned by its top goes down only as far as it reaches past its line gap (see TopLift).
             foreach (var piece in shown)
-                piece.Shift += TopLift(piece, format) - (NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift);
+                piece.Shift += TopLift(piece, format) - (context.Profile.NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift);
             if (shown.Count > 0 && shown.All(p => p.Style.Font.Data == shown[0].Style.Font.Data && Math.Abs(p.Style.Size - shown[0].Style.Size) < 0.01))
             {
                 var down = TopDeviceShift(shown[0].Style);
@@ -2831,7 +2789,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     double TopLift(Piece piece, ParagraphFormat format)
     {
-        var lift = NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
+        var lift = context.Profile.NoSpaceRaiseLower ? 0 : piece.Style.Raise - piece.Style.ScriptShift;
         if (format.TextAlignment != "top" || lift >= 0)
             return lift;
         var (above, _) = WordFonts.LineMetrics(piece.Style.Font.Data, piece.Style.Size, piece.Style.LineHeights);
@@ -3044,7 +3002,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             // Not after a non-breaking hyphen, a hyphen with a word joiner (docx/external/powertools/RP/RP038), nor
             // before East Asian characters kinsoku keeps off a line's start.
-            if ((text[i] is '-' or '\u2013' || text[i] == '\u2010' && context.CompatibilityMode >= 15)
+            if ((text[i] is '-' or '\u2013' || text[i] == '\u2010' && context.Profile.BreaksAfterHyphen)
                 && text[i + 1] is not (' ' or '\t' or '\n' or '\f' or '\v' or '\u2060') && !(text[i + 1] >= '\u2E80' && rules.NotFirst.Contains(text[i + 1])))
                 breaks[i] = true;
         }

@@ -782,7 +782,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             });
             // An unturned box's turned lines stand on Word's device too (see TurnedOnDots).
             var device = rotation == 0 && vert is "vert" or "vert270" && DevicePlaced;
-            Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.CompatibilityMode < 15)) : turnedLines, svg, selection, [],
+            Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.Profile.TurnedLinesAsWord2010)) : turnedLines, svg, selection, [],
                 onPage: device);
         }
         svg.Append(selection);
@@ -932,7 +932,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // its baseline on dot 1692; fdo76979: a btLr header frame's 12 pt line at 528.22 pt).
             var placed = grows ? OnDots(line, paperSize.Width)
                 : onPage && line.TurnedFrame is { } frame && DevicePlaced
-                    ? TurnedOnDots(line, frame.Left, frame.Width, line.Top + frame.TopOffset, frame.Height, 0, 0, context.CompatibilityMode < 15)
+                    ? TurnedOnDots(line, frame.Left, frame.Width, line.Top + frame.TopOffset, frame.Height, 0, 0, context.Profile.TurnedLinesAsWord2010)
                     : line;
             var turnedBox = onPage && placed.DeviceTurned;
             // A turned line's glyphs on the device along it from its first one, which TurnedOnDots put on a dot: for text
@@ -1061,7 +1061,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var (dx, dy) = Drawings.EffectOffset(inline.Drawing);
                     var kind = inline.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Name;
                     var shape = kind == Drawings.Wps + "wsp" || kind == Drawings.Wpg + "wgp";
-                    if (context.CompatibilityMode <= 12 && shape && inline.Drawing.Attribute(Vml.Converted) == null)
+                    if (context.Profile.ShapesShiftedByEffects && shape && inline.Drawing.Attribute(Vml.Converted) == null)
                         (dx, dy) = (2 * dx, 2 * dy);
                     var (w, h) = Drawings.Extent(inline.Drawing);
                     var top = inline.Drawing.Attribute(Vml.Hangs) != null ? placed.HangTop ?? placed.Top : baseline - inline.Box.Height - piece.Lift;
@@ -1128,7 +1128,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
             // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
-            svg.Append(Underlines(placed.Line, placed.Left, baseline, context.Compat("ulTrailSpace") ? double.MaxValue : contentEnd));
+            svg.Append(Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd));
             if (placed.Angle != 0)
                 svg.Append("</g>");
         }

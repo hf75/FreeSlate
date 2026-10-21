@@ -177,6 +177,10 @@ public sealed class DocumentContext : IDisposable
     public int CompatibilityMode => Settings.Child("compat")?.Elements(Wml.W + "compatSetting")
         .FirstOrDefault(e => e.Attr("name") == "compatibilityMode")?.Attr("val") is { } v && int.TryParse(v, out var mode) ? mode : 12;
 
+    /// <summary>How Word lays the document out by its compatibility settings, read once.</summary>
+    public Layout.LayoutProfile Profile => profile ??= new(this, CompatibilityMode);
+    Layout.LayoutProfile? profile;
+
     /// <summary>Whether one of the layout options of the compatibility settings (w:compat) is on.</summary>
     public bool Compat(string option) => Settings.Child("compat").Child(option).OnOff() == true;
 
@@ -214,7 +218,7 @@ public sealed class DocumentContext : IDisposable
     /// c2-html).
     /// </summary>
     public double Between(double after, double before, double? ownAfter = null) =>
-        AddsSpacing ? after + before : after + Math.Max(0, before - (ownAfter ?? after));
+        Profile.AddsSpacing ? after + before : after + Math.Max(0, before - (ownAfter ?? after));
 
     /// <summary>
     /// The kinsoku characters of an East Asian language (catalog: paragraph.eastAsian): the document's own lists for it
@@ -291,10 +295,6 @@ public sealed class DocumentContext : IDisposable
     }
 
     readonly Dictionary<string, Text.LineBreaker.Kinsoku> kinsoku = [];
-
-    /// <summary>Whether paragraphs add their spaces after and before (w:doNotUseHTMLParagraphAutoSpacing) rather than overlap them.</summary>
-    public bool AddsSpacing => addsSpacing ??= Compat("doNotUseHTMLParagraphAutoSpacing");
-    bool? addsSpacing;
 
     /// <summary>The regional format for dates the document shows (date blocks, fields), the system's by default.</summary>
     public System.Globalization.CultureInfo Culture { get; set; } = System.Globalization.CultureInfo.CurrentCulture;
