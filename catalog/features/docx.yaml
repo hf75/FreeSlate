@@ -1121,8 +1121,12 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/para-shadow 31.7 → 100 %). Beside floating objects a line's
           shading covers only its segments, from 1.4 pt before a start the object cuts to 1.55 pt after a cut end,
           behind the text wrapped tight as well (docx/local/psl-square, psl-behind;
-          docx/external/libreoffice/extras-ooxmlimport/tdf60351 51.3 → 99.2 %). A box that goes on in the next column
-          or page is drawn in both parts, without the bottom line in the first and without the top line in the next,
+          docx/external/libreoffice/extras-ooxmlimport/tdf60351 51.3 → 99.2 %); a line pushed below floating objects
+          is shaded from its top, the room it skipped white, a first line's as well, also where the paragraph goes on
+          with the shading of the one before it at a page's top (docx/local/psk-15, psk-14: a yellow paragraph below a
+          rectangle wrapped top and bottom, the third of nine lines below one; bwr-15-*-sql-100 39.8 → 100 %, ub-1
+          to ub-7 92.2 to 98.0 → 100 %, tv-3 96.2 → 100 %). A box that goes on in the next column or page is drawn
+          in both parts, without the bottom line in the first and without the top line in the next,
           whether the page's end, a column's or a page or column break breaks it (docx/local/bsp-nat-15, -14,
           bsp-col-15, bsp-pbr-*, bsp-cbr-*: 3 pt lines, 30 pt before and 8 pt after, 98.2 to 100 %). In a box of
           several paragraphs each one's shading reaches its space after and the next one's begins below it (bsp2-gap:
@@ -2387,7 +2391,10 @@ areas:
           (docx/local/float-tables 91.3 %: a column-aligned table exactly as in Word). The paragraph after the table
           adds all its space before to the space after the one before it; a first line pushed below a floating object
           keeps its paragraph's own space before below it (docx/local/fsb-*: 14 pt below tables anchored to the page
-          and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points of the lines). A table taller
+          and to the text, modes 14 and 15; powertools/RP/ RP051 ×3 +12 to 14 points of the lines), at a column's top,
+          where the space before was dropped, all of it below the paragraph's own objects (docx/local/psk-15, psk-14:
+          12 pt below a rectangle wrapped top and bottom after a page break before; efd-15 96.1 → 100 % on those
+          pages), below others not (core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none). A table taller
           than the rest of the page goes on at the top of the next page's body at the same place across, its rows
           split at a line of each cell as in the text (in Word 2013 and before alike), header rows repeated, the line
           below the last row of a page closing each part, a row of at least its height taller than a page's body ending at the bottom margin at
@@ -3012,10 +3019,17 @@ areas:
           direction the drawing is sized relative to the page or margins (relsz-2, -6, -9 to -11;
           powertools/WC/WC065-Textbox, DB-GlossaryDocuments/FooterContent-built). A simple position (wp:simplePos) may
           be a universal measure (docx/external/libreoffice/extras-ooxmlexport/tdf166201_simplePosCM: 10cm 5cm, 8.1 →
-          100 %). From Word 2013 on a drawing that text goes around, placed from its paragraph or line, stays below
-          the top margin, behind the text too; before, and unwrapped, it stands above it (docx/local/wrm-15,
-          wrm-behind, wrm-14, wrm-none, wrm-mid: 20 pt above the first paragraph;
-          docx/external/libreoffice/extras-ooxmlimport/tdf60351 40.5 → 51.3 %). A drawing placed from its line stands
+          100 %). From Word 2013 on a drawing that text goes around, placed from its paragraph or line, stays between
+          the margins with its effect extents, behind the text too: above the top margin it begins there, past the
+          bottom margin it ends there, the top margin winning; before, and unwrapped, it stands where it is placed
+          (docx/local/wrm-15, wrm-behind, wrm-14, wrm-none, wrm-mid: 20 pt above the first paragraph;
+          docx/external/libreoffice/extras-ooxmlimport/tdf60351 40.5 → 51.3 %; eff-15: 20 pt above to 1 pt below a
+          paragraph at the margin with 1.5 pt of effect extent above it 1.5 pt below the margin, with 6 pt 6 pt below,
+          its distance from the text not counted; 60 pt high 20 to 30 pt below a paragraph, with 6 pt of effect extent
+          above it and 3 pt below, ending at the bottom margin; efd-15, efe-15, efi-15: unwrapped or placed from the
+          margin or the page it stays, in modes 14 and 12 too, efd-14, efd-12; vc-b15: a square 700 pt below its
+          paragraph at the bottom margin, the text after it on the page, 0.3 → 100 %; wsd2-15 88.6 → 100 % on its second
+          page; extras-ooxmlexport/tdf160049_anchorMargin15 97.9 → 98.5 %). A drawing placed from its line stands
           at the line's top before floating objects pushed it down, where the room around it was measured
           (docx/external/libreoffice/writerfilter-dmapper/textbox-textline-top, textbox-textline: text boxes wider
           than the column at their line's top, the text below them, 56.1 → 99.6 % and 58.0 → 100 %), a drawing text goes
@@ -5161,10 +5175,17 @@ areas:
           65.5 → 76.0 % of the lines; Document: a cover's two text boxes, one over a chart, one over the table above
           it; Complex01 84.5 → 89.0 %), in a section of columns at the top of the next column (LibreOffice's
           extras-layout/fdo43573-2-min: two columns, the second filled, 81.3 → 82.8 %); from Word 2013 an object that wraps text and moves with its paragraph takes
-          the paragraph to the next page where it would reach past the bottom margin, a box that resizes to its text
-          at least as high as Word saved it (docx/local/af-over, af-over-tb, af-huge go; af-fit, af-over-none in front
-          of the text, af-over-page, af-over-margin and af-over-14 stay; docx/external/libreoffice/extras-ooxmlexport/
-          tdf123243, tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); one taller than the page's body,
+          the paragraph to the next page where, moved up to end at the bottom margin, it would reach with its effect
+          extent above the bottom of its line, the paragraph's space after below a last line, a box that resizes to its
+          text at least as high as Word saved it, there placed from the paragraph's top, as any drawing of a
+          paragraph moved on before its first line, before Word 2013 as far down as it stood (docx/local/af-over,
+          af-over-tb, af-huge go, af-over-tb 72.5 → 100 % on its second page; af-fit, af-over-none in front of the
+          text, af-over-page, af-over-margin and af-over-14 stay; efg-15, efh-15: 50 pt below a line ending at 136.85
+          pt rectangles of up to 71 pt stay, of 71.5 pt and more go, below a line of 20 pt text one of 60 pt; efi-15:
+          3 pt of effect extent above count, 4 pt of distance from the text not, 12 pt of space after do, a line of 1.5
+          lines its whole height; extras-layout/fdo43573-2-min, mode 14: a picture below an empty paragraph moved to
+          the right column where it stood in the left; docx/external/libreoffice/extras-ooxmlexport/tdf123243,
+          tdf115719 20 → 100 %, tdf137655 54.2 → 100 % of the lines); one taller than the page's body,
           its effect extents above and below with it, leaves its paragraph's first line where it would stand without
           it and takes the lines after it below it, whatever its wrapping (docx/local/tlw-15: rectangles of 201 pt and
           of 190 pt with a 12 pt bottom effect extent on a body of 200 pt, wrapped square or top and bottom; 199 pt and

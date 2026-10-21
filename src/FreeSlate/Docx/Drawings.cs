@@ -66,6 +66,9 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
     /// <summary>Whether the drawing is sized to its text already (PageRenderer.FitToText), which it is only once.</summary>
     public bool FittedToText { get; init; }
 
+    /// <summary>Whether the bottom margin moved the drawing up, as Word 2013 holds one that text goes around (Paginator.Unpinned).</summary>
+    public bool HeldUp { get; init; }
+
     /// <summary>The text box's body properties (insets, vertical anchor) of the shape (wps:bodyPr).</summary>
     public XElement? Body => Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")?.Element(Drawings.Wps + "bodyPr");
 }

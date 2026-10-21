@@ -1235,9 +1235,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The height of a placed drawing with its effect extents above and below it.</summary>
     static double ExtentHeight(PlacedDrawing drawing)
     {
-        var effect = drawing.Drawing.Element(Docx.Drawings.Wp + "effectExtent");
+        var (top, bottom) = EffectDown(drawing.Drawing);
+        return drawing.Height + top + bottom;
+    }
+
+    /// <summary>A drawing's effect extents above and below it (wp:effectExtent t and b) in points.</summary>
+    static (double Top, double Bottom) EffectDown(XElement drawing)
+    {
+        var effect = drawing.Element(Docx.Drawings.Wp + "effectExtent");
         double Emu(string name) => double.TryParse((string?)effect?.Attribute(name), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v / 12700 : 0;
-        return drawing.Height + Emu("t") + Emu("b");
+        return (Emu("t"), Emu("b"));
     }
 
     /// <summary>The leftmost and rightmost points of a polygon between two heights, or null where it does not reach.</summary>
@@ -2955,17 +2962,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (context.CompatibilityMode >= 15 && cell?.Inside is { } inside && cell.Content is { } content
             && anchor.Anchor.Elements().Any(e => e.Name.LocalName is "wrapSquare" or "wrapTight" or "wrapThrough" or "wrapTopAndBottom"))
             placed = placed with { Clip = (inside.Left, content.Top, Math.Max(0, inside.Right - inside.Left), content.Height) };
-        // From Word 2013 on a drawing of the text that text goes around, placed from its paragraph or line, stays below
-        // the top margin (measured with docx/local/wrm-15, wrm-behind: 20 pt above the first paragraph at the margin,
-        // wrapped square or behind the text tight; wrm-14 above it in mode 14, wrm-none unwrapped above it;
-        // docx/external/libreoffice/extras-ooxmlimport/tdf60351).
-        if (context.CompatibilityMode >= 15 && cell == null && anchor.Part == context.MainPart && placed.Y < page.Section.Top
-            && (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is "paragraph" or "line"
-            && anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is { } wrapping
-            && wrapping.Name.LocalName != "wrapNone")
-            placed = placed with { Y = page.Section.Top };
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
-            return placed;
+            return Held(placed);
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
         var fitted = PageRenderer.FitToText(placed, text, body, shape, page, tables, context.Theme);
         // A box that grows or shrinks to its text is aligned as it then is (LibreOffice's core-doc/
@@ -2985,7 +2983,30 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             };
             fitted = fitted with { X = fitted.X - move };
         }
-        return fitted;
+        return Held(fitted);
+
+        // From Word 2013 on a drawing of the text that text goes around, placed from its paragraph or line, stays
+        // between the margins with its effect extents, as high as it is drawn: past the bottom margin it moves up to end
+        // there, above the top margin down to begin there, which wins (measured with docx/local/wrm-15, wrm-behind: 20
+        // pt above the first paragraph at the margin, wrapped square or behind the text tight; wrm-14 above it in mode
+        // 14, wrm-none unwrapped above it; eff-15: 20 pt above to 1 pt below a paragraph at the margin with 1.5 pt of
+        // effect extent above it 1.5 pt below the margin, with 6 pt 6 pt below, its distance from the text not counted;
+        // 60 pt high 20 to 30 pt below a paragraph lower down, with 6 pt of effect extent above and 3 pt below, ending at
+        // the bottom margin; efd-15, efe-15, efi-15: unwrapped or placed from the margin or the page they stay, in mode
+        // 14 too, efd-14; docx/external/libreoffice/extras-ooxmlimport/tdf60351, extras-ooxmlexport/
+        // tdf160049_anchorMargin15).
+        PlacedDrawing Held(PlacedDrawing drawing)
+        {
+            if (context.CompatibilityMode < 15 || cell != null || anchor.Part != context.MainPart
+                || (string?)anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is not ("paragraph" or "line")
+                || anchor.Anchor.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal)) is not { } wrapping
+                || wrapping.Name.LocalName == "wrapNone")
+                return drawing;
+            var (above, below) = EffectDown(anchor.Anchor);
+            var s = page.Section;
+            var lowest = s.PageHeight - s.Bottom - Math.Max(0, below) - drawing.Height;
+            return drawing with { Y = Math.Max(Math.Min(drawing.Y, lowest), s.Top + Math.Max(0, above)), HeldUp = drawing.Y > lowest + 0.01 };
+        }
     }
 
     static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
@@ -3659,6 +3680,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // extras-ooxmlexport/tdf153613_anchoredAfterPgBreak6: a picture wrapped square after "x" and a page break
         // only on the second page, "x" at the first page's top).
         var firstPart = FirstPartAnchors(paragraph);
+        // How far below the first line's top the line of an anchor ends, the paragraph's space after below its last.
+        double LineBottom(AnchorInline anchor)
+        {
+            var at = Math.Max(0, lines.FindIndex(l => l.Anchors?.Any(a => ReferenceEquals(a, anchor)) == true));
+            return lines.Take(at + 1).Sum(l => l.Height) + (at >= lines.Count - 1 ? SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) : 0);
+        }
         if (!columnEmpty && firstPart.Any(anchor =>
                 ExclusionOf(PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width)) is { TopAndBottom: true } e && e.Top < y - 0.01 && e.Bottom > page!.BodyTop
                 && Pushed(e) is { } top && e.Bottom + y - top + (lines.Count > 0 ? lines[0].FitHeight : 0) > Bottom + 0.01))
@@ -3666,21 +3693,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             NextColumn(natural: true);
             (left, width) = Column(column);
         }
-        // An object that wraps text and moves with its paragraph takes the paragraph to the next page where it would
-        // reach past the bottom margin, from Word 2013 (measured with docx/local/af-over, af-over-tb, af-huge: a text
-        // box 330 or 700 pt high, square or top and bottom, at the top of a paragraph 500 pt down a Letter page goes to
-        // the next page with it; af-fit, 180 pt, stays; af-over-none in front of the text, af-over-page and
-        // af-over-margin placed from the page or the margin stay; af-over-14 in Word 2010 stays; docx/external/
-        // libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
+        // An object that wraps text and moves with its paragraph, moved up by the bottom margin (see Unpinned), takes the
+        // paragraph to the next page where it then reaches with its effect extent above the bottom of its line, the
+        // paragraph's space after below a last line, from Word 2013 (measured with docx/local/af-over, af-over-tb,
+        // af-huge: a text box 330 or 700 pt high, square or top and bottom, at the top of a paragraph 500 pt down a
+        // Letter page goes to the next page with it; af-fit, 180 pt, stays; af-over-none in front of the text,
+        // af-over-page and af-over-margin placed from the page or the margin stay; af-over-14 in Word 2010 stays; efg-15,
+        // efh-15: 50 pt below a line from 125.35 to 136.85 pt rectangles of 60 to 71 pt stay, ending at the margin, of
+        // 71.5 pt and more go, below a line of 20 pt text one of 60 pt; efi-15: one of 68 pt with 3 pt of effect extent
+        // above it goes, with 4 pt of distance from the text stays, 12 pt of space after take one of 65 pt along, a line
+        // of 1.5 lines not; docx/external/libreoffice/extras-ooxmlexport/tdf123243, tdf115719).
         else if (!columnEmpty && context.CompatibilityMode >= 15 && firstPart.Any(anchor =>
-                     (string?)anchor.Anchor.Element(Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph" or "line"
-                     && PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is var placed && ExclusionOf(placed) != null
-                     && placed.Y + placed.Height > Bottom + 0.01))
+                     PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width) is { HeldUp: true } placed && ExclusionOf(placed) != null
+                     && placed.Y - Math.Max(0, EffectDown(placed.Drawing).Top) < y + LineBottom(anchor) - 0.01))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
         }
-        // Moved on before its first line, the paragraph's box begins at the top of the new column.
+        // Moved on before its first line, the paragraph begins at the top of the new column, where from Word 2013 on the
+        // drawings placed from it stand (measured with docx/local/af-over-tb: a text box wrapped top and bottom at the
+        // next page's top, the paragraph's line below it); before, they stand as far down as they did (docx/external/
+        // libreoffice/extras-layout/fdo43573-2-min, mode 14: a picture 2.7 pt below an empty paragraph moved to the right
+        // column stands where it stood in the left; so do drawings that go back and forth, np-a14, np-a15). So does its
+        // box.
+        if (!wasEmpty && columnEmpty && context.CompatibilityMode >= 15)
+            paragraphTop = (page!, y);
         if (frame != null && !bare && !wasEmpty && columnEmpty)
         {
             boxTop = continues ? y - Math.Max(0, Gap(before) - pendingAfter) : y + frame.TopShadow;
@@ -3768,6 +3805,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Whether the lines were broken beside floating objects, which another column or page may not have.
         var laidAround = false;
+        // Whether the box begins below a first line pushed below objects (see LayAround).
+        var pushedBox = false;
         void LayAround()
         {
             if (exclusions.Count == 0)
@@ -3781,7 +3820,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // objects, the box beginning below them (docx/external/libreoffice/core-ooxml-pass/tdf108272: a
                 // bordered heading below a header's floating table, its top line at the table's bottom).
                 var opening = frame != null && !bare && !continues && frame.Top is { Visible: true } line ? line.Space + line.Total : 0;
-                layout.PushedSpace = ownBefore + opening;
+                // At a column's top, where the paragraph's space before was dropped, a first line pushed below its own
+                // objects has it below them, no longer beginning the column (measured with docx/local/psk-15, psk-14: 12
+                // pt below a rectangle wrapped top and bottom at the page's top after a page break before; efd-15:
+                // wrapped top and bottom after a page break before); below other objects not
+                // (docx/external/libreoffice/core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none: a
+                // page's first line below another paragraph's shape at the top margin; writerfilter-dmapper/
+                // framepr-pagebreak-style, extras-layout/tdf170846_1, _2: below frames).
+                var dropped = columnEmpty && top == Top.Break && !(brokeBefore && context.CompatibilityMode < 15) && lines.Count > 0
+                              && owned.Values.Any(e => e.Top < linesTop + lines[0].Height - 0.01 && e.Bottom > linesTop + 0.01);
+                layout.PushedSpace = (dropped ? Gap(before) : ownBefore) + opening;
                 try
                 {
                     double? firstOffset = null;
@@ -3797,7 +3845,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 {
                     layout.PushedSpace = 0;
                 }
-                if (opening > 0 && lines.Count > 0 && lines[0].Skip > 0.01)
+                // So does its shading, drawn line by line, which leaves the room the line skipped white (measured with
+                // docx/local/psk-15, psk-14: a yellow paragraph below a rectangle wrapped top and bottom, shaded from
+                // its line's top, one going on with the shading of the paragraph before at a page's top too;
+                // bwr-15-*-sql-100); a box going on from the paragraph above keeps its part above the line.
+                pushedBox = frame != null && !bare && (!continues || columnEmpty) && lines.Count > 0 && lines[0].Skip > 0.01;
+                if (pushedBox)
                     boxTop = linesTop + lines[0].Skip - opening;
             }
         }
@@ -4085,6 +4138,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 widow, format.KeepNext == true, format.KeepLines == true) { Block = paragraph });
             if (cutsPage != page)
                 (cuts, cutsPage) = ([], page!);
+            // The room a later line skipped below objects stays unshaded (docx/local/psk-15, psk-14: the third of nine
+            // lines below a rectangle wrapped top and bottom, white between the second and it), the first line's too
+            // where the box began above it.
+            if (skip > 0.01 && (k > 0 || !pushedBox))
+                cuts.Add((y - skip, y, []));
             if (line.Cut is { } cut)
                 cuts.Add((y, y + line.Height, cut));
             page!.Lines.Add(new PlacedLine(line, left + Mirror(format), y)
