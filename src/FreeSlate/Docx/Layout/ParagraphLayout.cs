@@ -1073,8 +1073,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var lines = new List<Line>();
         // Justified lines may squeeze the spaces between their words to take one more word (see Squeezes); left
         // aligned lines take no word that does not fit (docx/local/jc-left); not before Word 2013 (measured with
-        // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed).
-        var squeezing = Justified(format) && context.CompatibilityMode >= 15;
+        // docx/local/cjk-justify12: a line of Japanese words between spaces leaves the word that only fits squeezed);
+        // not lines of left-to-right text with kashida justification (see KashidaShare).
+        var squeezing = Justified(format) && context.CompatibilityMode >= 15 && KashidaShare(format) == null;
         // So may justified lines with punctuation compression (w:characterSpacingControl compressPunctuation) by
         // squeezing their East Asian punctuation, in every mode (see CompressesPunctuation).
         var compressing = Justified(format) && context.Settings.Child("characterSpacingControl").Val() == "compressPunctuation";
@@ -1112,6 +1113,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // The left indent as the hanging first line's tab stop (see the drop cap below).
             var tabLeft = left;
             var (naturalStart, naturalLimit) = (startX, limit);
+            // Where the line's content has to end to fit: its limit, for kashida justification of left-to-right text
+            // nearer (see KashidaShare).
+            double Fit() => KashidaShare(format) is { } share ? startX + (limit - startX) * share : limit;
             // Floating objects beside the line: its segments within the indents, or it moves down where they leave it
             // none (see MinimumSegment). Before Word 2013 a line beside objects wrapped square stays where the column
             // has room enough beside them, also only outside its indents, and takes what of it they leave, a character
@@ -1312,8 +1316,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     shortEnd -= advances[k - 1];
                     shortSpaces -= balanced.Contains(k - 1) ? 0 : advances[k - 1];
                 }
-                bool Takes(double contentEndX) => contentEndX <= limit + 0.005
-                    || squeezing && Squeezes(contentEndX - limit, innerSpaces, limit - shortEnd, shortSpaces);
+                bool Takes(double contentEndX) => contentEndX <= Fit() + 0.005
+                    || squeezing && Squeezes(contentEndX - Fit(), innerSpaces, Fit() - shortEnd, shortSpaces);
                 // The automatic space after the content's last character goes where the line ends there.
                 // With punctuation compression a closing mark ending the content may hang half its width past the end:
                 // where that alone is enough, rather than the spaces squeezing for it; where they may not squeeze for all
@@ -1322,12 +1326,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 // inside, the nine spaces squeezed by up to 24 %, 8.3 to 12.8 pt over it hangs half again).
                 var endX = contentX - EndSpace(contentEnd - 1);
                 var halfMark = compressing && segments.Count <= 1 && contentEnd > i ? HalfMark(text, advances, charStyles, contentEnd - 1) : 0;
-                var fits = !(halfMark > 0 && endX > limit + 0.005 && endX - halfMark <= limit + 0.005) && Takes(endX);
+                var fits = !(halfMark > 0 && endX > Fit() + 0.005 && endX - halfMark <= Fit() + 0.005) && Takes(endX);
                 if (!fits && halfMark > 0 && Takes(endX - halfMark))
                     (fits, halfHangAt) = (true, contentEnd - 1);
                 if (!fits && compressing && segments.Count <= 1 && contentEnd > i
-                    && CompressesPunctuation(text, advances, charStyles, lineStart, i, contentEnd, contentX - EndSpace(contentEnd - 1) - limit,
-                        limit - shortEnd, context.CompatibilityMode >= 15) is { } compressed)
+                    && CompressesPunctuation(text, advances, charStyles, lineStart, i, contentEnd, contentX - EndSpace(contentEnd - 1) - Fit(),
+                        Fit() - shortEnd, context.CompatibilityMode >= 15) is { } compressed)
                 {
                     fits = true;
                     (halfHangAt, punctuationSqueezed) = compressed;
@@ -1372,7 +1376,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                             lineEnd -= advances[k - 1];
                         var justified = Justified(format) && context.CompatibilityMode >= 15;
                         var threshold = context.CompatibilityMode >= 15 ? 18 : zone;
-                        if ((justified || limit - lineEnd > threshold + 0.005) && Hyphenate(i, contentEnd, x, limit + (justified ? 0.23 * spaces : 0)) is { } at)
+                        if ((justified || Fit() - lineEnd > threshold + 0.005) && Hyphenate(i, contentEnd, x, Fit() + (justified ? 0.23 * spaces : 0)) is { } at)
                         {
                             end = at;
                             lastFit = at;
@@ -1383,7 +1387,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     end = breakAt;
                     break;   // the word goes to the next line
                 }
-                if (!fits && hyphens != null && Hyphenate(i, contentEnd, x, limit) is { } inWord)
+                if (!fits && hyphens != null && Hyphenate(i, contentEnd, x, Fit()) is { } inWord)
                 {
                     // A word longer than the line breaks at its last hyphenation place that fits.
                     end = inWord;
@@ -1399,7 +1403,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // after the list number's tab (lt-3: a shape wider than the room beside a bullet stays beside it).
                     var k = i;
                     var kx = x;
-                    while (k < contentEnd && (k == i && (breakAt == end || breakAt == labelTab) || kx + advances[k] <= limit + 0.005))
+                    while (k < contentEnd && (k == i && (breakAt == end || breakAt == labelTab) || kx + advances[k] <= Fit() + 0.005))
                     {
                         kx += advances[k];
                         k++;
@@ -2934,6 +2938,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             line.Baseline += line.RaisedAbove;
         }
     }
+
+    /// <summary>
+    /// The share of a line's measure that left-to-right text with kashida justification breaks on, the line then
+    /// stretched over the whole of it (measured with docx/local/ksh-*: English paragraphs in Calibri and Times New Roman
+    /// at 11 to 20 pt, 200 and 451 pt wide, indented, in modes 14 and 15: mediumKashida lines break on 0.9 of the measure,
+    /// highKashida on 0.8, lowKashida as justified ones); null for other paragraphs.
+    /// </summary>
+    static double? KashidaShare(ParagraphFormat format) => format.Bidi == true ? null
+        : format.Justification switch { "mediumKashida" => 0.9, "highKashida" => 0.8, _ => null };
 
     /// <summary>
     /// Arabic words lengthened by kashidas (U+0640) for medium and high kashida justification (w:jc mediumKashida,
