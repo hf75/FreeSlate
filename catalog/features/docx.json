@@ -19759,7 +19759,7 @@
       "difficulty": 4,
       "status": "done",
       "strategy": "Shared DrawingML renderer, as pptx `chart.ex` (done).",
-      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping. An Office 2016 chart (cx:chart) whose alternate content carries a fallback picture, as Office writes one, shows that picture, Office's own rendering of the chart; without one the chart is drawn as pptx chart.ex (done, measured in PowerPoint). Word's automation refuses to insert Office 2016 charts (AddChart2), so no generated Word document has one.",
+      "office": "Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and w:clrSchemeMapping. Word draws an Office 2016 chart (cx:chart) itself, not the fallback picture Office writes beside it, so the chartex alternative wins and the chart is drawn as pptx chart.ex (done), with Word's own measures there: the chart area as the style part has it, Office's words in Word's language, legends and axis titles of their own (openxml-sdk/Of16-01 84.3 → 99.1 %, Of16-02 74.1 → 97.3 %, Of16-05 95.3 → 99.6 %, Of16-06 97.8 → 99.3 %, Of16-07 84.0 → 99.1 %, Of16-03 97.8 → 98.8 %, Of16-04 98.3 → 98.0 %, poi/chartex 93.5 → 96.1 %). Word's automation refuses to insert Office 2016 charts (AddChart2), so no generated Word document has one; the probes are copies of Of16-01 and Of16-02 (docx/local/bxw-*, bxl-*, wfl-*).",
       "elements": [
         "cx:address",
         "cx:aggregation",

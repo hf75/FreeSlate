@@ -1030,7 +1030,7 @@ public sealed partial class ModelReader(DocumentContext context)
                 if (package.FirstRelationship("/", "officeDocument")?.Target is { } main && package.Exists(main))
                 {
                     var document = package.ReadXml(main);
-                    Opc.MarkupCompatibility.Process(document);
+                    Opc.MarkupCompatibility.Process(document, chartEx: true);
                     container.Add(document.Root.Child("body")?.Elements().Where(x => x.Name != Wml.W + "sectPr").Select(x => new XElement(x)));
                     // Its section breaks keep their kind, but their pages are the section's the chunk stands in
                     // (docx/external/libreoffice/writerfilter-dmapper/alt-chunk: a chunk of square pages of 283 pt in an

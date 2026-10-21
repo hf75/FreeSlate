@@ -337,7 +337,7 @@ public sealed class DocumentContext : IDisposable
         if (documents.TryGetValue(part, out var document))
             return document;
         document = Package.ReadXml(part);
-        MarkupCompatibility.Process(document);
+        MarkupCompatibility.Process(document, chartEx: true);
         if (Theme != null)
             ThemeShading(document);
         documents[part] = document;

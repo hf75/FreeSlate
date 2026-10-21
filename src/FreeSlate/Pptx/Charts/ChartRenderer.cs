@@ -68,6 +68,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     Dictionary<ChartSeries, ChartGroup> groupOf = [];
     XElement? chartStyle;
     XElement? colorStyle;
+
+    /// <summary>
+    /// How many colors a color style that varies one color spreads where the chart's series do not say (an Office 2016
+    /// chart's frame sets it; see AutoColor).
+    /// </summary>
+    int? paletteSize;
     CultureInfo culture = CultureInfo.InvariantCulture;
     ColorContext colors = null!;
     double width, height;
@@ -1465,6 +1471,20 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var variations = colorStyle?.Elements(Ns.Cs + "variation").ToList() ?? [];
         if (palette.Count == 0)
             palette = Enumerable.Range(1, 6).Select(i => new XElement(Ns.A + "schemeClr", new XAttribute("val", $"accent{i}"))).ToList();
+        // A color style varying one color (meth withinLinear, Office's monochromatic palettes) spreads its n colors
+        // evenly about it from a shade to a tint: the i-th v = 0.7 (2i + 1 − n) / (n + 1) of the way, darker by −v
+        // below, lighter by v above, in linear light (measured with docx/local/bxl-*: Word's box plots of one to six
+        // series on accent1 and accent2, all 29 colors within one level; openxml-sdk's Of16-07 waterfall takes the
+        // first three of four).
+        if ((string?)colorStyle?.Attribute("meth") == "withinLinear")
+        {
+            var n = Math.Max(1, count ?? paletteSize ?? AllSeriesCount);
+            var v = 0.7 * (2 * (index % n) + 1 - n) / (n + 1);
+            var varied = new XElement(palette[0]);
+            if (Math.Abs(v) > 1e-9)
+                varied.Add(new XElement(Ns.A + (v < 0 ? "shade" : "tint"), new XAttribute("val", (long)Math.Round((1 - Math.Abs(v)) * 100000))));
+            return colors.Resolve(varied);
+        }
         var color = new XElement(palette[index % palette.Count]);
         var cycle = index / palette.Count;
         if (variations.Count > 0)
@@ -1694,13 +1714,22 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             layout.Titled = true;
             var b = axisTitle.Box;
+            var room = layout.Axis.Position is "l" or "r" ? b.W : b.H;
+            if (ex != null && slide.Presentation.Word)
+            {
+                // Office 2016 charts in Word: the title's lines at the edge, the axis's labels their height and 6.6 pt
+                // further in (measured with docx/local/wfl-at, wfl-at14, wfl-atc: titles of 10 and 14 pt beside a
+                // waterfall).
+                var lines = Math.Max(1, axisTitle.Text.Layout.Lines.Count) * LineHeight(axisTitle.Text.Style);
+                (b, room) = (layout.Axis.Position is "l" or "r" ? b with { W = lines } : b with { H = lines }, lines + 6.6);
+            }
             switch (layout.Axis.Position)
             {
                 case "l" when table != null: axisTitle.Box = b with { X = outer.X }; break;
-                case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + b.W, W = Math.Max(1, outer.W - b.W) }; break;
-                case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - b.W) }; break;
-                case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + b.H, H = Math.Max(1, outer.H - b.H) }; break;
-                default: axisTitle.Box = b with { Y = outer.Bottom - b.H }; outer = outer with { H = Math.Max(1, outer.H - b.H) }; break;
+                case "l": axisTitle.Box = b with { X = outer.X }; outer = outer with { X = outer.X + room, W = Math.Max(1, outer.W - room) }; break;
+                case "r": axisTitle.Box = b with { X = outer.Right - b.W }; outer = outer with { W = Math.Max(1, outer.W - room) }; break;
+                case "t": axisTitle.Box = b with { Y = outer.Y }; outer = outer with { Y = outer.Y + room, H = Math.Max(1, outer.H - room) }; break;
+                default: axisTitle.Box = b with { Y = outer.Bottom - b.H }; outer = outer with { H = Math.Max(1, outer.H - room) }; break;
             }
             titles.Add((layout, axisTitle));
         }

@@ -50,7 +50,12 @@ public static class MarkupCompatibility
     /// <summary>Attributes the engine adds to fallback content about the alternative it replaces.</summary>
     public static readonly XNamespace Annotation = "urn:freeslate:annotation";
 
-    public static void Process(XDocument document)
+    /// <summary>
+    /// Resolves the document's alternatives; with <paramref name="chartEx"/> an Office 2016 chart's Choice wins over its
+    /// fallback picture, as Word draws such charts itself (measured with openxml-sdk's Of16-01 to Of16-07: Word's
+    /// waterfalls, box plots, sunburst and treemap, not Excel's pictures of them).
+    /// </summary>
+    public static void Process(XDocument document, bool chartEx = false)
     {
         // Innermost first: an alternative inside a chosen one (a wp14 position inside a Word 2010 drawing) is resolved
         // before the chosen content is copied into its place.
@@ -66,6 +71,7 @@ public static class MarkupCompatibility
             var chosen = alternate.Elements(Mc + "Choice").FirstOrDefault(IsSupported)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsSlideShow)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsEquation)
+                         ?? (chartEx ? alternate.Elements(Mc + "Choice").FirstOrDefault(IsChartEx) : null)
                          ?? alternate.Element(Mc + "Fallback")
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsChartEx)
                          ?? alternate.Elements(Mc + "Choice").FirstOrDefault(IsWordInk);

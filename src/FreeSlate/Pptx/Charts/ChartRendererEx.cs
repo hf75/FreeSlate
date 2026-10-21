@@ -34,6 +34,17 @@ public sealed partial class ChartRenderer
     // at most 80 % of the chart wide before they wrap into columns.
     const double ExLegendRowExtra = 4.14, ExKey = 0.5, ExKeyGap = 0.375, ExEntryGap = 0.66, ExLegendShare = 0.8;
 
+    // Word lays these legends out by measures of its own (measured with docx/local/wfl-*: waterfall legends of 7 to 16
+    // pt at the top, the bottom and the right of a 432 x 252 pt chart): keys 7.2 pt whatever the text's size, 3.9 pt
+    // before their text, entries 7.4 pt apart, rows at least 14.08 pt high and 3.92 pt apart, key and line centered in
+    // them; a row at the top 9.2 pt below the title's line or 10.96 pt inside the chart and 1.62 pt right of its
+    // middle, one at the bottom 10.96 pt inside, one at the side 10.96 pt inside and centered between those; the plot
+    // area 9.16 pt below one at the top (14.65 pt to its top gridline over 9 pt labels), 10.27 pt above one at the
+    // bottom and 13.68 pt from one at the side.
+    const double WordExKey = 7.2, WordExKeyGap = 3.9, WordExEntryGap = 7.4, WordExRow = 14.08, WordExRowGap = 3.92,
+        WordExLegendGap = 9.2, WordExMargin = 10.96, WordExLegendShift = 1.62, WordExPlotGap = 9.16, WordExPlotGapBelow = 10.27,
+        WordExPlotGapSide = 13.68;
+
     /// <summary>How category labels along the bottom fit: in a row, staggered in two rows, or turned (degrees).</summary>
     enum ExLabelMode { Straight, Staggered, Rotated }
 
@@ -78,12 +89,13 @@ public sealed partial class ChartRenderer
             top = title.Bottom - TitlePaddingY + ExTitleGap;
         if (legend is { Overlay: false })
         {
+            var word = slide.Presentation.Word;
             switch (legend.Position)
             {
-                case "t": top = legend.Box.Bottom - ExLegendRowExtra / 2 + ExLegendPlotGap; break;
-                case "b": bottom = legend.Box.Y + ExLegendRowExtra / 2 - ExLegendPlotGap; break;
-                case "l": left = legend.Box.Right + ExLegendPlotGap; break;
-                default: right = legend.Box.X - ExLegendPlotGap; break;
+                case "t": top = word ? legend.Box.Bottom + WordExPlotGap : legend.Box.Bottom - ExLegendRowExtra / 2 + ExLegendPlotGap; break;
+                case "b": bottom = word ? legend.Box.Y - WordExPlotGapBelow : legend.Box.Y + ExLegendRowExtra / 2 - ExLegendPlotGap; break;
+                case "l": left = legend.Box.Right + (word ? WordExPlotGapSide : ExLegendPlotGap); break;
+                default: right = legend.Box.X - (word ? WordExPlotGapSide : ExLegendPlotGap); break;
             }
         }
         return new Box(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
@@ -106,7 +118,7 @@ public sealed partial class ChartRenderer
             else
                 left = Math.Max(left, outer.X + extent);
             if (layout.Axis.IsValue)
-                top = Math.Max(top, outer.Y + LineHeight(layout.Style) / 2 - (legendAbove ? 0 : 1.43));
+                top = Math.Max(top, outer.Y + LineHeight(layout.Style) / 2 - (legendAbove || slide.Presentation.Word ? 0 : 1.43));
         }
         foreach (var layout in axes.Where(a => a.HasLabels && a.Axis.Horizontal && !a.Axis.IsValue))
         {
@@ -201,9 +213,12 @@ public sealed partial class ChartRenderer
     {
         var s = style.Size;
         var lineHeight = LineHeight(style);
-        var pitch = lineHeight + ExLegendRowExtra;
-        var gap = ExEntryGap * s;
-        var widths = entries.Select(e => (ExKey + ExKeyGap) * s + Width(e.Text, style)).ToList();
+        var word = slide.Presentation.Word;
+        // A row's height and the rows' pitch; Word's rows stand apart, PowerPoint's run on.
+        var row = word ? Math.Max(lineHeight, WordExRow) : lineHeight + ExLegendRowExtra;
+        var pitch = word ? row + WordExRowGap : row;
+        var gap = word ? WordExEntryGap : ExEntryGap * s;
+        var widths = entries.Select(e => (word ? WordExKey + WordExKeyGap : (ExKey + ExKeyGap) * s) + Width(e.Text, style)).ToList();
         var position = ChartModel.Val(element, "legendPos") ?? "r";
         var layout = new LegendLayout
         {
@@ -215,7 +230,8 @@ public sealed partial class ChartRenderer
             SpPr = element.Element(Ns.C + "spPr"),
             Ex = true,
         };
-        var titleLine = title is { Overlay: false } ? title.Bottom - TitlePaddingY + ExLegendGap : ExMargin;
+        var titleLine = title is { Overlay: false } ? title.Bottom - TitlePaddingY + (word ? WordExLegendGap : ExLegendGap) : word ? WordExMargin : ExMargin;
+        var margin = word ? WordExMargin : ExMargin;
         Box box;
         if (position is "t" or "b")
         {
@@ -233,37 +249,41 @@ public sealed partial class ChartRenderer
             var rows = (int)Math.Ceiling(entries.Count / (double)columns);
             for (var i = 0; i < entries.Count; i++)
             {
-                var (row, col) = Math.DivRem(i, columns);
-                var x = columnWidth > 0 ? col * columnWidth : Enumerable.Range(row * columns, col).Sum(j => widths[j] + gap);
-                layout.Placed.Add((entries[i], x, pitch * (row + 0.5)));
+                var (at, col) = Math.DivRem(i, columns);
+                var x = columnWidth > 0 ? col * columnWidth : Enumerable.Range(at * columns, col).Sum(j => widths[j] + gap);
+                layout.Placed.Add((entries[i], x, word ? pitch * at + row / 2 : pitch * (at + 0.5)));
             }
-            var h = rows * pitch;
-            var y = position == "b" ? height - ExMargin - h : titleLine - ExLegendRowExtra / 2;
-            box = new Box((width - rowWidth) / 2, y, rowWidth, h);
+            var h = word ? rows * pitch - pitch + row : rows * pitch;
+            var y = position == "b" ? height - margin - h : word ? titleLine : titleLine - ExLegendRowExtra / 2;
+            box = new Box((width - rowWidth) / 2 + (word ? WordExLegendShift : 0), y, rowWidth, h);
         }
         else
         {
             var w = widths.Max();
-            var h = pitch * entries.Count;
+            var h = word ? pitch * entries.Count - pitch + row : pitch * entries.Count;
             for (var i = 0; i < entries.Count; i++)
-                layout.Placed.Add((entries[i], 0, pitch * (i + 0.5)));
-            var areaTop = titleLine - ExLegendRowExtra / 2;
-            var x = position == "l" ? ExMargin : width - ExMargin - w;
-            box = new Box(x, areaTop + Math.Max(0, (height - ExMargin - areaTop - h) / 2), w, h);
+                layout.Placed.Add((entries[i], 0, word ? pitch * i + row / 2 : pitch * (i + 0.5)));
+            var areaTop = word ? titleLine : titleLine - ExLegendRowExtra / 2;
+            var x = position == "l" ? margin : width - margin - w;
+            box = new Box(x, areaTop + Math.Max(0, (height - margin - areaTop - h) / 2), w, h);
         }
         layout.Box = ManualPosition(element, box.W, box.H) ?? box;
         return layout;
     }
 
-    /// <summary>An entry of an Office 2016 chart's legend: its square key 0.66 s below the top of its line, then its text.</summary>
+    /// <summary>
+    /// An entry of an Office 2016 chart's legend: its square key 0.66 s below the top of its line, then its text; in Word
+    /// its key of 7.2 pt centered on the line (see WordExKey).
+    /// </summary>
     string ExLegendEntry(LegendEntry entry, TextStyle style, double left, double rowCenter)
     {
         var s = style.Size;
         var lineTop = rowCenter - LineHeight(style) / 2;
-        var key = ExKey * s;
+        var word = slide.Presentation.Word;
+        var key = word ? WordExKey : ExKey * s;
         var outline = entry.Outline is { Visible: true } o ? o with { WidthEmu = Math.Min(o.WidthEmu, 19050) } : null;
-        return Rect(new Box(left, lineTop + 0.66 * s - key / 2, key, key), entry.Fill, outline, snap: false)
-               + text.Label(entry.Text, style, left + (ExKey + ExKeyGap) * s, lineTop + Ascent(style));
+        return Rect(new Box(left, word ? rowCenter - key / 2 : lineTop + 0.66 * s - key / 2, key, key), entry.Fill, outline, snap: false)
+               + text.Label(entry.Text, style, left + (word ? WordExKey + WordExKeyGap : (ExKey + ExKeyGap) * s), lineTop + Ascent(style));
     }
 
     static XElement C(string name, params object?[] content) => new(Ns.C + name, content);
@@ -335,6 +355,20 @@ public sealed partial class ChartRenderer
             content.Add(C("majorGridlines", Shape(major, "gridlineMajor")));
         if (exAxis?.Element(Cx + "minorGridlines") is { } minor)
             content.Add(C("minorGridlines", Shape(minor, "gridlineMinor")));
+        // Its title, Office's words where it has no text, regular unless it says (measured with openxml-sdk's Of16-06:
+        // "Achsentitel" along both axes on a German Word).
+        if (exAxis?.Element(Cx + "title") is { } title)
+        {
+            var rich = title.Element(Cx + "tx")?.Element(Cx + "rich");
+            var text = title.Element(Cx + "tx")?.Element(Cx + "txData")?.Element(Cx + "v")?.Value;
+            content.Add(C("title",
+                rich != null ? C("tx", new XElement(Ns.C + "rich", rich.Elements()))
+                : text != null ? C("tx", C("rich", new XElement(Ns.A + "bodyPr"), new XElement(Ns.A + "p", new XElement(Ns.A + "r", new XElement(Ns.A + "t", text)))))
+                : null,
+                V("overlay", 0),
+                title.Element(Cx + "spPr") is { } titleSpPr ? new XElement(Ns.C + "spPr", titleSpPr.Elements()) : null,
+                RegularText(title.Element(Cx + "txPr"))));
+        }
         if (exAxis?.Element(Cx + "numFmt") is { } numFmt)
             content.Add(new XElement(Ns.C + "numFmt", new XAttribute("formatCode", (string?)numFmt.Attribute("formatCode") ?? "General"),
                 new XAttribute("sourceLinked", (string?)numFmt.Attribute("sourceLinked") is "1" or "true" ? 1 : 0)));
@@ -374,8 +408,11 @@ public sealed partial class ChartRenderer
     XDocument ClassicFrame(ChartExModel chart)
     {
         var language = PresentationLanguage();
-        var german = language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
         culture = slide.Presentation.Culture;
+        // Office's words in charts: in PowerPoint the presentation's language, in Word Word's own, the culture the
+        // engine runs with as for its field errors (measured with docx/local/bxw-*: "Diagrammtitel" in an en-US
+        // document on a German Word).
+        var german = slide.Presentation.Word ? culture.TwoLetterISOLanguageName == "de" : language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
         chartStyle = Related("chartStyle");
         var plotArea = new XElement(Ns.C + "plotArea", C("layout"));
         var deletedEntries = new List<int>();
@@ -437,8 +474,10 @@ public sealed partial class ChartRenderer
         }
         classic.Add(V("plotVisOnly", 1), V("dispBlanksAs", "gap"));
         space.Add(classic);
-        // The chart area has neither fill nor line of the style part's (measured: no line around PowerPoint's).
-        space.Add(chart.Space.Element(Cx + "spPr") is { } spaceSpPr ? new XElement(Ns.C + "spPr", spaceSpPr.Elements()) : Invisible());
+        // The chart area has neither fill nor line of the style part's in PowerPoint (measured: no line around
+        // PowerPoint's); Word draws the style part's (measured with docx/local/bxw-*: white, outlined 0.75 pt in D9D9D9).
+        space.Add(chart.Space.Element(Cx + "spPr") is { } spaceSpPr ? new XElement(Ns.C + "spPr", spaceSpPr.Elements())
+            : slide.Presentation.Word ? Shape(null, "chartArea") : Invisible());
         if (chart.Space.Element(Cx + "txPr") is { } spaceTxPr)
             space.Add(new XElement(Ns.C + "txPr", spaceTxPr.Elements()));
         return new XDocument(space);
@@ -476,6 +515,8 @@ public sealed partial class ChartRenderer
             }
         }
         var names = german ? new[] { "Anstieg", "Abfall", "Summe" } : new[] { "Increase", "Decrease", "Total" };
+        // The three kinds take the colors of four (measured with openxml-sdk's Of16-07: withinLinear).
+        paletteSize = 4;
         var gap = double.TryParse((string?)chart.Axis(0)?.Element(Cx + "catScaling")?.Attribute("gapWidth"), NumberStyles.Float, CultureInfo.InvariantCulture, out var g) ? g : 0.5;
         // The legend's three kinds as empty bars, the value range as invisible lines through the bars' ends.
         var empty = Enumerable.Repeat<double?>(null, n).ToList();
@@ -746,7 +787,12 @@ public sealed partial class ChartRenderer
     /// Box and whisker charts: per category (points sharing a name) and series a box from the first to the third
     /// quartile (exclusive or inclusive method) with the median across, whiskers to the extreme values within 1.5
     /// interquartile ranges, outliers as dots, the mean as a cross (and mean lines, inner points where shown), the box
-    /// in the series' color and its lines that color at 80 % (measured).
+    /// in the series' color and its lines that color at 80 % (measured). The series share the category's width over 1
+    /// + gapWidth, a single series filling it, several each 1 / (1.105 n − 0.0525) of it and 1.105 boxes apart, from
+    /// its left edge less half their line; caps 0.3 of the box wide, the mean's cross 6 pt, outliers dots of 3 pt
+    /// outlined; the category axis at the value axis's minimum, hidden outliers left out of its range (measured with
+    /// docx/local/bxw-*: Word's box plots of one to three series at gap widths 0 to 2 in one to three categories of
+    /// 89 to 397 pt, within 0.3 pt; bxw-noout: −100 to 100 without the outlier 128).
     /// </summary>
     void FrameBoxWhisker(ChartExModel chart, XElement plotArea, List<int> deletedEntries)
     {
@@ -772,16 +818,41 @@ public sealed partial class ChartRenderer
         plotArea.Add(C("barChart", V("barDir", "col"), V("grouping", "clustered"), V("varyColors", 0),
             chart.Series.Select((s, k) => Series(k, s.Name ?? $"{k + 1}", names, empty, format)),
             V("gapWidth", (int)Math.Round(gap * 100)), V("axId", 1), V("axId", 2)));
-        var all = groups.SelectMany(gr => gr.SelectMany(v => v)).ToList();
-        var low = names.Select((_, i) => groups.SelectMany(gr => gr[i]).Select(v => (double?)v).DefaultIfEmpty(null).Min()).ToList();
-        var high = names.Select((_, i) => groups.SelectMany(gr => gr[i]).Select(v => (double?)v).DefaultIfEmpty(null).Max()).ToList();
+        // Each box's statistics, and the values it shows: its whiskers' and box's, outliers and inner points where
+        // shown, the mean where its cross or line is.
+        var stats = chart.Series.Select((s, k) =>
+        {
+            var layout = s.LayoutProperties;
+            var visibility = layout?.Element(Cx + "visibility");
+            bool Shown(string name, bool fallback) => (string?)visibility?.Attribute(name) is { } v ? v is "1" or "true" : fallback;
+            var inclusive = (string?)layout?.Element(Cx + "statistics")?.Attribute("quartileMethod") == "inclusive";
+            return groups[k].Select(values =>
+            {
+                if (values.Count == 0)
+                    return null;
+                var (q1, median, q3) = (Quartile(values, 0.25, inclusive), Quartile(values, 0.5, inclusive), Quartile(values, 0.75, inclusive));
+                var iqr = q3 - q1;
+                var inside = values.Where(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr).ToList();
+                var outliers = values.Where(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr).ToList();
+                var (lowWhisker, highWhisker) = inside.Count > 0 ? (inside.Min(), inside.Max()) : (q1, q3);
+                var shown = new List<double> { lowWhisker, highWhisker, q1, q3 };
+                if (Shown("outliers", true))
+                    shown.AddRange(outliers);
+                if (Shown("meanMarker", true) || Shown("meanLine", false))
+                    shown.Add(values.Average());
+                return new BoxStats(q1, median, q3, lowWhisker, highWhisker, values.Average(), inside, outliers, shown.Min(), shown.Max());
+            }).ToList();
+        }).ToList();
+        var low = names.Select((_, i) => stats.Select(s => s[i]?.Low).Where(v => v != null).DefaultIfEmpty(null).Min()).ToList();
+        var high = names.Select((_, i) => stats.Select(s => s[i]?.High).Where(v => v != null).DefaultIfEmpty(null).Max()).ToList();
         var count = chart.Series.Count;
+        paletteSize = count;
         plotArea.Add(C("lineChart", V("grouping", "standard"), V("varyColors", 0),
             Series(count, "", names, low, format, Invisible(), C("marker", V("symbol", "none"))),
             Series(count + 1, "", names, high, format, Invisible(), C("marker", V("symbol", "none"))),
             V("marker", 0), V("axId", 1), V("axId", 2)));
         deletedEntries.AddRange([count, count + 1]);
-        plotArea.Add(Axis("catAx", 1, 2, "b", chart.Axis(0)));
+        plotArea.Add(Axis("catAx", 1, 2, "b", chart.Axis(0), crosses: "min"));
         plotArea.Add(Axis("valAx", 2, 1, "l", chart.Axis(1)));
 
         exAxisPlot = (axes, plot) =>
@@ -790,13 +861,12 @@ public sealed partial class ChartRenderer
             var value = axes.First(a => a.Axis.IsValue);
             var group = model.Groups.First(gr => gr.IsBar);
             var svg = new StringBuilder();
-            var slot = Math.Abs(category.Boundary(1) - category.Boundary(0)) / (count + gap);
+            var share = Math.Abs(category.Boundary(1) - category.Boundary(0)) / (1 + gap);
+            var width = count == 1 ? share : share / (1.105 * count - 0.0525);
             for (var k = 0; k < count; k++)
             {
-                var layout = chart.Series[k].LayoutProperties;
-                var visibility = layout?.Element(Cx + "visibility");
+                var visibility = chart.Series[k].LayoutProperties?.Element(Cx + "visibility");
                 bool Shown(string name, bool fallback) => (string?)visibility?.Attribute(name) is { } v ? v is "1" or "true" : fallback;
-                var inclusive = (string?)layout?.Element(Cx + "statistics")?.Attribute("quartileMethod") == "inclusive";
                 var fill = PointFill(group, group.Series[k], -1);
                 var color = Fill.MainColor(fill) ?? RgbColor.Black;
                 var dark = new RgbColor(color.R * 0.8, color.G * 0.8, color.B * 0.8, color.A);
@@ -804,46 +874,39 @@ public sealed partial class ChartRenderer
                 var means = new List<(double X, double Y)?>();
                 for (var i = 0; i < names.Count; i++)
                 {
-                    var values = groups[k][i];
-                    if (values.Count == 0)
+                    if (stats[k][i] is not { } box)
                     {
                         means.Add(null);
                         continue;
                     }
-                    var q1 = Quartile(values, 0.25, inclusive);
-                    var median = Quartile(values, 0.5, inclusive);
-                    var q3 = Quartile(values, 0.75, inclusive);
-                    var iqr = q3 - q1;
-                    var inside = values.Where(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr).ToList();
-                    var (lowWhisker, highWhisker) = inside.Count > 0 ? (inside.Min(), inside.Max()) : (q1, q3);
-                    var left = category.Boundary(i) + (category.Boundary(i + 1) - category.Boundary(i)) * gap / (count + gap) / 2 + slot * k;
-                    var center = left + slot / 2;
-                    var (y1, y3) = (value.Map(q1), value.Map(q3));
-                    var capHalf = slot / 8;
+                    var start = Math.Min(category.Boundary(i), category.Boundary(i + 1));
+                    var left = start + (Math.Abs(category.Boundary(i + 1) - category.Boundary(i)) - share) / 2 - line.WidthEmu / 12700 / 2 + 1.105 * width * k;
+                    var center = left + width / 2;
+                    var (y1, y3) = (value.Map(box.Q1), value.Map(box.Q3));
+                    var capHalf = 0.15 * width;
                     // Whiskers with their caps, then the box over them, the median across it.
-                    svg.Append(GridLine(line, center, value.Map(highWhisker), center, Math.Min(y1, y3)));
-                    svg.Append(GridLine(line, center, Math.Max(y1, y3), center, value.Map(lowWhisker)));
-                    svg.Append(GridLine(line, center - capHalf, value.Map(highWhisker), center + capHalf, value.Map(highWhisker)));
-                    svg.Append(GridLine(line, center - capHalf, value.Map(lowWhisker), center + capHalf, value.Map(lowWhisker)));
-                    svg.Append(Rect(new Box(left, Math.Min(y1, y3), slot, Math.Abs(y3 - y1)), fill, line, snap: true));
-                    svg.Append(GridLine(line, left, value.Map(median), left + slot, value.Map(median)));
-                    var mean = values.Average();
-                    means.Add((center, value.Map(mean)));
+                    svg.Append(GridLine(line, center, value.Map(box.HighWhisker), center, Math.Min(y1, y3)));
+                    svg.Append(GridLine(line, center, Math.Max(y1, y3), center, value.Map(box.LowWhisker)));
+                    svg.Append(GridLine(line, center - capHalf, value.Map(box.HighWhisker), center + capHalf, value.Map(box.HighWhisker)));
+                    svg.Append(GridLine(line, center - capHalf, value.Map(box.LowWhisker), center + capHalf, value.Map(box.LowWhisker)));
+                    svg.Append(Rect(new Box(left, Math.Min(y1, y3), width, Math.Abs(y3 - y1)), fill, line, snap: true));
+                    svg.Append(GridLine(line, left, value.Map(box.Median), left + width, value.Map(box.Median)));
+                    means.Add((center, value.Map(box.Mean)));
                     if (Shown("meanMarker", true))
                     {
-                        var r = Math.Min(slot / 6, 4.5);
-                        var (mx, my) = (center, value.Map(mean));
+                        const double r = 3;
+                        var (mx, my) = (center, value.Map(box.Mean));
                         svg.Append($"<path d=\"M{Px(mx - r)} {Px(my - r)}L{Px(mx + r)} {Px(my + r)}M{Px(mx - r)} {Px(my + r)}L{Px(mx + r)} {Px(my - r)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                     }
-                    var dot = 2.6;
+                    const double dot = 3;
                     if (Shown("outliers", true))
                     {
-                        foreach (var o in values.Where(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr))
-                            svg.Append($"<circle cx=\"{Px(center)}\" cy=\"{Px(value.Map(o))}\" r=\"{Px(dot / 2 + 0.5)}\"{paint.Fill(fill, 0, 0, defs)}/>");
+                        foreach (var o in box.Outliers)
+                            svg.Append($"<circle cx=\"{Px(center)}\" cy=\"{Px(value.Map(o))}\" r=\"{Px(dot / 2)}\"{paint.Fill(fill, 0, 0, defs)}{paint.Stroke(line, 0, 0, defs)}/>");
                     }
                     if (Shown("nonoutliers", false))
                     {
-                        foreach (var o in inside)
+                        foreach (var o in box.Inside)
                             svg.Append($"<circle cx=\"{Px(center)}\" cy=\"{Px(value.Map(o))}\" r=\"{Px(dot / 2 + 0.5)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                     }
                 }
@@ -857,6 +920,13 @@ public sealed partial class ChartRenderer
             return svg.ToString();
         };
     }
+
+    /// <summary>
+    /// A box's statistics: its quartiles, whiskers and mean, the values within and beyond its whiskers, and the range
+    /// of what it shows.
+    /// </summary>
+    sealed record BoxStats(double Q1, double Median, double Q3, double LowWhisker, double HighWhisker, double Mean,
+        List<double> Inside, List<double> Outliers, double Low, double High);
 
     /// <summary>A quartile like Excel's QUARTILE.EXC (between n + 1 ranks) or QUARTILE.INC (between n − 1 ranks).</summary>
     static double Quartile(List<double> sorted, double q, bool inclusive)

@@ -2189,19 +2189,39 @@ areas:
         office: >-
           PowerPoint saves Office 2016 charts as mc:AlternateContent (Requires cx1/cx2) with a picture of the
           chart in mc:Fallback, which is drawn (generated/charts-more slides 6 and 7: 98.5 %). Files without the
-          picture get the chart laid out natively (the chartex Choice is taken only then): a classic frame built
+          picture, and Word documents, whose charts Word draws itself (docx chart.ex), get the chart laid out
+          natively: a classic frame built
           from it (title, legend, axes) with layout rules measured on probe decks of 130 to 450 pt wide charts
           (local chartex, chartex-p1 … p4, chartex-pareto: 96–99 %): the plot area 6 pt from the edges and 4.25 pt
           below the title's line, axis labels 6.9 pt off it, category labels in a row, staggered up to 1.3 slots,
           turned by −30° up to 1.65 and −60° up to 2.15 slots, else upright; legends packed in rows of at most 80 %
           of the chart; histogram bins of Scott's width to two significant digits without axis headroom; waterfall
           totals and connectors; funnels; Pareto lines on a percentage axis; box plots (exclusive or inclusive
-          quartiles, 1.5 IQR whiskers, outliers, means); squarified treemaps with overlapping or banner labels;
+          quartiles, 1.5 IQR whiskers, outliers, means: the series share the category's width over 1 + gapWidth, a
+          single one filling it, several each 1 / (1.105 n − 0.0525) of it and 1.105 boxes apart from its left edge
+          less half their line, caps 0.3 of the box wide, the mean's cross 6 pt, outliers dots of 3 pt outlined, the
+          category axis at the value axis's minimum and hidden outliers out of its range; measured in Word with
+          docx/local/bxw-*: one to three series, gap widths 0 to 2, one to three categories, within 0.3 pt, 41–96 →
+          94–98 %; local/chartex and chartex-p1 box plot slides 95.9 → 98.8 %, 97.4 → 98.9 %); squarified treemaps
+          with overlapping or banner labels;
           sunbursts sorted by size with radial, wrapped labels. Region maps (local chartex-map … map4 at 300 to
           900 pt: 98.4–99.9 %) are drawn from their geography cache (raw deflated XML whose rings are Bing point
           compressed in the base64url alphabet) in Robinson's projection, 1.5 % wider than defined, fitted beside
           a color scale legend (interpolated in linear light) with the map's credits below; like PowerPoint's own
           pictures of such files, every region is gray, as the cache does not tell which region a data point names.
+          A color style that varies one color (meth withinLinear, Office's monochromatic palettes) spreads its n
+          colors evenly from a shade to a tint, the i-th v = 0.7 (2i + 1 − n) / (n + 1) of the way in linear light
+          (docx/local/bxl-*: box plots of one to six series on accent1 and accent2, 29 colors within one level; a
+          waterfall's three kinds take the first three of four, openxml-sdk/Of16-07). Axis titles (cx:axis cx:title)
+          read Office's words where they have no text. Word lays these charts out with measures of its own
+          (docx/local/wfl-*: waterfall legends of 7 to 16 pt at the top, bottom and right, axis titles of 10 and 14
+          pt, 98.5–99.4 %): the chart area as the style part has it (white, outlined in D9D9D9; PowerPoint draws
+          none), its words in its own language (the engine's culture: "Diagrammtitel", "Anstieg", "Achsentitel");
+          legend keys of 7.2 pt whatever the text's size, 3.9 pt before their text, entries 7.4 pt apart, rows at
+          least 14.08 pt high, the row at the top 9.2 pt below the title's line (10.96 pt inside the chart without
+          one) and 1.62 pt right of the middle, the plot area 9.16 pt below it, 10.27 pt above a legend at the bottom
+          and 13.68 pt from one at the side; axis titles at the edge with their axis's labels their lines' height and
+          6.6 pt further in; value labels half a line above the plot area also below a title alone.
           Not reproduced: the ellipsis PowerPoint puts on long category labels in very short charts.
 
   - id: smartart
