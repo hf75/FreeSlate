@@ -441,7 +441,16 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             {
                 var (backData, backBounds) = solid.Projected(solidOutlines, back);
                 var outerDefs = new StringBuilder();
-                if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
+                // A picture's glow and shadow follow its pixels, not its box: a copy of the picture at the body's back,
+                // seen by the camera, casts them (Word's PDF of LibreOffice's extras-ooxmlexport/
+                // picture-effects-preservation: a tree on a transparent background in an extruded frame seen
+                // isometrically glows around the tree).
+                if (fill is PictureFill && paths.Length > 0
+                    && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer) is { } pictureFilter)
+                    html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera! with { Offset = camera.Offset + back }, pw, ph, rotation, flipH, flipV)}\">" +
+                                $"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs>" +
+                                $"<g filter=\"url(#{pictureFilter})\">{paths}</g></svg></div>");
+                else if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
                     html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs><path d=\"{backData}\" fill=\"#000\" filter=\"url(#{outerFilter})\"/></svg>");
             }
             if (planeBehind)

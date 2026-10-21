@@ -3772,7 +3772,10 @@ areas:
           18 pt glow around rectangles, a turned rectangle and an ellipse, 97.2, 99.1, 86.0, 97.2 → 100, 100, 99.96,
           100 %; LibreOffice's extras-ooxmlexport/tdf143219ContourWrap_glow_rotate 82.5 → 98.7 %, WPC_Glow 98.1 →
           99.8 %, docx/generated/graphics 97.0 → 98.1 %); SVG dilates by rectangles only, so the union of four whose
-          corners lie on the circle.
+          corners lie on the circle. A picture turned in 3D glows (and casts its shadow) from its pixels, not its
+          box: a copy of the picture at the body's back, seen by the camera, casts them (LibreOffice's
+          extras-ooxmlexport/picture-effects-preservation: a tree on a transparent background in an extruded frame
+          seen isometrically glows around the tree, 87.6 → 96.0 %).
 
       - id: effect.softEdge
         title: Soft edges
