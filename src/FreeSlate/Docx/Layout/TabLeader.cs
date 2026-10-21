@@ -33,15 +33,15 @@ public static class TabLeader
         // On the device: the advance, the tab's start and its end in whole dots (Word's PDF of docx/generated/tabs: the
         // last hyphen ends at 489.6 pt where the tab ends 0.01 pt before it).
         double device = Math.Abs(style.Scale - 1) < 1e-6
-            ? DeviceGlyphs.Natural((int)Math.Round(advance * data.UnitsPerEm), data.UnitsPerEm, DeviceGlyphs.PixelSize(style.Size))
-            : Math.Round(advance * style.Size * style.Scale * 600 / 72);
+            ? DeviceGlyphs.Natural((int)Math.Round(advance * data.UnitsPerEm), data.UnitsPerEm, WordDevice.PixelSize(style.Size))
+            : Math.Round(WordDevice.InDots(advance * style.Size * style.Scale));
         if (style.Bold && style.Font.SyntheticBold)
             device++;
         if (device <= 0)
             return positions;
-        var (first, end) = (Math.Round(start * 600 / 72), Math.Round((start + tab.Width) * 600 / 72));
+        var (first, end) = (Math.Round(WordDevice.InDots(start)), Math.Round(WordDevice.InDots(start + tab.Width)));
         for (var k = Math.Ceiling(first / device); (k + 1) * device <= end; k++)
-            positions.Add(k * device * 72 / 600);
+            positions.Add(WordDevice.InPoints(k * device));
         return positions;
     }
 }

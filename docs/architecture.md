@@ -122,7 +122,8 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   Word recomputes when it prints.
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
-  (`PageRenderer.Markup`, `Describe`).
+  (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it
+  (`WordDevice`, `DeviceGlyphs`).
 
 ## Catalogs (`catalog/`)
 

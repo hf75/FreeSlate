@@ -474,7 +474,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Letterhead: tblpX 1135 twips, 472.92 dots, at 472, its cells' text a dot left of where rounding put it;
         // LibreOffice's writerfilter-dmapper/floattable-header-overlap: 1362 twips, 567.5 dots, at 567).
         if (position.Attr("horzAnchor") == "page" && position.Attr("tblpXSpec") == null)
-            x = Math.Floor(x / 0.12 + 1e-6) * 0.12;
+            x = WordDevice.Floored(x);
         // A table placed above the page's top stands at it (measured with docx/local/hft-*: tblpY -2000 from the
         // margin, the page or without an anchor, in the body and in a header, at the page's top edge).
         var top = Math.Max(0, position.Attr("tblpYSpec") switch

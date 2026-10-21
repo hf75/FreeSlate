@@ -866,11 +866,10 @@ public static class Vml
     /// </summary>
     static (XElement Group, double Width, double Height)? Bordered(XElement content, XElement shape, double width, double height)
     {
-        static double Dots(double points) => Math.Max(0.12, Math.Floor(points / 0.12 + 1e-6) * 0.12);
         (string Type, double Width)? Side(string name) =>
             shape.Element(W10 + "border" + name) is { } b && (string?)b.Attribute("type") is { } kind && kind != "none"
             && double.TryParse((string?)b.Attribute("width"), NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && w > 0
-                ? (kind, Dots(w / 8)) : null;
+                ? (kind, WordDevice.LineWidth(w / 8)) : null;
         var (top, left, bottom, right) = (Side("top"), Side("left"), Side("bottom"), Side("right"));
         if (top == null && left == null && bottom == null && right == null)
             return null;
@@ -1821,8 +1820,8 @@ public static class Vml
         var (effective, focus) = Turned(angle, Math.Clamp(Fraction((string?)fill.Attribute("focus")) ?? 0, -1, 1));
         var ends = Near(focus, 0) || Near(Math.Abs(focus), 1);
         var symmetric = Near(Math.Abs(focus), 0.5);
-        const double Dot = 0.12;
-        var (w, h) = ends && half || symmetric && half && !Multiple(effective, 90) ? (512 * Dot, 384 * Dot) : (1025 * Dot, 769 * Dot);
+        var (w, h) = ends && half || symmetric && half && !Multiple(effective, 90) ? (512 * WordDevice.Dot, 384 * WordDevice.Dot)
+            : (1025 * WordDevice.Dot, 769 * WordDevice.Dot);
         // The angle applies in the tile stretched to a square: its direction in the tile, from the start corner.
         var (dy, dx) = Math.SinCos((90 - effective) * Math.PI / 180);
         (dx, dy) = (Math.Abs(dx) < 1e-9 ? 0 : dx, Math.Abs(dy) < 1e-9 ? 0 : dy);
@@ -1884,8 +1883,8 @@ public static class Vml
             return null;
         // Word's "from corner" gradients (o:fill gradientCenter) take the smaller tile.
         var corner = (string?)fill.Attribute("type") == "gradientCenter" || (string?)fill.Element(O + "fill")?.Attribute("type") == "gradientCenter";
-        const double Dot = 0.12;
-        return corner ? (512 * Dot, 384 * Dot, Fill(background, null)) : (1025 * Dot, 769 * Dot, Fill(background, null));
+        return corner ? (512 * WordDevice.Dot, 384 * WordDevice.Dot, Fill(background, null))
+            : (1025 * WordDevice.Dot, 769 * WordDevice.Dot, Fill(background, null));
     }
 
     /// <summary>

@@ -163,7 +163,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                 if (picture.Kind == "frame" && Presentation.Image(context.MainPart, picture.Id) is { } uri
                     && Presentation.ImageSize(context.MainPart, picture.Id, 96) is var (pixelsWide, pixelsHigh) && pixelsWide > 0 && pixelsHigh > 0)
                 {
-                    var (tw, th) = (Units.Css(pixelsWide * 0.12 * Px), Units.Css(pixelsHigh * 0.12 * Px));
+                    var (tw, th) = (Units.Css(pixelsWide * WordDevice.Dot * Px), Units.Css(pixelsHigh * WordDevice.Dot * Px));
                     var id = paint.NewId("bg");
                     return Page($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{tw}\" height=\"{th}\"><image href=\"{uri}\" width=\"{tw}\" height=\"{th}\" preserveAspectRatio=\"none\"/></pattern>",
                         $" fill=\"url(#{id})\"");

@@ -2812,14 +2812,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var font = style.Font.Data;
         if (font.EastAsian)
             return 0;
-        const double PerPoint = 600.0 / 72;
-        var ppem = (int)Math.Round(style.Size * PerPoint, MidpointRounding.AwayFromZero);
+        var ppem = (int)Math.Round(style.Size * WordDevice.DotsPerPoint, MidpointRounding.AwayFromZero);
         var (above, _) = WordFonts.LineMetrics(font, style.Size, style.LineHeights);
-        var ascent = WordFonts.Ascent(font) * style.Size * PerPoint;
-        var gap = Math.Max(0, above * PerPoint - ascent);
+        var ascent = WordFonts.Ascent(font) * style.Size * WordDevice.DotsPerPoint;
+        var gap = Math.Max(0, above * WordDevice.DotsPerPoint - ascent);
         var gdiAscent = font.Typo is { Use: true } typo ? (int)Math.Round(typo.Ascender * ppem, MidpointRounding.AwayFromZero) : font.GdiMetrics(ppem).Ascent;
         var shift = Math.Round(gap, MidpointRounding.AwayFromZero) + gdiAscent - 1 - Math.Round(gap + ascent, MidpointRounding.AwayFromZero);
-        return shift / PerPoint;
+        return shift / WordDevice.DotsPerPoint;
     }
 
     /// <summary>

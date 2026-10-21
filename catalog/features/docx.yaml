@@ -5076,7 +5076,8 @@ areas:
         status: done
         strategy: >-
           One self-contained HTML file: fixed-size page boxes with absolutely positioned glyph runs, SVG for
-          drawings, embedded fonts and pictures; print CSS keeps one page per sheet.
+          drawings, embedded fonts and pictures; print CSS keeps one page per sheet. Every step onto Word's 600 dpi
+          device (0.12 pt dots, twips five twelfths of one) is named in one place by the rounding Word takes there.
         office: >-
           One self-contained HTML file: a fixed-size section per page with a named @page per paper size (printed,
           every page keeps its size), text as SVG text at our positions in the fonts we measured with (fonts the

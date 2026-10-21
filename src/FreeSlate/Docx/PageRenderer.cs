@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Docx.Layout;
+using static FreeSlate.Docx.WordDevice;
 
 namespace FreeSlate.Docx;
 
@@ -859,24 +860,22 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         if (placed.Line.Pieces.Count == 0)
             return placed;
-        static double Floor(double points) => Math.Floor(points / Dot + 1e-6);
         var down = placed.Angle > 0;
         var height = Math.Round(boxHeight / Dot, MidpointRounding.AwayFromZero);
-        var top = !legacy ? Floor(boxTop) : down ? Math.Round(boxTop / Dot, MidpointRounding.AwayFromZero) : Floor(boxTop + boxHeight) - height;
+        var top = !legacy ? FloorDots(boxTop) : down ? Math.Round(boxTop / Dot, MidpointRounding.AwayFromZero) : FloorDots(boxTop + boxHeight) - height;
         var bottom = top + height;
         // Before Word 2013 lines down the box stack from its right edge on the dot before it, against where the layout
         // put them.
-        var edge = down && legacy ? Floor(boxLeft + boxWidth) * Dot - (boxLeft + boxWidth) : 0;
+        var edge = down && legacy ? FloorDots(boxLeft + boxWidth) * Dot - (boxLeft + boxWidth) : 0;
         // The room along the line in dots from where the line starts: the top for text down, the bottom for text up.
         var length = height - Math.Round(insetTop / Dot) - Math.Round(insetBottom / Dot);
         var from = down ? top + Math.Round(insetTop / Dot) : bottom - Math.Round(insetBottom / Dot);
-        static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
         var first = placed.Line.Pieces.Min(p => p.X);
         // Where the first glyph stands along the line from the room's start, in points.
-        var along = Snap(placed.Line.Pieces[0].X);
+        var along = TwipsOnDots(placed.Line.Pieces[0].X);
         if (placed.Line.Alignment is { } aligned)
         {
-            var (left, right) = (Snap(aligned.Left), length * Dot - Snap(Math.Max(0, length * Dot - aligned.Right)));
+            var (left, right) = (TwipsOnDots(aligned.Left), length * Dot - TwipsOnDots(Math.Max(0, length * Dot - aligned.Right)));
             var content = DeviceWidth(placed) ?? Math.Round(aligned.Width / Dot, MidpointRounding.AwayFromZero) * Dot;
             along = aligned.Center ? left + Math.Floor(Math.Round((right - left - content) / Dot) / 2) * Dot : right - content;
         }
@@ -885,7 +884,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return placed with
         {
             Top = down ? start - first : start + first,
-            Left = placed.Left + Snap(baseline) - baseline + edge,
+            Left = placed.Left + TwipsOnDots(baseline) - baseline + edge,
             DeviceTurned = true,
         };
     }
@@ -1179,7 +1178,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             if (ids.Length == 0)
                 continue;
             var data = piece.Style.Font.Data;
-            var pixels = DeviceGlyphs.PixelSize(piece.Style.Size);
+            var pixels = PixelSize(piece.Style.Size);
             var nominal = NominalPositions(piece);
             // Word writes runs one after the other as one run of its PDF where they are alike (SameRun).
             pieces.Add((piece, glyphs.Count, previous != null && piece.Link == previous.Link && SameRun(piece.Style, previous.Style)));
@@ -1225,7 +1224,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     natural += (int)Math.Round(piece.SpaceExtra / Dot);
                     exact += piece.SpaceExtra / Dot;
                 }
-                glyphs.Add((natural, exact, Math.Round(1000.0 * design / data.UnitsPerEm) / 1000 * pixels * 72 / 600));
+                glyphs.Add((natural, exact, InPoints(Math.Round(1000.0 * design / data.UnitsPerEm) / 1000 * pixels)));
             }
             end = piece.X + nominal[^1];
         }
@@ -1258,7 +1257,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var widths = new double[to - from - 1];
             for (var k = from; k < to - 1; k++)
                 (advances[k - from], widths[k - from]) = (places[k + 1] - places[k], glyphs[k].Width);
-            var encoded = DeviceGlyphs.Encode(advances, widths, DeviceGlyphs.PixelSize(pieces[p].Piece.Style.Size) * 72.0 / 600);
+            var encoded = DeviceGlyphs.Encode(advances, widths, InPoints(PixelSize(pieces[p].Piece.Style.Size)));
             for (var r = p; r < q; r++)
             {
                 var (piece, index, _) = pieces[r];
@@ -1397,12 +1396,6 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         return $"<g transform=\"{transform}\" {paint}>{units}</g>";
     }
 
-    /// <summary>Word's device dot, in points: it prints at 600 dpi and draws its lines on whole dots.</summary>
-    const double Dot = 0.12;
-
-    /// <summary>A length in whole dots of Word's device.</summary>
-    static int Dots(double points) => (int)Math.Round(points / Dot, MidpointRounding.AwayFromZero);
-
     /// <summary>The paper size of the page being drawn, over which Word's PDF moves text (see <see cref="Grow"/>).</summary>
     (double Width, double Height) paperSize;
 
@@ -1422,26 +1415,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// </summary>
     static PlacedLine OnDots(PlacedLine placed, double pageWidth)
     {
-        // In whole twips first, so that halves stay halves.
-        static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
-        // A text box's text starts at its edge and inset on a dot, a half dot going down with a left inset of 7.2 pt or
-        // more, up with a narrower one, to even without one (measured with docx/local/tbd-*, tbe-*: a box at 1887.5 dots
-        // has its text with left insets of 144 and 288 twips on dots 1947 and 2007, in modes 11 to 15, with 12 and 72
-        // twips on 1893 and 1918, without on 1888; LibreOffice's extras-ooxmlexport/tdf91260: 1947.5 dots on 1947;
-        // tbi-1417: insets of nothing but half an unfilled line beside a box at 1417 twips, 592.5 dots on 593;
-        // extras-layout/tdf117188; boxes at 472.5 dots without an inset on 472: extras-ooxmlexport/
-        // tdf153613_textboxAfterPgBreak3, writerfilter-dmapper/textbox-textline).
-        // The edge and inset in whole twips, halves down: half an unfilled line of 0.25 or 0.75 pt counts 2 or 7 twips,
-        // of 0.255 pt 3 (tbi-1417, tbi-1440: the text on dots 591 and 593 beside a box at 1417 twips; LibreOffice's
-        // extras-ooxmlexport/tdf104354).
-        static double BoxSnap(double points, double inset)
-        {
-            var dots = Math.Ceiling(points * 20 - 0.5 - 1e-6) * 5 / 12;
-            var half = Math.Abs(dots - Math.Floor(dots) - 0.5) < 1e-6;
-            return (!half ? Math.Round(dots) : inset >= 7.2 - 1e-6 ? Math.Floor(dots) : inset > 1e-6 ? Math.Ceiling(dots) : Math.Round(dots, MidpointRounding.ToEven)) * Dot;
-        }
         var start = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces[0].X : 0;
-        var shift = (placed.BoxInset is { } inset ? BoxSnap(placed.Left, inset) : Snap(placed.Left)) - placed.Left + Snap(start) - start;
+        var shift = (placed.BoxInset is { } inset ? BoxTextOnDots(placed.Left, inset) : TwipsOnDots(placed.Left)) - placed.Left + TwipsOnDots(start) - start;
         // Centered and right aligned lines: the room's edges each on a dot (the left one as lines start, the right one
         // where it stands on the page), the content's width in whole dots, half the room left over rounded down
         // (measured with docx/local/jco-a to jco-d: Arial and Calibri 11 pt, margins of 1440 and 1134 twips, indents of
@@ -1470,8 +1445,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         else if (placed.Line.Alignment is { } aligned)
         {
-            var left = Snap(placed.Left) + Snap(aligned.Left);
-            var right = Snap(placed.Left + aligned.Right);
+            var left = TwipsOnDots(placed.Left) + TwipsOnDots(aligned.Left);
+            var right = TwipsOnDots(placed.Left + aligned.Right);
             var width = Math.Round(aligned.Width / Dot, MidpointRounding.AwayFromZero) * Dot;
             var to = aligned.Center ? left + Math.Floor(Math.Round((right - left - width) / Dot) / 2) * Dot : right - width;
             // The line's left end, also where right-to-left runs were put in visual order after the first piece.

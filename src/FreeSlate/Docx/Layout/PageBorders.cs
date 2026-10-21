@@ -83,13 +83,12 @@ public static class PageBorders
             // 19.92 pt, the right line ending at 575.52 pt; docx/external/libreoffice/extras-ooxmlexport/fdo64350: the
             // shadows of a Letter page ending 23.88 pt from its right and bottom edges; art borders keep the frame they
             // were measured with, docx/local/pgb-art2, pgb-art3).
-            const double Dot = 72.0 / 600;
-            static double Floored(double space) => Math.Floor(space / Dot + 1e-6) * Dot;
+            const double Dot = WordDevice.Dot;
             var (width, height) = (Math.Round(page.Width / Dot) * Dot, Math.Round(page.Height / Dot) * Dot);
-            l = Floored(Space(left)) + Shadow(left);
-            t = Floored(Space(top)) + Shadow(top);
-            r = width - Floored(Space(right)) + Dot - Shadow(right);
-            b = height - Floored(Space(bottom)) + Dot - Shadow(bottom);
+            l = WordDevice.Floored(Space(left)) + Shadow(left);
+            t = WordDevice.Floored(Space(top)) + Shadow(top);
+            r = width - WordDevice.Floored(Space(right)) + Dot - Shadow(right);
+            b = height - WordDevice.Floored(Space(bottom)) + Dot - Shadow(bottom);
         }
         else if (borders.Attr("offsetFrom") == "page")
         {
@@ -143,7 +142,7 @@ public static class PageBorders
     }
 
     /// <summary>The room a run border takes beside its text: its space and its lines (catalog: run.decoration).</summary>
-    public static double Room(BorderLine line) => SideOf(line) is { } side ? Device(line.Space) + side.Total : 0;
+    public static double Room(BorderLine line) => SideOf(line) is { } side ? WordDevice.LineWidth(line.Space) + side.Total : 0;
 
     /// <summary>
     /// A frame of one line whose outer edges are a box's (run borders, catalog: run.decoration): its sides drawn as a
@@ -276,8 +275,8 @@ public static class PageBorders
     {
         if (!line.Visible)
             return null;
-        var w = Device(line.Width);
-        var (thin, half, wide) = (Device(0.75), Device(line.Width / 2), Device(1.5));
+        var w = WordDevice.LineWidth(line.Width);
+        var (thin, half, wide) = (WordDevice.LineWidth(0.75), WordDevice.LineWidth(line.Width / 2), WordDevice.LineWidth(1.5));
         List<(double, Kind)> stripes = line.Style switch
         {
             "double" => [(w, Kind.Line), (w, Kind.Gap), (w, Kind.Line)],
@@ -303,9 +302,6 @@ public static class PageBorders
         };
         return stripes.Count > 0 ? new Side(line, stripes) : null;
     }
-
-    /// <summary>A width on Word's 600 dpi device: floored to 0.12 pt, at least one dot.</summary>
-    static double Device(double width) => Math.Max(0.12, Math.Floor(width / 0.12 + 1e-6) * 0.12);
 
     /// <summary>Whether a border style is one of the art borders (pictures), not a line.</summary>
     static bool Art(string style) => style is not ("single" or "thick" or "double" or "dotted" or "dashed" or "dotDash"

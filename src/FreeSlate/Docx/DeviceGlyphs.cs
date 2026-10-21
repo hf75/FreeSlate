@@ -1,3 +1,5 @@
+using static FreeSlate.Docx.WordDevice;
+
 namespace FreeSlate.Docx;
 
 /// <summary>
@@ -12,9 +14,6 @@ namespace FreeSlate.Docx;
 /// </summary>
 static class DeviceGlyphs
 {
-    /// <summary>Word's device dot, in points.</summary>
-    const double Dot = 0.12;
-
     /// <summary>The exact advances as Word adds them up: a hair longer than the font's (600/72 taken as 8.334).</summary>
     const double Scale = 1 + 7.8e-5;
 
@@ -26,9 +25,6 @@ static class DeviceGlyphs
 
     /// <summary>How far Word goes through a line before it brings the error back.</summary>
     const int Stretch = 1024;
-
-    /// <summary>The font's size in device pixels (its em in dots), halves up.</summary>
-    public static int PixelSize(double size) => (int)Math.Floor(size * 600 / 72 + 0.5);
 
     /// <summary>
     /// A glyph's natural width in whole dots at the pixel size, as DirectWrite gives it for GDI (its design width

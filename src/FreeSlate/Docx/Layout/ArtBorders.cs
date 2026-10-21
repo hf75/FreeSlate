@@ -16,9 +16,6 @@ public sealed record ArtShape(string Path, RgbColor? Fill, RgbColor? Stroke, dou
 /// </summary>
 public static class ArtBorders
 {
-    /// <summary>Word's device dot in points.</summary>
-    const double DeviceDot = 0.12;
-
     /// <summary>
     /// The length of a side tile of a basic art border in border widths, horizontal and vertical (from Word's tile
     /// counts at all sizes: the line borders' 4.42 to 4.52 and 5.57 to 5.89).
@@ -40,7 +37,7 @@ public static class ArtBorders
     /// </summary>
     static (double Rules, double Shapes, double Grow) Far(string style) => style switch
     {
-        "basicThinLines" or "basicWideInline" or "basicWideOutline" => (0.24, 0, DeviceDot),
+        "basicThinLines" or "basicWideInline" or "basicWideOutline" => (0.24, 0, WordDevice.Dot),
         "basicWideMidline" => (0.24, 0, 0),
         "basicWhiteDashes" => (0, 0.24, 0),
         _ => (0, 0, 0),
@@ -115,9 +112,9 @@ public static class ArtBorders
         // As many whole tiles as fit between the corners (a picture's length in whole dots of Word's device and one more:
         // 10 pt 84 dots, 12 pt 101, 16 pt 134), stretched to the side on the device's grid: each tile whole dots long,
         // the first ones a dot shorter than the last ones.
-        var first = (int)Math.Ceiling(from / DeviceDot - 1e-6);
-        var dots = (int)Math.Floor(to / DeviceDot + 1e-6) - first;
-        var length = (Math.Floor((horizontal ? nominal.Horizontal : nominal.Vertical) * width / DeviceDot + 1e-6) + 1) * DeviceDot;
+        var first = (int)Math.Ceiling(from / WordDevice.Dot - 1e-6);
+        var dots = (int)Math.Floor(to / WordDevice.Dot + 1e-6) - first;
+        var length = (Math.Floor((horizontal ? nominal.Horizontal : nominal.Vertical) * width / WordDevice.Dot + 1e-6) + 1) * WordDevice.Dot;
         var count = Math.Max(1, (int)Math.Floor((to - from) / length + 1e-9));
         var (shorter, longer) = (dots / count, dots % count);
         var (side, _) = Motif(style, color, horizontal && far);
@@ -126,8 +123,8 @@ public static class ArtBorders
             side = Grown(side, 0, outward.Grow / width);
         for (var k = 0; k < count; k++)
         {
-            var start = (first + k * shorter + Math.Max(0, k - (count - longer))) * DeviceDot;
-            var tile = (shorter + (k >= count - longer ? 1 : 0)) * DeviceDot;
+            var start = (first + k * shorter + Math.Max(0, k - (count - longer))) * WordDevice.Dot;
+            var tile = (shorter + (k >= count - longer ? 1 : 0)) * WordDevice.Dot;
             (double X, double Y) At(double s, double v, bool rule)
             {
                 var across = far ? edge + (rule ? outward.Rules : outward.Shapes) - v * width : edge + v * width;
