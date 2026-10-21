@@ -34,6 +34,7 @@ dotnet run --project tools/Fidelity -c Release --no-build -- run generated
 | `generate` | builds the test decks of `tests/corpus/pptx/generated/` through PowerPoint | Windows, PowerPoint |
 | `generate docx` | builds the test documents of `tests/corpus/docx/generated/` through Word | Windows, Word |
 | `reference [decks] [--force]` | renders PowerPoint's references (`Slide.Export`), Word's for documents (see below) | Windows, PowerPoint, Word |
+| `reraster [documents]` | rasterizes Word's stored PDFs of documents again, without Word (after a change to the rasterizing) | Windows |
 | `fetch`, `fetch docx` | downloads the test decks or the Word documents of other projects | network |
 | `animate-reference`, `animate` | records PowerPoint's video of animated slides and compares the player's frames with it | Windows, PowerPoint, ffmpeg |
 | `transitions-reference` | the same for slide transitions | Windows, PowerPoint, ffmpeg |
@@ -62,6 +63,16 @@ fonts: Word embeds TrueType fonts without their `gasp` table, the browser keeps 
 smoothing glyphs it would grid-fit otherwise (Aptos, Cambria and Cambria Math at text sizes lost 7 to 12 % of a line's
 ink with every glyph in place). `run` renames the `gasp` table of every embedded TrueType program
 (`tools/Fidelity/Word/PdfFonts.cs`); scores before 2026-10-14 were measured without it.
+
+Windows' renderer draws three things wrong, on both sides: content under a soft mask (reflections, fading glows) it
+draws unmasked, text in Type 3 fonts filled with a pattern (the browser's outlined text with a gradient) it fills
+flat, and pictures thinner than a pixel (Word's dashed table borders, drawn as tiny images) it leaves out. Where
+Python can import PyMuPDF (`pip install pymupdf`), `tools/Fidelity/Word/repaint.py` repaints these places after
+every rasterizing: MuPDF renders the page with and without the feature, and only the pixels that differ are taken
+from MuPDF's render (thin pictures four times as fine, averaged down); all others stay as Windows drew them, so
+MuPDF's other antialiasing moves no score. PyMuPDF brings MuPDF under the AGPL-3.0; it is part of this measurement
+only, FreeSlate does not use it. Without it (or with `FIDELITY_NO_MUPDF=1`) the pages stay as Windows draws them, and
+a note says so. `reraster` brings stored references up to date; scores before 2026-10-21 were measured without it.
 
 Documents whose name begins with `markup-` (`docx/local/markup-revisions`) are rendered with their markup on both
 sides: Word prints them with all markup (`ExportDocumentWithMarkup`), FreeSlate converts them with `markup: true`.

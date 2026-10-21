@@ -40,6 +40,9 @@ switch (command)
     case "reference" when OperatingSystem.IsWindows():
         References.Render(decks, force);
         break;
+    case "reraster" when OperatingSystem.IsWindows():
+        References.Rerasterize(decks);
+        break;
     case "calibrate" when OperatingSystem.IsWindows():
         if (!args.Contains("--measure-only"))
             Calibration.Render();
@@ -63,6 +66,9 @@ switch (command)
         break;
     case "generate" or "reference" or "calibrate" or "animate-reference" or "transitions-reference" or "harvest-cmyk":
         Console.Error.WriteLine($"'{command}' needs PowerPoint and therefore Windows.");
+        return 1;
+    case "reraster":
+        Console.Error.WriteLine("'reraster' needs Windows' PDF renderer.");
         return 1;
     case "harvest-patterns":
         PatternHarvest.Run();

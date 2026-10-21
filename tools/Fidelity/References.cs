@@ -227,6 +227,38 @@ public static class References
     }
 
     /// <summary>
+    /// Rasterizes Word's stored PDFs of documents again, without Word (after a change to the rasterizing): every
+    /// document of <paramref name="decks"/> whose reference.pdf and meta.json exist gets its pages anew, its meta.json
+    /// keeping all but the pages' size and count.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public static void Rerasterize(IEnumerable<string> decks)
+    {
+        foreach (var deck in decks.Where(Repo.IsDocument))
+        {
+            var pdf = DocumentPdf(deck);
+            if (!File.Exists(pdf) || Load(deck) is not { } info)
+            {
+                Console.WriteLine($"  missing     {deck}");
+                continue;
+            }
+            var dir = Dir(deck);
+            foreach (var old in Directory.GetFiles(dir, "page-*.png"))
+                File.Delete(old);
+            var files = RasterizeReference(pdf, dir);
+            if (files.Count == 0)
+            {
+                Console.WriteLine($"  skipped     {deck} (no pages)");
+                continue;
+            }
+            using var first = SkiaSharp.SKBitmap.Decode(files[0]);
+            File.WriteAllText(Path.Combine(dir, "meta.json"),
+                JsonSerializer.Serialize(info with { Width = first.Width, Height = first.Height, Pages = files.Count }, JsonOptions) + "\n");
+            Console.WriteLine($"  rasterized  {deck} ({files.Count} pages)");
+        }
+    }
+
+    /// <summary>
     /// Rasterizes Word's PDF of a document, its premultiplied pictures first brought to straight alpha in a copy
     /// (<see cref="PdfImages"/>); the PDF itself stays as Word wrote it.
     /// </summary>
