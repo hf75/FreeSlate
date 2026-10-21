@@ -934,13 +934,17 @@ public sealed class MathLayout
         var gap = U(display ? table.RadicalDisplayStyleVerticalGap : table.RadicalVerticalGap, size);
         var thickness = U(table.RadicalRuleThickness, size);
         var extra = U(table.RadicalExtraAscender, size);
-        var target = radicand.Ascent + radicand.Descent + gap + thickness;
-        var surd = Stretched(0x221A, target, size, color, vertically: true);
+        // Word sizes and places the sign as if the radicand reached at least from the baseline up to
+        // FlattenedAccentBaseHeight: the sign's middle a rule thickness above the radicand's so taken, its bar at least
+        // the gap above it (measured with docx/local/mre-d48, mre-i48: square roots in Cambria Math 48 pt of x, t, +, i,
+        // 4, b, y, j, an infinity and a times sign, displayed and inline, the bars within 3.3 font units of Word's;
+        // mrd-disp, mrd-inl: x_2 and a^2 with the larger variant only displayed, (x+1), x/y; LibreOffice's
+        // extras-ooxmlexport/math-color-ctrlpr).
+        var ascent = Math.Max(radicand.Ascent, U(table.FlattenedAccentBaseHeight, size));
+        var descent = Math.Max(radicand.Descent, 0);
+        var surd = Stretched(0x221A, ascent + descent + gap + thickness, size, color, vertically: true);
         var height = surd.Ascent + surd.Descent;
-        // Room left over goes half above the radicand.
-        if (height > target)
-            gap += (height - target) / 2;
-        var top = radicand.Ascent + gap + thickness;
+        var top = Math.Max((ascent - descent + height) / 2 + thickness, ascent + gap + thickness);
         var result = new ListItem();
         var x = 0.0;
         if (Property(rad, "radPr", "degHide") is not ("on" or "1" or "true") && rad.Element(M + "deg")?.Elements().Any() == true)

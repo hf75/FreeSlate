@@ -4714,6 +4714,14 @@ areas:
           superscripts, prescripts, fractions, limits, n-ary limits and radicals take plain digits; LibreOffice's
           extras-uiwriter/tdf66405 88.4 → 99.9 %). Known deviation: a fraction as an upper limit stands
           2.2 pt lower than Word's (mlt-*).
+          A square root's sign is sized and placed as if the radicand reached at least from the baseline up to the
+          math font's FlattenedAccentBaseHeight: the first variant at least as tall as the radicand so taken with the
+          gap (displayed RadicalDisplayStyleVerticalGap, inline RadicalVerticalGap) and the rule thickness, its middle
+          a rule thickness above the radicand's, its bar at least the gap above the radicand's top (docx/local/mre-d48,
+          mre-i48: Cambria Math 48 pt, x, t, +, i, 4, b, y, j, an infinity and a times sign, displayed and inline, the
+          bars within 3.3 font units of Word's, at 12 pt within 0.1 pt; mrd-disp, mrd-inl: x_2 and a^2 take the larger
+          variant only displayed, (x+1), x/y; LibreOffice's extras-ooxmlexport/math-color-ctrlpr 75.0 → 98.4 %,
+          docx/local/mph-24-rad 89.7 → 96.9 %).
           Normal text (m:nor) is set in the run's text font (docx/external/libreoffice/extras-ooxmlimport/tdf170171:
           "+" in Arial).
 
