@@ -5215,7 +5215,9 @@ areas:
         status: done
         strategy: >-
           Anchored objects, frames and floating tables are placed first, then lines are broken into the space
-          around them; objects anchored in later text may move earlier lines, so layout iterates until stable.
+          around them; objects anchored in later text may move earlier lines, so layout iterates until stable. What
+          the runs before settled travels in one record to the next: each page's floating objects and footnote band,
+          the paragraphs that begin a page for an object going back and forth, the drawings held where they stood.
         office: >-
           Floating drawings are placed on their anchor's page and the page is laid out again around them until it is
           stable (at most five runs); an object that goes back and forth between two pages, its own exclusion pushing
