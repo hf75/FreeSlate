@@ -1119,6 +1119,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Drawings held where they stood first on a page, the run before going back and forth (see Paginate).</summary>
     Dictionary<XElement, (int Page, double X, double Y)> pinned = new(ReferenceEqualityComparer.Instance);
 
+    /// <summary>A table's own drawings held where its first layout put them, the table below them (see PlaceTable).</summary>
+    readonly Dictionary<XElement, (int Page, double X, double Y)> heldInTable = new(ReferenceEqualityComparer.Instance);
+
     /// <summary>
     /// The area a floating object keeps free of text (catalog: drawing.wrap): its box with the effect extents and the
     /// distances around it; square wrapping keeps the box, top and bottom the whole width, tight and through wrapping
@@ -2766,6 +2769,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // sets such a table at the margin's outside top, beside the frame before it, without them below it).
         if (table.Table.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is not ParagraphBlock { Format.Frame: not null })
             left += BelowFloats(box, left, table.Element, table.Table.Format.Justification);
+        var breakAfter = BelowOwnDrawings(box, left, index + 1 < blocks.Count);
         tableKept = RowKept(table.Table, box.Rows.Count - 1);
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);
@@ -2892,6 +2896,57 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         previous = null;
         stylePrevious = LastParagraph(table.Table);
         paragraphNumber++;
+        if (breakAfter)
+            NextColumn(natural: true);
+    }
+
+    /// <summary>
+    /// Before Word 2013 a table's own drawings of layoutInCell 0 that text goes around, placed from their paragraph,
+    /// stand where the table's first layout puts them, and the table goes below those over it; where it then does not
+    /// fit, it stays and what follows it goes on in the next column or page (measured with docx/local/nlm-12-0-*,
+    /// nlm-14-0-*: a rectangle of 100 x 50 pt wrapped through in the last row's cell, aligned left in the column 0.05 pt
+    /// below its paragraph, at the column's left at that row's top, the table below it; layoutInCell 1 and mode 15 not,
+    /// nlm-12-1-*, nlm-15-*; cig-noin14, cig-noin12, ccl-out14: shapes placed from the column across; nlc-*: copies of
+    /// LibreOffice's extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, a picture wrapped through, square or top and
+    /// bottom of 50 or 103.5 pt, the table staying at the page's top, the paragraphs after it on page 2 whatever the room
+    /// left; unwrapped or without the picture they stay). True where what follows goes on so.
+    /// </summary>
+    bool BelowOwnDrawings(TableBox box, double left, bool followed)
+    {
+        if (context.CompatibilityMode >= 15 || box.Rows.Count == 0)
+            return false;
+        var (lines, fills, borders, strokes) = (new List<PlacedLine>(), new List<FillRect>(), new List<FillRect>(), new List<Stroke>());
+        var anchors = new List<CellAnchor>();
+        var rowTop = y;
+        foreach (var row in box.Rows)
+        {
+            TableLayout.Draw(row, row.Height, left, rowTop, lines, fills, borders, strokes, anchors);
+            rowTop += row.Height;
+        }
+        var height = rowTop - y;
+        if (y + height > Bottom + 0.01)
+            return false;
+        var over = new List<(XElement Source, PlacedDrawing Placed, double Bottom)>();
+        foreach (var anchor in anchors)
+        {
+            var element = anchor.Anchor.Anchor;
+            if ((string?)element.Attribute("layoutInCell") is not ("0" or "false")
+                || (string?)element.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") != "paragraph")
+                continue;
+            var placed = PlaceAnchor(anchor.Anchor, page!, anchor.ParagraphTop, anchor.LineTop, left, page!.TextWidth, anchor, anchor.CharacterX);
+            if (ExclusionOf(placed) is { } area && area.Left < left + box.Left + box.Width - 0.01 && area.Right > left + box.Left + 0.01
+                && area.Top < y + height - 0.01 && area.Bottom > y + 0.01)
+                over.Add((element, placed, area.Bottom));
+        }
+        if (over.Count == 0)
+            return false;
+        var below = over.Max(o => o.Bottom);
+        if (below + height > Bottom + 0.01)
+            return followed;
+        foreach (var (source, placed, _) in over)
+            heldInTable[source] = (page!.Number, placed.X, placed.Y);
+        y = below;
+        return false;
     }
 
     /// <summary>
@@ -2971,6 +3026,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         CellAnchor? cell, double? character)
     {
         var placed = Unpinned(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        if (heldInTable.TryGetValue(anchor.Anchor, out var held) && held.Page == page.Number)
+            return placed with { X = held.X, Y = held.Y };
         return pinned.TryGetValue(anchor.Anchor, out var pin) && pin.Page == page.Number ? placed with { X = pin.X, Y = pin.Y } : placed;
     }
 

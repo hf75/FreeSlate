@@ -2227,9 +2227,14 @@ areas:
           below the top of the paragraph the table belongs to, across from the cell's text (docx/local/nie-a to nie-d:
           100 pt below a cell's paragraph 20 pt below that top, 120 pt below the page's top, whatever the vertAnchor;
           from its line or the page as said, nie-e, nie-f; extras-ooxmlexport/missing-path 87.8 → 100 %,
-          extras-uiwriter/tdf78727 59.2 → 100 %). Known deviations: Word cuts drawings at the
-          bottom of a row of exact height (cig-exact); before Word 2013 a drawing of layoutInCell 0 does not move the
-          table aside (cig-noin14, ccl-out14).
+          extras-uiwriter/tdf78727 59.2 → 100 %). Before Word 2013 a table's own drawings of layoutInCell 0 that text
+          goes around, placed from their paragraph, stand where the table's first layout puts them and the table goes
+          below those over it; where it then does not fit, it stays and what follows it goes on in the next column or
+          page (docx/local/nlm-12-0-*, nlm-14-0-*: a rectangle wrapped through in the last row at the column's left, the
+          table below it, 83.0 → 100 %; cig-noin14, cig-noin12 88.8 → 100 %, ccl-out14 85.2 → 100 %; nlc-*: copies of
+          extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, the paragraphs after the table on page 2 whatever the
+          room, tdf162541 50.0 → 100 %; layoutInCell 1 and Word 2013 not). Known deviation: Word cuts drawings at the
+          bottom of a row of exact height (cig-exact).
 
       - id: table.borders
         title: Table and cell borders and shading
