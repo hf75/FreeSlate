@@ -992,7 +992,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var outerRight = frameBorders?.Right is { Visible: true } fr ? 1.55 + fr.Space + fr.Total : 0;
         if (properties.Attr("wrap") != "none" && !stacked)
             page.FloatingTables.Add(new Exclusion(x - outerLeft - hSpace, top - vSpace, x + frameWidth + outerRight + hSpace, top + height + vSpace,
-                properties.Attr("wrap") == "notBeside", "bothSides") { Frame = true, WithText = withText, DropCap = dropCap == "drop" });
+                properties.Attr("wrap") == "notBeside", "bothSides")
+            {
+                Frame = true, WithText = withText, DropCap = dropCap == "drop", NarrowestRoom = dropCap is null or "none" ? FrameRoom : 0,
+            });
         frameStack = dropCap is null or "none" ? (properties, page!, top + content, end) : null;
         return end;
     }
@@ -1202,6 +1205,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// <summary>Whether the area is a text frame's standing with the text (w:vAnchor text), not on the page.</summary>
         public bool WithText { get; init; }
 
+        /// <summary>The narrowest room beside the area that takes text (see FrameRoom), or 0 for any.</summary>
+        public double NarrowestRoom { get; init; }
+
         /// <summary>The floating table whose area it is, where the lines before it go around it (see PlaceFloatingTable), else null.</summary>
         public Block? Banded { get; init; }
 
@@ -1382,6 +1388,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var after = (Math.Max(start, r), end);
                 var keepBefore = before.Item2 > before.start;
                 var keepAfter = after.end > after.Item1;
+                // The room beside a frame counts as if it stood a twip further left (see FrameRoom).
+                if (e.NarrowestRoom > 0)
+                {
+                    keepBefore &= before.Item2 - before.start - 0.05 >= e.NarrowestRoom - 0.001;
+                    keepAfter &= after.end - after.Item1 + 0.05 >= e.NarrowestRoom - 0.001;
+                }
                 switch (e.Side)
                 {
                     case "left": keepAfter = e.OtherSide && !keepBefore; break;
@@ -1409,6 +1421,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             skipTo = nextBottom;
         return new LineRoom(segments, skipTo) { Tight = beside && tight, DropCap = dropCap };
     }
+
+    /// <summary>
+    /// The narrowest room beside a text frame that takes text: before Word 2013 an inch, counted as if the frame stood a
+    /// twip further left (measured with docx/local/frw-*, frx-*, fry-*: 1441 twips between the left margin and a frame's
+    /// hSpace take text, 1440 not, 1439 between its hSpace and the right margin, 1438 not, whatever the frame's width,
+    /// its hSpace and the margins, in modes 12 and 14; hfs-12-*: beside the frames of headers too), from then on any
+    /// room its line's first word fits in (hfs-15-*: "The body" in 62.65 pt left of a frame; see
+    /// ParagraphLayout.MinimumSegment).
+    /// </summary>
+    double FrameRoom => context.Profile.FrameRoomFromInch ? 72 : 0;
 
     List<PageBox> PaginateOnce(List<Block> blocks, SectionProperties lastSection, Dictionary<string, List<Block>>? footnotes = null,
         List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
@@ -1760,7 +1782,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     layout.Evaluator.Laying = page;
                 var headerBox = Story(page.Header, page, null, header: true);
                 page.BodyTop = Math.Max(page.BodyTop, headerBox.Bottom);
-                page.FloatingTables.AddRange(headerBox.Floats);
+                // What a header or footer keeps free above or below the body's text leaves it alone, also the lines
+                // there that go on on the next page (docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang: a
+                // footer's page number framed below the body leaves the line breaks of the paragraph at its end).
+                page.FloatingTables.AddRange(headerBox.Floats.Where(f => f.Bottom > page.BodyTop + 0.01));
                 page.FloatingTables.AddRange(StoryObstacles(headerBox));
                 if (layout.Evaluator != null)
                     layout.Evaluator.Laying = null;
@@ -1769,7 +1794,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 var footerBox = Story(page.Footer, page, null, header: false);
                 page.BodyBottom = Math.Min(page.BodyBottom, footerBox.Top);
-                page.FloatingTables.AddRange(footerBox.Floats);
+                page.FloatingTables.AddRange(footerBox.Floats.Where(f => f.Top < page.BodyBottom - 0.01));
                 page.FloatingTables.AddRange(StoryObstacles(footerBox));
             }
         }
@@ -2000,10 +2025,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     frameBorders?.Draw(frameBox.Shading, frameBox.Borders, x, frameWidth, frameTop + spaceTop, frameTop + Math.Max(given, frameHeight),
                         top: true, bottom: true, between: null);
                 // The body's text goes around a frame standing on the page, as around a floating table there (measured
-                // with docx/local/fh-1: a header's frame on the top margin in mode 15 puts the body's first line beside it).
-                if (onPage && properties.Attr("wrap") != "none")
+                // with docx/local/fh-1: a header's frame on the top margin in mode 15 puts the body's first line beside it),
+                // and around one standing with the story's text, as far as it reaches below the story, which ends where
+                // its text does, the story's own text going over it (measured with docx/local/hfr-*, hfs-*: the body's
+                // first four lines at the top margin beside a header's frame 72 pt high from 51.3 pt down, right of it in
+                // modes 12 and 14, on both sides in mode 15, as beside the body's own frames, one 20 pt high above the
+                // margin leaving them; openxml-sdk/complex0: a table below such a frame, the header's picture and
+                // rule over it).
+                if (properties.Attr("wrap") != "none")
                     floats.Add((new Exclusion(x - Twips("hSpace"), frameTop - Twips("vSpace"), x + frameWidth + Twips("hSpace"),
-                        frameTop + frameHeight + Twips("vSpace"), properties.Attr("wrap") == "notBeside", "bothSides") { Story = true }, false, -1));
+                        frameTop + frameHeight + Twips("vSpace"), properties.Attr("wrap") == "notBeside", "bothSides")
+                    {
+                        Story = true, NarrowestRoom = FrameRoom,
+                    }, !onPage, -1));
                 b = end - 1;
                 continue;
             }
@@ -2189,8 +2223,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         box.Bottom = top + y;
         // Floating tables anchored to the story's text reach as far as the story does (measured with docx/external/
         // libreoffice/extras-ooxmlexport/tdf149089: the body begins below a header's floating table 1.35 pt above its
-        // paragraph).
-        foreach (var (area, _, _) in floats.Where(f => f.Moves))
+        // paragraph), its frames not (see above).
+        foreach (var (area, _, _) in floats.Where(f => f.Moves && f.Anchor >= 0))
         {
             box.Top = Math.Min(box.Top, area.Top + top);
             box.Bottom = Math.Max(box.Bottom, area.Bottom + top);
@@ -2812,6 +2846,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 TableLayout.Frame(box, left, tableTop, y, page!.Borders);
             NextColumn(natural: true);
             (left, width) = Column(column);
+            // The part that goes on begins below the floating objects and frames there that it would overlap, as the
+            // table does where it begins (openxml-sdk/complex0: rows going on below a header's frame on page 4).
+            BelowFloats(box, left, table.Element, table.Table.Format.Justification);
             tableTop = y;
             // A part that goes on below rows of the page before begins below its frame's top line and the spacing; a
             // table that moves whole has them in its first row.

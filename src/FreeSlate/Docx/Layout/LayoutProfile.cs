@@ -368,6 +368,12 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool WrapsLeftOnOtherSide { get; } = mode < 15;
 
     /// <summary>
+    /// Whether the room beside a text frame takes text only where it is an inch wide: before Word 2013 (see
+    /// Paginator.FrameRoom).
+    /// </summary>
+    public bool FrameRoomFromInch { get; } = mode < 15;
+
+    /// <summary>
     /// Whether a floating drawing in a table cell of layoutInCell 0 stands outside the cell, from the column: before
     /// Word 2013; from then on every one is laid out in its cell (see TableLayout.InCell).
     /// </summary>

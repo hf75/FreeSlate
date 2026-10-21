@@ -1245,7 +1245,19 @@ areas:
           (ff-*, fg-*, fh-*, fxa-c, -d: y 0 and yAlign bottom; core-ooxml-pass/fdo81491; extras-ooxmlexport/tdf112287B
           52.0 → 100 %). The body's text goes around frames standing on the page, also
           lines above them and around those of headers (special_styles: an envelope address at the page's bottom;
-          fh-1). Lines above a frame standing with the text that it reaches with its w:vSpace go below it (notBeside),
+          fh-1), and around the frames of headers and footers standing with their text as far as they reach below
+          them, the header ending where its text does and its own text going over them (docx/local/hfr-*, hfs-*: the
+          body's first four lines at the top margin beside a header's frame 72 pt high from 51.3 pt down, one 20 pt
+          high above the margin leaving them; openxml-sdk/complex0: a table on page 4 below such a frame, the header's
+          picture and rule over it, 63.9 → 99.3 %, the text on page 7 beside it), what they keep free wholly above or
+          below the body's text leaving it alone (docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang: a
+          footer's page number framed below the body leaves the line breaks of the paragraph ending the page). Before
+          Word 2013 the room beside a frame takes text only where it is an inch wide, counted as if the frame stood a
+          twip further left (frw-*, frx-*, fry-*: 1441 twips between the left margin and a frame's hSpace take text,
+          1440 not, 1439 between its hSpace and the right margin, 1438 not, whatever the frame's width, its hSpace and
+          the margins, in modes 12 and 14; hfs-12-*: beside the frames of headers too), from Word 2013 on any room its
+          line's first word fits in (hfs-15-*: "The body" in 62.65 pt left of a frame). Lines above a frame standing
+          with the text that it reaches with its w:vSpace go below it (notBeside),
           the frame keeping its place, and a next frame follows them (fi-2, fi-3, fj-2; tdf105035_framePrB: a title
           and an author line framed with vSpace 187; tdf164500_framePrBeforeTable); the last paragraph's space after
           stands in the frame (fk-*). Before mode 15 Word draws a frame's inline shapes and groups (VML and DrawingML,
@@ -1286,8 +1298,10 @@ areas:
           (docx/local/fwa-*-14: a frame over the right or the left margin, a table 28.8 pt below the paragraph's top,
           the 36 pt line below the frame; without the table, with the table below the line, with the frame inside the
           column, and in mode 15 beside it; LibreOffice's extras-ooxmlexport/tdf164500_framePrBeforeTable2 57.9 → 98.5
-          %). Known deviation: Word draws frame-direction's KingsBureauGrot ThreeSeven, a font this machine lacks, in
-          Franklin Gothic Medium, here in Calibri.
+          %). Known deviations: Word draws frame-direction's KingsBureauGrot ThreeSeven, a font this machine lacks, in
+          Franklin Gothic Medium, here in Calibri; Word keeps a footer's frame standing with its text that would reach
+          below the page's bottom edge on the page, ours lets it reach below (docx/local/hfr-ftr: a frame 72 pt high
+          1.5 pt below the footer's last paragraph ends at the page's edge).
 
       - id: paragraph.eastAsian
         title: East Asian line breaking and character grid
@@ -5294,7 +5308,8 @@ areas:
           page's left column, the right column's text and the last line of a paragraph from the page before). Text
           frames and drop caps (paragraph.frames) and floating tables (table.floating) take part in the same
           exclusions. A table does not stand beside the floating objects and frames before it: it begins below every
-          one its part on the page would overlap, from Word 2013 on whatever their wrapping and also below those
+          one its part on the page would overlap, as does its part going on in the next column or page
+          (openxml-sdk/complex0: rows going on below a header's frame), from Word 2013 on whatever their wrapping and also below those
           anchored after it on the page (tbo-*: a shape anchored after a table over its last or first row, wrapped
           square or top and bottom; openxml-sdk/Document), before only those kept free above and below and those that
           leave it less than half its width right of them, their own boxes over it (tfh-*-14: below a shape wrapped
